@@ -5,15 +5,47 @@
   "author": "Diogo da Silva",
   "repository": "builtin",
   "min_app_version": "0.3.0",
-  "permissions": ["network:external", "worker:filesystem", "storage:local", "notifications"],
+  "permissions": [
+    "network:external",
+    "worker:filesystem",
+    "storage:local",
+    "notifications"
+  ],
   "config": {
-    "auto_sync": { "type": "boolean", "label": "Auto-scan on login", "default": true },
-    "mark_as_owned": { "type": "boolean", "label": "Mark matched games as owned", "default": true },
-    "access_token": { "type": "secret", "label": "Access Token (manual fallback)", "description": "Paste a Battle.net access token directly if OAuth is not configured. Get one from the Blizzard API or web session.", "advanced": true }
+    "auto_sync": {
+      "type": "boolean",
+      "label": "Auto-scan on login",
+      "default": true,
+      "section": "General",
+      "order": 0
+    },
+    "mark_as_owned": {
+      "type": "boolean",
+      "label": "Mark matched games as owned",
+      "default": true,
+      "section": "General",
+      "order": 1
+    },
+    "access_token": {
+      "type": "secret",
+      "label": "Access Token (manual fallback)",
+      "description": "Paste a Battle.net access token directly if OAuth is not configured. Get one from the Blizzard API or web session.",
+      "advanced": true,
+      "section": "Session",
+      "order": 0
+    }
   },
   "slots": [
-    { "location": "library:scan", "label": "Battle.net" },
-    { "location": "matching:scan", "label": "Battle.net" }
+    {
+      "location": "library:scan",
+      "label": "Battle.net"
+    },
+    {
+      "location": "matching:scan",
+      "label": "Battle.net"
+    }
   ],
-  "entry": { "main": "main.js" }
+  "entry": {
+    "main": "main.js"
+  }
 }

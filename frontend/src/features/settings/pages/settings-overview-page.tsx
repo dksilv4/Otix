@@ -15,7 +15,7 @@ const ITEM_DESCRIPTIONS: Record<string, string> = {
   notifications: 'Configure local sound chimes, quiet hours, and social activity alerts.',
   desktop: 'System tray behavior, startup options, and hardware acceleration.',
   library: 'Scan local game folders, manage ISO directories, and view scanned games.',
-  integrations: 'Connect Plex, YouTube, Spotify, Steam, Trakt, and AniList accounts.',
+  integrations: 'Connect Plex, YouTube, Steam, Trakt, and AniList accounts.',
   plugins: 'Browse, install, and manage extensions and community plugins.',
   profile: 'Customize your public avatar, cover photo, bio, and social links.',
   account: 'Manage account credentials, email verification, 2FA, and active sessions.',

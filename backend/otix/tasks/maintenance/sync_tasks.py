@@ -1,5 +1,5 @@
 # TODO: Review this file
-"""Spotify, YouTube, and Plex user sync; catalog hydration sweep."""
+"""YouTube and Plex user sync; catalog hydration sweep."""
 
 from __future__ import annotations
 
@@ -15,30 +15,6 @@ from otix.infrastructure.database import async_session
 from otix.lib.concurrency import run_async
 
 logger = structlog.get_logger()
-
-
-@app.task(name="maintenance.sync_spotify_recently_played")
-def sync_spotify_recently_played() -> dict:
-    return run_async(_sync_spotify_recently_played())
-
-
-async def _sync_spotify_recently_played() -> dict:
-    from otix.infrastructure.celery import app as celery_app
-
-    synced = 0
-    failed = 0
-    async with async_session() as session:
-        users = list(
-            (await session.scalars(select(User).where(User.spotify_refresh_token.isnot(None)).limit(200))).all()
-        )
-        for user in users:
-            try:
-                celery_app.send_task("sync.spotify.recently_played", args=[user.id])
-                synced += 1
-            except Exception:
-                logger.exception("scheduled spotify recently played sync enqueue failed", user_id=user.id)
-                failed += 1
-    return {"synced": synced, "failed": failed}
 
 
 @app.task(name="maintenance.sync_youtube_watch_history")

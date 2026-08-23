@@ -94,12 +94,6 @@ class Settings(BaseSettings):
     musicbrainz_request_timeout_seconds: int = 15
     musicbrainz_global_rps_limit: int = 1
 
-    # Spotify
-    spotify_client_id: str = ""
-    spotify_client_secret: str = ""
-    spotify_request_timeout_seconds: int = 15
-    spotify_global_rps_limit: int = 3
-
     # Google
     google_client_id: str = ""
     google_client_secret: str = ""

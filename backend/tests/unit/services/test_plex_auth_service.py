@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from unittest.mock import AsyncMock
 
 from otix.domain.user import User
@@ -58,7 +59,7 @@ async def test_build_plex_link_url_uses_hosted_auth_link(fakeredis, monkeypatch)
     assert "code=ABCD" in auth_url
     assert "forwardUrl=http%3A%2F%2Flocalhost%3A5173%2Fauth%2Fplex%2Fconnect%2Fcallback" in auth_url
     assert pin_id == "1234"
-    assert await fakeredis.get(plex_auth_service._state_key(state)) == "1234"
+    assert json.loads(await fakeredis.get(plex_auth_service._state_key(state))) == {"pin_id": "1234"}
 
 
 async def test_link_plex_to_user_consumes_state_and_persists_profile(fakeredis, monkeypatch, mock_db_session):

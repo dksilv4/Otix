@@ -42,7 +42,28 @@ from otix.tasks.seed import (
 
 logger = structlog.get_logger()
 
-BATCH_INSERT_SIZE = 5_000  # max rows per INSERT — stays under PostgreSQL 32767 param limit (6 cols × 5000 = 30000)
+
+def _stub_insert_cols() -> int:
+    """Bound params per stub row in the bulk INSERT.
+
+    SQLAlchemy folds columns with Python-side defaults into multi-row inserts
+    (id, hash_match_count, confirmed_count, confirmed_by, ...), so each row
+    binds more params than the 4 explicit stub columns. Derive the count from
+    the compiled statement so batch sizing stays correct as the model evolves.
+    """
+    import re
+
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    probe = pg_insert(ExternalID.__table__).values(
+        [{"provider": "x", "external_id": "0", "media_type": "movie", "is_adult": False}]
+    )
+    sql = str(probe.compile())
+    return len(set(re.findall(r"%\(([a-z_0-9]+)\)s", sql)))
+
+
+# Max rows per INSERT — stays under PostgreSQL's 32767-argument limit with headroom.
+BATCH_INSERT_SIZE = max(1, 32_767 // _stub_insert_cols() - 16)
 BACKLOG_BATCH_SIZE = 200
 
 # Backward-compatible aliases for internal use
@@ -88,12 +109,21 @@ _BACKLOG_DISPATCH: dict[str, tuple[str, list]] = {
 
 
 async def _bulk_insert_stubs(rows: list[dict]) -> int:
-    """Insert ExternalID stubs with on_conflict_do_nothing. Returns rowcount."""
+    """Insert ExternalID stubs with on_conflict_do_nothing. Returns rowcount.
+
+    Stubs carry entity_type=NULL (they are unresolved placeholders). The
+    global unique index on (provider, external_id, media_type) makes a stub
+    for an already-resolved id conflict with the media row, so re-imports are
+    true no-ops.
+    """
     if not rows:
         return 0
     async with async_session() as session:
+        # Target the global uq_external_id_provider_media_type index. A stub for
+        # an already-resolved id conflicts with the media row and is skipped,
+        # so the daily import stops re-seeding resolved ids.
         stmt = pg_insert(ExternalID.__table__).values(rows).on_conflict_do_nothing(
-            index_elements=["provider", "external_id", "entity_type"]
+            index_elements=["provider", "external_id", "media_type"],
         )
         result = await session.execute(stmt)
         await session.commit()
@@ -204,14 +234,18 @@ async def _process_backlog_batch(state: dict) -> dict:
                     stub_list.append(stub)
                     seen.add(stub.id)
 
-        # If any type exhausted its quota, fill remainder with untyped stubs
-        # and any extras from the most abundant types.
+        # If any type exhausted its quota, fill remainder with genuine media
+        # stubs (entity_id NULL) from the most abundant types. Already-resolved
+        # non-media rows (people/keywords/collections) set entity_id but leave
+        # media_item_id NULL — they must be excluded or they'd be misdispatched
+        # as movies.
         if len(stub_list) < BACKLOG_BATCH_SIZE:
             remaining = BACKLOG_BATCH_SIZE - len(stub_list)
             extra_stubs = await session.scalars(
                 select(ExternalID).where(
                     ExternalID.provider == "tmdb",
                     ExternalID.media_item_id.is_(None),
+                    ExternalID.entity_id.is_(None),
                     ExternalID.id.notin_(seen) if seen else True,
                 ).order_by(
                     ExternalID.is_adult.asc(),

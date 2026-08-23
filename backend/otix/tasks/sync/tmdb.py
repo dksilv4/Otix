@@ -214,6 +214,23 @@ async def _sync_tmdb_media(
             else:
                 raw = await provider.get_show(tmdb_id)
 
+            # The detail response's images sub-object is language-filtered and
+            # drops null-lang (textless) posters. Fetch images separately with
+            # no language so hydrate_images can store textless_poster assets —
+            # the same textless-art collection the game hydration gets from
+            # SteamGridDB. This is what lets movies/shows pass discover's
+            # has_artwork filter.
+            try:
+                images_raw = (
+                    await provider.get_movie_images(tmdb_id)
+                    if media_type == "movie"
+                    else await provider.get_show_images(tmdb_id)
+                )
+                raw["images"] = images_raw
+            except Exception:
+                logger.warning("failed to fetch language-agnostic images",
+                               tmdb_id=tmdb_id, media_type=media_type, exc_info=True)
+
             content_hash = compute_content_hash(raw)
 
             if ext_id is not None and not force and ext_id.content_hash == content_hash:
@@ -261,6 +278,7 @@ async def _sync_tmdb_media(
                     ext_id = await eid_svc.upsert(
                         "tmdb", tmdb_id_str,
                         "media_item", item.id,
+                        media_type=media_type,
                     )
                     if raw.get("adult", False):
                         ext_id.is_adult = True
@@ -320,6 +338,7 @@ async def _sync_tmdb_media(
                     ext_id = await eid_svc.upsert(
                         "tmdb", tmdb_id_str,
                         "media_item", item.id,
+                        media_type=media_type,
                     )
                     if raw.get("adult", False):
                         ext_id.is_adult = True

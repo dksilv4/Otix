@@ -235,14 +235,6 @@ async def search_media(
     track_summaries: list[TrackSearchResult] = []
     if tracks_future is not None:
         tracks = await tracks_future
-        track_ids = [t.id for t in tracks]
-        spotify_id_map: dict[str, str] = {}
-        if track_ids:
-            eid_by_entity = await ExternalIDService(db).batch_find_by_entity_ids("track", track_ids)
-            for entity_id, pairs in eid_by_entity.items():
-                for provider, external_id in pairs:
-                    if provider == "spotify":
-                        spotify_id_map[entity_id] = external_id
         for t in tracks:
             album_item = t.album.media_item
             artist_name = None
@@ -257,7 +249,7 @@ async def search_media(
                 TrackSearchResult(
                     id=t.id, title=t.title, track_number=t.track_number,
                     disc_number=t.disc_number, duration_ms=t.duration_ms,
-                    preview_url=t.preview_url, spotify_id=spotify_id_map.get(t.id),
+                    preview_url=t.preview_url,
                     avg_rating=t.avg_rating, rating_count=t.rating_count,
                     album_id=t.album.media_item_id, album_title=album_item.title,
                     album_poster_url=album_item._resolved_poster_url or album_item.poster_url, album_artist_name=artist_name,
@@ -353,14 +345,6 @@ async def search_grouped(
                     seen_albums.add(ai.id)
                     album_items.append(ai)
             await enrich_items_with_assets(s, album_items)
-        track_ids = [t.id for t in tracks]
-        spotify_id_map: dict[str, str] = {}
-        if track_ids:
-            eid_by_entity = await ExternalIDService(db).batch_find_by_entity_ids("track", track_ids)
-            for entity_id, pairs in eid_by_entity.items():
-                for provider, external_id in pairs:
-                    if provider == "spotify":
-                        spotify_id_map[entity_id] = external_id
         results = []
         for t in tracks:
             album_item = t.album.media_item
@@ -373,7 +357,7 @@ async def search_grouped(
                 TrackSearchResult(
                     id=t.id, title=t.title, track_number=t.track_number,
                     disc_number=t.disc_number, duration_ms=t.duration_ms,
-                    preview_url=t.preview_url, spotify_id=spotify_id_map.get(t.id),
+                    preview_url=t.preview_url,
                     avg_rating=t.avg_rating, rating_count=t.rating_count,
                     album_id=t.album.media_item_id, album_title=album_item.title,
                     album_poster_url=album_item.poster_url, album_artist_name=artist,

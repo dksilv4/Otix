@@ -16,13 +16,12 @@ from otix.api.auth.me._utils import _gravatar_url
 from otix.api.auth.oauth.google import router as google_router
 from otix.api.auth.oauth.google.callback import router as google_callback_router
 from otix.api.auth.oauth.google.disconnect import router as google_disconnect_router
+from otix.api.auth.oauth.google_drive import router as google_drive_router
+from otix.api.auth.oauth.google_drive.callback import router as google_drive_callback_router
+from otix.api.auth.oauth.google_drive.disconnect import router as google_drive_disconnect_router
 from otix.api.auth.oauth.plex import router as plex_router
 from otix.api.auth.oauth.plex.callback import router as plex_callback_router
 from otix.api.auth.oauth.plex.disconnect import router as plex_disconnect_router
-from otix.api.auth.oauth.spotify import _spotify_stats
-from otix.api.auth.oauth.spotify import router as spotify_router
-from otix.api.auth.oauth.spotify.callback import router as spotify_callback_router
-from otix.api.auth.oauth.spotify.disconnect import router as spotify_disconnect_router
 from otix.api.auth.oauth.steam import router as steam_router
 from otix.api.auth.oauth.steam.callback import router as steam_callback_router
 from otix.api.auth.oauth.steam.disconnect import router as steam_disconnect_router
@@ -77,11 +76,10 @@ async def list_integrations(
         except Exception:
             logger.exception("failed to backfill tmdb avatar", user_id=current_user.id)
 
-    steam_profile, _, tmdb_stats, spotify_stats = await asyncio.gather(
+    steam_profile, _, tmdb_stats = await asyncio.gather(
         fetch_steam(),
         backfill_tmdb_avatar(),
         _tmdb_stats(current_user),
-        _spotify_stats(current_user, db),
     )
 
     providers = [
@@ -108,26 +106,19 @@ async def list_integrations(
             tmdb_rating_sync_direction=current_user.tmdb_rating_sync_direction,
         ),
         IntegrationProviderResponse(
-            name="spotify",
-            connected=current_user.spotify_id is not None,
-            spotify_username=current_user.spotify_username,
-            spotify_avatar_url=current_user.spotify_avatar_url,
-            spotify_stats=spotify_stats,
-        ),
-        IntegrationProviderResponse(
             name="google",
             connected=current_user.google_id is not None,
             google_email=current_user.google_email,
             google_name=current_user.google_name,
             google_avatar_url=current_user.google_avatar_url,
         ),
+        IntegrationProviderResponse(
+            name="google_drive",
+            connected=current_user.drive_refresh_token is not None,
+        ),
     ]
     return IntegrationsResponse(providers=providers)
 
-
-integrations_router.include_router(spotify_router)
-integrations_router.include_router(spotify_callback_router)
-integrations_router.include_router(spotify_disconnect_router)
 
 integrations_router.include_router(steam_router)
 integrations_router.include_router(steam_callback_router)
@@ -145,3 +136,7 @@ integrations_router.include_router(tmdb_disconnect_router)
 integrations_router.include_router(google_router)
 integrations_router.include_router(google_callback_router)
 integrations_router.include_router(google_disconnect_router)
+
+integrations_router.include_router(google_drive_router)
+integrations_router.include_router(google_drive_callback_router)
+integrations_router.include_router(google_drive_disconnect_router)

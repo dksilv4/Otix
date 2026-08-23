@@ -349,7 +349,7 @@ class AdminService:
                     text("""
                         (SELECT mi.media_type, ei.provider, COUNT(DISTINCT ei.media_item_id) AS cnt
                          FROM external_ids ei JOIN media_items mi ON mi.id = ei.media_item_id
-                         WHERE ei.provider IN ('musicbrainz', 'spotify') AND mi.media_type = 'music'
+                         WHERE ei.provider = 'musicbrainz' AND mi.media_type = 'music'
                          GROUP BY mi.media_type, ei.provider)
                         UNION ALL
                         (SELECT mi.media_type, er.provider, COUNT(DISTINCT er.media_item_id) AS cnt
@@ -366,10 +366,6 @@ class AdminService:
             pass
 
         # Person enrichment
-        spotify_exists = sa_exists().where(
-            ExternalID.provider == "spotify", ExternalID.entity_type == "person",
-            ExternalID.entity_id == Person.id,
-        )
         musicbrainz_exists = sa_exists().where(
             ExternalID.provider == "musicbrainz_artist", ExternalID.entity_type == "person",
             ExternalID.entity_id == Person.id,
@@ -383,14 +379,12 @@ class AdminService:
             people_row = await self.session.execute(
                 select(
                     func.count(func.distinct(PersonAsset.id)).filter(PersonAsset.provider == "fanart").label("fanart"),
-                    func.count(Person.id).filter(spotify_exists).label("spotify"),
                     func.count(Person.id).filter(musicbrainz_exists).label("musicbrainz"),
                     func.count(Person.id).filter(imdb_exists).label("imdb"),
                 ).select_from(Person).outerjoin(PersonAsset, PersonAsset.person_id == Person.id)
             )
             row = people_row.one()
             enrichment["person"].fanart = row.fanart or 0
-            enrichment["person"].spotify = row.spotify or 0
             enrichment["person"].musicbrainz = row.musicbrainz or 0
             enrichment["person"].imdb = row.imdb or 0
         except Exception:
@@ -413,7 +407,6 @@ class AdminService:
                     steamgrid=ec.steamgrid - prev.get("steamgrid", ec.steamgrid),
                     musicbrainz=ec.musicbrainz - prev.get("musicbrainz", ec.musicbrainz),
                     lastfm=ec.lastfm - prev.get("lastfm", ec.lastfm),
-                    spotify=ec.spotify - prev.get("spotify", ec.spotify),
                     embedding=ec.embedding - prev.get("embedding", ec.embedding),
                     imdb=ec.imdb - prev.get("imdb", ec.imdb),
                 )

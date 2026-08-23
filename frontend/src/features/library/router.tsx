@@ -12,7 +12,6 @@ const LibraryWatchedPage = lazy(() => import('@/old-features/library/pages/libra
 const LibraryPlayedPage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryPlayedPage })))
 const LibraryListenedPage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryListenedPage })))
 const LibraryOwnedPage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryOwnedPage })))
-const LibraryIntegrationSpotifySection = lazy(() => import('@/old-features/library/pages/library-integration-spotify-section').then(m => ({ default: m.LibraryIntegrationSpotifySection })))
 const LibraryIntegrationSteamSection = lazy(() => import('@/old-features/library/pages/library-integration-steam-section').then(m => ({ default: m.LibraryIntegrationSteamSection })))
 const LibraryIntegrationPlexSection = lazy(() => import('@/old-features/library/pages/library-integration-plex-section').then(m => ({ default: m.LibraryIntegrationPlexSection })))
 const LibraryIntegrationYoutubeSection = lazy(() => import('@/old-features/library/pages/library-integration-youtube-section').then(m => ({ default: m.LibraryIntegrationYoutubeSection })))
@@ -81,12 +80,6 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     component: LibraryOwnedPage,
   })
 
-  const librarySpotifyRoute = createRoute({
-    getParentRoute: () => libraryLayoutRoute,
-    path: '/spotify',
-    component: LibraryIntegrationSpotifySection,
-  })
-
   const librarySteamRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/steam',
@@ -127,7 +120,6 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     libraryPlayedRoute,
     libraryListenedRoute,
     libraryOwnedRoute,
-    librarySpotifyRoute,
     librarySteamRoute,
     libraryPlexRoute,
     libraryYoutubeRoute,

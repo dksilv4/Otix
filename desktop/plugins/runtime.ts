@@ -16,6 +16,7 @@ export class PluginRuntime {
   public readonly dbConfig: PluginManifest['db'] | null
   private worker: Worker | null = null
   private bridge: Awaited<ReturnType<typeof createWorkerBridge>> | null = null
+  private bridgeDeps: BridgeDependencies | null = null
   private destroyed = false
 
   constructor(
@@ -86,13 +87,32 @@ export class PluginRuntime {
       serviceRegistry: this.serviceRegistry,
     }
 
+    this.bridgeDeps = bridgeDeps
     this.bridge = createWorkerBridge(bridgeDeps)
     await this.bridge.start()
+  }
+
+  // Keep the live bridge deps in sync when the renderer refreshes its Otix
+  // access token / backend URL. Without this, workers keep sending the token
+  // captured at start() and auth'd ctx.api calls 401 after expiry/refresh.
+  setAuthToken(token: string): void {
+    this.authToken = token
+    if (this.bridgeDeps) this.bridgeDeps.authToken = token
+  }
+
+  setApiBaseUrl(url: string): void {
+    this.apiBaseUrl = url
+    if (this.bridgeDeps) this.bridgeDeps.apiBaseUrl = url
   }
 
   async callMethod(method: string, ...args: unknown[]): Promise<unknown> {
     if (!this.bridge) throw new Error('Runtime not started')
     return this.bridge.callMethod(method, ...args)
+  }
+
+  /** Push an updated config snapshot to the running worker. */
+  pushConfig(config: Record<string, unknown>): void {
+    this.bridge?.pushConfig(config)
   }
 
   async stop(): Promise<void> {

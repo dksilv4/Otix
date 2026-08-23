@@ -26,4 +26,12 @@ else
   echo ">>> Skipping migrations (RUN_MIGRATIONS off) — run 'alembic upgrade head' as a deploy step."
 fi
 
-exec uvicorn entrypoints.api.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+# --reload lets bind-mounted backend code changes take effect without a
+# container restart. Off by default (prod); the dev compose sets ENABLE_RELOAD.
+if [ "${ENABLE_RELOAD:-0}" = "1" ] || [ "${ENABLE_RELOAD:-0}" = "true" ]; then
+  reload_flag="--reload"
+else
+  reload_flag=""
+fi
+
+exec uvicorn entrypoints.api.main:app --host 0.0.0.0 --port "${PORT:-8000}" ${reload_flag}

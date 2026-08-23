@@ -49,6 +49,7 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({
         textlessPosterUrl={item.textlessPosterUrl}
         backdropUrl={item.backdropUrl}
         logoUrl={item.logoUrl}
+        logoColorGuess={item.logoColorGuess}
         releaseDate={item.releaseDate}
         avgRating={item.avgRating}
         ratingCount={item.ratingCount}

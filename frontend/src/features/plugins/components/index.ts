@@ -1,6 +1,4 @@
 export { PluginPermissionModal } from './organisms/plugin-permission-modal'
-export { PluginSettings } from './organisms/plugin-settings'
 export { PluginSettingsPage } from './organisms/plugin-settings-page'
 export { PluginSlot } from './organisms/plugin-slot'
-export { PluginConfigPanel } from './organisms/plugin-config-panel'
-export type { PluginAPI } from './organisms/plugin-settings'
+export type { PluginAPI } from '../api'

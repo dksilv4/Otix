@@ -82,11 +82,22 @@ export const apiClient = axios.create({
 
 // ── Request interceptor — camelCase → snake_case + auth token ─────────
 
+// Viewer's resolved UI theme so the backend can pick logos that contrast with it.
+function getResolvedTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'dark'
+  const stored = localStorage.getItem('otix-theme')
+  if (stored === 'light' || stored === 'dark') return stored
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   // Attach Bearer token
   const token = localStorage.getItem(ACCESS_TOKEN_KEY)
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+  if (config.headers) {
+    config.headers['X-Otix-Theme'] = getResolvedTheme()
   }
 
   // Convert outgoing data and params to snake_case

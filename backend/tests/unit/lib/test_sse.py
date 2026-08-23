@@ -507,11 +507,6 @@ class TestPrebuiltInstances:
         assert plex_progress.namespace == "plex"
         assert plex_progress.channel_name("t1") == "plex:sync:t1:events"
 
-    def test_spotify_progress(self) -> None:
-        from otix.lib.redis_progress import spotify_progress
-
-        assert spotify_progress.namespace == "spotify"
-
     def test_youtube_progress(self) -> None:
         from otix.lib.redis_progress import youtube_progress
 

@@ -184,7 +184,7 @@ async def flush_pending_external_ids(obj, session) -> int:
                             entity_id=entity_id,
                             media_item_id=entity_id if entity_type == "media_item" else None,
                         )
-                        .on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
+                        .on_conflict_do_nothing()
                     )
                     await session.delete(legacy)
                     count += 1
@@ -223,7 +223,7 @@ async def flush_pending_external_ids(obj, session) -> int:
                                 entity_id=entity_id,
                                 media_item_id=entity_id if entity_type == "media_item" else None,
                             )
-                            .on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
+                            .on_conflict_do_nothing()
                         )
                         count += 1
         elif existing is not None:

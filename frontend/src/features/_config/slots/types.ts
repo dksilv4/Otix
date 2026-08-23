@@ -1,39 +1,16 @@
 // frontend/src/features/_config/slots/types.ts
+//
+// Slot + settings-tab types live in the canonical plugin types module
+// (`@/features/plugins/types/plugins`); this file re-exports them for the
+// slot renderer feature and keeps its renderer-only error type.
 
-export interface SlotWidget {
-  type: string
-  key?: string
-  props: Record<string, unknown>
-  children?: SlotWidget[]
-  conditions?: {
-    feature?: string
-    permission?: string
-  }
-}
-
-export interface SlotRenderResult {
-  widgets: SlotWidget[]
-}
-
-export interface SlotContribution {
-  pluginId: string
-  label: string
-  data: SlotRenderResult
-}
-
-export interface PluginSettingsTab {
-  id: string
-  label: string
-  icon: string
-  path: string
-  sections: PluginSettingsSection[]
-}
-
-export interface PluginSettingsSection {
-  id: string
-  label: string
-  slot: string
-}
+export type {
+  SlotWidget,
+  SlotRenderResult,
+  SlotContribution,
+  PluginSettingsTab,
+  PluginSettingsSection,
+} from '@/features/plugins/types/plugins'
 
 export interface SlotError {
   pluginId: string

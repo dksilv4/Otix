@@ -2,7 +2,6 @@
 
 Replaces the four duplicate modules:
     ``otix.lib.plex_progress``
-    ``otix.lib.spotify_progress``
     ``otix.lib.youtube_progress``
     ``otix.lib.media_rehydrate_progress``
 
@@ -107,6 +106,5 @@ class RedisProgress:
 # ---------------------------------------------------------------------------
 
 plex_progress = RedisProgress("plex:sync")
-spotify_progress = RedisProgress("spotify:sync")
 youtube_progress = RedisProgress("youtube:sync")
 media_rehydrate_progress = RedisProgress("media:rehydrate")

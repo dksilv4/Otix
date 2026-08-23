@@ -60,13 +60,6 @@ export interface PersonListResponse {
   hasMore: boolean
 }
 
-export interface RelatedArtist {
-  id: string | null
-  spotify_artist_id?: string
-  name: string
-  image_url: string | null
-}
-
 export interface PeopleCardProps {
   id: string
   name: string

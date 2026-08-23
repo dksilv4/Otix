@@ -9,14 +9,20 @@
   "permissions": ["worker:filesystem", "storage:local"],
   "config": {
     "scanDirectories": {
-      "type": "list",
-      "label": "Scan Directories",
-      "description": "Directories to scan for game executables and Steam manifests"
+      "type": "path-list",
+      "label": "Game Directories",
+      "description": "Folders to scan for game executables and Steam manifests",
+      "section": "Scan Sources",
+      "order": 0,
+      "placeholder": "C:\\Games"
     },
     "isoDirectories": {
-      "type": "list",
+      "type": "path-list",
       "label": "ISO Directories",
-      "description": "Directories to scan for ISO game files"
+      "description": "Folders containing ISO game files to scan",
+      "section": "Scan Sources",
+      "order": 1,
+      "placeholder": "D:\\ISOs"
     }
   },
   "slots": [

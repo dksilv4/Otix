@@ -5,6 +5,7 @@ import { Star } from 'lucide-react'
 import { DkImage } from '@ui/atoms/image'
 import { mediaQueries } from '@media'
 import { cn } from '@/lib/utils'
+import { MediaLogo } from '@/lib/media/media-logo'
 import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/utils/image-position'
 
@@ -28,6 +29,7 @@ interface DkMediaCardProps {
   textlessPosterUrl?: string | null
   backdropUrl?: string | null
   logoUrl?: string | null
+  logoColorGuess?: string | null
   releaseDate?: string | null
   avgRating?: number | null
   ratingCount?: number
@@ -50,6 +52,7 @@ const DkMediaCard = memo(function DkMediaCard({
   textlessPosterUrl,
   backdropUrl,
   logoUrl,
+  logoColorGuess,
   releaseDate,
   avgRating,
   ratingCount: _ratingCount,
@@ -70,7 +73,10 @@ const DkMediaCard = memo(function DkMediaCard({
     queryClient.prefetchQuery(mediaQueries.detail(mediaType, id))
   }, [queryClient, mediaType, id])
 
-  const imageUrl = textlessPosterUrl || backdropUrl || posterUrl || undefined
+  // Card art is textless poster → clean backdrop. Never fall back to a
+  // logo-bearing poster, except for music where the album cover is the art.
+  const imageUrl =
+    textlessPosterUrl || backdropUrl || (mediaType === 'music' ? posterUrl : undefined) || undefined
   const position = imageUrl ? parsePositionFromUrl(imageUrl) : null
   const cleanSrc = imageUrl ? stripPositionFromUrl(imageUrl) : undefined
   const TypeIcon = MEDIA_TYPE_ICON[mediaType]
@@ -191,15 +197,16 @@ const DkMediaCard = memo(function DkMediaCard({
                 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0) 80%)',
             }}
           />
-          <img
+          <MediaLogo
             src={logoUrl}
             alt={title}
             className="relative z-10 max-w-[80%] max-h-[55%] object-contain [--dk-logo-scale:0.85] group-hover:[--dk-logo-scale:1.15]"
+            colorGuess={logoColorGuess ?? null}
+            background="dark"
+            shadow="drop-shadow(0 2px 4px rgba(0,0,0,0.95)) drop-shadow(0 6px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
             style={{
               transform: 'scale(var(--dk-logo-scale))',
               transition: 'transform 700ms var(--dk-ease-out)',
-              filter:
-                'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 6px 20px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.9))',
             }}
           />
         </div>

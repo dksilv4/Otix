@@ -1,4 +1,5 @@
-import { apiClient } from '@/lib/api/client'
+import { apiClient, CLIENT_API_BASE_URL, convertKeysToCamelCase } from '@/lib/api/client'
+import { ACCESS_TOKEN_KEY } from '@/lib/config/config'
 
 export interface MatchableGame {
   id: string
@@ -111,6 +112,140 @@ function matchQueryTitle(g: MatchableGame): string {
   return t.replace(/\s+/g, ' ').trim() || title
 }
 
+// ── SSE stream matcher ────────────────────────────────────────────────────
+
+// The batch endpoint is slow (IGDB 4 RPS + SteamGrid 2 RPS with up to 4
+// artwork calls per unmatched game), so a single POST that must return all
+// results can blow past any timeout once the library grows. The /match/stream
+// endpoint yields one game-progress event per game as it finishes; we read the
+// stream incrementally so there is no total-request timeout, only an idle
+// watchdog that fires when the server goes silent for a long stretch.
+const STREAM_IDLE_TIMEOUT_MS = 120_000
+const MAX_RETRY_DEPTH = 4
+
+function mapCandidate(c: any): MatchCandidateCamel {
+  return {
+    mediaItemId: c.mediaItemId ?? null,
+    title: c.title,
+    posterUrl: c.posterUrl ?? null,
+    backdropUrl: c.backdropUrl ?? null,
+    releaseYear: c.releaseYear ?? null,
+    platforms: c.platforms ?? null,
+    developer: c.developer ?? null,
+    confidence: c.confidence ?? 0,
+    matchType: c.matchType ?? 'unknown',
+    needsImport: c.needsImport ?? false,
+    providerId: c.providerId ?? null,
+    provider: c.provider ?? null,
+  }
+}
+
+// game-progress event payload → the same MatchResponse shape the old batch
+// endpoint returned (camelCased; the raw SSE frame is snake_case).
+function toMatchResponse(evt: any): MatchResponse {
+  return {
+    queryId: evt.queryId ?? '',
+    queryTitle: evt.queryTitle ?? '',
+    candidates: (evt.candidates || []).map(mapCandidate),
+    autoMatch: evt.autoMatch && evt.match ? mapCandidate(evt.match) : null,
+  }
+}
+
+/**
+ * Stream a batch of match requests from /media/match/stream, calling
+ * `onResult` for each game as its event arrives. Results are index-aligned to
+ * the input games (via the server's game_index plus the base offset).
+ *
+ * If the stream fails (connection drop, idle timeout, HTTP error) the batch is
+ * split in half and each half retried so a single problematic game is isolated
+ * instead of re-processing (and discarding) the whole scan. Games that exhaust
+ * the retry depth yield `null`.
+ */
+async function matchViaSse(
+  games: any[],
+  baseIdx: number,
+  onResult: (idx: number, m: MatchResponse | null) => void,
+  depth = 0,
+): Promise<void> {
+  const controller = new AbortController()
+  let idleTimer: ReturnType<typeof setTimeout> | undefined
+
+  const resetIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer)
+    idleTimer = setTimeout(() => controller.abort(), STREAM_IDLE_TIMEOUT_MS)
+  }
+
+  try {
+    const token = typeof window !== 'undefined' ? window.localStorage.getItem(ACCESS_TOKEN_KEY) : null
+    const res = await fetch(`${CLIENT_API_BASE_URL}/media/match/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ games }),
+      signal: controller.signal,
+    })
+    if (!res.ok || !res.body) {
+      throw new Error(`match stream ${res.status} ${res.statusText}`)
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let finished = false
+
+    resetIdle()
+    while (!finished) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      resetIdle()
+
+      const frames = buffer.split('\n\n')
+      buffer = frames.pop() || ''
+      for (const frame of frames) {
+        let eventType = 'message'
+        let dataStr = ''
+        for (const line of frame.split('\n')) {
+          if (line.startsWith('event: ')) eventType = line.slice(7).trim()
+          else if (line.startsWith('data: ')) dataStr = line.slice(6).trim()
+        }
+        if (!dataStr) continue
+        let payload: any
+        try {
+          payload = JSON.parse(dataStr)
+        } catch {
+          continue
+        }
+        const evt = convertKeysToCamelCase(payload) as any
+        if (eventType === 'game-progress') {
+          const idx = baseIdx + (typeof evt.gameIndex === 'number' ? evt.gameIndex : -1)
+          if (idx < 0) continue
+          const m = evt.status === 'error' ? null : toMatchResponse(evt)
+          onResult(idx, m)
+        } else if (eventType === 'complete') {
+          finished = true
+          break
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`[matching] stream of ${games.length} failed (depth ${depth}), splitting:`, err)
+    if (games.length <= 1 || depth >= MAX_RETRY_DEPTH) {
+      // Give up on this game rather than block the whole scan
+      onResult(baseIdx, null)
+      return
+    }
+    const mid = Math.ceil(games.length / 2)
+    await matchViaSse(games.slice(0, mid), baseIdx, onResult, depth + 1)
+    await matchViaSse(games.slice(mid), baseIdx + mid, onResult, depth + 1)
+  } finally {
+    if (idleTimer) clearTimeout(idleTimer)
+  }
+}
+
 // ── Batch match + save ────────────────────────────────────────────────────
 
 export async function batchMatchAndSave(
@@ -144,85 +279,49 @@ export async function batchMatchAndSave(
     media_type: 'game',
   }))
 
-  type MaybeMatch = MatchResponse | null
-  let matches: MaybeMatch[] = []
+  type MaybeMatch = MatchResponse | null | undefined
+  const matches: MaybeMatch[] = new Array(batchGames.length).fill(undefined)
+  const persistPromises: Promise<void>[] = []
+  let matched = 0
+  let suggested = 0
 
-  // Large libraries (hundreds of games) can take minutes to match — each game
-  // triggers serial IGDB searches server-side (~2s/game). Send the batch in
-  // chunks so no single request exceeds the timeout, and accumulate results
-  // in order so the per-game loop below stays index-aligned. If a chunk still
-  // times out (a single slow game can stall a whole chunk), split it in half
-  // and retry each half so the offending game gets isolated instead of
-  // aborting the entire scan.
-  const CHUNK_SIZE = 15
-  const MAX_RETRY_DEPTH = 4
-
-  const mapMatch = (m: any): MatchResponse => ({
-    queryId: m.queryId || m.query_id || '',
-    queryTitle: m.queryTitle || m.query_title || '',
-    candidates: (m.candidates || []).map((c: any) => ({
-      mediaItemId: c.mediaItemId || c.media_item_id || null,
-      title: c.title,
-      posterUrl: c.posterUrl || c.poster_url || null,
-      backdropUrl: c.backdropUrl || c.backdrop_url || null,
-      releaseYear: c.releaseYear || c.release_year || null,
-      platforms: c.platforms || null,
-      developer: c.developer || null,
-      confidence: c.confidence,
-      matchType: c.matchType || c.match_type || 'unknown',
-      needsImport: c.needsImport || c.needs_import || false,
-      providerId: c.providerId || c.provider_id || null,
-      provider: c.provider || null,
-    })),
-    autoMatch: m.autoMatch || m.auto_match ? {
-      mediaItemId: (m.autoMatch || m.auto_match).mediaItemId || (m.autoMatch || m.auto_match).media_item_id || null,
-      title: (m.autoMatch || m.auto_match).title,
-      posterUrl: (m.autoMatch || m.auto_match).posterUrl || (m.autoMatch || m.auto_match).poster_url || null,
-      backdropUrl: (m.autoMatch || m.auto_match).backdropUrl || (m.autoMatch || m.auto_match).backdrop_url || null,
-      releaseYear: (m.autoMatch || m.auto_match).releaseYear || (m.autoMatch || m.auto_match).release_year || null,
-      platforms: (m.autoMatch || m.auto_match).platforms || null,
-      developer: (m.autoMatch || m.auto_match).developer || null,
-      confidence: (m.autoMatch || m.auto_match).confidence,
-      matchType: (m.autoMatch || m.auto_match).matchType || (m.autoMatch || m.auto_match).match_type || 'unknown',
-      needsImport: (m.autoMatch || m.auto_match).needsImport || (m.autoMatch || m.auto_match).needs_import || false,
-      providerId: (m.autoMatch || m.auto_match).providerId || (m.autoMatch || m.auto_match).provider_id || null,
-      provider: (m.autoMatch || m.auto_match).provider || null,
-    } : null,
-  })
-
-  // A failed sub-chunk yields a null per game so results stay index-aligned with
-  // the input; the per-game loop below skips nulls.
-  async function matchChunk(games: any[], depth = 0): Promise<MaybeMatch[]> {
-    try {
-      const { data } = await apiClient.post<{ matches: any[] }>(
-        '/media/match/batch',
-        { games },
-        { timeout: 180000 },
+  // Persist each game as its stream event arrives so a dropped connection never
+  // loses already-matched games.
+  const onResult = (idx: number, m: MatchResponse | null) => {
+    matches[idx] = m
+    if (!m || !desktopAPI?.acceptSuggestion || idx >= matchGames.length) return
+    const best = m.autoMatch?.mediaItemId && !m.autoMatch.needsImport ? m.autoMatch : null
+    if (best) {
+      persistPromises.push(
+        desktopAPI.acceptSuggestion(matchGames[idx].id, {
+          id: best.mediaItemId, title: best.title, slug: best.mediaItemId,
+          posterUrl: best.posterUrl || null, developer: best.developer || null,
+          platforms: best.platforms || [], confidence: best.confidence,
+        } as any)
+          .then(() => { matched++ })
+          .catch((err: any) => console.error('[matching] persist failed for', matchGames[idx].id, err)),
       )
-      return (data.matches || []).map(mapMatch)
-    } catch (err) {
-      console.warn(`[matching] chunk of ${games.length} failed (depth ${depth}), splitting:`, err)
-      if (games.length <= 1 || depth >= MAX_RETRY_DEPTH) {
-        // Give up on this game rather than block the whole scan
-        return games.map(() => null)
+    } else if (m.candidates.length > 0) {
+      suggested++
+      const candidate = m.candidates[0]
+      if (candidate.mediaItemId && !candidate.needsImport) {
+        persistPromises.push(
+          desktopAPI.acceptSuggestion(matchGames[idx].id, {
+            id: candidate.mediaItemId, title: candidate.title, slug: candidate.mediaItemId,
+            posterUrl: candidate.posterUrl || null, developer: candidate.developer || null,
+            platforms: candidate.platforms || [], confidence: candidate.confidence,
+            _candidates: m.candidates,
+          } as any)
+            .catch((err: any) => console.error('[matching] acceptSuggestion (candidate) failed for', matchGames[idx].id, err)),
+        )
       }
-      const mid = Math.ceil(games.length / 2)
-      const left = await matchChunk(games.slice(0, mid), depth + 1)
-      const right = await matchChunk(games.slice(mid), depth + 1)
-      return [...left, ...right]
     }
   }
 
-  const totalChunks = Math.ceil(batchGames.length / CHUNK_SIZE)
-  for (let i = 0; i < batchGames.length; i += CHUNK_SIZE) {
-    const chunk = batchGames.slice(i, i + CHUNK_SIZE)
-    const results = await matchChunk(chunk)
-    matches.push(...results)
-    console.log(
-      `[matching] chunk ${i / CHUNK_SIZE + 1}/${totalChunks}: ${chunk.length} games → ${results.filter(Boolean).length} responses`,
-    )
-  }
-  const responded = matches.filter((m): m is MatchResponse => m !== null)
+  await matchViaSse(batchGames, 0, onResult)
+  await Promise.all(persistPromises)
+
+  const responded = matches.filter((m): m is MatchResponse => m != null)
   console.log(`[matching] ${games.length} games sent, ${responded.length} responses, ${responded.filter(m => m.autoMatch).length} auto-matched, ${responded.filter(m => m.candidates.length > 0 && !m.autoMatch).length} candidates`)
 
   // Save to scanned games DB
@@ -249,54 +348,12 @@ export async function batchMatchAndSave(
     }
   }
 
-  let matched = 0
-  let suggested = 0
-  if (desktopAPI?.acceptSuggestion) {
-    for (let i = 0; i < Math.min(matchGames.length, matches.length); i++) {
-      const m = matches[i]
-      if (!m) continue
-      // Auto-match (backend already creates approved proposal)
-      const best = m.autoMatch?.mediaItemId && !m.autoMatch.needsImport ? m.autoMatch : null
-
-      if (best) {
-        try {
-          await desktopAPI.acceptSuggestion(matchGames[i].id, {
-            id: best.mediaItemId, title: best.title, slug: best.mediaItemId,
-            posterUrl: best.posterUrl || null, developer: best.developer || null,
-            platforms: best.platforms || [], confidence: best.confidence,
-          } as any)
-          matched++
-        } catch (err) {
-          console.error('[matching] persist failed for', matchGames[i].id, err)
-        }
-      }
-
-      // Candidates — save as suggestions for user review
-      else if (m.candidates.length > 0) {
-        suggested++
-        const best = m.candidates[0]
-        if (best.mediaItemId && !best.needsImport) {
-          try {
-            await desktopAPI.acceptSuggestion(matchGames[i].id, {
-              id: best.mediaItemId, title: best.title, slug: best.mediaItemId,
-              posterUrl: best.posterUrl || null, developer: best.developer || null,
-              platforms: best.platforms || [], confidence: best.confidence,
-              _candidates: m.candidates,
-            } as any)
-          } catch (err) {
-            console.error('[matching] acceptSuggestion (candidate) failed for', matchGames[i].id, err)
-          }
-        }
-      }
-    }
-  }
-
   return {
     matched,
     suggested,
     total: games.length,
     games,
-    matches: matches.filter((m): m is MatchResponse => m !== null),
+    matches: responded,
   }
 }
 

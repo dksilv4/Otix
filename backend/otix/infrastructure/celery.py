@@ -19,6 +19,7 @@ Rate limiting is handled in-app by BaseProvider's Redis token bucket.
 from __future__ import annotations
 
 from celery import Celery
+from celery.schedules import crontab
 from kombu import Exchange, Queue
 
 from otix.infrastructure.config import settings
@@ -42,8 +43,6 @@ def route_task(name: str, *args, **kwargs) -> str | None:
         return "ingest-tmdb"
     if name.startswith("sync.steam."):
         return "ingest-steam"
-    if name.startswith("sync.spotify."):
-        return "reactive-user"
     if name.startswith("sync.deezer."):
         return "ingest-deezer"
     if name.startswith("sync.theaudiodb."):
@@ -83,11 +82,22 @@ def route_task(name: str, *args, **kwargs) -> str | None:
 
 app = Celery("otix")
 
-# All periodic (beat) scheduling is intentionally removed — no tasks start
-# automatically. Hydration runs one media item at a time (fully processed
-# before the next). Restore the old schedule from git history if full-auto
-# sync is ever re-enabled.
-_beat_schedule: dict = {}
+# Movie/show auto-sync — TMDB daily export import + backlog drain.
+# The daily import downloads all TMDB export files once/day and bulk-inserts
+# ExternalID stubs; the backlog cycle drains those stubs into sync.tmdb.movie
+# / sync.tmdb.show every few minutes. This is what rebuilds the movie/show
+# catalog after the games/music push. Other media types (games, music) are
+# still driven manually via seed.priority_seed.
+_beat_schedule: dict = {
+    "seed-tmdb-daily-import": {
+        "task": "seed.tmdb_daily_import",
+        "schedule": crontab(hour="3", minute="7"),
+    },
+    "seed-tmdb-backlog": {
+        "task": "seed.tmdb_backlog_cycle",
+        "schedule": crontab(minute="*/5"),
+    },
+}
 
 app.config_from_object(
     {
@@ -227,7 +237,6 @@ import otix.tasks.sync.media  # noqa: F401 — sync.media.*
 import otix.tasks.sync.musicbrainz  # noqa: F401 — sync.musicbrainz.*
 import otix.tasks.sync.omdb  # noqa: F401 — sync.omdb.*
 import otix.tasks.sync.search  # noqa: F401 — search.*
-import otix.tasks.sync.spotify  # noqa: F401 — sync.spotify.*
 import otix.tasks.sync.steam  # noqa: F401 — sync.steam.*, sync.steamgrid.*
 import otix.tasks.sync.theaudiodb  # noqa: F401 — sync.theaudiodb.*
 import otix.tasks.sync.tmdb  # noqa: F401 — sync.tmdb.*

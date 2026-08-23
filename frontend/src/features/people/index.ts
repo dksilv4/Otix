@@ -13,7 +13,6 @@ export type {
   PersonSummary,
   PersonCredit,
   PersonListResponse,
-  RelatedArtist,
   EpisodeInfo,
   SeasonInfo,
   PeopleCardProps,

@@ -51,7 +51,20 @@
       "category": "media",
       "tags": ["lidarr", "music", "audio", "automation", "download"],
       "permissions": ["api:proxy", "network:external", "events:subscribe", "storage:local", "notifications", "ui:settings"]
+    },
+    {
+      "id": "otix-syncplay",
+      "name": "SyncPlay",
+      "version": "0.1.0",
+      "description": "One-way Spotify → YouTube Music playlist sync. Connect Spotify and Google, map your Spotify playlists to YouTube Music playlists, and keep them in sync automatically.",
+      "author": "Otix",
+      "repository": "https://github.com/dksilv4/otix-plugins",
+      "path": "plugins/otix-syncplay",
+      "icon": "music",
+      "category": "media",
+      "tags": ["spotify", "youtube", "youtube-music", "playlists", "sync", "music"],
+      "permissions": ["network:external", "storage:local", "ui:settings", "notifications", "events:subscribe"]
     }
   ],
-  "updated_at": "2026-06-18T00:00:00Z"
+  "updated_at": "2026-08-15T00:00:00Z"
 }

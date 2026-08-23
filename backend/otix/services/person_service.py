@@ -91,14 +91,9 @@ async def merge_person(
         "tmdb_id",
         "imdb_id",
         "musicbrainz_artist_id",
-        "spotify_artist_id",
         "wikidata_id",
         "youtube_channel_id",
         "youtube_channel_title",
-        "spotify_follower_count",
-        "spotify_popularity",
-        "spotify_genres",
-        "spotify_image_url",
         "photo_url",
         "logo_url",
         "biography",
@@ -129,7 +124,6 @@ async def merge_person(
 
 EXT_ID_FIELDS = [
     "musicbrainz_artist_id",
-    "spotify_artist_id",
     "tmdb_id",
     "imdb_id",
 ]
@@ -146,8 +140,6 @@ def _ext_id_providers(person: Person) -> set[str]:
         providers.add("tmdb")
     if person.musicbrainz_artist_id:
         providers.add("musicbrainz")
-    if person.spotify_artist_id:
-        providers.add("spotify")
     return providers
 
 

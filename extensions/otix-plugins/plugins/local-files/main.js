@@ -425,9 +425,5 @@ module.exports = {
     description: 'Scan local folders for Steam, PC, and ISO games',
     mediaTypes: ['games'],
     actions: { scan: 'scan', status: 'scan.status' },
-    configFields: [
-      { key: 'scanDirectories', label: 'Game Directories', type: 'path-list', description: 'Folders to scan for game executables and Steam manifests' },
-      { key: 'isoDirectories', label: 'ISO Directories', type: 'path-list', description: 'Folders containing ISO game files to scan' },
-    ],
   }),
 };

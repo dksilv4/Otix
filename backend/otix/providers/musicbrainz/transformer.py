@@ -49,25 +49,6 @@ def _cover_url_from_caa(images: list[dict]) -> str | None:
     return None
 
 
-def extract_spotify_id(url: str | None) -> str | None:
-    """Extract a Spotify album ID from a URL or URI string.
-
-    Handles: open.spotify.com/album/{id}, spotify:album:{id},
-    and legacy ws.spotify.com/lookup URIs.
-    """
-    if not url:
-        return None
-    # open.spotify.com/album/{id} or spotify.com/album/{id}
-    m = re.search(r"spotify\.com/album/(\w+)", url)
-    if m:
-        return m.group(1)
-    # spotify:album:{id} (in embed URIs or ws.spotify.com legacy URLs)
-    m = re.search(r"spotify:album:(\w+)", url)
-    if m:
-        return m.group(1)
-    return None
-
-
 def extract_url_external_ids(relations: list[dict]) -> list[tuple[str, str]]:
     """Extract (provider, external_id) pairs from MusicBrainz url-rels.
 
@@ -89,9 +70,6 @@ def extract_url_external_ids(relations: list[dict]) -> list[tuple[str, str]]:
 
 
 _PROVIDER_PATTERNS: list[tuple[str, str]] = [
-    # Spotify — open.spotify.com/album/{id} or spotify:album:{id}
-    ("spotify", r"open\.spotify\.com/album/(\w+)"),
-    ("spotify", r"spotify:album:(\w+)"),
     # YouTube Music — music.youtube.com/playlist?list={id}
     ("youtube_music", r"music\.youtube\.com/playlist\?list=([\w-]+)"),
     # Apple Music — music.apple.com/{country}/album/{name}/{id}
@@ -146,19 +124,6 @@ def to_album(raw: dict[str, JSONValue]) -> Album:
     relations = raw.get("relations", []) or []
     external_ids = extract_url_external_ids(relations)
 
-    # Extract Spotify ID (first match) for the direct column + downstream dispatch
-    spotify_id: str | None = None
-    for rel in relations:
-        if isinstance(rel, dict):
-            sid = extract_spotify_id(
-                str(rel.get("url", {}).get("resource", ""))
-                if isinstance(rel.get("url"), dict)
-                else None
-            )
-            if sid:
-                spotify_id = sid
-                break
-
     album = Album(
         release_type=_release_group_type(raw),
         track_count=len(tracks),
@@ -168,7 +133,6 @@ def to_album(raw: dict[str, JSONValue]) -> Album:
     )
     album.musicbrainz_id = str(raw.get("id", "")) if raw.get("id") else None
     album.musicbrainz_release_group_id = rg_id
-    album.spotify_id = spotify_id
     # Non-persisted attributes carrying extra data for the sync task
     album._url_external_ids = external_ids  # type: ignore[attr-defined]
     album._barcode = str(raw["barcode"]) if raw.get("barcode") else None  # type: ignore[attr-defined]

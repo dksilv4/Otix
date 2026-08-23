@@ -15,6 +15,7 @@ protocol.registerSchemesAsPrivileged([
     },
   },
 ]);
+import { getApiBaseUrl } from './config';
 import { GameDetector } from './game/detector';
 import { registerDownloadsIPC, setPluginCaller } from './ipc/downloads';
 import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPluginManager } from './ipc/scanner';
@@ -35,7 +36,7 @@ import { populateKnownLocations } from './saves/export';
 import { PermissionManager } from './plugins/permissions';
 import { PluginManager } from './plugins/manager';
 import { eventBus } from './plugins/event-bus';
-import { registerPluginIPC } from './plugins/ipc';
+import { registerPluginIPC, setPluginMainWebContents } from './plugins/ipc';
 import { wireOrchestratorEvents } from './ipc/plugins';
 import { GameScanOrchestrator } from './game/orchestrator';
 import { registerNotificationIPC } from './ipc/notifications';
@@ -122,6 +123,75 @@ function ensureVisible(saved: WindowState): Electron.Rectangle {
   }
 }
 
+// Wires browser-style history navigation into a window's webContents so the
+// user can go back/forward naturally: Cmd+[/] (macOS), Alt+Left/Right
+// (Windows/Linux), with Ctrl+[/] and the browser mouse back/forward buttons
+// as fallbacks.
+function enableHistoryNavigation(win: BrowserWindow): void {
+  const wc = win.webContents
+  const isMac = process.platform === 'darwin'
+
+  const go = (dir: -1 | 1) => {
+    const nav = wc.navigationHistory
+    if (dir === -1) {
+      if (nav.canGoBack()) nav.goBack()
+    } else if (nav.canGoForward()) {
+      nav.goForward()
+    }
+  }
+
+  wc.on('before-input-event', (event, input) => {
+    let back: boolean
+    let forward: boolean
+    if (isMac) {
+      back = input.meta && input.key === '['
+      forward = input.meta && input.key === ']'
+    } else {
+      back = input.alt && input.key === 'ArrowLeft'
+      forward = input.alt && input.key === 'ArrowRight'
+    }
+    const button = (input as unknown as { button?: number }).button
+    back = back || (input.control && input.key === '[') || (input.type === 'mouseDown' && button === 3)
+    forward = forward || (input.control && input.key === ']') || (input.type === 'mouseDown' && button === 4)
+    if (back || forward) {
+      event.preventDefault()
+      go(back ? -1 : 1)
+    }
+  })
+}
+
+// Opens a URL in a standalone app window on the DEFAULT session — the same
+// session plugin OAuth windows use, so the window carries the user's logged-in
+// web session (e.g. Epic Games Store after Epic OAuth). It behaves like a small
+// in-app browser: back/forward navigation is supported and target=_blank links
+// navigate in place so history stays intact.
+function openStandaloneWindow(url: string): void {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return
+
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 850,
+    autoHideMenuBar: true,
+    backgroundColor: '#09090b',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  })
+  enableHistoryNavigation(win)
+  win.webContents.setWindowOpenHandler(({ url: target }) => {
+    if (/^https?:\/\//i.test(target)) void win.webContents.loadURL(target)
+    return { action: 'deny' }
+  })
+  void win.loadURL(url)
+}
+
 function createWindow() {
   // If a deep link was received before the window was created, forward it
   if (pendingDeepLink) {
@@ -156,6 +226,14 @@ function createWindow() {
 
   // Wire game-storage-service change notifications to this window
   setNotifyTarget(mainWindow);
+  setPluginMainWebContents(mainWindow.webContents);
+
+  // Route renderer window.open() calls (e.g. Epic claim links) into a
+  // nav-enabled standalone window so the user can go back naturally.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) openStandaloneWindow(url);
+    return { action: 'deny' };
+  });
 
   if (saved?.maximized) {
     mainWindow.maximize()
@@ -426,27 +504,13 @@ app.on('ready', async () => {
     await shell.openExternal(url);
   });
 
-  // Open a URL in a standalone app window on the DEFAULT session — the same
+  // Opens a URL in a standalone app window on the DEFAULT session — the same
   // session plugin OAuth windows use, so the window carries the user's
-  // logged-in web session (e.g. Epic Games Store after Epic OAuth).
-  ipcMain.handle('shell:open-session-window', async (_event, url: string) => {
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return;
-    } catch {
-      return;
-    }
-    const win = new BrowserWindow({
-      width: 1200,
-      height: 850,
-      autoHideMenuBar: true,
-      backgroundColor: '#09090b',
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-    });
-    await win.loadURL(url);
+  // logged-in web session (e.g. Epic Games Store after Epic OAuth). It behaves
+  // like a small in-app browser: back/forward navigation is supported and
+  // target=_blank links navigate in place so history stays intact.
+  ipcMain.handle('shell:open-session-window', (_event, url: string) => {
+    openStandaloneWindow(url);
   });
 
   ipcMain.handle('shell:open-path', async (_event, filePath: string) => {
@@ -586,7 +650,7 @@ app.on('ready', async () => {
 
     // ── Initialize GameScanOrchestrator ──
     const orchestrator = new GameScanOrchestrator(pluginManager);
-    orchestrator.setApiBaseUrl(pluginManager.getApiBaseUrl());
+    orchestrator.setApiBaseUrl(getApiBaseUrl());
     // Wire auth token changes
     const origSetAuth = pluginManager.setAuthToken.bind(pluginManager);
     pluginManager.setAuthToken = (token: string) => {

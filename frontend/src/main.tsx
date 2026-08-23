@@ -14,7 +14,6 @@ import { AuthProvider } from '@/features/auth'
 import { AuthRouterBridge } from '@/features/auth/components/auth-router-bridge'
 import { FeatureProvider } from '@/features/_config'
 import { PageMetaProvider } from '@/lib/providers/page-context'
-import { SpotifyPlayerProvider } from '@/lib/player/spotify-player-provider'
 import { PlexAudioProvider } from '@/lib/player/plex-audio-provider'
 import { PlayerProvider } from '@/lib/player/use-player'
 import { DkToastProvider, showErrorToast } from '@/old-features/ui/molecules/toast'
@@ -73,18 +72,16 @@ createRoot(document.getElementById('root')!).render(
                 <AuthProvider>
                   <AuthRouterBridge />
                   <DkToastProvider>
-                    <SpotifyPlayerProvider>
-                      <PlexAudioProvider>
-                        <PlayerProvider>
-                          <PageMetaProvider>
-                            <ModalProvider>
-                              <RouterProvider router={router} context={{ queryClient, isAuthenticated: false, isAuthLoaded: !hasToken }} />
-                              <ModalRoot />
-                            </ModalProvider>
-                          </PageMetaProvider>
-                        </PlayerProvider>
-                      </PlexAudioProvider>
-                    </SpotifyPlayerProvider>
+                    <PlexAudioProvider>
+                      <PlayerProvider>
+                        <PageMetaProvider>
+                          <ModalProvider>
+                            <RouterProvider router={router} context={{ queryClient, isAuthenticated: false, isAuthLoaded: !hasToken }} />
+                            <ModalRoot />
+                          </ModalProvider>
+                        </PageMetaProvider>
+                      </PlayerProvider>
+                    </PlexAudioProvider>
                   </DkToastProvider>
               </AuthProvider>
               </FeatureProvider>

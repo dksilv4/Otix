@@ -69,7 +69,6 @@ async def _load_rehydrate_target(media_item_id: str) -> dict[str, JSONValue] | N
             "title": item.title,
             "media_type": item.media_type,
             "external_ids": external_ids,
-            "spotify_id": external_ids.get("spotify") if album else None,
             "musicbrainz_id": external_ids.get("musicbrainz") if album else None,
             "steam_app_id": external_ids.get("steam") if game else None,
             "store_ids": {k: v for k, v in external_ids.items() if k in store_providers} if game else {},

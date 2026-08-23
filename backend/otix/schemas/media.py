@@ -86,6 +86,7 @@ class MediaItemSummary(BaseModel):
     textless_poster_url: str | None = None
     backdrop_url: str | None = None
     logo_url: str | None = None
+    logo_color_guess: str | None = None
     icon_url: str | None = None
     release_date: date | None = None
     popularity: float
@@ -132,7 +133,6 @@ class TrackSearchResult(BaseModel):
     disc_number: int = 1
     duration_ms: int | None = None
     preview_url: str | None = None
-    spotify_id: str | None = None
     avg_rating: float | None = None
     rating_count: int = 0
     album_id: str
@@ -652,7 +652,6 @@ class TrackOut(BaseModel):
     title: str
     duration_ms: int | None = None
     preview_url: str | None = None
-    spotify_id: str | None = None
     musicbrainz_recording_id: str | None = None
     audio_features: dict | None = None
     avg_rating: float | None = None
@@ -669,11 +668,8 @@ class AlbumDetail(BaseModel):
     track_count: int = 0
     disc_count: int = 0
     duration_ms: int | None = None
-    spotify_id: str | None = None
     musicbrainz_id: str | None = None
     musicbrainz_release_group_id: str | None = None
-    spotify_url: str | None = None
-    spotify_popularity: int | None = None
     preview_url: str | None = None
     audio_features: dict | None = None
     tracks: list[TrackOut] = Field(default_factory=list)
@@ -696,6 +692,7 @@ class MediaItemDetail(BaseModel):
     textless_poster_url: str | None = None
     backdrop_url: str | None = None
     logo_url: str | None = None
+    logo_color_guess: str | None = None
     release_date: date | None = None
     popularity: float
     original_language: str | None = None

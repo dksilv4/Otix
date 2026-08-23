@@ -7,6 +7,7 @@ import { MEDIA_TYPE_LABEL, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { useHeroCarousel } from '@discover/hooks/use-hero-carousel'
 import { HeroCard } from '@discover/components/molecules/discover-hero-card'
 import { HeroIndicator } from '@discover/components/molecules/discover-hero-indicator'
+import { MediaLogo } from '@/lib/media/media-logo'
 
 function formatSeasonBadgeText(releaseDate?: string | null): string {
   if (!releaseDate) return 'New Season'
@@ -252,16 +253,14 @@ export function DiscoverHero({ className }: { className?: string }) {
                             'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.3) 55%, rgba(0, 0, 0, 0) 80%)',
                         }}
                       />
-                      <img
+                      <MediaLogo
                         src={item.logoUrl}
                         alt={item.title}
-                        className="relative z-10 h-20 sm:h-24 md:h-28 w-auto object-contain"
-                        style={{
-                          transform: 'translateZ(15px)',
-                          filter:
-                            'drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 8px 32px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.9))',
-                        }}
-                        draggable={false}
+                        className="relative z-10 h-20 sm:h-24 md:h-28 w-auto max-w-[280px] sm:max-w-[360px] md:max-w-[440px] object-contain"
+                        colorGuess={item.logoColorGuess ?? null}
+                        background="dark"
+                        shadow="drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 8px 32px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
+                        style={{ transform: 'translateZ(15px)' }}
                       />
                     </div>
                   ) : (

@@ -620,7 +620,7 @@ async def _find_or_seed_media(
                 if guid_cache is not None:
                     guid_cache.add("plex", plex_guid, match_id)
             for provider, external_id in guids.items():
-                await eid_svc.upsert(provider, external_id, "media_item", match_id)
+                await eid_svc.upsert(provider, external_id, "media_item", match_id, media_type=media_type)
                 if guid_cache is not None:
                     guid_cache.add(provider, external_id, match_id)
             # flush removed — upserts via db.execute() run immediately
@@ -654,7 +654,7 @@ async def _find_or_seed_media(
         db.add(Show(media_item_id=media.id))
 
     for provider, external_id in guids.items():
-        await eid_svc.upsert(provider, external_id, "media_item", media.id)
+        await eid_svc.upsert(provider, external_id, "media_item", media.id, media_type=media_type)
         if guid_cache is not None:
             guid_cache.add(provider, external_id, media.id)
 

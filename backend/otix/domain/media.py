@@ -311,14 +311,11 @@ class Album(Base, HasExternalIDs):
     disc_count: Mapped[int] = mapped_column(Integer, default=0)
     duration_ms: Mapped[int | None] = mapped_column(Integer)
 
-    spotify_id = ExternalIDDescriptor("spotify", cast_type=str, entity_id_attr="media_item_id")
     musicbrainz_id = ExternalIDDescriptor("musicbrainz", cast_type=str, entity_id_attr="media_item_id")
     musicbrainz_release_group_id = ExternalIDDescriptor(
         "musicbrainz_release_group", cast_type=str, entity_id_attr="media_item_id"
     )
 
-    spotify_url: Mapped[str | None] = mapped_column(String(500))
-    spotify_popularity: Mapped[int | None] = mapped_column(Integer)
     preview_url: Mapped[str | None] = mapped_column(String(500))
     audio_features: Mapped[dict | None] = mapped_column(JSONB)
 
@@ -345,7 +342,6 @@ class Track(Base, TimestampMixin, HasExternalIDs):
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     preview_url: Mapped[str | None] = mapped_column(String(500))
 
-    spotify_id = ExternalIDDescriptor("spotify", cast_type=str)
     musicbrainz_recording_id = ExternalIDDescriptor("musicbrainz_recording", cast_type=str)
     isrc = ExternalIDDescriptor("isrc", cast_type=str)
 
@@ -406,9 +402,20 @@ class ExternalID(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("provider", "external_id", "entity_type", name="uq_external_id_provider_ext"),
         Index("ix_external_ids_stubs", "provider", "media_item_id", "is_adult", "created_at"),
         Index("ix_external_id_entity", "entity_type", "entity_id"),
+        # Global (provider, external_id, media_type) uniqueness from migration
+        # 0008: allows TMDB movie/show id coexistence, prevents stub re-insertion
+        # for resolved ids, and subsumes the old stub partial index. uq_ext_media
+        # _other (non-TMDB media) and uq_ext_nonmedia (non-media entities) live in
+        # 0007/0008 and keep their entity_type keys.
+        Index(
+            "uq_external_id_provider_media_type",
+            "provider",
+            "external_id",
+            "media_type",
+            unique=True,
+        ),
     )
 
 

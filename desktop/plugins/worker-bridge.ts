@@ -8,6 +8,7 @@ import * as fs from 'fs/promises'
 import { app, Notification, BrowserWindow } from 'electron'
 import { replaceTableNames } from '../db/plugins-db'
 import { isSafeStatement, extractTableNames } from '../db/sql-validator'
+import { validateConfigValue } from './config-validation'
 import {
   getConfig as dlGetConfig,
   getUserDownloads as dlGetUserDownloads,
@@ -191,7 +192,13 @@ export function createWorkerBridge(deps: BridgeDependencies) {
     await worker.terminate()
   }
 
-  return { start, callMethod, stop }
+  /** Push an updated config snapshot to the worker (main→worker push). */
+  function pushConfig(config: Record<string, unknown>): void {
+    if (!active) return
+    worker.postMessage({ type: 'config-changed', config } satisfies MainToWorkerMessage)
+  }
+
+  return { start, callMethod, stop, pushConfig }
 }
 
 /**
@@ -256,9 +263,27 @@ async function executeMethod(
       return deps.getConfig()
     case 'config.get':
       return deps.getConfigValue(args[0] as string)
-    case 'config.set':
-      deps.setConfigValue(args[0] as string, args[1])
+    case 'config.set': {
+      const key = args[0] as string
+      const value = args[1]
+      const field = deps.manifest.config?.[key]
+      if (field) {
+        const result = validateConfigValue(field, value)
+        if (result.ok) {
+          deps.setConfigValue(key, result.value)
+        } else {
+          // Best-effort: log and store raw so a misbehaving plugin never loses
+          // its value mid-flight; the UI-facing setConfig path is strict.
+          console.warn(
+            `[plugin:${deps.pluginId}] config "${key}" rejected (${result.error}); storing raw value`,
+          )
+          deps.setConfigValue(key, value)
+        }
+      } else {
+        deps.setConfigValue(key, value)
+      }
       return undefined
+    }
     case 'db.run': {
       const { sql, params } = await validateAndPrepareSql(
         args[0] as string, (args[1] as any[]) || [], deps, true,

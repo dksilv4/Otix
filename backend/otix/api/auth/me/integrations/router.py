@@ -20,14 +20,11 @@ def _integrations_response(user: User) -> MeIntegrationsResponse:
         tmdb_username=user.tmdb_username,
         tmdb_avatar_url=_gravatar_url(user.tmdb_avatar_hash),
         tmdb_rating_sync_direction=user.tmdb_rating_sync_direction,
-        spotify_id=user.spotify_id,
-        spotify_username=user.spotify_username,
-        spotify_email=user.spotify_email,
-        spotify_avatar_url=user.spotify_avatar_url,
         google_id=user.google_id,
         google_email=user.google_email,
         google_name=user.google_name,
         google_avatar_url=user.google_avatar_url,
+        drive_connected=user.drive_refresh_token is not None,
         plex_watch_history_enabled=user.plex_watch_history_enabled,
     )
 

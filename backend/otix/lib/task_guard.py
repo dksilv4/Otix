@@ -8,27 +8,27 @@ Usage in a Celery task::
 
     from otix.lib.task_guard import TaskGuard
 
-    guard = TaskGuard(redis, "spotify")
+    guard = TaskGuard(redis, "musicbrainz")
 
     # 1. Cooldown gate — skip API call entirely when provider is rate-limited
     if cooldown := await guard.cooldown():
         raise self.retry(countdown=cooldown)
 
     # 2. Dedup — skip if this entity was already processed recently
-    if await guard.is_duplicate("seed_album", spotify_id):
+    if await guard.is_duplicate("seed_album", artist_id):
         return {"skipped": True, "reason": "duplicate"}
 
     # 3. Poison pill — stop retrying after N consecutive failures
-    if await guard.should_skip("enrich_album", spotify_id):
+    if await guard.should_skip("enrich_album", artist_id):
         return {"skipped": True, "reason": "poison"}
 
     try:
         result = await do_work()
     except Exception:
-        await guard.record_failure("enrich_album", spotify_id)
+        await guard.record_failure("enrich_album", artist_id)
         raise
     else:
-        await guard.reset_failures("enrich_album", spotify_id)
+        await guard.reset_failures("enrich_album", artist_id)
 
     # 4. Smart pacing — scale batch size based on cooldown
     batch = guard.pace(cooldown, base=5, floor=1)

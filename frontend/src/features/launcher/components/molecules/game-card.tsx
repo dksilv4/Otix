@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { DkBadge } from "@/old-features/ui/atoms/badge";
 import type { LocalGame } from "@/features/launcher/types";
+import { MediaLogo } from "@/lib/media/media-logo";
 import { hasDesktopAPI } from "@/features/launcher/data/storage";
 
 const PLATFORM_BADGES: Record<
@@ -156,14 +157,13 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
                 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0) 80%)',
             }}
           />
-          <img
+          <MediaLogo
             src={game.data?.logoUrl!}
             alt={game.title}
             className="relative z-10 max-h-[55%] max-w-[80%] object-contain transition-all duration-500 ease-out scale-100 group-hover:scale-105"
-            style={{
-              filter:
-                'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 6px 20px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.9))',
-            }}
+            colorGuess={game.data?.logoColorGuess ?? null}
+            background="dark"
+            shadow="drop-shadow(0 2px 4px rgba(0,0,0,0.95)) drop-shadow(0 6px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
             onError={() => setLogoError(true)}
           />
         </div>

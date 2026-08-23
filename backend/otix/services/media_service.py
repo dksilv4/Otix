@@ -1118,22 +1118,27 @@ class MediaService:
         # or a bulk UPDATE (for tables without unique constraints).
 
         # ── 2a: ExternalIDs — most critical ──
-        # INSERT ON CONFLICT preserves unique (provider, external_id, entity_type)
+        # INSERT ON CONFLICT preserves unique (provider, external_id, media_type)
         # — if survivor already has the same external ID, keep survivor's.
         # This ensures cross-provider consolidation (survivor gets Steam + IGDB IDs).
+        # id has no server default (client-generated), so mint it like the other
+        # generated-PK tables below.
         r = await self.session.execute(sql_text("""
-            INSERT INTO external_ids (provider, external_id, entity_type, entity_id, media_item_id, media_type, is_adult, content_hash, hash_match_count, confirmed_count, confirmed_by, last_confirmed_at)
-            SELECT e.provider, e.external_id, e.entity_type, m.survivor_id, m.survivor_id, e.media_type, e.is_adult, e.content_hash, e.hash_match_count, e.confirmed_count, e.confirmed_by, e.last_confirmed_at
+            INSERT INTO external_ids (id, provider, external_id, entity_type, entity_id, media_item_id, media_type, is_adult, content_hash, hash_match_count, confirmed_count, confirmed_by, last_confirmed_at)
+            SELECT 'oti_' || substr(md5(random()::text || clock_timestamp()::text), 1, 12),
+                   e.provider, e.external_id, e.entity_type, m.survivor_id, m.survivor_id, e.media_type, e.is_adult, e.content_hash, e.hash_match_count, e.confirmed_count, e.confirmed_by, e.last_confirmed_at
             FROM external_ids e
             JOIN _dedup_map m ON e.entity_id = m.dup_id
-            ON CONFLICT (provider, external_id, entity_type) DO NOTHING
+            ON CONFLICT DO NOTHING
         """))
         stats["ids_moved"] += r.rowcount
         await self.session.execute(sql_text("DELETE FROM external_ids e USING _dedup_map m WHERE e.entity_id = m.dup_id"))
 
-        # ── 2b: Tables without unique constraints — bulk UPDATE ──
+        # ── 2b: Tables without composite unique constraints — bulk UPDATE ──
+        # media_assets is NOT here: it has uq_media_assets_item_url_type and is
+        # merged separately below with ON CONFLICT.
         for tbl in (
-            "media_credits", "media_assets", "media_videos", "media_releases",
+            "media_credits", "media_videos", "media_releases",
             "external_ratings", "involved_companies", "list_item_rank_history",
         ):
             r = await self.session.execute(
@@ -1145,6 +1150,19 @@ class MediaService:
                 """)
             )
             stats["ids_moved"] += r.rowcount
+
+        # media_assets: unique (media_item_id, url, asset_type). Two dups can
+        # share the same asset (e.g. identical poster URL), so an UPDATE would
+        # collide on the survivor — INSERT ON CONFLICT + DELETE instead.
+        await self.session.execute(sql_text("""
+            INSERT INTO media_assets (id, media_item_id, asset_type, url, width, height, lang, style, label, score, provider, color_guess)
+            SELECT 'oti_' || substr(md5(random()::text || clock_timestamp()::text), 1, 12),
+                   m.survivor_id, t.asset_type, t.url, t.width, t.height, t.lang, t.style, t.label, t.score, t.provider, t.color_guess
+            FROM media_assets t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (media_item_id, url, asset_type) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM media_assets t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
 
         # proposals uses target_id + target_type instead of media_item_id
         r = await self.session.execute(sql_text("""

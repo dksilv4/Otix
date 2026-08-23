@@ -9,7 +9,6 @@ from otix.api.calendar.router import router as calendar_router
 from otix.api.company import company_router
 from otix.api.discover import discover_router
 from otix.api.integrations import router as integrations_router
-from otix.api.integrations.spotify.playlists import router as spotify_playlists_router
 from otix.api.library import library_router
 from otix.api.list import list_router
 from otix.api.media import media_router
@@ -55,7 +54,6 @@ api_router.include_router(notification_router)
 api_router.include_router(review_router)
 api_router.include_router(review_vote_router)
 api_router.include_router(search_router, prefix="/search")
-api_router.include_router(spotify_playlists_router)
 api_router.include_router(track_router)
 api_router.include_router(upload_router)
 api_router.include_router(user_router)

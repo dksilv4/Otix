@@ -15,7 +15,7 @@ export interface paths {
          * Get Admin Stats
          * @description Get admin dashboard statistics. Admin only.
          */
-        get: operations["get_admin_stats_api_admin_stats_get"];
+        get: operations["get_admin_stats_api_v1_admin_stats_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35,7 +35,7 @@ export interface paths {
          * Get Admin Metrics
          * @description Get admin metrics for the dashboard. Admin only.
          */
-        get: operations["get_admin_metrics_api_admin_metrics_get"];
+        get: operations["get_admin_metrics_api_v1_admin_metrics_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -55,7 +55,7 @@ export interface paths {
          * Get Deleted Tmdb Ids
          * @description List deleted TMDB IDs for audit purposes. Admin only.
          */
-        get: operations["get_deleted_tmdb_ids_api_admin_deleted_tmdb_ids_get"];
+        get: operations["get_deleted_tmdb_ids_api_v1_admin_deleted_tmdb_ids_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -75,7 +75,27 @@ export interface paths {
          * Get Edit Proposals
          * @description List media edit proposals. Requires admin or trusted user.
          */
-        get: operations["get_edit_proposals_api_admin_edit_proposals_get"];
+        get: operations["get_edit_proposals_api_v1_admin_edit_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/hydration/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Hydration Summary
+         * @description Aggregate recent full-hydration runs and per-stage bottlenecks. Admin only.
+         */
+        get: operations["get_hydration_summary_api_v1_admin_hydration_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -95,7 +115,7 @@ export interface paths {
          * Get Media Hydration
          * @description Get media hydration status for the admin panel. Admin only.
          */
-        get: operations["get_media_hydration_api_admin_hydration_get"];
+        get: operations["get_media_hydration_api_v1_admin_hydration_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -114,7 +134,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Register */
-        post: operations["register_api_auth_register_post"];
+        post: operations["register_api_v1_auth_register_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -131,7 +151,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Login */
-        post: operations["login_api_auth_login_post"];
+        post: operations["login_api_v1_auth_login_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -148,7 +168,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Refresh */
-        post: operations["refresh_api_auth_refresh_post"];
+        post: operations["refresh_api_v1_auth_refresh_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -171,7 +191,7 @@ export interface paths {
          *     Deletes the refresh token cookie and revokes all active sessions
          *     for the authenticated user.
          */
-        post: operations["logout_api_auth_logout_post"];
+        post: operations["logout_api_v1_auth_logout_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -194,7 +214,7 @@ export interface paths {
          *     Always returns success to prevent email enumeration. If the email
          *     exists, a reset link is sent via background task.
          */
-        post: operations["forgot_password_api_auth_forgot_password_post"];
+        post: operations["forgot_password_api_v1_auth_forgot_password_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -214,7 +234,7 @@ export interface paths {
          * Reset Password
          * @description Reset the user's password using a token from the forgot-password flow.
          */
-        post: operations["reset_password_api_auth_reset_password_post"];
+        post: operations["reset_password_api_v1_auth_reset_password_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -237,7 +257,7 @@ export interface paths {
          *     Generates a verification token and sends it via email in a
          *     background task. Rate-limited per user ID.
          */
-        post: operations["send_verification_email_api_auth_verify_email_send_post"];
+        post: operations["send_verification_email_api_v1_auth_verify_email_send_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -260,7 +280,7 @@ export interface paths {
          *     Consumes the verification token sent via the send endpoint.
          *     Rate-limited per IP address.
          */
-        post: operations["verify_email_api_auth_verify_email_post"];
+        post: operations["verify_email_api_v1_auth_verify_email_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -275,11 +295,11 @@ export interface paths {
             cookie?: never;
         };
         /** List Sessions */
-        get: operations["list_sessions_api_auth_sessions_get"];
+        get: operations["list_sessions_api_v1_auth_sessions_get"];
         put?: never;
         post?: never;
         /** Revoke Other Sessions */
-        delete: operations["revoke_other_sessions_api_auth_sessions_delete"];
+        delete: operations["revoke_other_sessions_api_v1_auth_sessions_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -296,7 +316,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** Revoke Session */
-        delete: operations["revoke_session_api_auth_sessions__session_key__delete"];
+        delete: operations["revoke_session_api_v1_auth_sessions__session_key__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -319,7 +339,7 @@ export interface paths {
          *     to scan with their authenticator app. The user must then call
          *     ``/2fa/enable`` with a verification code to complete setup.
          */
-        post: operations["two_factor_setup_api_auth_2fa_setup_post"];
+        post: operations["two_factor_setup_api_v1_auth_2fa_setup_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -339,7 +359,7 @@ export interface paths {
          * Two Factor Enable
          * @description Enable two-factor authentication after verifying the TOTP code.
          */
-        post: operations["two_factor_enable_api_auth_2fa_enable_post"];
+        post: operations["two_factor_enable_api_v1_auth_2fa_enable_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -359,7 +379,7 @@ export interface paths {
          * Two Factor Disable
          * @description Disable two-factor authentication after verifying the user's password.
          */
-        post: operations["two_factor_disable_api_auth_2fa_disable_post"];
+        post: operations["two_factor_disable_api_v1_auth_2fa_disable_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -382,7 +402,7 @@ export interface paths {
          *     Called after ``/login`` returns ``two_factor_required=true`` with a
          *     challenge token. On success, returns access/refresh tokens.
          */
-        post: operations["two_factor_login_verify_api_auth_2fa_login_verify_post"];
+        post: operations["two_factor_login_verify_api_v1_auth_2fa_login_verify_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -400,7 +420,7 @@ export interface paths {
          * Me
          * @description Return the authenticated user's core profile.
          */
-        get: operations["me_api_auth_me_get"];
+        get: operations["me_api_v1_auth_me_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -413,7 +433,7 @@ export interface paths {
          *     Only fields listed in ``_UPDATABLE_FIELDS`` are accepted.
          *     Unrecognised or non-updatable fields are silently ignored.
          */
-        patch: operations["update_me_api_auth_me_patch"];
+        patch: operations["update_me_api_v1_auth_me_patch"];
         trace?: never;
     };
     "/api/v1/auth/me/preferences": {
@@ -427,7 +447,7 @@ export interface paths {
          * My Preferences
          * @description Return the authenticated user's preferences.
          */
-        get: operations["my_preferences_api_auth_me_preferences_get"];
+        get: operations["my_preferences_api_v1_auth_me_preferences_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -447,7 +467,7 @@ export interface paths {
          * My Integrations
          * @description Return the authenticated user's connected integration details.
          */
-        get: operations["my_integrations_api_auth_me_integrations_get"];
+        get: operations["my_integrations_api_v1_auth_me_integrations_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -466,7 +486,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Google Login Initiate */
-        post: operations["google_login_initiate_api_auth_google_initiate_post"];
+        post: operations["google_login_initiate_api_v1_auth_google_initiate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -483,41 +503,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Google Login Callback */
-        post: operations["google_login_callback_api_auth_google_callback_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/spotify/initiate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Spotify Login Initiate */
-        post: operations["spotify_login_initiate_api_auth_spotify_initiate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/spotify/callback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Spotify Login Callback */
-        post: operations["spotify_login_callback_api_auth_spotify_callback_post"];
+        post: operations["google_login_callback_api_v1_auth_google_callback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -534,7 +520,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Plex Login Initiate */
-        post: operations["plex_login_initiate_api_auth_plex_initiate_post"];
+        post: operations["plex_login_initiate_api_v1_auth_plex_initiate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -551,7 +537,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Plex Login Callback */
-        post: operations["plex_login_callback_api_auth_plex_callback_post"];
+        post: operations["plex_login_callback_api_v1_auth_plex_callback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -568,7 +554,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Tmdb Login Initiate */
-        post: operations["tmdb_login_initiate_api_auth_tmdb_initiate_post"];
+        post: operations["tmdb_login_initiate_api_v1_auth_tmdb_initiate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -585,7 +571,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Tmdb Login Callback */
-        post: operations["tmdb_login_callback_api_auth_tmdb_callback_post"];
+        post: operations["tmdb_login_callback_api_v1_auth_tmdb_callback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -602,7 +588,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Steam Initiate */
-        post: operations["steam_initiate_api_auth_steam_initiate_post"];
+        post: operations["steam_initiate_api_v1_auth_steam_initiate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -619,7 +605,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Steam Callback */
-        post: operations["steam_callback_api_auth_steam_callback_post"];
+        post: operations["steam_callback_api_v1_auth_steam_callback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -634,75 +620,10 @@ export interface paths {
             cookie?: never;
         };
         /** List Integrations */
-        get: operations["list_integrations_api_auth_oauth_get"];
+        get: operations["list_integrations_api_v1_auth_oauth_get"];
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/oauth/spotify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Spotify Connect Initiate
-         * @description Initiate the Spotify OAuth link flow.
-         *
-         *     Returns an authorization URL and state token. The client should
-         *     redirect the user to *auth_url* and then POST the callback code
-         *     to ``/auth/oauth/spotify/callback``.
-         */
-        post: operations["spotify_connect_initiate_api_auth_oauth_spotify_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/oauth/spotify/callback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Spotify Connect Callback
-         * @description Complete the Spotify OAuth link flow.
-         *
-         *     The user is resolved from the OAuth state stored in Redis, so this
-         *     endpoint works without a JWT — necessary when the callback page runs
-         *     in a system browser opened via ``openExternal`` (Electron).
-         */
-        post: operations["spotify_connect_callback_api_auth_oauth_spotify_callback_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/oauth/spotify/disconnect": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Spotify Disconnect */
-        delete: operations["spotify_disconnect_api_auth_oauth_spotify_disconnect_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -718,7 +639,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Steam Connect Initiate */
-        post: operations["steam_connect_initiate_api_auth_oauth_steam_post"];
+        post: operations["steam_connect_initiate_api_v1_auth_oauth_steam_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -735,7 +656,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Steam Connect Callback */
-        post: operations["steam_connect_callback_api_auth_oauth_steam_callback_post"];
+        post: operations["steam_connect_callback_api_v1_auth_oauth_steam_callback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -753,7 +674,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** Steam Disconnect */
-        delete: operations["steam_disconnect_api_auth_oauth_steam_disconnect_delete"];
+        delete: operations["steam_disconnect_api_v1_auth_oauth_steam_disconnect_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -776,7 +697,7 @@ export interface paths {
          *     should redirect the user to *auth_url* and then POST the callback
          *     to ``/auth/oauth/plex/callback``.
          */
-        post: operations["plex_connect_initiate_api_auth_oauth_plex_post"];
+        post: operations["plex_connect_initiate_api_v1_auth_oauth_plex_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -801,7 +722,7 @@ export interface paths {
          *     is required when the callback page runs in a system browser opened
          *     via ``openExternal`` (Electron).
          */
-        post: operations["plex_connect_callback_api_auth_oauth_plex_callback_post"];
+        post: operations["plex_connect_callback_api_v1_auth_oauth_plex_callback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -819,7 +740,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** Plex Disconnect */
-        delete: operations["plex_disconnect_api_auth_oauth_plex_disconnect_delete"];
+        delete: operations["plex_disconnect_api_v1_auth_oauth_plex_disconnect_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -842,7 +763,7 @@ export interface paths {
          *     redirect the user to *auth_url* and then the user will be sent to
          *     the redirect endpoint after TMDb authentication.
          */
-        post: operations["tmdb_connect_initiate_api_auth_oauth_tmdb_post"];
+        post: operations["tmdb_connect_initiate_api_v1_auth_oauth_tmdb_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -857,7 +778,7 @@ export interface paths {
             cookie?: never;
         };
         /** Tmdb Connect Redirect */
-        get: operations["tmdb_connect_redirect_api_auth_oauth_tmdb_redirect_get"];
+        get: operations["tmdb_connect_redirect_api_v1_auth_oauth_tmdb_redirect_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -884,7 +805,7 @@ export interface paths {
          *     without a JWT — necessary when the callback page runs in a system
          *     browser opened via ``openExternal`` (Electron).
          */
-        post: operations["tmdb_connect_callback_api_auth_oauth_tmdb_callback_post"];
+        post: operations["tmdb_connect_callback_api_v1_auth_oauth_tmdb_callback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -902,7 +823,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** Tmdb Disconnect */
-        delete: operations["tmdb_disconnect_api_auth_oauth_tmdb_disconnect_delete"];
+        delete: operations["tmdb_disconnect_api_v1_auth_oauth_tmdb_disconnect_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -925,7 +846,7 @@ export interface paths {
          *     redirect the user to *auth_url* and then POST the callback code
          *     to ``/auth/oauth/google/callback``.
          */
-        post: operations["google_connect_initiate_api_auth_oauth_google_post"];
+        post: operations["google_connect_initiate_api_v1_auth_oauth_google_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -943,7 +864,7 @@ export interface paths {
          * Get Google Token
          * @description Retrieve the user's active Google access token, refreshing if expired.
          */
-        get: operations["get_google_token_api_auth_oauth_google_token_get"];
+        get: operations["get_google_token_api_v1_auth_oauth_google_token_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -969,7 +890,7 @@ export interface paths {
          *     endpoint works without a JWT — necessary when the callback page runs
          *     in a system browser opened via ``openExternal`` (Electron).
          */
-        post: operations["google_connect_callback_api_auth_oauth_google_callback_post"];
+        post: operations["google_connect_callback_api_v1_auth_oauth_google_callback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -987,7 +908,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** Google Disconnect */
-        delete: operations["google_disconnect_api_auth_oauth_google_disconnect_delete"];
+        delete: operations["google_disconnect_api_v1_auth_oauth_google_disconnect_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1004,13 +925,13 @@ export interface paths {
          * List Blueprints
          * @description List blueprints with optional search, sorting, and pagination.
          */
-        get: operations["list_blueprints_api_blueprints_get"];
+        get: operations["list_blueprints_api_v1_blueprints_get"];
         put?: never;
         /**
          * Create Blueprint
          * @description Create a new blueprint for the authenticated user.
          */
-        post: operations["create_blueprint_api_blueprints_post"];
+        post: operations["create_blueprint_api_v1_blueprints_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1028,21 +949,21 @@ export interface paths {
          * Get Blueprint
          * @description Get a single blueprint by ID.
          */
-        get: operations["get_blueprint_api_blueprints__blueprint_id__get"];
+        get: operations["get_blueprint_api_v1_blueprints__blueprint_id__get"];
         put?: never;
         post?: never;
         /**
          * Delete Blueprint
          * @description Delete a blueprint (owner only).
          */
-        delete: operations["delete_blueprint_api_blueprints__blueprint_id__delete"];
+        delete: operations["delete_blueprint_api_v1_blueprints__blueprint_id__delete"];
         options?: never;
         head?: never;
         /**
          * Update Blueprint
          * @description Update a blueprint (owner only).
          */
-        patch: operations["update_blueprint_api_blueprints__blueprint_id__patch"];
+        patch: operations["update_blueprint_api_v1_blueprints__blueprint_id__patch"];
         trace?: never;
     };
     "/api/v1/blueprints/{blueprint_id}/like": {
@@ -1058,7 +979,7 @@ export interface paths {
          * Toggle Like Blueprint
          * @description Toggle like on a blueprint.
          */
-        post: operations["toggle_like_blueprint_api_blueprints__blueprint_id__like_post"];
+        post: operations["toggle_like_blueprint_api_v1_blueprints__blueprint_id__like_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1078,7 +999,27 @@ export interface paths {
          * Increment Download
          * @description Increment download counter for a blueprint.
          */
-        post: operations["increment_download_api_blueprints__blueprint_id__download_post"];
+        post: operations["increment_download_api_v1_blueprints__blueprint_id__download_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Calendar
+         * @description Get upcoming releases from the user's watchlist, watched shows, and franchises.
+         */
+        get: operations["get_calendar_api_v1_calendar_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1093,7 +1034,7 @@ export interface paths {
             cookie?: never;
         };
         /** Plex Discover Servers */
-        get: operations["plex_discover_servers_api_integrations_plex_servers_get"];
+        get: operations["plex_discover_servers_api_v1_integrations_plex_servers_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1113,7 +1054,7 @@ export interface paths {
          * Get Plex Libraries
          * @description Return all discovered Plex libraries with item counts and last-synced timestamps.
          */
-        get: operations["get_plex_libraries_api_integrations_plex_libraries_get"];
+        get: operations["get_plex_libraries_api_v1_integrations_plex_libraries_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1132,7 +1073,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Plex Sync Now */
-        post: operations["plex_sync_now_api_integrations_plex_sync_post"];
+        post: operations["plex_sync_now_api_v1_integrations_plex_sync_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1150,7 +1091,7 @@ export interface paths {
          * Plex Sync Stream
          * @description SSE stream of Plex sync progress events.
          */
-        get: operations["plex_sync_stream_api_integrations_plex_sync__task_id__stream_get"];
+        get: operations["plex_sync_stream_api_v1_integrations_plex_sync__task_id__stream_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1169,7 +1110,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Plex Watchlist Sync */
-        post: operations["plex_watchlist_sync_api_integrations_plex_watchlist_sync_post"];
+        post: operations["plex_watchlist_sync_api_v1_integrations_plex_watchlist_sync_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1186,7 +1127,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Plex Webhook */
-        post: operations["plex_webhook_api_integrations_plex_webhook_post"];
+        post: operations["plex_webhook_api_v1_integrations_plex_webhook_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1201,7 +1142,7 @@ export interface paths {
             cookie?: never;
         };
         /** Plex Sessions */
-        get: operations["plex_sessions_api_integrations_plex_sessions_get"];
+        get: operations["plex_sessions_api_v1_integrations_plex_sessions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1218,7 +1159,7 @@ export interface paths {
             cookie?: never;
         };
         /** Plex Connect Info */
-        get: operations["plex_connect_info_api_integrations_plex_connect_info__media_item_id__get"];
+        get: operations["plex_connect_info_api_v1_integrations_plex_connect_info__media_item_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1235,7 +1176,7 @@ export interface paths {
             cookie?: never;
         };
         /** Plex Album Tracks */
-        get: operations["plex_album_tracks_api_integrations_plex_album_tracks__media_item_id__get"];
+        get: operations["plex_album_tracks_api_v1_integrations_plex_album_tracks__media_item_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1252,111 +1193,7 @@ export interface paths {
             cookie?: never;
         };
         /** Plex Stream */
-        get: operations["plex_stream_api_integrations_plex_stream__rating_key__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/spotify/token": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Spotify Get Token
-         * @description Return a valid Spotify access token for the frontend.
-         *
-         *     Retrieves the stored token, refreshing it if expired.
-         *     The frontend uses this token for direct Spotify API calls
-         *     (e.g. Web Playback SDK).
-         */
-        get: operations["spotify_get_token_api_integrations_spotify_token_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/spotify/sync": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Spotify Sync Library
-         * @description Start a full library sync (liked tracks + saved albums).
-         */
-        post: operations["spotify_sync_library_api_integrations_spotify_sync_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/spotify/sync/{task_id}/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Spotify Sync Stream
-         * @description SSE stream of sync progress events.
-         */
-        get: operations["spotify_sync_stream_api_integrations_spotify_sync__task_id__stream_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/spotify/recently-played/sync": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Spotify Sync Recently Played
-         * @description Start a recently-played sync.
-         */
-        post: operations["spotify_sync_recently_played_api_integrations_spotify_recently_played_sync_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/spotify/recently-played/sync/{task_id}/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Spotify Recently Played Sync Stream
-         * @description SSE stream of sync progress events.
-         */
-        get: operations["spotify_recently_played_sync_stream_api_integrations_spotify_recently_played_sync__task_id__stream_get"];
+        get: operations["plex_stream_api_v1_integrations_plex_stream__rating_key__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1378,7 +1215,7 @@ export interface paths {
          *
          *     Used by the Steam plugin for free-to-keep ownership cross-reference.
          */
-        get: operations["steam_owned_appids_api_integrations_steam_owned_appids_get"];
+        get: operations["steam_owned_appids_api_v1_integrations_steam_owned_appids_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1397,7 +1234,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Steam Scan Library */
-        post: operations["steam_scan_library_api_integrations_steam_scan_post"];
+        post: operations["steam_scan_library_api_v1_integrations_steam_scan_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1414,7 +1251,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Steam Scan Wishlist */
-        post: operations["steam_scan_wishlist_api_integrations_steam_wishlist_scan_post"];
+        post: operations["steam_scan_wishlist_api_v1_integrations_steam_wishlist_scan_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1431,7 +1268,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Steam Resolve Unmatched */
-        post: operations["steam_resolve_unmatched_api_integrations_steam_resolve_unmatched_post"];
+        post: operations["steam_resolve_unmatched_api_v1_integrations_steam_resolve_unmatched_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1448,7 +1285,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Tmdb Rating Sync */
-        post: operations["tmdb_rating_sync_api_integrations_tmdb_rating_sync_post"];
+        post: operations["tmdb_rating_sync_api_v1_integrations_tmdb_rating_sync_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1465,7 +1302,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Tmdb Watchlist Import */
-        post: operations["tmdb_watchlist_import_api_integrations_tmdb_watchlist_import_post"];
+        post: operations["tmdb_watchlist_import_api_v1_integrations_tmdb_watchlist_import_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1482,7 +1319,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Youtube Sync Watch History */
-        post: operations["youtube_sync_watch_history_api_integrations_youtube_sync_post"];
+        post: operations["youtube_sync_watch_history_api_v1_integrations_youtube_sync_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1500,7 +1337,7 @@ export interface paths {
          * Youtube Sync Stream
          * @description SSE stream of YouTube sync progress events.
          */
-        get: operations["youtube_sync_stream_api_integrations_youtube_sync__task_id__stream_get"];
+        get: operations["youtube_sync_stream_api_v1_integrations_youtube_sync__task_id__stream_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1520,7 +1357,7 @@ export interface paths {
          * List Cloud Files
          * @description List all game save files currently saved in Google Drive for this game/profile.
          */
-        get: operations["list_cloud_files_api_saves__game_id__files_get"];
+        get: operations["list_cloud_files_api_v1_saves__game_id__files_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1546,7 +1383,7 @@ export interface paths {
          *     ``Saved/SaveGames/7656/save.bin``) to preserve subfolder structure as
          *     Google Drive folders.
          */
-        post: operations["upload_cloud_file_api_saves__game_id__upload_post"];
+        post: operations["upload_cloud_file_api_v1_saves__game_id__upload_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1564,7 +1401,7 @@ export interface paths {
          * Download Cloud File
          * @description Download a save file's binary content from Google Drive.
          */
-        get: operations["download_cloud_file_api_saves__game_id__download__file_id__get"];
+        get: operations["download_cloud_file_api_v1_saves__game_id__download__file_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1587,7 +1424,7 @@ export interface paths {
          * Delete Cloud File
          * @description Delete a save file from Google Drive.
          */
-        delete: operations["delete_cloud_file_api_saves__game_id__delete__file_id__delete"];
+        delete: operations["delete_cloud_file_api_v1_saves__game_id__delete__file_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1604,7 +1441,7 @@ export interface paths {
          * Get Save Locations
          * @description Retrieve verified and suggested save path patterns for a game.
          */
-        get: operations["get_save_locations_api_saves_locations__media_item_id__get"];
+        get: operations["get_save_locations_api_v1_saves_locations__media_item_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1626,7 +1463,7 @@ export interface paths {
          * Suggest Save Location
          * @description Submit a game save location suggestion for user confirmation and consensus aggregation.
          */
-        post: operations["suggest_save_location_api_saves_locations__media_item_id__suggest_post"];
+        post: operations["suggest_save_location_api_v1_saves_locations__media_item_id__suggest_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1647,7 +1484,7 @@ export interface paths {
          *     Returns company metadata including follower count and the
          *     authenticated user's follow/rating state if available.
          */
-        get: operations["get_company_api_company__company_id__get"];
+        get: operations["get_company_api_v1_company__company_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1671,7 +1508,7 @@ export interface paths {
          *     Sets or updates the authenticated user's rating for the company.
          *     Rate-limited per IP address.
          */
-        put: operations["rate_company_api_company__company_id__rating_put"];
+        put: operations["rate_company_api_v1_company__company_id__rating_put"];
         post?: never;
         /**
          * Unrate Company
@@ -1679,7 +1516,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        delete: operations["unrate_company_api_company__company_id__rating_delete"];
+        delete: operations["unrate_company_api_v1_company__company_id__rating_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1701,7 +1538,7 @@ export interface paths {
          *     Adds the company to the authenticated user's followed list.
          *     Rate-limited per IP address.
          */
-        post: operations["follow_company_api_company__company_id__follow_post"];
+        post: operations["follow_company_api_v1_company__company_id__follow_post"];
         /**
          * Unfollow Company
          * @description Unfollow a company.
@@ -1709,7 +1546,7 @@ export interface paths {
          *     Removes the company from the authenticated user's followed list.
          *     Rate-limited per IP address.
          */
-        delete: operations["unfollow_company_api_company__company_id__follow_delete"];
+        delete: operations["unfollow_company_api_v1_company__company_id__follow_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1726,7 +1563,7 @@ export interface paths {
          * Discover Hero
          * @description Get hero section media items for the discover page.
          */
-        get: operations["discover_hero_api_discover_hero_get"];
+        get: operations["discover_hero_api_v1_discover_hero_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1746,27 +1583,7 @@ export interface paths {
          * Discover Sections
          * @description Get personalized discover sections for the current user.
          */
-        get: operations["discover_sections_api_discover_sections_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/discover/trailers/trending": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Trending Trailers
-         * @description Get trending media items that have YouTube trailers (movies & shows).
-         */
-        get: operations["trending_trailers_api_discover_trailers_trending_get"];
+        get: operations["discover_sections_api_v1_discover_sections_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1786,7 +1603,7 @@ export interface paths {
          * Discover List
          * @description Get a paginated list of media items for a given media type and list type.
          */
-        get: operations["discover_list_api_discover__media_type___list_type__get"];
+        get: operations["discover_list_api_v1_discover__media_type___list_type__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1810,9 +1627,10 @@ export interface paths {
          *
          *     Accepts a list of store + external-ID pairs with optional metadata.
          *     Returns matched MediaItemDetail objects with free-game metadata.
-         *     Unmatched games are included with ``matched=False`` and ``media_item=None``.
+         *     Unmatched Epic games with a title are hydrated from IGDB (seeded into the
+         *     catalog with full artwork) before being returned.
          */
-        post: operations["match_free_games_api_discover_free_games_match_post"];
+        post: operations["match_free_games_api_v1_discover_free_games_match_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1832,7 +1650,7 @@ export interface paths {
          * Send Friend Request
          * @description Send a friend request to another user.
          */
-        post: operations["send_friend_request_api_friends_requests__user_id__post"];
+        post: operations["send_friend_request_api_v1_friends_requests__user_id__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1852,7 +1670,7 @@ export interface paths {
          * Accept Friend Request
          * @description Accept a friend request.
          */
-        post: operations["accept_friend_request_api_friends_requests__request_id__accept_post"];
+        post: operations["accept_friend_request_api_v1_friends_requests__request_id__accept_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1872,7 +1690,7 @@ export interface paths {
          * Reject Friend Request
          * @description Reject a friend request.
          */
-        post: operations["reject_friend_request_api_friends_requests__request_id__reject_post"];
+        post: operations["reject_friend_request_api_v1_friends_requests__request_id__reject_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1890,7 +1708,7 @@ export interface paths {
          * List Friends
          * @description List the authenticated user's friends.
          */
-        get: operations["list_friends_api_friends_get"];
+        get: operations["list_friends_api_v1_friends_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1910,7 +1728,7 @@ export interface paths {
          * List Incoming Requests
          * @description List incoming friend requests.
          */
-        get: operations["list_incoming_requests_api_friends_requests_incoming_get"];
+        get: operations["list_incoming_requests_api_v1_friends_requests_incoming_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1930,7 +1748,7 @@ export interface paths {
          * List Outgoing Requests
          * @description List outgoing friend requests.
          */
-        get: operations["list_outgoing_requests_api_friends_requests_outgoing_get"];
+        get: operations["list_outgoing_requests_api_v1_friends_requests_outgoing_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1953,7 +1771,7 @@ export interface paths {
          * Remove Friend
          * @description Remove a friend.
          */
-        delete: operations["remove_friend_api_friends__user_id__delete"];
+        delete: operations["remove_friend_api_v1_friends__user_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1970,7 +1788,7 @@ export interface paths {
          * Get Friendship Status
          * @description Get friendship status with another user.
          */
-        get: operations["get_friendship_status_api_friends_status__user_id__get"];
+        get: operations["get_friendship_status_api_v1_friends_status__user_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1992,12 +1810,12 @@ export interface paths {
          * Follow User
          * @description Follow a user. Rate-limited per IP.
          */
-        post: operations["follow_user_api_users__username__follow_post"];
+        post: operations["follow_user_api_v1_users__username__follow_post"];
         /**
          * Unfollow User
          * @description Unfollow a user. Rate-limited per IP.
          */
-        delete: operations["unfollow_user_api_users__username__follow_delete"];
+        delete: operations["unfollow_user_api_v1_users__username__follow_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2014,7 +1832,7 @@ export interface paths {
          * Get Pending Follow Requests
          * @description Get pending follow requests for the authenticated user.
          */
-        get: operations["get_pending_follow_requests_api_users__username__follow_requests_get"];
+        get: operations["get_pending_follow_requests_api_v1_users__username__follow_requests_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2036,7 +1854,7 @@ export interface paths {
          * Accept Follow Request
          * @description Accept a follow request.
          */
-        post: operations["accept_follow_request_api_users__username__follow_requests__request_id__accept_post"];
+        post: operations["accept_follow_request_api_v1_users__username__follow_requests__request_id__accept_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2056,7 +1874,7 @@ export interface paths {
          * Decline Follow Request
          * @description Decline a follow request.
          */
-        post: operations["decline_follow_request_api_users__username__follow_requests__request_id__decline_post"];
+        post: operations["decline_follow_request_api_v1_users__username__follow_requests__request_id__decline_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2074,7 +1892,7 @@ export interface paths {
          * Get Followers
          * @description Get a user's followers.
          */
-        get: operations["get_followers_api_users__username__followers_get"];
+        get: operations["get_followers_api_v1_users__username__followers_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2094,7 +1912,7 @@ export interface paths {
          * Get Following
          * @description Get who a user is following.
          */
-        get: operations["get_following_api_users__username__following_get"];
+        get: operations["get_following_api_v1_users__username__following_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2114,7 +1932,7 @@ export interface paths {
          * Get Follow Counts
          * @description Get a user's follower and following counts.
          */
-        get: operations["get_follow_counts_api_users__username__follow_counts_get"];
+        get: operations["get_follow_counts_api_v1_users__username__follow_counts_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2134,27 +1952,7 @@ export interface paths {
          * Get Follow Status
          * @description Get follow relationship status between current user and target.
          */
-        get: operations["get_follow_status_api_users__username__follow_status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/suggestions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search Suggestions
-         * @description Lightweight autocomplete — quick search, no backfill, no embeddings.
-         */
-        get: operations["search_suggestions_api_media_suggestions_get"];
+        get: operations["get_follow_status_api_v1_users__username__follow_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2171,7 +1969,7 @@ export interface paths {
             cookie?: never;
         };
         /** List Media */
-        get: operations["list_media_api_media__get"];
+        get: operations["list_media_api_v1_media__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2188,7 +1986,7 @@ export interface paths {
             cookie?: never;
         };
         /** List Genres */
-        get: operations["list_genres_api_media_genres_get"];
+        get: operations["list_genres_api_v1_media_genres_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2205,27 +2003,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get Company By Slug */
-        get: operations["get_company_by_slug_api_media_company_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/search/companies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search Companies
-         * @description Search companies by name using hybrid vector-keyword queries.
-         */
-        get: operations["search_companies_api_media_search_companies_get"];
+        get: operations["get_company_by_slug_api_v1_media_company_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2242,48 +2020,7 @@ export interface paths {
             cookie?: never;
         };
         /** List Certifications */
-        get: operations["list_certifications_api_media_certifications_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Search Media */
-        get: operations["search_media_api_media_search_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/search/grouped": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search Grouped
-         * @description Structured search — results grouped by media_type with tracks, people, and users.
-         *
-         *     Runs per-type searches concurrently for a complete overview of all result
-         *     categories in a single response. The frontend renders each group as its
-         *     own carousel or section.
-         */
-        get: operations["search_grouped_api_media_search_grouped_get"];
+        get: operations["list_certifications_api_v1_media_certifications_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2304,11 +2041,8 @@ export interface paths {
         /**
          * Match Game
          * @description Match a single game against the Otix catalog.
-         *
-         *     Returns ranked candidates and an optional auto_match.  No catalog
-         *     mutations occur — use ``POST /match/confirm`` to persist a match.
          */
-        post: operations["match_game_api_media_match_post"];
+        post: operations["match_game_api_v1_media_match_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2327,11 +2061,8 @@ export interface paths {
         /**
          * Match Games Batch
          * @description Match multiple games in a single batch call.
-         *
-         *     Each game runs through the full pipeline and returns ranked
-         *     candidates plus an optional auto_match.
          */
-        post: operations["match_games_batch_api_media_match_batch_post"];
+        post: operations["match_games_batch_api_v1_media_match_batch_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2350,15 +2081,28 @@ export interface paths {
         /**
          * Match Games Stream
          * @description SSE stream of per-game match progress for the desktop orchestrator.
-         *
-         *     Returns a ``text/event-stream`` response.  Each game emits an
-         *     ``event: game-progress`` frame with its match status.  A final
-         *     ``event: complete`` frame carries aggregate statistics.
-         *
-         *     Compatible with any SSE client — no special library needed beyond
-         *     standard ``EventSource`` or a plain ``fetch`` with streaming.
          */
-        post: operations["match_games_stream_api_media_match_stream_post"];
+        post: operations["match_games_stream_api_v1_media_match_stream_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/match/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Match Scan
+         * @description Unified match+hydrate+seed endpoint (SSE stream).
+         */
+        post: operations["match_scan_api_v1_media_match_scan_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2374,16 +2118,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Confirm Match
-         * @description Confirm a match candidate or reject all suggestions.
-         *
-         *     - If ``igdb_id`` is set and ``media_item_id`` is null, the game is
-         *       imported from IGDB first, then linked.
-         *     - If ``rejected_permanently`` is true, future scans won't re-suggest
-         *       this game.
-         */
-        post: operations["confirm_match_api_media_match_confirm_post"];
+        /** Confirm Match */
+        post: operations["confirm_match_api_v1_media_match_confirm_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2399,69 +2135,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Unlink Match
-         * @description Remove an external ID mapping so a game can be re-matched.
-         *
-         *     Also clears any permanent rejection record for this game.
-         */
-        post: operations["unlink_match_api_media_match_unlink_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/match-local-games": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Match Local Games
-         * @description Fuzzy-match local PC/ISO game titles to Otix catalog entries.
-         *
-         *     Accepts a list of game (title + optional platform and Steam App ID) and
-         *     returns the best-matching Otix media item per entry. Delegates to
-         *     ``GameMatcher`` for the full multi-stage pipeline (external ID lookup,
-         *     IGDB cross-reference, IGDB title search, trigram fallback).
-         *
-         *     Backward-compatible wrapper around the internal ``/match/batch`` pipeline.
-         */
-        post: operations["match_local_games_api_media_match_local_games_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/seed-from-titles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Seed From Titles
-         * @description Trigger background IGDB seeding for local game titles from a desktop scan.
-         *
-         *     When a user runs a desktop game scan, the extracted titles (with optional
-         *     platform and Steam App ID) are sent here so the backend can search IGDB or
-         *     do direct Steam lookups for each game and import any missing game into the
-         *     catalog. This ensures subsequent match-local-game calls can find them.
-         *
-         *     The actual IGDB searches / Steam sync tasks run asynchronously via
-         *     ``seed.igdb_from_titles``. This endpoint returns immediately with the
-         *     Celery task ID for optional tracking.
-         */
-        post: operations["seed_from_titles_api_media_seed_from_titles_post"];
+        /** Unlink Match */
+        post: operations["unlink_match_api_v1_media_match_unlink_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2478,7 +2153,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Force Rehydrate Media */
-        post: operations["force_rehydrate_media_api_media__media_id__rehydrate_post"];
+        post: operations["force_rehydrate_media_api_v1_media__media_id__rehydrate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2492,60 +2167,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Force Rehydrate Media Stream
-         * @description SSE stream of media rehydration progress events.
-         */
-        get: operations["force_rehydrate_media_stream_api_media__media_id__rehydrate__task_id__stream_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/search/poll": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Poll Search Updates
-         * @description Poll for new search results added by backfill.
-         *
-         *     Re-runs the search and returns items not already in `known_ids`.
-         *     Also reports whether backfill is still in progress via `backfill_pending`.
-         */
-        get: operations["poll_search_updates_api_media_search_poll_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/search/external": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search External Games
-         * @description Search IGDB for game, import missing ones async, return already-imported.
-         *
-         *     Games already in the Otix database are returned immediately.  Any that
-         *     aren't yet imported trigger a Celery task (sync.igdb.game) and the
-         *     response has ``backfill_pending = True`` so the frontend can poll for
-         *     newly-imported items.  A 2-minute Redis TTL on the query hash prevents
-         *     duplicate Celery triggers from repeated polling.
-         */
-        get: operations["search_external_games_api_media_search_external_get"];
+        /** Force Rehydrate Media Stream */
+        get: operations["force_rehydrate_media_stream_api_v1_media__media_id__rehydrate__task_id__stream_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2563,61 +2186,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Import Igdb Game
-         * @description Import a game from IGDB into the Otix database.
-         *
-         *     Fetches full game data, transforms, upserts, hydrates, and returns
-         *     the Otix media ID so the frontend can complete the link.
-         */
-        post: operations["import_igdb_game_api_media_import_igdb_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/search-providers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Search Providers
-         * @description Search Otix catalog + IGDB + SteamGrid in one call.
-         *
-         *     Returns deduplicated results from all three providers.  Missing IGDB
-         *     games are imported asynchronously (Celery task).  SteamGrid results
-         *     include artwork URLs (grid, logo, hero, icon).
-         */
-        post: operations["search_providers_api_media_search_providers_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/search-steamgrid": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Search Steamgrid
-         * @description Search SteamGridDB for game art assets.
-         *
-         *     Returns grid, logo, hero, and icon URLs for the best-matching game.
-         *     Used by the desktop game scanner match modal to get premium game art.
-         */
-        post: operations["search_steamgrid_api_media_search_steamgrid_post"];
+        /** Import Igdb Game */
+        post: operations["import_igdb_game_api_v1_media_import_igdb_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2633,14 +2203,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Sync Local Games
-         * @description Sync the user's locally detected game to the backend.
-         *
-         *     Called from the desktop app after scanning and matching. Upserts game
-         *     by (user_id, title, platform) so match state survives client-side clears.
-         */
-        post: operations["sync_local_games_api_media_sync_local_games_post"];
+        /** Sync Local Games */
+        post: operations["sync_local_games_api_v1_media_sync_local_games_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2660,7 +2224,7 @@ export interface paths {
          * Propose Match
          * @description Submit an auto-match for review. Delegates to unified ProposalsService.
          */
-        post: operations["propose_match_api_media_match_propose_post"];
+        post: operations["propose_match_api_v1_media_match_propose_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2678,7 +2242,7 @@ export interface paths {
          * List Proposals
          * @description List match proposals. Delegates to unified ProposalsService.
          */
-        get: operations["list_proposals_api_media_admin_match_proposals_get"];
+        get: operations["list_proposals_api_v1_media_admin_match_proposals_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2700,7 +2264,7 @@ export interface paths {
          * Approve Proposal
          * @description Approve a match proposal. Delegates to unified ProposalsService.
          */
-        post: operations["approve_proposal_api_media_admin_match_proposals__proposal_id__approve_post"];
+        post: operations["approve_proposal_api_v1_media_admin_match_proposals__proposal_id__approve_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2720,7 +2284,7 @@ export interface paths {
          * Reject Proposal
          * @description Reject a match proposal. Delegates to unified ProposalsService.
          */
-        post: operations["reject_proposal_api_media_admin_match_proposals__proposal_id__reject_post"];
+        post: operations["reject_proposal_api_v1_media_admin_match_proposals__proposal_id__reject_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2735,7 +2299,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get Media Item */
-        get: operations["get_media_item_api_media__media_type___media_id__get"];
+        get: operations["get_media_item_api_v1_media__media_type___media_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2752,7 +2316,7 @@ export interface paths {
             cookie?: never;
         };
         /** List Media Assets */
-        get: operations["list_media_assets_api_media__media_type___media_id__assets_get"];
+        get: operations["list_media_assets_api_v1_media__media_type___media_id__assets_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2769,10 +2333,10 @@ export interface paths {
             cookie?: never;
         };
         /** List Edit Proposals */
-        get: operations["list_edit_proposals_api_media__media_id__edit_proposals_get"];
+        get: operations["list_edit_proposals_api_v1_media__media_id__edit_proposals_get"];
         put?: never;
         /** Create Edit Proposal */
-        post: operations["create_edit_proposal_api_media__media_id__edit_proposals_post"];
+        post: operations["create_edit_proposal_api_v1_media__media_id__edit_proposals_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2789,7 +2353,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Approve Edit Proposal */
-        post: operations["approve_edit_proposal_api_media__media_id__edit_proposals__proposal_id__approve_post"];
+        post: operations["approve_edit_proposal_api_v1_media__media_id__edit_proposals__proposal_id__approve_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2806,7 +2370,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Reject Edit Proposal */
-        post: operations["reject_edit_proposal_api_media__media_id__edit_proposals__proposal_id__reject_post"];
+        post: operations["reject_edit_proposal_api_v1_media__media_id__edit_proposals__proposal_id__reject_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2823,7 +2387,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Undo Approve Edit Proposal */
-        post: operations["undo_approve_edit_proposal_api_media__media_id__edit_proposals__proposal_id__undo_post"];
+        post: operations["undo_approve_edit_proposal_api_v1_media__media_id__edit_proposals__proposal_id__undo_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2840,9 +2404,9 @@ export interface paths {
         get?: never;
         put?: never;
         /** Vote On Proposal */
-        post: operations["vote_on_proposal_api_media__media_id__edit_proposals__proposal_id__vote_post"];
+        post: operations["vote_on_proposal_api_v1_media__media_id__edit_proposals__proposal_id__vote_post"];
         /** Remove Proposal Vote */
-        delete: operations["remove_proposal_vote_api_media__media_id__edit_proposals__proposal_id__vote_delete"];
+        delete: operations["remove_proposal_vote_api_v1_media__media_id__edit_proposals__proposal_id__vote_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2856,7 +2420,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get Similar Media */
-        get: operations["get_similar_media_api_media__media_type___media_id__similar_get"];
+        get: operations["get_similar_media_api_v1_media__media_type___media_id__similar_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2873,7 +2437,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get Recommendations */
-        get: operations["get_recommendations_api_media__media_type___media_id__recommendations_get"];
+        get: operations["get_recommendations_api_v1_media__media_type___media_id__recommendations_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2890,7 +2454,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get User Interactions */
-        get: operations["get_user_interactions_api_media__media_type___media_id__interactions_get"];
+        get: operations["get_user_interactions_api_v1_media__media_type___media_id__interactions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2908,10 +2472,10 @@ export interface paths {
         };
         get?: never;
         /** Set Interaction */
-        put: operations["set_interaction_api_media__media_type___media_id__interactions__interaction_type__put"];
+        put: operations["set_interaction_api_v1_media__media_type___media_id__interactions__interaction_type__put"];
         post?: never;
         /** Remove Interaction */
-        delete: operations["remove_interaction_api_media__media_type___media_id__interactions__interaction_type__delete"];
+        delete: operations["remove_interaction_api_v1_media__media_type___media_id__interactions__interaction_type__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2930,12 +2494,12 @@ export interface paths {
          * Claim Game
          * @description Record that the current user owns this game.
          */
-        post: operations["claim_game_api_media__media_id__claim_post"];
+        post: operations["claim_game_api_v1_media__media_id__claim_post"];
         /**
          * Unclaim Game
          * @description Remove ownership of a game.
          */
-        delete: operations["unclaim_game_api_media__media_id__claim_delete"];
+        delete: operations["unclaim_game_api_v1_media__media_id__claim_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2949,7 +2513,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get Episode Interactions */
-        get: operations["get_episode_interactions_api_media__media_type___media_id__episode_interactions_get"];
+        get: operations["get_episode_interactions_api_v1_media__media_type___media_id__episode_interactions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2967,10 +2531,10 @@ export interface paths {
         };
         get?: never;
         /** Mark Episode Watched */
-        put: operations["mark_episode_watched_api_media__media_type___media_id__episodes__episode_id__watched_put"];
+        put: operations["mark_episode_watched_api_v1_media__media_type___media_id__episodes__episode_id__watched_put"];
         post?: never;
         /** Unmark Episode Watched */
-        delete: operations["unmark_episode_watched_api_media__media_type___media_id__episodes__episode_id__watched_delete"];
+        delete: operations["unmark_episode_watched_api_v1_media__media_type___media_id__episodes__episode_id__watched_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2985,10 +2549,10 @@ export interface paths {
         };
         get?: never;
         /** Mark Season Watched */
-        put: operations["mark_season_watched_api_media__media_type___media_id__seasons__season_number__watched_put"];
+        put: operations["mark_season_watched_api_v1_media__media_type___media_id__seasons__season_number__watched_put"];
         post?: never;
         /** Unmark Season Watched */
-        delete: operations["unmark_season_watched_api_media__media_type___media_id__seasons__season_number__watched_delete"];
+        delete: operations["unmark_season_watched_api_v1_media__media_type___media_id__seasons__season_number__watched_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3003,10 +2567,10 @@ export interface paths {
         };
         get?: never;
         /** Mark Show Watched */
-        put: operations["mark_show_watched_api_media__media_type___media_id__show_watched_put"];
+        put: operations["mark_show_watched_api_v1_media__media_type___media_id__show_watched_put"];
         post?: never;
         /** Unmark Show Watched */
-        delete: operations["unmark_show_watched_api_media__media_type___media_id__show_watched_delete"];
+        delete: operations["unmark_show_watched_api_v1_media__media_type___media_id__show_watched_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3025,7 +2589,7 @@ export interface paths {
          *
          *     Ordered by last_seen_at descending (most recently seen first).
          */
-        get: operations["get_installed_games_api_library_installed_get"];
+        get: operations["get_installed_games_api_v1_library_installed_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3045,7 +2609,7 @@ export interface paths {
          * Get Plex Library Tab
          * @description Get the authenticated user's Plex library with pagination and sorting.
          */
-        get: operations["get_plex_library_tab_api_library_plex_get"];
+        get: operations["get_plex_library_tab_api_v1_library_plex_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3065,7 +2629,7 @@ export interface paths {
          * Get Plex Thumb
          * @description Redirect to the Plex server's authenticated thumbnail for a media item.
          */
-        get: operations["get_plex_thumb_api_library_plex_thumb__media_item_id__get"];
+        get: operations["get_plex_thumb_api_v1_library_plex_thumb__media_item_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3085,88 +2649,8 @@ export interface paths {
          * Get Plex Status
          * @description Get Plex library sync status (item count, last scanned).
          */
-        get: operations["get_plex_status_api_library_plex_status_get"];
+        get: operations["get_plex_status_api_v1_library_plex_status_get"];
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/library/spotify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Spotify Library Tab
-         * @description Get the authenticated user's Spotify library (saved albums).
-         */
-        get: operations["get_spotify_library_tab_api_library_spotify_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/library/spotify/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Spotify Status
-         * @description Get Spotify library sync status (track count, last scanned).
-         */
-        get: operations["get_spotify_status_api_library_spotify_status_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/library/spotify/tracks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Spotify Liked Tracks
-         * @description Return the user's Spotify liked/saved tracks with pagination.
-         */
-        get: operations["get_spotify_liked_tracks_api_library_spotify_tracks_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/library/spotify/tracks/{track_id}/liked": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Save Spotify Track To Liked
-         * @description Save a Spotify track to the user's liked songs.
-         */
-        put: operations["save_spotify_track_to_liked_api_library_spotify_tracks__track_id__liked_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3185,7 +2669,7 @@ export interface paths {
          * Get Steam Library Tab
          * @description Get the authenticated user's Steam library with pagination.
          */
-        get: operations["get_steam_library_tab_api_library_steam_get"];
+        get: operations["get_steam_library_tab_api_v1_library_steam_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3205,7 +2689,7 @@ export interface paths {
          * Get Steam Status
          * @description Get Steam library sync status (game count, last scanned).
          */
-        get: operations["get_steam_status_api_library_steam_status_get"];
+        get: operations["get_steam_status_api_v1_library_steam_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3225,7 +2709,7 @@ export interface paths {
          * Get Steam Unmatched Games
          * @description Get unmatched Steam game (not yet linked to a media item).
          */
-        get: operations["get_steam_unmatched_games_api_library_steam_unmatched_get"];
+        get: operations["get_steam_unmatched_games_api_v1_library_steam_unmatched_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3245,7 +2729,7 @@ export interface paths {
          * Get Steam Wishlist Tab
          * @description Get the authenticated user's Steam wishlist with pagination.
          */
-        get: operations["get_steam_wishlist_tab_api_library_steam_wishlist_get"];
+        get: operations["get_steam_wishlist_tab_api_v1_library_steam_wishlist_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3265,7 +2749,7 @@ export interface paths {
          * Get Youtube Library
          * @description Get raw YouTube liked music videos for the current user (matched + unmatched).
          */
-        get: operations["get_youtube_library_api_library_youtube_get"];
+        get: operations["get_youtube_library_api_v1_library_youtube_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3287,7 +2771,7 @@ export interface paths {
          *
          *     Supported tabs: watchlist, like, watched, played, listened.
          */
-        get: operations["get_library_tab_api_library__tab__get"];
+        get: operations["get_library_tab_api_v1_library__tab__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3307,7 +2791,7 @@ export interface paths {
          * Discover Public Lists
          * @description List all public lists.
          */
-        get: operations["discover_public_lists_api_list_get"];
+        get: operations["discover_public_lists_api_v1_list_get"];
         put?: never;
         /**
          * Create List
@@ -3315,7 +2799,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        post: operations["create_list_api_list_post"];
+        post: operations["create_list_api_v1_list_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3333,7 +2817,7 @@ export interface paths {
          * My Lists
          * @description List all lists owned by the authenticated user.
          */
-        get: operations["my_lists_api_list_mine_get"];
+        get: operations["my_lists_api_v1_list_mine_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3353,7 +2837,7 @@ export interface paths {
          * Get List
          * @description Get a single list with its items and collaborators.
          */
-        get: operations["get_list_api_list__list_id__get"];
+        get: operations["get_list_api_v1_list__list_id__get"];
         put?: never;
         post?: never;
         /**
@@ -3362,7 +2846,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        delete: operations["delete_list_api_list__list_id__delete"];
+        delete: operations["delete_list_api_v1_list__list_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -3371,7 +2855,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        patch: operations["update_list_api_list__list_id__patch"];
+        patch: operations["update_list_api_v1_list__list_id__patch"];
         trace?: never;
     };
     "/api/v1/list/{list_id}/item": {
@@ -3388,14 +2872,14 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        put: operations["reorder_list_api_list__list_id__item_put"];
+        put: operations["reorder_list_api_v1_list__list_id__item_put"];
         /**
          * Add To List
          * @description Add a media item to a list.
          *
          *     Rate-limited per IP address.
          */
-        post: operations["add_to_list_api_list__list_id__item_post"];
+        post: operations["add_to_list_api_v1_list__list_id__item_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3418,7 +2902,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        delete: operations["remove_from_list_api_list__list_id__item__media_item_id__delete"];
+        delete: operations["remove_from_list_api_v1_list__list_id__item__media_item_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3435,7 +2919,7 @@ export interface paths {
          * List Collaborators
          * @description List all collaborators for a list.
          */
-        get: operations["list_collaborators_api_list__list_id__collaborators_get"];
+        get: operations["list_collaborators_api_v1_list__list_id__collaborators_get"];
         put?: never;
         /**
          * Invite Collaborator
@@ -3443,7 +2927,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        post: operations["invite_collaborator_api_list__list_id__collaborators_post"];
+        post: operations["invite_collaborator_api_v1_list__list_id__collaborators_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3466,7 +2950,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        delete: operations["remove_collaborator_api_list__list_id__collaborators__user_id__delete"];
+        delete: operations["remove_collaborator_api_v1_list__list_id__collaborators__user_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3487,7 +2971,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        post: operations["accept_collaboration_api_list__list_id__collaborators_accept_post"];
+        post: operations["accept_collaboration_api_v1_list__list_id__collaborators_accept_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3509,7 +2993,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        post: operations["decline_collaboration_api_list__list_id__collaborators_decline_post"];
+        post: operations["decline_collaboration_api_v1_list__list_id__collaborators_decline_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3531,14 +3015,14 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        post: operations["like_list_api_list__list_id__like_post"];
+        post: operations["like_list_api_v1_list__list_id__like_post"];
         /**
          * Unlike List
          * @description Unlike a list.
          *
          *     Rate-limited per IP address.
          */
-        delete: operations["unlike_list_api_list__list_id__like_delete"];
+        delete: operations["unlike_list_api_v1_list__list_id__like_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3557,7 +3041,7 @@ export interface paths {
          *
          *     Only public lists can be exported.
          */
-        get: operations["export_list_api_list__list_id__export_get"];
+        get: operations["export_list_api_v1_list__list_id__export_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3577,7 +3061,7 @@ export interface paths {
          * List Rank History
          * @description Get the rank change history for a list.
          */
-        get: operations["list_rank_history_api_list__list_id__history_get"];
+        get: operations["list_rank_history_api_v1_list__list_id__history_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3597,7 +3081,7 @@ export interface paths {
          * List People
          * @description List people with cursor-based pagination.
          */
-        get: operations["list_people_api_person_get"];
+        get: operations["list_people_api_v1_person_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3617,7 +3101,7 @@ export interface paths {
          * Search People
          * @description Search people by name.
          */
-        get: operations["search_people_api_person_search_get"];
+        get: operations["search_people_api_v1_person_search_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3637,7 +3121,7 @@ export interface paths {
          * Get Person
          * @description Get detailed information about a person.
          */
-        get: operations["get_person_api_person__person_id__get"];
+        get: operations["get_person_api_v1_person__person_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3661,14 +3145,14 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        post: operations["follow_person_api_person__person_id__follow_post"];
+        post: operations["follow_person_api_v1_person__person_id__follow_post"];
         /**
          * Unfollow Person
          * @description Unfollow a person.
          *
          *     Rate-limited per IP address.
          */
-        delete: operations["unfollow_person_api_person__person_id__follow_delete"];
+        delete: operations["unfollow_person_api_v1_person__person_id__follow_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3688,7 +3172,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        put: operations["rate_person_api_person__person_id__rating_put"];
+        put: operations["rate_person_api_v1_person__person_id__rating_put"];
         post?: never;
         /**
          * Unrate Person
@@ -3696,27 +3180,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        delete: operations["unrate_person_api_person__person_id__rating_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/person/{person_id}/related": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Related Artists
-         * @description Return related artists for a person with a Spotify artist ID.
-         */
-        get: operations["get_related_artists_api_person__person_id__related_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
+        delete: operations["unrate_person_api_v1_person__person_id__rating_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3733,13 +3197,13 @@ export interface paths {
          * List Proposals
          * @description List proposals with optional filters.
          */
-        get: operations["list_proposals_api_proposals_get"];
+        get: operations["list_proposals_api_v1_proposals_get"];
         put?: never;
         /**
          * Create Proposal
          * @description Create a new proposal. Requires trusted user (admin or >=500 XP).
          */
-        post: operations["create_proposal_api_proposals_post"];
+        post: operations["create_proposal_api_v1_proposals_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3757,7 +3221,7 @@ export interface paths {
          * Get Proposal
          * @description Get a single proposal by ID.
          */
-        get: operations["get_proposal_api_proposals__proposal_id__get"];
+        get: operations["get_proposal_api_v1_proposals__proposal_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3779,7 +3243,7 @@ export interface paths {
          * Approve Proposal
          * @description Approve a pending proposal. Admin only.
          */
-        post: operations["approve_proposal_api_proposals__proposal_id__approve_post"];
+        post: operations["approve_proposal_api_v1_proposals__proposal_id__approve_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3799,7 +3263,7 @@ export interface paths {
          * Reject Proposal
          * @description Reject a pending proposal. Admin only.
          */
-        post: operations["reject_proposal_api_proposals__proposal_id__reject_post"];
+        post: operations["reject_proposal_api_v1_proposals__proposal_id__reject_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3819,7 +3283,7 @@ export interface paths {
          * Undo Proposal
          * @description Undo an approved proposal. Admin only.
          */
-        post: operations["undo_proposal_api_proposals__proposal_id__undo_post"];
+        post: operations["undo_proposal_api_v1_proposals__proposal_id__undo_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3839,12 +3303,12 @@ export interface paths {
          * Vote On Proposal
          * @description Cast or toggle a vote on a pending proposal. Requires trusted user.
          */
-        post: operations["vote_on_proposal_api_proposals__proposal_id__vote_post"];
+        post: operations["vote_on_proposal_api_v1_proposals__proposal_id__vote_post"];
         /**
          * Remove Proposal Vote
          * @description Remove a user's vote from a proposal.
          */
-        delete: operations["remove_proposal_vote_api_proposals__proposal_id__vote_delete"];
+        delete: operations["remove_proposal_vote_api_v1_proposals__proposal_id__vote_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3858,7 +3322,7 @@ export interface paths {
             cookie?: never;
         };
         /** Vapid Public Key Endpoint */
-        get: operations["vapid_public_key_endpoint_api_push_vapid_public_key_get"];
+        get: operations["vapid_public_key_endpoint_api_v1_push_vapid_public_key_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3877,9 +3341,9 @@ export interface paths {
         get?: never;
         put?: never;
         /** Subscribe */
-        post: operations["subscribe_api_push_subscribe_post"];
+        post: operations["subscribe_api_v1_push_subscribe_post"];
         /** Unsubscribe */
-        delete: operations["unsubscribe_api_push_subscribe_delete"];
+        delete: operations["unsubscribe_api_v1_push_subscribe_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3896,7 +3360,7 @@ export interface paths {
          * Get Metrics
          * @description Return internal application metrics.
          */
-        get: operations["get_metrics_api_metric_get"];
+        get: operations["get_metrics_api_v1_metric_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3916,7 +3380,7 @@ export interface paths {
          * Get Today Mood Checkin
          * @description Get today's mood check-in status.
          */
-        get: operations["get_today_mood_checkin_api_mood_checkins_today_get"];
+        get: operations["get_today_mood_checkin_api_v1_mood_checkins_today_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3938,7 +3402,7 @@ export interface paths {
          * Submit Mood Checkin
          * @description Submit today's mood check-in.
          */
-        post: operations["submit_mood_checkin_api_mood_checkins_post"];
+        post: operations["submit_mood_checkin_api_v1_mood_checkins_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3958,7 +3422,7 @@ export interface paths {
          * Dismiss Mood Checkin
          * @description Dismiss today's mood check-in prompt.
          */
-        post: operations["dismiss_mood_checkin_api_mood_checkins_dismiss_post"];
+        post: operations["dismiss_mood_checkin_api_v1_mood_checkins_dismiss_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3976,7 +3440,7 @@ export interface paths {
          * List Notifications
          * @description List the authenticated user's notifications.
          */
-        get: operations["list_notifications_api_notifications_get"];
+        get: operations["list_notifications_api_v1_notifications_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3996,7 +3460,7 @@ export interface paths {
          * Unread Count
          * @description Get the unread notification count.
          */
-        get: operations["unread_count_api_notifications_unread_count_get"];
+        get: operations["unread_count_api_v1_notifications_unread_count_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4018,7 +3482,7 @@ export interface paths {
          * Mark Notification Read
          * @description Mark a notification as read.
          */
-        post: operations["mark_notification_read_api_notifications__notification_id__read_post"];
+        post: operations["mark_notification_read_api_v1_notifications__notification_id__read_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4038,7 +3502,7 @@ export interface paths {
          * Mark All Read
          * @description Mark all notifications as read.
          */
-        post: operations["mark_all_read_api_notifications_read_all_post"];
+        post: operations["mark_all_read_api_v1_notifications_read_all_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4056,7 +3520,7 @@ export interface paths {
          * Notification Stream
          * @description SSE endpoint streaming new notifications via Redis pub/sub.
          */
-        get: operations["notification_stream_api_notifications_stream_get"];
+        get: operations["notification_stream_api_v1_notifications_stream_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4073,16 +3537,16 @@ export interface paths {
             cookie?: never;
         };
         /** Get My Review */
-        get: operations["get_my_review_api_media__media_type___media_id__review_get"];
+        get: operations["get_my_review_api_v1_media__media_type___media_id__review_get"];
         /** Upsert Review */
-        put: operations["upsert_review_api_media__media_type___media_id__review_put"];
+        put: operations["upsert_review_api_v1_media__media_type___media_id__review_put"];
         post?: never;
         /** Delete Review */
-        delete: operations["delete_review_api_media__media_type___media_id__review_delete"];
+        delete: operations["delete_review_api_v1_media__media_type___media_id__review_delete"];
         options?: never;
         head?: never;
         /** Update Review */
-        patch: operations["update_review_api_media__media_type___media_id__review_patch"];
+        patch: operations["update_review_api_v1_media__media_type___media_id__review_patch"];
         trace?: never;
     };
     "/api/v1/media/{media_type}/{media_id}/reviews": {
@@ -4093,7 +3557,7 @@ export interface paths {
             cookie?: never;
         };
         /** List Reviews */
-        get: operations["list_reviews_api_media__media_type___media_id__reviews_get"];
+        get: operations["list_reviews_api_v1_media__media_type___media_id__reviews_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4110,12 +3574,12 @@ export interface paths {
             cookie?: never;
         };
         /** Get My Rating */
-        get: operations["get_my_rating_api_media__media_type___media_id__rating_get"];
+        get: operations["get_my_rating_api_v1_media__media_type___media_id__rating_get"];
         /** Upsert Rating */
-        put: operations["upsert_rating_api_media__media_type___media_id__rating_put"];
+        put: operations["upsert_rating_api_v1_media__media_type___media_id__rating_put"];
         post?: never;
         /** Delete Rating */
-        delete: operations["delete_rating_api_media__media_type___media_id__rating_delete"];
+        delete: operations["delete_rating_api_v1_media__media_type___media_id__rating_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4129,29 +3593,26 @@ export interface paths {
             cookie?: never;
         };
         /** Get Vote Counts */
-        get: operations["get_vote_counts_api_reviews__review_user_id___media_item_id__vote_get"];
+        get: operations["get_vote_counts_api_v1_reviews__review_user_id___media_item_id__vote_get"];
         put?: never;
         /** Vote Review */
-        post: operations["vote_review_api_reviews__review_user_id___media_item_id__vote_post"];
+        post: operations["vote_review_api_v1_reviews__review_user_id___media_item_id__vote_post"];
         /** Remove Vote */
-        delete: operations["remove_vote_api_reviews__review_user_id___media_item_id__vote_delete"];
+        delete: operations["remove_vote_api_v1_reviews__review_user_id___media_item_id__vote_delete"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/library/spotify/playlists": {
+    "/api/v1/search/suggestions": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Playlists
-         * @description List current user's Spotify playlists, annotated with subscription status.
-         */
-        get: operations["list_playlists_api_library_spotify_playlists_get"];
+        /** Suggestions */
+        get: operations["suggestions_api_v1_search_suggestions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4160,18 +3621,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/library/spotify/playlists/subscriptions": {
+    "/api/v1/search": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Subscriptions
-         * @description List all subscribed playlists for the current user.
-         */
-        get: operations["list_subscriptions_api_library_spotify_playlists_subscriptions_get"];
+        /** Search */
+        get: operations["search_api_v1_search_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4180,40 +3638,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/library/spotify/playlists/subscriptions/{subscription_id}": {
+    "/api/v1/search/grouped": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        /**
-         * Update Subscription
-         * @description Update subscription settings (auto_sync toggle).
-         *
-         *     Rate-limited per IP address.
-         */
-        put: operations["update_subscription_api_library_spotify_playlists_subscriptions__subscription_id__put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/library/spotify/playlists/{playlist_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Playlist Detail
-         * @description Get playlist metadata + tracks, annotated with subscription status.
-         */
-        get: operations["get_playlist_detail_api_library_spotify_playlists__playlist_id__get"];
+        /** Grouped */
+        get: operations["grouped_api_v1_search_grouped_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4222,51 +3655,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/library/spotify/playlists/{playlist_id}/subscribe": {
+    "/api/v1/search/companies": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Companies */
+        get: operations["companies_api_v1_search_companies_get"];
         put?: never;
-        /**
-         * Subscribe Playlist
-         * @description Subscribe to a playlist and trigger initial sync.
-         *
-         *     Rate-limited per IP address.
-         */
-        post: operations["subscribe_playlist_api_library_spotify_playlists__playlist_id__subscribe_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/library/spotify/playlists/{playlist_id}/unsubscribe": {
+    "/api/v1/search/poll": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Poll */
+        get: operations["poll_api_v1_search_poll_get"];
         put?: never;
-        /**
-         * Unsubscribe Playlist
-         * @description Remove a playlist subscription.
-         *
-         *     Rate-limited per IP address.
-         */
-        post: operations["unsubscribe_playlist_api_library_spotify_playlists__playlist_id__unsubscribe_post"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/library/spotify/playlists/{playlist_id}/sync": {
+    "/api/v1/search/external": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** External */
+        get: operations["external_api_v1_search_external_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search/providers": {
         parameters: {
             query?: never;
             header?: never;
@@ -4275,13 +3715,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Sync Playlist
-         * @description Manually trigger a resync of a subscribed playlist.
-         *
-         *     Rate-limited per IP address.
-         */
-        post: operations["sync_playlist_api_library_spotify_playlists__playlist_id__sync_post"];
+        /** Providers */
+        post: operations["providers_api_v1_search_providers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search/steamgrid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Steamgrid */
+        post: operations["steamgrid_api_v1_search_steamgrid_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4299,14 +3751,14 @@ export interface paths {
          * Get My Track Rating
          * @description Get the authenticated user's rating for a track.
          */
-        get: operations["get_my_track_rating_api_tracks__track_id__rating_get"];
+        get: operations["get_my_track_rating_api_v1_tracks__track_id__rating_get"];
         /**
          * Upsert Track Rating
          * @description Rate a track or update an existing rating.
          *
          *     Rate-limited per IP address.
          */
-        put: operations["upsert_track_rating_api_tracks__track_id__rating_put"];
+        put: operations["upsert_track_rating_api_v1_tracks__track_id__rating_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4329,7 +3781,7 @@ export interface paths {
          *
          *     Returns the URL to the uploaded file. Rate-limited per IP address.
          */
-        post: operations["upload_file_api_upload_post"];
+        post: operations["upload_file_api_v1_upload_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4347,7 +3799,7 @@ export interface paths {
          * Search Users
          * @description Search users by username.
          */
-        get: operations["search_users_api_users_search_get"];
+        get: operations["search_users_api_v1_users_search_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4367,7 +3819,7 @@ export interface paths {
          * Get Achievement Defs
          * @description List all available achievement definitions.
          */
-        get: operations["get_achievement_defs_api_users_achievements_get"];
+        get: operations["get_achievement_defs_api_v1_users_achievements_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4387,7 +3839,7 @@ export interface paths {
          * Get User Profile
          * @description Get a user's public profile.
          */
-        get: operations["get_user_profile_api_users__username__get"];
+        get: operations["get_user_profile_api_v1_users__username__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4407,7 +3859,7 @@ export interface paths {
          * Get User Reviews
          * @description Get a user's reviews.
          */
-        get: operations["get_user_reviews_api_users__username__reviews_get"];
+        get: operations["get_user_reviews_api_v1_users__username__reviews_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4427,18 +3879,18 @@ export interface paths {
          * Get My User Rating
          * @description Get the authenticated user's rating of another user.
          */
-        get: operations["get_my_user_rating_api_users__username__rating_get"];
+        get: operations["get_my_user_rating_api_v1_users__username__rating_get"];
         /**
          * Rate User
          * @description Rate another user on a 1–10 scale.
          */
-        put: operations["rate_user_api_users__username__rating_put"];
+        put: operations["rate_user_api_v1_users__username__rating_put"];
         post?: never;
         /**
          * Delete User Rating
          * @description Remove the authenticated user's rating of another user.
          */
-        delete: operations["delete_user_rating_api_users__username__rating_delete"];
+        delete: operations["delete_user_rating_api_v1_users__username__rating_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4455,7 +3907,7 @@ export interface paths {
          * Get User Reputation
          * @description Get a user's composite reputation score.
          */
-        get: operations["get_user_reputation_api_users__username__reputation_get"];
+        get: operations["get_user_reputation_api_v1_users__username__reputation_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4475,7 +3927,7 @@ export interface paths {
          * Get User Rating Distribution
          * @description Get a user's rating distribution by score and media type.
          */
-        get: operations["get_user_rating_distribution_api_users__username__rating_distribution_get"];
+        get: operations["get_user_rating_distribution_api_v1_users__username__rating_distribution_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4495,7 +3947,7 @@ export interface paths {
          * Get User Karma
          * @description Get a user's karma balance.
          */
-        get: operations["get_user_karma_api_users__username__karma_get"];
+        get: operations["get_user_karma_api_v1_users__username__karma_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4515,7 +3967,7 @@ export interface paths {
          * Get User Karma Transactions
          * @description Get a user's karma transaction history.
          */
-        get: operations["get_user_karma_transactions_api_users__username__karma_transactions_get"];
+        get: operations["get_user_karma_transactions_api_v1_users__username__karma_transactions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4535,7 +3987,7 @@ export interface paths {
          * Get User Badges
          * @description Get a user's earned badges.
          */
-        get: operations["get_user_badges_api_users__username__badges_get"];
+        get: operations["get_user_badges_api_v1_users__username__badges_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4557,7 +4009,7 @@ export interface paths {
          * Claim Badge
          * @description Claim XP reward for an earned badge.
          */
-        post: operations["claim_badge_api_users_me_badges__badge_key__claim_post"];
+        post: operations["claim_badge_api_v1_users_me_badges__badge_key__claim_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4575,7 +4027,7 @@ export interface paths {
          * Get User Stats
          * @description Get a user's aggregate stats.
          */
-        get: operations["get_user_stats_api_users__username__stats_get"];
+        get: operations["get_user_stats_api_v1_users__username__stats_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4595,7 +4047,7 @@ export interface paths {
          * Get User Top Rated
          * @description Get a user's top-rated media items.
          */
-        get: operations["get_user_top_rated_api_users__username__top_rated_get"];
+        get: operations["get_user_top_rated_api_v1_users__username__top_rated_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4615,7 +4067,7 @@ export interface paths {
          * Get User Hall Of Fame
          * @description Get a user's hall of fame (top media picks).
          */
-        get: operations["get_user_hall_of_fame_api_users__username__hall_of_fame_get"];
+        get: operations["get_user_hall_of_fame_api_v1_users__username__hall_of_fame_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4635,7 +4087,7 @@ export interface paths {
          * Get User Library Stats
          * @description Get a user's library statistics.
          */
-        get: operations["get_user_library_stats_api_users__username__library_stats_get"];
+        get: operations["get_user_library_stats_api_v1_users__username__library_stats_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4655,7 +4107,7 @@ export interface paths {
          * Get User Activity
          * @description Get a user's recent activity timeline.
          */
-        get: operations["get_user_activity_api_users__username__activity_get"];
+        get: operations["get_user_activity_api_v1_users__username__activity_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4675,7 +4127,7 @@ export interface paths {
          * Get User Mood Timeline
          * @description Get a user's recent mood check-in timeline.
          */
-        get: operations["get_user_mood_timeline_api_users__username__mood_timeline_get"];
+        get: operations["get_user_mood_timeline_api_v1_users__username__mood_timeline_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4698,7 +4150,7 @@ export interface paths {
          *     Returns daily counts for workout, movie, show, and music activity
          *     over the past N weeks.
          */
-        get: operations["get_my_activity_heatmap_api_users_me_activity_heatmap_get"];
+        get: operations["get_my_activity_heatmap_api_v1_users_me_activity_heatmap_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4718,7 +4170,7 @@ export interface paths {
          * Get Continue Watching
          * @description Get media items the user has recently interacted with and may want to continue.
          */
-        get: operations["get_continue_watching_api_users_me_continue_get"];
+        get: operations["get_continue_watching_api_v1_users_me_continue_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4735,7 +4187,7 @@ export interface paths {
             cookie?: never;
         };
         /** Get Daily Activity */
-        get: operations["get_daily_activity_api_users_me_daily_activity_get"];
+        get: operations["get_daily_activity_api_v1_users_me_daily_activity_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4755,7 +4207,7 @@ export interface paths {
          * Get Friends Activity
          * @description Get aggregated recent activity from all friends.
          */
-        get: operations["get_friends_activity_api_users_me_friends_activity_get"];
+        get: operations["get_friends_activity_api_v1_users_me_friends_activity_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4775,7 +4227,7 @@ export interface paths {
          * List Workouts
          * @description List the authenticated user's workouts with cursor pagination.
          */
-        get: operations["list_workouts_api_workout_get"];
+        get: operations["list_workouts_api_v1_workout_get"];
         put?: never;
         /**
          * Create Workout
@@ -4783,7 +4235,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        post: operations["create_workout_api_workout_post"];
+        post: operations["create_workout_api_v1_workout_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4801,7 +4253,7 @@ export interface paths {
          * Get Workout
          * @description Get a single workout by ID.
          */
-        get: operations["get_workout_api_workout__workout_id__get"];
+        get: operations["get_workout_api_v1_workout__workout_id__get"];
         put?: never;
         post?: never;
         /**
@@ -4810,7 +4262,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        delete: operations["delete_workout_api_workout__workout_id__delete"];
+        delete: operations["delete_workout_api_v1_workout__workout_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -4819,7 +4271,7 @@ export interface paths {
          *
          *     Rate-limited per IP address.
          */
-        patch: operations["update_workout_api_workout__workout_id__patch"];
+        patch: operations["update_workout_api_v1_workout__workout_id__patch"];
         trace?: never;
     };
     "/api/v1/workout/today": {
@@ -4833,7 +4285,7 @@ export interface paths {
          * Get Today Workout
          * @description Get the authenticated user's workout status for today.
          */
-        get: operations["get_today_workout_api_workout_today_get"];
+        get: operations["get_today_workout_api_v1_workout_today_get"];
         put?: never;
         /**
          * Check In Today
@@ -4841,14 +4293,14 @@ export interface paths {
          *
          *     Creates or updates today's check-in. Rate-limited per IP address.
          */
-        post: operations["check_in_today_api_workout_today_post"];
+        post: operations["check_in_today_api_v1_workout_today_post"];
         /**
          * Undo Check In
          * @description Undo today's check-in.
          *
          *     Rate-limited per IP address.
          */
-        delete: operations["undo_check_in_api_workout_today_delete"];
+        delete: operations["undo_check_in_api_v1_workout_today_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4865,7 +4317,7 @@ export interface paths {
          * Get Heatmap
          * @description Get workout heatmap data for the authenticated user.
          */
-        get: operations["get_heatmap_api_workout_heatmap_get"];
+        get: operations["get_heatmap_api_v1_workout_heatmap_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4885,7 +4337,7 @@ export interface paths {
          * List Exercises
          * @description List all available exercises.
          */
-        get: operations["list_exercises_api_exercises_get"];
+        get: operations["list_exercises_api_v1_exercises_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4905,7 +4357,7 @@ export interface paths {
          * List Categories
          * @description List all exercise categories.
          */
-        get: operations["list_categories_api_exercises_categories_get"];
+        get: operations["list_categories_api_v1_exercises_categories_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4922,7 +4374,7 @@ export interface paths {
             cookie?: never;
         };
         /** Health */
-        get: operations["health_api_health_get"];
+        get: operations["health_api_v1_health_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5081,16 +4533,10 @@ export interface components {
             disc_count: number;
             /** Duration Ms */
             duration_ms?: number | null;
-            /** Spotify Id */
-            spotify_id?: string | null;
             /** Musicbrainz Id */
             musicbrainz_id?: string | null;
             /** Musicbrainz Release Group Id */
             musicbrainz_release_group_id?: string | null;
-            /** Spotify Url */
-            spotify_url?: string | null;
-            /** Spotify Popularity */
-            spotify_popularity?: number | null;
             /** Preview Url */
             preview_url?: string | null;
             /** Audio Features */
@@ -5229,6 +4675,18 @@ export interface components {
              */
             updated_at: string;
         };
+        /** BlueprintDownloadResponse */
+        BlueprintDownloadResponse: {
+            /** Downloads */
+            downloads: number;
+        };
+        /** BlueprintLikeResponse */
+        BlueprintLikeResponse: {
+            /** Is Liked */
+            is_liked: boolean;
+            /** Like Count */
+            like_count: number;
+        };
         /** BlueprintListOut */
         BlueprintListOut: {
             /** Id */
@@ -5286,13 +4744,23 @@ export interface components {
             /** Tags */
             tags?: string[] | null;
         };
-        /** Body_upload_cloud_file_api_saves__game_id__upload_post */
-        Body_upload_cloud_file_api_saves__game_id__upload_post: {
+        /** Body_steam_connect_initiate_api_v1_auth_oauth_steam_post */
+        Body_steam_connect_initiate_api_v1_auth_oauth_steam_post: {
+            /** Source */
+            source?: string | null;
+        };
+        /** Body_steam_initiate_api_v1_auth_steam_initiate_post */
+        Body_steam_initiate_api_v1_auth_steam_initiate_post: {
+            /** Source */
+            source?: string | null;
+        };
+        /** Body_upload_cloud_file_api_v1_saves__game_id__upload_post */
+        Body_upload_cloud_file_api_v1_saves__game_id__upload_post: {
             /** File */
             file: string;
         };
-        /** Body_upload_file_api_upload_post */
-        Body_upload_file_api_upload_post: {
+        /** Body_upload_file_api_v1_upload_post */
+        Body_upload_file_api_v1_upload_post: {
             /** File */
             file: string;
         };
@@ -5300,6 +4768,38 @@ export interface components {
         BulkMarkResponse: {
             /** Episodes Marked */
             episodes_marked: number;
+        };
+        /** CalendarEvent */
+        CalendarEvent: {
+            /** Id */
+            id: string;
+            /** Media Item Id */
+            media_item_id: string;
+            /** Media Type */
+            media_type: string;
+            /** Title */
+            title: string;
+            /** Poster Url */
+            poster_url?: string | null;
+            /** Slug */
+            slug: string;
+            /**
+             * Release Date
+             * Format: date
+             */
+            release_date: string;
+            /** Event Type */
+            event_type: string;
+            /** Reason */
+            reason: string;
+            episode_info?: components["schemas"]["otix__schemas__media__EpisodeOut"] | null;
+            /** Season Number */
+            season_number?: number | null;
+        };
+        /** CalendarResponse */
+        CalendarResponse: {
+            /** Events */
+            events: components["schemas"]["CalendarEvent"][];
         };
         /** CategoryOut */
         CategoryOut: {
@@ -5513,6 +5013,13 @@ export interface components {
              * @default false
              */
             is_adult: boolean;
+            /**
+             * New Season Released
+             * @default false
+             */
+            new_season_released: boolean;
+            /** New Season Release Date */
+            new_season_release_date?: string | null;
             user_interactions?: components["schemas"]["UserInteractionState"] | null;
             /** Steam Playtime Forever */
             steam_playtime_forever?: number | null;
@@ -5688,11 +5195,6 @@ export interface components {
              * @default 0
              */
             lastfm: number;
-            /**
-             * Spotify
-             * @default 0
-             */
-            spotify: number;
             /**
              * Embedding
              * @default 0
@@ -5992,6 +5494,30 @@ export interface components {
             time_to_beat?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Game Type
+             * @default main_game
+             */
+            game_type: string | null;
+            /** Parent Game Id */
+            parent_game_id?: string | null;
+            /** Parent Game Title */
+            parent_game_title?: string | null;
+            /**
+             * Is Dlc
+             * @default false
+             */
+            is_dlc: boolean;
+            /**
+             * Is Beta
+             * @default false
+             */
+            is_beta: boolean;
+            /**
+             * Is Demo
+             * @default false
+             */
+            is_demo: boolean;
         };
         /**
          * GameMatchBatchRequest
@@ -6022,6 +5548,12 @@ export interface components {
             poster_url?: string | null;
             /** Backdrop Url */
             backdrop_url?: string | null;
+            /** Textless Poster Url */
+            textless_poster_url?: string | null;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Icon Url */
+            icon_url?: string | null;
             /** Release Year */
             release_year?: number | null;
             /** Platforms */
@@ -6040,6 +5572,25 @@ export interface components {
             provider_id?: string | null;
             /** Provider */
             provider?: string | null;
+            /** Game Type */
+            game_type?: string | null;
+            /**
+             * Is Dlc
+             * @default false
+             */
+            is_dlc: boolean;
+            /**
+             * Is Beta
+             * @default false
+             */
+            is_beta: boolean;
+            /**
+             * Is Demo
+             * @default false
+             */
+            is_demo: boolean;
+            /** Parent Game Title */
+            parent_game_title?: string | null;
         };
         /**
          * GameMatchRequest
@@ -6072,6 +5623,33 @@ export interface components {
             media_type: string;
             /** Poster Url */
             poster_url?: string | null;
+            /**
+             * Is Dlc
+             * @default false
+             */
+            is_dlc: boolean;
+            /** Dlc Of */
+            dlc_of?: string | null;
+            /**
+             * Is Beta
+             * @default false
+             */
+            is_beta: boolean;
+            /** Beta Of */
+            beta_of?: string | null;
+            /**
+             * Is Demo
+             * @default false
+             */
+            is_demo: boolean;
+            /** Demo Of */
+            demo_of?: string | null;
+            /** Game Type */
+            game_type?: string | null;
+            /** Parent Game Id */
+            parent_game_id?: string | null;
+            /** Parent Game Title */
+            parent_game_title?: string | null;
         };
         /**
          * GameMatchResponse
@@ -6120,6 +5698,11 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+        };
+        /** GoogleAccessTokenResponse */
+        GoogleAccessTokenResponse: {
+            /** Access Token */
+            access_token: string;
         };
         /** GoogleCallbackRequest */
         GoogleCallbackRequest: {
@@ -6180,6 +5763,38 @@ export interface components {
             count: number;
             /** Volume Kg */
             volume_kg?: number | null;
+        };
+        /** HydrationStageBottleneck */
+        HydrationStageBottleneck: {
+            /** Stage */
+            stage: string;
+            /** Media Type */
+            media_type: string;
+            /** Avg Seconds */
+            avg_seconds: number;
+            /** N */
+            n: number;
+        };
+        /** HydrationSummaryResponse */
+        HydrationSummaryResponse: {
+            /** Runs */
+            runs: {
+                [key: string]: unknown;
+            }[];
+            /** Totals */
+            totals: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+            /** Stage Averages */
+            stage_averages: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+            /** Bottlenecks */
+            bottlenecks: components["schemas"]["HydrationStageBottleneck"][];
         };
         /** ImageOverrideItem */
         ImageOverrideItem: {
@@ -6275,14 +5890,6 @@ export interface components {
             } | null;
             /** Tmdb Rating Sync Direction */
             tmdb_rating_sync_direction?: string | null;
-            /** Spotify Username */
-            spotify_username?: string | null;
-            /** Spotify Avatar Url */
-            spotify_avatar_url?: string | null;
-            /** Spotify Stats */
-            spotify_stats?: {
-                [key: string]: unknown;
-            } | null;
             /** Google Email */
             google_email?: string | null;
             /** Google Name */
@@ -6448,27 +6055,6 @@ export interface components {
             /** Is Liked */
             is_liked: boolean;
         };
-        /** LocalGameMatch */
-        LocalGameMatch: {
-            /** Query Title */
-            query_title: string;
-            matched_media?: components["schemas"]["MediaItemSummary"] | null;
-            /**
-             * Confidence
-             * @default 0
-             */
-            confidence: number;
-        };
-        /** LocalGameMatchRequest */
-        LocalGameMatchRequest: {
-            /** Games */
-            games: components["schemas"]["MatchGameEntry"][];
-        };
-        /** LocalGameMatchResponse */
-        LocalGameMatchResponse: {
-            /** Matches */
-            matches: components["schemas"]["LocalGameMatch"][];
-        };
         /** LoginRequest */
         LoginRequest: {
             /** Identity */
@@ -6493,17 +6079,14 @@ export interface components {
             /** Challenge Token */
             challenge_token?: string | null;
         };
-        /**
-         * MatchGameEntry
-         * @description A single game from the desktop scanner, with optional context for matching.
-         */
-        MatchGameEntry: {
-            /** Title */
-            title: string;
-            /** Platform */
-            platform?: string | null;
-            /** Steam App Id */
-            steam_app_id?: number | null;
+        /** MatchProposeResponse */
+        MatchProposeResponse: {
+            /** Success */
+            success: boolean;
+            /** Status */
+            status: string;
+            /** Auto Approved */
+            auto_approved: boolean;
         };
         /**
          * MatchType
@@ -6528,14 +6111,6 @@ export interface components {
             tmdb_avatar_url?: string | null;
             /** Tmdb Rating Sync Direction */
             tmdb_rating_sync_direction?: string | null;
-            /** Spotify Id */
-            spotify_id?: string | null;
-            /** Spotify Username */
-            spotify_username?: string | null;
-            /** Spotify Email */
-            spotify_email?: string | null;
-            /** Spotify Avatar Url */
-            spotify_avatar_url?: string | null;
             /** Google Id */
             google_id?: string | null;
             /** Google Email */
@@ -6834,6 +6409,8 @@ export interface components {
             has_collection?: boolean | null;
             /** Has Budget */
             has_budget?: boolean | null;
+            /** Has Revenue */
+            has_revenue?: boolean | null;
             /** Has Show Status */
             has_show_status?: boolean | null;
             /** Has Episodes */
@@ -6951,6 +6528,13 @@ export interface components {
              * @default false
              */
             is_adult: boolean;
+            /**
+             * New Season Released
+             * @default false
+             */
+            new_season_released: boolean;
+            /** New Season Release Date */
+            new_season_release_date?: string | null;
             user_interactions?: components["schemas"]["UserInteractionState"] | null;
             /** Steam Playtime Forever */
             steam_playtime_forever?: number | null;
@@ -6997,6 +6581,11 @@ export interface components {
              * @default []
              */
             watch_providers: components["schemas"]["MediaWatchProviderOut"][];
+            /**
+             * Screenshots
+             * @default []
+             */
+            screenshots: components["schemas"]["MediaAssetOut"][];
             movie?: components["schemas"]["MovieDetail"] | null;
             show?: components["schemas"]["ShowDetail"] | null;
             game?: components["schemas"]["GameDetail"] | null;
@@ -7099,6 +6688,13 @@ export interface components {
              * @default false
              */
             is_adult: boolean;
+            /**
+             * New Season Released
+             * @default false
+             */
+            new_season_released: boolean;
+            /** New Season Release Date */
+            new_season_release_date?: string | null;
             user_interactions?: components["schemas"]["UserInteractionState"] | null;
             /** Steam Playtime Forever */
             steam_playtime_forever?: number | null;
@@ -7390,6 +6986,11 @@ export interface components {
             avg_rating?: number | null;
             /** User Rating */
             user_rating?: number | null;
+            /**
+             * Rating Count
+             * @default 0
+             */
+            rating_count: number;
             /**
              * Credits
              * @default []
@@ -8111,38 +7712,6 @@ export interface components {
             /** Path Pattern */
             path_pattern: string;
         };
-        /** SeedFromTitlesRequest */
-        SeedFromTitlesRequest: {
-            /** Games */
-            games: components["schemas"]["SeedGameEntry"][];
-        };
-        /** SeedFromTitlesResponse */
-        SeedFromTitlesResponse: {
-            /**
-             * Accepted
-             * @default true
-             */
-            accepted: boolean;
-            /**
-             * Total Titles
-             * @default 0
-             */
-            total_titles: number;
-            /** Task Id */
-            task_id?: string | null;
-        };
-        /**
-         * SeedGameEntry
-         * @description A single game from the desktop scanner, with optional context for IGDB seeding.
-         */
-        SeedGameEntry: {
-            /** Title */
-            title: string;
-            /** Platform */
-            platform?: string | null;
-            /** Steam App Id */
-            steam_app_id?: number | null;
-        };
         /** SendVerificationEmailResponse */
         SendVerificationEmailResponse: {
             /**
@@ -8211,44 +7780,6 @@ export interface components {
             progress_pct: number;
             /** Completed Seasons */
             completed_seasons: number[];
-        };
-        /** SpotifyCallbackRequest */
-        SpotifyCallbackRequest: {
-            /** Code */
-            code: string;
-            /** State */
-            state: string;
-        };
-        /** SpotifyCallbackResponse */
-        SpotifyCallbackResponse: {
-            /**
-             * Message
-             * @default Spotify account linked successfully
-             */
-            message: string;
-        };
-        /** SpotifyDisconnectResponse */
-        SpotifyDisconnectResponse: {
-            /**
-             * Message
-             * @default Spotify account unlinked successfully
-             */
-            message: string;
-        };
-        /** SpotifyInitiateResponse */
-        SpotifyInitiateResponse: {
-            /** Auth Url */
-            auth_url: string;
-            /** State */
-            state: string;
-        };
-        /**
-         * SpotifySyncResponse
-         * @description Response returned immediately when a sync task is accepted.
-         */
-        SpotifySyncResponse: {
-            /** Task Id */
-            task_id: string;
         };
         /** SteamCallbackRequest */
         SteamCallbackRequest: {
@@ -8671,8 +8202,6 @@ export interface components {
             duration_ms?: number | null;
             /** Preview Url */
             preview_url?: string | null;
-            /** Spotify Id */
-            spotify_id?: string | null;
             /** Musicbrainz Recording Id */
             musicbrainz_recording_id?: string | null;
             /** Audio Features */
@@ -8735,8 +8264,6 @@ export interface components {
             duration_ms?: number | null;
             /** Preview Url */
             preview_url?: string | null;
-            /** Spotify Id */
-            spotify_id?: string | null;
             /** Avg Rating */
             avg_rating?: number | null;
             /**
@@ -8759,65 +8286,6 @@ export interface components {
              * @default track
              */
             media_type: string;
-        };
-        /**
-         * TrendingTrailerItem
-         * @description A media item that has a trending YouTube trailer.
-         */
-        TrendingTrailerItem: {
-            /** Id */
-            id: string;
-            /** Media Type */
-            media_type: string;
-            /** Title */
-            title: string;
-            /** Slug */
-            slug: string;
-            /** Poster Url */
-            poster_url?: string | null;
-            /** Textless Poster Url */
-            textless_poster_url?: string | null;
-            /** Backdrop Url */
-            backdrop_url?: string | null;
-            /** Logo Url */
-            logo_url?: string | null;
-            /** Release Date */
-            release_date?: string | null;
-            /** Popularity */
-            popularity: number;
-            /** Avg Rating */
-            avg_rating?: number | null;
-            /**
-             * Rating Count
-             * @default 0
-             */
-            rating_count: number;
-            /** Overview */
-            overview?: string | null;
-            /**
-             * Trailer Youtube Id
-             * @default
-             */
-            trailer_youtube_id: string;
-            /**
-             * Trailer Url
-             * @default
-             */
-            trailer_url: string;
-        };
-        /** TrendingTrailerResponse */
-        TrendingTrailerResponse: {
-            /** Items */
-            items: components["schemas"]["TrendingTrailerItem"][];
-            /** Next Cursor */
-            next_cursor?: string | null;
-            /**
-             * Has More
-             * @default false
-             */
-            has_more: boolean;
-            /** Total */
-            total?: number | null;
         };
         /** TwoFactorDisableRequest */
         TwoFactorDisableRequest: {
@@ -9259,8 +8727,6 @@ export interface components {
             country?: string | null;
             /** Is Private */
             is_private?: boolean | null;
-            /** Is Bot */
-            is_bot?: boolean | null;
             /** Notification Preferences */
             notification_preferences?: {
                 [key: string]: boolean;
@@ -9527,6 +8993,11 @@ export interface components {
             /** Created At */
             created_at?: string | null;
         };
+        /** YoutubeSyncResponse */
+        YoutubeSyncResponse: {
+            /** Task Id */
+            task_id: string;
+        };
         /** ProposalOut */
         otix__api__media__match_proposal__ProposalOut: {
             /** Id */
@@ -9539,12 +9010,18 @@ export interface components {
             source_title: string;
             /** Developer */
             developer: string | null;
+            /** Release Year */
+            release_year?: number | null;
             /** Poster Url */
             poster_url: string | null;
             /** Otix Media Id */
             otix_media_id: string;
             /** Otix Title */
             otix_title: string;
+            /** Otix Poster Url */
+            otix_poster_url?: string | null;
+            /** Otix Release Year */
+            otix_release_year?: number | null;
             /** Otix Confidence */
             otix_confidence: number;
             /** Match Type */
@@ -9553,6 +9030,13 @@ export interface components {
             status: string;
             /** Proposed By */
             proposed_by: string;
+            /** Proposer Avatar */
+            proposer_avatar?: string | null;
+            /**
+             * Proposer Xp
+             * @default 0
+             */
+            proposer_xp: number;
             /** Reviewed By */
             reviewed_by: string | null;
             /** Created At */
@@ -9693,7 +9177,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    get_admin_stats_api_admin_stats_get: {
+    get_admin_stats_api_v1_admin_stats_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -9713,7 +9197,7 @@ export interface operations {
             };
         };
     };
-    get_admin_metrics_api_admin_metrics_get: {
+    get_admin_metrics_api_v1_admin_metrics_get: {
         parameters: {
             query: {
                 /** @description Metric name: 'stubs' or 'media_<type>' */
@@ -9747,7 +9231,7 @@ export interface operations {
             };
         };
     };
-    get_deleted_tmdb_ids_api_admin_deleted_tmdb_ids_get: {
+    get_deleted_tmdb_ids_api_v1_admin_deleted_tmdb_ids_get: {
         parameters: {
             query?: {
                 page?: number;
@@ -9781,7 +9265,7 @@ export interface operations {
             };
         };
     };
-    get_edit_proposals_api_admin_edit_proposals_get: {
+    get_edit_proposals_api_v1_admin_edit_proposals_get: {
         parameters: {
             query?: {
                 /** @description Filter by status: pending, approved, or rejected */
@@ -9815,7 +9299,38 @@ export interface operations {
             };
         };
     };
-    get_media_hydration_api_admin_hydration_get: {
+    get_hydration_summary_api_v1_admin_hydration_summary_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HydrationSummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_media_hydration_api_v1_admin_hydration_get: {
         parameters: {
             query?: {
                 /** @description Filter by media type: movie, show, game, music */
@@ -9855,7 +9370,7 @@ export interface operations {
             };
         };
     };
-    register_api_auth_register_post: {
+    register_api_v1_auth_register_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -9888,7 +9403,7 @@ export interface operations {
             };
         };
     };
-    login_api_auth_login_post: {
+    login_api_v1_auth_login_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -9921,7 +9436,7 @@ export interface operations {
             };
         };
     };
-    refresh_api_auth_refresh_post: {
+    refresh_api_v1_auth_refresh_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -9941,7 +9456,7 @@ export interface operations {
             };
         };
     };
-    logout_api_auth_logout_post: {
+    logout_api_v1_auth_logout_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -9959,7 +9474,7 @@ export interface operations {
             };
         };
     };
-    forgot_password_api_auth_forgot_password_post: {
+    forgot_password_api_v1_auth_forgot_password_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -9992,7 +9507,7 @@ export interface operations {
             };
         };
     };
-    reset_password_api_auth_reset_password_post: {
+    reset_password_api_v1_auth_reset_password_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10025,7 +9540,7 @@ export interface operations {
             };
         };
     };
-    send_verification_email_api_auth_verify_email_send_post: {
+    send_verification_email_api_v1_auth_verify_email_send_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10045,7 +9560,7 @@ export interface operations {
             };
         };
     };
-    verify_email_api_auth_verify_email_post: {
+    verify_email_api_v1_auth_verify_email_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10078,7 +9593,7 @@ export interface operations {
             };
         };
     };
-    list_sessions_api_auth_sessions_get: {
+    list_sessions_api_v1_auth_sessions_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10098,7 +9613,7 @@ export interface operations {
             };
         };
     };
-    revoke_other_sessions_api_auth_sessions_delete: {
+    revoke_other_sessions_api_v1_auth_sessions_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -10118,7 +9633,7 @@ export interface operations {
             };
         };
     };
-    revoke_session_api_auth_sessions__session_key__delete: {
+    revoke_session_api_v1_auth_sessions__session_key__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -10147,7 +9662,7 @@ export interface operations {
             };
         };
     };
-    two_factor_setup_api_auth_2fa_setup_post: {
+    two_factor_setup_api_v1_auth_2fa_setup_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10167,7 +9682,7 @@ export interface operations {
             };
         };
     };
-    two_factor_enable_api_auth_2fa_enable_post: {
+    two_factor_enable_api_v1_auth_2fa_enable_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10200,7 +9715,7 @@ export interface operations {
             };
         };
     };
-    two_factor_disable_api_auth_2fa_disable_post: {
+    two_factor_disable_api_v1_auth_2fa_disable_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10233,7 +9748,7 @@ export interface operations {
             };
         };
     };
-    two_factor_login_verify_api_auth_2fa_login_verify_post: {
+    two_factor_login_verify_api_v1_auth_2fa_login_verify_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10266,7 +9781,7 @@ export interface operations {
             };
         };
     };
-    me_api_auth_me_get: {
+    me_api_v1_auth_me_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10286,7 +9801,7 @@ export interface operations {
             };
         };
     };
-    update_me_api_auth_me_patch: {
+    update_me_api_v1_auth_me_patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -10319,7 +9834,7 @@ export interface operations {
             };
         };
     };
-    my_preferences_api_auth_me_preferences_get: {
+    my_preferences_api_v1_auth_me_preferences_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10339,7 +9854,7 @@ export interface operations {
             };
         };
     };
-    my_integrations_api_auth_me_integrations_get: {
+    my_integrations_api_v1_auth_me_integrations_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10359,7 +9874,7 @@ export interface operations {
             };
         };
     };
-    google_login_initiate_api_auth_google_initiate_post: {
+    google_login_initiate_api_v1_auth_google_initiate_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10379,7 +9894,7 @@ export interface operations {
             };
         };
     };
-    google_login_callback_api_auth_google_callback_post: {
+    google_login_callback_api_v1_auth_google_callback_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10412,62 +9927,7 @@ export interface operations {
             };
         };
     };
-    spotify_login_initiate_api_auth_spotify_initiate_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SpotifyInitiateResponse"];
-                };
-            };
-        };
-    };
-    spotify_login_callback_api_auth_spotify_callback_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TokenResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    plex_login_initiate_api_auth_plex_initiate_post: {
+    plex_login_initiate_api_v1_auth_plex_initiate_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10489,7 +9949,7 @@ export interface operations {
             };
         };
     };
-    plex_login_callback_api_auth_plex_callback_post: {
+    plex_login_callback_api_v1_auth_plex_callback_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10524,7 +9984,7 @@ export interface operations {
             };
         };
     };
-    tmdb_login_initiate_api_auth_tmdb_initiate_post: {
+    tmdb_login_initiate_api_v1_auth_tmdb_initiate_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10544,7 +10004,7 @@ export interface operations {
             };
         };
     };
-    tmdb_login_callback_api_auth_tmdb_callback_post: {
+    tmdb_login_callback_api_v1_auth_tmdb_callback_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10579,7 +10039,7 @@ export interface operations {
             };
         };
     };
-    steam_initiate_api_auth_steam_initiate_post: {
+    steam_initiate_api_v1_auth_steam_initiate_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10588,7 +10048,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": string | null;
+                "application/json": components["schemas"]["Body_steam_initiate_api_v1_auth_steam_initiate_post"];
             };
         };
         responses: {
@@ -10612,7 +10072,7 @@ export interface operations {
             };
         };
     };
-    steam_callback_api_auth_steam_callback_post: {
+    steam_callback_api_v1_auth_steam_callback_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10645,7 +10105,7 @@ export interface operations {
             };
         };
     };
-    list_integrations_api_auth_oauth_get: {
+    list_integrations_api_v1_auth_oauth_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10665,80 +10125,7 @@ export interface operations {
             };
         };
     };
-    spotify_connect_initiate_api_auth_oauth_spotify_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SpotifyInitiateResponse"];
-                };
-            };
-        };
-    };
-    spotify_connect_callback_api_auth_oauth_spotify_callback_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SpotifyCallbackRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SpotifyCallbackResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    spotify_disconnect_api_auth_oauth_spotify_disconnect_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SpotifyDisconnectResponse"];
-                };
-            };
-        };
-    };
-    steam_connect_initiate_api_auth_oauth_steam_post: {
+    steam_connect_initiate_api_v1_auth_oauth_steam_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10747,7 +10134,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": string | null;
+                "application/json": components["schemas"]["Body_steam_connect_initiate_api_v1_auth_oauth_steam_post"];
             };
         };
         responses: {
@@ -10771,7 +10158,7 @@ export interface operations {
             };
         };
     };
-    steam_connect_callback_api_auth_oauth_steam_callback_post: {
+    steam_connect_callback_api_v1_auth_oauth_steam_callback_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10804,7 +10191,7 @@ export interface operations {
             };
         };
     };
-    steam_disconnect_api_auth_oauth_steam_disconnect_delete: {
+    steam_disconnect_api_v1_auth_oauth_steam_disconnect_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -10824,7 +10211,7 @@ export interface operations {
             };
         };
     };
-    plex_connect_initiate_api_auth_oauth_plex_post: {
+    plex_connect_initiate_api_v1_auth_oauth_plex_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10844,7 +10231,7 @@ export interface operations {
             };
         };
     };
-    plex_connect_callback_api_auth_oauth_plex_callback_post: {
+    plex_connect_callback_api_v1_auth_oauth_plex_callback_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10877,7 +10264,7 @@ export interface operations {
             };
         };
     };
-    plex_disconnect_api_auth_oauth_plex_disconnect_delete: {
+    plex_disconnect_api_v1_auth_oauth_plex_disconnect_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -10897,7 +10284,7 @@ export interface operations {
             };
         };
     };
-    tmdb_connect_initiate_api_auth_oauth_tmdb_post: {
+    tmdb_connect_initiate_api_v1_auth_oauth_tmdb_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10917,7 +10304,7 @@ export interface operations {
             };
         };
     };
-    tmdb_connect_redirect_api_auth_oauth_tmdb_redirect_get: {
+    tmdb_connect_redirect_api_v1_auth_oauth_tmdb_redirect_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -10937,7 +10324,7 @@ export interface operations {
             };
         };
     };
-    tmdb_connect_callback_api_auth_oauth_tmdb_callback_post: {
+    tmdb_connect_callback_api_v1_auth_oauth_tmdb_callback_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -10970,7 +10357,7 @@ export interface operations {
             };
         };
     };
-    tmdb_disconnect_api_auth_oauth_tmdb_disconnect_delete: {
+    tmdb_disconnect_api_v1_auth_oauth_tmdb_disconnect_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -10990,7 +10377,7 @@ export interface operations {
             };
         };
     };
-    google_connect_initiate_api_auth_oauth_google_post: {
+    google_connect_initiate_api_v1_auth_oauth_google_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11010,7 +10397,7 @@ export interface operations {
             };
         };
     };
-    get_google_token_api_auth_oauth_google_token_get: {
+    get_google_token_api_v1_auth_oauth_google_token_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11025,14 +10412,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["GoogleAccessTokenResponse"];
                 };
             };
         };
     };
-    google_connect_callback_api_auth_oauth_google_callback_post: {
+    google_connect_callback_api_v1_auth_oauth_google_callback_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11065,7 +10450,7 @@ export interface operations {
             };
         };
     };
-    google_disconnect_api_auth_oauth_google_disconnect_delete: {
+    google_disconnect_api_v1_auth_oauth_google_disconnect_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -11085,7 +10470,7 @@ export interface operations {
             };
         };
     };
-    list_blueprints_api_blueprints_get: {
+    list_blueprints_api_v1_blueprints_get: {
         parameters: {
             query?: {
                 /** @description Search term for title/description */
@@ -11120,7 +10505,7 @@ export interface operations {
             };
         };
     };
-    create_blueprint_api_blueprints_post: {
+    create_blueprint_api_v1_blueprints_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11153,7 +10538,7 @@ export interface operations {
             };
         };
     };
-    get_blueprint_api_blueprints__blueprint_id__get: {
+    get_blueprint_api_v1_blueprints__blueprint_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11184,7 +10569,7 @@ export interface operations {
             };
         };
     };
-    delete_blueprint_api_blueprints__blueprint_id__delete: {
+    delete_blueprint_api_v1_blueprints__blueprint_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -11213,7 +10598,7 @@ export interface operations {
             };
         };
     };
-    update_blueprint_api_blueprints__blueprint_id__patch: {
+    update_blueprint_api_v1_blueprints__blueprint_id__patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -11248,7 +10633,7 @@ export interface operations {
             };
         };
     };
-    toggle_like_blueprint_api_blueprints__blueprint_id__like_post: {
+    toggle_like_blueprint_api_v1_blueprints__blueprint_id__like_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11265,9 +10650,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BlueprintLikeResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11281,7 +10664,7 @@ export interface operations {
             };
         };
     };
-    increment_download_api_blueprints__blueprint_id__download_post: {
+    increment_download_api_v1_blueprints__blueprint_id__download_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11298,9 +10681,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BlueprintDownloadResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11314,7 +10695,27 @@ export interface operations {
             };
         };
     };
-    plex_discover_servers_api_integrations_plex_servers_get: {
+    get_calendar_api_v1_calendar_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarResponse"];
+                };
+            };
+        };
+    };
+    plex_discover_servers_api_v1_integrations_plex_servers_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11334,7 +10735,7 @@ export interface operations {
             };
         };
     };
-    get_plex_libraries_api_integrations_plex_libraries_get: {
+    get_plex_libraries_api_v1_integrations_plex_libraries_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11354,7 +10755,7 @@ export interface operations {
             };
         };
     };
-    plex_sync_now_api_integrations_plex_sync_post: {
+    plex_sync_now_api_v1_integrations_plex_sync_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11387,7 +10788,7 @@ export interface operations {
             };
         };
     };
-    plex_sync_stream_api_integrations_plex_sync__task_id__stream_get: {
+    plex_sync_stream_api_v1_integrations_plex_sync__task_id__stream_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11418,7 +10819,7 @@ export interface operations {
             };
         };
     };
-    plex_watchlist_sync_api_integrations_plex_watchlist_sync_post: {
+    plex_watchlist_sync_api_v1_integrations_plex_watchlist_sync_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11440,7 +10841,7 @@ export interface operations {
             };
         };
     };
-    plex_webhook_api_integrations_plex_webhook_post: {
+    plex_webhook_api_v1_integrations_plex_webhook_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11462,7 +10863,7 @@ export interface operations {
             };
         };
     };
-    plex_sessions_api_integrations_plex_sessions_get: {
+    plex_sessions_api_v1_integrations_plex_sessions_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11482,7 +10883,7 @@ export interface operations {
             };
         };
     };
-    plex_connect_info_api_integrations_plex_connect_info__media_item_id__get: {
+    plex_connect_info_api_v1_integrations_plex_connect_info__media_item_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11515,7 +10916,7 @@ export interface operations {
             };
         };
     };
-    plex_album_tracks_api_integrations_plex_album_tracks__media_item_id__get: {
+    plex_album_tracks_api_v1_integrations_plex_album_tracks__media_item_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11546,7 +10947,7 @@ export interface operations {
             };
         };
     };
-    plex_stream_api_integrations_plex_stream__rating_key__get: {
+    plex_stream_api_v1_integrations_plex_stream__rating_key__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11577,7 +10978,7 @@ export interface operations {
             };
         };
     };
-    spotify_get_token_api_integrations_spotify_token_get: {
+    steam_owned_appids_api_v1_integrations_steam_owned_appids_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11599,109 +11000,7 @@ export interface operations {
             };
         };
     };
-    spotify_sync_library_api_integrations_spotify_sync_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SpotifySyncResponse"];
-                };
-            };
-        };
-    };
-    spotify_sync_stream_api_integrations_spotify_sync__task_id__stream_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    spotify_sync_recently_played_api_integrations_spotify_recently_played_sync_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SpotifySyncResponse"];
-                };
-            };
-        };
-    };
-    spotify_recently_played_sync_stream_api_integrations_spotify_recently_played_sync__task_id__stream_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    steam_owned_appids_api_integrations_steam_owned_appids_get: {
+    steam_scan_library_api_v1_integrations_steam_scan_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11723,7 +11022,7 @@ export interface operations {
             };
         };
     };
-    steam_scan_library_api_integrations_steam_scan_post: {
+    steam_scan_wishlist_api_v1_integrations_steam_wishlist_scan_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11745,29 +11044,7 @@ export interface operations {
             };
         };
     };
-    steam_scan_wishlist_api_integrations_steam_wishlist_scan_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    steam_resolve_unmatched_api_integrations_steam_resolve_unmatched_post: {
+    steam_resolve_unmatched_api_v1_integrations_steam_resolve_unmatched_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11787,7 +11064,7 @@ export interface operations {
             };
         };
     };
-    tmdb_rating_sync_api_integrations_tmdb_rating_sync_post: {
+    tmdb_rating_sync_api_v1_integrations_tmdb_rating_sync_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11820,7 +11097,7 @@ export interface operations {
             };
         };
     };
-    tmdb_watchlist_import_api_integrations_tmdb_watchlist_import_post: {
+    tmdb_watchlist_import_api_v1_integrations_tmdb_watchlist_import_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11840,7 +11117,7 @@ export interface operations {
             };
         };
     };
-    youtube_sync_watch_history_api_integrations_youtube_sync_post: {
+    youtube_sync_watch_history_api_v1_integrations_youtube_sync_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -11855,14 +11132,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["YoutubeSyncResponse"];
                 };
             };
         };
     };
-    youtube_sync_stream_api_integrations_youtube_sync__task_id__stream_get: {
+    youtube_sync_stream_api_v1_integrations_youtube_sync__task_id__stream_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11893,7 +11168,7 @@ export interface operations {
             };
         };
     };
-    list_cloud_files_api_saves__game_id__files_get: {
+    list_cloud_files_api_v1_saves__game_id__files_get: {
         parameters: {
             query?: {
                 profile_id?: string;
@@ -11928,7 +11203,7 @@ export interface operations {
             };
         };
     };
-    upload_cloud_file_api_saves__game_id__upload_post: {
+    upload_cloud_file_api_v1_saves__game_id__upload_post: {
         parameters: {
             query: {
                 filename: string;
@@ -11943,7 +11218,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_upload_cloud_file_api_saves__game_id__upload_post"];
+                "multipart/form-data": components["schemas"]["Body_upload_cloud_file_api_v1_saves__game_id__upload_post"];
             };
         };
         responses: {
@@ -11969,7 +11244,7 @@ export interface operations {
             };
         };
     };
-    download_cloud_file_api_saves__game_id__download__file_id__get: {
+    download_cloud_file_api_v1_saves__game_id__download__file_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12001,7 +11276,7 @@ export interface operations {
             };
         };
     };
-    delete_cloud_file_api_saves__game_id__delete__file_id__delete: {
+    delete_cloud_file_api_v1_saves__game_id__delete__file_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -12035,7 +11310,7 @@ export interface operations {
             };
         };
     };
-    get_save_locations_api_saves_locations__media_item_id__get: {
+    get_save_locations_api_v1_saves_locations__media_item_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12066,7 +11341,7 @@ export interface operations {
             };
         };
     };
-    suggest_save_location_api_saves_locations__media_item_id__suggest_post: {
+    suggest_save_location_api_v1_saves_locations__media_item_id__suggest_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -12103,7 +11378,7 @@ export interface operations {
             };
         };
     };
-    get_company_api_company__company_id__get: {
+    get_company_api_v1_company__company_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12134,7 +11409,7 @@ export interface operations {
             };
         };
     };
-    rate_company_api_company__company_id__rating_put: {
+    rate_company_api_v1_company__company_id__rating_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -12167,7 +11442,7 @@ export interface operations {
             };
         };
     };
-    unrate_company_api_company__company_id__rating_delete: {
+    unrate_company_api_v1_company__company_id__rating_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -12196,7 +11471,7 @@ export interface operations {
             };
         };
     };
-    follow_company_api_company__company_id__follow_post: {
+    follow_company_api_v1_company__company_id__follow_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -12225,7 +11500,7 @@ export interface operations {
             };
         };
     };
-    unfollow_company_api_company__company_id__follow_delete: {
+    unfollow_company_api_v1_company__company_id__follow_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -12254,7 +11529,7 @@ export interface operations {
             };
         };
     };
-    discover_hero_api_discover_hero_get: {
+    discover_hero_api_v1_discover_hero_get: {
         parameters: {
             query?: {
                 limit?: number;
@@ -12285,7 +11560,7 @@ export interface operations {
             };
         };
     };
-    discover_sections_api_discover_sections_get: {
+    discover_sections_api_v1_discover_sections_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12305,38 +11580,7 @@ export interface operations {
             };
         };
     };
-    trending_trailers_api_discover_trailers_trending_get: {
-        parameters: {
-            query?: {
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TrendingTrailerResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    discover_list_api_discover__media_type___list_type__get: {
+    discover_list_api_v1_discover__media_type___list_type__get: {
         parameters: {
             query?: {
                 /** @description Genre slug */
@@ -12378,7 +11622,7 @@ export interface operations {
             };
         };
     };
-    match_free_games_api_discover_free_games_match_post: {
+    match_free_games_api_v1_discover_free_games_match_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -12411,7 +11655,7 @@ export interface operations {
             };
         };
     };
-    send_friend_request_api_friends_requests__user_id__post: {
+    send_friend_request_api_v1_friends_requests__user_id__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -12444,7 +11688,7 @@ export interface operations {
             };
         };
     };
-    accept_friend_request_api_friends_requests__request_id__accept_post: {
+    accept_friend_request_api_v1_friends_requests__request_id__accept_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -12477,7 +11721,7 @@ export interface operations {
             };
         };
     };
-    reject_friend_request_api_friends_requests__request_id__reject_post: {
+    reject_friend_request_api_v1_friends_requests__request_id__reject_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -12510,7 +11754,7 @@ export interface operations {
             };
         };
     };
-    list_friends_api_friends_get: {
+    list_friends_api_v1_friends_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12530,7 +11774,7 @@ export interface operations {
             };
         };
     };
-    list_incoming_requests_api_friends_requests_incoming_get: {
+    list_incoming_requests_api_v1_friends_requests_incoming_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12550,7 +11794,7 @@ export interface operations {
             };
         };
     };
-    list_outgoing_requests_api_friends_requests_outgoing_get: {
+    list_outgoing_requests_api_v1_friends_requests_outgoing_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12570,7 +11814,7 @@ export interface operations {
             };
         };
     };
-    remove_friend_api_friends__user_id__delete: {
+    remove_friend_api_v1_friends__user_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -12603,7 +11847,7 @@ export interface operations {
             };
         };
     };
-    get_friendship_status_api_friends_status__user_id__get: {
+    get_friendship_status_api_v1_friends_status__user_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12634,7 +11878,7 @@ export interface operations {
             };
         };
     };
-    follow_user_api_users__username__follow_post: {
+    follow_user_api_v1_users__username__follow_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -12667,7 +11911,7 @@ export interface operations {
             };
         };
     };
-    unfollow_user_api_users__username__follow_delete: {
+    unfollow_user_api_v1_users__username__follow_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -12696,7 +11940,7 @@ export interface operations {
             };
         };
     };
-    get_pending_follow_requests_api_users__username__follow_requests_get: {
+    get_pending_follow_requests_api_v1_users__username__follow_requests_get: {
         parameters: {
             query?: {
                 offset?: number;
@@ -12730,7 +11974,7 @@ export interface operations {
             };
         };
     };
-    accept_follow_request_api_users__username__follow_requests__request_id__accept_post: {
+    accept_follow_request_api_v1_users__username__follow_requests__request_id__accept_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -12762,7 +12006,7 @@ export interface operations {
             };
         };
     };
-    decline_follow_request_api_users__username__follow_requests__request_id__decline_post: {
+    decline_follow_request_api_v1_users__username__follow_requests__request_id__decline_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -12794,7 +12038,7 @@ export interface operations {
             };
         };
     };
-    get_followers_api_users__username__followers_get: {
+    get_followers_api_v1_users__username__followers_get: {
         parameters: {
             query?: {
                 limit?: number;
@@ -12827,7 +12071,7 @@ export interface operations {
             };
         };
     };
-    get_following_api_users__username__following_get: {
+    get_following_api_v1_users__username__following_get: {
         parameters: {
             query?: {
                 limit?: number;
@@ -12860,7 +12104,7 @@ export interface operations {
             };
         };
     };
-    get_follow_counts_api_users__username__follow_counts_get: {
+    get_follow_counts_api_v1_users__username__follow_counts_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12891,7 +12135,7 @@ export interface operations {
             };
         };
     };
-    get_follow_status_api_users__username__follow_status_get: {
+    get_follow_status_api_v1_users__username__follow_status_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -12922,42 +12166,7 @@ export interface operations {
             };
         };
     };
-    search_suggestions_api_media_suggestions_get: {
-        parameters: {
-            query: {
-                /** @description Search query */
-                q: string;
-                limit?: number;
-                /** @description Filter by media type: movie, show, game, music */
-                media_type?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MediaItemSummary"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_media_api_media__get: {
+    list_media_api_v1_media__get: {
         parameters: {
             query?: {
                 /** @description movie, show, game, or music */
@@ -13014,7 +12223,7 @@ export interface operations {
             };
         };
     };
-    list_genres_api_media_genres_get: {
+    list_genres_api_v1_media_genres_get: {
         parameters: {
             query?: {
                 /** @description Filter genres to a specific media type */
@@ -13046,7 +12255,7 @@ export interface operations {
             };
         };
     };
-    get_company_by_slug_api_media_company_get: {
+    get_company_by_slug_api_v1_media_company_get: {
         parameters: {
             query?: {
                 /** @description Company slug (deprecated, use /company/{id}) */
@@ -13080,40 +12289,7 @@ export interface operations {
             };
         };
     };
-    search_companies_api_media_search_companies_get: {
-        parameters: {
-            query: {
-                /** @description Search query */
-                q: string;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CompanySearchListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_certifications_api_media_certifications_get: {
+    list_certifications_api_v1_media_certifications_get: {
         parameters: {
             query?: {
                 /** @description Filter certifications to a specific media type */
@@ -13147,78 +12323,7 @@ export interface operations {
             };
         };
     };
-    search_media_api_media_search_get: {
-        parameters: {
-            query: {
-                /** @description Search query */
-                q: string;
-                /** @description movie, show, game, or music */
-                media_type?: string | null;
-                /** @description relevance, popularity, rating, release_date, title */
-                sort_by?: string | null;
-                page?: number;
-                page_size?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MediaItemListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    search_grouped_api_media_search_grouped_get: {
-        parameters: {
-            query: {
-                /** @description Search query */
-                q: string;
-                media_type_limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StructuredSearchResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    match_game_api_media_match_post: {
+    match_game_api_v1_media_match_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -13251,7 +12356,7 @@ export interface operations {
             };
         };
     };
-    match_games_batch_api_media_match_batch_post: {
+    match_games_batch_api_v1_media_match_batch_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -13284,7 +12389,7 @@ export interface operations {
             };
         };
     };
-    match_games_stream_api_media_match_stream_post: {
+    match_games_stream_api_v1_media_match_stream_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -13317,7 +12422,45 @@ export interface operations {
             };
         };
     };
-    confirm_match_api_media_match_confirm_post: {
+    match_scan_api_v1_media_match_scan_post: {
+        parameters: {
+            query?: {
+                /** @description Include full MediaItem detail for auto-matched games */
+                hydrate?: boolean;
+                /** @description Fire background import tasks for unmatched/needs-import games */
+                seed_missing?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GameMatchBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_match_api_v1_media_match_confirm_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -13350,7 +12493,7 @@ export interface operations {
             };
         };
     };
-    unlink_match_api_media_match_unlink_post: {
+    unlink_match_api_v1_media_match_unlink_post: {
         parameters: {
             query: {
                 /** @description Provider:ID, e.g. 'epic:AppName' */
@@ -13382,73 +12525,7 @@ export interface operations {
             };
         };
     };
-    match_local_games_api_media_match_local_games_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LocalGameMatchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LocalGameMatchResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    seed_from_titles_api_media_seed_from_titles_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SeedFromTitlesRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SeedFromTitlesResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    force_rehydrate_media_api_media__media_id__rehydrate_post: {
+    force_rehydrate_media_api_v1_media__media_id__rehydrate_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -13481,7 +12558,7 @@ export interface operations {
             };
         };
     };
-    force_rehydrate_media_stream_api_media__media_id__rehydrate__task_id__stream_get: {
+    force_rehydrate_media_stream_api_v1_media__media_id__rehydrate__task_id__stream_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -13513,77 +12590,7 @@ export interface operations {
             };
         };
     };
-    poll_search_updates_api_media_search_poll_get: {
-        parameters: {
-            query: {
-                /** @description Search query */
-                q: string;
-                /** @description movie, show, game, or music */
-                media_type?: string | null;
-                /** @description Comma-separated list of known item IDs */
-                known_ids?: string;
-                page_size?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MediaItemListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    search_external_games_api_media_search_external_get: {
-        parameters: {
-            query: {
-                /** @description Search query */
-                q: string;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MediaItemListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    import_igdb_game_api_media_import_igdb_post: {
+    import_igdb_game_api_v1_media_import_igdb_post: {
         parameters: {
             query: {
                 /** @description IGDB game ID to import */
@@ -13615,73 +12622,7 @@ export interface operations {
             };
         };
     };
-    search_providers_api_media_search_providers_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProviderSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProviderSearchResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    search_steamgrid_api_media_search_steamgrid_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SteamGridSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SteamGridSearchResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    sync_local_games_api_media_sync_local_games_post: {
+    sync_local_games_api_v1_media_sync_local_games_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -13714,7 +12655,7 @@ export interface operations {
             };
         };
     };
-    propose_match_api_media_match_propose_post: {
+    propose_match_api_v1_media_match_propose_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -13733,9 +12674,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["MatchProposeResponse"];
                 };
             };
             /** @description Validation Error */
@@ -13749,7 +12688,7 @@ export interface operations {
             };
         };
     };
-    list_proposals_api_media_admin_match_proposals_get: {
+    list_proposals_api_v1_media_admin_match_proposals_get: {
         parameters: {
             query?: {
                 status?: string;
@@ -13783,7 +12722,7 @@ export interface operations {
             };
         };
     };
-    approve_proposal_api_media_admin_match_proposals__proposal_id__approve_post: {
+    approve_proposal_api_v1_media_admin_match_proposals__proposal_id__approve_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -13816,7 +12755,7 @@ export interface operations {
             };
         };
     };
-    reject_proposal_api_media_admin_match_proposals__proposal_id__reject_post: {
+    reject_proposal_api_v1_media_admin_match_proposals__proposal_id__reject_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -13849,7 +12788,7 @@ export interface operations {
             };
         };
     };
-    get_media_item_api_media__media_type___media_id__get: {
+    get_media_item_api_v1_media__media_type___media_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -13881,7 +12820,7 @@ export interface operations {
             };
         };
     };
-    list_media_assets_api_media__media_type___media_id__assets_get: {
+    list_media_assets_api_v1_media__media_type___media_id__assets_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -13913,7 +12852,7 @@ export interface operations {
             };
         };
     };
-    list_edit_proposals_api_media__media_id__edit_proposals_get: {
+    list_edit_proposals_api_v1_media__media_id__edit_proposals_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -13944,7 +12883,7 @@ export interface operations {
             };
         };
     };
-    create_edit_proposal_api_media__media_id__edit_proposals_post: {
+    create_edit_proposal_api_v1_media__media_id__edit_proposals_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -13979,7 +12918,7 @@ export interface operations {
             };
         };
     };
-    approve_edit_proposal_api_media__media_id__edit_proposals__proposal_id__approve_post: {
+    approve_edit_proposal_api_v1_media__media_id__edit_proposals__proposal_id__approve_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -14011,7 +12950,7 @@ export interface operations {
             };
         };
     };
-    reject_edit_proposal_api_media__media_id__edit_proposals__proposal_id__reject_post: {
+    reject_edit_proposal_api_v1_media__media_id__edit_proposals__proposal_id__reject_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -14047,7 +12986,7 @@ export interface operations {
             };
         };
     };
-    undo_approve_edit_proposal_api_media__media_id__edit_proposals__proposal_id__undo_post: {
+    undo_approve_edit_proposal_api_v1_media__media_id__edit_proposals__proposal_id__undo_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -14079,7 +13018,7 @@ export interface operations {
             };
         };
     };
-    vote_on_proposal_api_media__media_id__edit_proposals__proposal_id__vote_post: {
+    vote_on_proposal_api_v1_media__media_id__edit_proposals__proposal_id__vote_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -14115,7 +13054,7 @@ export interface operations {
             };
         };
     };
-    remove_proposal_vote_api_media__media_id__edit_proposals__proposal_id__vote_delete: {
+    remove_proposal_vote_api_v1_media__media_id__edit_proposals__proposal_id__vote_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -14145,7 +13084,7 @@ export interface operations {
             };
         };
     };
-    get_similar_media_api_media__media_type___media_id__similar_get: {
+    get_similar_media_api_v1_media__media_type___media_id__similar_get: {
         parameters: {
             query?: {
                 /** @description Filter similar items to a specific media type */
@@ -14181,7 +13120,7 @@ export interface operations {
             };
         };
     };
-    get_recommendations_api_media__media_type___media_id__recommendations_get: {
+    get_recommendations_api_v1_media__media_type___media_id__recommendations_get: {
         parameters: {
             query?: {
                 limit?: number;
@@ -14215,7 +13154,7 @@ export interface operations {
             };
         };
     };
-    get_user_interactions_api_media__media_type___media_id__interactions_get: {
+    get_user_interactions_api_v1_media__media_type___media_id__interactions_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -14247,7 +13186,7 @@ export interface operations {
             };
         };
     };
-    set_interaction_api_media__media_type___media_id__interactions__interaction_type__put: {
+    set_interaction_api_v1_media__media_type___media_id__interactions__interaction_type__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -14284,7 +13223,7 @@ export interface operations {
             };
         };
     };
-    remove_interaction_api_media__media_type___media_id__interactions__interaction_type__delete: {
+    remove_interaction_api_v1_media__media_type___media_id__interactions__interaction_type__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -14315,7 +13254,7 @@ export interface operations {
             };
         };
     };
-    claim_game_api_media__media_id__claim_post: {
+    claim_game_api_v1_media__media_id__claim_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -14348,7 +13287,7 @@ export interface operations {
             };
         };
     };
-    unclaim_game_api_media__media_id__claim_delete: {
+    unclaim_game_api_v1_media__media_id__claim_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -14377,7 +13316,7 @@ export interface operations {
             };
         };
     };
-    get_episode_interactions_api_media__media_type___media_id__episode_interactions_get: {
+    get_episode_interactions_api_v1_media__media_type___media_id__episode_interactions_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -14409,7 +13348,7 @@ export interface operations {
             };
         };
     };
-    mark_episode_watched_api_media__media_type___media_id__episodes__episode_id__watched_put: {
+    mark_episode_watched_api_v1_media__media_type___media_id__episodes__episode_id__watched_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -14442,7 +13381,7 @@ export interface operations {
             };
         };
     };
-    unmark_episode_watched_api_media__media_type___media_id__episodes__episode_id__watched_delete: {
+    unmark_episode_watched_api_v1_media__media_type___media_id__episodes__episode_id__watched_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -14472,7 +13411,7 @@ export interface operations {
             };
         };
     };
-    mark_season_watched_api_media__media_type___media_id__seasons__season_number__watched_put: {
+    mark_season_watched_api_v1_media__media_type___media_id__seasons__season_number__watched_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -14505,7 +13444,7 @@ export interface operations {
             };
         };
     };
-    unmark_season_watched_api_media__media_type___media_id__seasons__season_number__watched_delete: {
+    unmark_season_watched_api_v1_media__media_type___media_id__seasons__season_number__watched_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -14538,7 +13477,7 @@ export interface operations {
             };
         };
     };
-    mark_show_watched_api_media__media_type___media_id__show_watched_put: {
+    mark_show_watched_api_v1_media__media_type___media_id__show_watched_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -14570,7 +13509,7 @@ export interface operations {
             };
         };
     };
-    unmark_show_watched_api_media__media_type___media_id__show_watched_delete: {
+    unmark_show_watched_api_v1_media__media_type___media_id__show_watched_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -14602,7 +13541,7 @@ export interface operations {
             };
         };
     };
-    get_installed_games_api_library_installed_get: {
+    get_installed_games_api_v1_library_installed_get: {
         parameters: {
             query?: {
                 limit?: number;
@@ -14634,7 +13573,7 @@ export interface operations {
             };
         };
     };
-    get_plex_library_tab_api_library_plex_get: {
+    get_plex_library_tab_api_v1_library_plex_get: {
         parameters: {
             query?: {
                 /** @description Pagination cursor */
@@ -14671,7 +13610,7 @@ export interface operations {
             };
         };
     };
-    get_plex_thumb_api_library_plex_thumb__media_item_id__get: {
+    get_plex_thumb_api_v1_library_plex_thumb__media_item_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -14702,7 +13641,7 @@ export interface operations {
             };
         };
     };
-    get_plex_status_api_library_plex_status_get: {
+    get_plex_status_api_v1_library_plex_status_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -14724,7 +13663,7 @@ export interface operations {
             };
         };
     };
-    get_spotify_library_tab_api_library_spotify_get: {
+    get_steam_library_tab_api_v1_library_steam_get: {
         parameters: {
             query?: {
                 /** @description Pagination cursor */
@@ -14757,7 +13696,7 @@ export interface operations {
             };
         };
     };
-    get_spotify_status_api_library_spotify_status_get: {
+    get_steam_status_api_v1_library_steam_status_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -14779,129 +13718,7 @@ export interface operations {
             };
         };
     };
-    get_spotify_liked_tracks_api_library_spotify_tracks_get: {
-        parameters: {
-            query?: {
-                offset?: number;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    save_spotify_track_to_liked_api_library_spotify_tracks__track_id__liked_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                track_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_steam_library_tab_api_library_steam_get: {
-        parameters: {
-            query?: {
-                /** @description Pagination cursor */
-                cursor?: string | null;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MediaItemListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_steam_status_api_library_steam_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_steam_unmatched_games_api_library_steam_unmatched_get: {
+    get_steam_unmatched_games_api_v1_library_steam_unmatched_get: {
         parameters: {
             query?: {
                 /** @description Pagination cursor */
@@ -14934,7 +13751,7 @@ export interface operations {
             };
         };
     };
-    get_steam_wishlist_tab_api_library_steam_wishlist_get: {
+    get_steam_wishlist_tab_api_v1_library_steam_wishlist_get: {
         parameters: {
             query?: {
                 /** @description Pagination cursor */
@@ -14967,7 +13784,7 @@ export interface operations {
             };
         };
     };
-    get_youtube_library_api_library_youtube_get: {
+    get_youtube_library_api_v1_library_youtube_get: {
         parameters: {
             query?: {
                 /** @description Pagination cursor */
@@ -15000,7 +13817,7 @@ export interface operations {
             };
         };
     };
-    get_library_tab_api_library__tab__get: {
+    get_library_tab_api_v1_library__tab__get: {
         parameters: {
             query?: {
                 /** @description Pagination cursor */
@@ -15037,7 +13854,7 @@ export interface operations {
             };
         };
     };
-    discover_public_lists_api_list_get: {
+    discover_public_lists_api_v1_list_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -15057,7 +13874,7 @@ export interface operations {
             };
         };
     };
-    create_list_api_list_post: {
+    create_list_api_v1_list_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -15090,7 +13907,7 @@ export interface operations {
             };
         };
     };
-    my_lists_api_list_mine_get: {
+    my_lists_api_v1_list_mine_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -15110,7 +13927,7 @@ export interface operations {
             };
         };
     };
-    get_list_api_list__list_id__get: {
+    get_list_api_v1_list__list_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -15141,7 +13958,7 @@ export interface operations {
             };
         };
     };
-    delete_list_api_list__list_id__delete: {
+    delete_list_api_v1_list__list_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -15170,7 +13987,7 @@ export interface operations {
             };
         };
     };
-    update_list_api_list__list_id__patch: {
+    update_list_api_v1_list__list_id__patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -15205,7 +14022,7 @@ export interface operations {
             };
         };
     };
-    reorder_list_api_list__list_id__item_put: {
+    reorder_list_api_v1_list__list_id__item_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -15238,7 +14055,7 @@ export interface operations {
             };
         };
     };
-    add_to_list_api_list__list_id__item_post: {
+    add_to_list_api_v1_list__list_id__item_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -15273,7 +14090,7 @@ export interface operations {
             };
         };
     };
-    remove_from_list_api_list__list_id__item__media_item_id__delete: {
+    remove_from_list_api_v1_list__list_id__item__media_item_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -15303,7 +14120,7 @@ export interface operations {
             };
         };
     };
-    list_collaborators_api_list__list_id__collaborators_get: {
+    list_collaborators_api_v1_list__list_id__collaborators_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -15334,7 +14151,7 @@ export interface operations {
             };
         };
     };
-    invite_collaborator_api_list__list_id__collaborators_post: {
+    invite_collaborator_api_v1_list__list_id__collaborators_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -15369,7 +14186,7 @@ export interface operations {
             };
         };
     };
-    remove_collaborator_api_list__list_id__collaborators__user_id__delete: {
+    remove_collaborator_api_v1_list__list_id__collaborators__user_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -15399,7 +14216,7 @@ export interface operations {
             };
         };
     };
-    accept_collaboration_api_list__list_id__collaborators_accept_post: {
+    accept_collaboration_api_v1_list__list_id__collaborators_accept_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -15428,7 +14245,7 @@ export interface operations {
             };
         };
     };
-    decline_collaboration_api_list__list_id__collaborators_decline_post: {
+    decline_collaboration_api_v1_list__list_id__collaborators_decline_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -15457,7 +14274,7 @@ export interface operations {
             };
         };
     };
-    like_list_api_list__list_id__like_post: {
+    like_list_api_v1_list__list_id__like_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -15488,7 +14305,7 @@ export interface operations {
             };
         };
     };
-    unlike_list_api_list__list_id__like_delete: {
+    unlike_list_api_v1_list__list_id__like_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -15519,7 +14336,7 @@ export interface operations {
             };
         };
     };
-    export_list_api_list__list_id__export_get: {
+    export_list_api_v1_list__list_id__export_get: {
         parameters: {
             query?: {
                 format?: string;
@@ -15552,7 +14369,7 @@ export interface operations {
             };
         };
     };
-    list_rank_history_api_list__list_id__history_get: {
+    list_rank_history_api_v1_list__list_id__history_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -15583,7 +14400,7 @@ export interface operations {
             };
         };
     };
-    list_people_api_person_get: {
+    list_people_api_v1_person_get: {
         parameters: {
             query?: {
                 /** @description Pagination cursor (person id) */
@@ -15616,7 +14433,7 @@ export interface operations {
             };
         };
     };
-    search_people_api_person_search_get: {
+    search_people_api_v1_person_search_get: {
         parameters: {
             query: {
                 /** @description Search query */
@@ -15649,7 +14466,7 @@ export interface operations {
             };
         };
     };
-    get_person_api_person__person_id__get: {
+    get_person_api_v1_person__person_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -15680,7 +14497,7 @@ export interface operations {
             };
         };
     };
-    follow_person_api_person__person_id__follow_post: {
+    follow_person_api_v1_person__person_id__follow_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -15711,7 +14528,7 @@ export interface operations {
             };
         };
     };
-    unfollow_person_api_person__person_id__follow_delete: {
+    unfollow_person_api_v1_person__person_id__follow_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -15742,7 +14559,7 @@ export interface operations {
             };
         };
     };
-    rate_person_api_person__person_id__rating_put: {
+    rate_person_api_v1_person__person_id__rating_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -15775,7 +14592,7 @@ export interface operations {
             };
         };
     };
-    unrate_person_api_person__person_id__rating_delete: {
+    unrate_person_api_v1_person__person_id__rating_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -15804,40 +14621,7 @@ export interface operations {
             };
         };
     };
-    get_related_artists_api_person__person_id__related_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                person_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_proposals_api_proposals_get: {
+    list_proposals_api_v1_proposals_get: {
         parameters: {
             query?: {
                 type?: string | null;
@@ -15873,7 +14657,7 @@ export interface operations {
             };
         };
     };
-    create_proposal_api_proposals_post: {
+    create_proposal_api_v1_proposals_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -15906,7 +14690,7 @@ export interface operations {
             };
         };
     };
-    get_proposal_api_proposals__proposal_id__get: {
+    get_proposal_api_v1_proposals__proposal_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -15937,7 +14721,7 @@ export interface operations {
             };
         };
     };
-    approve_proposal_api_proposals__proposal_id__approve_post: {
+    approve_proposal_api_v1_proposals__proposal_id__approve_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -15968,7 +14752,7 @@ export interface operations {
             };
         };
     };
-    reject_proposal_api_proposals__proposal_id__reject_post: {
+    reject_proposal_api_v1_proposals__proposal_id__reject_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -16003,7 +14787,7 @@ export interface operations {
             };
         };
     };
-    undo_proposal_api_proposals__proposal_id__undo_post: {
+    undo_proposal_api_v1_proposals__proposal_id__undo_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -16034,7 +14818,7 @@ export interface operations {
             };
         };
     };
-    vote_on_proposal_api_proposals__proposal_id__vote_post: {
+    vote_on_proposal_api_v1_proposals__proposal_id__vote_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -16069,7 +14853,7 @@ export interface operations {
             };
         };
     };
-    remove_proposal_vote_api_proposals__proposal_id__vote_delete: {
+    remove_proposal_vote_api_v1_proposals__proposal_id__vote_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -16098,7 +14882,7 @@ export interface operations {
             };
         };
     };
-    vapid_public_key_endpoint_api_push_vapid_public_key_get: {
+    vapid_public_key_endpoint_api_v1_push_vapid_public_key_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -16118,7 +14902,7 @@ export interface operations {
             };
         };
     };
-    subscribe_api_push_subscribe_post: {
+    subscribe_api_v1_push_subscribe_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -16151,7 +14935,7 @@ export interface operations {
             };
         };
     };
-    unsubscribe_api_push_subscribe_delete: {
+    unsubscribe_api_v1_push_subscribe_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -16184,7 +14968,7 @@ export interface operations {
             };
         };
     };
-    get_metrics_api_metric_get: {
+    get_metrics_api_v1_metric_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -16206,7 +14990,7 @@ export interface operations {
             };
         };
     };
-    get_today_mood_checkin_api_mood_checkins_today_get: {
+    get_today_mood_checkin_api_v1_mood_checkins_today_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -16226,7 +15010,7 @@ export interface operations {
             };
         };
     };
-    submit_mood_checkin_api_mood_checkins_post: {
+    submit_mood_checkin_api_v1_mood_checkins_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -16259,7 +15043,7 @@ export interface operations {
             };
         };
     };
-    dismiss_mood_checkin_api_mood_checkins_dismiss_post: {
+    dismiss_mood_checkin_api_v1_mood_checkins_dismiss_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -16279,7 +15063,7 @@ export interface operations {
             };
         };
     };
-    list_notifications_api_notifications_get: {
+    list_notifications_api_v1_notifications_get: {
         parameters: {
             query?: {
                 cursor?: string | null;
@@ -16311,7 +15095,7 @@ export interface operations {
             };
         };
     };
-    unread_count_api_notifications_unread_count_get: {
+    unread_count_api_v1_notifications_unread_count_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -16331,7 +15115,7 @@ export interface operations {
             };
         };
     };
-    mark_notification_read_api_notifications__notification_id__read_post: {
+    mark_notification_read_api_v1_notifications__notification_id__read_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -16364,7 +15148,7 @@ export interface operations {
             };
         };
     };
-    mark_all_read_api_notifications_read_all_post: {
+    mark_all_read_api_v1_notifications_read_all_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -16386,7 +15170,7 @@ export interface operations {
             };
         };
     };
-    notification_stream_api_notifications_stream_get: {
+    notification_stream_api_v1_notifications_stream_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -16406,7 +15190,7 @@ export interface operations {
             };
         };
     };
-    get_my_review_api_media__media_type___media_id__review_get: {
+    get_my_review_api_v1_media__media_type___media_id__review_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -16438,7 +15222,7 @@ export interface operations {
             };
         };
     };
-    upsert_review_api_media__media_type___media_id__review_put: {
+    upsert_review_api_v1_media__media_type___media_id__review_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -16474,7 +15258,7 @@ export interface operations {
             };
         };
     };
-    delete_review_api_media__media_type___media_id__review_delete: {
+    delete_review_api_v1_media__media_type___media_id__review_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -16504,7 +15288,7 @@ export interface operations {
             };
         };
     };
-    update_review_api_media__media_type___media_id__review_patch: {
+    update_review_api_v1_media__media_type___media_id__review_patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -16540,7 +15324,7 @@ export interface operations {
             };
         };
     };
-    list_reviews_api_media__media_type___media_id__reviews_get: {
+    list_reviews_api_v1_media__media_type___media_id__reviews_get: {
         parameters: {
             query?: {
                 /** @description Pagination cursor */
@@ -16576,7 +15360,7 @@ export interface operations {
             };
         };
     };
-    get_my_rating_api_media__media_type___media_id__rating_get: {
+    get_my_rating_api_v1_media__media_type___media_id__rating_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -16608,7 +15392,7 @@ export interface operations {
             };
         };
     };
-    upsert_rating_api_media__media_type___media_id__rating_put: {
+    upsert_rating_api_v1_media__media_type___media_id__rating_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -16644,7 +15428,7 @@ export interface operations {
             };
         };
     };
-    delete_rating_api_media__media_type___media_id__rating_delete: {
+    delete_rating_api_v1_media__media_type___media_id__rating_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -16674,7 +15458,7 @@ export interface operations {
             };
         };
     };
-    get_vote_counts_api_reviews__review_user_id___media_item_id__vote_get: {
+    get_vote_counts_api_v1_reviews__review_user_id___media_item_id__vote_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -16706,7 +15490,7 @@ export interface operations {
             };
         };
     };
-    vote_review_api_reviews__review_user_id___media_item_id__vote_post: {
+    vote_review_api_v1_reviews__review_user_id___media_item_id__vote_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -16740,7 +15524,7 @@ export interface operations {
             };
         };
     };
-    remove_vote_api_reviews__review_user_id___media_item_id__vote_delete: {
+    remove_vote_api_v1_reviews__review_user_id___media_item_id__vote_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -16770,71 +15554,15 @@ export interface operations {
             };
         };
     };
-    list_playlists_api_library_spotify_playlists_get: {
-        parameters: {
-            query?: {
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_subscriptions_api_library_spotify_playlists_subscriptions_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
-                };
-            };
-        };
-    };
-    update_subscription_api_library_spotify_playlists_subscriptions__subscription_id__put: {
+    suggestions_api_v1_search_suggestions_get: {
         parameters: {
             query: {
-                auto_sync: boolean;
+                q: string;
+                limit?: number;
+                media_type?: string | null;
             };
             header?: never;
-            path: {
-                subscription_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -16845,9 +15573,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["MediaItemSummary"][];
                 };
             };
             /** @description Validation Error */
@@ -16861,16 +15587,183 @@ export interface operations {
             };
         };
     };
-    get_playlist_detail_api_library_spotify_playlists__playlist_id__get: {
+    search_api_v1_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                media_type?: string | null;
+                sort_by?: string | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaItemListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    grouped_api_v1_search_grouped_get: {
+        parameters: {
+            query: {
+                q: string;
+                media_type_limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StructuredSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    companies_api_v1_search_companies_get: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanySearchListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    poll_api_v1_search_poll_get: {
+        parameters: {
+            query: {
+                q: string;
+                media_type?: string | null;
+                known_ids?: string;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaItemListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    external_api_v1_search_external_get: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaItemListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    providers_api_v1_search_providers_post: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                playlist_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderSearchRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -16878,9 +15771,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ProviderSearchResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16894,16 +15785,18 @@ export interface operations {
             };
         };
     };
-    subscribe_playlist_api_library_spotify_playlists__playlist_id__subscribe_post: {
+    steamgrid_api_v1_search_steamgrid_post: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                playlist_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SteamGridSearchRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -16911,9 +15804,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["SteamGridSearchResponse"];
                 };
             };
             /** @description Validation Error */
@@ -16927,73 +15818,7 @@ export interface operations {
             };
         };
     };
-    unsubscribe_playlist_api_library_spotify_playlists__playlist_id__unsubscribe_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                playlist_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    sync_playlist_api_library_spotify_playlists__playlist_id__sync_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                playlist_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_my_track_rating_api_tracks__track_id__rating_get: {
+    get_my_track_rating_api_v1_tracks__track_id__rating_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17024,7 +15849,7 @@ export interface operations {
             };
         };
     };
-    upsert_track_rating_api_tracks__track_id__rating_put: {
+    upsert_track_rating_api_v1_tracks__track_id__rating_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -17059,7 +15884,7 @@ export interface operations {
             };
         };
     };
-    upload_file_api_upload_post: {
+    upload_file_api_v1_upload_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -17068,7 +15893,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_upload_file_api_upload_post"];
+                "multipart/form-data": components["schemas"]["Body_upload_file_api_v1_upload_post"];
             };
         };
         responses: {
@@ -17094,7 +15919,7 @@ export interface operations {
             };
         };
     };
-    search_users_api_users_search_get: {
+    search_users_api_v1_users_search_get: {
         parameters: {
             query: {
                 /** @description Search query */
@@ -17127,7 +15952,7 @@ export interface operations {
             };
         };
     };
-    get_achievement_defs_api_users_achievements_get: {
+    get_achievement_defs_api_v1_users_achievements_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17147,7 +15972,7 @@ export interface operations {
             };
         };
     };
-    get_user_profile_api_users__username__get: {
+    get_user_profile_api_v1_users__username__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17178,7 +16003,7 @@ export interface operations {
             };
         };
     };
-    get_user_reviews_api_users__username__reviews_get: {
+    get_user_reviews_api_v1_users__username__reviews_get: {
         parameters: {
             query?: {
                 cursor?: string | null;
@@ -17212,7 +16037,7 @@ export interface operations {
             };
         };
     };
-    get_my_user_rating_api_users__username__rating_get: {
+    get_my_user_rating_api_v1_users__username__rating_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17243,7 +16068,7 @@ export interface operations {
             };
         };
     };
-    rate_user_api_users__username__rating_put: {
+    rate_user_api_v1_users__username__rating_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -17278,7 +16103,7 @@ export interface operations {
             };
         };
     };
-    delete_user_rating_api_users__username__rating_delete: {
+    delete_user_rating_api_v1_users__username__rating_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -17307,7 +16132,7 @@ export interface operations {
             };
         };
     };
-    get_user_reputation_api_users__username__reputation_get: {
+    get_user_reputation_api_v1_users__username__reputation_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17338,7 +16163,7 @@ export interface operations {
             };
         };
     };
-    get_user_rating_distribution_api_users__username__rating_distribution_get: {
+    get_user_rating_distribution_api_v1_users__username__rating_distribution_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17369,7 +16194,7 @@ export interface operations {
             };
         };
     };
-    get_user_karma_api_users__username__karma_get: {
+    get_user_karma_api_v1_users__username__karma_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17400,7 +16225,7 @@ export interface operations {
             };
         };
     };
-    get_user_karma_transactions_api_users__username__karma_transactions_get: {
+    get_user_karma_transactions_api_v1_users__username__karma_transactions_get: {
         parameters: {
             query?: {
                 cursor?: string | null;
@@ -17434,7 +16259,7 @@ export interface operations {
             };
         };
     };
-    get_user_badges_api_users__username__badges_get: {
+    get_user_badges_api_v1_users__username__badges_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17465,7 +16290,7 @@ export interface operations {
             };
         };
     };
-    claim_badge_api_users_me_badges__badge_key__claim_post: {
+    claim_badge_api_v1_users_me_badges__badge_key__claim_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -17498,7 +16323,7 @@ export interface operations {
             };
         };
     };
-    get_user_stats_api_users__username__stats_get: {
+    get_user_stats_api_v1_users__username__stats_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17531,7 +16356,7 @@ export interface operations {
             };
         };
     };
-    get_user_top_rated_api_users__username__top_rated_get: {
+    get_user_top_rated_api_v1_users__username__top_rated_get: {
         parameters: {
             query?: {
                 limit?: number;
@@ -17566,7 +16391,7 @@ export interface operations {
             };
         };
     };
-    get_user_hall_of_fame_api_users__username__hall_of_fame_get: {
+    get_user_hall_of_fame_api_v1_users__username__hall_of_fame_get: {
         parameters: {
             query?: {
                 /** @description Filter by media type */
@@ -17600,7 +16425,7 @@ export interface operations {
             };
         };
     };
-    get_user_library_stats_api_users__username__library_stats_get: {
+    get_user_library_stats_api_v1_users__username__library_stats_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17631,7 +16456,7 @@ export interface operations {
             };
         };
     };
-    get_user_activity_api_users__username__activity_get: {
+    get_user_activity_api_v1_users__username__activity_get: {
         parameters: {
             query?: {
                 limit?: number;
@@ -17666,7 +16491,7 @@ export interface operations {
             };
         };
     };
-    get_user_mood_timeline_api_users__username__mood_timeline_get: {
+    get_user_mood_timeline_api_v1_users__username__mood_timeline_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17697,7 +16522,7 @@ export interface operations {
             };
         };
     };
-    get_my_activity_heatmap_api_users_me_activity_heatmap_get: {
+    get_my_activity_heatmap_api_v1_users_me_activity_heatmap_get: {
         parameters: {
             query?: {
                 weeks?: number;
@@ -17728,7 +16553,7 @@ export interface operations {
             };
         };
     };
-    get_continue_watching_api_users_me_continue_get: {
+    get_continue_watching_api_v1_users_me_continue_get: {
         parameters: {
             query?: {
                 limit?: number;
@@ -17759,7 +16584,7 @@ export interface operations {
             };
         };
     };
-    get_daily_activity_api_users_me_daily_activity_get: {
+    get_daily_activity_api_v1_users_me_daily_activity_get: {
         parameters: {
             query?: {
                 /** @description Date in YYYY-MM-DD format, defaults to today */
@@ -17791,7 +16616,7 @@ export interface operations {
             };
         };
     };
-    get_friends_activity_api_users_me_friends_activity_get: {
+    get_friends_activity_api_v1_users_me_friends_activity_get: {
         parameters: {
             query?: {
                 limit?: number;
@@ -17824,7 +16649,7 @@ export interface operations {
             };
         };
     };
-    list_workouts_api_workout_get: {
+    list_workouts_api_v1_workout_get: {
         parameters: {
             query?: {
                 cursor?: string | null;
@@ -17856,7 +16681,7 @@ export interface operations {
             };
         };
     };
-    create_workout_api_workout_post: {
+    create_workout_api_v1_workout_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -17889,7 +16714,7 @@ export interface operations {
             };
         };
     };
-    get_workout_api_workout__workout_id__get: {
+    get_workout_api_v1_workout__workout_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -17920,7 +16745,7 @@ export interface operations {
             };
         };
     };
-    delete_workout_api_workout__workout_id__delete: {
+    delete_workout_api_v1_workout__workout_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -17949,7 +16774,7 @@ export interface operations {
             };
         };
     };
-    update_workout_api_workout__workout_id__patch: {
+    update_workout_api_v1_workout__workout_id__patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -17984,7 +16809,7 @@ export interface operations {
             };
         };
     };
-    get_today_workout_api_workout_today_get: {
+    get_today_workout_api_v1_workout_today_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -18004,7 +16829,7 @@ export interface operations {
             };
         };
     };
-    check_in_today_api_workout_today_post: {
+    check_in_today_api_v1_workout_today_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -18024,7 +16849,7 @@ export interface operations {
             };
         };
     };
-    undo_check_in_api_workout_today_delete: {
+    undo_check_in_api_v1_workout_today_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -18042,7 +16867,7 @@ export interface operations {
             };
         };
     };
-    get_heatmap_api_workout_heatmap_get: {
+    get_heatmap_api_v1_workout_heatmap_get: {
         parameters: {
             query?: {
                 weeks?: number;
@@ -18073,7 +16898,7 @@ export interface operations {
             };
         };
     };
-    list_exercises_api_exercises_get: {
+    list_exercises_api_v1_exercises_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -18093,7 +16918,7 @@ export interface operations {
             };
         };
     };
-    list_categories_api_exercises_categories_get: {
+    list_categories_api_v1_exercises_categories_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -18113,7 +16938,7 @@ export interface operations {
             };
         };
     };
-    health_api_health_get: {
+    health_api_v1_health_get: {
         parameters: {
             query?: never;
             header?: never;

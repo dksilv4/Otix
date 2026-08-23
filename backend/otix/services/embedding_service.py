@@ -116,16 +116,11 @@ class EmbeddingService:
     def build_person_embedding_text(self, person) -> str:
         """Build the text to embed for a person (actor, director, artist).
 
-        Combines name, biography, and genres.
+        Combines name and biography.
         """
         parts = [f"Name: {person.name}"]
         if person.biography:
             parts.append(f"Biography: {person.biography}")
-
-        if hasattr(person, "spotify_genres") and person.spotify_genres:
-            genres = [str(g) for g in person.spotify_genres if g]
-            if genres:
-                parts.append(f"Genres: {', '.join(genres)}")
         return ". ".join(parts)
 
     def build_company_embedding_text(self, company) -> str:

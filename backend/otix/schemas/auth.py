@@ -87,10 +87,6 @@ class UserResponse(BaseModel):
     tmdb_username: str | None = None
     tmdb_avatar_url: str | None = None
     tmdb_rating_sync_direction: str | None = None
-    spotify_id: str | None = None
-    spotify_username: str | None = None
-    spotify_email: str | None = None
-    spotify_avatar_url: str | None = None
     google_id: str | None = None
     google_email: str | None = None
     google_name: str | None = None
@@ -163,14 +159,11 @@ class MeIntegrationsResponse(BaseModel):
     tmdb_username: str | None = None
     tmdb_avatar_url: str | None = None
     tmdb_rating_sync_direction: str | None = None
-    spotify_id: str | None = None
-    spotify_username: str | None = None
-    spotify_email: str | None = None
-    spotify_avatar_url: str | None = None
     google_id: str | None = None
     google_email: str | None = None
     google_name: str | None = None
     google_avatar_url: str | None = None
+    drive_connected: bool = False
 
     # Plex-specific settings
     plex_watch_history_enabled: bool = False
@@ -342,24 +335,6 @@ class TmdbCallbackResponse(BaseModel):
     message: str = "TMDb account linked successfully"
 
 
-class SpotifyInitiateResponse(BaseModel):
-    auth_url: str
-    state: str
-
-
-class SpotifyDisconnectResponse(BaseModel):
-    message: str = "Spotify account unlinked successfully"
-
-
-class SpotifyCallbackRequest(BaseModel):
-    code: str
-    state: str
-
-
-class SpotifyCallbackResponse(BaseModel):
-    message: str = "Spotify account linked successfully"
-
-
 class GoogleInitiateResponse(BaseModel):
     auth_url: str
     state: str
@@ -525,9 +500,6 @@ class IntegrationProviderResponse(BaseModel):
     tmdb_avatar_url: str | None = None
     tmdb_stats: dict | None = None
     tmdb_rating_sync_direction: str | None = None
-    spotify_username: str | None = None
-    spotify_avatar_url: str | None = None
-    spotify_stats: dict | None = None
     google_email: str | None = None
     google_name: str | None = None
     google_avatar_url: str | None = None

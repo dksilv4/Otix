@@ -10,7 +10,6 @@ import { CORE_TABS } from "@/old-features/library/constants"
 import { TabBar } from "@/old-features/library/molecules/tab-bar"
 
 // Side-effect imports to register platform definitions
-import "@/old-features/library/platforms/spotify"
 import "@/old-features/library/platforms/steam"
 import "@/old-features/library/platforms/plex"
 import "@/old-features/library/platforms/youtube"

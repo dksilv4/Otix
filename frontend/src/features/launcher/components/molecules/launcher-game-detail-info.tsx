@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
+import { MediaLogo } from '@/lib/media/media-logo'
 
 function AnimatedRoleLabel() {
   const [label, setLabel] = useState('Developer')
@@ -32,12 +33,15 @@ function AnimatedRoleLabel() {
   )
 }
 
-function LogoImage({ src, alt }: { src: string; alt: string }) {
+function LogoImage({ src, alt, colorGuess }: { src: string; alt: string; colorGuess?: string | null }) {
   return (
-    <img
+    <MediaLogo
       src={src}
       alt={alt}
-      className="h-52 object-contain mb-3 drop-shadow-[0_8px_40px_rgba(0,0,0,0.8)] max-w-xs"
+      colorGuess={colorGuess ?? null}
+      background="dark"
+      shadow="drop-shadow(0 8px 40px rgba(0,0,0,0.8))"
+      className="h-52 object-contain mb-3 max-w-xs"
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = 'none'
         const sib = (e.target as HTMLImageElement).nextSibling as HTMLElement
@@ -111,7 +115,7 @@ export function LauncherGameDetailInfo() {
 
   return (
     <>
-      {logoSrc ? <LogoImage src={logoSrc} alt={title} /> : null}
+      {logoSrc ? <LogoImage src={logoSrc} alt={title} colorGuess={d?.logoColorGuess as string | null | undefined} /> : null}
 
       <h2
         className="text-4xl font-black tracking-tight text-white mb-3 uppercase drop-shadow-md"

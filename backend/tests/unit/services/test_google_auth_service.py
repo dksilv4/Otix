@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
@@ -69,18 +70,27 @@ async def test_build_google_link_url(fakeredis, monkeypatch):
 
     assert "client_id=client-id" in url
     assert "response_type=code" in url
-    assert "redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fauth%2Fgoogle%2Fconnect%2Fcallback" in url
+    assert "redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fauth%2Fcallback%2Fgoogle" in url
+    assert "access_type=offline" in url
+    assert "code_challenge_method=S256" in url
+    assert "code_challenge=" in url
     assert state is not None
-    assert await fakeredis.get(google_auth_service._state_key(state)) == "1"
+
+    stored = await fakeredis.get(google_auth_service._state_key(state))
+    payload = json.loads(stored)
+    assert payload["v"] == "1"
+    assert "verifier" in payload
 
 
 async def test_consume_state_success(fakeredis, monkeypatch):
     monkeypatch.setattr(google_auth_service, "get_redis", AsyncMock(return_value=fakeredis))
     state = "some-state"
-    await fakeredis.set(google_auth_service._state_key(state), "1")
+    await fakeredis.set(google_auth_service._state_key(state), json.dumps({"v": "1", "verifier": "verifier-123"}))
 
-    await google_auth_service.consume_state(state)
+    payload = await google_auth_service.consume_state(state)
 
+    assert payload["v"] == "1"
+    assert payload["verifier"] == "verifier-123"
     assert await fakeredis.get(google_auth_service._state_key(state)) is None
 
 
@@ -96,7 +106,7 @@ async def test_link_google_to_user_success(fakeredis, monkeypatch, mock_db_sessi
     monkeypatch.setattr(google_auth_service.httpx, "AsyncClient", MockGoogleClient)
 
     state = "some-state"
-    await fakeredis.set(google_auth_service._state_key(state), "1")
+    await fakeredis.set(google_auth_service._state_key(state), json.dumps({"v": "1", "user_id": "user-id-abc", "verifier": "verifier-123"}))
 
     user = User(email="user@example.com", username="user", hashed_password="pwd")
     user.id = "user-id-abc"
@@ -128,7 +138,7 @@ async def test_link_google_duplicate_links(fakeredis, monkeypatch, mock_db_sessi
     monkeypatch.setattr(google_auth_service.httpx, "AsyncClient", MockGoogleClient)
 
     state = "some-state"
-    await fakeredis.set(google_auth_service._state_key(state), "1")
+    await fakeredis.set(google_auth_service._state_key(state), json.dumps({"v": "1", "user_id": "user-id-abc"}))
 
     user = User(email="user@example.com", username="user", hashed_password="pwd")
     user.id = "user-id-abc"

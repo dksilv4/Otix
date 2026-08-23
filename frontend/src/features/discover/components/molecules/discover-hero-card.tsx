@@ -84,9 +84,9 @@ export function HeroCard({
           className="absolute inset-0 overflow-hidden"
           style={{ clipPath: 'inset(0 round 12px)' }}
         >
-          {(item.textlessPosterUrl || item.backdropUrl || item.posterUrl) ? (
+          {(item.textlessPosterUrl || item.backdropUrl) ? (
             <img
-              src={item.textlessPosterUrl || item.backdropUrl || item.posterUrl!}
+              src={item.textlessPosterUrl || item.backdropUrl!}
               alt={item.title}
               className="w-full h-full object-cover"
               draggable={false}

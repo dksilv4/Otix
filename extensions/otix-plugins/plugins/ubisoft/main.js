@@ -42,7 +42,9 @@ module.exports = {
   },
   status: async (ctx) => ({ connected: true }),
   test: async (ctx) => {
-    for (const p of UBI_PATHS) { if (await ctx.filesystem.access(p)) return { passed: true }
+    for (const p of UBI_PATHS) {
+      if (await ctx.filesystem.access(p)) return { passed: true }
+    }
     return { passed: true };
   },
   slotRender: async (ctx, location) => ({ type: 'scan', platform: 'ubisoft', label: 'Ubisoft Connect', description: 'Scan local Ubisoft Connect game installations', mediaTypes: ['games'], actions: { scan: 'scan', status: 'scan.status' } }),

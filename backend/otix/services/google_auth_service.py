@@ -6,7 +6,10 @@ Uses OpenID Connect. Docs: https://developers.google.com/identity/protocols/oaut
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
+import re
 import secrets
 import urllib.parse
 from datetime import UTC, datetime, timedelta
@@ -31,13 +34,12 @@ GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 STATE_TTL = 600  # 10 minutes
 
-SCOPES = [
-    "openid",
-    "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/userinfo.profile",
-    "https://www.googleapis.com/auth/youtube",
-    "https://www.googleapis.com/auth/drive.file",
-]
+# Google forbids requesting Drive and YouTube scopes together in a single
+# OAuth consent request, so each flow requests only the scopes it needs.
+# Sign-in and the YouTube link flow grant the youtube scope (signing in with
+# Google historically granted YouTube sync); Drive is a separate consent.
+YOUTUBE_SCOPES = ["openid", "email", "profile", "https://www.googleapis.com/auth/youtube"]
+DRIVE_SCOPES = ["openid", "email", "profile", "https://www.googleapis.com/auth/drive.file"]
 
 
 class TokenRevokedError(Exception):
@@ -56,71 +58,128 @@ def _build_callback_url() -> str:
     return f"{settings.frontend_base_url}/auth/callback/google"
 
 
-async def build_google_link_url(user_id: str | None = None) -> tuple[str, str]:
-    """Build the Google OAuth2 authorization URL and return (url, state).
+def _build_drive_callback_url() -> str:
+    return f"{settings.frontend_base_url}/auth/callback/google-drive"
 
-    If *user_id* is provided it is stored alongside the state in Redis so
-    the callback can resolve the user without a JWT (Electron openExternal).
-    """
-    state = secrets.token_urlsafe(32)
-    redis = await get_redis()
-    payload = {"v": "1"}
-    if user_id:
-        payload["user_id"] = user_id
-    await redis.set(_state_key(state), json.dumps(payload), ex=STATE_TTL)
 
-    callback = _build_callback_url()
+def _generate_pkce() -> tuple[str, str]:
+    """Generate a PKCE code_verifier and its S256 code_challenge."""
+    code_verifier = secrets.token_urlsafe(48)
+    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    return code_verifier, code_challenge
+
+
+async def _build_authorization_url(
+    *,
+    scopes: list[str],
+    callback: str,
+    state: str,
+    verifier: str,
+    challenge: str,
+) -> str:
     params = {
         "client_id": settings.google_client_id,
         "response_type": "code",
         "redirect_uri": callback,
         "state": state,
-        "scope": " ".join(SCOPES),
+        "scope": " ".join(scopes),
         "access_type": "offline",
         "prompt": "consent",
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
     }
-    url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
+    return f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
+
+
+async def build_google_link_url(user_id: str | None = None) -> tuple[str, str]:
+    """Build the Google OAuth2 authorization URL for the YouTube link flow.
+
+    Returns (url, state). If *user_id* is provided it is stored alongside
+    the state in Redis so the callback can resolve the user without a JWT
+    (Electron openExternal).
+    """
+    state = secrets.token_urlsafe(32)
+    verifier, challenge = _generate_pkce()
+    redis = await get_redis()
+    payload = {"v": "1", "flow": "youtube", "verifier": verifier}
+    if user_id:
+        payload["user_id"] = user_id
+    await redis.set(_state_key(state), json.dumps(payload), ex=STATE_TTL)
+
+    url = await _build_authorization_url(
+        scopes=YOUTUBE_SCOPES,
+        callback=_build_callback_url(),
+        state=state,
+        verifier=verifier,
+        challenge=challenge,
+    )
+    return url, state
+
+
+async def build_google_drive_link_url(user_id: str | None = None) -> tuple[str, str]:
+    """Build the Google OAuth2 authorization URL for the Drive link flow.
+
+    Requests only the drive.file scope — Google forbids requesting Drive and
+    YouTube scopes in the same consent request.
+    """
+    state = secrets.token_urlsafe(32)
+    verifier, challenge = _generate_pkce()
+    redis = await get_redis()
+    payload = {"v": "1", "flow": "drive", "verifier": verifier}
+    if user_id:
+        payload["user_id"] = user_id
+    await redis.set(_state_key(state), json.dumps(payload), ex=STATE_TTL)
+
+    url = await _build_authorization_url(
+        scopes=DRIVE_SCOPES,
+        callback=_build_drive_callback_url(),
+        state=state,
+        verifier=verifier,
+        challenge=challenge,
+    )
     return url, state
 
 
 async def build_google_login_url() -> tuple[str, str]:
     """Build the Google OAuth2 authorization URL for login and return (url, state)."""
     state = secrets.token_urlsafe(32)
+    verifier, challenge = _generate_pkce()
     redis = await get_redis()
-    payload = {"v": "1", "flow": "login"}
+    payload = {"v": "1", "flow": "login", "verifier": verifier}
     await redis.set(_state_key(state), json.dumps(payload), ex=STATE_TTL)
 
     callback = f"{settings.frontend_base_url}/auth/callback/google-login"
-    params = {
-        "client_id": settings.google_client_id,
-        "response_type": "code",
-        "redirect_uri": callback,
-        "state": state,
-        "scope": " ".join(SCOPES),
-        "access_type": "offline",
-        "prompt": "consent",
-    }
-    url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
+    url = await _build_authorization_url(
+        scopes=YOUTUBE_SCOPES,
+        callback=callback,
+        state=state,
+        verifier=verifier,
+        challenge=challenge,
+    )
     return url, state
 
 
-async def exchange_code_for_tokens(code: str, redirect_uri: str | None = None) -> dict:
+async def exchange_code_for_tokens(code: str, redirect_uri: str | None = None, code_verifier: str | None = None) -> dict:
     """Exchange an authorization code for access/refresh tokens.
 
     Returns dict with: access_token, refresh_token, expires_in, id_token
     """
     callback = redirect_uri or _build_callback_url()
+    post_data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": callback,
+        "client_id": settings.google_client_id,
+        "client_secret": settings.google_client_secret,
+    }
+    if code_verifier:
+        post_data["code_verifier"] = code_verifier
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
                 GOOGLE_TOKEN_URL,
-                data={
-                    "grant_type": "authorization_code",
-                    "code": code,
-                    "redirect_uri": callback,
-                    "client_id": settings.google_client_id,
-                    "client_secret": settings.google_client_secret,
-                },
+                data=post_data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
             data = resp.json()
@@ -187,8 +246,8 @@ async def get_google_user_profile(access_token: str) -> dict | None:
         return None
 
 
-async def consume_state(state: str) -> str | None:
-    """Validate and consume an OAuth state parameter. Returns user_id if stored."""
+async def consume_state(state: str) -> dict:
+    """Validate and consume an OAuth state parameter. Returns the stored payload."""
     redis = await get_redis()
     key = _state_key(state)
     raw = await redis.get(key)
@@ -198,9 +257,9 @@ async def consume_state(state: str) -> str | None:
 
     try:
         payload = json.loads(raw) if isinstance(raw, str) else {}
-        return payload.get("user_id")
     except (json.JSONDecodeError, TypeError):
-        return None
+        payload = {}
+    return payload if isinstance(payload, dict) else {}
 
 
 async def find_or_create_google_user(
@@ -262,7 +321,8 @@ async def link_google_to_user(session: AsyncSession, user: User | None = None, c
     The user can be provided directly or looked up from the OAuth state
     stored in Redis (set during the initiate phase).
     """
-    state_user_id = await consume_state(state)
+    state_payload = await consume_state(state)
+    state_user_id = state_payload.get("user_id")
 
     resolved_user = user
     if resolved_user is None and state_user_id:
@@ -279,7 +339,7 @@ async def link_google_to_user(session: AsyncSession, user: User | None = None, c
 
     user = resolved_user  # keep using `user` alias below
 
-    tokens = await exchange_code_for_tokens(code)
+    tokens = await exchange_code_for_tokens(code, code_verifier=state_payload.get("verifier"))
 
     access_token = tokens.get("access_token")
     refresh_token = tokens.get("refresh_token")
@@ -316,6 +376,51 @@ async def link_google_to_user(session: AsyncSession, user: User | None = None, c
     logger.info("google account linked", user_id=user.id, google_id=google_id)
 
 
+async def link_google_drive_to_user(
+    session: AsyncSession,
+    user: User | None = None,
+    code: str = "",
+    state: str = "",
+) -> None:
+    """Link Google Drive (drive.file scope) to an existing user.
+
+    Stores the Drive-scoped tokens separately from the YouTube-scoped
+    Google tokens because Google forbids requesting both scopes together.
+    """
+    state_payload = await consume_state(state)
+    state_user_id = state_payload.get("user_id")
+
+    resolved_user = user
+    if resolved_user is None and state_user_id:
+        resolved_user = await session.scalar(select(User).where(User.id == state_user_id))
+
+    if resolved_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Please sign in and try again.",
+        )
+
+    tokens = await exchange_code_for_tokens(
+        code,
+        redirect_uri=_build_drive_callback_url(),
+        code_verifier=state_payload.get("verifier"),
+    )
+
+    access_token = tokens.get("access_token")
+    refresh_token = tokens.get("refresh_token")
+    expires_in = tokens.get("expires_in", 3600)
+
+    if not access_token:
+        raise HTTPException(status_code=502, detail="Google returned an invalid response. Please try again.")
+
+    resolved_user.drive_access_token = access_token
+    resolved_user.drive_refresh_token = refresh_token
+    resolved_user.drive_token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
+
+    await session.flush()
+    logger.info("google drive linked", user_id=resolved_user.id)
+
+
 async def unlink_google_from_user(session: AsyncSession, user: User) -> None:
     """Remove the Google link from a user."""
     if user.google_id is None:
@@ -330,6 +435,17 @@ async def unlink_google_from_user(session: AsyncSession, user: User) -> None:
     user.google_token_expires_at = None
     await session.flush()
     logger.info("google account unlinked", user_id=user.id, google_id=google_id)
+
+
+async def unlink_google_drive_from_user(session: AsyncSession, user: User) -> None:
+    """Remove the Google Drive link from a user."""
+    if user.drive_refresh_token is None:
+        raise HTTPException(status_code=400, detail="No Google Drive account linked")
+    user.drive_access_token = None
+    user.drive_refresh_token = None
+    user.drive_token_expires_at = None
+    await session.flush()
+    logger.info("google drive unlinked", user_id=user.id)
 
 
 async def get_user_google_access_token(
@@ -417,3 +533,74 @@ async def _unlink_google_quietly(session: AsyncSession, user: User) -> None:
             user_id=user.id,
             google_id=google_id,
         )
+
+
+async def get_user_google_drive_access_token(
+    user: User,
+    session: AsyncSession | None = None,
+) -> str | None:
+    """Get a valid Drive-scoped access token, refreshing if expired.
+
+    When *session* is provided and the token has been revoked externally,
+    the Drive link is automatically removed so the UI shows the correct
+    disconnected state.
+    """
+    if not user.drive_refresh_token:
+        return None
+
+    expires_at = user.drive_token_expires_at
+    if expires_at and isinstance(expires_at, datetime):
+        if datetime.now(UTC) < expires_at - timedelta(seconds=60):
+            return user.drive_access_token
+
+    try:
+        tokens = await refresh_google_token(user.drive_refresh_token)
+    except TokenRevokedError:
+        logger.warning(
+            "google drive token revoked externally — auto-disconnecting",
+            user_id=user.id,
+        )
+        if session is not None:
+            await _unlink_drive_quietly(session, user)
+        return None
+    except Exception:
+        return None
+
+    new_access = tokens.get("access_token")
+    if not new_access:
+        return None
+
+    user.drive_access_token = new_access
+    expires_in = tokens.get("expires_in", 3600)
+    user.drive_token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
+
+    return new_access
+
+
+async def _unlink_drive_quietly(session: AsyncSession, user: User) -> None:
+    """Remove the Google Drive link without raising on already-unlinked.
+
+    Sends a notification to the user about the disconnect.
+    """
+    if user.drive_refresh_token is None:
+        return
+    user.drive_access_token = None
+    user.drive_refresh_token = None
+    user.drive_token_expires_at = None
+    try:
+        await session.flush()
+        from otix.services.notification_service import NotificationService
+
+        nsvc = NotificationService(session)
+        await nsvc.create(
+            user_id=user.id,
+            type_="integration_disconnected",
+            title="Google Drive disconnected",
+            body="Your Google Drive connection was removed because access was revoked externally. Re-link it in Settings to continue backing up saves.",
+            metadata_json={"provider": "google_drive", "reason": "external_revocation"},
+        )
+        await session.commit()
+        logger.info("google drive auto-disconnected due to external revocation", user_id=user.id)
+    except Exception:
+        await session.rollback()
+        logger.exception("google drive auto-disconnect failed", user_id=user.id)

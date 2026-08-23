@@ -262,6 +262,21 @@ contextBridge.exposeInMainWorld('desktopAPI', {
       ipcRenderer.on('plugin:permission-request', handler);
       return () => ipcRenderer.removeListener('plugin:permission-request', handler);
     },
+    onConfigChanged: (callback: (payload: { pluginId: string; key?: string; config: Record<string, unknown> }) => void) => {
+      const handler = (_event: any, payload: any) => callback(payload);
+      ipcRenderer.on('plugin:config-changed', handler);
+      return () => ipcRenderer.removeListener('plugin:config-changed', handler);
+    },
+    onStatusChanged: (callback: (payload: { pluginId: string; status: Record<string, unknown> }) => void) => {
+      const handler = (_event: any, payload: any) => callback(payload);
+      ipcRenderer.on('plugin:status-changed', handler);
+      return () => ipcRenderer.removeListener('plugin:status-changed', handler);
+    },
+    onSlotsChanged: (callback: (payload: { pluginId?: string }) => void) => {
+      const handler = (_event: any, payload: any) => callback(payload);
+      ipcRenderer.on('plugin:slots-changed', handler);
+      return () => ipcRenderer.removeListener('plugin:slots-changed', handler);
+    },
     setAuthToken: (token: string) => ipcRenderer.invoke('plugin:set-auth-token', token),
     getApiBaseUrl: () => ipcRenderer.invoke('plugin:get-api-base-url'),
     setApiBaseUrl: (url: string) => ipcRenderer.invoke('plugin:set-api-base-url', url),

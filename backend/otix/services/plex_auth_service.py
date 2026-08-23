@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import urllib.parse
 
@@ -175,11 +176,21 @@ async def _consume_state(state: str, pin_id: str | None = None) -> tuple[str, st
         raise HTTPException(status_code=400, detail="Plex linking session expired. Please try again.")
     await redis.delete(key)
 
-    try:
-        payload = json.loads(raw) if isinstance(raw, str) else {}
-    except (json.JSONDecodeError, TypeError):
-        # Legacy format — just a pin_id string
-        payload = {"pin_id": str(raw)}
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            # Not JSON at all — legacy format stored the bare pin_id
+            parsed = raw
+    else:
+        parsed = raw
+
+    # Current states store {"pin_id": ..., "user_id": ...}; legacy states
+    # stored the pin_id as a bare value (json.loads("1234") yields an int).
+    if isinstance(parsed, dict):
+        payload = parsed
+    else:
+        payload = {"pin_id": str(parsed)}
 
     stored_pin_id = payload.get("pin_id", "")
     if pin_id and str(stored_pin_id) != str(pin_id):

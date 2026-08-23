@@ -26,7 +26,6 @@ class EnrichmentCounts(BaseModel):
     steamgrid: int = 0
     musicbrainz: int = 0
     lastfm: int = 0
-    spotify: int = 0
     embedding: int = 0
     imdb: int = 0
 

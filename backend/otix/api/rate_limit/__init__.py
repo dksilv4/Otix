@@ -117,18 +117,6 @@ class AuthRateLimiter:
         # 5 disconnect requests per 5 minutes per IP
         await self._check(f"google:disconnect:ip:{ip}", rate=5.0 / 300, burst=5)
 
-    async def check_spotify_initiate(self, ip: str) -> None:
-        # 10 initiate requests per 5 minutes per IP
-        await self._check(f"spotify:initiate:ip:{ip}", rate=10.0 / 300, burst=10)
-
-    async def check_spotify_callback(self, ip: str) -> None:
-        # 10 callback requests per 5 minutes per IP
-        await self._check(f"spotify:callback:ip:{ip}", rate=10.0 / 300, burst=10)
-
-    async def check_spotify_disconnect(self, ip: str) -> None:
-        # 5 disconnect requests per 5 minutes per IP
-        await self._check(f"spotify:disconnect:ip:{ip}", rate=5.0 / 300, burst=5)
-
     async def check_plex_initiate(self, ip: str) -> None:
         # 10 initiate requests per 5 minutes per IP
         await self._check(f"plex:initiate:ip:{ip}", rate=10.0 / 300, burst=10)

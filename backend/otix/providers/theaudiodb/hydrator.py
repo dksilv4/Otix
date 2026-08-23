@@ -39,7 +39,6 @@ class TheAudioDBHydrator:
         id_mappings: list[tuple[str, str]] = [
             ("strMusicBrainzID", "musicbrainz"),
             ("strMusicBrainzAlbumID", "musicbrainz"),
-            ("strSpotifyID", "spotify"),
             ("strAppleMusicID", "apple_music"),
             ("strDeezerID", "deezer"),
         ]

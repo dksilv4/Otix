@@ -3,13 +3,12 @@
 
 The Problem
 -----------
-Otix integrates with 15+ external providers (TMDB, IGDB, Spotify, Steam,
+Otix integrates with many external providers (TMDB, IGDB, Steam,
 MusicBrainz, Deezer, etc.). Every provider has its own ID system — TMDB has
-movie/show/person IDs, IGDB has game IDs, Spotify has track/album IDs. We need
+movie/show/person IDs, IGDB has game IDs, Steam has app IDs. We need
 a single table that maps any external ID to any internal entity, so we can:
 
 - Resolve "TMDB movie 550" → our MediaItem.id
-- Resolve "Spotify track 6f8Fg6aG" → our Track.id
 - Resolve "IGDB company 123" → our Company.id
 - Find all external IDs for a given entity (e.g., a MusicBrainz release)
 
@@ -19,7 +18,7 @@ One table, polymorphic references::
 
     external_ids
       id              PK (otix_pk, String(16))
-      provider        e.g. "tmdb", "spotify", "igdb", "steam", "musicbrainz"
+      provider        e.g. "tmdb", "igdb", "steam", "musicbrainz"
       external_id     the provider's native ID (String(100))
       entity_type     what kind of thing: "media_item", "person", "track",
                       "company", "platform", "franchise", "collection",
@@ -122,6 +121,7 @@ Migration Guide
 
 from __future__ import annotations
 
+from sqlalchemy import and_
 from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -233,11 +233,12 @@ class ExternalIDService:
         external_id: str,
         entity_type: str,
         entity_id: str,
+        media_type: str | None = None,
     ) -> ExternalID:
         """Idempotent create-or-update.
 
-        Order of lookups prevents unique-constraint violations on
-        ``uq_external_id_provider_ext`` during concurrent upserts:
+        Order of lookups prevents unique-constraint violations during
+        concurrent upserts:
 
         1. Exact match — (provider, external_id, entity_type) exists → update
            entity_id only (no type change, safe under all concurrency).
@@ -251,7 +252,15 @@ class ExternalIDService:
         4. Last-resort re-read — catches the narrow race where a concurrent TX
            inserted a row with a *different* entity_type (or NULL) between
            steps 1-2 and step 3, so ON CONFLICT on the full tuple missed it.
+
+        ``media_type`` disambiguates TMDB media items (movie 62 vs show 62 are
+        different entities sharing a numeric id). When given, steps 1/2/4 filter
+        by it so a movie sync can never hijack the show's row, and step 3 writes
+        it so the ``(provider, external_id, media_type)`` uniqueness holds.
         """
+        media_clause = [ExternalID.media_type == media_type] if media_type is not None else []
+        set_media_type = media_type is not None
+
         # ── 1. Exact match (provider, external_id, entity_type) ───────────
         existing = await self._session.scalar(
             select(ExternalID)
@@ -259,6 +268,7 @@ class ExternalIDService:
                 ExternalID.provider == provider,
                 ExternalID.external_id == external_id,
                 ExternalID.entity_type == entity_type,
+                *media_clause,
             )
             .limit(1)
         )
@@ -266,6 +276,8 @@ class ExternalIDService:
             existing.entity_id = entity_id
             if entity_type == "media_item":
                 existing.media_item_id = entity_id
+            if set_media_type:
+                existing.media_type = media_type
             return existing
 
         # ── 2. NULL stub — legacy rows where entity_type was not set ──────
@@ -275,6 +287,7 @@ class ExternalIDService:
                 ExternalID.provider == provider,
                 ExternalID.external_id == external_id,
                 ExternalID.entity_type.is_(None),
+                *media_clause,
             )
             .limit(1)
         )
@@ -283,6 +296,8 @@ class ExternalIDService:
             existing.entity_id = entity_id
             if entity_type == "media_item":
                 existing.media_item_id = entity_id
+            if set_media_type:
+                existing.media_type = media_type
             return existing
 
         # ── 3. INSERT — safe when no row exists; ON CONFLICT catches races ─
@@ -296,12 +311,35 @@ class ExternalIDService:
         if entity_type == "media_item":
             insert_values["media_item_id"] = entity_id
             set_values["media_item_id"] = entity_id
+        if set_media_type:
+            insert_values["media_type"] = media_type
+            set_values["media_type"] = media_type
+
+        if entity_type == "media_item" and provider == "tmdb":
+            # Non-partial global uq_external_id_provider_media_type: keyed on
+            # media_type so movie 62 / show 62 coexist, and stub claims resolve
+            # the same row the daily import would re-insert.
+            index_elements = ["provider", "external_id", "media_type"]
+            index_where = None
+        elif entity_type == "media_item":
+            index_elements = ["provider", "external_id", "entity_type"]
+            index_where = and_(
+                ExternalID.entity_type == "media_item",
+                ExternalID.provider != "tmdb",
+            )
+        else:
+            index_elements = ["provider", "external_id", "entity_type"]
+            index_where = and_(
+                ExternalID.entity_type.is_not(None),
+                ExternalID.entity_type != "media_item",
+            )
 
         stmt = (
             pg_insert(ExternalID)
             .values(**insert_values)
             .on_conflict_do_update(
-                constraint="uq_external_id_provider_ext",
+                index_elements=index_elements,
+                index_where=index_where,
                 set_=set_values,
             )
             .returning(ExternalID)
@@ -320,6 +358,7 @@ class ExternalIDService:
                 ExternalID.provider == provider,
                 ExternalID.external_id == external_id,
                 ExternalID.entity_type == entity_type,
+                *media_clause,
             )
             .limit(1)
         )
@@ -327,6 +366,8 @@ class ExternalIDService:
             existing.entity_id = entity_id
             if entity_type == "media_item":
                 existing.media_item_id = entity_id
+            if set_media_type:
+                existing.media_type = media_type
             return existing
 
         # Fallback: try NULL stub one more time (concurrent insert with NULL)
@@ -336,6 +377,7 @@ class ExternalIDService:
                 ExternalID.provider == provider,
                 ExternalID.external_id == external_id,
                 ExternalID.entity_type.is_(None),
+                *media_clause,
             )
             .limit(1)
         )
@@ -344,6 +386,8 @@ class ExternalIDService:
             existing.entity_id = entity_id
             if entity_type == "media_item":
                 existing.media_item_id = entity_id
+            if set_media_type:
+                existing.media_type = media_type
             return existing
 
         raise RuntimeError(f"upsert race: {provider=} {external_id=} {entity_type=} {entity_id=}")

@@ -7,13 +7,32 @@
   "repository": "",
   "system": true,
   "min_app_version": "0.1.0",
-  "permissions": ["network:external", "ui:settings"],
+  "permissions": [
+    "network:external",
+    "ui:settings"
+  ],
   "services": [
-    { "type": "search-provider", "protocol": "usenet" }
+    {
+      "type": "search-provider",
+      "protocol": "usenet"
+    }
   ],
   "config": {
-    "apiKey": { "type": "secret", "label": "API Key" },
-    "categoryIds": { "type": "string", "label": "Category IDs", "default": "1000,2000" }
+    "apiKey": {
+      "type": "secret",
+      "label": "API Key",
+      "section": "General",
+      "order": 0
+    },
+    "categoryIds": {
+      "type": "string",
+      "label": "Category IDs",
+      "default": "1000,2000",
+      "section": "General",
+      "order": 1
+    }
   },
-  "entry": { "main": "main.js" }
+  "entry": {
+    "main": "main.js"
+  }
 }

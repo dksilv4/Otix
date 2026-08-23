@@ -12,7 +12,7 @@ import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permis
 import { PluginPermissionModal } from "@/features/plugins/components/organisms/plugin-permission-modal"
 import { useModal } from "@/lib/modals"
 
-const PIN_KEY = "otix_spotify_player_pinned"
+const PIN_KEY = "otix_player_pinned"
 
 function loadPinState(): boolean {
   try {

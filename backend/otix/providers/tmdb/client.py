@@ -77,6 +77,12 @@ class TMDBProvider(BaseProvider):
         )
         return response.json()
 
+    async def get_movie_images(self, tmdb_id: int) -> dict[str, JSONValue]:
+        # No language param: language-filtered responses drop null-lang
+        # (textless) posters, which we need for the discover artwork filter.
+        response = await self._get(f"/movie/{tmdb_id}/images")
+        return response.json()
+
     async def get_movie_changes(self, start_date: str, end_date: str, page: int = 1) -> dict[str, JSONValue]:
         response = await self._get(
             "/movie/changes",
@@ -143,6 +149,12 @@ class TMDBProvider(BaseProvider):
             "/tv/changes",
             params={"start_date": start_date, "end_date": end_date, "page": page},
         )
+        return response.json()
+
+    async def get_show_images(self, tmdb_id: int) -> dict[str, JSONValue]:
+        # No language param: language-filtered responses drop null-lang
+        # (textless) posters, which we need for the discover artwork filter.
+        response = await self._get(f"/tv/{tmdb_id}/images")
         return response.json()
 
     async def get_show_content_ratings(self, tmdb_id: int) -> dict[str, JSONValue]:

@@ -1,6 +1,6 @@
 import { queryOptions, useQueryClient, useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
-import type { PersonDetail, PersonListResponse, RelatedArtist } from '@people/types'
+import type { PersonDetail, PersonListResponse } from '@people/types'
 
 // ── Query key factory ─────────────────────────────
 
@@ -8,7 +8,6 @@ export const peopleKeys = {
   all: ['person'] as const,
   search: (query: string, limit = 8) => ['person', 'search', query, limit] as const,
   detail: (id: string) => ['person', id] as const,
-  related: (id: string) => ['person', id, 'related'] as const,
 }
 
 // ── Query options ─────────────────────────────────
@@ -35,16 +34,6 @@ export const peopleQueries = {
         return data
       },
       staleTime: 1000 * 60 * 10,
-    }),
-
-  related: (id: string) =>
-    queryOptions({
-      queryKey: ['person', id, 'related'],
-      queryFn: async () => {
-        const { data } = await apiClient.get<{ artists: RelatedArtist[] }>(`/person/${id}/related`)
-        return data.artists
-      },
-      staleTime: 1000 * 60 * 30,
     }),
 }
 

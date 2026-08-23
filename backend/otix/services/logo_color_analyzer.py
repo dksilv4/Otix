@@ -7,10 +7,109 @@ import httpx
 import structlog
 from PIL import Image
 
-from otix.domain.asset import MediaAsset
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
+
+# HSL saturation below which a pixel counts as neutral (achromatic).
+_NEUTRAL_SAT = 0.12
+# Lightness bounds for "reads as dark" / "reads as light".
+_DARK_LIGHTNESS = 0.25
+_LIGHT_LIGHTNESS = 0.78
+# Minimum chromatic share and hue-bin spread for a logo to count as multicolor.
+_MULTICOLOR_CHROMATIC_MIN = 0.5
+_HUE_BIN_COUNT = 12
+_HUE_BIN_MIN_SHARE = 0.08
+_HUE_DOMINANT_MAX = 0.8
+
+
+def _rgb_to_hsl(r: int, g: int, b: int) -> tuple[float, float, float]:
+    """Convert an 8-bit RGB pixel to HSL (h in degrees, s/l in 0..1)."""
+    rn, gn, bn = r / 255.0, g / 255.0, b / 255.0
+    mx = max(rn, gn, bn)
+    mn = min(rn, gn, bn)
+    delta = mx - mn
+    l = (mx + mn) / 2
+    if delta == 0:
+        return 0.0, 0.0, l
+    s = delta / (2 - mx - mn) if l > 0.5 else delta / (mx + mn)
+    if mx == rn:
+        h = ((gn - bn) / delta + (6 if gn < bn else 0)) / 6
+    elif mx == gn:
+        h = ((bn - rn) / delta + 2) / 6
+    else:
+        h = ((rn - gn) / delta + 4) / 6
+    return h * 360, s, l
+
+
+def _classify_pixels(pixels: list[tuple[int, int, int, int]]) -> str | None:
+    """Classify RGBA pixels into a color_guess label.
+
+    Transparent pixels (alpha < 128) are ignored — logo backgrounds are usually
+    transparent PNGs whose RGB channels are meaningless. Very dark and very light
+    chromatic pixels fold into black/white respectively, so labels encode
+    *contrast*: a dark-navy logo reads as dark even though it is colourful.
+    """
+    visible = [(r, g, b) for r, g, b, a in pixels if a >= 128]
+    if not visible:
+        return None
+    total = len(visible)
+
+    black = white = gray = dark_color = light_color = colorful = 0
+    hue_bins = [0] * _HUE_BIN_COUNT
+    chromatic = 0
+    for r, g, b in visible:
+        h, s, l = _rgb_to_hsl(r, g, b)
+        if s < _NEUTRAL_SAT:
+            if l < _DARK_LIGHTNESS:
+                black += 1
+            elif l > _LIGHT_LIGHTNESS:
+                white += 1
+            else:
+                gray += 1
+        else:
+            chromatic += 1
+            hue_bins[int(h // (360 / _HUE_BIN_COUNT)) % _HUE_BIN_COUNT] += 1
+            if l < _DARK_LIGHTNESS:
+                dark_color += 1
+            elif l > _LIGHT_LIGHTNESS:
+                light_color += 1
+            else:
+                colorful += 1
+
+    dark = (black + dark_color) / total
+    light = (white + light_color) / total
+    gray_ratio = gray / total
+    colorful_ratio = colorful / total
+    chromatic_ratio = chromatic / total
+
+    if chromatic_ratio >= _MULTICOLOR_CHROMATIC_MIN and chromatic:
+        shares = [c / chromatic for c in hue_bins if c > 0]
+        dominant = max(shares)
+        distinct = sum(1 for s in shares if s >= _HUE_BIN_MIN_SHARE)
+        if distinct >= 2 and dominant <= _HUE_DOMINANT_MAX:
+            return "guess_multicolor"
+
+    ratios = {
+        "guess_black": dark,
+        "guess_white": light,
+        "guess_gray": gray_ratio,
+        "guess_colorful": colorful_ratio,
+    }
+    best = max(ratios, key=ratios.get)
+    if ratios[best] >= 0.5:
+        return best
+
+    # No clear majority — lean on whichever signal is strongest.
+    if colorful_ratio >= 0.35 and colorful_ratio >= max(dark, light, gray_ratio):
+        return "guess_colorful"
+    if dark >= 0.3 and dark >= light:
+        return "guess_black"
+    if light >= 0.3:
+        return "guess_white"
+    if gray_ratio >= 0.3:
+        return "guess_gray"
+    return "guess_gray"
 
 
 class LogoColorAnalyzer:
@@ -43,53 +142,20 @@ class LogoColorAnalyzer:
         return self._classify(img)
 
     def _classify(self, image: Image.Image) -> str | None:
-        """Classify logo by dominant colors using luminance buckets + quantization.
+        """Classify logo by dominant colors using HSL + alpha-aware quantization.
 
-        Returns one of: guess_black, guess_white, guess_multicolor, guess_colorful, guess_gray
+        Returns one of: guess_black, guess_white, guess_gray, guess_colorful, guess_multicolor
         """
-        if image.mode != "RGB":
-            image = image.convert("RGB")
+        if image.mode != "RGBA":
+            image = image.convert("RGBA")
 
-        # Resize for speed — 50x50 is enough for color analysis
-        image = image.resize((50, 50))
-        pixels = list(image.getdata())
-        total = len(pixels)
-        if total == 0:
+        # Resize for speed — 64x64 is enough for color analysis
+        image = image.resize((64, 64), resample=Image.Resampling.BILINEAR)
+        pixels = list(image.get_flattened_data())
+        if not pixels:
             return None
 
-        black_count = sum(1 for r, g, b in pixels if r < 60 and g < 60 and b < 60)
-        white_count = sum(1 for r, g, b in pixels if r > 200 and g > 200 and b > 200)
-        gray_count = sum(1 for r, g, b in pixels if abs(r - g) < 30 and abs(g - b) < 30 and not (r < 60 or r > 200))
-        colorful_count = total - black_count - white_count - gray_count
-
-        black_ratio = black_count / total
-        white_ratio = white_count / total
-        gray_ratio = gray_count / total
-        colorful_ratio = colorful_count / total
-
-        # Classify based on dominant characteristic
-        if colorful_ratio > 0.35:
-            return "guess_multicolor"
-        if black_ratio > 0.6:
-            return "guess_black"
-        if white_ratio > 0.6:
-            return "guess_white"
-        if gray_ratio > 0.6:
-            return "guess_gray"
-
-        # Edge case: mostly colorful with some dark/light
-        if colorful_ratio > 0.2:
-            return "guess_colorful"
-
-        # Fall through to dominant non-neutral
-        ratios = [
-            ("guess_black", black_ratio),
-            ("guess_white", white_ratio),
-            ("guess_gray", gray_ratio),
-            ("guess_colorful", colorful_ratio),
-        ]
-        ratios.sort(key=lambda x: x[1], reverse=True)
-        return ratios[0][0] if ratios[0][1] > 0 else None
+        return _classify_pixels(pixels)
 
     async def close(self):
         await self.http.aclose()

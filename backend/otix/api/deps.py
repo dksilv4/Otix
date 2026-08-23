@@ -129,3 +129,18 @@ async def resolve_preferred_lang(
 
     country = await resolve_country_code(request, current_user)
     return lang_from_country(country)
+
+
+async def resolve_theme(
+    request: Request,
+    current_user: User | None = None,
+) -> str:
+    """Resolve the viewer's UI theme for theme-aware logo selection.
+
+    The frontend sends its resolved light/dark theme via ``X-Otix-Theme``.
+    Otix's default UI is dark.
+    """
+    header = request.headers.get("X-Otix-Theme")
+    if header in ("light", "dark"):
+        return header
+    return "dark"

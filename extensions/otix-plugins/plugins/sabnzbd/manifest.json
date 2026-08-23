@@ -7,16 +7,53 @@
   "repository": "",
   "system": true,
   "min_app_version": "0.1.0",
-  "permissions": ["network:external", "ui:settings"],
+  "permissions": [
+    "network:external",
+    "ui:settings"
+  ],
   "services": [
-    { "type": "downloader", "protocol": "usenet" }
+    {
+      "type": "downloader",
+      "protocol": "usenet"
+    }
   ],
   "config": {
-    "host": { "type": "string", "label": "Host", "default": "localhost" },
-    "port": { "type": "number", "label": "Port", "default": 8080 },
-    "apiKey": { "type": "secret", "label": "API Key" },
-    "useSsl": { "type": "boolean", "label": "Use SSL", "default": false },
-    "category": { "type": "string", "label": "Default Category", "default": "games" }
+    "host": {
+      "type": "string",
+      "label": "Host",
+      "default": "localhost",
+      "section": "General",
+      "order": 0
+    },
+    "port": {
+      "type": "number",
+      "label": "Port",
+      "default": 8080,
+      "section": "General",
+      "order": 1
+    },
+    "apiKey": {
+      "type": "secret",
+      "label": "API Key",
+      "section": "General",
+      "order": 2
+    },
+    "useSsl": {
+      "type": "boolean",
+      "label": "Use SSL",
+      "default": false,
+      "section": "General",
+      "order": 3
+    },
+    "category": {
+      "type": "string",
+      "label": "Default Category",
+      "default": "games",
+      "section": "General",
+      "order": 4
+    }
   },
-  "entry": { "main": "main.js" }
+  "entry": {
+    "main": "main.js"
+  }
 }

@@ -77,7 +77,7 @@ def _process_pending_external_ids(session: Session, flush_context=None) -> None:
                                 entity_type=entity_type,
                                 entity_id=entity_id,
                                 media_item_id=entity_id if entity_type == "media_item" else None,
-                            ).on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
+                            ).on_conflict_do_nothing()
                         )
                         session.delete(legacy)
                     else:
@@ -91,7 +91,7 @@ def _process_pending_external_ids(session: Session, flush_context=None) -> None:
                                 entity_type=entity_type,
                                 entity_id=entity_id,
                                 media_item_id=entity_id if entity_type == "media_item" else None,
-                            ).on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
+                            ).on_conflict_do_nothing()
                         )
             elif existing is not None:
                 session.delete(existing)

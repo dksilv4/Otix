@@ -6,7 +6,6 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlayer } from '@/lib/player/use-player'
-import SpotifyIcon from '@/assets/provider-logos/spotify.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { apiClient } from '@/lib/api/client'
 import { usePalette, rgbCss, rgbaCss } from '../../hooks/use-palette'
@@ -35,8 +34,7 @@ export function ActivityModulePlayer() {
   const navigate = useNavigate()
   const {
     source, isPlaying, currentTrack, position, duration, volume,
-    spotifyNextTracks, spotifyPreviousTracks,
-    togglePlay, skipNext, skipPrevious, seek, setVolume, playSpotify,
+    togglePlay, skipNext, skipPrevious, seek, setVolume,
     plexQueue, plexPreviousTracks, skipPlexToIndex,
   } = usePlayer()
 
@@ -56,12 +54,9 @@ export function ActivityModulePlayer() {
 
   const hasScrolledRef = useRef(false)
 
-  const queueItems = (source === 'plex'
-    ? plexQueue.slice(1)
-    : spotifyNextTracks
-  ).map(normalizeTrack)
+  const queueItems = plexQueue.slice(1).map(normalizeTrack)
 
-  const prevItems = (source === 'plex' ? plexPreviousTracks : spotifyPreviousTracks)
+  const prevItems = plexPreviousTracks
     .filter(item => {
       if (!currentTrack) return true
       const itemUri = 'uri' in item ? (item as { uri?: string }).uri : undefined
@@ -112,19 +107,15 @@ export function ActivityModulePlayer() {
     } catch { /* ignore */ }
   }
 
-  const handleQueueItemClick = async (item: { uri?: string; id?: string }, displayIndex: number) => {
-    if (source === 'spotify' && item.uri) {
-      try { await playSpotify(item.uri) }
-      catch (e) { console.error('Queue click play failed:', e) }
-    } else if (source === 'plex') {
+  const handleQueueItemClick = async (_item: { uri?: string; id?: string }, displayIndex: number) => {
+    if (source === 'plex') {
       skipPlexToIndex(displayIndex + 1)
     }
   }
 
-  const handlePrevItemClick = async (item: { uri?: string; id?: string }) => {
-    if (source === 'spotify' && item.uri) {
-      try { await playSpotify(item.uri) }
-      catch (e) { console.error('Prev click play failed:', e) }
+  const handlePrevItemClick = async (_item: { uri?: string; id?: string }, index: number) => {
+    if (source === 'plex') {
+      skipPlexToIndex(index)
     }
   }
 
@@ -199,14 +190,8 @@ export function ActivityModulePlayer() {
                     </div>
                   )}
                   <div className="absolute top-2.5 right-2.5">
-                    <span
-                      className={"inline-flex items-center justify-center rounded-full p-1.5" + (source === 'spotify' ? " bg-[#1DB954]/20 text-[#1DB954]" : " bg-amber-400/20 text-amber-400")}
-                    >
-                      {source === 'spotify' ? (
-                        <SpotifyIcon className="h-3.5 w-3.5" />
-                      ) : (
-                        <PlexIcon className="h-3.5 w-3.5" />
-                      )}
+                    <span className="inline-flex items-center justify-center rounded-full p-1.5 bg-amber-400/20 text-amber-400">
+                      <PlexIcon className="h-3.5 w-3.5" />
                     </span>
                   </div>
                 </div>
@@ -347,7 +332,6 @@ export function ActivityModulePlayer() {
               prevItems={prevItems}
               palette={palette}
               accentColor={accentColor}
-              source={source}
               onBack={() => setShowQueue(false)}
               onQueueItemClick={handleQueueItemClick}
               onPrevItemClick={handlePrevItemClick}
@@ -357,7 +341,7 @@ export function ActivityModulePlayer() {
       </div>
 
       {/* Queue toggle button */}
-      {!(queueItems.length === 0 && prevItems.length === 0) && source !== 'plex' && (
+      {!(queueItems.length === 0 && prevItems.length === 0) && (
         <button
           type="button"
           onClick={() => setShowQueue(!showQueue)}
@@ -381,7 +365,7 @@ function QueueInline({
   queueContainerRef: React.RefObject<HTMLDivElement | null>
   upNextContainerRef: React.RefObject<HTMLDivElement | null>
   onQueueItemClick: (item: { uri?: string; id?: string }, i: number) => void
-  onPrevItemClick: (item: { uri?: string; id?: string }) => void
+  onPrevItemClick: (item: { uri?: string; id?: string }, i: number) => void
 }) {
   return (
     <div className="px-6 pb-6 flex-1 flex flex-col min-h-0">
@@ -404,7 +388,7 @@ function QueueInline({
               <button
                 key={`prev-${item.id || (item as { uri?: string }).uri}-${i}`}
                 type="button"
-                onClick={() => onPrevItemClick(item)}
+                onClick={() => onPrevItemClick(item, i)}
                 className="flex items-center gap-2.5 rounded-lg px-2 py-1 transition-colors cursor-pointer text-inherit hover:bg-white/[0.03] opacity-50 hover:opacity-75"
               >
                 {item.albumArt ? (
@@ -466,10 +450,9 @@ function QueueFullView({
   prevItems: Array<{ uri?: string; id?: string; albumArt?: string; name?: string; title?: string; artist?: string }>
   palette: ReturnType<typeof usePalette>
   accentColor: string
-  source: string
   onBack: () => void
   onQueueItemClick: (item: { uri?: string; id?: string }, i: number) => void
-  onPrevItemClick: (item: { uri?: string; id?: string }) => void
+  onPrevItemClick: (item: { uri?: string; id?: string }, i: number) => void
 }) {
   return (
     <motion.div
@@ -529,7 +512,7 @@ function QueueFullView({
               <button
                 key={`prev-${item.id || (item as { uri?: string }).uri}-${i}`}
                 type="button"
-                onClick={() => onPrevItemClick(item)}
+                onClick={() => onPrevItemClick(item, i)}
                 className="flex items-center gap-2.5 rounded-lg px-2 py-1 transition-colors cursor-pointer text-inherit hover:bg-white/[0.03] opacity-50 hover:opacity-75"
               >
                 {item.albumArt ? <img src={item.albumArt} alt="" className="h-7 w-7 rounded object-cover shrink-0" /> : <div className="h-7 w-7 rounded shrink-0 bg-white/[0.04]" />}

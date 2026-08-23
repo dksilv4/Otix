@@ -19,8 +19,6 @@ from otix.api.auth.refresh import router as refresh_router
 from otix.api.auth.register import router as register_router
 from otix.api.auth.reset_password import router as reset_password_router
 from otix.api.auth.sessions import router as sessions_router
-from otix.api.auth.spotify.login import router as spotify_login_init_router
-from otix.api.auth.spotify.login.callback import router as spotify_login_callback_router
 from otix.api.auth.tmdb.login import router as tmdb_login_init_router
 from otix.api.auth.tmdb.login.callback import router as tmdb_login_callback_router
 from otix.api.auth.two_factor import router as two_factor_router
@@ -40,8 +38,6 @@ auth_router.include_router(two_factor_router)
 auth_router.include_router(me_router)
 auth_router.include_router(google_login_init_router)
 auth_router.include_router(google_login_callback_router)
-auth_router.include_router(spotify_login_init_router)
-auth_router.include_router(spotify_login_callback_router)
 auth_router.include_router(plex_login_init_router)
 auth_router.include_router(plex_login_callback_router)
 auth_router.include_router(tmdb_login_init_router)

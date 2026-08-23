@@ -32,6 +32,7 @@ export interface Game {
   textlessPosterUrl?: string | null
   backdropUrl?: string
   logoUrl?: string
+  logoColorGuess?: string | null
   releaseDate?: string | null
   genres?: { id: string; name: string; slug: string }[]
   gameModes?: { id: string; gameMode: { id: string; name: string; slug: string } }[]
@@ -99,6 +100,7 @@ export interface CatalogGame {
   posterUrl?: string | null
   textlessPosterUrl?: string | null
   logoUrl?: string | null
+  logoColorGuess?: string | null
   iconUrl?: string | null
   backdropUrl?: string | null
   releaseDate?: string | null
@@ -142,6 +144,7 @@ export interface DisplayGame {
   localIconUrl?: string
   iconUrl?: string
   logoUrl?: string
+  logoColorGuess?: string | null
   badge?: string
   playtime: string
   achievements: string

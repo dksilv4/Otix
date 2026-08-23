@@ -284,15 +284,20 @@ class TMDBHydrator:
 
         TMDB returns iso_639_1 for each image. When null/None, the poster
         has no text overlay — we store those as asset_type='textless_poster'.
-        (Note: textless poster promotion is driven by Fanart, since TMDB's
-        iso_639_1=null is unreliable for detecting truly textless posters.)
+        The caller passes a language-agnostic images response (get_*_images)
+        so null-lang textless posters are actually present; language-filtered
+        responses drop them entirely.
         """
         images = raw.get("images", {})
         if not images:
             return
 
         raw_assets: list[RawAsset] = []
-        for poster in images.get("posters", [])[:10]:
+        # Null-lang posters are textless; sort them first so textless_poster
+        # assets are always collected even from a large unfiltered set.
+        posters = images.get("posters", [])
+        posters = sorted(posters, key=lambda p: p.get("iso_639_1") is not None)[:10]
+        for poster in posters:
             url = _tmdb_image(poster.get("file_path"), "original")
             if not url:
                 continue

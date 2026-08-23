@@ -14,6 +14,7 @@ export function toDisplayGame(g: LocalGame): DisplayGame {
     localIconUrl: g.localIconUrl || undefined,
     iconUrl: g.data?.iconUrl || g.iconUrl || undefined,
     logoUrl: g.otixLogoUrl || g.data?.logoUrl || g.logoUrl || undefined,
+    logoColorGuess: g.data?.logoColorGuess || undefined,
     badge: `${platformLabel} · ${matchLabel}`,
     playtime: '—',
     achievements: isMatched ? 'Owned' : '—',

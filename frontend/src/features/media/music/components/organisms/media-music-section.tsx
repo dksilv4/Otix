@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { AlbumDetail, TrackOut } from '../../../queries/media-queries'
 import { mediaQueries } from '../../../queries/media-queries'
@@ -72,7 +72,7 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
 	const artistName = data?.credits?.find(c => ['artist', 'musician', 'composer', 'main'].includes(c.role))?.person?.name ?? null
 
 	const tracks = album.tracks ?? EMPTY_TRACKS
-	const { playSpotifyQueue, spotifyIsReady, playPlexAlbum, error } = usePlayer()
+	const { playPlexAlbum, error } = usePlayer()
 	const { data: plexData } = usePlexAlbumTracks(mediaItemId)
  const plexTracks = plexData?.tracks
 
@@ -92,7 +92,6 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  title: pt.title,
  durationMs: pt.durationMs,
  previewUrl: null,
- spotifyId: null,
  musicbrainzRecordingId: null,
  audioFeatures: null,
  avgRating: null,
@@ -106,14 +105,7 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
 
  const multiDisc = allTracks.some((t) => t.discNumber > 1)
 
- // Platform picker: when both Spotify and Plex are available, let the user choose.
- // Default to Spotify when both are present, Plex if only Plex is available.
- const hasSpotify = !!(album.spotifyId && spotifyIsReady)
  const hasPlex = !!(plexTracks && plexTracks.length > 0 && plexData)
- const hasBothPlatforms = hasSpotify && hasPlex
- const [playbackPlatform, setPlaybackPlatform] = useState<'spotify' | 'plex'>(
- hasSpotify ? 'spotify' : 'plex',
- )
 
  // Plex credentials for client-side stream URL resolution
  const plexBaseUrl = plexData?.baseUrl
@@ -171,62 +163,11 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  )}
  </dd>
  </div>
- {album.spotifyPopularity != null && (
- <div>
- <dt className="text-xs text-muted-foreground">Spotify popularity</dt>
- <dd className="text-sm font-medium">{album.spotifyPopularity}/100</dd>
- </div>
- )}
  </dl>
 
  <div className="mt-4 flex flex-wrap items-center gap-2">
- {/* Platform picker — shown when album is on both Spotify and Plex */}
- {hasBothPlatforms && (
- <div className="flex items-center rounded-lg p-0.5 mr-1" style={{ backgroundColor: 'rgba(255,255,255,0.04)', boxShadow: '0 0 0 1px rgba(255,255,255,0.06)' }}>
- <button
- type="button"
- onClick={() => setPlaybackPlatform('spotify')}
- className={cn(
- 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all text-muted-foreground hover:text-foreground',
- playbackPlatform === 'spotify' && 'bg-[#1DB954] text-black shadow-sm',
- )}
- >
- <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
- <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
- </svg>
- Spotify
- </button>
- <button
- type="button"
- onClick={() => setPlaybackPlatform('plex')}
- className={cn(
- 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all text-muted-foreground hover:text-foreground',
- playbackPlatform === 'plex' && 'bg-amber-500 text-black shadow-sm',
- )}
- >
- <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
- <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.54 4.92.42-3.73 3.23L16.23 18z" />
- </svg>
- Plex
- </button>
- </div>
- )}
- {/* Spotify Play Album */}
- {hasSpotify && (!hasBothPlatforms || playbackPlatform === 'spotify') && (
- <button
- type="button"
- onClick={() => {
- const uris = allTracks.filter(t => t.spotifyId).map(t => `spotify:track:${t.spotifyId}` as string)
- if (uris.length > 0) playSpotifyQueue(uris)
- }}
- className="inline-flex items-center gap-1.5 rounded-lg bg-[#1DB954] px-3 py-1.5 text-xs font-medium text-black transition-colors hover:bg-[#1DB954]/90"
- >
- <Play className="h-3.5 w-3.5 fill-current" />
- Play Album
- </button>
- )}
  {/* Plex Play Album */}
- {hasPlex && (!hasBothPlatforms || playbackPlatform === 'plex') && (
+ {hasPlex && (
  <button
  type="button"
  onClick={() => {
@@ -250,17 +191,6 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  Plex connection unavailable — re-sync in Settings
  </span>
  )}
- {album.spotifyUrl && (
- <a
- href={album.spotifyUrl}
- target="_blank"
- rel="noopener noreferrer"
- className="inline-flex items-center gap-1.5 rounded-lg bg-[#1DB954]/20 px-3 py-1.5 text-xs font-medium text-[#1DB954] transition-colors hover:bg-[#1DB954]/30"
- >
- <ExternalLink className="h-3.5 w-3.5" />
- Spotify
- </a>
- )}
  {album.musicbrainzId && (
  <a
  href={`https://musicbrainz.org/release/${album.musicbrainzId}`}
@@ -283,7 +213,7 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  Release group
  </a>
  )}
- {album.previewUrl && !album.spotifyUrl && (
+ {album.previewUrl && (
  <a
  href={album.previewUrl}
  target="_blank"
@@ -340,7 +270,6 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  key={t.id}
  track={t}
  showDisc={multiDisc}
- playbackPlatform={playbackPlatform}
  allTracks={allTracks}
  albumTitle={title || ""}
  albumArt={posterUrl ?? null}
@@ -365,15 +294,9 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  )}
  </div>
 
- {album.spotifyId && (
- <p className="text-[11px] text-muted-foreground">
- Spotify ID: <span className="font-mono">{album.spotifyId}</span>
  {album.musicbrainzId && (
- <>
- {' · '}
+ <p className="text-[11px] text-muted-foreground">
  MB Release: <span className="font-mono">{album.musicbrainzId}</span>
- </>
- )}
  </p>
  )}
  </section>

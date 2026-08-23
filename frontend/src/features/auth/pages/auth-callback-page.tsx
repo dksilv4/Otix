@@ -33,15 +33,14 @@ const SERVICES: Record<string, ServiceCfg> = {
     successNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
     errorNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
   },
-  'spotify-login': {
-    name: 'Spotify', endpoint: '/auth/spotify/callback', loadingColor: '#1DB954',
+  'google-drive': {
+    name: 'Google Drive', endpoint: '/auth/oauth/google-drive/callback', loadingColor: '#4285F4',
     validateParams: (p) =>
-      p.get('error') ? 'Spotify authorization was denied.' :
-      !p.get('code') || !p.get('state') ? 'Spotify did not return the expected authorization details.' : null,
+      p.get('error') ? 'Google authorization was denied.' :
+      !p.get('code') || !p.get('state') ? 'Google did not return the expected authorization details.' : null,
     buildBody: (p) => ({ code: p.get('code'), state: p.get('state') }),
-    onSuccess: (data) => { localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken as string) },
-    successNav: { to: '/', replace: true },
-    errorNav: { to: '/auth/login', replace: true },
+    successNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
+    errorNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
   },
   'plex-login': {
     name: 'Plex', endpoint: '/auth/plex/callback', loadingColor: '#BA5D2E',
@@ -80,15 +79,6 @@ const SERVICES: Record<string, ServiceCfg> = {
   plex: {
     name: 'Plex', endpoint: '/auth/oauth/plex/callback',
     buildBody: (p) => ({ state: p.get('state'), pinId: p.get('pinId') || undefined }),
-    successNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
-    errorNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
-  },
-  spotify: {
-    name: 'Spotify', endpoint: '/auth/oauth/spotify/callback', loadingColor: '#1db954',
-    validateParams: (p) =>
-      p.get('error') ? 'Spotify authorization was denied.' :
-      !p.get('code') || !p.get('state') ? 'Spotify did not return the expected authorization details.' : null,
-    buildBody: (p) => ({ code: p.get('code'), state: p.get('state') }),
     successNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
     errorNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
   },

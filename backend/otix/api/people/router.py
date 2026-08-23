@@ -8,7 +8,6 @@ from otix.api.deps import get_db
 from otix.api.people.detail import router as detail_router
 from otix.api.people.follow import router as follow_router
 from otix.api.people.rating import router as rating_router
-from otix.api.people.related import router as related_router
 from otix.schemas.people import PersonListResponse, PersonSummary
 from otix.services.people_service import PeopleService
 
@@ -48,4 +47,3 @@ async def list_people(
 people_router.include_router(detail_router)
 people_router.include_router(follow_router)
 people_router.include_router(rating_router)
-people_router.include_router(related_router)

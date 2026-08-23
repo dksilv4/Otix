@@ -11,6 +11,7 @@ import { toDisplayGame, heroImage } from '@/features/launcher/utils'
 import { useInactiveSlideshow } from '@/features/launcher/hooks/use-inactive-slideshow'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import { PLATFORM_LABELS } from '@/constants/games'
+import { MediaLogo } from '@/lib/media/media-logo'
 import type { DisplayGame, LauncherPlatform } from '@/features/launcher/types'
 
 type SortMode = 'recent' | 'title' | 'platform'
@@ -36,6 +37,7 @@ export function LauncherLibraryPage() {
       iconUrl: g.posterUrl ?? g.iconUrl ?? undefined,
       backdropUrl: g.backdropUrl ?? undefined,
       logoUrl: g.logoUrl ?? undefined,
+      logoColorGuess: g.logoColorGuess ?? undefined,
       playtime: '', achievements: '', isDefault: false,
       isInstalled: false, platform: 'unknown' as LauncherPlatform,
     }))
@@ -211,14 +213,13 @@ export function LauncherLibraryPage() {
                               'radial-gradient(ellipse at left center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0) 80%)',
                           }}
                         />
-                        <img
-                          src={featured.logoUrl}
+                        <MediaLogo
+                          src={featured.logoUrl!}
                           alt={featured.title}
                           className="relative z-10 h-24 max-w-[320px] object-contain object-left"
-                          style={{
-                            filter:
-                              'drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 8px 32px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))',
-                          }}
+                          colorGuess={featured.logoColorGuess ?? null}
+                          background="dark"
+                          shadow="drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 8px 32px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
                           onError={() => handleLogoError(featured.id)}
                         />
                       </div>
@@ -398,15 +399,14 @@ export function LauncherLibraryPage() {
                                   'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0) 80%)',
                               }}
                             />
-                            <img
+                            <MediaLogo
                               src={game.logoUrl!}
                               alt={game.title}
                               className="relative z-10 max-h-[35%] max-w-[70%] object-contain translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out"
-                              style={{
-                                transitionDelay: '50ms',
-                                filter:
-                                  'drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 6px 24px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))',
-                              }}
+                              colorGuess={game.logoColorGuess ?? null}
+                              background="dark"
+                              shadow="drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 6px 24px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
+                              style={{ transitionDelay: '50ms' }}
                               onError={() => handleLogoError(game.id)}
                             />
                           </div>

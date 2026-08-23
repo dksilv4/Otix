@@ -8,9 +8,19 @@ import type { PermissionManager } from './permissions'
 import { eventBus } from './event-bus'
 import { openOAuthWindow } from './oauth-window'
 
+// The main window can be recreated (e.g. macOS activate after close), so the
+// reference is stored here and refreshed via setPluginMainWebContents rather
+// than derived from BrowserWindow.getAllWindows()[0] — which can point at a
+// secondary window (OAuth popup, standalone link window) once the main window
+// has been recreated, causing valid renderer IPC to be rejected.
+let mainWebContents: Electron.WebContents | null = null
+
+export function setPluginMainWebContents(webContents: Electron.WebContents | null): void {
+  mainWebContents = webContents
+}
+
 function validateSender(event: Electron.IpcMainInvokeEvent): void {
-  const mainWindow = BrowserWindow.getAllWindows()[0]
-  if (event.sender !== mainWindow?.webContents) {
+  if (event.sender !== mainWebContents) {
     throw new Error('IPC call from unauthorized sender')
   }
 }
@@ -26,6 +36,21 @@ export function registerPluginIPC(
   mainWindow: BrowserWindow,
   permissionManager?: PermissionManager,
 ): void {
+  mainWebContents = mainWindow.webContents
+  // ── Forward main-process plugin change events to the renderer ──
+  const forward = <T extends 'plugin:config-changed' | 'plugin:status-changed' | 'plugin:slots-changed'>(
+    channel: T,
+  ) => {
+    eventBus.on(channel, (payload) => {
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(channel, payload)
+      }
+    }, 'ipc')
+  }
+  forward('plugin:config-changed')
+  forward('plugin:status-changed')
+  forward('plugin:slots-changed')
+
   // ── Query handlers (no sender validation needed) ──
   ipcMain.handle('plugin:list', async () => {
     return await pluginManager.getAllPluginsWithStatuses()
@@ -139,7 +164,10 @@ export function registerPluginIPC(
   })
 
   // ── Data calls ──
-  ipcMain.handle('plugin:call-data', async (_event, pluginId: string, method: string, ...args: unknown[]) => {
+  ipcMain.handle('plugin:call-data', async (event, pluginId: string, method: string, ...args: unknown[]) => {
+    validateSender(event)
+    assertString(pluginId, 'pluginId')
+    assertString(method, 'method')
     return await pluginManager.callPluginData(pluginId, method, ...args)
   })
 

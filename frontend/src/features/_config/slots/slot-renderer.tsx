@@ -1,108 +1,266 @@
-// frontend/src/features/_config/slots/SlotRenderer.tsx
-//
-// Widget props are Zod-validated at runtime (see WidgetCatalog.ts). The `as any`
-// casts bridge from runtime string enums to DK UI component union types — the
-// Zod schemas guarantee correctness; TypeScript cannot verify cross-boundary unions.
+// Widget props are Zod-validated at runtime (see WidgetCatalog.ts). `as any`
+// casts bridge the plugin-provided prop bag into React component props — Zod
+// schemas guarantee correctness; TypeScript cannot verify cross-boundary unions.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-import { type ReactNode, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Download,
+  ExternalLink,
+  FolderOpen,
+  Gamepad2,
+  Inbox,
+  Info,
+  Loader2,
+  Music,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings2,
+  Star,
+  Trash2,
+  Wrench,
+  XCircle,
+} from 'lucide-react'
 import { ErrorBoundary } from './error-boundary'
 import { ErrorCard } from './error-card'
 import { validateWidget } from './widget-catalog'
 import type { SlotContribution, SlotWidget } from './types'
-import { DkButton } from '@/old-features/ui/atoms/button'
-import { DkCard } from '@/old-features/ui/molecules/card'
-import { DkInput } from '@/old-features/ui/atoms/input'
-import { DkSelect } from '@/old-features/ui/atoms/select'
-import { DkBadge } from '@/old-features/ui/atoms/badge'
-import { DkTabs, DkTabList, DkTab, DkTabPanel } from '@/old-features/ui/molecules/tabs'
-import { DkSeparator } from '@/old-features/ui/atoms/separator'
-import { DkSpinner } from '@/old-features/ui/atoms/spinner'
-import { DkSkeleton } from '@/old-features/ui/atoms/skeleton'
-import { DkDeferredSection } from '@/old-features/ui/molecules/deferred-section'
-import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react'
+import { Alert, Badge, Button, EmptyState, Field, Input, Progress, Select, Switch } from '@/features/plugins/ui'
+import { cn } from '@/lib/utils'
 
-// ── SlotRenderer (top-level) ─────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface SlotRendererProps {
   contributions: SlotContribution[]
   onAction?: (pluginId: string, actionKey: string, payload: unknown) => void | Promise<void>
   loading?: boolean
-  emptyFallback?: ReactNode
+  className?: string
 }
 
-export function SlotRenderer({ contributions, onAction, loading, emptyFallback }: SlotRendererProps) {
+type SlotAction = (pluginId: string, actionKey: string, payload: unknown) => void | Promise<void>
+
+interface ActionFeedback {
+  tone: 'success' | 'error'
+  message: string
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+const ICONS: Record<string, ComponentType<{ className?: string }>> = {
+  activity: Activity,
+  alert: AlertTriangle,
+  'alert-triangle': AlertTriangle,
+  check: CheckCircle2,
+  'check-circle': CheckCircle2,
+  clock: Clock,
+  download: Download,
+  external: ExternalLink,
+  'external-link': ExternalLink,
+  folder: FolderOpen,
+  gamepad: Gamepad2,
+  inbox: Inbox,
+  info: Info,
+  music: Music,
+  refresh: RefreshCw,
+  search: Search,
+  settings: Settings2,
+  spinner: Loader2,
+  star: Star,
+  trash: Trash2,
+  wrench: Wrench,
+  x: XCircle,
+}
+
+function IconComp(name?: string): ComponentType<{ className?: string }> {
+  return (name && ICONS[name]) || Inbox
+}
+
+function Icon({ name, className }: { name?: string; className?: string }) {
+  const C = IconComp(name)
+  return <C className={className} />
+}
+
+// ── Variant / tone maps ───────────────────────────────────────────────────────
+
+const BTN_VARIANT: Record<string, 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline'> = {
+  primary: 'primary',
+  secondary: 'secondary',
+  ghost: 'ghost',
+  danger: 'danger',
+  outline: 'outline',
+}
+
+const ALERT_TONE: Record<string, 'info' | 'success' | 'warning' | 'error'> = {
+  info: 'info',
+  success: 'success',
+  warn: 'warning',
+  warning: 'warning',
+  error: 'error',
+}
+
+const BADGE_TONE: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info' | 'system'> = {
+  default: 'default',
+  success: 'success',
+  info: 'info',
+  system: 'system',
+  warn: 'warning',
+  warning: 'warning',
+  danger: 'danger',
+  error: 'danger',
+}
+
+const STAT_COLOR: Record<string, string> = {
+  default: 'text-white/60',
+  success: 'text-emerald-400',
+  warning: 'text-amber-400',
+  warn: 'text-amber-400',
+  danger: 'text-red-400',
+  error: 'text-red-400',
+  info: 'text-sky-400',
+}
+
+const PADDING: Record<string, string> = {
+  none: 'p-0',
+  sm: 'p-3',
+  md: 'p-4',
+  lg: 'p-5',
+}
+
+const ALIGN: Record<string, string> = {
+  left: 'justify-start',
+  center: 'justify-center',
+  right: 'justify-end',
+  stretch: 'justify-stretch',
+}
+
+// ── Action feedback hook ──────────────────────────────────────────────────────
+
+function useSlotActions(onAction?: SlotAction): { busy: Record<string, boolean>; feedback: Record<string, ActionFeedback>; run: SlotAction } {
+  const [busy, setBusy] = useState<Record<string, boolean>>({})
+  const [feedback, setFeedback] = useState<Record<string, ActionFeedback>>({})
+  const onActionRef = useRef<SlotAction | undefined>(onAction)
+  useEffect(() => {
+    onActionRef.current = onAction
+  }, [onAction])
+
+  const run = useCallback<SlotAction>(async (pluginId, actionKey, payload) => {
+    const id = `${pluginId}:${actionKey}`
+    setBusy((b) => ({ ...b, [id]: true }))
+    setFeedback((f) => {
+      const next = { ...f }
+      delete next[id]
+      return next
+    })
+    const clear = () => {
+      window.setTimeout(() => {
+        setFeedback((f) => {
+          const next = { ...f }
+          delete next[id]
+          return next
+        })
+      }, 4000)
+    }
+    try {
+      const res = await onActionRef.current?.(pluginId, actionKey, payload)
+      if (res && typeof res === 'object') {
+        const r = res as { success?: boolean; message?: string; error?: string }
+        const ok = r.success !== false
+        setFeedback((f) => ({
+          ...f,
+          [id]: { tone: ok ? 'success' : 'error', message: ok ? r.message || 'Done' : r.error || r.message || 'Action failed' },
+        }))
+        clear()
+      }
+    } catch (err) {
+      setFeedback((f) => ({
+        ...f,
+        [id]: { tone: 'error', message: err instanceof Error ? err.message : 'Action failed' },
+      }))
+      clear()
+    } finally {
+      setBusy((b) => ({ ...b, [id]: false }))
+    }
+  }, [])
+
+  return { busy, feedback, run }
+}
+
+function safeUrl(url: string): string | undefined {
+  if (/^(https?:|mailto:)/i.test(url)) return url
+  return undefined
+}
+
+// ── SlotRenderer (top-level) ──────────────────────────────────────────────────
+
+export function SlotRenderer({ contributions, onAction, loading, className }: SlotRendererProps) {
+  const { busy, feedback, run } = useSlotActions(onAction)
+
+  const handleAction: SlotAction = useCallback(
+    (pluginId, actionKey, payload) => run(pluginId, actionKey, payload),
+    [run],
+  )
+
   if (loading) {
-    return <SlotSkeleton />
+    return (
+      <div className="space-y-2">
+        <div className="h-10 rounded-xl bg-white/5 animate-pulse" />
+        <div className="h-16 rounded-xl bg-white/5 animate-pulse" />
+      </div>
+    )
   }
 
-  if (!contributions || contributions.length === 0) {
-    return <>{emptyFallback || null}</>
+  if (contributions.length === 0) {
+    return <p className="text-xs text-white/30 italic px-1">No widgets contributed for this section.</p>
   }
 
   return (
-    <div className="slot-renderer" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className={cn('space-y-5', className)}>
       {contributions.map((contribution) => (
-        <ErrorBoundary
-          key={contribution.pluginId}
-          fallback={
-            <ErrorCard
-              pluginName={contribution.label || contribution.pluginId}
-              message="Failed to render plugin content"
-            />
-          }
-        >
-          <PluginContributionRenderer contribution={contribution} onAction={onAction} />
+        <ErrorBoundary key={contribution.pluginId}>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-white/25" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                {contribution.label || contribution.pluginId}
+              </span>
+            </div>
+            <div className="space-y-4">
+              {(contribution.data?.widgets || []).map((widget, idx) => (
+                <WidgetRenderer
+                  key={widget.key || `${widget.type}-${idx}`}
+                  widget={widget}
+                  pluginId={contribution.pluginId}
+                  onAction={handleAction}
+                  busy={busy}
+                  feedback={feedback}
+                />
+              ))}
+            </div>
+          </div>
         </ErrorBoundary>
       ))}
     </div>
   )
 }
 
-// ── Plugin-level isolation ────────────────────────────────────────────────
+// ── Widget-level isolation + recursive children ───────────────────────────────
 
-function PluginContributionRenderer({ contribution, onAction }: {
-  contribution: SlotContribution
-  onAction?: (pluginId: string, actionKey: string, payload: unknown) => void | Promise<void>
-}) {
-  if (!contribution.data?.widgets) {
-    return (
-      <ErrorCard
-        pluginName={contribution.label || contribution.pluginId}
-        message="No widget data returned"
-      />
-    )
-  }
-
-  return (
-    <>
-      {contribution.data.widgets.map((widget, idx) => (
-        <ErrorBoundary
-          key={widget.key || `${contribution.pluginId}-${idx}`}
-          fallback={
-            <ErrorCard
-              pluginName={contribution.label || contribution.pluginId}
-              message={`Widget "${widget.type}" failed to render`}
-            />
-          }
-        >
-          <WidgetRenderer
-            widget={widget}
-            pluginId={contribution.pluginId}
-            onAction={onAction}
-          />
-        </ErrorBoundary>
-      ))}
-    </>
-  )
-}
-
-// ── Widget-level isolation + recursive children ───────────────────────────
-
-function WidgetRenderer({ widget, pluginId, onAction }: {
+function WidgetRenderer({
+  widget,
+  pluginId,
+  onAction,
+  busy,
+  feedback,
+}: {
   widget: SlotWidget
   pluginId: string
-  onAction?: (pluginId: string, actionKey: string, payload: unknown) => void | Promise<void>
+  onAction: SlotAction
+  busy: Record<string, boolean>
+  feedback: Record<string, ActionFeedback>
 }) {
   const validation = validateWidget(widget)
   if (!validation.valid) {
@@ -115,259 +273,365 @@ function WidgetRenderer({ widget, pluginId, onAction }: {
     )
   }
 
-  // Render children recursively
   const renderedChildren = widget.children?.map((child, idx) => (
     <WidgetRenderer
       key={child.key || `${widget.type}-child-${idx}`}
       widget={child}
       pluginId={pluginId}
       onAction={onAction}
+      busy={busy}
+      feedback={feedback}
     />
   ))
 
-  return <WidgetSwitch widget={widget} pluginId={pluginId} onAction={onAction}>{renderedChildren}</WidgetSwitch>
+  return (
+    <WidgetSwitch widget={widget} pluginId={pluginId} onAction={onAction} busy={busy} feedback={feedback}>
+      {renderedChildren}
+    </WidgetSwitch>
+  )
 }
 
-// ── Type → DK UI component map ────────────────────────────────────────────
-
-const VARIANT_MAP: Record<string, string> = {
-  danger: 'destructive',
-  warn: 'warning',
-  error: 'destructive',
-  info: 'default',
+function ActionFeedback({ feedback }: { feedback: ActionFeedback }) {
+  return (
+    <span className={cn('text-[11px]', feedback.tone === 'success' ? 'text-emerald-400' : 'text-red-400')}>
+      {feedback.message}
+    </span>
+  )
 }
 
-const SHADOW_TO_ELEVATION: Record<string, string> = {
-  none: 'none',
-  sm: 'sm',
-  md: 'md',
-  lg: 'lg',
+function ActionButton({
+  label,
+  variant,
+  size = 'sm',
+  icon,
+  disabled,
+  loading,
+  onClick,
+}: {
+  label: string
+  variant?: string
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  icon?: string
+  disabled?: boolean
+  loading?: boolean
+  onClick?: () => void
+}) {
+  return (
+    <Button variant={BTN_VARIANT[variant || 'secondary']} size={size} disabled={disabled} loading={loading} icon={icon ? <Icon name={icon} className={cn(size === 'xs' ? 'h-3 w-3' : 'h-3.5 w-3.5')} /> : undefined} onClick={onClick}>
+      {label}
+    </Button>
+  )
 }
 
-const PADDING_MAP: Record<string, string> = {
-  none: '0',
-  sm: '12px',
-  md: '24px',
-  lg: '32px',
-}
+// ── Type → Tailwind widget map ────────────────────────────────────────────────
 
-function WidgetSwitch({ widget, pluginId, onAction, children }: {
+function WidgetSwitch({
+  widget,
+  pluginId,
+  onAction,
+  busy,
+  feedback,
+  children,
+}: {
   widget: SlotWidget
   pluginId: string
-  onAction?: (pluginId: string, actionKey: string, payload: unknown) => void | Promise<void>
+  onAction: SlotAction
+  busy: Record<string, boolean>
+  feedback: Record<string, ActionFeedback>
   children?: ReactNode
 }) {
   const p = widget.props || {}
 
   switch (widget.type) {
-    // ── Button ────────────────────────────────────────────────────
+    // ── Button ──────────────────────────────────────────────────────
     case 'button': {
-      const variant = VARIANT_MAP[p.variant as string] || (p.variant as string) || 'secondary'
+      const b = p as { label?: string; variant?: string; size?: string; icon?: string; action?: string; disabled?: boolean; loading?: boolean }
+      const id = `${pluginId}:${b.action || ''}`
       return (
-        <DkButton
-          variant={variant as any}
-          size={(p.size as any) || 'md'}
-          disabled={!!p.disabled}
-          loading={!!p.loading}
-          onClick={() => p.action && onAction?.(pluginId, p.action as string, p)}
-        >
-          {p.label as string}
-        </DkButton>
-      )
-    }
-
-    // ── Card ──────────────────────────────────────────────────────
-    case 'card': {
-      const elevation = SHADOW_TO_ELEVATION[p.shadow as string] || 'sm'
-      const title = p.title as string | undefined
-      const subtitle = p.subtitle as string | undefined
-      return (
-        <DkCard
-          elevation={elevation as any}
-          style={{ padding: PADDING_MAP[p.padding as string] || undefined }}
-        >
-          {(title || subtitle) && (
-            <div style={{ marginBottom: children ? 16 : 0 }}>
-              {title && <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{title}</h3>}
-              {subtitle && <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0' }}>{subtitle}</p>}
-            </div>
-          )}
-          {children}
-        </DkCard>
-      )
-    }
-
-    // ── Input ─────────────────────────────────────────────────────
-    case 'input':
-      return (
-        <DkInput
-          label={p.label as string}
-          placeholder={p.placeholder as string}
-          type={(p.type as any) || 'text'}
-          error={p.error as string}
-          defaultValue={p.value as string}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            if (p.action) onAction?.(pluginId, p.action as string, { value: e.target.value })
-          }}
-        />
-      )
-
-    // ── Select ────────────────────────────────────────────────────
-    case 'select': {
-      const options = (p.options as Array<{ value: string; label: string }>) || []
-      return (
-        <DkSelect
-          label={p.label as string}
-          defaultValue={p.value as string}
-          onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-            if (p.action) onAction?.(pluginId, p.action as string, { value: e.target.value })
-          }}
-        >
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </DkSelect>
-      )
-    }
-
-    // ── Badge ─────────────────────────────────────────────────────
-    case 'badge': {
-      const variant = VARIANT_MAP[p.variant as string] || (p.variant as string) || 'default'
-      return (
-        <DkBadge variant={variant as any} show={true}>
-          {p.dot ? '● ' : ''}{p.label as string}
-        </DkBadge>
-      )
-    }
-
-    // ── Alert ─────────────────────────────────────────────────────
-    case 'alert': {
-      const variant = (p.variant as string) || 'info'
-      const Icon = variant === 'error' ? XCircle
-        : variant === 'warn' ? AlertTriangle
-        : variant === 'success' ? CheckCircle2
-        : Info
-      const colorVar = variant === 'error' ? 'var(--danger)'
-        : variant === 'warn' ? 'var(--warning, #f59e0b)'
-        : variant === 'success' ? 'var(--success, #22c55e)'
-        : 'var(--info, #3b82f6)'
-      return (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 12,
-            padding: '12px 16px',
-            borderRadius: 'var(--dk-radius-md)',
-            backgroundColor: `color-mix(in srgb, ${colorVar} 10%, transparent)`,
-            border: `1px solid color-mix(in srgb, ${colorVar} 25%, transparent)`,
-          }}
-        >
-          <Icon size={18} style={{ color: colorVar, flexShrink: 0, marginTop: 1 }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{p.title as string}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{p.message as string}</div>
-          </div>
-          {!!p.dismissible && (
-            <button
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0 }}
-              onClick={() => p.action && onAction?.(pluginId, p.action as string, p)}
-              aria-label="Dismiss"
-            >
-              <XCircle size={16} />
-            </button>
-          )}
+        <div className="inline-flex flex-col items-start gap-1">
+          <Button
+            variant={BTN_VARIANT[b.variant || 'secondary']}
+            size={(b.size as any) || 'md'}
+            disabled={!!b.disabled}
+            loading={!!b.loading || !!busy[id]}
+            icon={b.icon ? <Icon name={b.icon} className="h-4 w-4" /> : undefined}
+            onClick={() => b.action && onAction(pluginId, b.action, p)}
+          >
+            {b.label}
+          </Button>
+          {feedback[id] && <ActionFeedback feedback={feedback[id]} />}
         </div>
       )
     }
 
-    // ── Tabs ──────────────────────────────────────────────────────
-    case 'tabs': {
-      const tabs = (p.tabs as Array<{ label: string; id: string }>) || []
-      const activeTab = (p.activeTab as string) || tabs[0]?.id || ''
-      return (
-        <TabsWidget
-          tabs={tabs}
-          activeTab={activeTab}
-          pluginId={pluginId}
-          onAction={onAction}
-          actionKey={p.action as string}
-          children={children}
-        />
-      )
-    }
-
-    // ── List ──────────────────────────────────────────────────────
-    case 'list': {
-      const items = (p.items as Array<{
-        key: string; title: string; subtitle?: string
-        badge?: string; actions?: Array<{ label: string; action: string; variant?: string }>
-      }>) || []
-      const emptyText = (p.emptyText as string) || 'No items'
-      if (items.length === 0) {
-        return <EmptyStateDisplay title={emptyText} />
+    // ── Action group ────────────────────────────────────────────────
+    case 'action-group':
+    case 'actions': {
+      const g = p as {
+        actions?: Array<{ label: string; variant?: string; action?: string; icon?: string; loading?: boolean; disabled?: boolean }>
+        align?: string
       }
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {items.map((item) => (
-            <div
-              key={item.key}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '10px 14px',
-                borderRadius: 'var(--dk-radius-md)',
-                backgroundColor: 'var(--dk-surface-raised)',
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{item.title}</div>
-                {item.subtitle && (
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>{item.subtitle}</div>
-                )}
+        <div className={cn('flex flex-wrap items-center gap-2', ALIGN[g.align || 'left'])}>
+          {(g.actions || []).map((a, i) => {
+            const id = `${pluginId}:${a.action || ''}`
+            return (
+              <div key={i} className="inline-flex flex-col items-start gap-1">
+                <ActionButton
+                  label={a.label}
+                  variant={a.variant}
+                  icon={a.icon}
+                  disabled={a.disabled}
+                  loading={a.loading || !!busy[id]}
+                  onClick={() => a.action && onAction(pluginId, a.action, { action: a })}
+                />
+                {feedback[id] && <ActionFeedback feedback={feedback[id]} />}
               </div>
-              {item.badge && (
-                <DkBadge variant="secondary" size="sm">{item.badge}</DkBadge>
-              )}
-              {item.actions?.map((a, ai) => (
-                <DkButton
-                  key={ai}
-                  variant={(a.variant as any) || 'ghost'}
-                  size="xs"
-                  onClick={() => onAction?.(pluginId, a.action, { item })}
-                >
-                  {a.label}
-                </DkButton>
-              ))}
+            )
+          })}
+        </div>
+      )
+    }
+
+    // ── Layout containers ───────────────────────────────────────────
+    case 'card': {
+      const c = p as { title?: string; subtitle?: string; padding?: string; shadow?: string }
+      return (
+        <div className={cn('rounded-xl border border-white/[0.06] bg-white/[0.02]', PADDING[c.padding || 'md'])}>
+          {c.title && (
+            <div className="mb-3">
+              <div className="text-sm font-semibold text-white/90">{c.title}</div>
+              {c.subtitle && <div className="text-xs text-white/40 mt-0.5">{c.subtitle}</div>}
+            </div>
+          )}
+          <div className="space-y-4">{children}</div>
+        </div>
+      )
+    }
+
+    case 'section': {
+      const s = p as { title?: string; description?: string }
+      return (
+        <section className="space-y-3">
+          {(s.title || s.description) && (
+            <div>
+              {s.title && <h4 className="text-[11px] font-semibold uppercase tracking-wider text-white/35">{s.title}</h4>}
+              {s.description && <p className="text-xs text-white/40 mt-1">{s.description}</p>}
+            </div>
+          )}
+          <div className="space-y-4">{children}</div>
+        </section>
+      )
+    }
+
+    case 'group': {
+      const gr = p as { title?: string; description?: string; columns?: number; gap?: string }
+      const grid = !!gr.columns && gr.columns > 1
+      return (
+        <div>
+          {(gr.title || gr.description) && (
+            <div className="mb-2">
+              {gr.title && <div className="text-sm font-semibold text-white/85">{gr.title}</div>}
+              {gr.description && <p className="text-xs text-white/40 mt-0.5">{gr.description}</p>}
+            </div>
+          )}
+          <div className={grid ? 'grid' : 'space-y-4'} style={grid ? { gridTemplateColumns: `repeat(${gr.columns}, 1fr)`, gap: gr.gap || '12px' } : undefined}>
+            {children}
+          </div>
+        </div>
+      )
+    }
+
+    case 'grid': {
+      const gr = p as { columns?: number; gap?: string }
+      return (
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(6, gr.columns || 3))}, 1fr)`, gap: gr.gap || '12px' }}
+        >
+          {children}
+        </div>
+      )
+    }
+
+    // ── Text / markdown ─────────────────────────────────────────────
+    case 'text': {
+      const t = p as { content?: string; style?: string }
+      const classes: Record<string, string> = {
+        body: 'text-sm text-white/80',
+        muted: 'text-xs text-white/45',
+        caption: 'text-[11px] text-white/35',
+        h1: 'text-lg font-semibold text-white',
+        h2: 'text-base font-semibold text-white/95',
+        h3: 'text-sm font-semibold text-white/90',
+        code: 'text-xs font-mono text-white/80 bg-white/5 rounded px-1.5 py-0.5',
+      }
+      return <div className={classes[t.style || 'body'] || classes.body}>{t.content}</div>
+    }
+
+    case 'markdown': {
+      const m = p as { content?: string }
+      return <Markdown content={m.content || ''} />
+    }
+
+    case 'divider': {
+      const d = p as { label?: string; orientation?: string }
+      if (d.orientation === 'vertical') {
+        return <div className="w-px self-stretch bg-white/10" />
+      }
+      return (
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/[0.08]" />
+          {d.label && <span className="text-[11px] font-semibold uppercase tracking-wider text-white/35">{d.label}</span>}
+          <div className="h-px flex-1 bg-white/[0.08]" />
+        </div>
+      )
+    }
+
+    // ── Feedback ────────────────────────────────────────────────────
+    case 'alert': {
+      const a = p as { title?: string; message?: string; variant?: string }
+      return (
+        <Alert tone={ALERT_TONE[a.variant || 'info']} title={a.title}>
+          {a.message}
+        </Alert>
+      )
+    }
+
+    case 'badge': {
+      const b = p as { label?: string; variant?: string; dot?: boolean }
+      return <Badge tone={BADGE_TONE[b.variant || 'default']} dot={!!b.dot}>{b.label}</Badge>
+    }
+
+    case 'stat': {
+      const s = p as { label?: string; value?: string; description?: string; tone?: string; icon?: string }
+      return (
+        <div className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+          {s.icon && (
+            <div className="rounded-lg bg-white/5 p-2">
+              <Icon name={s.icon} className={cn('h-4 w-4', STAT_COLOR[s.tone || 'default'])} />
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="text-xl font-semibold text-white">{s.value ?? '—'}</div>
+            <div className="text-xs text-white/45 mt-0.5">{s.label}</div>
+            {s.description && <div className="text-[11px] text-white/35 mt-1">{s.description}</div>}
+          </div>
+        </div>
+      )
+    }
+
+    case 'progress': {
+      const pr = p as { value?: number; label?: string; description?: string; tone?: string; indeterminate?: boolean }
+      return (
+        <div>
+          {(pr.label || pr.description) && (
+            <div className="mb-1.5 flex items-baseline justify-between gap-3">
+              <span className="text-xs text-white/60">{pr.label}</span>
+              {!pr.indeterminate && <span className="text-xs text-white/40">{Math.round(pr.value ?? 0)}%</span>}
+            </div>
+          )}
+          <Progress value={pr.value ?? 0} tone={(pr.tone as any) || 'primary'} />
+          {pr.description && <p className="text-[11px] text-white/35 mt-1">{pr.description}</p>}
+        </div>
+      )
+    }
+
+    // ── Inputs ──────────────────────────────────────────────────────
+    case 'input': {
+      const i = p as { label?: string; placeholder?: string; value?: string; type?: string; error?: string; action?: string }
+      return (
+        <Field label={i.label} error={i.error}>
+          <Input
+            type={i.type || 'text'}
+            value={i.value || ''}
+            placeholder={i.placeholder}
+            invalid={!!i.error}
+            onChange={(e) => i.action && onAction(pluginId, i.action, { value: e.target.value })}
+          />
+        </Field>
+      )
+    }
+
+    case 'select': {
+      const s = p as { label?: string; options?: Array<{ value: string; label: string }>; value?: string; action?: string }
+      return (
+        <Field label={s.label}>
+          <Select
+            options={s.options || []}
+            value={s.value || ''}
+            onChange={(e) => s.action && onAction(pluginId, s.action, { value: e.target.value })}
+          />
+        </Field>
+      )
+    }
+
+    case 'switch': {
+      const s = p as { label?: string; description?: string; checked?: boolean; action?: string }
+      return (
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm text-white/85">{s.label}</div>
+            {s.description && <p className="text-[11px] text-white/35 mt-0.5">{s.description}</p>}
+          </div>
+          <Switch checked={!!s.checked} onCheckedChange={(v) => s.action && onAction(pluginId, s.action, { value: v })} />
+        </div>
+      )
+    }
+
+    // ── Data displays ───────────────────────────────────────────────
+    case 'list': {
+      const l = p as {
+        items?: Array<{ key?: string; title?: string; subtitle?: string; badge?: string; actions?: Array<{ label: string; action?: string; variant?: string }> }>
+        emptyText?: string
+      }
+      const items = l.items || []
+      if (items.length === 0) {
+        return <p className="text-xs italic text-white/30">{l.emptyText || 'No items'}</p>
+      }
+      return (
+        <div className="flex flex-col gap-1.5">
+          {items.map((item, i) => (
+            <div key={item.key || i} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-white/85">{item.title}</div>
+                {item.subtitle && <div className="mt-0.5 truncate text-xs text-white/40">{item.subtitle}</div>}
+              </div>
+              {item.badge && <Badge>{item.badge}</Badge>}
+              {item.actions?.map((a, ai) => {
+                const id = `${pluginId}:${a.action || ''}`
+                return (
+                  <div key={ai} className="inline-flex flex-col items-end gap-0.5">
+                    <Button variant="ghost" size="xs" loading={!!busy[id]} onClick={() => a.action && onAction(pluginId, a.action, { item })}>
+                      {a.label}
+                    </Button>
+                    {feedback[id] && <ActionFeedback feedback={feedback[id]} />}
+                  </div>
+                )
+              })}
             </div>
           ))}
         </div>
       )
     }
 
-    // ── Table ─────────────────────────────────────────────────────
     case 'table': {
-      const columns = (p.columns as Array<{ key: string; label: string; width?: string }>) || []
-      const rows = (p.rows as Array<{ key: string; cells: Record<string, unknown> }>) || []
+      const t = p as { columns?: Array<{ key: string; label: string; width?: string }>; rows?: Array<{ key: string; cells: Record<string, unknown> }> }
+      const columns = t.columns || []
+      const rows = t.rows || []
+      if (rows.length === 0) {
+        return <p className="text-xs italic text-white/30">No rows</p>
+      }
       return (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+        <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+          <table className="w-full text-sm">
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--dk-separator)' }}>
+              <tr className="border-b border-white/[0.06]">
                 {columns.map((col) => (
                   <th
                     key={col.key}
-                    style={{
-                      textAlign: 'left',
-                      padding: '8px 12px',
-                      fontWeight: 600,
-                      fontSize: 12,
-                      color: 'var(--text-secondary)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      width: col.width,
-                    }}
+                    style={col.width ? { width: col.width } : undefined}
+                    className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-white/40"
                   >
                     {col.label}
                   </th>
@@ -375,11 +639,11 @@ function WidgetSwitch({ widget, pluginId, onAction, children }: {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.key} style={{ borderBottom: '1px solid var(--dk-separator)' }}>
+              {rows.map((row, ri) => (
+                <tr key={row.key || ri} className="border-b border-white/[0.04] last:border-0">
                   {columns.map((col) => (
-                    <td key={col.key} style={{ padding: '10px 12px' }}>
-                      {renderCell(row.cells[col.key])}
+                    <td key={col.key} className="px-3.5 py-2.5 text-xs text-white/70">
+                      {renderCell(row.cells?.[col.key])}
                     </td>
                   ))}
                 </tr>
@@ -390,271 +654,452 @@ function WidgetSwitch({ widget, pluginId, onAction, children }: {
       )
     }
 
-    // ── Action Group ──────────────────────────────────────────────
-    case 'action-group': {
-      const actions = (p.actions as Array<{
-        label: string; variant?: string; action: string; icon?: string
-      }>) || []
-      const align = (p.align as string) || 'left'
-      return (
-        <div style={{ display: 'flex', gap: 8, justifyContent: align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start', flexWrap: 'wrap' }}>
-          {actions.map((a, i) => {
-            const variant = VARIANT_MAP[a.variant as string] || a.variant || 'secondary'
-            return (
-              <DkButton
-                key={i}
-                variant={variant as any}
-                size="sm"
-                onClick={() => onAction?.(pluginId, a.action, { action: a })}
-              >
-                {a.label}
-              </DkButton>
-            )
-          })}
-          {children}
-        </div>
-      )
-    }
-
-    // ── Divider ───────────────────────────────────────────────────
-    case 'divider':
-      return <DkSeparator label={p.label as string} />
-
-    // ── Spinner ───────────────────────────────────────────────────
-    case 'spinner': {
-      const size = (p.size as string) || 'md'
-      const sizePx = size === 'sm' ? 16 : size === 'lg' ? 32 : 24
-      return (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
-          <span style={{ width: sizePx, height: sizePx, display: 'inline-block' }}>
-            <DkSpinner />
-          </span>
-        </div>
-      )
-    }
-
-    // ── Skeleton ──────────────────────────────────────────────────
-    case 'skeleton': {
-      const variant = (p.variant as string) || 'text'
-      const style: React.CSSProperties = {
-        width: (p.width as string) || (variant === 'circle' ? '40px' : '100%'),
-        height: (p.height as string) || (variant === 'text' ? '16px' : variant === 'circle' ? '40px' : '80px'),
-        borderRadius: variant === 'circle' ? '50%' : variant === 'rect' ? 'var(--dk-radius-md)' : 'var(--dk-radius-sm)',
-      }
-      return <DkSkeleton style={style} />
-    }
-
-    // ── Empty State ───────────────────────────────────────────────
-    case 'empty-state':
-      return (
-        <EmptyStateDisplay
-          title={p.title as string}
-          message={p.message as string}
-          actionLabel={p.action ? 'Action' : undefined}
-          onAction={p.action ? () => onAction?.(pluginId, p.action as string, p) : undefined}
-        />
-      )
-
-    // ── Form ──────────────────────────────────────────────────────
+    // ── Forms (declarative) ─────────────────────────────────────────
     case 'form': {
-      const fields = (p.fields as Array<{
-        type: string; key: string; label: string; required?: boolean
-        placeholder?: string; options?: Array<{ value: string; label: string }>
-      }>) || []
-      const submitLabel = (p.submitLabel as string) || 'Submit'
+      const f = p as {
+        fields?: Array<{ type?: string; key?: string; label?: string; required?: boolean; placeholder?: string; options?: Array<{ value: string; label: string }> }>
+        submitLabel?: string
+        action?: string
+        cancelAction?: string
+      }
       return (
         <FormWidget
-          fields={fields}
-          submitLabel={submitLabel}
+          fields={f.fields || []}
+          submitLabel={f.submitLabel || 'Submit'}
+          action={f.action || ''}
+          cancelAction={f.cancelAction}
           pluginId={pluginId}
           onAction={onAction}
-          actionKey={p.action as string}
-          cancelAction={p.cancelAction as string}
         >
           {children}
         </FormWidget>
       )
     }
 
-    // ── Deferred Section (lazy-load children) ─────────────────────
-    case 'deferred-section':
+    case 'fields': {
+      const f = p as { fields?: any[]; submitLabel?: string; action?: string; cancelAction?: string }
       return (
-        <DkDeferredSection>
-          {children}
-        </DkDeferredSection>
+        <FieldsWidget
+          fields={f.fields || []}
+          submitLabel={f.submitLabel || 'Submit'}
+          action={f.action || ''}
+          cancelAction={f.cancelAction}
+          pluginId={pluginId}
+          onAction={onAction}
+        />
       )
+    }
 
-    // ── Grid ──────────────────────────────────────────────────────
-    case 'grid': {
-      const cols = (p.columns as number) || 3
-      const gap = (p.gap as string) || '12px'
+    // ── Misc ────────────────────────────────────────────────────────
+    case 'link': {
+      const l = p as { label?: string; href?: string; external?: boolean; icon?: string }
+      const href = l.href ? safeUrl(l.href) : undefined
+      if (!href) {
+        return <span className="text-sm text-white/40">{l.label}</span>
+      }
       return (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${cols}, 1fr)`,
-            gap,
-          }}
+        <a
+          href={href}
+          target={l.external ? '_blank' : undefined}
+          rel={l.external ? 'noreferrer noopener' : undefined}
+          className="inline-flex items-center gap-1.5 text-sm text-sky-400 hover:text-sky-300 hover:underline"
         >
-          {children}
+          {l.icon && <Icon name={l.icon} className="h-3.5 w-3.5" />}
+          {l.label}
+          {l.external && <ExternalLink className="h-3 w-3" />}
+        </a>
+      )
+    }
+
+    case 'spinner': {
+      const s = p as { size?: string }
+      const size = s.size === 'sm' ? 'h-4 w-4' : s.size === 'lg' ? 'h-7 w-7' : 'h-5 w-5'
+      return (
+        <div className="flex justify-center py-4">
+          <Loader2 className={cn('animate-spin text-primary', size)} />
         </div>
       )
     }
 
-    // ── Unknown / forward-compat ──────────────────────────────────
-    default:
+    case 'skeleton': {
+      const s = p as { width?: string; height?: string; variant?: string }
+      const variant = s.variant || 'text'
+      const w = s.width || (variant === 'circle' ? '40px' : '100%')
+      const h = s.height || (variant === 'text' ? '16px' : variant === 'circle' ? '40px' : '80px')
       return (
-        <div data-widget-type={widget.type} data-plugin-widget="">
-          {children}
-        </div>
+        <div
+          className="animate-pulse rounded-lg bg-white/5"
+          style={{ width: w, height: h, borderRadius: variant === 'circle' ? '50%' : undefined }}
+        />
       )
+    }
+
+    case 'empty-state': {
+      const e = p as { icon?: string; title?: string; message?: string; action?: string }
+      return (
+        <EmptyState
+          icon={IconComp(e.icon)}
+          title={e.title || ''}
+          message={e.message}
+          action={
+            e.action ? (
+              <Button size="sm" variant="outline" onClick={() => onAction(pluginId, e.action as string, p)}>
+                Action
+              </Button>
+            ) : undefined
+          }
+        />
+      )
+    }
+
+    case 'tabs': {
+      const t = p as { tabs?: Array<{ label: string; id: string }>; activeTab?: string; action?: string }
+      return (
+        <TabsWidget tabs={t.tabs || []} activeTab={t.activeTab} pluginId={pluginId} onAction={onAction} actionKey={t.action}>
+          {children}
+        </TabsWidget>
+      )
+    }
+
+    case 'deferred-section':
+      return <>{children}</>
+
+    default:
+      return <div data-widget-type={widget.type} className="space-y-4">{children}</div>
   }
 }
 
-// ── Composite widgets (use local state) ───────────────────────────────────
+// ── Composite widgets (use local state) ──────────────────────────────────────
 
-function TabsWidget({ tabs, activeTab: defaultTab, pluginId, onAction, actionKey, children }: {
+function TabsWidget({
+  tabs,
+  activeTab,
+  pluginId,
+  onAction,
+  actionKey,
+  children,
+}: {
   tabs: Array<{ label: string; id: string }>
-  activeTab: string
+  activeTab?: string
   pluginId: string
-  onAction?: (pluginId: string, actionKey: string, payload: unknown) => void | Promise<void>
+  onAction: SlotAction
   actionKey?: string
   children?: ReactNode
 }) {
-  const [active, setActive] = useState(defaultTab)
-  return (
-    <DkTabs
-      defaultValue={defaultTab}
-      value={active}
-      onValueChange={(v) => {
-        setActive(v)
-        if (actionKey) onAction?.(pluginId, actionKey, { tab: v })
-      }}
-    >
-      <DkTabList>
-        {tabs.map((t) => (
-          <DkTab key={t.id} value={t.id}>{t.label}</DkTab>
-        ))}
-      </DkTabList>
-      {tabs.map((t) => (
-        <DkTabPanel key={t.id} value={t.id}>
-          {/* Children are slot-rendered — each panel shows all children.
-              For per-tab content, plugins use conditions on child widgets. */}
-          {children}
-        </DkTabPanel>
-      ))}
-    </DkTabs>
-  )
-}
+  const [active, setActive] = useState(activeTab || tabs[0]?.id || '')
 
-function EmptyStateDisplay({ title, message, actionLabel, onAction }: {
-  title: string
-  message?: string
-  actionLabel?: string
-  onAction?: () => void
-}) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 32,
-        textAlign: 'center',
-        gap: 8,
-        borderRadius: 'var(--dk-radius-lg)',
-        backgroundColor: 'var(--dk-surface-raised)',
-      }}
-    >
-      <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
-      {message && <div style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 320 }}>{message}</div>}
-      {actionLabel && onAction && (
-        <DkButton variant="secondary" size="sm" onClick={onAction} style={{ marginTop: 8 }}>
-          {actionLabel}
-        </DkButton>
-      )}
+    <div>
+      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-white/[0.06]">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => {
+              setActive(t.id)
+              if (actionKey) onAction(pluginId, actionKey, { tab: t.id })
+            }}
+            className={cn(
+              '-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-xs font-semibold transition-colors',
+              active === t.id ? 'border-primary text-white' : 'border-transparent text-white/40 hover:text-white/70',
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-4">{children}</div>
     </div>
   )
 }
 
-function FormWidget({ fields, submitLabel, pluginId, onAction, actionKey, cancelAction, children }: {
-  fields: Array<{
-    type: string; key: string; label: string; required?: boolean
-    placeholder?: string; options?: Array<{ value: string; label: string }>
-  }>
+function FormWidget({
+  fields,
+  submitLabel,
+  action,
+  cancelAction,
+  pluginId,
+  onAction,
+  children,
+}: {
+  fields: Array<{ type?: string; key?: string; label?: string; required?: boolean; placeholder?: string; options?: Array<{ value: string; label: string }> }>
   submitLabel: string
-  pluginId: string
-  onAction?: (pluginId: string, actionKey: string, payload: unknown) => void | Promise<void>
-  actionKey: string
+  action: string
   cancelAction?: string
+  pluginId: string
+  onAction: SlotAction
   children?: ReactNode
 }) {
-  const [values, setValues] = useState<Record<string, string>>({})
+  const keyed = fields.filter((f): f is typeof fields[number] & { key: string } => !!f.key)
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {}
+    for (const f of keyed) init[f.key] = ''
+    return init
+  })
   const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!onAction || !actionKey) return
+  const handleSubmit = async () => {
+    if (!action) return
     setSubmitting(true)
     try {
-      await onAction(pluginId, actionKey, { values, fields })
+      await onAction(pluginId, action, { values })
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {fields.map((field) => {
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        handleSubmit()
+      }}
+      className="space-y-3"
+    >
+      {keyed.map((field) => {
         const value = values[field.key] ?? ''
         if (field.type === 'select' && field.options) {
           return (
-            <DkSelect
-              key={field.key}
-              label={field.label}
-              value={value}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                setValues((v) => ({ ...v, [field.key]: e.target.value }))}
-            >
-              {field.options.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </DkSelect>
+            <Field key={field.key} label={field.label} required={field.required}>
+              <Select options={field.options} value={value} onChange={(e) => setValues((v) => ({ ...v, [field.key]: e.target.value }))} />
+            </Field>
           )
         }
         return (
-          <DkInput
-            key={field.key}
-            label={field.label}
-            placeholder={field.placeholder}
-            type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
-            required={field.required}
-            value={value}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              setValues((v) => ({ ...v, [field.key]: e.target.value }))}
-          />
+          <Field key={field.key} label={field.label} required={field.required}>
+            <Input
+              type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
+              value={value}
+              placeholder={field.placeholder}
+              required={field.required}
+              onChange={(e) => setValues((v) => ({ ...v, [field.key]: e.target.value }))}
+            />
+          </Field>
         )
       })}
       {children}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <DkButton type="submit" variant="primary" loading={submitting}>
-          {submitLabel}
-        </DkButton>
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" variant="primary" loading={submitting}>{submitLabel}</Button>
         {cancelAction && (
-          <DkButton
-            variant="ghost"
-            onClick={() => onAction?.(pluginId, cancelAction, { values })}
-          >
-            Cancel
-          </DkButton>
+          <Button type="button" variant="ghost" onClick={() => onAction(pluginId, cancelAction, { values })}>Cancel</Button>
         )}
       </div>
     </form>
   )
 }
 
-// ── Cell renderer (renders primitives, nested widgets handled by children) ─
+function FieldsWidget({
+  fields,
+  submitLabel,
+  action,
+  cancelAction,
+  pluginId,
+  onAction,
+}: {
+  fields: any[]
+  submitLabel: string
+  action: string
+  cancelAction?: string
+  pluginId: string
+  onAction: SlotAction
+}) {
+  const [values, setValues] = useState<Record<string, unknown>>(() => {
+    const init: Record<string, unknown> = {}
+    for (const f of fields) if (f.key) init[f.key] = f.default ?? ''
+    return init
+  })
+  const [submitting, setSubmitting] = useState(false)
+
+  const setField = (key: string, v: unknown) => setValues((prev) => ({ ...prev, [key]: v }))
+
+  const handleSubmit = async () => {
+    if (!action) return
+    setSubmitting(true)
+    try {
+      await onAction(pluginId, action, { values })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        handleSubmit()
+      }}
+      className="space-y-3"
+    >
+      {fields.map((field) => {
+        const value = values[field.key]
+        switch (field.type) {
+          case 'select':
+            return (
+              <Field key={field.key} label={field.label} description={field.description} required={field.required}>
+                <Select options={field.options || []} value={(value as string) || ''} onChange={(e) => setField(field.key, e.target.value)} />
+              </Field>
+            )
+          case 'boolean':
+            return (
+              <div key={field.key} className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm text-white/85">{field.label}</div>
+                  {field.description && <p className="text-[11px] text-white/35">{field.description}</p>}
+                </div>
+                <Switch checked={Boolean(value)} onCheckedChange={(v) => setField(field.key, v)} />
+              </div>
+            )
+          case 'number':
+            return (
+              <Field key={field.key} label={field.label} description={field.description} required={field.required}>
+                <Input
+                  type="number"
+                  value={(value as string | number) ?? ''}
+                  placeholder={field.placeholder}
+                  onChange={(e) => setField(field.key, e.target.value === '' ? '' : Number(e.target.value))}
+                />
+              </Field>
+            )
+          case 'path-list':
+            return (
+              <PathListField key={field.key} field={field} value={(value as string[]) || []} onChange={(v) => setField(field.key, v)} />
+            )
+          default:
+            return (
+              <Field key={field.key} label={field.label} description={field.description} required={field.required}>
+                <Input
+                  type={field.type === 'password' ? 'password' : 'text'}
+                  value={(value as string) ?? ''}
+                  placeholder={field.placeholder}
+                  onChange={(e) => setField(field.key, e.target.value)}
+                />
+              </Field>
+            )
+        }
+      })}
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" variant="primary" loading={submitting}>{submitLabel}</Button>
+        {cancelAction && (
+          <Button type="button" variant="ghost" onClick={() => onAction(pluginId, cancelAction, { values })}>Cancel</Button>
+        )}
+      </div>
+    </form>
+  )
+}
+
+function PathListField({
+  field,
+  value,
+  onChange,
+}: {
+  field: { label?: string; placeholder?: string; description?: string; required?: boolean }
+  value: string[]
+  onChange: (v: string[]) => void
+}) {
+  const update = (idx: number, v: string) => {
+    const next = [...value]
+    next[idx] = v
+    onChange(next)
+  }
+  const remove = (idx: number) => onChange(value.filter((_, i) => i !== idx))
+  const add = () => onChange([...value, ''])
+  const browse = async (idx: number) => {
+    const dir = await (window as any).desktopAPI?.selectDirectory?.()
+    if (dir) update(idx, dir)
+  }
+
+  return (
+    <Field label={field.label} description={field.description} required={field.required}>
+      <div className="space-y-1.5">
+        {value.map((path, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            <Input value={path} placeholder={field.placeholder || '/path/to/games'} onChange={(e) => update(idx, e.target.value)} />
+            <Button type="button" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0" onClick={() => browse(idx)}>
+              <FolderOpen className="h-4 w-4" />
+            </Button>
+            <Button type="button" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-white/30 hover:text-red-400" onClick={() => remove(idx)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        <Button type="button" variant="outline" size="sm" onClick={add}>
+          <Plus className="h-3.5 w-3.5" /> Add path
+        </Button>
+      </div>
+    </Field>
+  )
+}
+
+// ── Markdown (minimal, HTML-escaped via React) ────────────────────────────────
+
+function Markdown({ content }: { content: string }) {
+  const blocks = content.trim().split(/\n{2,}/).filter(Boolean)
+  if (blocks.length === 0) return null
+
+  return (
+    <div className="space-y-2.5 text-sm text-white/75">
+      {blocks.map((block, i) => {
+        if (block.startsWith('```')) {
+          const body = block.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim()
+          return <pre key={i} className="overflow-x-auto rounded-lg bg-white/5 p-3 font-mono text-xs text-white/80">{body}</pre>
+        }
+        const h = block.match(/^(#{1,3})\s+(.+)$/)
+        if (h) {
+          const lvl = h[1].length
+          return (
+            <div key={i} className={cn(lvl === 1 ? 'text-base font-semibold text-white' : lvl === 2 ? 'text-sm font-semibold text-white/95' : 'text-[13px] font-semibold text-white/90')}>
+              {renderInline(h[2])}
+            </div>
+          )
+        }
+        if (block.split('\n').every((line) => line.startsWith('>'))) {
+          const quote = block.split('\n').map((line) => line.replace(/^>\s?/, '')).join('\n')
+          return <blockquote key={i} className="border-l-2 border-white/15 pl-3 text-white/60">{renderInline(quote)}</blockquote>
+        }
+        const lines = block.split('\n')
+        const isList = lines.some((line) => /^[-*+]\s/.test(line))
+        if (isList) {
+          return (
+            <ul key={i} className="list-disc space-y-1 pl-5">
+              {lines.map((line, li) => {
+                const m = line.match(/^[-*+]\s+(.+)$/)
+                return m ? <li key={li}>{renderInline(m[1])}</li> : null
+              })}
+            </ul>
+          )
+        }
+        return <p key={i}>{renderInline(block)}</p>
+      })}
+    </div>
+  )
+}
+
+function renderInline(text: string): ReactNode[] {
+  const pattern = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g
+  const nodes: ReactNode[] = []
+  let last = 0
+  let k = 0
+  let m: RegExpExecArray | null
+  while ((m = pattern.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index))
+    if (m[2]) {
+      nodes.push(<strong key={k++} className="font-semibold text-white">{m[2]}</strong>)
+    } else if (m[3]) {
+      nodes.push(<em key={k++}>{m[3]}</em>)
+    } else if (m[4]) {
+      nodes.push(<code key={k++} className="rounded bg-white/5 px-1 py-0.5 font-mono text-xs">{m[4]}</code>)
+    } else if (m[5] && m[6] && safeUrl(m[6])) {
+      nodes.push(<a key={k++} className="text-sky-400 hover:underline" href={m[6]}>{m[5]}</a>)
+    } else {
+      nodes.push(text.slice(m.index, m.index + m[0].length))
+    }
+    last = m.index + m[0].length
+  }
+  if (last < text.length) nodes.push(text.slice(last))
+  return nodes
+}
+
+// ── Cell renderer ─────────────────────────────────────────────────────────────
 
 function renderCell(value: unknown): ReactNode {
   if (value === null || value === undefined) return '—'
@@ -662,15 +1107,4 @@ function renderCell(value: unknown): ReactNode {
   if (typeof value === 'string' || typeof value === 'number') return String(value)
   if (typeof value === 'object') return JSON.stringify(value)
   return String(value)
-}
-
-// ── Loading skeleton ──────────────────────────────────────────────────────
-
-function SlotSkeleton() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <DkSkeleton style={{ height: 40, borderRadius: 'var(--dk-radius-md)' }} />
-      <DkSkeleton style={{ height: 80, borderRadius: 'var(--dk-radius-md)' }} />
-    </div>
-  )
 }

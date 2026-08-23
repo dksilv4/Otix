@@ -17,15 +17,50 @@ export type PluginPermission =
   | `table:${string}`     // access to a specific database table (e.g. table:downloads)
 
 // ── Manifest ──
+export type PluginConfigFieldType =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'secret'
+  | 'enum'
+  | 'select'
+  | 'uuid'
+  | 'list'
+  | 'path-list'
+  | 'object'
+
+/** Conditionally show a field based on another field's value. */
+export interface PluginConfigVisibility {
+  field: string
+  equals?: unknown
+  not?: unknown
+  truthy?: boolean
+}
+
 export interface PluginConfigField {
-  type: 'string' | 'number' | 'boolean' | 'secret' | 'enum' | 'uuid' | 'list'
+  type: PluginConfigFieldType
   label: string
   description?: string
   default?: unknown
-  values?: string[]
+  /** Options for `enum` (plain strings) and `select` ({value,label} entries). */
+  values?: string[] | Array<{ value: string; label: string }>
+  /** `list` item schema (object shape per item); `object` sub-fields. */
   items?: Record<string, PluginConfigField>
   required?: boolean
   advanced?: boolean
+  /** Named group this field renders under (e.g. "General", "Connection"). */
+  section?: string
+  /** Stable sort order within its section. */
+  order?: number
+  placeholder?: string
+  min?: number
+  max?: number
+  step?: number
+  pattern?: string
+  /** Mask the value in the UI even when type is not `secret`. */
+  sensitive?: boolean
+  /** Conditionally show this field based on another field's value. */
+  if?: PluginConfigVisibility
 }
 
 // ── Services ──
@@ -50,6 +85,8 @@ export interface PluginSettingsSection {
   id: string
   label: string
   slot: string
+  /** Render the plugin's `manifest.config` as an auto-generated form instead of a slot. */
+  config?: boolean
 }
 
 export interface PluginSettingsTab {
@@ -58,6 +95,8 @@ export interface PluginSettingsTab {
   icon: string
   path: string
   sections: PluginSettingsSection[]
+  /** Owning plugin id — populated by the manager when tabs are surfaced to the renderer. */
+  pluginId?: string
 }
 
 export interface PluginManifest {
@@ -205,6 +244,9 @@ export interface OtixEvents {
   'plugin:enabled': { pluginId: string }
   'plugin:disabled': { pluginId: string }
   'plugin:slot-suspended': { pluginId: string; location: string }
+  'plugin:config-changed': { pluginId: string; key?: string; config: Record<string, unknown> }
+  'plugin:status-changed': { pluginId: string; status: Record<string, unknown> }
+  'plugin:slots-changed': { pluginId?: string }
   'scan:progress': { currentDir: string; progress: number; pluginId?: string }   // NEW
 
   // ── Game lifecycle (emitted by GameDetector, consumed by plugins) ──
@@ -222,6 +264,7 @@ export type OtixEventName = keyof OtixEvents
 // ── Worker bridge ──
 export type MainToWorkerMessage =
   | { type: 'init'; config: Record<string, unknown> }
+  | { type: 'config-changed'; config: Record<string, unknown> }
   | { type: 'rpc-result'; id: string; result: unknown }
   | { type: 'rpc-error'; id: string; error: string }
   | { type: 'rpc'; id: string; method: string; args: unknown[] }

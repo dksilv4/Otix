@@ -2,134 +2,18 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Search, Loader2, Puzzle, ExternalLink, CheckCircle2, XCircle,
   Download, RefreshCw, Settings, X, Store, ChevronDown,
-  ShieldCheck, Database, ArrowUpCircle, ArrowRight, ChevronUp,
+  ShieldCheck, Database, ArrowRight,
 } from 'lucide-react'
 import { useModal, SlidePanel } from '@/lib/modals'
-import { PluginConfigPanel } from '../components/organisms/plugin-config-panel'
-import { ConnectedCard } from '../components/organisms/plugin-settings'
+import { PluginDetailPanel } from '../components/organisms/plugin-detail-panel'
+import {
+  getPluginAPI, getPluginCategory, getCategoryStyle, getPluginIcon, getPermissionLabel,
+  CATEGORY_ORDER, type RegistryEntry,
+} from '@/features/plugins/api'
 import type { PluginInfo } from '@/features/plugins/types/plugins'
 import { cn } from '@/lib/utils'
 import { openExternal } from '@/lib/utils/open-external'
 import { DkSwitch } from '@/old-features/ui/atoms/switch'
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface RegistryEntry {
-  id: string
-  name: string
-  version: string
-  description: string
-  author: string
-  repository: string
-  path?: string
-  icon?: string
-  category?: string
-  tags?: string[]
-  min_app_version?: string
-  permissions: string[]
-  long_description?: string
-  screenshots?: string[]
-  downloads?: number
-}
-
-export interface PluginAPI {
-  list(): Promise<PluginInfo[]>
-  get(id: string): Promise<PluginInfo | null>
-  install(repoUrl: string, pluginPath?: string): Promise<PluginInfo>
-  uninstall(id: string): Promise<void>
-  update(id: string): Promise<PluginInfo>
-  enable(id: string): Promise<void>
-  disable(id: string): Promise<void>
-  reload(id: string): Promise<PluginInfo[]>
-  getConfig(pluginId: string): Promise<Record<string, unknown>>
-  setConfig(pluginId: string, key: string, value: unknown): Promise<void>
-  testInstance(url: string, apiKey: string): Promise<{ success: boolean; message: string }>
-  testConfig(pluginId: string, config: Record<string, unknown>): Promise<{ success: boolean; message: string }>
-  getStatus(pluginId: string): Promise<Record<string, unknown>>
-  discover(): Promise<void>
-  fetchMarketplace(): Promise<{ success: boolean; plugins?: RegistryEntry[]; error?: string }>
-  getRepos(): Promise<Array<{ url: string; label?: string; added_at: string }>>
-  addRepo(url: string, label?: string): Promise<Array<{ url: string; label?: string; added_at: string }>>
-  removeRepo(url: string): Promise<Array<{ url: string; label?: string; added_at: string }>>
-  getPluginTabs(): Promise<Array<{ pluginId: string; label: string; path: string }>>
-  getSlotData?(location: string): Promise<unknown>
-  callData(pluginId: string, method: string, ...args: unknown[]): Promise<unknown>
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-const PERMISSION_LABELS: Record<string, string> = {
-  'network:external': 'Network Access',
-  'network:server': 'Local Server',
-  'storage:local': 'Local Storage',
-  'ui:settings': 'Settings Page',
-  'ui:nav.item': 'Navigation Item',
-  'ui:dashboard.widget': 'Dashboard Widget',
-  'ui:list.actions': 'List Actions',
-  'ui:media.actions': 'Media Actions',
-  'notifications': 'Notifications',
-  'worker:filesystem': 'File System Access',
-  'ui:command': 'Commands',
-  'api:proxy': 'API Proxy',
-}
-
-function getPermissionLabel(perm: string): string {
-  return PERMISSION_LABELS[perm] || perm
-}
-
-const PLUGIN_ICONS: Record<string, string> = {
-  film: '\u{1F3AC}',
-  music: '\u{1F3B5}',
-  gamepad: '\u{1F3AE}',
-  code: '\u{1F4BB}',
-  download: '\u{1F4E5}',
-  tool: '\u{1F527}',
-  book: '\u{1F4DA}',
-  tv: '\u{1F4FA}',
-  star: '\u{2B50}',
-  heart: '\u{2764}\u{FE0F}',
-  default: '\u{1F4E6}',
-}
-
-const CATEGORY_STYLES: Record<string, { label: string; color: string; badge: string }> = {
-  Scanners: { label: 'Scanners', color: 'text-cyan-400', badge: 'bg-cyan-500/10 text-cyan-400' },
-  Pipelines: { label: 'Pipelines', color: 'text-violet-400', badge: 'bg-violet-500/10 text-violet-400' },
-  Providers: { label: 'Providers', color: 'text-blue-400', badge: 'bg-blue-500/10 text-blue-400' },
-  Services: { label: 'Services', color: 'text-amber-400', badge: 'bg-amber-500/10 text-amber-400' },
-  Utility: { label: 'Utility', color: 'text-white/40', badge: 'bg-white/5 text-white/40' },
-}
-
-const CATEGORY_ORDER = ['Scanners', 'Pipelines', 'Providers', 'Services', 'Utility']
-
-function getPluginCategory(plugin: PluginInfo | RegistryEntry): string {
-  const name = plugin.name || ''
-  const perms = 'permissions' in plugin ? plugin.permissions : plugin.manifest.permissions
-
-  // Check manifest services (only available on PluginInfo)
-  if ('manifest' in plugin && plugin.manifest.services && plugin.manifest.services.length > 0) {
-    const types = plugin.manifest.services.map((s) => s)
-    if (types.includes('downloads-orchestrator')) return 'Pipelines'
-    if (types.includes('arr') || types.includes('downloader')) return 'Services'
-  }
-
-  // Scanner plugins — game library scanning
-  if (perms.includes('worker:filesystem')) return 'Scanners'
-
-  // Marketplace fallback — name heuristics when no manifest available
-  if (name.includes('Pipeline') || name.includes('Download')) return 'Pipelines'
-  if (name.includes('Searcher') || name.includes('Search')) return 'Providers'
-  if (name.includes('Radarr') || name.includes('Sonarr') || name.includes('Lidarr') || name.includes('SABnzbd')) return 'Services'
-
-  return 'Utility'
-}
-
-// ── Plugin API accessor ────────────────────────────────────────────────────────
-
-export function getPluginAPI(): PluginAPI | null {
-  const api = (window as any).desktopAPI?.plugin
-  if (!api) return null
-  return api as PluginAPI
-}
 
 // ── Topology Graph ─────────────────────────────────────────────────────────────
 
@@ -182,16 +66,6 @@ function buildPluginGraph(enabled: PluginInfo[]): { nodes: GraphNode[]; edges: G
     }
   }
 
-  // Service provider/consumer edges
-  const providerServices = new Map<string, string[]>()
-  for (const plugin of enabled) {
-    for (const s of plugin.manifest.services || []) {
-      const type = s
-      if (!providerServices.has(type)) providerServices.set(type, [])
-      providerServices.get(type)!.push(plugin.id)
-    }
-  }
-
   // Same-author edges
   const byAuthor = new Map<string, string[]>()
   for (const plugin of enabled) {
@@ -216,11 +90,9 @@ function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
   const graph = buildPluginGraph(enabledPlugins)
   const nodeCount = graph.nodes.length
 
-  // Center + dimensions
   const cx = 130
   const cy = 90
 
-  // Calculate positions: nodes on an ellipse around the center hub
   const radiusX = Math.min(75, 30 + nodeCount * 12)
   const radiusY = Math.min(55, 25 + nodeCount * 8)
 
@@ -235,7 +107,6 @@ function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
 
   const posMap = new Map(positions.map((n) => [n.id, n]))
 
-  // Edges between real plugins (not to hub)
   const pluginEdges = graph.edges.map((edge) => {
     const s = posMap.get(edge.source)
     const t = posMap.get(edge.target)
@@ -286,14 +157,12 @@ function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
 
   return (
     <div className="relative">
-      {/* Connection count label */}
       <div className="absolute -top-2 right-0 text-[10px] text-white/30 font-medium bg-white/[0.03] rounded-full px-2 py-0.5">
         {nodeCount} connected
       </div>
 
       <div className="relative w-[260px] h-[180px]">
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 260 180">
-          {/* Hub-to-node lines */}
           {visiblePositions.map((n) => (
             <line
               key={`hub-${n.id}`}
@@ -304,7 +173,6 @@ function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
               strokeDasharray="4 3"
             />
           ))}
-          {/* Inter-plugin edges */}
           {pluginEdges.map((e, i) => {
             const stroke = e.type === 'same_author' ? edgeColor : strongEdgeColor
             const dash = e.type === 'same_author' ? '3 3' : undefined
@@ -321,12 +189,10 @@ function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
           })}
         </svg>
 
-        {/* Center hub */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-13 h-13 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/25 z-10 ring-[3px] ring-white/[0.04]">
           <Puzzle className="w-6 h-6 text-white" />
         </div>
 
-        {/* Plugin nodes */}
         {visiblePositions.map((n) => (
           <div key={n.id} className="group absolute" style={{ left: n.px, top: n.py }}>
             <div
@@ -337,14 +203,12 @@ function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
                 {n.name.slice(0, 2).toUpperCase()}
               </span>
             </div>
-            {/* Tooltip */}
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 rounded-lg bg-gray-900 border border-white/[0.06] text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
               {n.name}
             </div>
           </div>
         ))}
 
-        {/* Connection legend */}
         {pluginEdges.length > 0 && (
           <div className="absolute bottom-0 left-0 flex items-center gap-3">
             <div className="flex items-center gap-1.5">
@@ -374,7 +238,6 @@ function HeroBanner({ plugins, onBrowseAll }: { plugins: PluginInfo[]; onBrowseA
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent border border-white/[0.06]">
       <div className="flex items-center gap-10 px-8 py-10">
-        {/* Left content */}
         <div className="flex-1 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-4">
             <Puzzle className="h-3 w-3" />
@@ -401,7 +264,6 @@ function HeroBanner({ plugins, onBrowseAll }: { plugins: PluginInfo[]; onBrowseA
           </button>
         </div>
 
-        {/* Right — Topology graph */}
         <div className="hidden lg:block shrink-0">
           <PluginTopologyGraph enabledPlugins={plugins.filter((p) => p.status === 'enabled')} />
         </div>
@@ -410,65 +272,12 @@ function HeroBanner({ plugins, onBrowseAll }: { plugins: PluginInfo[]; onBrowseA
   )
 }
 
-// ── Plugin Table (shared by Connected + Popular sections) ──────────────────────
+// ── Installed Card ─────────────────────────────────────────────────────────────
 
-const TH_CLASSES = 'text-left text-[11px] font-medium text-white/30 uppercase tracking-wider py-2.5 px-3'
-const TD_CLASSES = 'py-2.5 px-3 text-sm text-white/70 border-t border-white/[0.04]'
-const ROW_HOVER = 'hover:bg-white/[0.02] transition-colors'
-
-function StatusBadge({ status, connected }: { status: PluginInfo['status']; connected?: boolean }) {
-  const isConnected = status === 'enabled' && connected
-  const isEnabled = status === 'enabled' && !connected
-  const isError = status === 'error'
-  const isDisabled = status === 'disabled' || status === 'installed'
-  return (
-    <span className={cn(
-      'inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0',
-      isError && 'text-red-400 bg-red-500/10',
-      isConnected && 'text-green-400 bg-green-500/10',
-      isEnabled && 'text-blue-400 bg-blue-500/10',
-      isDisabled && 'text-white/40 bg-white/5',
-    )}>
-      {isConnected && <CheckCircle2 className="h-3 w-3" />}
-      {isConnected ? 'Connected' : isEnabled ? 'Enabled' : isError ? 'Error' : 'Disabled'}
-    </span>
-  )
-}
-
-function SortHeader({
-  label,
-  sortKey: colKey,
-  currentKey,
-  currentDir,
-  onSort,
-  className,
-}: {
-  label: string
-  sortKey: 'name' | 'version' | 'author' | 'status'
-  currentKey: 'name' | 'version' | 'author' | 'status' | null
-  currentDir: 'asc' | 'desc'
-  onSort: (key: 'name' | 'version' | 'author' | 'status') => void
-  className?: string
-}) {
-  const active = currentKey === colKey
-  return (
-    <th className={cn(TH_CLASSES, 'cursor-pointer select-none hover:text-white/60 transition-colors', className)} onClick={() => onSort(colKey)}>
-      <span className="inline-flex items-center gap-1">
-        {label}
-        {active && (
-          currentDir === 'asc'
-            ? <ChevronUp className="h-3 w-3" />
-            : <ChevronDown className="h-3 w-3" />
-        )}
-      </span>
-    </th>
-  )
-}
-
-// ponytail: inline row template — single source of truth for both installed + marketplace
-function PluginRow({
+function ConnectedCard({
   plugin,
-  marketplaceEntry,
+  hasUpdate,
+  updateVersion,
   onManage,
   onToggle,
   toggling,
@@ -476,88 +285,103 @@ function PluginRow({
   onUpdate,
 }: {
   plugin: PluginInfo
-  marketplaceEntry?: RegistryEntry
+  hasUpdate?: boolean
+  updateVersion?: string
   onManage: () => void
   onToggle: () => void
   toggling: boolean
-  updating: boolean
+  updating?: boolean
   onUpdate?: () => void
 }) {
-  const pluginIcon = PLUGIN_ICONS[plugin.manifest.icon || ''] || PLUGIN_ICONS.default
-  const isEnabled = plugin.status === 'enabled'
-  const isSystem = plugin.manifest.system === true
+  const pluginIcon = getPluginIcon(plugin.manifest.icon)
   const isError = plugin.status === 'error'
-  const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
+  const isConnected = plugin.status === 'enabled'
+  const isSystem = plugin.manifest.system === true
 
   return (
-    <tr className={cn(ROW_HOVER, 'cursor-pointer group')} onClick={onManage}>
-      <td className={cn(TD_CLASSES, 'sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
-        <div className="flex items-center gap-3">
-          <div className={cn(
-            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base',
-            isError ? 'bg-red-500/10' : 'bg-primary/10',
-          )}>
-            {pluginIcon}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-white truncate">{plugin.name}</span>
-              {isSystem && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-400 bg-sky-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">
-                  <ShieldCheck className="h-3 w-3" />
-                  System
-                </span>
-              )}
-              {!isSystem && (
-                <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
-              )}
-            </div>
-          </div>
+    <div
+      className="rounded-2xl p-5 flex flex-col justify-between backdrop-blur-2xl transition-all duration-200 relative overflow-hidden space-y-3.5 hover:bg-white/[0.04]"
+      style={{
+        backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.18)',
+        boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.04)',
+      }}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.05] via-transparent to-black/[0.2]" />
+
+      <div className="flex items-center justify-between gap-2 relative z-10">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          {pluginIcon}
         </div>
-      </td>
-      <td className={TD_CLASSES}>
-        <span className="text-xs text-white/50">v{plugin.version}</span>
-        {hasUpdate && (
-          <span className="ml-2 text-[10px] text-amber-400 bg-amber-500/10 rounded px-1.5 py-0.5">
-            v{marketplaceEntry!.version}
-          </span>
+        <div className="shrink-0">
+          {isSystem ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-400 whitespace-nowrap">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              System
+            </span>
+          ) : isError ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-400 whitespace-nowrap">
+              <span className="h-2 w-2 rounded-full bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.7)]" />
+              Error
+            </span>
+          ) : isConnected ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400 whitespace-nowrap">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+              Connected
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white/40 whitespace-nowrap">
+              <span className="h-2 w-2 rounded-full bg-white/30" />
+              Disabled
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 min-w-0 relative z-10">
+        <h4 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+          <span className="truncate">{plugin.name}</span>
+        </h4>
+        <p className="text-[11px] text-white/40 mt-0.5">{plugin.author} &middot; v{plugin.version}</p>
+        {plugin.description && (
+          <p className="text-xs text-white/50 mt-1 line-clamp-2 leading-relaxed">
+            {plugin.description}
+          </p>
         )}
-      </td>
-      <td className={cn(TD_CLASSES, 'hidden sm:table-cell text-xs text-white/40')}>
-        {plugin.author}
-      </td>
-      <td className={TD_CLASSES}>
-        <StatusBadge status={plugin.status} connected={plugin.connected} />
-      </td>
-      <td className={cn(TD_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
-        <div className="flex items-center justify-end gap-2">
-          {hasUpdate && onUpdate && (
+      </div>
+
+      <div className="flex items-center justify-between pt-1 relative z-10">
+        <div className="flex items-center gap-2">
+          {hasUpdate && onUpdate && updateVersion && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onUpdate() }}
+              onClick={onUpdate}
               disabled={updating}
-              className="inline-flex items-center gap-1 h-7 rounded-lg px-2.5 text-[11px] font-medium bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 h-8 rounded-xl px-3 text-xs font-semibold bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-all disabled:opacity-50 cursor-pointer"
             >
-              {updating ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUpCircle className="h-3 w-3" />}
-              Update
+              {updating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Update v{updateVersion}
             </button>
           )}
+        </div>
+
+        <div className="flex items-center gap-2.5 ml-auto">
           <button
-            onClick={(e) => { e.stopPropagation(); onManage() }}
-            className={cn(
-              'inline-flex items-center gap-1.5 text-xs font-medium transition-colors',
-              isError ? 'text-red-400/70 hover:text-red-400' : 'text-primary/70 hover:text-primary',
-            )}
+            onClick={onManage}
+            className="inline-flex items-center gap-1.5 h-8.5 rounded-xl px-3 text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer"
           >
             <Settings className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Manage</span>
+            Manage
           </button>
-          <span onClick={(e) => e.stopPropagation()}>
-            {!isSystem && <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling} />}
-          </span>
+          {!isSystem && !isError && (
+            <DkSwitch checked={isConnected} onCheckedChange={onToggle} disabled={toggling} />
+          )}
         </div>
-      </td>
-    </tr>
+      </div>
+    </div>
   )
 }
 
@@ -584,11 +408,10 @@ function MarketplaceDetailPanel({
   onClose: () => void
   isExiting?: boolean
 }) {
-  const icon = PLUGIN_ICONS[entry.icon || ''] || PLUGIN_ICONS.default
+  const icon = getPluginIcon(entry.icon)
 
   return (
     <SlidePanel onClose={onClose} isExiting={isExiting}>
-      {/* Header */}
       <div className="flex items-start gap-4 px-6 pt-6 pb-4">
         <div
           className="flex items-center justify-center w-14 h-14 rounded-2xl text-2xl shrink-0"
@@ -611,11 +434,9 @@ function MarketplaceDetailPanel({
         </button>
       </div>
 
-      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
         <p className="text-sm text-white/70 leading-relaxed">{entry.long_description || entry.description}</p>
 
-        {/* Meta */}
         {(entry.category || (entry.tags && entry.tags.length > 0)) && (
           <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 space-y-3">
             {entry.category && (
@@ -637,7 +458,6 @@ function MarketplaceDetailPanel({
           </div>
         )}
 
-        {/* Repository */}
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 flex items-center justify-between">
           <span className="text-xs text-white/30">Repository</span>
           <button
@@ -649,7 +469,6 @@ function MarketplaceDetailPanel({
           </button>
         </div>
 
-        {/* Permissions */}
         {entry.permissions.length > 0 && (
           <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4">
             <h4 className="text-sm font-medium text-white/60 mb-3">Permissions</h4>
@@ -666,12 +485,11 @@ function MarketplaceDetailPanel({
         )}
       </div>
 
-      {/* Footer */}
       <div className="px-6 py-4 border-t border-white/[0.06]">
         {isInstalled && installedVersion && entry.version !== installedVersion ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-amber-400">
-              <ArrowUpCircle className="h-4 w-4" /> Update available: v{installedVersion} &rarr; v{entry.version}
+              <RefreshCw className="h-4 w-4" /> Update available: v{installedVersion} &rarr; v{entry.version}
             </div>
             <button
               onClick={onUpdate}
@@ -706,33 +524,26 @@ export function SettingsPluginsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Per-plugin action locks
   const [toggling, setToggling] = useState<Record<string, boolean>>({})
   const [updating, setUpdating] = useState<string | null>(null)
 
-  // Marketplace
   const [marketplacePlugins, setMarketplacePlugins] = useState<RegistryEntry[]>([])
   const [marketplaceLoading, setMarketplaceLoading] = useState(true)
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null)
   const [selectedEntry, setSelectedEntry] = useState<RegistryEntry | null>(null)
   const [installingMarketplaceId, setInstallingMarketplaceId] = useState<string | null>(null)
 
-  // Config panel
   const [configuringPlugin, setConfiguringPlugin] = useState<string | null>(null)
   const [configKey, setConfigKey] = useState(0)
 
-  // Repos
   const [repos, setRepos] = useState<Array<{ url: string; label?: string; added_at: string }>>([])
   const [addingRepo, setAddingRepo] = useState(false)
   const [newRepoUrl, setNewRepoUrl] = useState('')
   const [newRepoLabel, setNewRepoLabel] = useState('')
   const [showRepoManager, setShowRepoManager] = useState(false)
 
-  // Search + tabs + sort
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'installed' | 'discover'>('installed')
-  const [sortKey, setSortKey] = useState<'name' | 'version' | 'author' | 'status' | null>(null)
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   // Gate: don't call plugin IPC until main process registers handlers.
   const [ipcReady, setIpcReady] = useState(false)
@@ -771,8 +582,6 @@ export function SettingsPluginsPage() {
     }
   }, [api])
 
-  // ── Marketplace ─────────────────────────────────────────────────────────────
-
   async function loadMarketplace() {
     if (!api) return
     setMarketplaceLoading(true)
@@ -797,7 +606,6 @@ export function SettingsPluginsPage() {
     try {
       await api.install(entry.repository, entry.path)
       await fetchPlugins()
-      // Remove from marketplace view so it appears in Connected
       setMarketplacePlugins((prev) => prev.filter((e) => e.id !== entry.id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Install failed')
@@ -819,8 +627,6 @@ export function SettingsPluginsPage() {
       setUpdating(null)
     }
   }
-
-  // ── Repo management ─────────────────────────────────────────────────────────
 
   async function loadRepos() {
     if (!api) return
@@ -869,7 +675,7 @@ export function SettingsPluginsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ipcReady])
 
-  // Detail panel — open via root modal system
+  // Marketplace detail panel — open via root modal system
   useEffect(() => {
     if (!selectedEntry) return
 
@@ -895,31 +701,30 @@ export function SettingsPluginsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEntry])
 
-  // Config panel — open via root modal system
+  // Detail panel — open via root modal system
   useEffect(() => {
     if (!configuringPlugin) return
 
     const plugin = plugins.find((p) => p.id === configuringPlugin)
+    if (!plugin || !api) return
 
     let close: () => void = () => {}
     close = openModal(
-      plugin ? (
-        <PluginConfigPanel
-          key={configKey}
-          plugin={plugin}
-          api={api!}
-          onClose={() => { setConfiguringPlugin(null); close() }}
-          onConfigSaved={() => {
-            fetchPlugins()
-            setConfigKey((k) => k + 1)
-          }}
-        />
-      ) : null,
+      <PluginDetailPanel
+        key={configKey}
+        plugin={plugin}
+        api={api}
+        onClose={() => { setConfiguringPlugin(null); close() }}
+        onConfigSaved={() => {
+          fetchPlugins()
+          setConfigKey((k) => k + 1)
+        }}
+      />,
     )
+    // Close the previous instance before re-opening (e.g. after config save).
+    return close
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configuringPlugin, configKey])
-
-  // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleToggle = useCallback(
     async (plugin: PluginInfo) => {
@@ -957,17 +762,6 @@ export function SettingsPluginsPage() {
     [api],
   )
 
-  const handleSort = (key: 'name' | 'version' | 'author' | 'status') => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortKey(key)
-      setSortDir('asc')
-    }
-  }
-
-  // ── Derived data ────────────────────────────────────────────────────────────
-
   const query = searchQuery.toLowerCase().trim()
   const statusOrder: Record<string, number> = { enabled: 0, disabled: 1, error: 2 }
 
@@ -980,20 +774,10 @@ export function SettingsPluginsPage() {
         p.author.toLowerCase().includes(query),
     )
     .sort((a, b) => {
-      // Default: status priority (connected → disabled → error), then name
-      if (!sortKey) {
-        const s = (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3)
-        return s !== 0 ? s : a.name.localeCompare(b.name)
-      }
-      const dir = sortDir === 'asc' ? 1 : -1
-      if (sortKey === 'name') return a.name.localeCompare(b.name) * dir
-      if (sortKey === 'version') return a.version.localeCompare(b.version) * dir
-      if (sortKey === 'author') return a.author.localeCompare(b.author) * dir
-      if (sortKey === 'status') return String(a.status).localeCompare(String(b.status)) * dir
-      return 0
+      const s = (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3)
+      return s !== 0 ? s : a.name.localeCompare(b.name)
     })
 
-  // For the popular section, show marketplace entries not connected.
   const popularPlugins = marketplacePlugins
     .filter((e) => !plugins.some((p) => p.id === e.id && p.status === 'enabled'))
     .filter(
@@ -1031,8 +815,6 @@ export function SettingsPluginsPage() {
     )
   }
 
-  // ── Loading state ──
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -1048,13 +830,11 @@ export function SettingsPluginsPage() {
 
   return (
     <div className="space-y-8">
-      {/* ── Hero Banner ── */}
       <HeroBanner
         plugins={plugins}
         onBrowseAll={() => setActiveTab('discover')}
       />
 
-      {/* ── Search + Actions Row ── */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30 pointer-events-none" />
@@ -1083,7 +863,6 @@ export function SettingsPluginsPage() {
         </button>
       </div>
 
-      {/* ── Repo Manager (expandable) ── */}
       {showRepoManager && (
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 space-y-4">
           <h4 className="text-sm font-semibold text-white">Plugin Repositories</h4>
@@ -1134,7 +913,6 @@ export function SettingsPluginsPage() {
         </div>
       )}
 
-      {/* ── Error banner ── */}
       {error && (
         <div className="flex items-start gap-3 rounded-xl p-4 bg-red-500/5 border border-red-500/10">
           <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
@@ -1152,7 +930,6 @@ export function SettingsPluginsPage() {
         </div>
       )}
 
-      {/* ── Tab Bar ── */}
       <div className="sticky top-0 z-20 flex items-center gap-1 p-1 rounded-xl bg-[#0a0a0b] border border-white/[0.06] w-fit">
         {(['installed', 'discover'] as const).map((tab) => (
           <button
@@ -1170,7 +947,6 @@ export function SettingsPluginsPage() {
         ))}
       </div>
 
-      {/* ── Installed Tab ── */}
       {activeTab === 'installed' && (
         <>
           {hasAnyInstalled ? (
@@ -1217,196 +993,188 @@ export function SettingsPluginsPage() {
         </>
       )}
 
-      {/* ── Discover Tab ── */}
       {activeTab === 'discover' && (
         <>
-          {/* ── Marketplace error ── */}
           {marketplaceError && (
-        <div className="flex items-start gap-3 rounded-xl p-4 bg-red-500/5 border border-red-500/10">
-          <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-red-300">Failed to load marketplace</p>
-            <p className="text-xs text-red-300/70 mt-0.5">{marketplaceError}</p>
-          </div>
-          <button onClick={loadMarketplace} className="shrink-0 inline-flex items-center gap-1 h-8 rounded-lg px-3 text-xs font-medium bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-colors">
-            <RefreshCw className="h-3 w-3" /> Retry
-          </button>
-        </div>
-      )}
-
-      {/* ── Popular Plugins ── */}
-      <section id="popular-plugins">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-white">Popular Plugins</h2>
-            {popularPlugins.length > 0 && (
-              <span className="text-xs text-white/30 bg-white/5 rounded-full px-2 py-0.5">
-                {popularPlugins.length > 99 ? '99+' : popularPlugins.length}
-              </span>
-            )}
-          </div>
-          {!marketplaceError && popularPlugins.length > 8 && (
-            <button
-              onClick={() => {
-                setSearchQuery('')
-                setShowRepoManager(false)
-              }}
-              className="text-sm text-primary/70 hover:text-primary inline-flex items-center gap-1 font-medium transition-colors"
-            >
-              View all plugins
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+            <div className="flex items-start gap-3 rounded-xl p-4 bg-red-500/5 border border-red-500/10">
+              <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-red-300">Failed to load marketplace</p>
+                <p className="text-xs text-red-300/70 mt-0.5">{marketplaceError}</p>
+              </div>
+              <button onClick={loadMarketplace} className="shrink-0 inline-flex items-center gap-1 h-8 rounded-lg px-3 text-xs font-medium bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-colors">
+                <RefreshCw className="h-3 w-3" /> Retry
+              </button>
+            </div>
           )}
-        </div>
 
-        {/* Loading */}
-        {marketplaceLoading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-5 w-5 text-primary animate-spin" />
-          </div>
-        )}
+          <section id="popular-plugins">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-white">Popular Plugins</h2>
+                {popularPlugins.length > 0 && (
+                  <span className="text-xs text-white/30 bg-white/5 rounded-full px-2 py-0.5">
+                    {popularPlugins.length > 99 ? '99+' : popularPlugins.length}
+                  </span>
+                )}
+              </div>
+              {!marketplaceError && popularPlugins.length > 8 && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('')
+                    setShowRepoManager(false)
+                  }}
+                  className="text-sm text-primary/70 hover:text-primary inline-flex items-center gap-1 font-medium transition-colors"
+                >
+                  View all plugins
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
 
-        {/* Empty: search no results */}
-        {!marketplaceLoading && !marketplaceError && query && popularPlugins.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <Store className="h-8 w-8 text-white/20 mb-2" />
-            <p className="text-sm text-white/40">No plugins match &quot;{searchQuery}&quot;</p>
-          </div>
-        )}
+            {marketplaceLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 text-primary animate-spin" />
+              </div>
+            )}
 
-        {/* Empty: no marketplace data */}
-        {!marketplaceLoading && !marketplaceError && !query && marketplacePlugins.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Store className="h-10 w-10 text-white/20 mb-3" />
-            <p className="text-sm text-white/40">No plugins available</p>
-            <p className="text-xs text-white/30 mt-1">Add a repository to browse community plugins.</p>
-          </div>
-        )}
+            {!marketplaceLoading && !marketplaceError && query && popularPlugins.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <Store className="h-8 w-8 text-white/20 mb-2" />
+                <p className="text-sm text-white/40">No plugins match &quot;{searchQuery}&quot;</p>
+              </div>
+            )}
 
-        {/* Table — grouped by category */}
-        {!marketplaceLoading && !marketplaceError && hasAnyPopular && (
-          <div className="space-y-8">
-            {CATEGORY_ORDER.map((cat) => {
-              const entries = popularPlugins.filter((e) => getPluginCategory(e) === cat)
-              if (entries.length === 0) return null
-              const style = CATEGORY_STYLES[cat]
-              return (
-                <div key={cat} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className={cn('text-sm font-semibold tracking-tight', style.color)}>
-                      {style.label}
-                    </h3>
-                    <span className="text-xs text-white/30 bg-white/5 rounded-full px-2 py-0.5">
-                      {entries.length}
-                    </span>
-                  </div>
-                  <div className="rounded-xl border border-white/[0.06] overflow-x-auto scrollbar-none">
-                    <table className="w-full min-w-[750px]">
-                      <thead>
-                        <tr className="border-b border-white/[0.06] sticky top-12 z-10 bg-[#0a0a0b]">
-                          <th className={cn(TH_CLASSES, 'sticky left-0 bg-[#0a0a0b] z-30')}>Plugin</th>
-                          <th className={TH_CLASSES}>Version</th>
-                          <th className={cn(TH_CLASSES, 'hidden sm:table-cell')}>Author</th>
-                          <th className={cn(TH_CLASSES, 'hidden md:table-cell')}>Category</th>
-                          <th className={cn(TH_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] z-30')}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {entries.map((entry) => {
-                          const installed = plugins.find((p) => p.id === entry.id)
-                          const isInstalled = !!installed
-                          const needsUpdate = isInstalled && installed!.version !== entry.version
-                          const icon = PLUGIN_ICONS[entry.icon || ''] || PLUGIN_ICONS.default
-                          const category = entry.category || getPluginCategory(entry)
-                          return (
-                            <tr
-                              key={entry.id}
-                              className={cn(ROW_HOVER, 'cursor-pointer group')}
-                              onClick={() => setSelectedEntry(entry)}
-                            >
-                              <td className={cn(TD_CLASSES, 'sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
-                                <div className="flex items-center gap-3">
-                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-base">
-                                    {icon}
-                                  </div>
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-medium text-white truncate">{entry.name}</span>
-                                      <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
-                                      {isInstalled && !needsUpdate && (
-                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-400 bg-green-500/10 rounded-full px-1.5 py-0.5 shrink-0">
-                                          <CheckCircle2 className="h-2.5 w-2.5" /> Installed
-                                        </span>
-                                      )}
-                                      {needsUpdate && (
-                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 rounded-full px-1.5 py-0.5 shrink-0">
-                                          <ArrowUpCircle className="h-2.5 w-2.5" /> v{entry.version}
-                                        </span>
+            {!marketplaceLoading && !marketplaceError && !query && marketplacePlugins.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Store className="h-10 w-10 text-white/20 mb-3" />
+                <p className="text-sm text-white/40">No plugins available</p>
+                <p className="text-xs text-white/30 mt-1">Add a repository to browse community plugins.</p>
+              </div>
+            )}
+
+            {!marketplaceLoading && !marketplaceError && hasAnyPopular && (
+              <div className="space-y-8">
+                {CATEGORY_ORDER.map((cat) => {
+                  const entries = popularPlugins.filter((e) => getPluginCategory(e) === cat)
+                  if (entries.length === 0) return null
+                  const style = getCategoryStyle(cat)
+                  return (
+                    <div key={cat} className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <h3 className={cn('text-sm font-semibold tracking-tight', style.color)}>
+                          {style.label}
+                        </h3>
+                        <span className="text-xs text-white/30 bg-white/5 rounded-full px-2 py-0.5">
+                          {entries.length}
+                        </span>
+                      </div>
+                      <div className="rounded-xl border border-white/[0.06] overflow-x-auto scrollbar-none">
+                        <table className="w-full min-w-[750px]">
+                          <thead>
+                            <tr className="border-b border-white/[0.06] sticky top-12 z-10 bg-[#0a0a0b]">
+                              <th className="text-left text-[11px] font-medium text-white/30 uppercase tracking-wider py-2.5 px-3 sticky left-0 bg-[#0a0a0b] z-30">Plugin</th>
+                              <th className="text-left text-[11px] font-medium text-white/30 uppercase tracking-wider py-2.5 px-3">Version</th>
+                              <th className="hidden sm:table-cell text-left text-[11px] font-medium text-white/30 uppercase tracking-wider py-2.5 px-3">Author</th>
+                              <th className="hidden md:table-cell text-left text-[11px] font-medium text-white/30 uppercase tracking-wider py-2.5 px-3">Category</th>
+                              <th className="text-right text-[11px] font-medium text-white/30 uppercase tracking-wider py-2.5 px-3 sticky right-0 bg-[#0a0a0b] z-30">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {entries.map((entry) => {
+                              const installed = plugins.find((p) => p.id === entry.id)
+                              const isInstalled = !!installed
+                              const needsUpdate = isInstalled && installed!.version !== entry.version
+                              const icon = getPluginIcon(entry.icon)
+                              return (
+                                <tr
+                                  key={entry.id}
+                                  className="cursor-pointer hover:bg-white/[0.02] transition-colors group"
+                                  onClick={() => setSelectedEntry(entry)}
+                                >
+                                  <td className="py-2.5 px-3 text-sm text-white/70 border-t border-white/[0.04] sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-base">
+                                        {icon}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm font-medium text-white truncate">{entry.name}</span>
+                                          <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
+                                          {isInstalled && !needsUpdate && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-400 bg-green-500/10 rounded-full px-1.5 py-0.5 shrink-0">
+                                              <CheckCircle2 className="h-2.5 w-2.5" /> Installed
+                                            </span>
+                                          )}
+                                          {needsUpdate && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 rounded-full px-1.5 py-0.5 shrink-0">
+                                              <RefreshCw className="h-2.5 w-2.5" /> v{entry.version}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-sm text-white/70 border-t border-white/[0.04]">
+                                    <span className="text-xs text-white/50">v{entry.version}</span>
+                                  </td>
+                                  <td className="hidden sm:table-cell py-2.5 px-3 text-sm text-white/70 border-t border-white/[0.04] text-xs text-white/40">
+                                    {entry.author}
+                                  </td>
+                                  <td className="hidden md:table-cell py-2.5 px-3 text-sm text-white/70 border-t border-white/[0.04]">
+                                    <span className={cn('text-[11px] rounded-md px-2 py-0.5 font-medium', style.badge)}>
+                                      {style.label}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-sm text-white/70 border-t border-white/[0.04] text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20">
+                                    <div className="flex items-center justify-end">
+                                      {needsUpdate ? (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleMarketplaceInstall(entry) }}
+                                          disabled={installingMarketplaceId === entry.id}
+                                          className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[11px] font-medium border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-50"
+                                        >
+                                          {installingMarketplaceId === entry.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                          Update
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            if (isInstalled) {
+                                              const p = plugins.find((pl) => pl.id === entry.id)
+                                              if (p) openConfig(p)
+                                            } else {
+                                              handleMarketplaceInstall(entry)
+                                            }
+                                          }}
+                                          disabled={installingMarketplaceId === entry.id}
+                                          className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[11px] font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all disabled:opacity-50"
+                                        >
+                                          {installingMarketplaceId === entry.id ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : isInstalled ? (
+                                            <Settings className="h-3 w-3" />
+                                          ) : (
+                                            <Download className="h-3 w-3" />
+                                          )}
+                                          {isInstalled ? 'Configure' : 'Connect'}
+                                        </button>
                                       )}
                                     </div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className={TD_CLASSES}>
-                                <span className="text-xs text-white/50">v{entry.version}</span>
-                              </td>
-                              <td className={cn(TD_CLASSES, 'hidden sm:table-cell text-xs text-white/40')}>
-                                {entry.author}
-                              </td>
-                              <td className={cn(TD_CLASSES, 'hidden md:table-cell')}>
-                                <span className={cn('text-[11px] rounded-md px-2 py-0.5 font-medium', CATEGORY_STYLES[category]?.badge || 'text-white/40 bg-white/5')}>
-                                  {CATEGORY_STYLES[category]?.label || category}
-                                </span>
-                              </td>
-                              <td className={cn(TD_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
-                                <div className="flex items-center justify-end">
-                                  {needsUpdate ? (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleMarketplaceInstall(entry) }}
-                                      disabled={installingMarketplaceId === entry.id}
-                                      className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[11px] font-medium border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-50"
-                                    >
-                                      {installingMarketplaceId === entry.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                      Update
-                                    </button>
-                                  ) : (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        if (isInstalled) {
-                                          const p = plugins.find((pl) => pl.id === entry.id)
-                                          if (p) openConfig(p)
-                                        } else {
-                                          handleMarketplaceInstall(entry)
-                                        }
-                                      }}
-                                      disabled={installingMarketplaceId === entry.id}
-                                      className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[11px] font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all disabled:opacity-50"
-                                    >
-                                      {installingMarketplaceId === entry.id ? (
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                      ) : isInstalled ? (
-                                        <Settings className="h-3 w-3" />
-                                      ) : (
-                                        <Download className="h-3 w-3" />
-                                      )}
-                                      {isInstalled ? 'Configure' : 'Connect'}
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </section>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
         </>
       )}
     </div>

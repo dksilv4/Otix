@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Gift, ExternalLink, CalendarDays, Gamepad2, Sparkles } from 'lucide-react'
-import { getPluginAPI } from '@/features/plugins/pages/plugins-page'
+import { getPluginAPI } from '@/features/plugins/api'
 import { openSessionWindow } from '@/lib/utils/open-external'
 import { SettingsCard } from '../molecules/settings-card'
 import { SectionHeader } from '../molecules/settings-section-header'

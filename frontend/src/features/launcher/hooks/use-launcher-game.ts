@@ -27,6 +27,7 @@ export function useLauncherGame(gameId: string | undefined) {
         backdropUrl: (localGame.otixBackdropUrl || catalogSource.backdropUrl || localGame.data?.backdropUrl) as string | undefined,
         textlessPosterUrl: (localGame.otixTextlessPosterUrl || catalogSource.textlessPosterUrl || localGame.data?.textlessPosterUrl) as string | null | undefined,
         logoUrl: (localGame.otixLogoUrl || catalogSource.logoUrl || localGame.data?.logoUrl) as string | undefined,
+        logoColorGuess: catalogSource.logoColorGuess as string | null | undefined,
         iconUrl: (localGame.otixIconUrl || catalogSource.iconUrl || localGame.data?.iconUrl) as string | undefined,
         screenshots: (catalogSource.screenshots || localGame.data?.screenshots) as Game['screenshots'],
       }

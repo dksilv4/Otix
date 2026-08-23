@@ -46,7 +46,7 @@ export function LibraryOverviewPage() {
             Your library overview
           </p>
           <p className="mt-1 text-sm text-muted-foreground max-w-sm">
-            Connect platforms like Steam, Plex, or Spotify to see your library stats here. Browse tabs above
+            Connect platforms like Steam, Plex, or YouTube to see your library stats here. Browse tabs above
             to explore your collection.
           </p>
         </div>

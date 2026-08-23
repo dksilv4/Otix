@@ -97,7 +97,6 @@
   &--tmdb             { @apply bg-[#01b4e4] text-white; }
   &--igdb-critic      { @apply bg-[#c8943e] text-white; }
   &--igdb-user        { @apply bg-[#5450d5] text-white; }
-  &--spotify          { @apply bg-[#1DB954] text-black; }
   &--lastfm           { @apply bg-[#d51007] text-white; }
   &--musicbrainz      { @apply bg-[#ba478f] text-white; }
   &--default          { @apply bg-muted text-muted-foreground; }
@@ -120,7 +119,6 @@
   &--tmdb             { @apply text-white; }
   &--igdb-critic      { @apply text-white; }
   &--igdb-user        { @apply text-white; }
-  &--spotify          { @apply text-black; }
   &--lastfm           { @apply text-white; }
   &--musicbrainz      { @apply text-white; }
   &--default          { @apply text-foreground; }

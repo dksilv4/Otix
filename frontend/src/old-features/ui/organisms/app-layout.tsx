@@ -68,7 +68,7 @@ function useNotificationToasts() {
     })
 }
 
-const PIN_KEY = 'otix_spotify_player_pinned'
+const PIN_KEY = 'otix_player_pinned'
 
 function loadPinState(): boolean {
     try {

@@ -22,12 +22,16 @@ def make_asset(
     label: str | None = None,
     score: int | None = None,
     width: int | None = None,
+    color_guess: str | None = None,
+    lang: str | None = None,
     item_id: str = "mi_1",
 ) -> MediaAsset:
     a = MediaAsset(media_item_id=item_id, asset_type=asset_type, url=url)
     a.label = label
     a.score = score
     a.width = width
+    a.color_guess = color_guess
+    a.lang = lang
     return a
 
 
@@ -53,6 +57,68 @@ class TestSelectBest:
         )
         # multicolor and official tie on preference; higher score wins.
         assert best.url == "https://img/official.png"
+
+    def test_logo_dark_theme_prefers_white_over_black(self):
+        best = _select_best(
+            [
+                make_asset("logo", "https://img/black.png", label="official", score=99, color_guess="guess_black"),
+                make_asset("logo", "https://img/white.png", label="custom", score=1, color_guess="guess_white"),
+            ],
+            "logo",
+            theme="dark",
+        )
+        assert best is not None
+        assert best.url == "https://img/white.png"
+
+    def test_logo_light_theme_prefers_black_over_white(self):
+        best = _select_best(
+            [
+                make_asset("logo", "https://img/black.png", label="official", score=99, color_guess="guess_black"),
+                make_asset("logo", "https://img/white.png", label="custom", score=1, color_guess="guess_white"),
+            ],
+            "logo",
+            theme="light",
+        )
+        assert best is not None
+        assert best.url == "https://img/black.png"
+
+    def test_logo_theme_none_ignores_color_guess(self):
+        # Without a theme, colour is not consulted — label/score ranking is unchanged.
+        best = _select_best(
+            [
+                make_asset("logo", "https://img/black.png", label="official", score=99, color_guess="guess_black"),
+                make_asset("logo", "https://img/white.png", label="custom", score=1, color_guess="guess_white"),
+            ],
+            "logo",
+        )
+        assert best is not None
+        assert best.url == "https://img/black.png"
+
+    def test_logo_contrast_beats_label_quality_on_dark(self):
+        # A white custom logo beats a black official logo on a dark theme.
+        best = _select_best(
+            [
+                make_asset("logo", "https://img/official-black.png", label="official", color_guess="guess_black"),
+                make_asset("logo", "https://img/custom-white.png", label="custom", color_guess="guess_white"),
+            ],
+            "logo",
+            theme="dark",
+        )
+        assert best is not None
+        assert best.url == "https://img/custom-white.png"
+
+    def test_logo_language_respected_within_same_contrast_tier(self):
+        # On dark theme two guess_white logos: viewer's language wins over foreign.
+        best = _select_best(
+            [
+                make_asset("logo", "https://img/white-en.png", lang="en", color_guess="guess_white"),
+                make_asset("logo", "https://img/white-fr.png", lang="fr", color_guess="guess_white"),
+            ],
+            "logo",
+            theme="dark",
+        )
+        assert best is not None
+        assert best.url == "https://img/white-en.png"
 
     def test_backdrop_excludes_alternate_even_with_max_score(self):
         best = _select_best(
@@ -125,6 +191,18 @@ class TestSelectBest:
         )
         assert best.url == "https://img/tl.jpg"
 
+    def test_textless_excludes_logo_bearing_material(self):
+        # Only a material grid (logo baked in) → no textless poster, so the
+        # caller falls back to the backdrop (background art with no text).
+        best = _select_best(
+            [
+                make_asset("textless_poster", "https://img/mat.jpg", label="material", score=99),
+                make_asset("textless_poster", "https://img/white.jpg", label="white_logo", score=88),
+            ],
+            "textless_poster",
+        )
+        assert best is None
+
     def test_uses_score_within_same_label(self):
         best = _select_best(
             [
@@ -166,6 +244,35 @@ class TestResolveFromDb:
         assert out["mi_1"]["logo_url"] == "https://img/mi1-logo.png"
         assert out["mi_2"]["poster_url"] == "https://img/mi2.jpg"
         assert out["mi_2"]["logo_url"] is None
+
+    async def test_logo_color_guess_surfaced_for_theme(self):
+        rows = [
+            make_asset("logo", "https://img/black.png", label="official", score=99, color_guess="guess_black", item_id="mi_1"),
+            make_asset("logo", "https://img/white.png", label="custom", score=1, color_guess="guess_white", item_id="mi_1"),
+        ]
+        session = MagicMock()
+        session.scalars = AsyncMock(return_value=rows)
+
+        out = await _resolve_from_db(session, ["mi_1"], ("logo",), theme="dark")
+
+        # Dark theme picks the white logo and reports its colour for CSS contrast.
+        assert out["mi_1"]["logo_url"] == "https://img/white.png"
+        assert out["mi_1"]["logo_color_guess"] == "guess_white"
+
+    async def test_logo_color_guess_reports_ranked_logo_without_theme(self):
+        rows = [
+            make_asset("logo", "https://img/black.png", label="official", score=99, color_guess="guess_black", item_id="mi_1"),
+            make_asset("logo", "https://img/white.png", label="custom", score=1, color_guess="guess_white", item_id="mi_1"),
+        ]
+        session = MagicMock()
+        session.scalars = AsyncMock(return_value=rows)
+
+        out = await _resolve_from_db(session, ["mi_1"], ("logo",))
+
+        # Without a theme colour is ignored, so the higher-scored official logo
+        # wins and its colour is reported.
+        assert out["mi_1"]["logo_url"] == "https://img/black.png"
+        assert out["mi_1"]["logo_color_guess"] == "guess_black"
 
     async def test_no_items_returns_empty(self):
         session = AsyncMock()
@@ -270,6 +377,22 @@ class TestEnrich:
         assert item._resolved_poster_url == "https://img/p.jpg"
         assert item._resolved_logo_url is None
         assert item._resolved_backdrop_url is None
+
+    async def test_attaches_logo_color_guess(self):
+        item = MediaItem(media_type="movie", title="The Invite", slug="the-invite")
+        item.id = "mi_1"
+
+        rows = [make_asset("logo", "https://img/black.png", label="official", score=5, color_guess="guess_black", item_id="mi_1")]
+        session = MagicMock()
+        session.scalars = AsyncMock(side_effect=[[], rows])
+
+        redis = AsyncMock()
+        redis.mget.return_value = [None]
+
+        await enrich_items_with_assets(session, [item], redis=redis)
+
+        assert item._resolved_logo_url == "https://img/black.png"
+        assert item._resolved_logo_color_guess == "guess_black"
 
     async def test_empty_items_noop(self):
         session = AsyncMock()

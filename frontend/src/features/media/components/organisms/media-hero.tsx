@@ -3,6 +3,7 @@ import {MEDIA_TYPE_LABEL} from '@/constants/media'
 import {Calendar, Clock, Languages, Film, Tv, Gamepad2, Music, Sparkles, Heart} from 'lucide-react'
 import {useQuery} from '@tanstack/react-query'
 import {useAuth} from '@/old-features/auth'
+import {MediaLogo} from '@/lib/media/media-logo'
 import {backdropSrc, formatAlbumDuration, formatMusicCreditsLine, formatRuntime, formatYear, isMusic, languageName, mediaQueries, GLASS_PILL, useMediaParams} from '@media'
 
 interface MediaHeroProps {
@@ -24,6 +25,7 @@ export function MediaHero({
         backdropUrl,
         posterUrl,
         logoUrl,
+        logoColorGuess,
         textlessPosterUrl,
         releaseDate,
         originalLanguage,
@@ -105,11 +107,12 @@ export function MediaHero({
                     <div className="flex min-w-0 flex-1 flex-col items-center gap-3 text-center sm:items-start sm:text-left">
                         {/* Logo or title */}
                         {hasLogo ? (
-                            <img
-                                src={logo}
+                            <MediaLogo
+                                src={logo!}
                                 alt={title}
                                 className="mb-2 max-h-24 max-w-[85%] object-contain sm:max-h-24 sm:max-w-[55%] lg:max-h-28 lg:max-w-[45%]"
-                                style={{filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))'}}
+                                colorGuess={logoUrl ? (logoColorGuess ?? null) : null}
+                                background={logoUrl ? 'theme' : 'none'}
                             />
                         ) : (
                             <h1

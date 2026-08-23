@@ -12,6 +12,7 @@ export interface MediaItemSummary {
   textlessPosterUrl: string | null
   backdropUrl: string | null
   logoUrl: string | null
+  logoColorGuess: string | null
   releaseDate: string | null
   popularity: number
   avgRating?: number | null
@@ -59,6 +60,7 @@ export interface MediaItemDetail {
   textlessPosterUrl: string | null
   backdropUrl: string | null
   logoUrl: string | null
+  logoColorGuess: string | null
   releaseDate: string | null
   popularity: number
   originalLanguage: string | null
@@ -197,7 +199,6 @@ export interface TrackOut {
   title: string
   durationMs?: number | null
   previewUrl?: string | null
-  spotifyId?: string | null
   musicbrainzRecordingId?: string | null
   audioFeatures?: Record<string, unknown> | null
   avgRating?: number | null
@@ -222,11 +223,8 @@ export interface AlbumDetail {
   trackCount: number
   discCount: number
   durationMs?: number | null
-  spotifyId?: string | null
   musicbrainzId?: string | null
   musicbrainzReleaseGroupId?: string | null
-  spotifyUrl?: string | null
-  spotifyPopularity?: number | null
   previewUrl?: string | null
   audioFeatures?: Record<string, unknown> | null
   tracks: TrackOut[]
@@ -239,7 +237,6 @@ export interface TrackSearchResult {
   discNumber: number
   durationMs: number | null
   previewUrl: string | null
-  spotifyId: string | null
   avgRating: number | null
   ratingCount: number
   albumId: string

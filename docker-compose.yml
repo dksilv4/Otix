@@ -57,6 +57,7 @@ services:
       - ./backend:/app
     env_file: ./.env
     environment:
+      ENABLE_RELOAD: "true"
       FASTEMBED_CACHE_PATH: /app/.fastembed_cache
       OMP_NUM_THREADS: "1"
     command: bash entrypoints/start-api.sh

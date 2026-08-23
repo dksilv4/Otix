@@ -34,6 +34,28 @@ parentPort!.on('message', async (msg: MainToWorkerMessage) => {
     return
   }
 
+  // Config updated in the main process — notify plugins that cache config.
+  if (msg.type === 'config-changed') {
+    const handlers = eventHandlers.get('otix:config:changed')
+    if (handlers) {
+      for (const handler of handlers) {
+        try {
+          handler(msg.config)
+        } catch (err: any) {
+          sendMessage({ type: 'log', level: 'error', msg: `config-changed handler failed: ${err.message}` })
+        }
+      }
+    }
+    if (typeof pluginModule?.onConfigChanged === 'function') {
+      try {
+        pluginModule.onConfigChanged(msg.config)
+      } catch (err: any) {
+        sendMessage({ type: 'log', level: 'error', msg: `onConfigChanged failed: ${err.message}` })
+      }
+    }
+    return
+  }
+
   // Handle events pushed from the main process
   if (msg.type === 'event') {
     const handlers = eventHandlers.get(msg.event)

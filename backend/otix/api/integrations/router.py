@@ -17,9 +17,6 @@ from otix.api.integrations.plex.sync import router as plex_sync_router
 from otix.api.integrations.plex.watchlist.sync import router as plex_watchlist_sync_router
 from otix.api.integrations.plex.webhook import router as plex_webhook_router
 from otix.api.integrations.saves import router as saves_router
-from otix.api.integrations.spotify import router as spotify_router
-from otix.api.integrations.spotify.recently_played.sync import router as spotify_rp_sync_router
-from otix.api.integrations.spotify.sync import router as spotify_sync_router
 from otix.api.integrations.steam.owned_appids import router as steam_owned_appids_router
 from otix.api.integrations.steam.resolve_unmatched import router as steam_resolve_router
 from otix.api.integrations.steam.scan import router as steam_scan_router
@@ -39,10 +36,6 @@ router.include_router(plex_sessions_router)
 router.include_router(plex_connect_info_router)
 router.include_router(plex_album_tracks_router)
 router.include_router(plex_stream_router)
-
-router.include_router(spotify_router)
-router.include_router(spotify_sync_router)
-router.include_router(spotify_rp_sync_router)
 
 router.include_router(steam_owned_appids_router)
 router.include_router(steam_scan_router)

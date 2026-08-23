@@ -6,7 +6,7 @@ import { promisify } from 'util'
 import { app } from 'electron'
 import { PluginRuntime } from './runtime'
 import { eventBus } from './event-bus'
-import { getApiUrl } from '../config'
+import { getApiV1Url } from '../config'
 import { ServiceRegistry } from './service-registry'
 import { PluginsRepository } from '../db/repositories/plugins'
 import { initPluginsDb } from '../db/plugins-db'
@@ -30,6 +30,7 @@ import {
   PluginNotRunningError,
   PluginIncompatibleError,
 } from './errors'
+import { validateConfigValue } from './config-validation'
 
 const execFileAsync = promisify(execFile)
 
@@ -64,7 +65,7 @@ export class PluginManager {
   private permissionManager: PermissionManager | null = null
   private extensionsDir: string
   private devExtensionsDir: string | undefined
-  private apiBaseUrl = getApiUrl('')
+  private apiBaseUrl = getApiV1Url('')
   private authToken = ''
   private slotRegistry: SlotRegistry = new SlotRegistry()
   public readonly serviceRegistry: ServiceRegistry = new ServiceRegistry()
@@ -205,7 +206,20 @@ export class PluginManager {
           }
         },
         set: (key: string, value: unknown) => {
-          this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(value))
+          const field = info.manifest.config?.[key]
+          if (field) {
+            const result = validateConfigValue(field, value)
+            if (result.ok) {
+              this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(result.value))
+            } else {
+              console.warn(
+                `[plugin:${pluginId}] config "${key}" rejected (${result.error}); storing raw value`,
+              )
+              this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(value))
+            }
+          } else {
+            this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(value))
+          }
         },
       }
 
@@ -307,6 +321,7 @@ export class PluginManager {
 
       this.pluginsRepo.setEnabled(pluginId)
       eventBus.emit('plugin:enabled', { pluginId })
+      eventBus.emit('plugin:slots-changed', { pluginId })
       console.log(`[PluginManager] Enabled plugin: ${pluginId}`)
     } catch (err: any) {
       this.pluginsRepo.updateStatus(pluginId, 'error', err.message)
@@ -337,6 +352,7 @@ export class PluginManager {
 
       this.pluginsRepo.setDisabled(pluginId)
       eventBus.emit('plugin:disabled', { pluginId })
+      eventBus.emit('plugin:slots-changed', { pluginId })
       console.log(`[PluginManager] Disabled plugin: ${pluginId}`)
     } finally {
       this.releaseLock(pluginId)
@@ -663,7 +679,7 @@ export class PluginManager {
       const info = this.getPlugin(pluginId)
       if (!info) continue
       const pluginTabs = info.manifest.settings?.tabs || []
-      tabs.push(...pluginTabs)
+      tabs.push(...pluginTabs.map((tab) => ({ ...tab, pluginId })))
     }
     return tabs
   }
@@ -868,9 +884,15 @@ export class PluginManager {
 
     try {
       const result = await runtime.callMethod('status')
-      return (result as Record<string, unknown>) || null
+      const status = (result as Record<string, unknown>) || null
+      if (status) {
+        eventBus.emit('plugin:status-changed', { pluginId, status })
+      }
+      return status
     } catch (err: any) {
-      return { error: err.message }
+      const status = { error: err.message }
+      eventBus.emit('plugin:status-changed', { pluginId, status })
+      return status
     }
   }
 
@@ -890,7 +912,22 @@ export class PluginManager {
   }
 
   setConfig(pluginId: string, key: string, value: unknown): void {
-    this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(value))
+    const info = this.getPlugin(pluginId)
+    const field = info?.manifest.config?.[key]
+    let stored = value
+    if (field) {
+      const result = validateConfigValue(field, value)
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+      stored = result.value
+    }
+    this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(stored))
+
+    // Notify the renderer and the running worker so config-caching plugins react.
+    const config = this.getConfig(pluginId)
+    eventBus.emit('plugin:config-changed', { pluginId, key, config })
+    this.runtimes.get(pluginId)?.pushConfig(config)
   }
 
   // ── Auth / API config ───────────────────────────────────────────
@@ -898,11 +935,13 @@ export class PluginManager {
   setAuthToken(token: string): void {
     this.authToken = token
     this.freeGames.setAuthToken(token)
+    for (const runtime of this.runtimes.values()) runtime.setAuthToken(token)
   }
 
   setApiBaseUrl(url: string): void {
     this.apiBaseUrl = url
     this.freeGames.setApiBaseUrl(url)
+    for (const runtime of this.runtimes.values()) runtime.setApiBaseUrl(url)
   }
 
   getApiBaseUrl(): string {

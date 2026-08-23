@@ -1751,7 +1751,7 @@ class GameMatcher:
                 media_item_id=new_id,
                 entity_type="media_item",
             )
-            .on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
+            .on_conflict_do_nothing()
         )
 
         # Also map request external IDs (epic, epic_namespace, epic_free, steam, etc.)
@@ -1769,7 +1769,7 @@ class GameMatcher:
                             media_item_id=new_id,
                             entity_type="media_item",
                         )
-                        .on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
+                        .on_conflict_do_nothing()
                     )
 
         # Fetch SteamGrid assets for rich hydration (posters, logos, heroes)

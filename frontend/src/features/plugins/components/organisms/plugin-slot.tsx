@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Loader2, Gamepad2, RefreshCw, FolderOpen, Plus, X, LogOut, CheckCircle2, Star, AlertCircle, Trash2, ChevronDown, Sparkles, Link2 } from 'lucide-react'
-import type { PluginAPI } from './plugin-settings'
+import type { PluginAPI } from '@/features/plugins/api'
+import type { PluginInfo } from '@/features/plugins/types/plugins'
 import { batchMatchAndSave } from '@/features/plugins/utils/matching'
 import { ProviderLogo } from '@/features/settings/components/atoms/provider-logo'
 import { apiClient } from '@/lib/api/client'
@@ -307,7 +308,32 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
   const data = entry.data!
   const pluginName = data.label || entry.label
   const hasAuth = !!data.actions?.login
-  const configFields = data.configFields || []
+
+  const [plugin, setPlugin] = useState<PluginInfo | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    pluginApi.get(entry.pluginId)
+      .then((info) => { if (!cancelled) setPlugin(info) })
+      .catch(() => { /* plugin may not respond */ })
+    return () => { cancelled = true }
+  }, [entry.pluginId, pluginApi])
+
+  // Path-list fields are declared in the manifest `config` (schema-driven).
+  // Fall back to runtime-emitted `configFields` for older plugins.
+  const manifestPathFields: ConfigField[] = useMemo(() => {
+    const config = plugin?.manifest.config
+    if (!config) return []
+    return Object.entries(config)
+      .filter(([, f]) => f.type === 'path-list')
+      .map(([key, f]) => ({
+        key,
+        label: f.label,
+        type: 'path-list' as const,
+        description: f.description,
+        placeholder: f.placeholder,
+      }))
+  }, [plugin])
+  const configFields = manifestPathFields.length > 0 ? manifestPathFields : (data.configFields || [])
 
   const [status, setStatus] = useState<any>({})
   const [loading, setLoading] = useState(false)
@@ -382,7 +408,7 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
     load()
     const t = setTimeout(load, 2000)
     return () => { cancelled = true; clearTimeout(t) }
-  }, [entry.pluginId])
+  }, [entry.pluginId, configFields])
 
   const refreshStatus = useCallback(async () => {
     try {

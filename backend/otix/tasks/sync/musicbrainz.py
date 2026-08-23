@@ -136,7 +136,7 @@ async def _sync_musicbrainz_album(mbid: str, force: bool = False, *, enqueue_enr
         for t in album.tracks:
             await flush_pending_external_ids(t, session)
 
-        # Save all URL relationship external IDs (Spotify, YouTube Music, Apple Music, etc.)
+        # Save all URL relationship external IDs (YouTube Music, Apple Music, etc.)
         await _upsert_url_external_ids(session, item.id, getattr(album, "_url_external_ids", []))
 
         # Save barcode as ExternalID if present
@@ -152,7 +152,7 @@ async def _sync_musicbrainz_album(mbid: str, force: bool = False, *, enqueue_enr
         logger.info("musicbrainz album synced", title=item.title, media_type="music", otix_id=item.id, mbid=mbid)
         await _progress_incr("musicbrainz_enqueued")
 
-        # Chain enrichments (no Spotify catalog tasks)
+        # Chain enrichments
         if enqueue_enrichment:
             app.send_task("sync.deezer.enrich_cover", args=[item.id], priority=7)
             app.send_task("sync.theaudiodb.enrich_album", args=[item.id], priority=6)
@@ -172,9 +172,7 @@ async def _upsert_url_external_ids(session, media_item_id: int, external_ids: li
         for provider, ext_id in external_ids
     ]
     await session.execute(
-        pg_insert(ExternalID.__table__).values(rows).on_conflict_do_nothing(
-            index_elements=["provider", "external_id", "entity_type"]
-        )
+        pg_insert(ExternalID.__table__).values(rows).on_conflict_do_nothing()
     )
 
 
@@ -188,7 +186,7 @@ async def _upsert_url_external_ids(session, media_item_id: int, external_ids: li
 def sync_musicbrainz_match_by_isrc_task(self, otix_id: str, isrcs: list[str]) -> dict | None:
     """Find the MusicBrainz release via track ISRCs and sync cross-platform IDs.
 
-    Called after a Deezer or Spotify seed to harvest all 15+ external platform IDs
+    Called after a Deezer seed to harvest all external platform IDs
     from MusicBrainz URL relationships.
     """
     return run_async(_sync_musicbrainz_match_by_isrc(otix_id, isrcs))

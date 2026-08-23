@@ -39,10 +39,12 @@ async def google_login_callback(
         )
 
     try:
-        await consume_state(body.state)
+        state_payload = await consume_state(body.state)
 
         tokens = await exchange_code_for_tokens(
-            body.code, redirect_uri=f"{settings.frontend_base_url}/auth/callback/google-login"
+            body.code,
+            redirect_uri=f"{settings.frontend_base_url}/auth/callback/google-login",
+            code_verifier=state_payload.get("verifier"),
         )
 
         access_token_val = tokens.get("access_token")

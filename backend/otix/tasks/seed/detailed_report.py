@@ -364,7 +364,6 @@ async def report() -> None:
                 ("imdb_id", p.imdb_id),
                 ("wikidata_id", p.wikidata_id),
                 ("musicbrainz_artist_id", p.musicbrainz_artist_id),
-                ("spotify_artist_id", p.spotify_artist_id),
                 ("youtube_channel_id", p.youtube_channel_id),
             ]
             for ename, evalue in ext_checks:

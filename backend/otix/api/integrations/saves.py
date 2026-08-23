@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.api.deps import get_current_user, get_db
 from otix.domain import GameSaveOfficialPath, GameSavePathSuggestion, MediaItem
 from otix.domain.user import User
-from otix.services.google_auth_service import get_user_google_access_token
+from otix.services.google_auth_service import get_user_google_drive_access_token
 from otix.services.google_drive_service import GoogleDriveService
 
 logger = structlog.get_logger()
@@ -26,11 +26,11 @@ async def get_google_access_token(
     db: AsyncSession = Depends(get_db),
 ) -> str:
     """Dependency helper to get a valid Google access token."""
-    token = await get_user_google_access_token(current_user, session=db)
+    token = await get_user_google_drive_access_token(current_user, session=db)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Google account is not linked or permission has expired. Please reconnect Google in Settings.",
+            detail="Google Drive is not linked or permission has expired. Please reconnect Google Drive in Settings.",
         )
     return token
 

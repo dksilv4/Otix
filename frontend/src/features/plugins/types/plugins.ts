@@ -47,20 +47,62 @@ export interface PluginManifest {
   depends_on?: string[]
 }
 
+export type PluginConfigFieldType =
+  | 'string' | 'number' | 'boolean' | 'secret' | 'enum' | 'select'
+  | 'uuid' | 'list' | 'path-list' | 'object'
+
+export interface PluginConfigVisibility {
+  field: string
+  equals?: unknown
+  not?: unknown
+  truthy?: boolean
+}
+
 export interface PluginConfigField {
-  type: 'string' | 'number' | 'boolean' | 'secret' | 'enum' | 'uuid' | 'list'
+  type: PluginConfigFieldType
   label: string
   description?: string
   default?: unknown
-  values?: string[]
+  /** Options for `enum` (plain strings) and `select` ({value,label} entries). */
+  values?: string[] | Array<{ value: string; label: string }>
+  /** `list` item schema (object shape per item); `object` sub-fields. */
   items?: Record<string, PluginConfigField>
   required?: boolean
   advanced?: boolean
+  /** Named group this field renders under (e.g. "General", "Connection"). */
+  section?: string
+  /** Stable sort order within its section. */
+  order?: number
+  placeholder?: string
+  min?: number
+  max?: number
+  step?: number
+  pattern?: string
+  /** Mask the value in the UI even when type is not `secret`. */
+  sensitive?: boolean
+  /** Conditionally show this field based on another field's value. */
+  if?: PluginConfigVisibility
 }
 
 export interface PluginSlot { location: string; label: string }
-export interface PluginSettingsSection { id: string; label: string; slot: string }
-export interface PluginSettingsTab { id: string; label: string; icon: string; path: string; sections: PluginSettingsSection[] }
+export interface PluginSettingsSection {
+  id: string
+  label: string
+  slot: string
+  /** Render the plugin's `manifest.config` as an auto-generated form instead of a slot. */
+  config?: boolean
+  /** Render a sync-test card that drives the plugin's `sync.now` / `sync.status` data methods. */
+  sync?: boolean
+}
+export interface PluginSettingsTab {
+  id: string
+  label: string
+  icon: string
+  path: string
+  sections: PluginSettingsSection[]
+  /** Owning plugin id — populated by the manager when tabs are surfaced to the renderer. */
+  pluginId?: string
+}
 
 export interface SlotContribution { pluginId: string; label: string; data: SlotRenderResult }
 export interface SlotRenderResult { widgets: SlotWidget[] }

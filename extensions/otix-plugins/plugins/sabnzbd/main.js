@@ -29,8 +29,8 @@ module.exports = function(ctx) {
   // ── get-queue ──
   ctx.handle('get-queue', async function() {
     const config = ctx.config.getAll();
-    const url = sabnzbdUrl(config.host, config.port, config.useSsl, 'queue', { apikey: config.apiKey });
     try {
+      const url = sabnzbdUrl(config.host, config.port, config.useSsl, 'queue', { apikey: config.apiKey });
       const response = await ctx.fetch(url);
       const data = await response.json();
       const slots = (data && data.queue && data.queue.slots) || [];
@@ -48,10 +48,10 @@ module.exports = function(ctx) {
   // ── get-history ──
   ctx.handle('get-history', async function(args) {
     const config = ctx.config.getAll();
-    const url = sabnzbdUrl(config.host, config.port, config.useSsl, 'history', {
-      apikey: config.apiKey, limit: String((args && args.limit) || 50),
-    });
     try {
+      const url = sabnzbdUrl(config.host, config.port, config.useSsl, 'history', {
+        apikey: config.apiKey, limit: String((args && args.limit) || 50),
+      });
       const response = await ctx.fetch(url);
       const data = await response.json();
       const slots = (data && data.history && data.history.slots) || [];

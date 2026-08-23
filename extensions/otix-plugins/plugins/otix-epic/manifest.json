@@ -17,59 +17,81 @@
     "auto_sync": {
       "type": "boolean",
       "label": "Auto-scan on login",
-      "default": true
+      "default": true,
+      "section": "General",
+      "order": 0
     },
     "mark_as_owned": {
       "type": "boolean",
       "label": "Mark matched games as owned",
       "description": "Automatically add matched Epic games to your owned library",
-      "default": true
+      "default": true,
+      "section": "General",
+      "order": 1
     },
     "free_games_country": {
       "type": "string",
       "label": "Country code for free games",
       "description": "Override country (e.g. PT, GB, DE). Empty = auto-detect from system.",
-      "default": ""
+      "default": "",
+      "section": "General",
+      "order": 2
     },
     "free_games_auto_check": {
       "type": "boolean",
       "label": "Auto-check free games on startup",
-      "default": true
+      "default": true,
+      "section": "General",
+      "order": 3
     },
     "free_games_notify": {
       "type": "boolean",
       "label": "Notify when new free games detected",
-      "default": true
+      "default": true,
+      "section": "General",
+      "order": 4
     },
     "refresh_token": {
       "type": "secret",
       "label": "Refresh Token (auto-managed)",
-      "advanced": true
+      "advanced": true,
+      "section": "Session",
+      "order": 0
     },
     "account_id": {
       "type": "string",
       "label": "Account ID (auto-managed)",
-      "advanced": true
+      "advanced": true,
+      "section": "Session",
+      "order": 1
     },
     "display_name": {
       "type": "string",
       "label": "Display Name (auto-managed)",
-      "advanced": true
+      "advanced": true,
+      "section": "Session",
+      "order": 2
     },
     "_scan_progress": {
       "type": "string",
       "label": "Scan Progress (auto-managed)",
-      "advanced": true
+      "advanced": true,
+      "section": "Session",
+      "order": 3
     },
     "_last_free_games": {
       "type": "string",
       "label": "Free games cache (auto-managed)",
-      "advanced": true
+      "advanced": true,
+      "section": "Session",
+      "order": 4
     },
     "_last_free_games_check": {
       "type": "number",
       "label": "Free games last check (auto-managed)",
-      "advanced": true
+      "advanced": true,
+      "section": "Session",
+      "order": 5
     }
   },
   "slots": [
@@ -86,7 +108,9 @@
       "label": "Epic Games"
     }
   ],
-  "services": ["free-games-provider"],
+  "services": [
+    "free-games-provider"
+  ],
   "entry": {
     "main": "main.js"
   }
