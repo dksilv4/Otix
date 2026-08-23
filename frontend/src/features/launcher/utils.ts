@@ -1,6 +1,13 @@
 import type { LocalGame, DisplayGame } from './types'
 export { heroImage } from '@/lib/utils'
 
+/** Applications (non-game software) are stored but hidden from the launcher UI for now. */
+export function isApplicationGame(
+  g: { isApp?: boolean; gameType?: string; contentType?: string } | null | undefined,
+): boolean {
+  return !!g && (g.isApp === true || g.gameType === 'application' || g.contentType === 'application')
+}
+
 /** Convert raw LocalGame → DisplayGame for the launcher view. */
 export function toDisplayGame(g: LocalGame): DisplayGame {
   const platformLabel = g.platform.toUpperCase()
@@ -10,7 +17,7 @@ export function toDisplayGame(g: LocalGame): DisplayGame {
     id: g.id,
     title: g.data?.title || g.title,
     posterUrl: g.data?.posterUrl || g.posterUrl || null,
-    backdropUrl: undefined,
+    backdropUrl: g.otixBackdropUrl || g.data?.backdropUrl || undefined,
     localIconUrl: g.localIconUrl || undefined,
     iconUrl: g.data?.iconUrl || g.iconUrl || undefined,
     logoUrl: g.otixLogoUrl || g.data?.logoUrl || g.logoUrl || undefined,

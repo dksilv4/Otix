@@ -6,7 +6,7 @@ import {useLocalGames, localGameKeys} from '@/features/launcher/data/game-querie
 import {usePopularGames, gameDetailOptions} from '@/features/launcher/data/queries'
 import {fetchGameById} from '@/features/launcher/data/storage'
 import {hasDesktopAPI} from '@/lib/desktop/api'
-import {toDisplayGame} from '@/features/launcher/utils'
+import {toDisplayGame, isApplicationGame} from '@/features/launcher/utils'
 import GameThumbList from '@/features/launcher/components/molecules/launcher-game-thumb-list'
 import type {DisplayGame, LauncherPlatform} from '@/features/launcher/types'
 
@@ -18,12 +18,12 @@ export function FloatingGameSelector() {
     const queryClient = useQueryClient()
 
     const {data: localGames = []} = useLocalGames(
-        isDesktop ? {installed: true, sortBy: 'last_played_at', sortDir: 'desc'} : undefined,
+        isDesktop ? {sortBy: 'last_played_at', sortDir: 'desc'} : undefined,
     )
     const {data: popularGames = []} = usePopularGames()
 
     const games: DisplayGame[] = useMemo(() => {
-        if (isDesktop) return localGames.map(toDisplayGame).filter((g) => g.isInstalled)
+        if (isDesktop) return localGames.filter((g) => !isApplicationGame(g)).map(toDisplayGame)
         return popularGames.slice(0, 20).map((g) => ({
             id: g.id,
             title: g.title,

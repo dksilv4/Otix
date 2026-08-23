@@ -7,7 +7,7 @@ import { useLocalGames, localGameKeys } from '@/features/launcher/data/game-quer
 import { usePopularGames, gameDetailOptions } from '@/features/launcher/data/queries'
 import { fetchGameById } from '@/features/launcher/data/storage'
 import { hasDesktopAPI } from '@/lib/desktop/api'
-import { toDisplayGame, heroImage } from '@/features/launcher/utils'
+import { toDisplayGame, heroImage, isApplicationGame } from '@/features/launcher/utils'
 import { useInactiveSlideshow } from '@/features/launcher/hooks/use-inactive-slideshow'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import { PLATFORM_LABELS } from '@/constants/games'
@@ -23,14 +23,14 @@ export function LauncherLibraryPage() {
 
   // ── Data ──
   const { data: localGames = [] } = useLocalGames(
-    isDesktop ? { installed: true, sortBy: 'last_played_at', sortDir: 'desc' } : undefined,
+    isDesktop ? { sortBy: 'last_played_at', sortDir: 'desc' } : undefined,
   )
   const { data: popularGames = [] } = usePopularGames()
 
   const rawGames: DisplayGame[] = useMemo(() => {
     if (isDesktop) return localGames
-      .filter((g: any) => !(g?.isApp === true || g?.gameType === 'application' || g?.contentType === 'application')) // applications hidden for now
-      .map(toDisplayGame).filter((g) => g.isInstalled)
+      .filter((g) => !isApplicationGame(g)) // applications hidden for now
+      .map(toDisplayGame)
     return popularGames.map((g) => ({
       id: g.id, title: g.title,
       posterUrl: (g as any).textlessPosterUrl ?? g.posterUrl ?? null,
@@ -462,12 +462,36 @@ export function LauncherLibraryPage() {
               })}
             </motion.div>
           ) : (
-            <div className="glass-card flex flex-col items-center justify-center py-24 text-white/20 gap-4">
+            <div className="glass-card flex flex-col items-center justify-center py-24 text-white/30 gap-4">
               <Gamepad2 size={44} className="animate-pulse" style={{ animationDuration: '3s' }} />
-              <h3 className="text-xs font-bold uppercase tracking-wider">No Games Found</h3>
-              <p className="text-[10px] text-white/35">
-                {searchQuery ? 'Try a different search term.' : 'No games match the selected filters.'}
+              <h3 className="text-xs font-bold uppercase tracking-wider">
+                {rawGames.length === 0 ? 'No Games Yet' : 'No Games Found'}
+              </h3>
+              <p className="text-[10px] text-white/35 max-w-sm text-center leading-relaxed">
+                {rawGames.length === 0
+                  ? isDesktop
+                    ? 'Connect a platform like Epic or Steam in Integrations, or scan a game folder, and your library will appear here.'
+                    : 'Connect a platform launcher to populate your library.'
+                  : searchQuery
+                    ? `No games match “${searchQuery}”. Try a different search.`
+                    : 'No games match the selected platform. Try a different filter.'}
               </p>
+              {rawGames.length === 0 ? (
+                <button
+                  onClick={() => navigate({ to: '/settings/integrations' })}
+                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition-all active:scale-95 bg-white/[0.08] hover:bg-white/[0.14] border border-white/10"
+                >
+                  <Settings size={12} />
+                  Open Integrations
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setSearchQuery(''); setSelectedPlatform('all') }}
+                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition-all active:scale-95 bg-white/[0.08] hover:bg-white/[0.14] border border-white/10"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           )}
 

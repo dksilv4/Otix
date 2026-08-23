@@ -45,7 +45,7 @@ const GameThumbList = ({ games, activeGameId, onSelect, onHover }: GameThumbList
                                 : "border-transparent opacity-50 hover:opacity-100 hover:border-white/20"
                             )
                         }
-                        title={`${game.title}${game.isInstalled ? ' â— Installed' : ''}`}
+                        title={`${game.title}${game.isInstalled ? ' ● Installed' : ''}`}
                     >
                         <GameThumb icon={game.iconUrl || game.posterUrl || undefined} alt={game.title} />
                         {game.isInstalled && (
