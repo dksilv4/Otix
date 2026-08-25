@@ -31,7 +31,7 @@ export function validateConfigValue(
     if (field.required) {
       return { ok: false, error: `${field.label} is required` }
     }
-    if (field.type === 'list' || field.type === 'path-list') {
+    if (field.type === 'list' || field.type === 'path-list' || field.type === 'instances') {
       return { ok: true, value: [] }
     }
     return { ok: true, value: value ?? field.default ?? undefined }
@@ -123,6 +123,29 @@ export function validateConfigValue(
     case 'object': {
       if (typeof value !== 'object' || value === null || Array.isArray(value)) {
         return { ok: false, error: `${field.label} must be an object` }
+      }
+      return { ok: true, value }
+    }
+
+    case 'serverUrl': {
+      if (value !== undefined && value !== null && typeof value !== 'string') {
+        return { ok: false, error: `${field.label} must be a URL string` }
+      }
+      return { ok: true, value }
+    }
+
+    case 'instances': {
+      // Instances are managed through the plugin's own data methods, so the
+      // stored value is just an opaque array of per-server objects.
+      if (!Array.isArray(value)) {
+        return { ok: false, error: `${field.label} must be a list` }
+      }
+      if (field.items) {
+        for (const item of value) {
+          if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+            return { ok: false, error: `${field.label} items must be objects` }
+          }
+        }
       }
       return { ok: true, value }
     }

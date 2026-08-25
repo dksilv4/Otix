@@ -3,17 +3,21 @@
 // management page and the detail panel.
 
 import type { PluginInfo, PluginSettingsTab } from '@/features/plugins/types/plugins'
+import {
+  BookOpen, Clapperboard, Cloud, Download, Film, Folder, Gamepad2, Gauge, Heart,
+  Image, Laptop, Library, Music, Package, Rocket, Search, Star, Swords, Tag, Tv, Wrench,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 // ── Plugin API (preload surface) ─────────────────────────────────────────────
 
 export interface PluginAPI {
   list(): Promise<PluginInfo[]>
   get(id: string): Promise<PluginInfo | null>
-  install(repoUrl: string, pluginPath?: string): Promise<PluginInfo>
   uninstall(id: string): Promise<void>
-  update(id: string): Promise<PluginInfo>
   enable(id: string): Promise<void>
-  disable(id: string): Promise<void>
+  /** Disables the plugin plus everything that depends on it; resolves with the full list of disabled ids. */
+  disable(id: string): Promise<string[]>
   reload(id: string): Promise<PluginInfo[]>
   getConfig(pluginId: string): Promise<Record<string, unknown>>
   setConfig(pluginId: string, key: string, value: unknown): Promise<void>
@@ -21,10 +25,6 @@ export interface PluginAPI {
   testConfig(pluginId: string, config: Record<string, unknown>): Promise<{ success: boolean; message: string }>
   getStatus(pluginId: string): Promise<Record<string, unknown>>
   discover(): Promise<void>
-  fetchMarketplace(): Promise<{ success: boolean; plugins?: RegistryEntry[]; error?: string }>
-  getRepos(): Promise<Array<{ url: string; label?: string; added_at: string }>>
-  addRepo(url: string, label?: string): Promise<Array<{ url: string; label?: string; added_at: string }>>
-  removeRepo(url: string): Promise<Array<{ url: string; label?: string; added_at: string }>>
   getPluginTabs(): Promise<PluginSettingsTab[]>
   getSlotData?(location: string): Promise<unknown>
   callData(pluginId: string, method: string, ...args: unknown[]): Promise<unknown>
@@ -34,26 +34,6 @@ export function getPluginAPI(): PluginAPI | null {
   const api = (window as any).desktopAPI?.plugin
   if (!api) return null
   return api as PluginAPI
-}
-
-// ── Registry / marketplace ───────────────────────────────────────────────────
-
-export interface RegistryEntry {
-  id: string
-  name: string
-  version: string
-  description: string
-  author: string
-  repository: string
-  path?: string
-  icon?: string
-  category?: string
-  tags?: string[]
-  min_app_version?: string
-  permissions: string[]
-  long_description?: string
-  screenshots?: string[]
-  downloads?: number
 }
 
 // ── Presentational helpers ───────────────────────────────────────────────────
@@ -77,21 +57,35 @@ export function getPermissionLabel(perm: string): string {
   return PERMISSION_LABELS[perm] || perm
 }
 
-const PLUGIN_ICONS: Record<string, string> = {
-  film: '\u{1F3AC}',
-  music: '\u{1F3B5}',
-  gamepad: '\u{1F3AE}',
-  code: '\u{1F4BB}',
-  download: '\u{1F4E5}',
-  tool: '\u{1F527}',
-  book: '\u{1F4DA}',
-  tv: '\u{1F4FA}',
-  star: '\u{2B50}',
-  heart: '\u{2764}\u{FE0F}',
-  default: '\u{1F4E6}',
+const PLUGIN_ICONS: Record<string, LucideIcon> = {
+  // Common manifest icon keys
+  film: Film,
+  music: Music,
+  gamepad: Gamepad2,
+  code: Laptop,
+  download: Download,
+  tool: Wrench,
+  book: BookOpen,
+  tv: Tv,
+  star: Star,
+  heart: Heart,
+  // Accurate per-plugin icons
+  'gamepad-2': Gamepad2,
+  rocket: Rocket,
+  swords: Swords,
+  folder: Folder,
+  library: Library,
+  'book-open': BookOpen,
+  cloud: Cloud,
+  image: Image,
+  tag: Tag,
+  search: Search,
+  clapperboard: Clapperboard,
+  gauge: Gauge,
+  default: Package,
 }
 
-export function getPluginIcon(icon?: string): string {
+export function getPluginIcon(icon?: string): LucideIcon {
   return PLUGIN_ICONS[icon || ''] || PLUGIN_ICONS.default
 }
 
@@ -109,24 +103,27 @@ export function getCategoryStyle(category: string): { label: string; color: stri
   return CATEGORY_STYLES[category] || { label: category, color: 'text-white/40', badge: 'text-white/40 bg-white/5' }
 }
 
-export function getPluginCategory(plugin: PluginInfo | RegistryEntry): string {
-  const name = plugin.name || ''
-  const perms = 'permissions' in plugin ? plugin.permissions : plugin.manifest.permissions
+export function getPluginCategory(plugin: PluginInfo): string {
+  const perms = plugin.manifest.permissions as readonly string[]
 
-  // Check manifest services (only available on PluginInfo)
-  if ('manifest' in plugin && plugin.manifest.services && plugin.manifest.services.length > 0) {
-    const types = plugin.manifest.services
+  // Services — the plugin integrates an external service
+  const services = plugin.manifest.services
+  if (services && services.length > 0) {
+    const types = services.map((s) => (typeof s === 'string' ? s : s.type))
     if (types.includes('downloads-orchestrator')) return 'Pipelines'
     if (types.includes('arr') || types.includes('downloader')) return 'Services'
+    if (types.includes('catalog-source')) return 'Providers'
   }
 
-  // Scanner plugins — game library scanning
-  if (perms.includes('worker:filesystem')) return 'Scanners'
+  // Scanner plugins — game library scanning (local FS scan or store/account scan)
+  const scanSlots = plugin.manifest.slots
+  const isScanner =
+    perms.includes('worker:filesystem') ||
+    !!scanSlots?.some((s) => s.location === 'library:scan' || s.location === 'matching:scan')
+  if (isScanner) return 'Scanners'
 
-  // Marketplace fallback — name heuristics when no manifest available
-  if (name.includes('Pipeline') || name.includes('Download')) return 'Pipelines'
-  if (name.includes('Searcher') || name.includes('Search')) return 'Providers'
-  if (name.includes('Radarr') || name.includes('Sonarr') || name.includes('Lidarr') || name.includes('SABnzbd')) return 'Services'
+  // Matching pipeline plugins — the offline game matching consumer
+  if (scanSlots?.some((s) => s.location === 'matching:pipeline')) return 'Pipelines'
 
   return 'Utility'
 }

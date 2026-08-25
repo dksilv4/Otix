@@ -27,6 +27,11 @@ export interface PluginInfo {
   connected?: boolean
 }
 
+export interface PluginService {
+  type: string
+  protocol?: string
+}
+
 export interface PluginManifest {
   name: string
   version: string
@@ -43,13 +48,13 @@ export interface PluginManifest {
   slots?: PluginSlot[]
   settings?: { tabs?: PluginSettingsTab[] }
   entry: { main: string }
-  services?: string[]
+  services?: (string | PluginService)[]
   depends_on?: string[]
 }
 
 export type PluginConfigFieldType =
   | 'string' | 'number' | 'boolean' | 'secret' | 'enum' | 'select'
-  | 'uuid' | 'list' | 'path-list' | 'object'
+  | 'uuid' | 'list' | 'path-list' | 'object' | 'instances' | 'serverUrl'
 
 export interface PluginConfigVisibility {
   field: string
@@ -82,6 +87,14 @@ export interface PluginConfigField {
   sensitive?: boolean
   /** Conditionally show this field based on another field's value. */
   if?: PluginConfigVisibility
+
+  // ── `instances` fields ──
+  /** `instances`: which item keys form the connect step, and the data method that probes the server. */
+  connection?: { method?: string; fields?: string[] }
+  /** `instances` item (`serverUrl`): URL parts this field maps to in the stored instance (host/port/useSsl/baseUrl). */
+  parts?: string[]
+  /** `instances` item: options for this field are fetched from the probe response, keyed by this item name. */
+  fetchable?: boolean
 }
 
 export interface PluginSlot { location: string; label: string }

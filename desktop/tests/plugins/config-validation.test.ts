@@ -56,6 +56,25 @@ describe('validateConfigValue', () => {
     expect(validateConfigValue(f, ['games', 1]).ok).toBe(false)
   })
 
+  it('validates serverUrl as a URL string', () => {
+    const f = field({ type: 'serverUrl', label: 'Server URL' })
+    expect(validateConfigValue(f, 'http://localhost:7878/radarr').ok).toBe(true)
+    expect(validateConfigValue(f, 42).ok).toBe(false)
+    expect(validateConfigValue(f, undefined).ok).toBe(true)
+  })
+
+  it('validates instances as an array of objects', () => {
+    const f = field({
+      type: 'instances',
+      label: 'Servers',
+      items: { host: { type: 'string', label: 'Host' } },
+    })
+    expect(validateConfigValue(f, [{ host: '192.168.1.5' }]).ok).toBe(true)
+    expect(validateConfigValue(f, 'host').ok).toBe(false)
+    expect(validateConfigValue(f, [42]).ok).toBe(false)
+    expect(validateConfigValue(f, undefined).value).toEqual([])
+  })
+
   it('applies string pattern', () => {
     const f = field({ type: 'string', label: 'Slug', pattern: '^[a-z-]+$' })
     expect(validateConfigValue(f, 'my-plugin').ok).toBe(true)

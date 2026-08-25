@@ -28,6 +28,8 @@ export type PluginConfigFieldType =
   | 'list'
   | 'path-list'
   | 'object'
+  | 'instances'
+  | 'serverUrl'
 
 /** Conditionally show a field based on another field's value. */
 export interface PluginConfigVisibility {
@@ -61,6 +63,14 @@ export interface PluginConfigField {
   sensitive?: boolean
   /** Conditionally show this field based on another field's value. */
   if?: PluginConfigVisibility
+
+  // ── `instances` fields ──
+  /** `instances`: which item keys form the connect step, and the data method that probes the server. */
+  connection?: { method?: string; fields?: string[] }
+  /** `instances` item (`serverUrl`): the canonical URL parts (host/port/useSsl/baseUrl) this field maps to in the stored instance. */
+  parts?: string[]
+  /** `instances` item: options for this field are fetched from the probe response, keyed by this item name. */
+  fetchable?: boolean
 }
 
 // ── Services ──

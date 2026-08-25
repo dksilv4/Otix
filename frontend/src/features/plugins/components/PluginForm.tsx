@@ -1,7 +1,9 @@
 import { useId, useMemo, useState } from 'react'
 import { Eye, EyeOff, FolderOpen, GripVertical, Plus, Trash2 } from 'lucide-react'
+import type { PluginAPI } from '@/features/plugins/api'
 import type { PluginConfigField } from '@/features/plugins/types/plugins'
 import { Button, Field, Input, Select, Switch } from '@/features/plugins/ui'
+import { InstancesEditor } from '@/features/plugins/components/organisms/instances-editor'
 import { cn } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -11,6 +13,9 @@ export interface PluginFormProps {
   values: Record<string, unknown>
   errors?: Record<string, string>
   onChange: (key: string, value: unknown) => void
+  /** Owning plugin id + api, required only when a field uses the `instances` type. */
+  pluginId?: string
+  api?: PluginAPI | null
   /** Optional schema-level validator (e.g. desktop validateConfig) returning key→error. */
   onTest?: () => void
   testState?: { loading?: boolean; result?: { success: boolean; message: string } | null }
@@ -46,11 +51,15 @@ function ConfigFieldInput({
   value,
   error,
   onChange,
+  pluginId,
+  api,
 }: {
   field: PluginConfigField
   value: unknown
   error?: string
   onChange: (value: unknown) => void
+  pluginId?: string
+  api?: PluginAPI | null
 }) {
   switch (field.type) {
     case 'boolean':
@@ -127,12 +136,17 @@ function ConfigFieldInput({
                   field={subField}
                   value={(value as Record<string, unknown> | undefined)?.[subKey]}
                   onChange={(v) => onChange({ ...((value as Record<string, unknown>) || {}), [subKey]: v })}
+                  pluginId={pluginId}
+                  api={api}
                 />
               ))}
             </div>
           )}
         </div>
       )
+
+    case 'instances':
+      return <InstancesEditor field={field} pluginId={pluginId} api={api} />
 
     default:
       return (
@@ -338,6 +352,8 @@ export function PluginForm({
   values,
   errors = {},
   onChange,
+  pluginId,
+  api,
   onTest,
   testState,
   onSubmit,
@@ -383,6 +399,8 @@ export function PluginForm({
         value={values[key]}
         error={errors[key]}
         onChange={(v) => onChange(key, v)}
+        pluginId={pluginId}
+        api={api}
       />
     )
   }

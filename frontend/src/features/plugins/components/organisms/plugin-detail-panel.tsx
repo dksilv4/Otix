@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  Activity, ExternalLink, Gamepad2, Layers, Loader2, LogOut,
-  Puzzle, RefreshCw, Settings, ShieldCheck, X,
+  Activity, ChevronRight, ExternalLink, Gamepad2, Layers, Loader2, LogOut,
+  Network, Puzzle, RefreshCw, Settings, ShieldCheck, X,
 } from 'lucide-react'
 import { SlidePanel } from '@/lib/modals'
 import { openExternal } from '@/lib/utils/open-external'
@@ -10,7 +10,7 @@ import { getPluginIcon, getPermissionLabel, type PluginAPI } from '@/features/pl
 import { PluginForm } from '@/features/plugins/components/PluginForm'
 import { Alert, Badge, Button } from '@/features/plugins/ui'
 import { cn } from '@/lib/utils'
-import type { PluginInfo } from '@/features/plugins/types/plugins'
+import type { PluginInfo, PluginStatus } from '@/features/plugins/types/plugins'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
@@ -19,6 +19,7 @@ const TABS = [
   { id: 'configure', label: 'Configure', icon: Settings },
   { id: 'permissions', label: 'Permissions', icon: ShieldCheck },
   { id: 'activity', label: 'Activity', icon: Activity },
+  { id: 'depends', label: 'Depends on', icon: Network },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
@@ -38,6 +39,18 @@ function PluginConnectionSection({ plugin, api }: { plugin: PluginInfo; api: Plu
   const [scanProgress, setScanProgress] = useState<{ phase: string; current: number; total: number } | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const desktopAPI = (window as any).desktopAPI
+
+  // Only OAuth connectors (e.g. Battle.net, Epic) expose auth.getLoginUrl; the
+  // sign-in card is meaningless for key/local-only plugins, so probe for it.
+  const [supportsAuth, setSupportsAuth] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    api.callData(plugin.id, 'auth.getLoginUrl')
+      .then((r) => { if (!cancelled) setSupportsAuth(!!(r as { url?: string } | null)?.url) })
+      .catch(() => { if (!cancelled) setSupportsAuth(false) })
+    return () => { cancelled = true }
+  }, [plugin.id, api])
 
   const checkStatus = async () => {
     try {
@@ -139,6 +152,8 @@ function PluginConnectionSection({ plugin, api }: { plugin: PluginInfo; api: Plu
     } catch { /* ignore */ }
     finally { setActionLoading(null) }
   }
+
+  if (supportsAuth === null || !supportsAuth) return null
 
   if (state.loading) {
     return (
@@ -276,9 +291,15 @@ function OverviewContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
           {plugin.manifest.services && plugin.manifest.services.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] text-white/30 mr-1">Services</span>
-              {plugin.manifest.services.map((s) => (
-                <Badge key={s} tone="info">{s}</Badge>
-              ))}
+              {plugin.manifest.services.map((s) => {
+                const type = typeof s === 'string' ? s : s.type
+                const protocol = typeof s === 'string' ? undefined : s.protocol
+                return (
+                  <Badge key={protocol ? `${type}:${protocol}` : type} tone="info">
+                    {protocol ? `${type} · ${protocol}` : type}
+                  </Badge>
+                )
+              })}
             </div>
           )}
           {plugin.manifest.depends_on && plugin.manifest.depends_on.length > 0 && (
@@ -297,8 +318,16 @@ function OverviewContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
 
 // ── Configure content ─────────────────────────────────────────────────────────
 
-function ConfigureContent({ plugin, api, onConfigSaved }: { plugin: PluginInfo; api: PluginAPI; onConfigSaved?: () => void }) {
-  const configFields = plugin.manifest.config || {}
+function ConfigureContent({
+  plugin,
+  api,
+  onConfigSaved,
+}: {
+  plugin: PluginInfo
+  api: PluginAPI
+  onConfigSaved?: () => void
+}) {
+  const configFields = useMemo(() => plugin.manifest.config || {}, [plugin.manifest.config])
   const hasConfig = Object.keys(configFields).length > 0
   const [values, setValues] = useState<Record<string, unknown>>({})
   const [loaded, setLoaded] = useState(false)
@@ -326,6 +355,9 @@ function ConfigureContent({ plugin, api, onConfigSaved }: { plugin: PluginInfo; 
     setSaveError(null)
     try {
       for (const [key, value] of Object.entries(values)) {
+        const field = configFields[key]
+        if (!field) continue
+        if (field.type === 'instances') continue // instances are managed via the plugin data API
         await api.setConfig(plugin.id, key, value)
       }
       onConfigSaved?.()
@@ -374,6 +406,8 @@ function ConfigureContent({ plugin, api, onConfigSaved }: { plugin: PluginInfo; 
         fields={configFields}
         values={values}
         onChange={(key, value) => setValues((prev) => ({ ...prev, [key]: value }))}
+        pluginId={plugin.id}
+        api={api}
         onTest={hasTestable ? handleTest : undefined}
         testState={{ loading: testing, result: testResult }}
         onSubmit={handleSave}
@@ -490,29 +524,129 @@ function ActivityContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
   )
 }
 
+// ── Dependencies content ────────────────────────────────────────────────────────
+
+type DepEntry = {
+  id: string
+  name: string
+  installed: boolean
+  status?: PluginStatus
+}
+
+function DepRow({ dep, clickable, onOpenPlugin }: {
+  dep: DepEntry
+  clickable: boolean
+  onOpenPlugin?: (id: string) => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={!clickable}
+      onClick={() => clickable && onOpenPlugin?.(dep.id)}
+      className={cn(
+        'flex w-full items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5 text-left transition-colors',
+        clickable ? 'hover:bg-white/[0.05]' : 'cursor-default',
+      )}
+    >
+      <Network className="h-4 w-4 shrink-0 text-white/30" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm text-white/80">{dep.name}</p>
+        <p className="truncate font-mono text-[11px] text-white/25">{dep.id}</p>
+      </div>
+      {dep.installed ? (
+        <Badge tone={dep.status === 'enabled' ? 'success' : dep.status === 'error' ? 'danger' : 'default'} dot>
+          {dep.status}
+        </Badge>
+      ) : (
+        <Badge tone="default">not installed</Badge>
+      )}
+      {clickable && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/25" />}
+    </button>
+  )
+}
+
+function DependenciesContent({ plugin, allPlugins, onOpenPlugin }: {
+  plugin: PluginInfo
+  allPlugins: PluginInfo[]
+  onOpenPlugin?: (id: string) => void
+}) {
+  const nameById = new Map(allPlugins.map((p) => [p.id, p.name]))
+  const statusById = new Map(allPlugins.map((p) => [p.id, p.status]))
+
+  const requires: DepEntry[] = (plugin.manifest.depends_on ?? []).map((id) => ({
+    id,
+    name: nameById.get(id) || id,
+    installed: nameById.has(id),
+    status: statusById.get(id),
+  }))
+
+  const dependents: DepEntry[] = allPlugins
+    .filter((p) => p.manifest.depends_on?.includes(plugin.id))
+    .map((p) => ({ id: p.id, name: p.name, installed: true, status: p.status }))
+
+  if (requires.length === 0 && dependents.length === 0) {
+    return (
+      <div className="flex flex-col items-center py-12 text-center">
+        <Network className="h-8 w-8 text-white/20 mb-3" />
+        <p className="text-sm text-white/40">No plugin dependencies declared.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      {requires.length > 0 && (
+        <div>
+          <p className="mb-2 text-[11px] uppercase tracking-wider text-white/35">Requires</p>
+          <div className="space-y-2">
+            {requires.map((dep) => (
+              <DepRow key={dep.id} dep={dep} clickable={dep.installed} onOpenPlugin={onOpenPlugin} />
+            ))}
+          </div>
+        </div>
+      )}
+      {dependents.length > 0 && (
+        <div>
+          <p className="mb-2 text-[11px] uppercase tracking-wider text-white/35">Used by</p>
+          <div className="space-y-2">
+            {dependents.map((dep) => (
+              <DepRow key={dep.id} dep={dep} clickable onOpenPlugin={onOpenPlugin} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Detail panel ──────────────────────────────────────────────────────────────
 
 export function PluginDetailPanel({
   plugin,
   api,
+  allPlugins,
+  onOpenPlugin,
   onClose,
   onConfigSaved,
   isExiting,
 }: {
   plugin: PluginInfo
   api: PluginAPI
+  allPlugins?: PluginInfo[]
+  onOpenPlugin?: (id: string) => void
   onClose: () => void
   onConfigSaved?: () => void
   isExiting?: boolean
 }) {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
+  const Icon = getPluginIcon(plugin.manifest.icon)
 
   return (
     <SlidePanel onClose={onClose} isExiting={isExiting}>
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-white/[0.06] px-6 py-4">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xl">
-          {getPluginIcon(plugin.manifest.icon)}
+          <Icon className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-base font-semibold text-white">{plugin.name}</h2>
@@ -527,7 +661,7 @@ export function PluginDetailPanel({
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-white/[0.06] px-3 pt-2">
+      <div className="flex gap-1 overflow-x-auto scrollbar-none border-b border-white/[0.06] px-3 pt-2">
         {TABS.map((tab) => {
           const Icon = tab.icon
           return (
@@ -536,7 +670,7 @@ export function PluginDetailPanel({
               type="button"
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'flex items-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2 text-xs font-medium transition-colors',
+                'flex shrink-0 items-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2 text-xs font-medium transition-colors',
                 activeTab === tab.id
                   ? 'border-primary text-white'
                   : 'border-transparent text-white/40 hover:text-white/70',
@@ -555,6 +689,9 @@ export function PluginDetailPanel({
         {activeTab === 'configure' && <ConfigureContent plugin={plugin} api={api} onConfigSaved={onConfigSaved} />}
         {activeTab === 'permissions' && <PermissionsContent plugin={plugin} />}
         {activeTab === 'activity' && <ActivityContent plugin={plugin} api={api} />}
+        {activeTab === 'depends' && (
+          <DependenciesContent plugin={plugin} allPlugins={allPlugins ?? []} onOpenPlugin={onOpenPlugin} />
+        )}
       </div>
     </SlidePanel>
   )

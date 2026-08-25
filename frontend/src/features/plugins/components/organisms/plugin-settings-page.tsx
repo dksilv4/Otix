@@ -750,7 +750,9 @@ function ConfigSection({ section, pluginId }: { section: PluginSettingsSection; 
     setSaving(true)
     setSaveError(null)
     try {
+      const fields = plugin?.manifest.config || {}
       for (const [key, value] of Object.entries(config)) {
+        if (fields[key]?.type === 'instances') continue // managed via the plugin data API
         await api.setConfig(pluginId, key, value)
       }
     } catch (err) {
@@ -758,14 +760,15 @@ function ConfigSection({ section, pluginId }: { section: PluginSettingsSection; 
     } finally {
       setSaving(false)
     }
-  }, [api, pluginId, config])
+  }, [api, pluginId, config, plugin])
 
-  // Provider-managed keys (shown in the auth cards above) are not repeated here.
+  // Provider-managed keys (shown in the auth cards above) are not repeated
+  // here; `instances` fields render their own manager inside the form.
   const visibleFields = useMemo(() => {
     const fields = plugin?.manifest.config
     if (!fields) return undefined
-    const excluded = new Set(providerManagedKeys(plugin))
-    if (excluded.size === 0) return fields
+    const excluded = providerManagedKeys(plugin)
+    if (excluded.length === 0) return fields
     const copy = { ...fields }
     for (const key of excluded) delete copy[key]
     return copy
@@ -779,29 +782,33 @@ function ConfigSection({ section, pluginId }: { section: PluginSettingsSection; 
     )
   }
 
-  if (!visibleFields || Object.keys(visibleFields).length === 0) {
-    return (
-      <p className="py-10 text-center text-sm text-white/40">
-        No additional configuration for this plugin ({section.label}).
-      </p>
-    )
-  }
+  const hasFormFields = !!visibleFields && Object.keys(visibleFields).length > 0
 
   return (
-    <div data-testid="config-form" className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-      {saveError && (
-        <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-400">
-          {saveError}
+    <div className="space-y-4">
+      {hasFormFields ? (
+        <div data-testid="config-form" className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+          {saveError && (
+            <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-400">
+              {saveError}
+            </div>
+          )}
+          <PluginForm
+            fields={visibleFields}
+            values={config}
+            onChange={(key, value) => setConfig((c) => ({ ...c, [key]: value }))}
+            pluginId={pluginId}
+            api={api}
+            onSubmit={handleSave}
+            submitting={saving}
+            submitLabel="Save"
+          />
         </div>
+      ) : (
+        <p className="py-10 text-center text-sm text-white/40">
+          No additional configuration for this plugin ({section.label}).
+        </p>
       )}
-      <PluginForm
-        fields={visibleFields}
-        values={config}
-        onChange={(key, value) => setConfig((c) => ({ ...c, [key]: value }))}
-        onSubmit={handleSave}
-        submitting={saving}
-        submitLabel="Save"
-      />
     </div>
   )
 }
