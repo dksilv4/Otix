@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.infrastructure.redis import get_redis
@@ -20,7 +21,6 @@ logger = structlog.get_logger()
 
 TMDB_API_BASE = "https://api.themoviedb.org/3"
 TMDB_AUTH_BASE = "https://www.themoviedb.org/authenticate"
-REQUEST_TOKEN_TTL = 600
 
 
 def _rt_key(request_token: str) -> str:
@@ -58,8 +58,8 @@ async def build_tmdb_link_url_for_user(user_id: str | None, redirect_url: str) -
 
     redis = await get_redis()
     payload = json.dumps({"request_token": request_token, "user_id": user_id})
-    await redis.set(_state_key(state), payload, ex=REQUEST_TOKEN_TTL)
-    await redis.set(_rt_key(request_token), payload, ex=REQUEST_TOKEN_TTL)
+    await redis.set(_state_key(state), payload, ex=TTL["AUTH"]["TMDB_REQUEST_TOKEN"])
+    await redis.set(_rt_key(request_token), payload, ex=TTL["AUTH"]["TMDB_REQUEST_TOKEN"])
 
     callback_separator = "&" if "?" in redirect_url else "?"
     redirect_to = urllib.parse.quote(f"{redirect_url}{callback_separator}state={state}", safe="")
@@ -92,8 +92,8 @@ async def build_tmdb_login_url() -> tuple[str, str]:
 
     redis = await get_redis()
     payload = json.dumps({"request_token": request_token, "flow": "login"})
-    await redis.set(_state_key(state), payload, ex=REQUEST_TOKEN_TTL)
-    await redis.set(_rt_key(request_token), payload, ex=REQUEST_TOKEN_TTL)
+    await redis.set(_state_key(state), payload, ex=TTL["AUTH"]["TMDB_REQUEST_TOKEN"])
+    await redis.set(_rt_key(request_token), payload, ex=TTL["AUTH"]["TMDB_REQUEST_TOKEN"])
 
     callback_url = f"{settings.frontend_base_url}/auth/callback/tmdb-login"
     redirect_to = urllib.parse.quote(f"{callback_url}?state={state}", safe="")

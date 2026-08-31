@@ -23,11 +23,6 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => rootRoute,
     path: '/library',
     component: LibraryLayout,
-    beforeLoad: ({ context }) => {
-      if (context.isAuthLoaded && !context.isAuthenticated) {
-        throw redirect({ to: '/auth/login', search: { redirect: '/library' } })
-      }
-    },
   })
 
   const libraryIndexRoute = createRoute({

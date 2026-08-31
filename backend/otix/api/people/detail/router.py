@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_db, get_optional_user
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.schemas.people import PersonDetail, PersonListResponse, PersonSummary
@@ -14,9 +15,6 @@ from otix.services.people_service import PeopleService
 logger = structlog.get_logger()
 
 router = APIRouter()
-
-_PERSON_DETAIL_TTL = 300  # 5 minutes
-
 
 @router.get("/search", response_model=PersonListResponse)
 async def search_people(
@@ -119,7 +117,7 @@ async def get_person(
     public_result.user_rating = None
     
     try:
-        await redis.set(cache_key, public_result.model_dump_json(), ex=_PERSON_DETAIL_TTL)
+        await redis.set(cache_key, public_result.model_dump_json(), ex=TTL['PERSON']['DETAIL'])
     except Exception:
         pass
 

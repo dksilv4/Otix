@@ -280,19 +280,39 @@ class TMDBHydrator:
     # ── Images ───────────────────────────────────────────────────
 
     async def hydrate_images(self, media_item: MediaItem, raw: dict) -> None:
-        """Store posters, textless posters, and backdrops as MediaAsset rows.
+        """Store logos, posters, textless posters, and backdrops as MediaAsset rows.
 
         TMDB returns iso_639_1 for each image. When null/None, the poster
         has no text overlay — we store those as asset_type='textless_poster'.
         The caller passes a language-agnostic images response (get_*_images)
         so null-lang textless posters are actually present; language-filtered
         responses drop them entirely.
+
+        Logos are stored with their language so asset_selection can rank a
+        viewer-language logo above localized Fanart logos (Fanart often only
+        carries the original-language logo for non-English titles).
         """
         images = raw.get("images", {})
         if not images:
             return
 
         raw_assets: list[RawAsset] = []
+        for logo in images.get("logos", [])[:8]:
+            url = _tmdb_image(logo.get("file_path"), "original")
+            if not url:
+                continue
+            raw_assets.append(
+                RawAsset(
+                    asset_type="logo",
+                    url=url,
+                    provider="tmdb",
+                    width=logo.get("width"),
+                    height=logo.get("height"),
+                    lang=logo.get("iso_639_1"),
+                    label="official",
+                )
+            )
+
         # Null-lang posters are textless; sort them first so textless_poster
         # assets are always collected even from a large unfiltered set.
         posters = images.get("posters", [])

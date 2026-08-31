@@ -39,6 +39,8 @@ export interface PluginManifest {
   author: string
   repository: string
   min_app_version: string
+  /** Max ms to wait for a plugin RPC (startup + data calls) before timing out. Defaults to 30s startup / 60s calls. */
+  timeout?: number
   icon?: string
   stage?: 'alpha' | 'beta' | 'stable'
   /** Packaged system plugin — always enabled, cannot be disabled by the user. */
@@ -106,6 +108,12 @@ export interface PluginSettingsSection {
   config?: boolean
   /** Render a sync-test card that drives the plugin's `sync.now` / `sync.status` data methods. */
   sync?: boolean
+  /** Render a browsable list of the plugin's local catalog via its `movies.list` data method. */
+  movies?: boolean
+  /** Render a list of requested media via the plugin's `requests.list` data method. */
+  requests?: boolean
+  /** Render per-run sync history via the plugin's `sync.history` data method. */
+  syncHistory?: boolean
 }
 export interface PluginSettingsTab {
   id: string

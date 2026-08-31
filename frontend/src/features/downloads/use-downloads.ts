@@ -77,13 +77,13 @@ export function useDownloads(userId: string | undefined) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchDownloads = useCallback(async () => {
-    console.log('[useDownloads] fetchDownloads called, userId:', userId, 'isDesktop:', isDesktop());
-    if (!userId || !isDesktop()) {
-      console.log('[useDownloads] fetchDownloads skipped — no userId or not Electron');
-      return;
-    }
+    if (!isDesktop()) return;
     try {
-      const d = await window.desktopAPI!.downloadsGetUserDownloads(userId) as unknown as Download[];
+      // The downloads table is the shared framework layer (SABnzbd + Radarr +
+      // Sonarr write into it) and the IPC handler ignores userId, so fetch it
+      // regardless of sign-in state — Radarr/Sonarr download tracking is meant
+      // to work offline.
+      const d = await window.desktopAPI!.downloadsGetUserDownloads(userId ?? '') as unknown as Download[];
       setDownloads(d);
     } catch (err) {
       console.error('Failed to fetch downloads:', err);
@@ -110,9 +110,9 @@ export function useDownloads(userId: string | undefined) {
   }, [fetchDownloads]);
 
   const pollQueue = useCallback(async () => {
-    if (!userId || !isDesktop()) return;
+    if (!isDesktop()) return;
     try {
-      await window.desktopAPI!.downloadsPollQueue(userId);
+      await window.desktopAPI!.downloadsPollQueue(userId ?? '');
       await fetchDownloads();
     } catch (err) {
       console.error('Poll failed:', err);

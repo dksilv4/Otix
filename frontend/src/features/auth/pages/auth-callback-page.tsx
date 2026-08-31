@@ -8,6 +8,7 @@ import { AuthCard } from '@auth/components/molecules/auth-card'
 import { extractErrorMessage } from '@auth/utils'
 
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
+import { PENDING_LOGIN_SYNC_KEY } from '@/features/interaction/offline-watchlist'
 
 interface ServiceCfg {
   name: string
@@ -21,6 +22,8 @@ interface ServiceCfg {
   onSuccess?: (data: Record<string, unknown>) => void
   successNav?: Record<string, unknown>
   errorNav?: Record<string, unknown>
+  /** Signs the user into an account (vs. linking one) — used to flag a fresh login. */
+  isLogin?: boolean
 }
 
 const SERVICES: Record<string, ServiceCfg> = {
@@ -46,6 +49,7 @@ const SERVICES: Record<string, ServiceCfg> = {
     name: 'Plex', endpoint: '/auth/plex/callback', loadingColor: '#BA5D2E',
     buildBody: (p) => ({ state: p.get('state'), pinId: p.get('pinId') || undefined }),
     onSuccess: (data) => { localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken as string) },
+    isLogin: true,
     successNav: { to: '/', replace: true },
     errorNav: { to: '/auth/login', replace: true },
   },
@@ -63,6 +67,7 @@ const SERVICES: Record<string, ServiceCfg> = {
       return state && requestToken ? { state, request_token: requestToken } : null
     },
     onSuccess: (data) => { localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken as string) },
+    isLogin: true,
     successNav: { to: '/', replace: true },
     errorNav: { to: '/auth/login', replace: true },
   },
@@ -73,6 +78,7 @@ const SERVICES: Record<string, ServiceCfg> = {
       !p.get('code') || !p.get('state') ? 'Google did not return the expected authorization details.' : null,
     buildBody: (p) => ({ code: p.get('code'), state: p.get('state') }),
     onSuccess: (data) => { localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken as string) },
+    isLogin: true,
     successNav: { to: '/', replace: true },
     errorNav: { to: '/auth/login', replace: true },
   },
@@ -104,6 +110,7 @@ const SERVICES: Record<string, ServiceCfg> = {
     successMsg: 'Signed in successfully.',
     buildBody: () => null,
     onSuccess: (data) => { localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken as string) },
+    isLogin: true,
     successNav: { to: '/', replace: true },
     errorNav: { to: '/auth/login', replace: true },
   },
@@ -157,6 +164,11 @@ export function CallbackPage() {
 
     handleCallback(cfg, params)
       .then(() => {
+        // OAuth login flows reload the app after this page, so the renderer
+        // can't catch a login event — flag it for the sync prompt instead.
+        if (cfg.isLogin) {
+          try { localStorage.setItem(PENDING_LOGIN_SYNC_KEY, '1') } catch { /* ignore */ }
+        }
         const source = params.get('source')
         if (source === 'desktop') {
           window.location.href = `otix://auth/callback/${service}?success=true`

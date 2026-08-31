@@ -2,18 +2,23 @@ import { ArrowLeft } from "lucide-react"
 import { useRouter } from "@tanstack/react-router"
 import { DkButton } from "@ui/atoms/button"
 
-/** Atom button to navigate back in browser history. */
+/** Atom button to navigate back in browser history, falling back to home when there's no prior entry (e.g. the page was deep-linked). */
 export function BackButton() {
   const router = useRouter()
-  const canGoBack = typeof window !== "undefined" && window.history.length > 1
 
-  if (!canGoBack) return null
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.history.back()
+    } else {
+      router.navigate({ to: "/" })
+    }
+  }
 
   return (
     <DkButton
       variant="ghost"
       size="sm"
-      onClick={() => router.history.back()}
+      onClick={handleBack}
       className="w-8 h-8 rounded-full p-0 flex items-center justify-center"
       aria-label="Go back"
     >

@@ -1,12 +1,61 @@
 // desktop/tests/db/migration-service.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import Database from 'better-sqlite3'
+
+interface MockDb {
+  schemaVersion: number
+  applied: string[]
+  tables: Set<string>
+  exec: (sql: string) => void
+  prepare: (sql: string) => any
+  transaction: (fn: () => void) => () => void
+  close: () => void
+}
+
+function createMockDb(): MockDb {
+  const tables = new Set<string>()
+  const rows: { version: number; name: string }[] = []
+
+  return {
+    schemaVersion: 0,
+    applied: [],
+    tables,
+    close: () => {},
+    exec: (sql: string) => {
+      const match = sql.match(/CREATE TABLE (?:IF NOT EXISTS )?(\w+)/i)
+      if (match) tables.add(match[1])
+    },
+    prepare: (sql: string) => {
+      if (sql.includes('SELECT MAX(version)')) {
+        return {
+          get: () => {
+            const max = rows.reduce((acc, r) => Math.max(acc, r.version), 0)
+            return { version: max, v: max }
+          },
+        }
+      }
+      if (sql.includes('INSERT INTO schema_version')) {
+        return {
+          run: (version: number, name: string) => {
+            rows.push({ version, name })
+          },
+        }
+      }
+      if (sql.includes("sqlite_master WHERE type='table'")) {
+        return {
+          all: () => Array.from(tables).map((t) => ({ name: t })),
+        }
+      }
+      return { run: () => {}, get: () => undefined, all: () => [] }
+    },
+    transaction: (fn: () => void) => () => fn(),
+  }
+}
 
 describe('MigrationService', () => {
-  let db: Database.Database
+  let db: MockDb
 
   beforeEach(() => {
-    db = new Database(':memory:')
+    db = createMockDb()
   })
 
   afterEach(() => {

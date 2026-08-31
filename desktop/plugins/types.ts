@@ -116,6 +116,8 @@ export interface PluginManifest {
   author: string
   repository: string
   min_app_version: string
+  /** Max ms to wait for a plugin RPC (startup + data calls) before timing out. Defaults to 30s startup / 60s calls. */
+  timeout?: number
   icon?: string
   stage?: 'alpha' | 'beta' | 'stable'
   /** Packaged system plugin — always enabled, cannot be disabled by the user. */

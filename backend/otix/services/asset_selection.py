@@ -18,11 +18,12 @@ import json
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from otix.api.ttl import TTL
 from otix.domain.admin_edit import MediaImageOverride
 from otix.domain.asset import MediaAsset
+from otix.domain.media import ExternalID
 
 ITEM_CACHE_KEY = "asset:sel:v5:{item_id}:{lang}:{theme}"
-CACHE_TTL = 3600  # 1 hour
 
 # The selected logo's color_guess, surfaced so the frontend can apply a CSS
 # contrast fix (invert) when a monochrome logo mismatches the viewer theme.
@@ -206,7 +207,7 @@ async def resolve_assets(
     item_ids: list[str],
     asset_types: tuple[str, ...] | None = None,
     *,
-    cache_ttl: int = CACHE_TTL,
+    cache_ttl: int = TTL["ASSET_SELECTION"],
     preferred_lang: str = "en",
     theme: str | None = None,
 ) -> dict[str, dict[str, str | None]]:
@@ -276,6 +277,25 @@ async def resolve_assets(
 
 ASSET_FIELDS = tuple(FIELD_SUFFIX.values()) + (LOGO_COLOR_FIELD,)
 
+# Transient attr `enrich_items_with_assets` sets so card summaries can surface
+# the TMDB external id to desktop plugins (e.g. the Plex "available" badge).
+TMDB_ID_ATTR = "_resolved_tmdb_id"
+
+
+async def _fetch_tmdb_ids(
+    session: AsyncSession, item_ids: list[str]
+) -> dict[str, str]:
+    """Return {media_item_id: tmdb external_id} for the given items."""
+    if not item_ids:
+        return {}
+    rows = await session.execute(
+        select(ExternalID.external_id, ExternalID.media_item_id).where(
+            ExternalID.provider == "tmdb",
+            ExternalID.media_item_id.in_(item_ids),
+        )
+    )
+    return {media_item_id: external_id for external_id, media_item_id in rows}
+
 
 async def enrich_items_with_assets(
     session: AsyncSession,
@@ -300,10 +320,12 @@ async def enrich_items_with_assets(
     resolved = await resolve_assets(
         session, redis, [str(i.id) for i in items], preferred_lang=preferred_lang, theme=theme
     )
+    tmdb_ids = await _fetch_tmdb_ids(session, [str(i.id) for i in items])
     for item in items:
         urls = resolved.get(str(item.id), {})
         for suffix in ASSET_FIELDS:
             setattr(item, f"_resolved_{suffix}", urls.get(suffix))
+        setattr(item, TMDB_ID_ATTR, tmdb_ids.get(str(item.id)))
     return items
 
 
@@ -315,11 +337,14 @@ def resolved_assets_view(obj, fields) -> dict | object:
     object unchanged so ``from_attributes`` behaves as before.
     """
     resolved = {f: getattr(obj, f"_resolved_{f}", None) for f in ASSET_FIELDS}
-    if not any(v is not None for v in resolved.values()):
+    tmdb_id = getattr(obj, TMDB_ID_ATTR, None)
+    if not any(v is not None for v in resolved.values()) and tmdb_id is None:
         return obj
     # Only include attributes that actually exist on the object. Fields the ORM
     # lacks (e.g. ``screenshots`` on MediaItem) must stay absent so Pydantic
     # falls back to the schema default instead of an explicit None.
     out = {name: getattr(obj, name) for name in fields if hasattr(obj, name)}
     out.update({f: v for f, v in resolved.items() if v is not None})
+    if tmdb_id is not None and "tmdb_id" in fields:
+        out["tmdb_id"] = tmdb_id
     return out

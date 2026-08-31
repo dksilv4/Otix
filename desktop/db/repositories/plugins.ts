@@ -135,19 +135,4 @@ export class PluginsRepository {
   deleteAllConfig(pluginId: string): void {
     this.db.prepare('DELETE FROM plugin_config WHERE plugin_id = ?').run(pluginId)
   }
-
-  // ── Repos ──
-  getRepos(): { url: string; label: string | null; added_at: string }[] {
-    return this.db.prepare('SELECT * FROM plugin_repos ORDER BY added_at').all() as { url: string; label: string | null; added_at: string }[]
-  }
-
-  addRepo(url: string, label?: string): void {
-    this.db.prepare(
-      'INSERT OR REPLACE INTO plugin_repos (url, label, added_at) VALUES (?, ?, datetime(\'now\'))'
-    ).run(url, label || null)
-  }
-
-  removeRepo(url: string): void {
-    this.db.prepare('DELETE FROM plugin_repos WHERE url = ?').run(url)
-  }
 }

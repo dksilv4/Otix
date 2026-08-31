@@ -17,5 +17,6 @@ export const calendarQueries = {
       },
       staleTime: 1000 * 60 * 5,
       gcTime: 1000 * 60 * 30,
+      meta: { suppressToast: true },
     }),
 }

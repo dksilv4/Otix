@@ -59,6 +59,7 @@ export interface UserListDetailOut extends UserListOut {
     } | null
     isAdult?: boolean
     albumArtistName?: string | null
+    tmdbId?: string | null
   }>
   collaborators: CollaboratorOut[]
 }
@@ -105,6 +106,7 @@ export function useUserLists() {
       return data
     },
     staleTime: 1000 * 60 * 2,
+    meta: { suppressToast: true },
   })
 }
 

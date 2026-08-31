@@ -14,7 +14,8 @@ from sqlalchemy import func, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_db, get_optional_user, resolve_country_code
-from otix.api.search.embedding import SEARCH_CACHE_TTL, _cache_key, _embed_query, _grouped_cache_key, _poll_query_hash, _suggestions_cache_key
+from otix.api.search.embedding import _cache_key, _embed_query, _grouped_cache_key, _poll_query_hash, _suggestions_cache_key
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
@@ -105,7 +106,7 @@ async def search_suggestions(
             summary.user_interactions = UserInteractionState(**state)
 
     # Cache the base results (without backfill additions)
-    await redis.set(cache_key, json.dumps([s.model_dump(mode="json") for s in summaries]), ex=SEARCH_CACHE_TTL)
+    await redis.set(cache_key, json.dumps([s.model_dump(mode="json") for s in summaries]), ex=TTL["SEARCH"]["CACHE"])
 
     if len(summaries) < 5 and _should_backfill(q) and media_type:
         try:
@@ -270,7 +271,7 @@ async def search_media(
         items=summaries, tracks=track_summaries,
         has_more=has_more, total=total, backfill_pending=backfill_pending,
     )
-    await redis.set(cache_key, response.model_dump_json(), ex=SEARCH_CACHE_TTL)
+    await redis.set(cache_key, response.model_dump_json(), ex=TTL["SEARCH"]["CACHE"])
 
     asyncio.create_task(
         log_search(
@@ -469,7 +470,7 @@ async def search_grouped(
         games_count=counts.get("game", 0), music_count=counts.get("music", 0),
         tracks_count=tracks_count, people_count=people_count, users_count=users_count,
     )
-    asyncio.create_task(redis.set(cache_key, response.model_dump_json(), ex=SEARCH_CACHE_TTL))
+    asyncio.create_task(redis.set(cache_key, response.model_dump_json(), ex=TTL["SEARCH"]["CACHE"]))
     return response
 
 

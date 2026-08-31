@@ -6,10 +6,8 @@ import hashlib
 import json
 import sys
 
+from otix.api.ttl import TTL
 from otix.infrastructure.redis import get_redis
-
-SEARCH_CACHE_TTL = 30
-EMBEDDING_CACHE_TTL = 300
 
 
 def _cache_key(
@@ -59,7 +57,7 @@ async def _embed_query(q: str) -> list[float] | None:
     try:
         embedding = await asyncio.wait_for(loop.run_in_executor(_embed_pool, _do_embed_sync, q), timeout=2.0)
         if embedding:
-            await redis.set(emb_key, json.dumps(embedding), ex=EMBEDDING_CACHE_TTL)
+            await redis.set(emb_key, json.dumps(embedding), ex=TTL["MEDIA_EMBEDDING"]["EMBEDDING"])
         return embedding
     except asyncio.TimeoutError:
         import structlog

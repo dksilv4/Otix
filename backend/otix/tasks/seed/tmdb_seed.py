@@ -23,6 +23,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from otix.api.ttl import TTL
 from otix.domain.media import ExternalID, MediaItem, TMDBDeletedID
 from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session
@@ -71,9 +72,7 @@ _check_fast_queue_backlog = check_fast_queue_backlog
 _download_export = download_export
 
 # Redis keys
-_EXPORT_LOCK_TTL = 7200  # 2 hours for daily import
 _BACKLOG_LOCK = "otix:tmdb_seed:backlog_lock"
-_BACKLOG_LOCK_TTL = 120
 
 _daily_lock_key: str | None = None  # set in _daily_import_loop with today's date
 
@@ -296,7 +295,7 @@ async def _daily_import_loop() -> dict:
     redis = await get_redis()
     date_key = datetime.now(UTC).strftime("%Y%m%d")
     lock_key = f"otix:tmdb_seed:daily_lock:{date_key}"
-    acquired = await redis.set(lock_key, "1", nx=True, ex=_EXPORT_LOCK_TTL)
+    acquired = await redis.set(lock_key, "1", nx=True, ex=TTL["SEED"]["EXPORT_LOCK"])
     if not acquired:
         return {"status": "locked", "date": date_key}
 
@@ -335,7 +334,7 @@ async def _daily_import_loop() -> dict:
         try:
             # Keep the lock until expiry (prevents same-day re-run).
             # Refresh TTL in case the import took a while.
-            await redis.expire(lock_key, _EXPORT_LOCK_TTL)
+            await redis.expire(lock_key, TTL["SEED"]["EXPORT_LOCK"])
         except _REDIS_ERRORS:
             pass  # Lock will expire on its own via TTL
 
@@ -447,7 +446,7 @@ async def _detect_deletions_after_import() -> dict:
 async def _seed_backlog_loop() -> dict:
     redis = await get_redis()
     try:
-        acquired = await redis.set(_BACKLOG_LOCK, "1", nx=True, ex=_BACKLOG_LOCK_TTL)
+        acquired = await redis.set(_BACKLOG_LOCK, "1", nx=True, ex=TTL["SEED"]["BACKLOG_LOCK"])
     except _REDIS_ERRORS:
         # Redis unavailable — skip this cycle rather than crash
         return {"status": "redis_unavailable"}

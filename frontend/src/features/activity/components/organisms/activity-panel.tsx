@@ -7,6 +7,7 @@ import { usePanelContext } from '@activity/providers/panel-context'
 import { Feature } from '@/features/_config'
 import { ActivityModuleGame } from '../molecules/activity-module-game'
 import { ActivityModulePlayer } from '../molecules/activity-module-player'
+import { ActivityModuleDownloads } from '../molecules/activity-module-downloads'
 import { ActivityModuleInstalls } from '../molecules/activity-module-installs'
 import { ActivityModulePlexSection } from '../molecules/activity-module-plex-section'
 import { ActivityModuleNotifications } from '../molecules/activity-module-notifications'
@@ -102,6 +103,7 @@ export function ActivityModule({ open, onClose }: ActivityModuleProps) {
           <motion.div variants={staggerVariants} initial="hidden" animate="visible" className="flex flex-col gap-2">
             <ActivityModuleGame />
             <ActivityModulePlayer />
+            <ActivityModuleDownloads />
             <ActivityModuleInstalls />
             <Feature name="integration:plex"><ActivityModulePlexSection /></Feature>
             <ActivityModulePlugins />

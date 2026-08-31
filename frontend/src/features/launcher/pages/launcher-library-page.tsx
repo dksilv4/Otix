@@ -8,6 +8,8 @@ import { usePopularGames, gameDetailOptions } from '@/features/launcher/data/que
 import { fetchGameById } from '@/features/launcher/data/storage'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 import { toDisplayGame, heroImage, isApplicationGame } from '@/features/launcher/utils'
+import { useOffline } from '@/lib/offline'
+import { OfflineNotice } from '@/lib/offline-notice'
 import { useInactiveSlideshow } from '@/features/launcher/hooks/use-inactive-slideshow'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import { PLATFORM_LABELS } from '@/constants/games'
@@ -25,7 +27,7 @@ export function LauncherLibraryPage() {
   const { data: localGames = [] } = useLocalGames(
     isDesktop ? { sortBy: 'last_played_at', sortDir: 'desc' } : undefined,
   )
-  const { data: popularGames = [] } = usePopularGames()
+  const { data: popularGames = [] } = usePopularGames({ enabled: !isDesktop })
 
   const rawGames: DisplayGame[] = useMemo(() => {
     if (isDesktop) return localGames
@@ -49,6 +51,8 @@ export function LauncherLibraryPage() {
   const [sortBy, setSortBy] = useState<SortMode>('recent')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set())
+  const [posterErrors, setPosterErrors] = useState<Set<string>>(new Set())
+  const offline = useOffline()
   const { settings } = useLauncherSettings()
 
   const handlePrefetch = useCallback((game: DisplayGame) => {
@@ -67,6 +71,10 @@ export function LauncherLibraryPage() {
 
   const handleLogoError = useCallback((gameId: string) => {
     setLogoErrors((prev) => new Set(prev).add(gameId))
+  }, [])
+
+  const handlePosterError = useCallback((gameId: string) => {
+    setPosterErrors((prev) => new Set(prev).add(gameId))
   }, [])
 
   // ── Derived data ──
@@ -133,6 +141,12 @@ export function LauncherLibraryPage() {
 
   return (
     <div className="w-full h-screen bg-neutral-950 bg-grid-pattern text-white select-none overflow-hidden relative">
+
+      {offline && (
+        <div className="absolute top-14 right-6 z-40">
+          <OfflineNotice />
+        </div>
+      )}
 
       {/* ═══════════ Ambient background ═══════════ */}
       <div className="absolute inset-0 z-0 overflow-hidden">
@@ -344,6 +358,7 @@ export function LauncherLibraryPage() {
                 const hasLogo = !!game.logoUrl && !logoErrors.has(game.id)
                 // Prefer textless poster so the logo hover pops cleanly
                 const cardPoster = game.rawGame?.otixTextlessPosterUrl || game.rawGame?.textlessPosterUrl || game.rawGame?.data?.textlessPosterUrl || game.posterUrl
+                const posterFailed = posterErrors.has(game.id)
 
                 return (
                   <motion.div
@@ -364,13 +379,14 @@ export function LauncherLibraryPage() {
                     }}
                   >
                     {/* Poster — prefer textless so logo hover doesn't double up */}
-                    {cardPoster ? (
+                    {cardPoster && !posterFailed ? (
                       <img
                         src={cardPoster}
                         alt={game.title}
                         className="w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-700 ease-out"
                         loading="lazy"
                         draggable={false}
+                        onError={() => handlePosterError(game.id)}
                       />
                     ) : (
                       <div className="w-full h-full bg-[var(--dk-surface-ghost)] flex flex-col items-center justify-center gap-3 text-white/15">

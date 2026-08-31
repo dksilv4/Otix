@@ -23,7 +23,18 @@ export function FloatingGameSelector() {
     const {data: popularGames = []} = usePopularGames()
 
     const games: DisplayGame[] = useMemo(() => {
-        if (isDesktop) return localGames.filter((g) => !isApplicationGame(g)).map(toDisplayGame)
+        if (isDesktop) {
+            // Curated rail: only games with real play history, most recent first, capped at 20.
+            return localGames
+                .filter((g) => !isApplicationGame(g) && g.lastPlayedAt)
+                .map(toDisplayGame)
+                .sort((a, b) => {
+                    const aT = a.rawGame?.lastPlayedAt ? new Date(a.rawGame.lastPlayedAt).getTime() : 0
+                    const bT = b.rawGame?.lastPlayedAt ? new Date(b.rawGame.lastPlayedAt).getTime() : 0
+                    return bT !== aT ? bT - aT : a.title.localeCompare(b.title)
+                })
+                .slice(0, 20)
+        }
         return popularGames.slice(0, 20).map((g) => ({
             id: g.id,
             title: g.title,

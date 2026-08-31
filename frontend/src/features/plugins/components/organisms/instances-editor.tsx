@@ -421,10 +421,11 @@ export function InstancesEditor({
       )}
 
       {adding && (
-        <div className="mt-3 space-y-3 rounded-xl border border-primary/20 bg-white/[0.02] p-4">
+        <div className="mt-4 space-y-4 rounded-xl border border-primary/20 bg-white/[0.02] p-5">
           {hasConnect && (
             <>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-white/30">Connection</p>
+              <div className="space-y-3">
                 {connectKeys.map((k) => {
                   const sub = items[k]
                   if (sub.type === 'serverUrl') {
@@ -475,17 +476,21 @@ export function InstancesEditor({
           )}
 
           {(probe?.ok || !hasConnect) && detailKeys.length > 0 && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {detailKeys.map((k) => (
-                <SubFieldInput
-                  key={k}
-                  subField={items[k]}
-                  value={form[k]}
-                  options={items[k].fetchable ? probe?.options?.[k] : undefined}
-                  onChange={(v) => update({ [k]: v })}
-                />
-              ))}
-            </div>
+            <>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-white/30">Details</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {detailKeys.map((k) => (
+                  <SubFieldInput
+                    key={k}
+                    subField={items[k]}
+                    value={form[k]}
+                    options={items[k].fetchable ? probe?.options?.[k] : undefined}
+                    fullWidth={k === 'name'}
+                    onChange={(v) => update({ [k]: v })}
+                  />
+                ))}
+              </div>
+            </>
           )}
 
           <div className="flex items-center justify-end gap-2 border-t border-white/[0.06] pt-3">
@@ -512,18 +517,20 @@ function SubFieldInput({
   subField,
   value,
   options,
+  fullWidth = false,
   onChange,
 }: {
   subField: PluginConfigField
   value: unknown
   options?: Array<{ value: string; label: string }>
+  fullWidth?: boolean
   onChange: (value: unknown) => void
 }) {
-  const fullWidth = subField.type === 'boolean'
+  const spanFull = fullWidth || subField.type === 'boolean'
 
   if (options && options.length > 0) {
     return (
-      <div className={fullWidth ? 'sm:col-span-2' : ''}>
+      <div className={spanFull ? 'sm:col-span-2' : ''}>
         <Field label={subField.label} description={subField.description}>
           <Select
             options={[{ value: '', label: '— Select —' }, ...options]}

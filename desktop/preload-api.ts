@@ -286,21 +286,6 @@ export interface PluginInfo {
   connected?: boolean;
 }
 
-export interface RegistryEntry {
-  id: string;
-  name: string;
-  version: string;
-  description: string;
-  author: string;
-  repository: string;
-  path?: string;
-  icon?: string;
-  category?: string;
-  tags?: string[];
-  min_app_version?: string;
-  permissions: PluginPermission[];
-}
-
 export type PermissionDuration = 'once' | 'always';
 
 export interface PermissionRequest {
@@ -496,6 +481,14 @@ export interface IDesktopAPI {
   saveConfirmPath: (gameId: string, absolutePath: string, apiBaseUrl: string, authToken: string) => Promise<void>;
   saveResolvePathPatterns: (patterns: string[]) => Promise<string[]>;
 
+  // ── Auto Updater ──
+  updater: {
+    checkForUpdates: () => Promise<{ status: string; updateInfo?: any; error?: string }>;
+    installUpdate: () => Promise<boolean>;
+    getVersion: () => Promise<string>;
+    onStatusChanged: (callback: (state: { status: string; version?: string; releaseNotes?: string | null; progress?: { percent: number; bytesPerSecond: number; transferred: number; total: number }; error?: string }) => void) => () => void;
+  };
+
   // ── Storage ──
   getDiskSpace: () => Promise<Array<{ drive: string; total?: number; used: number; free: number }>>;
 
@@ -510,11 +503,9 @@ export interface IDesktopAPI {
   plugin: {
     list: () => Promise<PluginInfo[]>;
     get: (id: string) => Promise<PluginInfo | null>;
-    install: (repoUrl: string, pluginPath?: string) => Promise<PluginInfo>;
     uninstall: (id: string) => Promise<void>;
-    update: (id: string) => Promise<PluginInfo>;
     enable: (id: string) => Promise<void>;
-    disable: (id: string) => Promise<void>;
+    disable: (id: string) => Promise<string[]>;
     reload: (id: string) => Promise<PluginInfo[]>;
     discover: () => Promise<PluginInfo[]>;
     getConfig: (pluginId: string) => Promise<Record<string, unknown>>;
@@ -535,11 +526,7 @@ export interface IDesktopAPI {
     getActivity: () => Promise<PluginActivityEntry[]>;
     getFreeGames: () => Promise<{ items: any[]; fetchedAt: number }>;
     refreshFreeGames: () => Promise<{ items: any[]; fetchedAt: number }>;
-    fetchMarketplace: (registryUrl?: string) => Promise<{ success: boolean; plugins?: RegistryEntry[]; error?: string }>;
-    getRepos: () => Promise<{ url: string; label: string | null; added_at: string }[]>;
-    addRepo: (url: string, label?: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
-    removeRepo: (url: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
-    openOAuthWindow: (url: string, redirectPattern: string, options?: { tokenExtraction?: { type: 'url-param' | 'web-request' | 'local-storage'; key?: string } }) => Promise<{ success: boolean; code?: string; redirectUrl?: string; error?: string }>;
+    openOAuthWindow: (url: string, redirectPattern: string, options?: { tokenExtraction?: { type: 'url-param' | 'web-request' | 'local-storage' | 'pin'; key?: string; poll?: { url: string; headers?: Record<string, string>; tokenPath?: string[]; intervalMs?: number; timeoutMs?: number } } }) => Promise<{ success: boolean; code?: string; redirectUrl?: string; error?: string }>;
   };
 
   // ── Plugin game matching ──

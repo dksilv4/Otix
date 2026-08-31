@@ -40,6 +40,13 @@ import { registerPluginIPC, setPluginMainWebContents } from './plugins/ipc';
 import { wireOrchestratorEvents } from './ipc/plugins';
 import { GameScanOrchestrator } from './game/orchestrator';
 import { registerNotificationIPC } from './ipc/notifications';
+import { registerUpdaterIPC, checkForUpdatesOnStartup } from './ipc/updater';
+import { setDefaultAutoSelectFamily } from 'node:net';
+
+// Node 24's happy-eyeballs (autoSelectFamily) intermittently ETIMEDOUTs
+// dual-stack hostnames when the machine has no working IPv6. Disable it so
+// undici fetches (plugins, image cache) reliably connect first try.
+setDefaultAutoSelectFamily(false);
 
 let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
@@ -284,7 +291,13 @@ function createWindow() {
     mainWindow.loadURL('http://127.0.0.1:5174/');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadURL(`file://${path.join(__dirname, '../dist/index.html')}`);
+    const candidatePaths = [
+      path.join(process.resourcesPath, 'frontend', 'index.html'),
+      path.join(__dirname, '../../frontend/dist/index.html'),
+      path.join(__dirname, '../dist/index.html'),
+    ];
+    const htmlPath = candidatePaths.find((p) => fs.existsSync(p)) || candidatePaths[0];
+    mainWindow.loadFile(htmlPath);
   }
 
   // Ensure window is visible
@@ -298,8 +311,9 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // ── Register window IPC ──
+  // ── Register window & updater IPC ──
   registerWindowIPC(mainWindow);
+  registerUpdaterIPC(mainWindow);
 }
 
 // ── Custom protocol (otix://) for OAuth deep links ───────────────
@@ -581,14 +595,7 @@ app.on('ready', async () => {
     console.error('[main] DB init failed (app will run with reduced functionality):', err.message);
   });
 
-  // Seed the default plugin repo if none exist (first run)
   const pluginsRepo = new PluginsRepository();
-  if (dbReady) {
-    const existingRepos = pluginsRepo.getRepos();
-    if (existingRepos.length === 0) {
-      pluginsRepo.addRepo('https://raw.githubusercontent.com/dksilv4/otix-plugins/main/registry.json', 'Otix Default');
-    }
-  }
 
   // Rehydrate any installs that were running before Electron last closed
   if (dbReady) { try { rehydrateActiveInstalls() } catch (err) { console.error('[main] rehydrateActiveInstalls failed:', err) } }
@@ -634,9 +641,12 @@ app.on('ready', async () => {
 
   // ── Initialize plugin system ──
   if (dbReady) {
+    const packagedPluginsDir = path.join(process.resourcesPath, 'plugins');
     const extensionsDir = isDev
-      ? path.resolve(__dirname, '..', '..', 'extensions', 'otix-plugins', 'plugins')
-      : path.join(app.getPath('userData'), 'extensions');
+      ? path.resolve(__dirname, '..', '..', 'extensions', 'plugins')
+      : (fs.existsSync(packagedPluginsDir)
+          ? packagedPluginsDir
+          : path.join(app.getPath('userData'), 'extensions'));
     const devExtensionsDir = isDev
       ? path.join(app.getPath('userData'), 'extensions')
       : undefined;
@@ -659,6 +669,8 @@ app.on('ready', async () => {
     };
     setScanOrchestrator(orchestrator);
     setPluginManager(pluginManager);
+    // Dev-only: reload plugins when their source files change on disk
+    pluginManager.watchPluginSources();
     registerPluginScanIPC();
     wireOrchestratorEvents(orchestrator, mainWindow!);
 
@@ -672,7 +684,7 @@ app.on('ready', async () => {
       console.log(`[plugins] Discovery complete, ${all.length} plugin(s) in DB:`, all.map(p => `${p.id} (${p.status})`).join(', '));
 
       // Auto-enable default plugins (always enabled, no user action needed)
-      const DEFAULT_PLUGINS = ['fps-capture', 'battlenet'];
+      const DEFAULT_PLUGINS = ['fps-capture'];
       for (const id of DEFAULT_PLUGINS) {
         const p = pluginManager!.getPlugin(id);
         if (p && p.status !== 'enabled') {
@@ -737,6 +749,9 @@ app.on('ready', async () => {
       mainWindow.hide()
     }
   }
+
+  // Check for auto-updates in the background (packaged release only)
+  checkForUpdatesOnStartup();
 
   // Signal renderer that all IPC handlers are registered.
   // The renderer's loadFromDatabase() waits for this before calling IPC.

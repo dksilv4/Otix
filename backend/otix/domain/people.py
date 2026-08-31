@@ -1,5 +1,7 @@
-# TODO: Review this file
 from __future__ import annotations
+
+# TODO: Review this file
+from sqlalchemy import Float
 
 from datetime import date, datetime
 from typing import TYPE_CHECKING
@@ -63,7 +65,12 @@ class Person(Base, HasExternalIDs):
     assets: Mapped[list[PersonAsset]] = relationship("PersonAsset", back_populates="person")
     followers: Mapped[list[UserPersonFollow]] = relationship("UserPersonFollow", back_populates="person")
     ratings: Mapped[list[PersonRating]] = relationship("PersonRating", back_populates="person")
+    avg_rating: Mapped[float|None] = mapped_column(Float)
 
+
+def calculate_person_avg_rating(person_id:otix_pk) -> float:
+    # TODO: create calculation
+    return 0.0
 
 class PersonAsset(Base):
     __tablename__ = "person_assets"

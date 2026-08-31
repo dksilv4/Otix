@@ -12,6 +12,9 @@ import {
   saveMatchSuggestion,
   notifyGamesChanged,
 } from './storage';
+import { LocalMatcher } from './local-matcher';
+import { buildCatalogRequests, normalizeCatalogResponse } from './catalog-match';
+import type { CatalogMatchCandidate } from './catalog-match';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -314,9 +317,30 @@ export class GameScanOrchestrator extends EventEmitter {
     };
   }
 
-  // ── SSE stream ──────────────────────────────────────────────────────
+  // ── Match stream ────────────────────────────────────────────────────
 
+  /**
+   * Match a batch of games. Tries the Otix SSE pipeline first; on any network
+   * or backend failure, falls back to offline self-match so the launcher keeps
+   * working without the Otix API.
+   */
   private async streamMatches(
+    games: ScannedGame[],
+    pluginId: string,
+    mediaType: string,
+    signal: AbortSignal,
+  ): Promise<void> {
+    try {
+      await this.streamMatchesRemote(games, pluginId, mediaType, signal);
+    } catch (err) {
+      if (signal.aborted) return;
+      console.warn(`[Orchestrator] Backend match unavailable (${(err as Error).message}), using offline self-match`);
+      await this.streamMatchesLocal(games, pluginId);
+    }
+  }
+
+  /** Otix SSE match pipeline. */
+  private async streamMatchesRemote(
     games: ScannedGame[],
     pluginId: string,
     mediaType: string,
@@ -391,6 +415,71 @@ export class GameScanOrchestrator extends EventEmitter {
       req.write(body);
       req.end();
     });
+  }
+
+  /**
+   * Offline fallback matcher. First asks `matching:pipeline` slot plugins for
+   * match candidates, then applies them (self-matching the remainder) and
+   * persists locally, emitting the same match:progress / match:complete events
+   * the SSE path would.
+   */
+  private async streamMatchesLocal(games: ScannedGame[], pluginId: string): Promise<void> {
+    const candidates = await this.queryMatchCandidates(games);
+    const results = new LocalMatcher().matchBatch(games, candidates);
+    let matched = 0;
+    for (const r of results) {
+      if (r.status === 'matched') matched++;
+      const event: GameProgressEvent = {
+        pluginId,
+        queryId: r.queryId,
+        totalGames: games.length,
+        status: r.status,
+        queryTitle: r.queryTitle,
+        match: r.mediaId ? {
+          media_item_id: r.mediaId,
+          title: r.otixTitle || r.queryTitle,
+          confidence: r.otixConfidence ?? 0.95,
+          poster_url: r.otixPosterUrl || undefined,
+          backdrop_url: r.otixBackdropUrl || undefined,
+        } : undefined,
+      };
+      this.emit('match:progress', event);
+    }
+    this.emit('match:complete', {
+      pluginId,
+      total: games.length,
+      matched,
+      unmatched: games.length - matched,
+      offline: true,
+    });
+    notifyGamesChanged();
+  }
+
+  /**
+   * Ask every plugin registered in the `matching:pipeline` slot for match
+   * candidates. Plugins that error are skipped — a broken pipeline must not
+   * break the offline scan. Earlier-registered plugins win on conflicts.
+   */
+  private async queryMatchCandidates(games: ScannedGame[]): Promise<Map<string, CatalogMatchCandidate>> {
+    const plugins = this.pluginManager.getPluginsForSlot('matching:pipeline');
+    if (plugins.length === 0) return new Map();
+
+    const requests = buildCatalogRequests(games);
+    const merged = new Map<string, CatalogMatchCandidate>();
+    for (const { pluginId: pipelinePluginId } of plugins) {
+      try {
+        const response = await this.pluginManager.callPluginData(pipelinePluginId, 'catalogMatch', requests);
+        for (const [queryId, candidate] of normalizeCatalogResponse(response, requests, pipelinePluginId)) {
+          if (!merged.has(queryId)) merged.set(queryId, candidate);
+        }
+      } catch (err: any) {
+        console.warn(`[Orchestrator] matching:pipeline plugin "${pipelinePluginId}" failed: ${err.message}`);
+      }
+    }
+    if (merged.size > 0) {
+      console.log(`[Orchestrator] matching:pipeline produced ${merged.size} candidate(s) from ${plugins.length} plugin(s)`);
+    }
+    return merged;
   }
 
   // ── SSE parser ──────────────────────────────────────────────────────

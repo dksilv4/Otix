@@ -8,6 +8,8 @@ export interface MediaItemSummary {
   mediaType: string
   title: string
   slug: string
+  /** TMDB external id (movie/show) — lets desktop plugins address the item. */
+  tmdbId?: string | null
   posterUrl: string | null
   textlessPosterUrl: string | null
   backdropUrl: string | null
@@ -69,6 +71,7 @@ export interface MediaItemDetail {
   ratingCount: number
   overallRating?: number | null
   overallRatingSource?: string | null
+  tmdbId?: string | null
   likeCount: number
   watchlistCount: number
   watchedCount: number
@@ -84,6 +87,7 @@ export interface MediaItemDetail {
   steamPlaytime2weeks?: number | null
   steamRtimeLastPlayed?: number | null
   youtubeVideoId?: string | null
+  videos: Array<{ videoType?: string | null; url: string; provider?: string | null; providerId?: string | null }>
   createdAt: string
   updatedAt: string
   genres: Array<{ id: string; name: string; slug: string }>

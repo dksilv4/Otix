@@ -12,6 +12,7 @@ from __future__ import annotations
 import structlog
 from sqlalchemy import select
 
+from otix.api.ttl import TTL
 from otix.infrastructure.redis import get_redis
 
 logger = structlog.get_logger()
@@ -20,7 +21,6 @@ PRIORITY_KEY = "catalog:priority"
 SEEN_KEY = "catalog:seen"
 DRAIN_KEY = "catalog:drain"
 QUEUE_DRAIN_BATCH = 10
-DRAIN_TTL = 300  # seconds; self-heals if the drain process dies mid-cycle
 
 
 def _member(media_type: str, external_id: int | str) -> str:
@@ -35,7 +35,7 @@ async def enqueue_candidate(media_type: str, external_id: int | str, priority: f
         return False
     await redis.sadd(SEEN_KEY, member)
     await redis.zadd(PRIORITY_KEY, {member: priority})
-    await redis.setex(DRAIN_KEY, DRAIN_TTL, "1")
+    await redis.setex(DRAIN_KEY, TTL["HYDRATION"]["DRAIN"], "1")
     return True
 
 

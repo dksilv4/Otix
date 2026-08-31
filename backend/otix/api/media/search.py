@@ -42,6 +42,8 @@ from otix.schemas.media import (
     GameMatchResponse,
     GenreOut,
     ImportGameResponse,
+    MediaImportRequest,
+    MediaImportResponse,
     MediaItemListResponse,
     MediaItemSummary,
     StreamCompleteEvent,
@@ -554,6 +556,84 @@ async def import_igdb_game(
 
     logger.info("igdb_import_success", igdb_id=igdb_id, media_id=result["otix_id"], title=result["title"])
     return ImportGameResponse(media_id=result["otix_id"], title=result["title"], slug=slug)
+
+
+# ── Generic provider import (POST /media/import) ──────────────────────
+
+
+_IMPORT_PROVIDERS: set[str] = {
+    "tmdb",  # media_type required: movie | show
+    "igdb",  # infers media_type "game"
+}
+
+
+@media_router.post("/import", response_model=MediaImportResponse)
+async def import_media(
+    body: MediaImportRequest,
+    current_user: User = Depends(get_current_user),
+) -> MediaImportResponse:
+    """Import a media item from an external provider (tmdb/igdb) into Otix.
+
+    Used by plugins (e.g. Radarr) to hydrate the backend catalog from a
+    provider library. ``provider_id`` is the external id; tmdb also requires
+    ``media_type``. Existing external ids short-circuit to the stored item.
+    """
+    provider = body.provider.lower()
+    provider_id = str(body.provider_id)
+
+    if provider not in _IMPORT_PROVIDERS:
+        raise HTTPException(status_code=400, detail=f"Unsupported provider: {body.provider}")
+
+    from otix.tasks.sync.tmdb import _resolve_external_id, _sync_tmdb_media
+    from otix.tasks.sync.igdb import _sync_igdb_game
+
+    try:
+        if provider == "tmdb":
+            if body.media_type not in ("movie", "show"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="media_type is required for tmdb imports (movie or show)",
+                )
+            result = await _sync_tmdb_media(int(provider_id), body.media_type)
+        else:
+            result = await _sync_igdb_game(int(provider_id), force=True)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("media_import_failed", provider=provider, provider_id=provider_id)
+        raise HTTPException(status_code=500, detail="Media import failed. Please try again.")
+
+    if result is None:
+        async with async_session() as session:
+            # TMDB reuses numeric IDs across entity types (movie 19995 vs person
+            # 19995), so a bare (provider, external_id) lookup can match the wrong
+            # entity. Resolve exactly like _sync_tmdb_media does: entity_type +
+            # media_type. Without this, a short-circuited import of a movie whose
+            # ID collides with a person/company row 404s (or worse, returns the
+            # wrong item).
+            if provider == "tmdb":
+                item, _ = await _resolve_external_id(session, provider_id, body.media_type)
+            else:
+                ext_id = await ExternalIDService(session).get_by_provider_ext_id(provider, provider_id, entity_type="media_item")
+                media_id = ext_id.entity_id or ext_id.media_item_id if ext_id else None
+                item = await session.get(MediaItem, media_id) if media_id else None
+            if item is not None:
+                logger.info("media_import_returned_existing", provider=provider, provider_id=provider_id, media_id=item.id, title=item.title)
+                return MediaImportResponse(
+                    media_id=item.id, title=item.title, slug=item.slug,
+                    provider=provider, provider_id=provider_id,
+                )
+        raise HTTPException(status_code=404, detail="Media not found or import failed")
+
+    async with async_session() as session:
+        item = await session.get(MediaItem, result["otix_id"])
+        slug = item.slug if item else ""
+
+    logger.info("media_import_success", provider=provider, provider_id=provider_id, media_id=result["otix_id"], title=result["title"])
+    return MediaImportResponse(
+        media_id=result["otix_id"], title=result["title"], slug=slug,
+        provider=provider, provider_id=provider_id,
+    )
 
 
 # ── Sync local games ──────────────────────────────────────────────────

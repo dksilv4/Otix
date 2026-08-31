@@ -8,12 +8,10 @@ import sys
 
 import structlog
 
+from otix.api.ttl import TTL
 from otix.infrastructure.redis import get_redis
 
 logger = structlog.get_logger(__name__)
-
-SEARCH_CACHE_TTL = 120  # up from 30s — avoids re-computing for rapid re-queries
-EMBEDDING_CACHE_TTL = 900  # up from 300s — embeddings are deterministic per query text
 
 
 def _cache_key(
@@ -100,7 +98,7 @@ async def _embed_query(q: str) -> list[float] | None:
             timeout=120.0,  # first call includes model download, can take minutes
         )
         if embedding:
-            await redis.set(emb_key, json.dumps(embedding), ex=EMBEDDING_CACHE_TTL)
+            await redis.set(emb_key, json.dumps(embedding), ex=TTL["SEARCH"]["EMBEDDING"])
         return embedding
     except asyncio.TimeoutError:
         logger.warning("query embedding timed out, recreating pool", query=q)

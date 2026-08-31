@@ -84,7 +84,7 @@ class CalendarService:
             UserMediaInteraction.media_item_id == MediaItem.id,
         ).where(
             UserMediaInteraction.user_id == self.user_id,
-            UserMediaInteraction.interaction_type.in_(["watched", "started"]),
+            UserMediaInteraction.interaction_type.in_(["watched", "started", "watchlisted"]),
             MediaItem.media_type == "show",
         )
 

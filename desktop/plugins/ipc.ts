@@ -76,14 +76,6 @@ export function registerPluginIPC(
     return pluginManager.getActivity()
   })
 
-  ipcMain.handle('plugin:get-repos', async () => {
-    return await pluginManager.getRepos()
-  })
-
-  ipcMain.handle('plugin:fetch-marketplace', async () => {
-    return await pluginManager.fetchMarketplace()
-  })
-
   // ── Slot endpoints ──
   ipcMain.handle('plugin:get-slot-data', async (_event, location: string, context?: Record<string, unknown>) => {
     return await pluginManager.getSlotData(location, context)
@@ -98,22 +90,10 @@ export function registerPluginIPC(
   })
 
   // ── Mutating handlers (sender validation required) ──
-  ipcMain.handle('plugin:install', async (event, repoUrl: string, pluginPath?: string) => {
-    validateSender(event)
-    assertString(repoUrl, 'repoUrl')
-    return await pluginManager.installFromGit(repoUrl, pluginPath)
-  })
-
   ipcMain.handle('plugin:uninstall', async (event, id: string) => {
     validateSender(event)
     assertString(id, 'id')
     return await pluginManager.uninstall(id)
-  })
-
-  ipcMain.handle('plugin:update', async (event, id: string) => {
-    validateSender(event)
-    assertString(id, 'id')
-    return await pluginManager.updatePlugin(id)
   })
 
   ipcMain.handle('plugin:enable', async (_event, id: string) => {
@@ -149,18 +129,6 @@ export function registerPluginIPC(
       throw new Error('API base URL must use http: or https: protocol')
     }
     pluginManager.setApiBaseUrl(url)
-  })
-
-  ipcMain.handle('plugin:add-repo', async (event, url: string, label?: string) => {
-    validateSender(event)
-    assertString(url, 'url')
-    return await pluginManager.addRepo(url, label)
-  })
-
-  ipcMain.handle('plugin:remove-repo', async (event, url: string) => {
-    validateSender(event)
-    assertString(url, 'url')
-    return await pluginManager.removeRepo(url)
   })
 
   // ── Data calls ──

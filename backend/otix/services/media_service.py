@@ -436,6 +436,8 @@ class MediaService:
                 selectinload(MediaItem.game_modes).joinedload(MediaGameMode.game_mode),
                 selectinload(MediaItem.watch_providers).joinedload(MediaWatchProvider.watch_provider),
                 selectinload(MediaItem.assets),
+                selectinload(MediaItem.videos),
+                selectinload(MediaItem.external_ids),
                 # Type-specific: use selectinload for collections to avoid cartesian blowup
                 joinedload(MediaItem.movie)
                 .joinedload(Movie.collection)

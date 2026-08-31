@@ -82,6 +82,9 @@ class MediaItemSummary(BaseModel):
     media_type: str
     title: str
     slug: str
+    # External provider id (TMDB for movie/show) — lets desktop plugins (e.g. the
+    # Plex "available" badge on cards) address the item on the source service.
+    tmdb_id: str | None = None
     poster_url: str | None = None
     textless_poster_url: str | None = None
     backdrop_url: str | None = None
@@ -213,6 +216,30 @@ class ImportGameResponse(BaseModel):
     media_id: str
     title: str
     slug: str
+
+
+class MediaImportRequest(BaseModel):
+    """Import a media item from an external provider into Otix.
+
+    ``provider`` selects the sync pipeline (``tmdb``, ``igdb``, ...),
+    ``provider_id`` is the external id within that provider. ``media_type`` is
+    required for tmdb (``movie`` | ``show``); other providers infer it from
+    their pipeline.
+    """
+
+    provider: str
+    provider_id: str
+    media_type: str | None = None
+
+
+class MediaImportResponse(BaseModel):
+    """Result of importing a media item from an external provider."""
+
+    media_id: str
+    title: str
+    slug: str
+    provider: str
+    provider_id: str
 
 
 class ProviderSearchRequest(BaseModel):
@@ -572,6 +599,15 @@ class MediaReleaseOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class MediaVideoOut(BaseModel):
+    video_type: str | None = None
+    url: str
+    provider: str | None = None
+    provider_id: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class PlatformOut(BaseModel):
     id: str
     name: str
@@ -704,6 +740,9 @@ class MediaItemDetail(BaseModel):
     rating_count: int = 0
     overall_rating: float | None = None
     overall_rating_source: str | None = None
+    # External provider id (TMDB for movie/show) — lets desktop integrations
+    # (e.g. the Radarr request button) address the item on the source service.
+    tmdb_id: str | None = None
     like_count: int = 0
     watchlist_count: int = 0
     watched_count: int = 0
@@ -732,6 +771,7 @@ class MediaItemDetail(BaseModel):
     game_modes: list[MediaGameModeOut] = []
     watch_providers: list[MediaWatchProviderOut] = []
     screenshots: list[MediaAssetOut] = []
+    videos: list[MediaVideoOut] = []
 
     movie: MovieDetail | None = None
     show: ShowDetail | None = None

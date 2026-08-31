@@ -20,8 +20,17 @@ celerybeat-schedule
 /backend/graphify-out
 desktop/frontend/
 desktop/nul
-/extensions
 /graphify-out
+
+# Plugin runtime data — never commit sqlite/db artifacts from the plugins dir.
+/extensions/**/data/
+/extensions/**/data.db
+/extensions/**/*.db-shm
+/extensions/**/*.db-wal
 /frontend/graphify-out
+/desktop/graphify-out
 /frontend/.superpowers
 .claude/settings.local.json
+
+# Build output
+/desktop/release/

@@ -8,6 +8,7 @@ from datetime import date, timedelta
 
 import structlog
 
+from otix.api.ttl import TTL
 from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
@@ -25,7 +26,6 @@ _LISTS = {
     "now_playing": ("popularity", "desc", "recent"),
 }
 _MEDIA_TYPES = ["movie", "show", "game", "music"]
-_DISCOVER_TTL = 7200  # 2 hours
 
 
 def _date_filter(name: str | None) -> tuple[date | None, date | None]:
@@ -125,7 +125,7 @@ async def _refresh_discover_cache() -> dict:
                 next_cursor=items[-1].id if has_more and items else None,
                 has_more=has_more,
             )
-            await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+            await redis.set(cache_key, response.model_dump_json(), ex=TTL["FEED"]["DISCOVER"])
             warmed += 1
 
         # ── Discover list caches (anonymous, no language/anime filter) ─
@@ -156,7 +156,7 @@ async def _refresh_discover_cache() -> dict:
                     next_cursor=items[-1].id if has_more and items else None,
                     has_more=has_more,
                 )
-                await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+                await redis.set(cache_key, response.model_dump_json(), ex=TTL["FEED"]["DISCOVER"])
                 warmed += 1
 
     logger.info("discover cache warmed", entries=warmed)

@@ -186,6 +186,19 @@ class AssetPipeline:
         if not assets:
             return 0
 
+        # Drop true duplicates (same URL under the same asset type) — Postgres
+        # errors with "ON CONFLICT DO UPDATE command cannot affect row a second
+        # time" when one batch proposes two rows for the same conflict target.
+        seen: set[tuple[str, str]] = set()
+        deduped: list[RawAsset] = []
+        for a in assets:
+            key = (a.asset_type, a.url)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(a)
+        assets = deduped
+
         rows = [
             {
                 "media_item_id": media_item_id,

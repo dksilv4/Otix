@@ -79,8 +79,8 @@ export const gameGenresOptions = () =>
 
 // ── React Query hooks ──────────────────────────────────────────────
 
-export function usePopularGames() {
-  return useQuery(popularGamesOptions())
+export function usePopularGames(opts?: { enabled?: boolean }) {
+  return useQuery({ ...popularGamesOptions(), enabled: opts?.enabled ?? true })
 }
 
 export function useGameDetail(id: string | undefined | null) {

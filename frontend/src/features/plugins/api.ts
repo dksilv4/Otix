@@ -26,7 +26,7 @@ export interface PluginAPI {
   getStatus(pluginId: string): Promise<Record<string, unknown>>
   discover(): Promise<void>
   getPluginTabs(): Promise<PluginSettingsTab[]>
-  getSlotData?(location: string): Promise<unknown>
+  getSlotData?(location: string, context?: Record<string, unknown>): Promise<unknown>
   callData(pluginId: string, method: string, ...args: unknown[]): Promise<unknown>
 }
 

@@ -56,6 +56,7 @@ const plugin = {
       spotify_client_secret: { type: 'secret', label: 'Spotify Client Secret', section: 'Spotify' },
       google_client_id: { type: 'string', label: 'Google Client ID', section: 'Google' },
       google_client_secret: { type: 'secret', label: 'Google Client Secret', section: 'Google' },
+      playlists: { type: 'list', label: 'Playlists' },
     },
   },
   installedAt: '',
@@ -314,19 +315,20 @@ describe('PluginSettingsPage', () => {
     expect(screen.queryByText('Not connected')).not.toBeInTheDocument()
   })
 
-  it('renders a sync section as a SyncTestCard with a Sync now button', async () => {
+  it('renders a sync section as a SyncCard with a Sync now button', async () => {
     api.callData.mockImplementation((_id: string, method: string) =>
       method === 'sync.status' ? Promise.resolve({ phase: 'idle', last: null }) : Promise.resolve({}),
     )
     render(<PluginSettingsPage tab={syncTab} />)
 
-    await waitFor(() => expect(screen.getByText('Sync playlists')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Sync to Otix')).toBeInTheDocument())
     expect(screen.getByText('Sync now')).toBeInTheDocument()
   })
 
   it('shows real-time progress while syncing, then per-playlist results', async () => {
     let resolveSyncNow: (v: Record<string, unknown>) => void = () => {}
     const syncNowPromise = new Promise<Record<string, unknown>>((r) => { resolveSyncNow = r })
+    let syncDone = false
     const runningStatus = {
       phase: 'running',
       current: 1,
@@ -336,8 +338,9 @@ describe('PluginSettingsPage', () => {
       trackTotal: 10,
       lastTrack: 'Some Song',
     }
+    const doneStatus = { phase: 'done', last: null }
     api.callData.mockImplementation((_id: string, method: string) => {
-      if (method === 'sync.status') return Promise.resolve(runningStatus)
+      if (method === 'sync.status') return Promise.resolve(syncDone ? doneStatus : runningStatus)
       if (method === 'sync.now') return syncNowPromise
       return Promise.resolve({})
     })
@@ -365,6 +368,7 @@ describe('PluginSettingsPage', () => {
         { ok: true, title: 'Chill', upToDate: true, added: 0, skipped: 0 },
       ],
     })
+    syncDone = true
     await act(async () => {})
 
     expect(screen.getByText('Sync complete')).toBeInTheDocument()
@@ -385,6 +389,28 @@ describe('PluginSettingsPage', () => {
     fireEvent.click(await screen.findByText('Sync now'))
     await waitFor(() => expect(screen.getByText('Sync failed')).toBeInTheDocument())
     expect(screen.getByText('No playlists configured. Add a playlist mapping in settings.')).toBeInTheDocument()
+  })
+
+  it('shows a paused banner when sync.now pauses for network loss', async () => {
+    api.callData.mockImplementation((_id: string, method: string) => {
+      if (method === 'sync.status') return Promise.resolve({ phase: 'paused', paused: true, deferred: 3, last: null })
+      if (method === 'sync.now') {
+        return Promise.resolve({
+          success: false,
+          paused: true,
+          deferred: 3,
+          error: 'Network unreachable — sync paused, 3 queued',
+        })
+      }
+      return Promise.resolve({})
+    })
+    render(<PluginSettingsPage tab={syncTab} />)
+
+    fireEvent.click(await screen.findByText('Sync now'))
+    await waitFor(() => expect(screen.getByText(/Sync paused — offline/)).toBeInTheDocument())
+    expect(screen.getByText(/3 movie\(s\) queued/)).toBeInTheDocument()
+    expect(screen.queryByText('Sync failed')).not.toBeInTheDocument()
+    expect(screen.queryByText('Network unreachable — sync paused, 3 queued')).not.toBeInTheDocument()
   })
 
   it('loads the Spotify playlist list into a picker', async () => {

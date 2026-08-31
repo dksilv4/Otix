@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_db, get_optional_user
 from otix.api.discover.router_helpers import _cache_get, _cache_set
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.schemas.discover import PersonalizedSectionsResponse
 from otix.services.personalization_service import PersonalizationService
@@ -15,9 +16,6 @@ from otix.services.personalization_service import PersonalizationService
 logger = structlog.get_logger()
 
 router = APIRouter()
-
-_SECTIONS_TTL = 30
-
 
 @router.get("/sections", response_model=PersonalizedSectionsResponse)
 async def discover_sections(
@@ -42,7 +40,7 @@ async def discover_sections(
         sections = PersonalizationService.default_sections()
 
     response = PersonalizedSectionsResponse(sections=sections)
-    await _cache_set(cache_key, response.model_dump_json(), ex=_SECTIONS_TTL)
+    await _cache_set(cache_key, response.model_dump_json(), ex=TTL["DISCOVER"]["SECTIONS"])
 
     logger.info("discover sections fetched", user_id=uid, ip=ip)
     return response

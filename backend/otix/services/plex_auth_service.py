@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.infrastructure.redis import get_redis
@@ -20,7 +21,6 @@ logger = structlog.get_logger()
 
 PLEX_TV_BASE = "https://plex.tv"
 PLEX_AUTH_URL = "https://app.plex.tv/auth"
-PIN_TTL = 900
 
 
 def _state_key(state: str) -> str:
@@ -81,7 +81,7 @@ async def build_plex_link_url(user_id: str | None = None) -> tuple[str, str, str
     payload = {"pin_id": pin_id}
     if user_id:
         payload["user_id"] = user_id
-    await redis.set(_state_key(state), json.dumps(payload), ex=PIN_TTL)
+    await redis.set(_state_key(state), json.dumps(payload), ex=TTL["AUTH"]["PLEX_PIN"])
     return _build_auth_url(code, state), state, pin_id
 
 
@@ -108,7 +108,7 @@ async def build_plex_login_url() -> tuple[str, str, str]:
         raise HTTPException(status_code=502, detail="Plex returned an invalid response. Please try again.")
 
     redis = await get_redis()
-    await redis.set(_state_key(state), json.dumps({"pin_id": pin_id, "flow": "login"}), ex=PIN_TTL)
+    await redis.set(_state_key(state), json.dumps({"pin_id": pin_id, "flow": "login"}), ex=TTL["AUTH"]["PLEX_PIN"])
 
     login_callback = f"{settings.frontend_base_url}/auth/callback/plex-login"
     auth_url = _build_auth_url(code, state, callback=login_callback)

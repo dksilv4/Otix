@@ -7,18 +7,25 @@
     "postinstall": "patch-package && electron-rebuild -f -w better-sqlite3",
     "dev": "concurrently -k -n \"vite,tsc,electron\" -c \"cyan,blue,magenta\" \"cd ../frontend && npx vite --port 5174\" \"tsc --watch\" \"electron-rebuild -f -w better-sqlite3 && wait-on http://127.0.0.1:5174 dist/ipc/scanner.js && cross-env NODE_ENV=development electron . --remote-debugging-port=9222\"",
     "build": "tsc",
-    "pretest": "npm rebuild better-sqlite3",
+    "pack": "npm run build && electron-builder --dir -c electron-builder.json5",
+    "dist": "npm run build && electron-builder -c electron-builder.json5",
+    "dist:win": "npm run build && electron-builder --win -c electron-builder.json5",
+    "dist:mac": "npm run build && electron-builder --mac -c electron-builder.json5",
+    "dist:linux": "npm run build && electron-builder --linux -c electron-builder.json5",
     "test": "vitest run --reporter=verbose",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "better-sqlite3": "^12.10.0"
+    "better-sqlite3": "^12.10.0",
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
+    "@rolldown/binding-darwin-arm64": "^1.2.5",
     "@types/better-sqlite3": "^7.6.13",
     "concurrently": "^10.0.1",
     "cross-env": "^10.1.0",
     "electron": "^42.3.0",
+    "electron-builder": "^25.1.8",
     "electron-rebuild": "^3.2.9",
     "patch-package": "^8.0.1",
     "typescript": "~6.0.2",

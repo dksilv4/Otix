@@ -12,6 +12,7 @@ import { ThemeProvider } from '@/lib/providers/theme'
 import { LogoPreferenceProvider } from '@/lib/providers/logo-preference'
 import { AuthProvider } from '@/features/auth'
 import { AuthRouterBridge } from '@/features/auth/components/auth-router-bridge'
+import { WatchlistSyncPrompt } from '@/features/auth/components/watchlist-sync-prompt'
 import { FeatureProvider } from '@/features/_config'
 import { PageMetaProvider } from '@/lib/providers/page-context'
 import { PlexAudioProvider } from '@/lib/player/plex-audio-provider'
@@ -71,6 +72,7 @@ createRoot(document.getElementById('root')!).render(
                 <FeatureProvider>
                 <AuthProvider>
                   <AuthRouterBridge />
+                  <WatchlistSyncPrompt />
                   <DkToastProvider>
                     <PlexAudioProvider>
                       <PlayerProvider>

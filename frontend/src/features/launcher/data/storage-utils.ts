@@ -22,11 +22,21 @@ export function normalizeTitle(title: string): string {
 
 // ── Dedup ─────────────────────────────────────────────────────────
 
-/** Merge games with the same normalized title, keeping the highest-priority source. */
+/** Titles that mark a row as a DLC/beta/trial/edition sideline of a parent game. */
+const SIDELINE_RE = /\b(dlc|betas?|test|testing|trial|prelude|demo|playtest)\b/i
+
+/**
+ * Merge rows that resolve to the same game — by catalog id when matched
+ * (so a game's DLC/beta/trial entries collapse into its parent), otherwise by
+ * normalized title. Keeps the most representative row as the winner.
+ */
 export function mergeDuplicateGames(games: LocalGame[]): LocalGame[] {
   const groups = new Map<string, LocalGame[]>();
+  const keyFor = (g: LocalGame) =>
+    g.otixMediaId || g.data?.id || `t:${normalizeTitle(g.title)}`;
+
   for (const g of games) {
-    const key = normalizeTitle(g.title);
+    const key = keyFor(g);
     const existing = groups.get(key);
     if (existing) existing.push(g);
     else groups.set(key, [g]);
@@ -39,20 +49,24 @@ export function mergeDuplicateGames(games: LocalGame[]): LocalGame[] {
       continue;
     }
 
-    const getPriority = (g: LocalGame) => {
-      if (g.platform === 'steam') return 4;
-      if (g.platform !== 'iso') return 3;
-      return 1;
-    };
+    const catalogTitle = group[0].otixMediaTitle || group[0].data?.title;
 
     const best = [...group].sort((a, b) => {
+      // Prefer the row whose title matches the catalog title exactly (the parent).
+      if (catalogTitle) {
+        const aExact = normalizeTitle(a.title) === normalizeTitle(catalogTitle) ? 1 : 0;
+        const bExact = normalizeTitle(b.title) === normalizeTitle(catalogTitle) ? 1 : 0;
+        if (aExact !== bExact) return bExact - aExact;
+      }
+      // Prefer non-DLC / non-beta / non-trial rows.
+      const aNoise = SIDELINE_RE.test(a.title) ? 1 : 0;
+      const bNoise = SIDELINE_RE.test(b.title) ? 1 : 0;
+      if (aNoise !== bNoise) return aNoise - bNoise;
+      // Prefer matched data.
       if (a.data?.id && !b.data?.id) return -1;
       if (!a.data?.id && b.data?.id) return 1;
-      const pA = getPriority(a);
-      const pB = getPriority(b);
-      if (pA !== pB) return pB - pA;
-      if (a.iconUrl && !b.iconUrl) return -1;
-      if (!a.iconUrl && b.iconUrl) return 1;
+      // Shorter title wins (fewer edition suffixes).
+      if (a.title.length !== b.title.length) return a.title.length - b.title.length;
       return 0;
     })[0];
 

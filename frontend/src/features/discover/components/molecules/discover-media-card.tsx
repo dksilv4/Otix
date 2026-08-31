@@ -57,6 +57,7 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({
         isAdult={item.isAdult}
         newSeasonReleased={item.newSeasonReleased}
         newSeasonReleaseDate={item.newSeasonReleaseDate}
+        tmdbId={item.tmdbId}
         subtitle={subtitle}
         artistName={item.albumArtistName}
         className={className}

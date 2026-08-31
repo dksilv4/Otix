@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ExternalLink, Play } from 'lucide-react'
 import {
   mediaQueries,
+  trailerVideos,
   useMediaParams
 } from '@media'
 
@@ -21,6 +22,8 @@ export function MediaGeneralDetails() {
   } = detail
 
   const youtubeUrl = youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : null
+
+  const trailerEmbeds = trailerVideos(detail).slice(0, 2)
 
   return (
     <section className="space-y-5">
@@ -52,7 +55,34 @@ export function MediaGeneralDetails() {
         </div>
       )}
 
-      {/* Trailer link */}
+      {/* Embedded trailers */}
+      {trailerEmbeds.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Trailers
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {trailerEmbeds.map((v) => (
+              <div
+                key={v.providerId || v.url}
+                className="overflow-hidden rounded-xl border border-white/10 bg-black/40"
+              >
+                <div className="relative aspect-video">
+                  <iframe
+                    src={`https://www.youtube-nocookie.com/embed/${v.youtubeId}?rel=0`}
+                    title={v.videoType || 'Trailer'}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="absolute inset-0 h-full w-full"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Related YouTube link */}
       {youtubeUrl && (
         <div>
           <a

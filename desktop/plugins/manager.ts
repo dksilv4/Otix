@@ -12,7 +12,6 @@ import { PluginsRepository } from '../db/repositories/plugins'
 import { initPluginsDb } from '../db/plugins-db'
 import type { PermissionManager } from './permissions'
 
-import { fetchAllRegistries } from './marketplace'
 import { SlotRegistry } from './slots'
 import { getAllActivity } from './activity'
 import type { PluginActivityItem } from './types'
@@ -40,6 +39,13 @@ const execFileAsync = promisify(execFile)
 // stop needing raw SQL access entirely.
 const SYSTEM_TABLE_GRANTS: Record<string, string[]> = {
   downloads: ['downloads'],
+  // Radarr/Sonarr mirror their libraries into the shared local media catalog
+  // (bare `media` table — must stay out of the plugin's db.tables or it would
+  // be namespace-prefixed). See migrations/010_media.ts. They also mirror
+  // their active-download queue into the framework `downloads` table via the
+  // ctx.downloads.* API (worker-bridge gates it behind table:downloads).
+  radarr: ['media', 'downloads'],
+  sonarr: ['media', 'downloads'],
 }
 
 const PAGE_SLOT_MAP: Record<string, string[]> = {
@@ -53,7 +59,7 @@ const PAGE_SLOT_MAP: Record<string, string[]> = {
     'media/game/detail/tabs',
   ],
   'activity': ['activity:panel'],
-  'library/downloads': ['library:downloads'],
+  'library': ['library:tabs'],
   'settings/downloads': ['settings/downloads/main'],
 }
 
@@ -70,6 +76,8 @@ export class PluginManager {
   private slotRegistry: SlotRegistry = new SlotRegistry()
   public readonly serviceRegistry: ServiceRegistry = new ServiceRegistry()
   public readonly freeGames: FreeGamesAggregator
+  private pluginWatcher: fs.FSWatcher | null = null
+  private pluginReloadTimers: Map<string, NodeJS.Timeout> = new Map()
 
   constructor(
     extensionsDir: string,
@@ -331,15 +339,51 @@ export class PluginManager {
     }
   }
 
-  async disable(pluginId: string): Promise<void> {
+  /**
+   * Plugins that declare this plugin in their manifest's `depends_on`,
+   * transitively. Used to warn before disabling a plugin others rely on and to
+   * cascade the disable through them.
+   */
+  getDependents(pluginId: string): string[] {
+    const dependentsOf = new Map<string, string[]>()
+    for (const p of this.getAllPlugins()) {
+      for (const dep of p.manifest.depends_on ?? []) {
+        const list = dependentsOf.get(dep) ?? []
+        list.push(p.id)
+        dependentsOf.set(dep, list)
+      }
+    }
+    const result: string[] = []
+    const seen = new Set<string>([pluginId])
+    const queue = [pluginId]
+    while (queue.length) {
+      const current = queue.shift()!
+      for (const dependent of dependentsOf.get(current) ?? []) {
+        if (seen.has(dependent)) continue
+        seen.add(dependent)
+        result.push(dependent)
+        queue.push(dependent)
+      }
+    }
+    return result
+  }
+
+  /**
+   * Disable a plugin and every plugin that depends on it (transitively).
+   * Dependents are stopped before the plugin they rely on. Returns the full
+   * list of plugin ids disabled, including `pluginId` itself.
+   */
+  async disable(pluginId: string): Promise<string[]> {
+    const affected = [pluginId, ...this.getDependents(pluginId)]
+    for (const id of [...affected].reverse()) {
+      await this.disableOne(id)
+    }
+    return affected
+  }
+
+  private async disableOne(pluginId: string): Promise<void> {
     await this.acquireLock(pluginId)
     try {
-      const info = this.getPlugin(pluginId)
-      if (info?.manifest.system) {
-        throw new Error(
-          `Plugin "${pluginId}" is a system plugin and cannot be disabled`,
-        )
-      }
       const runtime = this.runtimes.get(pluginId)
       if (runtime) {
         await runtime.stop()
@@ -363,8 +407,8 @@ export class PluginManager {
     const info = this.getPlugin(pluginId)
     if (!info) throw new PluginNotFoundError(pluginId)
     if (info.manifest.system) {
-      // System plugins are always on — restart the worker in place instead
-      // of disable()+enable(), which would throw on the disable step.
+      // System plugins restart the worker in place rather than a full
+      // disable()+enable() cycle, avoiding churn in status/events.
       const runtime = this.runtimes.get(pluginId)
       if (runtime) {
         await runtime.stop()
@@ -373,203 +417,73 @@ export class PluginManager {
       await this.enable(pluginId)
       return
     }
-    await this.disable(pluginId)
+    await this.disableOne(pluginId)
     await this.enable(pluginId)
   }
 
-  // ── Install from Git ────────────────────────────────────────────
-
-  async installFromGit(
-    repoUrl: string,
-    pluginPath?: string,
-  ): Promise<PluginInfo> {
-    // Validate URL
-    const parsed = new URL(repoUrl)
-    if (!['https:', 'http:'].includes(parsed.protocol)) {
-      throw new Error('Only HTTP(S) repository URLs are supported')
-    }
-
-    const repoName = repoUrl.replace(/\.git$/, '').split('/').pop()
-    if (!repoName) throw new Error(`Invalid repo URL: ${repoUrl}`)
-
-    const pluginId = pluginPath ? path.basename(pluginPath) : repoName
-    const targetDir = path.join(this.extensionsDir, pluginId)
-
-    if (fs.existsSync(targetDir)) {
-      throw new Error(`Plugin directory already exists: ${targetDir}`)
-    }
-
-    // Determine clone dir — for monorepo (pluginPath given), clone to temp first
-    const cloneDir = pluginPath
-      ? path.join(
-          os.tmpdir(),
-          `otix-plugin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        )
-      : targetDir
-
-    // Use execFile to avoid shell injection
+  // ── Dev auto-reload ─────────────────────────────────────────────
+  // In dev, plugins load straight from the repo (extensionsDir) and a
+  // running worker never re-requires its module, so editing main.js has
+  // no effect until the worker is respawned. Watch plugin sources and
+  // reload the affected plugin on change so dev iteration doesn't need a
+  // manual toggle or app restart. Gated on devExtensionsDir being set,
+  // which only happens in dev (main.ts passes it only when isDev).
+  watchPluginSources(debounceMs = 250, warmupMs = 2000): void {
+    if (!this.devExtensionsDir) return // dev-only
+    if (this.pluginWatcher) return
+    // macOS FSEvents fires an initial burst of events for every existing file
+    // when the watch starts. Ignore that window so plugins don't get reloaded
+    // immediately after being loaded at startup.
+    const startedAt = Date.now()
+    let watcher: fs.FSWatcher
     try {
-      await execFileAsync('git', ['clone', '--depth', '1', repoUrl, cloneDir], {
-        timeout: 120_000,
+      watcher = fs.watch(this.extensionsDir, { recursive: true }, (_eventType, filename) => {
+        if (!filename) return
+        if (Date.now() - startedAt < warmupMs) return
+        const rel = String(filename)
+        if (!this.shouldWatchPluginFile(rel)) return
+        const pluginId = rel.split(/[/\\]/)[0]
+        if (!pluginId) return
+        this.schedulePluginReload(pluginId, debounceMs)
       })
-    } catch (err) {
-      if (fs.existsSync(cloneDir)) {
-        fs.rmSync(cloneDir, { recursive: true, force: true })
-      }
-      throw new Error(
-        `Git clone failed for ${repoUrl}: ${err instanceof Error ? err.message : String(err)}`,
-      )
+    } catch (err: any) {
+      console.warn('[plugins] Dev auto-reload watcher failed to start:', err.message)
+      return
     }
-
-    // Read manifest
-    const manifestDir = pluginPath ? path.join(cloneDir, pluginPath) : cloneDir
-    const manifestPath = path.join(manifestDir, 'manifest.json')
-
-    if (!fs.existsSync(manifestPath)) {
-      fs.rmSync(cloneDir, { recursive: true, force: true })
-      throw new Error(
-        pluginPath
-          ? `Plugin at path "${pluginPath}" is missing manifest.json`
-          : `manifest.json not found — not a valid plugin`,
-      )
-    }
-
-    let manifest: PluginManifest
-    try {
-      const raw = fs.readFileSync(manifestPath, 'utf-8')
-      manifest = JSON.parse(raw)
-    } catch (err) {
-      fs.rmSync(cloneDir, { recursive: true, force: true })
-      throw new Error(
-        `Plugin ${repoName} has invalid manifest.json: ${err instanceof Error ? err.message : String(err)}`,
-      )
-    }
-
-    if (!manifest.name || !manifest.version || !manifest.entry?.main) {
-      fs.rmSync(cloneDir, { recursive: true, force: true })
-      throw new Error(
-        'Plugin has incomplete manifest.json (name, version, and entry.main are required)',
-      )
-    }
-
-    // Check compatibility
-    this.checkCompatibility(pluginId, manifest)
-
-    // For monorepo: copy the plugin subdirectory to the extensions dir, then remove temp clone
-    if (pluginPath) {
-      try {
-        fs.cpSync(manifestDir, targetDir, { recursive: true })
-      } catch (err) {
-        fs.rmSync(cloneDir, { recursive: true, force: true })
-        throw new Error(
-          `Failed to copy plugin: ${err instanceof Error ? err.message : String(err)}`,
-        )
-      }
-      fs.rmSync(cloneDir, { recursive: true, force: true })
-    }
-
-    this.pluginsRepo.insert({
-      id: pluginId,
-      name: manifest.name,
-      version: manifest.version,
-      description: manifest.description || '',
-      author: manifest.author || '',
-      repository: manifest.repository || repoUrl,
-      source_path: pluginPath || null,
-      status: 'installed',
-      manifest_json: JSON.stringify(manifest),
-      enabled_at: null,
+    watcher.on('error', (err) => {
+      console.warn('[plugins] Dev auto-reload watcher error:', err.message)
     })
-
-    return this.getPlugin(pluginId)!
+    this.pluginWatcher = watcher
+    console.log(`[plugins] Dev auto-reload: watching ${this.extensionsDir}`)
   }
 
-  // ── Update ──────────────────────────────────────────────────────
+  private shouldWatchPluginFile(rel: string): boolean {
+    const parts = rel.split(/[/\\]/)
+    if (parts.some((s) => ['node_modules', '.git', 'dist', 'build', '.vite'].includes(s))) return false
+    return /\.(?:js|mjs|cjs|json)$/.test(rel)
+  }
 
-  async updatePlugin(pluginId: string): Promise<PluginInfo> {
-    const row = this.pluginsRepo.getById(pluginId)
-    if (!row) throw new PluginNotFoundError(pluginId)
-    const info = this.pluginRowToInfo(row)
+  private schedulePluginReload(pluginId: string, debounceMs: number): void {
+    const existing = this.pluginReloadTimers.get(pluginId)
+    if (existing) clearTimeout(existing)
+    this.pluginReloadTimers.set(
+      pluginId,
+      setTimeout(() => {
+        this.pluginReloadTimers.delete(pluginId)
+        if (!this.runtimes.has(pluginId)) return // not running — nothing to reload
+        console.log(`[plugins] Source changed, reloading "${pluginId}"`)
+        this.reload(pluginId).catch((err: any) => {
+          console.warn(`[plugins] Reload "${pluginId}" failed:`, err.message)
+        })
+      }, debounceMs),
+    )
+  }
 
-    const wasEnabled = info.status === 'enabled'
-
-    // Disable first if enabled
-    if (wasEnabled) {
-      await this.disable(pluginId)
-    }
-
-    try {
-      // Clone fresh copy to temp dir
-      const tempDir = path.join(
-        os.tmpdir(),
-        `otix-update-${pluginId}-${Date.now()}`,
-      )
-      const repoUrl = info.repository
-
-      await execFileAsync('git', ['clone', repoUrl, tempDir], {
-        timeout: 120_000,
-      })
-
-      const sourceDir = info.sourcePath
-        ? path.join(tempDir, info.sourcePath)
-        : tempDir
-      const targetDir = this.getPluginDir(pluginId)
-
-      // Read new manifest to get new version
-      const manifestPath = path.join(sourceDir, 'manifest.json')
-      let newManifest: PluginManifest
-      let newVersion = info.version
-      if (fs.existsSync(manifestPath)) {
-        const raw = fs.readFileSync(manifestPath, 'utf-8')
-        newManifest = JSON.parse(raw)
-        newVersion = newManifest.version || info.version
-      } else {
-        fs.rmSync(tempDir, { recursive: true, force: true })
-        throw new Error('Updated plugin is missing manifest.json')
-      }
-
-      // Remove old files except hidden files and data dirs, then copy new
-      const entries = fs.readdirSync(targetDir)
-      for (const entry of entries) {
-        if (entry.startsWith('.') || entry === 'data') continue
-        const fullPath = path.join(targetDir, entry)
-        fs.rmSync(fullPath, { recursive: true, force: true })
-      }
-
-      // Copy new files
-      const newEntries = fs.readdirSync(sourceDir)
-      for (const entry of newEntries) {
-        if (entry.startsWith('.')) continue
-        const src = path.join(sourceDir, entry)
-        const dest = path.join(targetDir, entry)
-        fs.cpSync(src, dest, { recursive: true })
-      }
-
-      // Update version and manifest in DB
-      this.pluginsRepo.updateManifest(pluginId, JSON.stringify(newManifest), newVersion)
-
-      // Clean up temp
-      fs.rmSync(tempDir, { recursive: true, force: true })
-
-      // Re-enable if was enabled
-      if (wasEnabled) {
-        await this.enable(pluginId)
-      }
-
-      const updatedRow = this.pluginsRepo.getById(pluginId)
-      if (!updatedRow) throw new Error('Plugin vanished after update')
-      return this.pluginRowToInfo(updatedRow)
-    } catch (err) {
-      // Try to re-enable if update failed
-      if (wasEnabled) {
-        try {
-          await this.enable(pluginId)
-        } catch {
-          // swallow re-enable error
-        }
-      }
-      throw err
-    }
+  stopWatching(): void {
+    for (const t of this.pluginReloadTimers.values()) clearTimeout(t)
+    this.pluginReloadTimers.clear()
+    this.pluginWatcher?.close()
+    this.pluginWatcher = null
   }
 
   // ── Uninstall ───────────────────────────────────────────────────
@@ -798,11 +712,12 @@ export class PluginManager {
 
   async loadEnabledPlugins(): Promise<void> {
     const allRows = this.pluginsRepo.getAll()
-    const isSystem = (r: any) => this.pluginRowToInfo(r).manifest.system === true
-    // System plugins are always-on — force-enable them regardless of stored
-    // status (e.g. installs that predate the flag, or drifted rows).
-    const enabled = allRows.filter((r) => r.status === 'enabled' || isSystem(r))
-    const errored = allRows.filter((r) => r.status === 'error' && !isSystem(r))
+    // Respect stored status for every plugin, including system ones — a user
+    // can disable a system plugin and have it stay disabled across restarts.
+    // Plugins that errored previously are still retried in case the failure
+    // was transient.
+    const enabled = allRows.filter((r) => r.status === 'enabled')
+    const errored = allRows.filter((r) => r.status === 'error')
 
     for (const row of enabled) {
       try {
@@ -828,6 +743,7 @@ export class PluginManager {
   }
 
   async shutdown(): Promise<void> {
+    this.stopWatching()
     const pluginIds = Array.from(this.runtimes.keys())
 
     for (const pluginId of pluginIds) {
@@ -946,45 +862,6 @@ export class PluginManager {
 
   getApiBaseUrl(): string {
     return this.apiBaseUrl
-  }
-
-  // ── Marketplace ─────────────────────────────────────────────────
-
-  async fetchMarketplace(): Promise<{
-    success: boolean
-    plugins?: unknown[]
-    errors?: string[]
-  }> {
-    try {
-      const result = await fetchAllRegistries()
-      return {
-        success: true,
-        plugins: result.entries,
-        errors: result.errors.length > 0 ? result.errors : undefined,
-      }
-    } catch (err: any) {
-      return { success: false, errors: [err.message] }
-    }
-  }
-
-  // ── Repo management ─────────────────────────────────────────────
-
-  getRepos(): { url: string; label?: string; added_at?: string }[] {
-    return this.pluginsRepo.getRepos().map((r) => ({
-      url: r.url,
-      label: r.label || undefined,
-      added_at: r.added_at,
-    }))
-  }
-
-  async addRepo(url: string, label?: string): Promise<{ url: string; label: string | null; added_at: string }[]> {
-    this.pluginsRepo.addRepo(url, label)
-    return this.pluginsRepo.getRepos()
-  }
-
-  async removeRepo(url: string): Promise<{ url: string; label: string | null; added_at: string }[]> {
-    this.pluginsRepo.removeRepo(url)
-    return this.pluginsRepo.getRepos()
   }
 
   // ── Connection testing ──────────────────────────────────────────

@@ -39,6 +39,15 @@ export interface OtixEvents {
 export type OtixEventName = keyof OtixEvents
 
 export function emitOtixEvent<E extends OtixEventName>(event: E, payload: OtixEvents[E]) {
+  // Also surface as a window CustomEvent so renderer code can subscribe
+  // (the desktop emitEvent channel goes to plugins, not the DOM).
+  try {
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent(event, { detail: payload }))
+    }
+  } catch {
+    // ignore — the plugin channel below is the important one
+  }
   try {
     const api = (window as Window & {
       desktopAPI?: {

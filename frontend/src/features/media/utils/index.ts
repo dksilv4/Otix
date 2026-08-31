@@ -179,6 +179,47 @@ export function getPreferredSeason(seasons: SeasonOut[]): number {
   return seasons[seasons.length - 1].seasonNumber
 }
 
+// ── Trailers / Videos ──
+
+export interface MediaVideoLike {
+  videoType?: string | null
+  url: string
+  providerId?: string | null
+}
+
+const TRAILER_PRIORITY = ['Trailer', 'Teaser']
+
+export function youtubeIdFromUrl(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
+      if (u.pathname === '/watch') return u.searchParams.get('v')
+      const id = u.pathname.split('/').filter(Boolean).pop()
+      return id || null
+    }
+  } catch {
+    /* ignore malformed urls */
+  }
+  return null
+}
+
+export function trailerVideos(detail: { videos?: MediaVideoLike[] }) {
+  return (detail.videos || [])
+    .map((v) => ({ ...v, youtubeId: youtubeIdFromUrl(v.url) }))
+    .filter((v): v is MediaVideoLike & { youtubeId: string } =>
+      v.youtubeId != null && TRAILER_PRIORITY.includes(v.videoType || ''),
+    )
+    .sort((a, b) => {
+      const ra = TRAILER_PRIORITY.indexOf(a.videoType || '')
+      const rb = TRAILER_PRIORITY.indexOf(b.videoType || '')
+      return ra - rb
+    })
+}
+
+export function primaryTrailer(detail: { videos?: MediaVideoLike[] }) {
+  return trailerVideos(detail)[0] ?? null
+}
+
 export function scoreToColor(score: number, maxScore: number = 10): string {
   const t = Math.max(0, Math.min(1, score / maxScore))
   if (t < 0.25) return "bg-blue-800/60"

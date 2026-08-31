@@ -3,11 +3,16 @@ import { Heart, Bookmark, CheckCircle2, Gamepad2, Play } from 'lucide-react'
 import './interaction-buttons.scss'
 import { type ReactNode, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/old-features/auth'
 import { cn } from '@/lib/utils'
 import { showXPToast } from '@/old-features/ui/atoms/xp-toast'
+import { showToast } from '@/old-features/ui/molecules/toast'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useModal } from '@/lib/modals'
+import { mediaKeys } from '@media/queries/media-keys'
+import type { MediaItemDetail } from '@media/queries/media-queries'
+import { useIsOfflineWatchlisted, toggleOfflineWatchlist } from '../offline-watchlist'
 import {
  useToggleInteraction,
  useUserInteractions,
@@ -219,6 +224,31 @@ function InteractionSection({
  })
 
  const interactions = userInteractions ?? fetchedInteractions ?? null
+  const qc = useQueryClient()
+  const offlineWatchlisted = useIsOfflineWatchlisted(mediaType, mediaId)
+
+  const handleOfflineWatchlistToggle = () => {
+    // Enrich the stored item from the detail cache so the offline library
+    // tab shows proper artwork even before any server round-trip.
+    const detail = qc.getQueryData<MediaItemDetail>(mediaKeys.detail(mediaType, mediaId))
+    const added = toggleOfflineWatchlist({
+      mediaType,
+      mediaId,
+      title: detail?.title,
+      posterUrl: detail?.posterUrl,
+      textlessPosterUrl: detail?.textlessPosterUrl,
+      backdropUrl: detail?.backdropUrl,
+      logoUrl: detail?.logoUrl,
+      releaseDate: detail?.releaseDate,
+    })
+    if (added) {
+      showToast({
+        title: 'Saved to watchlist',
+        description: 'This device is offline — it will sync when you sign in.',
+        variant: 'success',
+      })
+    }
+  }
 
   const handleGuestAction = (actionLabel: string) => {
     const close = openModal(
@@ -314,12 +344,18 @@ function InteractionSection({
       ? 'Rewatch'
       : btn.label
   }
-  active={interactions?.[btn.type] ?? false}
+  active={
+    btn.type === 'watchlisted' && !isAuthenticated
+      ? offlineWatchlisted
+      : (interactions?.[btn.type] ?? false)
+  }
  mediaId={mediaId}
  mediaType={mediaType}
             onClick={
               !isAuthenticated
-                ? () => handleGuestAction(btn.label)
+                ? btn.type === 'watchlisted'
+                  ? handleOfflineWatchlistToggle
+                  : () => handleGuestAction(btn.label)
                 : isWatchedBtn
                 ? () => handleConfirmShowWatched(!(interactions?.watched ?? false))
                 : undefined

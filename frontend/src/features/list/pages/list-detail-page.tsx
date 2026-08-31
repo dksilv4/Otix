@@ -319,6 +319,7 @@ export function ListDetailPage() {
                           releaseDate={item.releaseDate}
                           isAdult={item.isAdult}
                           artistName={item.albumArtistName}
+                          tmdbId={item.tmdbId}
                         />
                         {alreadyAdded ? (
                           <span className="absolute top-2 right-2 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
@@ -410,6 +411,7 @@ export function ListDetailPage() {
                   releaseDate={item.releaseDate}
                   isAdult={item.isAdult}
                   artistName={item.albumArtistName}
+                  tmdbId={item.tmdbId}
                 />
                 {isOwner && (
                   <button

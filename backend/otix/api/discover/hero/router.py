@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_db, get_optional_user, resolve_preferred_lang
 from otix.api.discover.router_helpers import _build_response, _cache_get, _cache_set
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.schemas.media import MediaItemListResponse
 from otix.services.media_service import MediaService, should_exclude_adult
@@ -15,9 +16,6 @@ from otix.services.media_service import MediaService, should_exclude_adult
 logger = structlog.get_logger()
 
 router = APIRouter()
-
-_DISCOVER_TTL = 120
-
 
 @router.get("/hero", response_model=MediaItemListResponse)
 async def discover_hero(
@@ -51,7 +49,7 @@ async def discover_hero(
 
     response = await _build_response(db, items, False, current_user, preferred_lang=preferred_lang)
     response.next_cursor = None
-    await _cache_set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+    await _cache_set(cache_key, response.model_dump_json(), ex=TTL["DISCOVER"]["HERO"])
 
     logger.info("discover hero fetched", count=len(items), pool_size=pool_size, ip=ip)
     return response

@@ -55,7 +55,13 @@ def get_http_client() -> httpx.AsyncClient:
 class TMDBProvider(BaseProvider):
     BASE_URL = "https://api.themoviedb.org/3"
 
-    def __init__(self, redis: Redis, http_client: httpx.AsyncClient | None = None):
+    def __init__(
+        self,
+        redis: Redis,
+        http_client: httpx.AsyncClient | None = None,
+        circuit_threshold: int = 5,
+        circuit_recovery: float = 30.0,
+    ):
         client = http_client or get_http_client()
         super().__init__(
             name="tmdb",
@@ -63,6 +69,8 @@ class TMDBProvider(BaseProvider):
             http_client=client,
             rate=settings.tmdb_global_rps_limit,
             burst=settings.tmdb_global_rps_limit,
+            circuit_threshold=circuit_threshold,
+            circuit_recovery=circuit_recovery,
         )
 
     # ── Movies ──────────────────────────────────────────────────

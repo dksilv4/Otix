@@ -1,10 +1,13 @@
+import {useRef} from 'react'
 import {Badge} from '@ui/atoms/badge'
 import {MEDIA_TYPE_LABEL} from '@/constants/media'
-import {Calendar, Clock, Languages, Film, Tv, Gamepad2, Music, Sparkles, Heart} from 'lucide-react'
+import {Calendar, Clock, Languages, Film, Tv, Gamepad2, Music, Sparkles, Heart, Play} from 'lucide-react'
 import {useQuery} from '@tanstack/react-query'
 import {useAuth} from '@/old-features/auth'
 import {MediaLogo} from '@/lib/media/media-logo'
-import {backdropSrc, formatAlbumDuration, formatMusicCreditsLine, formatRuntime, formatYear, isMusic, languageName, mediaQueries, GLASS_PILL, useMediaParams} from '@media'
+import {useModal} from '@/lib/modals'
+import {MediaTrailerModal} from './media-trailer-modal'
+import {backdropSrc, formatAlbumDuration, formatMusicCreditsLine, formatRuntime, formatYear, isMusic, languageName, mediaQueries, GLASS_PILL, primaryTrailer, useMediaParams} from '@media'
 
 interface MediaHeroProps {
     className?: string
@@ -16,6 +19,8 @@ export function MediaHero({
     const {mediaType, mediaId} = useMediaParams()
 
     const {user} = useAuth()
+    const {openModal} = useModal()
+    const closeTrailerRef = useRef<(() => void) | null>(null)
     const {data} = useQuery(mediaQueries.detail(mediaType, mediaId))
     if (!data) return null
 
@@ -60,6 +65,19 @@ export function MediaHero({
     const hasLogo = Boolean(logo)
     const heroBackdrop =
         backdropUrl || (mediaType === 'music' && posterUrl ? posterUrl : null)
+
+    const trailer = primaryTrailer(detail)
+    const openTrailer = () => {
+        if (!trailer) return
+        closeTrailerRef.current?.()
+        closeTrailerRef.current = openModal(
+            <MediaTrailerModal
+                embedSrc={`https://www.youtube-nocookie.com/embed/${trailer.youtubeId}?rel=0&autoplay=1`}
+                title={title}
+                onClose={() => closeTrailerRef.current?.()}
+            />,
+        )
+    }
 
 
     return (
@@ -196,6 +214,26 @@ export function MediaHero({
                                 18+
                             </Badge>
                         </div>
+
+                        {/* Play Trailer */}
+                        {trailer && (
+                            <div className="mt-4 flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={openTrailer}
+                                    className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-full bg-[var(--dk-surface-glass)] py-1.5 pl-1.5 pr-4 text-sm font-semibold text-white/90 shadow-[var(--dk-shadow-glass)] backdrop-blur-xl transition-all hover:scale-[1.02] hover:bg-[var(--dk-surface-glass-hover)] hover:text-white active:scale-[0.97]"
+                                >
+                                    <span
+                                        className="pointer-events-none absolute left-0 top-0 h-full w-24 opacity-50 transition-opacity group-hover:opacity-70"
+                                        style={{ background: 'radial-gradient(circle at 0% 50%, rgba(239,68,68,0.28), transparent 70%)' }}
+                                    />
+                                    <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white shadow-[var(--dk-shadow-sm)] transition-transform group-hover:scale-105">
+                                        <Play className="h-4 w-4 fill-current translate-x-[1px]" />
+                                    </span>
+                                    <span className="relative">Play Trailer</span>
+                                </button>
+                            </div>
+                        )}
 
                     </div>
                 </div>

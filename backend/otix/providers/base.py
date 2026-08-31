@@ -123,6 +123,14 @@ class BaseProvider:
         if method == "GET" and _cache and _cache.enabled:
             cached = _cache.get(self.name, url)
             if cached is not None:
+                # A HALF_OPEN recovery probe that lands on a cached response
+                # never resolves the breaker state (no success/failure is
+                # recorded), leaving it permanently half-open and refusing every
+                # subsequent request. Treat a cached response as a healthy probe.
+                # Only in HALF_OPEN: in CLOSED, resetting on cache hits would
+                # mask a real outage behind a hot cache.
+                if self.circuit_breaker.state == CBState.HALF_OPEN:
+                    self.circuit_breaker.record_success()
                 return httpx.Response(
                     status_code=200,
                     json=cached,

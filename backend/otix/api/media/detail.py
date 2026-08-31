@@ -17,6 +17,7 @@ from otix.api.deps import (
     resolve_preferred_lang,
     resolve_theme,
 )
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.schemas.interaction import UserInteractionState
@@ -36,9 +37,6 @@ from otix.services.steam_library_service import get_steam_playtime
 logger = structlog.get_logger()
 
 media_router = APIRouter()
-
-_MEDIA_DETAIL_TTL = 30
-
 
 def _media_cache_key(media_id: str, country_code: str, lang: str = "en", theme: str = "dark") -> str:
     # Theme scopes the cached detail so light/dark users don't share a logo pick.
@@ -200,6 +198,13 @@ async def get_media_item(
 
     result = MediaItemDetail.model_validate(item)
 
+    # Surface the TMDB external id (movie/show) so desktop integrations like
+    # the Radarr request button can address the item on the source service.
+    for ext in item.external_ids:
+        if ext.provider == "tmdb" and ext.external_id:
+            result.tmdb_id = ext.external_id
+            break
+
     # Populate screenshots from assets (filter screenshot type, sort by score desc)
     from otix.schemas.admin_edit import MediaAssetOut
 
@@ -241,7 +246,7 @@ async def get_media_item(
     # Cache public response (no user-specific data)
     response_data = result.model_dump(mode="json")
     try:
-        await redis.set(cache_key, json.dumps(response_data), ex=_MEDIA_DETAIL_TTL)
+        await redis.set(cache_key, json.dumps(response_data), ex=TTL["MEDIA"]["DETAIL"])
     except (BusyLoadingError, RedisConnectionError, OSError):
         pass  # Redis unavailable — skip caching, serve uncached
 

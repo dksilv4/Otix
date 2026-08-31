@@ -31,6 +31,7 @@ from pathlib import Path
 import httpx
 import structlog
 
+from otix.api.ttl import TTL
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
 from otix.infrastructure.redis import get_redis
@@ -49,7 +50,6 @@ IGDB_PAGES_PER_CYCLE = 3
 IGDB_MAX_RETRIES = 3
 MUSICBRAINZ_LIMIT = 100
 MUSICBRAINZ_PAGES_PER_CYCLE = 3
-LOCK_TTL = 300
 STEAM_APP_LIST_URL = "https://api.steampowered.com/IStoreService/GetAppList/v1/"
 
 # Backward-compatible re-exports for tests and internal callers
@@ -72,8 +72,6 @@ _MUSICBRAINZ_STATE = "otix:catalog_seed:musicbrainz:state"
 _MUSICBRAINZ_LOCK = "otix:catalog_seed:musicbrainz:lock"
 _MUSICBRAINZ_SEEN = "otix:catalog_seed:musicbrainz:seen"
 
-SEEN_TTL = 30 * 86400  # 30 days — covers the full seeding window + restart margin
-
 
 # ── State helpers ────────────────────────────────────────────────────
 
@@ -90,7 +88,7 @@ async def _enqueue_if_new(seen_key: str, task_name: str, entry_id: str | int) ->
     redis = await get_redis()
     added = await redis.sadd(seen_key, str(entry_id))
     if added:
-        await redis.expire(seen_key, SEEN_TTL)
+        await redis.expire(seen_key, TTL["SEED"]["SEEN"])
         app.send_task(task_name, args=[entry_id])
         return True
     return False
@@ -191,7 +189,7 @@ async def _seed_loop(
         return {"status": "disabled"}
 
     redis = await get_redis()
-    acquired = await redis.set(lock_key, "1", nx=True, ex=LOCK_TTL)
+    acquired = await redis.set(lock_key, "1", nx=True, ex=TTL["SEED"]["CATALOG_LOCK"])
     if not acquired:
         return {"status": "locked"}
 

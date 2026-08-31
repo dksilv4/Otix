@@ -24,9 +24,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from otix.api.ttl import TTL
 from otix.infrastructure.redis import get_redis
-
-_DEFAULT_TTL = 300  # 5 minutes
 
 
 class RedisProgress:
@@ -39,7 +38,7 @@ class RedisProgress:
         {namespace}:{task_id}:progress    — stored latest progress (TTL)
     """
 
-    def __init__(self, namespace: str, *, ttl: int = _DEFAULT_TTL) -> None:
+    def __init__(self, namespace: str, *, ttl: int = TTL["REDIS_PROGRESS_DEFAULT"]) -> None:
         self._channel_tpl = f"{namespace}:{{}}:events"
         self._result_tpl = f"{namespace}:{{}}:result"
         self._progress_tpl = f"{namespace}:{{}}:progress"

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_db, get_optional_user, resolve_preferred_lang
 from otix.api.discover.router_helpers import _build_response, _cache_get, _cache_set
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.schemas.media import MediaItemListResponse
 from otix.services.media_service import MediaService, should_exclude_adult
@@ -20,9 +21,6 @@ from otix.services.steam_library_service import get_steam_game_seed_ids
 logger = structlog.get_logger()
 
 router = APIRouter()
-
-_PERSONALIZED_TTL = 15
-_DISCOVER_TTL = 120
 
 VALID_MEDIA_TYPES = {"movie", "show", "game", "music"}
 VALID_LIST_TYPES = {
@@ -88,7 +86,7 @@ async def discover_list(
 
     exclude_adult = should_exclude_adult(current_user)
     is_personalized = list_type in ("collaborative", "semantic", "integration_steam", "integration_plex", "new_season_for_you")
-    cache_ttl = _PERSONALIZED_TTL if is_personalized else _DISCOVER_TTL
+    cache_ttl = TTL["DISCOVER"]["LIST_TYPE"]["PERSONALIZED" if is_personalized else "DISCOVER"]
     uid = current_user.id if current_user else "anon"
     preferred_lang = await resolve_preferred_lang(request, current_user)
 

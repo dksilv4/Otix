@@ -13,11 +13,10 @@ import logging
 
 import httpx
 
+from otix.api.ttl import TTL
 from otix.infrastructure.redis import get_redis
 
 logger = logging.getLogger(__name__)
-
-_GEOIP_CACHE_TTL = 60 * 60 * 24  # 24 hours — IP→country is stable
 
 # Country (ISO 3166-1 alpha-2) → primary spoken language (ISO 639-1).
 # Used to pick the right-language logo for viewers with no explicit preference.
@@ -77,7 +76,7 @@ async def _geoip_lookup(ip: str) -> str:
             if resp.status_code == 200:
                 data = resp.json()
                 country = (data.get("country_code") or "us").lower()
-                await redis.set(cache_key, country, ex=_GEOIP_CACHE_TTL)
+                await redis.set(cache_key, country, ex=TTL["GEOIP_CACHE"])
                 return country
 
     except Exception:

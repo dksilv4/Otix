@@ -46,8 +46,9 @@ export async function fetchGames(filter?: GamesFilter): Promise<LocalGame[]> {
   if (!hasDesktopAPI()) return [];
   const api = getDesktopAPI()!;
   const games = await api.getLocalGames(filter);
-  cache.games = games;
-  return games;
+  const deduped = mergeDuplicateGames(games);
+  cache.games = deduped;
+  return deduped;
 }
 
 export async function fetchGameById(id: string): Promise<LocalGame | null> {

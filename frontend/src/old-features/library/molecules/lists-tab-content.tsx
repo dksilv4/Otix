@@ -1,12 +1,14 @@
-import { PlusIcon } from "lucide-react"
+import { PlusIcon, WifiOff } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useOffline } from "@/lib/offline"
 import { useUserLists, useCreateList, type UserListCreate } from "@/old-features/list/list-queries"
 import { ListComposer } from "@/old-features/list/organisms/list-composer"
 import { ListCard } from "@/old-features/list/molecules/list-card"
 import { useModal } from "@/lib/modals"
 
 export function ListsTabContent() {
-  const { data: lists, isLoading } = useUserLists()
+  const { data: lists, isLoading, isError } = useUserLists()
+  const offline = useOffline()
   const createList = useCreateList()
   const { openModal } = useModal()
 
@@ -25,6 +27,20 @@ export function ListsTabContent() {
             className="h-32 rounded-3xl bg-[var(--dk-surface-glass)] animate-pulse"
           />
         ))}
+      </div>
+    )
+  }
+
+  if (isError && offline && !lists) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--dk-surface-glass)] text-muted-foreground">
+          <WifiOff className="h-6 w-6" />
+        </div>
+        <p className="text-lg font-semibold text-foreground">You're offline</p>
+        <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+          No saved lists are available yet. Connect to the internet to load them.
+        </p>
       </div>
     )
   }

@@ -54,6 +54,9 @@ async function hydrateGame(
     const api = getDesktopAPI()
     if (api?.acceptSuggestion) {
       await api.acceptSuggestion(g.id, {
+        // hydrated carries the full catalog payload so the desktop persists
+        // otix_data (overview, genres, logoColorGuess, …) instead of re-fetching every session
+        hydrated: data,
         id: mediaId,
         title: data.title || g.title,
         slug: data.slug || '',

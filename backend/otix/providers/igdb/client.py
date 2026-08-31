@@ -21,18 +21,17 @@ import time
 import httpx
 from redis.asyncio import Redis
 
+from otix.api.ttl import TTL
 from otix.infrastructure.config import settings
 from otix.lib.types import JSONValue
 from otix.providers.base import BaseProvider
 
 TOKEN_KEY = "igdb:access_token"
-TOKEN_TTL = 50 * 24 * 3600  # 50 days — refresh well before Twitch's expiry
 OAUTH_URL = "https://id.twitch.tv/oauth2/token"
 
 # Search results are raw IGDB metadata that changes slowly; caching them means
 # repeat library re-matches hit Redis instead of burning the IGDB quota.
 SEARCH_CACHE_PREFIX = "igdb:search"
-SEARCH_CACHE_TTL = 7 * 24 * 3600
 
 # Full field set for fetching a complete game record (hydration + seeding).
 GAME_FIELDS = (
@@ -126,7 +125,7 @@ class IGDBProvider(BaseProvider):
         if not token:
             raise IGDBAuthError("No access_token in Twitch OAuth response")
 
-        await self._redis.set(TOKEN_KEY, token, ex=TOKEN_TTL)
+        await self._redis.set(TOKEN_KEY, token, ex=TTL["IGDB"]["TOKEN"])
         return token
 
     async def _invalidate_token(self) -> None:
@@ -271,7 +270,7 @@ class IGDBProvider(BaseProvider):
 
         if results is not None:
             try:
-                await self._redis.setex(cache_key, SEARCH_CACHE_TTL, json.dumps(results))
+                await self._redis.setex(cache_key, TTL["IGDB"]["SEARCH_CACHE"], json.dumps(results))
             except Exception:
                 pass
         return results or []

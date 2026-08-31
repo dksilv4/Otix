@@ -1,0 +1,46 @@
+{
+  "name": "SteamGridDB Source",
+  "icon": "image",
+  "version": "0.1.0",
+  "description": "Live catalog data source: resolves scanned games to SteamGridDB artwork (grid/poster, logo, hero backdrop) via the SteamGridDB v2 API (needs an API key), cached locally",
+  "author": "Otix",
+  "repository": "builtin",
+  "system": true,
+  "min_app_version": "0.3.0",
+  "permissions": [
+    "network:external",
+    "storage:local"
+  ],
+  "services": [
+    { "type": "catalog-source", "protocol": "steamgrid" }
+  ],
+  "config": {
+    "steamgriddb_api_key": {
+      "type": "secret",
+      "label": "SteamGridDB API Key",
+      "description": "SteamGridDB API key used to fetch grid/logo/hero artwork",
+      "section": "SteamGridDB",
+      "order": 0,
+      "sensitive": true
+    }
+  },
+  "db": {
+    "tables": {
+      "steamgrid_cache": {
+        "columns": {
+          "cache_key": "TEXT PRIMARY KEY",
+          "game_id": "INTEGER NOT NULL",
+          "title": "TEXT NOT NULL",
+          "poster_url": "TEXT",
+          "logo_url": "TEXT",
+          "backdrop_url": "TEXT",
+          "fetched_at": "INTEGER NOT NULL"
+        },
+        "indexes": [
+          "CREATE INDEX IF NOT EXISTS idx_steamgrid_cache_title ON steamgrid_cache (title)"
+        ]
+      }
+    }
+  },
+  "entry": { "main": "main.js" }
+}

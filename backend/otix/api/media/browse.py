@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_db, get_optional_user
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.schemas.interaction import UserInteractionState
@@ -23,9 +24,6 @@ from otix.services.personalization_service import PersonalizationService
 logger = structlog.get_logger()
 
 media_router = APIRouter()
-
-_SIMILAR_TTL = 60
-
 
 # ── Similar items ────────────────────────────────────────────────
 
@@ -75,7 +73,7 @@ async def get_similar_media(
         total=len(summaries),
     )
     # Cache without interactions (shared across all users)
-    await redis.set(cache_key, response.model_dump_json(), ex=_SIMILAR_TTL)
+    await redis.set(cache_key, response.model_dump_json(), ex=TTL["MEDIA"]["SIMILAR"])
 
     if current_user is not None and summaries:
         interaction_service = InteractionService(db)
@@ -91,9 +89,6 @@ async def get_similar_media(
 
 
 # ── Recommendations ──────────────────────────────────────────────
-
-
-_RECOMMENDATIONS_TTL = 60
 
 
 @media_router.get("/{media_type}/{media_id}/recommendations", response_model=MediaItemListResponse)
@@ -170,7 +165,7 @@ async def get_recommendations(
 
     # Cache fallback globally; personalized results are not cached
     if not personalized:
-        await redis.set(fallback_cache_key, response.model_dump_json(), ex=_RECOMMENDATIONS_TTL)
+        await redis.set(fallback_cache_key, response.model_dump_json(), ex=TTL["MEDIA"]["RECOMMENDATIONS"])
 
     if current_user is not None and summaries:
         interaction_service = InteractionService(db)

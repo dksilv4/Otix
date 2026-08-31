@@ -227,6 +227,18 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   saveResolvePathPatterns: (patterns: string[]) =>
     ipcRenderer.invoke('save:resolve-path-patterns', patterns),
 
+  // ── Auto Updater ──
+  updater: {
+    checkForUpdates: () => ipcRenderer.invoke('updater:check-for-updates'),
+    installUpdate: () => ipcRenderer.invoke('updater:install-update'),
+    getVersion: () => ipcRenderer.invoke('updater:get-version'),
+    onStatusChanged: (callback: (state: any) => void) => {
+      const handler = (_event: any, state: any) => callback(state);
+      ipcRenderer.on('updater:status-changed', handler);
+      return () => ipcRenderer.removeListener('updater:status-changed', handler);
+    },
+  },
+
   // ── Storage ──
   getDiskSpace: () => ipcRenderer.invoke('get-disk-space'),
 
@@ -246,9 +258,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   plugin: {
     list: () => ipcRenderer.invoke('plugin:list'),
     get: (id: string) => ipcRenderer.invoke('plugin:get', id),
-    install: (repoUrl: string, pluginPath?: string) => ipcRenderer.invoke('plugin:install', repoUrl, pluginPath),
     uninstall: (id: string) => ipcRenderer.invoke('plugin:uninstall', id),
-    update: (id: string) => ipcRenderer.invoke('plugin:update', id),
     enable: (id: string) => ipcRenderer.invoke('plugin:enable', id),
     disable: (id: string) => ipcRenderer.invoke('plugin:disable', id),
     reload: (id: string) => ipcRenderer.invoke('plugin:reload', id),
@@ -285,10 +295,6 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     callData: (pluginId: string, method: string, ...args: unknown[]) =>
       ipcRenderer.invoke('plugin:call-data', pluginId, method, ...args),
     getStatus: (pluginId: string) => ipcRenderer.invoke('plugin:get-status', pluginId),
-    fetchMarketplace: (registryUrl?: string) => ipcRenderer.invoke('plugin:fetch-marketplace', registryUrl),
-    getRepos: () => ipcRenderer.invoke('plugin:get-repos'),
-    addRepo: (url: string, label?: string) => ipcRenderer.invoke('plugin:add-repo', url, label),
-    removeRepo: (url: string) => ipcRenderer.invoke('plugin:remove-repo', url),
     openOAuthWindow: (url: string, redirectPattern: string, options?: { tokenExtraction?: { type: string; key?: string } }) => ipcRenderer.invoke('plugin:open-oauth-window', url, redirectPattern, options),
     getSlotData: (location: string, context?: Record<string, unknown>) => ipcRenderer.invoke('plugin:get-slot-data', location, context),
     getPageSlotData: (pageId: string) => ipcRenderer.invoke('plugin:get-page-slot-data', pageId),

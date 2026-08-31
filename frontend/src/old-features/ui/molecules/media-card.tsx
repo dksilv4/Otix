@@ -7,6 +7,7 @@ import { mediaQueries } from '@media'
 import { cn } from '@/lib/utils'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
+import { MediaCardBadges } from '@/features/plugins/components/media-card-badges'
 import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/utils/image-position'
 
 function formatSeasonBadgeText(releaseDate?: string | null): string {
@@ -37,11 +38,15 @@ interface DkMediaCardProps {
   isAdult?: boolean
   newSeasonReleased?: boolean
   newSeasonReleaseDate?: string | null
+  /** TMDB external id (movie/show) — passed to the plugin card-badge slot. */
+  tmdbId?: string | null
   zoomed?: boolean
   className?: string
   subtitle?: string | null
   subtitleColor?: string
   artistName?: string | null
+  /** Render as a plain card (no detail link / prefetch) — for items without a backend detail page. */
+  interactive?: boolean
 }
 
 const DkMediaCard = memo(function DkMediaCard({
@@ -60,11 +65,13 @@ const DkMediaCard = memo(function DkMediaCard({
   isAdult,
   newSeasonReleased,
   newSeasonReleaseDate,
+  tmdbId,
   zoomed = true,
   className,
   subtitle,
   subtitleColor,
   artistName,
+  interactive = true,
 }: DkMediaCardProps) {
   const year = releaseDate?.slice(0, 4)
   const params = useMemo(() => ({ mediaType, mediaId: id }), [mediaType, id])
@@ -86,10 +93,11 @@ const DkMediaCard = memo(function DkMediaCard({
     params,
   }), [params])
 
+  const Root = interactive ? Link : 'div'
+
   return (
-    <Link
-      {...(linkProps as any)}
-      onMouseEnter={handlePrefetch}
+    <Root
+      {...(interactive ? { ...(linkProps as any), onMouseEnter: handlePrefetch } : {})}
       className={cn(
         'group relative block overflow-hidden rounded-lg',
         mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]',
@@ -164,6 +172,9 @@ const DkMediaCard = memo(function DkMediaCard({
           </span>
         </div>
       )}
+
+      {/* Plugin card badges (e.g. "On Plex") */}
+      <MediaCardBadges mediaId={id} mediaType={mediaType} tmdbId={tmdbId} />
 
       {/* Rating */}
       {avgRating != null && avgRating > 0 && (
@@ -258,7 +269,7 @@ const DkMediaCard = memo(function DkMediaCard({
           <p className="text-[11px] text-center mt-0.5 text-white/50">{year}</p>
         )}
       </div>
-    </Link>
+    </Root>
   )
 })
 

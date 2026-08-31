@@ -9,6 +9,7 @@ import hashlib
 import redis.asyncio as aioredis
 import structlog
 
+from otix.api.ttl import TTL
 from otix.infrastructure.celery import app
 from otix.infrastructure.redis import get_redis
 from otix.lib.concurrency import run_async
@@ -21,7 +22,6 @@ from ._common import filter_missing_ids
 logger = structlog.get_logger()
 
 BACKFILL_RESULT_THRESHOLD = 20
-BACKFILL_REDIS_TTL = 300
 
 
 def _backfill_query_hash(query: str, media_type: str | None) -> str:
@@ -31,7 +31,7 @@ def _backfill_query_hash(query: str, media_type: str | None) -> str:
 
 async def _mark_backfill_provider_done(redis: aioredis.Redis, query_hash: str, provider: str, synced: int) -> None:
     key = f"backfill:{query_hash}:{provider}"
-    await redis.set(key, str(synced), ex=BACKFILL_REDIS_TTL)
+    await redis.set(key, str(synced), ex=TTL["SYNC"]["BACKFILL_REDIS"])
 
 
 @app.task(

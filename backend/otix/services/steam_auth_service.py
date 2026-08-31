@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.infrastructure.redis import get_redis
@@ -21,7 +22,6 @@ logger = structlog.get_logger()
 STEAM_OPENID_URL = "https://steamcommunity.com/openid/login"
 STEAM_API_BASE = "https://api.steampowered.com"
 STEAM_ID_RE = re.compile(r"/id/(\d{17})$")
-STATE_TTL = 600  # 10 minutes
 
 
 def _state_key(state: str) -> str:
@@ -151,7 +151,7 @@ async def build_steam_login_url(source: str | None = None) -> tuple[str, str]:
     """Build the Steam OpenID login URL and return (url, state)."""
     state = secrets.token_urlsafe(32)
     redis = await get_redis()
-    await redis.set(_state_key(state), "1", ex=STATE_TTL)
+    await redis.set(_state_key(state), "1", ex=TTL["AUTH"]["STEAM_STATE"])
 
     return_to = f"{settings.frontend_base_url}/auth/callback/steam"
     if source:
@@ -168,7 +168,7 @@ async def build_steam_link_url(source: str | None = None, user_id: str | None = 
     payload = {"v": "1"}
     if user_id:
         payload["user_id"] = user_id
-    await redis.set(_link_state_key(state), json.dumps(payload), ex=STATE_TTL)
+    await redis.set(_link_state_key(state), json.dumps(payload), ex=TTL["AUTH"]["STEAM_STATE"])
 
     return_to = f"{settings.frontend_base_url}/auth/callback/steam-connect"
     if source:

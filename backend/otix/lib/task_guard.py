@@ -38,6 +38,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from otix.api.ttl import TTL
+
 if TYPE_CHECKING:
     from redis.asyncio import Redis
 
@@ -64,7 +66,7 @@ class TaskGuard:
     # ── Dedup ─────────────────────────────────────────────────────────────
 
     DEDUP_PREFIX = "dedup:{provider}"
-    DEDUP_TTL = 86400  # 24 hours — long enough to cover a crawl cycle
+    DEDUP_TTL = TTL["TASK_GUARD"]["DEDUP"]  # 24 hours — long enough to cover a crawl cycle
 
     async def is_duplicate(self, operation: str, entity_id: str) -> bool:
         """Return True if *entity_id* was already processed for *operation*."""
@@ -79,7 +81,7 @@ class TaskGuard:
     # ── Poison pill ───────────────────────────────────────────────────────
 
     FAILURE_PREFIX = "dead:{provider}"
-    FAILURE_TTL = 604800  # 7 days
+    FAILURE_TTL = TTL["TASK_GUARD"]["FAILURE"]  # 7 days
     MAX_FAILURES = 3
 
     async def record_failure(self, operation: str, entity_id: str) -> int:

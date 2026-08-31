@@ -2,7 +2,7 @@
  * Downloads module — shared DB access for download tracking and config.
  *
  * Plugin-specific operations (SABnzbd, NZBPlanet, search/download orchestration)
- * have been moved to the plugin system under extensions/otix-plugins/plugins/.
+ * have been moved to the plugin system under extensions/plugins/.
  *
  * This file retains only shared database CRUD functions.
  */
@@ -143,6 +143,8 @@ export interface Download {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Who created this row — e.g. 'radarr' for catalog-synced movies, null for game/usenet. */
+  source: string | null;
 }
 
 function downloadRowToObj(row: DbRow): Download {
@@ -162,6 +164,7 @@ function downloadRowToObj(row: DbRow): Download {
     completedAt: row.completed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    source: row.source ?? null,
   };
 }
 
@@ -173,13 +176,14 @@ export async function createDownload(
   nzbSize: number,
   nzbUrl: string,
   sabnzbdNzoId: string | null,
+  source: string | null = null,
 ): Promise<Download> {
   const id = genId();
   db().prepare(`
     INSERT INTO downloads (id, user_id, media_item_id, media_item_title, sabnzbd_nzo_id, status,
-      nzb_name, nzb_size, nzb_url)
-    VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?)
-  `).run(id, userId, mediaItemId, mediaItemTitle, sabnzbdNzoId, nzbTitle, nzbSize, nzbUrl);
+      nzb_name, nzb_size, nzb_url, source)
+    VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?)
+  `).run(id, userId, mediaItemId, mediaItemTitle, sabnzbdNzoId, nzbTitle, nzbSize, nzbUrl, source);
 
   return (await getDownload(id))!;
 }

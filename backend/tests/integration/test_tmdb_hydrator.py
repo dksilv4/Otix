@@ -279,6 +279,52 @@ class TestHydrateImages:
         assert "https://image.tmdb.org/t/p/original/bd1.jpg" in sql
         assert sql.count("'tmdb'") == 3
 
+    async def test_stores_logos_with_language(
+        self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock
+    ):
+        raw = {
+            "images": {
+                "logos": [
+                    {"file_path": "/lg-en.png", "width": 4161, "height": 1206, "iso_639_1": "en"},
+                    {"file_path": "/lg-textless.png", "width": 300, "height": 100},
+                    {"file_path": "/lg-ja.png", "width": 2000, "height": 600, "iso_639_1": "ja"},
+                ],
+                "posters": [
+                    {"file_path": "/p1.jpg", "width": 2000, "height": 3000, "iso_639_1": "en"},
+                ],
+                "backdrops": [],
+            }
+        }
+
+        await hydrator.hydrate_images(media_item, raw)
+
+        sql = _asset_insert_sql(mock_db_session)
+        assert sql is not None
+        assert sql.count("'logo'") == 3
+        assert "https://image.tmdb.org/t/p/original/lg-en.png" in sql
+        assert "'en'" in sql
+        assert "'ja'" in sql
+        # Language-less logos stored too (textless), ranked by asset_selection.
+        assert "https://image.tmdb.org/t/p/original/lg-textless.png" in sql
+        assert sql.count("'official'") == 4  # 3 logos + 1 poster
+
+    async def test_limits_logos_to_8(
+        self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock
+    ):
+        raw = {
+            "images": {
+                "logos": [{"file_path": f"/lg{i}.png", "iso_639_1": "en"} for i in range(10)],
+                "posters": [],
+                "backdrops": [],
+            }
+        }
+
+        await hydrator.hydrate_images(media_item, raw)
+
+        sql = _asset_insert_sql(mock_db_session)
+        assert sql is not None
+        assert sql.count("'logo'") == 8
+
     async def test_limits_posters_to_10(
         self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock
     ):

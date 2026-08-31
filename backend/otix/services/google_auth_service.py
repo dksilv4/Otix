@@ -20,6 +20,7 @@ import structlog
 from fastapi import HTTPException, status
 from sqlalchemy import select
 
+from otix.api.ttl import TTL
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.infrastructure.redis import get_redis
@@ -32,7 +33,6 @@ logger = structlog.get_logger()
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
-STATE_TTL = 600  # 10 minutes
 
 # Google forbids requesting Drive and YouTube scopes together in a single
 # OAuth consent request, so each flow requests only the scopes it needs.
@@ -105,7 +105,7 @@ async def build_google_link_url(user_id: str | None = None) -> tuple[str, str]:
     payload = {"v": "1", "flow": "youtube", "verifier": verifier}
     if user_id:
         payload["user_id"] = user_id
-    await redis.set(_state_key(state), json.dumps(payload), ex=STATE_TTL)
+    await redis.set(_state_key(state), json.dumps(payload), ex=TTL["AUTH"]["GOOGLE_STATE"])
 
     url = await _build_authorization_url(
         scopes=YOUTUBE_SCOPES,
@@ -129,7 +129,7 @@ async def build_google_drive_link_url(user_id: str | None = None) -> tuple[str, 
     payload = {"v": "1", "flow": "drive", "verifier": verifier}
     if user_id:
         payload["user_id"] = user_id
-    await redis.set(_state_key(state), json.dumps(payload), ex=STATE_TTL)
+    await redis.set(_state_key(state), json.dumps(payload), ex=TTL["AUTH"]["GOOGLE_STATE"])
 
     url = await _build_authorization_url(
         scopes=DRIVE_SCOPES,
@@ -147,7 +147,7 @@ async def build_google_login_url() -> tuple[str, str]:
     verifier, challenge = _generate_pkce()
     redis = await get_redis()
     payload = {"v": "1", "flow": "login", "verifier": verifier}
-    await redis.set(_state_key(state), json.dumps(payload), ex=STATE_TTL)
+    await redis.set(_state_key(state), json.dumps(payload), ex=TTL["AUTH"]["GOOGLE_STATE"])
 
     callback = f"{settings.frontend_base_url}/auth/callback/google-login"
     url = await _build_authorization_url(

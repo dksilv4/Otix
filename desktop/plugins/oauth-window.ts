@@ -3,10 +3,25 @@
 // third-party providers (Battle.net, Epic, etc.) via URL params, web-request
 // interception, or localStorage extraction.
 
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, shell } from 'electron'
+
+export interface PinPollConfig {
+  url: string
+  headers?: Record<string, string>
+  tokenPath?: string[]
+  intervalMs?: number
+  timeoutMs?: number
+}
 
 export interface OAuthWindowOptions {
-  tokenExtraction?: { type: 'url-param' | 'web-request' | 'local-storage'; key?: string }
+  tokenExtraction?: {
+    type: 'url-param' | 'web-request' | 'local-storage' | 'pin'
+    key?: string
+    // For type 'pin' (Plex-style PIN OAuth): the token never lands in a
+    // redirect URL — the auth page opens in the user's default browser and the
+    // main process polls a server endpoint until it starts returning a token.
+    poll?: PinPollConfig
+  }
 }
 
 export interface OAuthWindowResult {
@@ -21,6 +36,15 @@ export function openOAuthWindow(
   redirectPattern: string,
   options?: OAuthWindowOptions,
 ): Promise<OAuthWindowResult> {
+  const extraction = options?.tokenExtraction || { type: 'url-param' }
+
+  // PIN strategy (Plex-style device auth): open the auth URL in the user's
+  // default browser and poll the PIN endpoint from the main process — no Otix
+  // window is created, since the token never lands in a redirect URL.
+  if (extraction.type === 'pin' && extraction.poll) {
+    return openPinOAuth(url, extraction.poll)
+  }
+
   return new Promise(async (resolve) => {
     const win = new BrowserWindow({
       width: 800,
@@ -34,7 +58,6 @@ export function openOAuthWindow(
     })
 
     let resolved = false
-    const extraction = options?.tokenExtraction || { type: 'url-param' }
 
     // ── Diagnostics ──
     win.webContents.on('console-message', (_event: any, level: number, message: string) => {
@@ -520,5 +543,51 @@ export function openOAuthWindow(
     win.loadURL(url).catch((err: Error) => {
       console.log(`[OAuth:${win.id}] loadURL failed: ${err.message}`)
     })
+  })
+}
+
+// Plex-style device auth: open the auth page in the user's default browser and
+// poll the PIN endpoint from the main process until it returns a token.
+function openPinOAuth(url: string, poll: PinPollConfig): Promise<OAuthWindowResult> {
+  return new Promise((resolve) => {
+    const { url: pollUrl, headers, tokenPath = ['authToken'], intervalMs = 2500, timeoutMs = 300000 } = poll
+    let resolved = false
+
+    console.log(`[OAuth] PIN flow: opening system browser: ${url}`)
+    shell.openExternal(url).catch((err: Error) => {
+      console.log(`[OAuth] Failed to open system browser: ${err.message}`)
+      if (!resolved) {
+        resolved = true
+        resolve({ success: false, error: `Failed to open browser: ${err.message}` })
+      }
+    })
+
+    const pollStartedAt = Date.now()
+    const pollTimer = setInterval(async () => {
+      if (resolved) {
+        clearInterval(pollTimer)
+        return
+      }
+      if (Date.now() - pollStartedAt > timeoutMs) {
+        clearInterval(pollTimer)
+        if (!resolved) {
+          resolved = true
+          resolve({ success: false, error: 'Login timed out' })
+        }
+        return
+      }
+      try {
+        const res = await fetch(pollUrl, { headers, signal: AbortSignal.timeout(10000) })
+        if (!res.ok) return // transient / not yet authorized — keep polling
+        const data = await res.json()
+        let token: unknown = data
+        for (const p of tokenPath) token = (token as Record<string, unknown>)?.[p]
+        if (typeof token === 'string' && token.length > 0) {
+          clearInterval(pollTimer)
+          resolved = true
+          resolve({ success: true, code: token, redirectUrl: pollUrl })
+        }
+      } catch { /* transient network error — keep polling */ }
+    }, intervalMs)
   })
 }

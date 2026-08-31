@@ -72,6 +72,7 @@ export function useLibraryTab(tab: LibraryTab, extraParams?: Record<string, stri
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: 1000 * 60 * 2,
+    meta: { suppressToast: true },
   })
 }
 
@@ -306,6 +307,7 @@ export function useSteamWishlist() {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: 1000 * 60 * 2,
+    meta: { suppressToast: true },
   })
 }
 

@@ -136,7 +136,7 @@ export function createWorkerBridge(deps: BridgeDependencies) {
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new PluginTimeoutError(pluginId, 'startup'))
-      }, (manifest as any).timeout || 30000)
+      }, manifest.timeout || 30000)
 
       const onReady = (msg: WorkerToMainMessage) => {
         if (msg.type === 'ready') {
@@ -155,7 +155,7 @@ export function createWorkerBridge(deps: BridgeDependencies) {
       const timeout = setTimeout(() => {
         worker.off('message', handler)
         reject(new PluginTimeoutError(pluginId, method))
-      }, 60000)
+      }, manifest.timeout || 60000)
 
       const handler = (msg: WorkerToMainMessage) => {
         // The worker responds with { type: 'rpc-result', id, result }
@@ -314,6 +314,7 @@ async function executeMethod(
       return dlCreateDownload(
         d.userId ?? '', d.mediaItemId ?? null, d.mediaItemTitle ?? null,
         d.nzbTitle ?? '', d.nzbSize ?? 0, d.nzbUrl ?? '', d.sabnzbdNzoId ?? null,
+        d.source ?? null,
       )
     }
     case 'downloads.updateStatus':
@@ -353,12 +354,30 @@ async function executeMethod(
       return undefined
     }
     case 'fetch': {
-      const response = await fetch(args[0] as string, args[1] as RequestInit)
-      return {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        body: await response.text(),
+      const [url, init] = args as [string, RequestInit | undefined]
+      const withTimeout: RequestInit = {
+        ...init,
+        signal: init?.signal ?? AbortSignal.timeout(60000),
+      }
+      try {
+        const response = await fetch(url, withTimeout)
+        return {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          body: await response.text(),
+        }
+      } catch (error: any) {
+        if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+          throw new Error('request timed out after 60s')
+        }
+        // undici hides the real reason behind "fetch failed"; bake the cause in
+        // so plugins can surface it (the cause is dropped across the RPC).
+        const cause = error?.cause ?? error
+        const detail = cause?.code
+          ? `${cause.code}${cause?.message && cause.message !== cause.code ? `: ${cause.message}` : ''}`
+          : cause?.message || error?.message || 'fetch failed'
+        throw new Error(detail)
       }
     }
     case 'api.get':
