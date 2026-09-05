@@ -302,10 +302,20 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   replaces). **Increment 1 DONE:** registry model (`plugins/models.py`,
   migration 0001) + registry service (`services.py`: register/enable/disable/
   unregister/scan — grant gating on enable: declared ⊆ granted) + admin +
-  `management/commands/plugins_{scan,enable,disable,uninstall,list}` + the 5
-  commands' DB-only lifecycle. 355 tests green. Settings: `PLUGINS_ROOT` env
-  (default `<repo>/plugin-root`, gitignored). **Next increments:** host process
-  skeleton + control API, PluginAPI DRF proxy + host client + capabilities,
+  `management/commands/plugins_{scan,enable,disable,uninstall,list}` (DB-only
+  lifecycle). **Increment 2 DONE (host):** `plugins/host.py` `PluginHost` — the
+  separate process reads DB rows, loads each enabled plugin's entry module into
+  a `PluginRegistry` (running enable/disable hooks), writes load failures back
+  to the row's `error`, and `sync()` reconciles registry↔DB (unloads disabled,
+  reloads version bumps) — plus `plugins/hostserver.py` `HostControlServer`
+  (internal control API on 127.0.0.1 + `PLUGIN_HOST_SECRET` Bearer: `GET
+  /health`, `GET /plugins`, `POST /plugins/{id}/reload`, `/plugins/reload-all`,
+  `/plugins/{id}/call`) and `manage.py plugin_host` with a DB re-sync loop so
+  enable/disable converge without restart. `PluginRegistry.unregister` added.
+  Live-smoke verified (scan → enable → boot → control calls). **Increment 1+2
+  tests: 46 plugins-green** (suite 366). Settings: `PLUGINS_ROOT` env (default
+  `<repo>/plugin-root`, gitignored) + `PLUGIN_HOST_BIND/PORT/SECRET`. **Next
+  increments:** PluginAPI DRF proxy + host client + capabilities,
   grant-gated framework services, reference Plex plugin, supervision/docs.
   Conventions + status in `plugins/README.md`.
 - **Parity harness** to diff DRF output against the frozen FastAPI OpenAPI

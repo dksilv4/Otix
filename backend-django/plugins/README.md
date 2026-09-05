@@ -24,6 +24,16 @@ Django-only state layer (API owns rows; the separate host process runs code):
 - `management/commands/plugins_*` — `occ app:*` analogs: scan / enable /
                      disable / uninstall / list (DB-only, never load code)
 
+Host process (separate from the API; runs plugin *code*):
+- `host.py`        — `PluginHost`: reads DB rows, loads enabled entry modules
+                     into a registry, runs lifecycle hooks, writes errors back,
+                     reconciles registry↔DB on `sync()`
+- `hostserver.py`  — internal control API on 127.0.0.1 + shared secret:
+                     `/health`, `/plugins`, `/plugins/<id>/reload`,
+                     `/plugins/reload-all`, `/plugins/<id>/call`
+- `management/commands/plugin_host` — run the host service (`--port`,
+                     `--sync-interval`; enable/disable converge without restart)
+
 ## Writing a plugin
 
 ```
@@ -40,6 +50,9 @@ my-plugin/           # folder name MUST equal manifest `name` (Nextcloud rule)
   gating (declared ⊆ granted); admin edits operator fields only. State layer has
   its own suite (`plugins/tests_state.py`); core (manifest → discovery → load →
   dispatch) covered in `plugins/tests.py`.
-- **Increments 2–6 (next):** host process skeleton + control API, PluginAPI DRF
-  proxy + host client + capabilities, grant-gated framework services, reference
-  Plex plugin end-to-end, supervision/docs + Redis events.
+- **Increment 2 (done):** host process. `manage.py plugin_host` boots
+  `PluginHost`, loads enabled plugins, serves the internal control API. Host
+  suite in `plugins/tests_host.py`.
+- **Increments 3–6 (next):** PluginAPI DRF proxy + host client + capabilities,
+  grant-gated framework services, reference Plex plugin end-to-end,
+  supervision/docs + Redis events.

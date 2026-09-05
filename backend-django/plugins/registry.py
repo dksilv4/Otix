@@ -62,6 +62,10 @@ class PluginRegistry:
         """Register an already-instantiated plugin (explicit installs)."""
         self._plugins[plugin.manifest.name] = plugin
 
+    def unregister(self, plugin_id: str) -> Plugin | None:
+        """Drop a plugin (host unload path); returns the removed instance."""
+        return self._plugins.pop(plugin_id, None)
+
     def get(self, plugin_id: str) -> Plugin | None:
         return self._plugins.get(plugin_id)
 

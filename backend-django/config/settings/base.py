@@ -247,3 +247,12 @@ CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0
 # process loads the code. Only matters to the API for scan/enable metadata.
 PLUGINS_ROOT = os.environ.get("PLUGINS_ROOT", str(BASE_DIR / "plugin-root"))
 
+# Internal control API the plugin host serves on localhost; the Django API talks
+# to the host (never imports plugin code) using this shared secret. Bind stays
+# loopback-only.
+PLUGIN_HOST_BIND = os.environ.get("PLUGIN_HOST_BIND", "127.0.0.1")
+PLUGIN_HOST_PORT = int(os.environ.get("PLUGIN_HOST_PORT", "8347"))
+PLUGIN_HOST_SECRET = os.environ.get(
+    "PLUGIN_HOST_SECRET", "dev-plugin-host-secret-change-me"
+)
+
