@@ -80,6 +80,13 @@ TMDB_RAT = os.environ.get("TMDB_RAT", "")  # v4 read-access bearer token
 TMDB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("TMDB_REQUEST_TIMEOUT_SECONDS", "30.0"))
 TMDB_GLOBAL_RPS_LIMIT = float(os.environ.get("TMDB_GLOBAL_RPS_LIMIT", "40.0"))
 
+# MusicBrainz ws/2 (keyless — auth is a descriptive User-Agent). Etiquette is
+# ~1 req/s; the provider treats HTTP 503 as a rate limit, not a 5xx failure.
+MUSICBRAINZ_REQUEST_TIMEOUT_SECONDS = float(
+    os.environ.get("MUSICBRAINZ_REQUEST_TIMEOUT_SECONDS", "15.0")
+)
+MUSICBRAINZ_GLOBAL_RPS_LIMIT = float(os.environ.get("MUSICBRAINZ_GLOBAL_RPS_LIMIT", "1.0"))
+
 # Dev-only fallback; production settings require an explicit env SECRET_KEY.
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
 

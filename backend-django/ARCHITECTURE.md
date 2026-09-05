@@ -914,6 +914,40 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   timeout. No model/DB surface → no migration. **Next deferred piece:** the
   remaining concrete keyed clients (IGDB/SteamGrid/MusicBrainz), then the TMDB
   transformer/hydrator + catalog-seed pipeline those clients feed.
+- **MusicBrainz ws/2 async client (increment 35, 2026-09-05): parity 263/263
+  unchanged, full suite 804 (12 new).** ``core/providers/musicbrainz.py`` ports
+  ``otix.providers.musicbrainz.client`` — a **keyless** provider (auth is a
+  descriptive ``User-Agent``), so it exercises the client shape without a token
+  setting. Key divergence exercised: MusicBrainz rate-limits with HTTP 503, not
+  429, so ``MusicBrainzProvider._rate_limit_statuses = (429, 503)`` — the
+  increment-33 ``BaseProvider`` checks those statuses *before* its 5xx failure
+  branch, so a 503 drains the token bucket and raises ``RateLimitError`` instead
+  of opening the circuit. Module ``get_http_client()`` binds a process-shared
+  ``httpx.AsyncClient`` to ``BASE_URL`` (``https://musicbrainz.org/ws/2``) with
+  the ``User-Agent`` + ``Accept`` headers, ``follow_redirects=True``, and the
+  ``MUSICBRAINZ_REQUEST_TIMEOUT_SECONDS`` timeout (same loop-change discard as
+  TMDB). ``MusicBrainzProvider`` names itself "musicbrainz", throttles at
+  ``rate == burst == MUSICBRAINZ_GLOBAL_RPS_LIMIT`` (default 1/s — MBZ
+  etiquette), and adds a thin ``_get(path, params)`` that auto-merges
+  ``fmt=json`` before calling the throttled ``_request``. Endpoints: releases
+  (``get_release``/``browse_releases_by_artist``/``search_release``), artists
+  (``get_artist``/``search_artist``), recordings
+  (``get_recording``/``browse_recordings_by_release``), and ``get_cover_art``
+  which fetches the **absolute** coverartarchive.org URL and returns ``None``
+  on any non-2xx/transport error ("no art" ≠ error). One port adjustment: the
+  legacy ``search_artist`` manually ``quote()``d the query, double-encoding it
+  once httpx also encodes params — dropped here so it is encoded exactly once.
+  ``config/settings/base.py`` declares ``MUSICBRAINZ_REQUEST_TIMEOUT_SECONDS``
+  (15s) + ``MUSICBRAINZ_GLOBAL_RPS_LIMIT`` (1/s). Tests
+  (``core/tests/test_musicbrainz_provider.py``, 12) reuse the in-memory Redis
+  double + MockTransport and assert the issued request per endpoint (path
+  merged onto ``…/ws/2``, ``fmt=json``, inc, list contracts), **the headline
+  503-rate-limit case** (RateLimitError with retry_after=5, breaker stays
+  CLOSED, cooldown TTL set), a real-429 path, cover-art absolute URL + 404→None,
+  and the client factory base_url/User-Agent/redirects/timeout. No model/DB
+  surface → no migration. **Next deferred piece:** the remaining concrete keyed
+  clients (IGDB/SteamGridDB), then the TMDB/MusicBrainz transformer/hydrator +
+  catalog-seed pipelines those clients feed.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
