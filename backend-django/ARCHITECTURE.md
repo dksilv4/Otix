@@ -648,9 +648,11 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   request ``ExternalID`` rows + poster ``MediaAsset``; ``hydrate_free_game``
   (exact-only) seeds free-game refs. Provider = ``apps/media/services/igdb.py``
   (urllib ``_request`` leaf — the test seam; Twitch client-credentials token,
-  in-process 60-day cache, 401-refetch-once). SteamGrid artwork, the Redis
-  rate-limiter, trigram, Celery hydration, and full ``GAME_FIELDS`` fetches stay
-  DEFERRED (matcher sends the lean ``SEARCH_FIELDS`` shape). **Route A:**
+  in-process 60-day cache, 401-refetch-once). SteamGrid artwork, trigram,
+  Celery hydration, and full ``GAME_FIELDS`` fetches stay DEFERRED (matcher
+  sends the lean ``SEARCH_FIELDS`` shape; the token-bucket ``core/ratelimit``
+  they'd throttle through is ported as of increment 32, but the async provider
+  clients that instantiate it are not). **Route A:**
   `POST /integrations/steam/resolve-unmatched`
   (`apps/integrations/services/steam_igdb.py` ``resolve_unmatched_steam_games``
   + ``repair_bare_steam_links`` — relinks overview/game-bare stubs to canonical
@@ -827,6 +829,28 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   ``backend/`` is retired from dev compose but not deleted; ``docker-compose.prod.yml``
   still targets it and is NOT cut over (its 4-worker/15-queue/embeddings topology
   maps to deferred task-#6 machinery — do that with the production wave).
+- **Redis token-bucket rate limiter (increment 32, 2026-09-05): parity 263/263
+  unchanged, full suite 758 (11 new).** First of the task-#6 async provider-
+  client prerequisites: `core/ratelimit.py` `RateLimiter` ports the legacy
+  ``otix.lib.rate_limiter`` verbatim for the async clients that throttle through
+  it. Each bucket is an independent Redis key (`{key_prefix}:{bucket}`); refill
+  + consume run in ONE atomic Lua script (`TOKEN_BUCKET_SCRIPT`), so concurrent
+  workers can't oversubscribe a shared quota. `acquire(bucket, tokens=1,
+  rate=None, burst=None) -> (allowed, wait_seconds)` mirrors legacy semantics
+  (`rate`/`burst` per-call override the instance defaults), idle keys
+  auto-expire at `max(ceil(burst/rate) + 300, 300)`, plus `wait_and_acquire`
+  (block-until-refill loop with timeout) and `reset` (delete that bucket). The
+  async Redis client comes from the `core.redis.get_async_client` seam (a
+  caller holding a client may pass it explicitly) — same seam convention as
+  `core.sse`/`core.progress`, so tests never touch a broker: an in-memory
+  double transcribes the Lua math over a dict store and asserts the observable
+  allow/deny-up-to-burst, refill-over-elapsed-time, per-bucket isolation,
+  key-prefix namespacing, reset, wait-until-available, and timeout contract
+  (11 tests, `core/tests/test_ratelimit.py`). No model/DB surface → no
+  migration. The async provider-client framework (TMDB/IGDB/Steam/
+  MusicBrainz ingest clients + SteamGrid artwork + full ``GAME_FIELDS``
+  hydration) that instantiates ``RateLimiter(..., key_prefix=f"ratelimit:
+  {name}")`` is the next deferred piece.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
