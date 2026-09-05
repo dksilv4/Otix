@@ -65,3 +65,27 @@ class Plugin(TimestampedModel):
     def invalid_grants(self) -> list[str]:
         """Granted tokens the framework does not understand."""
         return sorted(unsupported_grants(self.granted_set()))
+
+
+class PluginStore(TimestampedModel):
+    """Per-plugin JSON key/value storage (the ``storage:local`` service).
+
+    Lets a plugin persist small JSON blobs (tokens, cursor state) without a DB
+    handle — the store is keyed by plugin and only reachable through
+    ``PluginServices.store`` in the host, which checks the ``storage:local``
+    grant before every action.
+    """
+
+    plugin = models.ForeignKey(
+        Plugin, on_delete=models.CASCADE, related_name="store"
+    )
+    key = models.CharField(max_length=200)
+    value = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=("plugin", "key"), name="uniq_plugin_store_key")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.plugin.name}:{self.key}"

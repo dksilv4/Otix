@@ -94,6 +94,9 @@ class Plugin:
             self.manifest = manifest
         if not getattr(self, "manifest", None):
             raise PluginError(f"{type(self).__name__} requires a 'manifest'")
+        # The host injects grant-gated framework services before each dispatch;
+        # None keeps the base importable by plugin code with no Django context.
+        self.services = None
 
     # ── Lifecycle hooks (called by the registry/host) ────────────────
     def install(self) -> None:

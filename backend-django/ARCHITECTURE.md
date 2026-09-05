@@ -324,12 +324,26 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   announcement: permission vocabulary + grantable wildcards + config field
   types + stages + host status), and `GET /plugins/<id>/describe` merged from
   the host. Auth = DRF default (JWT/Token, IsAuthenticated); these routes are
-  additive (not in the frozen 263) so parity is unchanged. **Increments 1–3
-  tests: 60 plugins-green** (suite 380). Settings: `PLUGINS_ROOT` env (default
-  `<repo>/plugin-root`, gitignored) + `PLUGIN_HOST_BIND/PORT/SECRET`. **Next
-  increments:** grant-gated framework services (table/network scope
-  enforcement), reference Plex plugin, supervision/docs + Redis events.
-  Conventions + status in `plugins/README.md`.
+  additive (not in the frozen 263) so parity is unchanged. **Increment 4 DONE
+  (grant-gated framework services):** a running plugin gets a typed surface from
+  the host instead of raw DB/network. `plugins/framework.py` defines
+  `HttpService` (outbound http(s), `network:external`/`network:any`,
+  5 MB body cap), `StoreService` (per-plugin JSON key/value backed by a new
+  `PluginStore` model, `storage:local`, migration 0002) and `PluginServices`
+  (config/instances + the two services). `build_services(row)` builds fresh
+  services from the row's current grants/config, injected in the host before
+  `enable()` and before every `call` dispatch, so config/grant edits apply
+  without a reload. Every service action is checked against the row's
+  `permissions_granted` via `missing_grants` and an ungranted call raises
+  `PluginPermissionDenied` — a plugin that *declares* `network:external` still
+  cannot write its store until the operator *grants* `storage:local`. The
+  `plugins/base.py` `Plugin` carries `self.services = None` so plugin code
+  imports cleanly outside the host. **Increments 1–4
+  tests: 71 plugins-green** (suite 391). Settings:
+  `PLUGINS_ROOT` env (default `<repo>/plugin-root`, gitignored) +
+  `PLUGIN_HOST_BIND/PORT/SECRET`. **Next increments:** reference Plex plugin
+  end-to-end, supervision/docs + Redis events. Conventions + status in
+  `plugins/README.md`.
 - **Parity harness** to diff DRF output against the frozen FastAPI OpenAPI
   contract (~263 routes) while porting feature-area by feature-area.
 

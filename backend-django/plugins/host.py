@@ -23,6 +23,7 @@ from django.conf import settings
 
 from plugins.base import Plugin as LoadedPlugin
 from plugins.base import PluginError
+from plugins.framework import build_services
 from plugins.manifest import ManifestError, PluginManifest, load_manifest
 from plugins.models import Plugin
 from plugins.registry import PluginRegistry, load_plugin
@@ -111,6 +112,7 @@ class PluginHost:
             self._unload(row.name)
         try:
             plugin = load_plugin(manifest, plugin_folder(row.name))
+            plugin.services = build_services(row)
             plugin.enable()
         except Exception as exc:  # noqa: BLE001 - an enable() bug must not kill the host
             message = str(exc) if isinstance(exc, PluginError) else f"{type(exc).__name__}: {exc}"
@@ -178,6 +180,7 @@ class PluginHost:
             return {"ok": False, "error": "plugin not loaded (see error on the row)"}
         if row.missing_grants():
             return {"ok": False, "error": "missing grants: " + ", ".join(row.missing_grants())}
+        plugin.services = build_services(row)  # fresh config/grants each dispatch
         try:
             result = plugin.call(method, payload)
         except PluginError as exc:
