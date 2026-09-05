@@ -15,3 +15,12 @@ class PlexLinkCallbackSerializer(serializers.Serializer):
 
     state = serializers.CharField(allow_blank=False)
     pin_id = serializers.CharField(allow_blank=True, required=False, default="")
+
+
+class SteamCallbackSerializer(serializers.Serializer):
+    """Steam OpenID callback: the query params + the verbatim raw query string."""
+
+    params = serializers.DictField(required=False, default=dict)
+    raw_query = serializers.CharField(
+        allow_blank=True, allow_null=True, required=False, default=None
+    )

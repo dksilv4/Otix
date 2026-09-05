@@ -33,6 +33,11 @@ from apps.accounts.views.oauth import (
     PlexLinkInitiateView,
     PlexLoginCallbackView,
     PlexLoginInitiateView,
+    SteamDisconnectView,
+    SteamLinkCallbackView,
+    SteamLinkInitiateView,
+    SteamLoginCallbackView,
+    SteamLoginInitiateView,
 )
 from apps.accounts.views.user_continue import ContinueWatchingView
 from apps.accounts.views.user_profile import UserDetailView, UserSearchView
@@ -63,6 +68,11 @@ __all__ = [
     "ResetPasswordView",
     "SessionDetailView",
     "SessionsView",
+    "SteamDisconnectView",
+    "SteamLinkCallbackView",
+    "SteamLinkInitiateView",
+    "SteamLoginCallbackView",
+    "SteamLoginInitiateView",
     "TwoFactorDisableView",
     "TwoFactorEnableView",
     "TwoFactorLoginVerifyView",

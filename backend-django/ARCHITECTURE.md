@@ -308,8 +308,28 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   google_*/drive tokens written — then boots a real session. Errors byte-for-
   byte: 503 unconfigured, 400 expired state / bad exchange, 502
   invalid-response / profile / network, 403 deactivated, 500 catch-all.
-  Parity 220→222 (auth 15→13). **Remaining OAuth:** steam/tmdb link + login
-  families, `GET /auth/oauth`, `GET /auth/me/integrations`.
+  Parity 220→222 (auth 15→13). **Remaining OAuth:** tmdb link + login family,
+  `GET /auth/oauth`, `GET /auth/me/integrations`.
+- **Steam OpenID link + login families (increment 10, 2026-09-05)** — Steam's
+  OpenID 2.0 `checkid_setup`/`check_authentication` dance, no client secret.
+  `_request` gained a raw-body `data` param so the OpenID replay preserves the
+  redirect's original key casing/order byte-for-byte (`raw_query` replayed with
+  `openid.mode` forced to `check_authentication` and our `state` dropped). Link
+  family (authed initiate `POST /auth/oauth/steam` → `{auth_url, state}`,
+  `source` forwarded into `openid.return_to`; AllowAny `…/callback` resolves
+  the owning user authed-first then from state, 401 when neither; `DELETE
+  …/disconnect`). Login family (unauthed `POST /auth/steam/initiate` + `…/
+  callback`) find-or-creates by `steam_id`: username = sanitized persona →
+  `steam_user_<id>`/`steam_<id[:8]>` fallback, email `steam_<id>@user.otix`,
+  `is_verified=True`, avatar = `avatarfull`; GetPlayerSummaries only fires when
+  `STEAM_API_KEY` is set (unkeyed → fallback identity). Errors byte-for-byte:
+  400 expired/wrong-flow state, 400 invalid mode / Steam-rejected / invalid
+  claimed_id, 401 auth-required, 409 both directions of already-linked, 502
+  unable-to-verify network, 403 deactivated. Steam views carry NO broad 500
+  catch-all — legacy steam callbacks `raise` on everything else. Reuses the
+  existing `steam_id` column (0001) — no migration. Parity 222→227 (auth 13→8).
+  **Remaining auth (8):** tmdb link+login family, `GET /auth/oauth`,
+  `GET /auth/me/integrations`.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

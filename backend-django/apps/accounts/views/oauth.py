@@ -9,8 +9,8 @@ Status/shape parity with the frozen FastAPI contract. Routes mount under
 - disconnect (authed) -> 200 ``{message}``, 400 when never linked;
 - ``google/token`` (authed) -> 200 ``{access_token}``, 404 when unlinked/expired;
 - ``plex/initiate`` + ``plex/callback`` (both unauthed) -> Plex login family;
-- ``google/initiate`` + ``google/callback`` (both unauthed) -> Google login family
-  (find-or-create by google_id + session, like the plex login flow).
+- ``google/initiate`` + ``google/callback`` (both unauthed) -> Google login family;
+- ``steam`` link + login families (OpenID, both callbacks unauthed) -> Steam.
 """
 
 from rest_framework import permissions, status
@@ -20,6 +20,7 @@ from rest_framework.response import Response
 from apps.accounts.serializers.oauth import (
     OAuthCallbackSerializer,
     PlexLinkCallbackSerializer,
+    SteamCallbackSerializer,
 )
 from apps.accounts.services import oauth as oauth_service
 from apps.accounts.services import sessions as session_service
@@ -285,6 +286,98 @@ class GoogleLoginCallbackView(GenericAPIView):
                 {"detail": "Failed to sign in with Google. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+        response = Response(
+            {"access_token": access, "token_type": "bearer"}, status=status.HTTP_200_OK
+        )
+        set_refresh_cookie(response, refresh)
+        return response
+
+
+class SteamLinkInitiateView(GenericAPIView):
+    """POST /oauth/steam — start the Steam OpenID link flow."""
+
+    def post(self, request, *args, **kwargs):
+        if request.user.steam_id:
+            return Response(
+                {"detail": "Steam account already linked"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        source = request.data.get("source") if request.data else None
+        try:
+            auth_url, state = oauth_service.build_steam_link_url(
+                source, user_id=request.user.pk
+            )
+        except OAuthFlowError as exc:
+            return Response({"detail": exc.detail}, status=exc.status_code)
+        return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
+
+
+class SteamLinkCallbackView(GenericAPIView):
+    """POST /oauth/steam/callback — replay OpenID and bind the Steam id."""
+
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = SteamCallbackSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        params = serializer.validated_data["params"]
+        raw_query = serializer.validated_data["raw_query"]
+        try:
+            steam_id, state_user_id = oauth_service.validate_steam_link_callback(
+                params, raw_query
+            )
+            oauth_service.link_steam_to_user(request.user, steam_id, state_user_id)
+        except OAuthFlowError as exc:
+            return Response({"detail": exc.detail}, status=exc.status_code)
+        return Response(
+            {"message": "Steam account linked successfully"}, status=status.HTTP_200_OK
+        )
+
+
+class SteamDisconnectView(GenericAPIView):
+    """DELETE /oauth/steam/disconnect — unlink steam from the user."""
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            oauth_service.unlink_steam_from_user(request.user)
+        except OAuthFlowError as exc:
+            return Response({"detail": exc.detail}, status=exc.status_code)
+        return Response(
+            {"message": "Steam account unlinked successfully"}, status=status.HTTP_200_OK
+        )
+
+
+class SteamLoginInitiateView(GenericAPIView):
+    """POST /steam/initiate — start the Steam OpenID login flow (no auth)."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        source = request.data.get("source") if request.data else None
+        try:
+            auth_url, state = oauth_service.build_steam_login_url(source)
+        except OAuthFlowError as exc:
+            return Response({"detail": exc.detail}, status=exc.status_code)
+        return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
+
+
+class SteamLoginCallbackView(GenericAPIView):
+    """POST /steam/callback — resolve/create the Steam user and start a session."""
+
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = SteamCallbackSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        params = serializer.validated_data["params"]
+        raw_query = serializer.validated_data["raw_query"]
+        try:
+            user = oauth_service.authenticate_steam(params, raw_query)
+            access, refresh = session_service.begin_session(user, request)
+        except OAuthFlowError as exc:
+            return Response({"detail": exc.detail}, status=exc.status_code)
         response = Response(
             {"access_token": access, "token_type": "bearer"}, status=status.HTTP_200_OK
         )

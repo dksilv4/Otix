@@ -107,15 +107,23 @@ def _request(
     *,
     method: str = "GET",
     form: dict | None = None,
+    data: str | bytes | None = None,
     headers: dict | None = None,
     timeout: float = 15.0,
 ) -> tuple[int, str]:
-    """Return ``(status, body_text)``; raises ``OAuthProviderError`` on network failure."""
+    """Return ``(status, body_text)``; raises ``OAuthProviderError`` on network failure.
+
+    ``form`` url-encodes a dict (form content-type added); ``data`` posts a
+    pre-encoded body verbatim (used by Steam's OpenID replay, which must
+    preserve the original key casing byte-for-byte).
+    """
     payload = None
     if form is not None:
         payload = urllib.parse.urlencode(form).encode("ascii")
         headers = dict(headers or {})
         headers.setdefault("Content-Type", "application/x-www-form-urlencoded")
+    elif data is not None:
+        payload = data.encode("ascii") if isinstance(data, str) else data
     request = urllib.request.Request(url, data=payload, method=method, headers=headers or {})
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
@@ -728,3 +736,269 @@ def authenticate_plex(state: str, pin_id: str | None = None) -> User:
         thumb=profile.get("thumb"),
         auth_token=token,
     )
+
+
+# ── Steam (OpenID 2.0; link + login) ─────────────────────────────────────
+
+STEAM_OPENID_URL = "https://steamcommunity.com/openid/login"
+STEAM_API_BASE = "https://api.steampowered.com"
+STEAM_ID_RE = re.compile(r"/id/(\d{17})$")
+STEAM_STATE_TTL_SECONDS = 600  # legacy TTL["AUTH"]["STEAM_STATE"]
+
+
+def _steam_api_key() -> str:
+    return (getattr(settings, "STEAM_API_KEY", "") or "").strip()
+
+
+def _steam_return_to_with_state(return_to: str, state: str) -> str:
+    parsed = urllib.parse.urlparse(return_to)
+    query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    query.append(("state", state))
+    return urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(query)))
+
+
+def _steam_source_url(return_to: str, source: str | None) -> str:
+    if not source:
+        return return_to
+    separator = "&" if "?" in return_to else "?"
+    return f"{return_to}{separator}source={source}"
+
+
+def _steam_build_url(return_to: str, state: str) -> str:
+    return_to = _steam_return_to_with_state(return_to, state)
+    params = {
+        "openid.ns": "http://specs.openid.net/auth/2.0",
+        "openid.mode": "checkid_setup",
+        "openid.return_to": return_to,
+        "openid.realm": _frontend_base(),
+        "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+        "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
+    }
+    return f"{STEAM_OPENID_URL}?{urllib.parse.urlencode(params)}"
+
+
+def _store_steam_state(state: str, *, link: bool, user_id: int | None = None) -> None:
+    payload: dict[str, Any] = {"v": "1", "flow": "link" if link else "login"}
+    if link and user_id is not None:
+        payload["user_id"] = user_id
+    OAuthState.objects.create(key=state, payload=payload)
+
+
+def _consume_steam_state(state: str, *, link: bool) -> dict | None:
+    """Read+delete a steam state; ``None`` when absent, expired, or wrong flow."""
+    try:
+        row = OAuthState.objects.get(key=state)
+    except OAuthState.DoesNotExist:
+        return None
+    row.delete()  # single-use regardless of expiry outcome
+    age = timezone.now() - row.created_at
+    if age > timedelta(seconds=STEAM_STATE_TTL_SECONDS):
+        return None
+    payload = row.payload
+    if (payload or {}).get("flow") != ("link" if link else "login"):
+        return None
+    return payload
+
+
+def build_steam_link_url(source: str | None, *, user_id: int) -> tuple[str, str]:
+    """Steam OpenID link initiate -> ``(auth_url, state)``."""
+    state = secrets.token_urlsafe(32)
+    _store_steam_state(state, link=True, user_id=user_id)
+    return_to = _steam_source_url(f"{_frontend_base()}/auth/callback/steam-connect", source)
+    return _steam_build_url(return_to, state), state
+
+
+def build_steam_login_url(source: str | None = None) -> tuple[str, str]:
+    """Steam OpenID login initiate (no owning user) -> ``(auth_url, state)``."""
+    state = secrets.token_urlsafe(32)
+    _store_steam_state(state, link=False)
+    return_to = _steam_source_url(f"{_frontend_base()}/auth/callback/steam", source)
+    return _steam_build_url(return_to, state), state
+
+
+def _steam_flat_params(params: dict, raw_query: str | None) -> dict[str, str]:
+    if raw_query:
+        return {
+            str(k): str(v) for k, v in urllib.parse.parse_qsl(raw_query, keep_blank_values=True)
+        }
+    return {str(k): str(v) for k, v in params.items()}
+
+
+def _steam_validation_body(params: dict, raw_query: str | None) -> str:
+    """Reconstruct the OpenID check_authentication body byte-for-byte.
+
+    When ``raw_query`` is present it is replayed verbatim (preserving the
+    original key casing/order from Steam's redirect) with ``openid.mode``
+    forced to ``check_authentication`` and ``state`` dropped.
+    """
+    if not raw_query:
+        validate_params = _steam_flat_params(params, None)
+        validate_params["openid.mode"] = "check_authentication"
+        validate_params.pop("state", None)
+        return urllib.parse.urlencode(validate_params)
+
+    pairs: list[str] = []
+    found_mode = False
+    for raw_pair in raw_query.split("&"):
+        if not raw_pair:
+            continue
+        raw_key, _, raw_value = raw_pair.partition("=")
+        key = urllib.parse.unquote_plus(raw_key)
+        if key == "state":
+            continue
+        if key == "openid.mode":
+            pairs.append(f"{raw_key}=check_authentication")
+            found_mode = True
+            continue
+        pairs.append(f"{raw_key}={raw_value}" if "=" in raw_pair else raw_key)
+    if not found_mode:
+        pairs.append("openid.mode=check_authentication")
+    return "&".join(pairs)
+
+
+def _validate_openid_response(params: dict, raw_query: str | None) -> str:
+    """Replay the Steam OpenID response and return the steam64 id."""
+    flat = _steam_flat_params(params, raw_query)
+    if flat.get("openid.mode") != "id_res":
+        raise OAuthFlowError(
+            400, "Invalid Steam response: missing or incorrect openid.mode"
+        )
+    validation_body = _steam_validation_body(params, raw_query)
+    try:
+        _, text = _request(
+            STEAM_OPENID_URL,
+            method="POST",
+            data=validation_body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+    except OAuthProviderError:
+        raise OAuthFlowError(502, "Unable to verify with Steam. Please try again.") from None
+    if "is_valid:true" not in text:
+        raise OAuthFlowError(
+            400, "Steam rejected the authentication. Please try signing in again."
+        )
+    match = STEAM_ID_RE.search(flat.get("openid.claimed_id", ""))
+    if not match:
+        raise OAuthFlowError(400, "Invalid Steam identity in callback. Please try again.")
+    return match.group(1)
+
+
+def validate_steam_callback(params: dict, raw_query: str | None) -> str:
+    """Validate the Steam login callback and return the steam64 id."""
+    flat = _steam_flat_params(params, raw_query)
+    state = flat.get("state")
+    if not state:
+        raise OAuthFlowError(
+            400, "Steam authentication session expired. Please try signing in again."
+        )
+    if _consume_steam_state(str(state), link=False) is None:
+        raise OAuthFlowError(
+            400, "Steam authentication session expired. Please try signing in again."
+        )
+    return _validate_openid_response(params, raw_query)
+
+
+def validate_steam_link_callback(params: dict, raw_query: str | None) -> tuple[str, int | None]:
+    """Validate the Steam link callback -> ``(steam_id, state_user_id_or_None)``."""
+    flat = _steam_flat_params(params, raw_query)
+    state = flat.get("state")
+    if not state:
+        raise OAuthFlowError(
+            400, "Steam authentication session expired. Please try signing in again."
+        )
+    payload = _consume_steam_state(str(state), link=True)
+    if payload is None:
+        raise OAuthFlowError(
+            400, "Steam authentication session expired. Please try signing in again."
+        )
+    steam_id = _validate_openid_response(params, raw_query)
+    return steam_id, payload.get("user_id")
+
+
+def _get_steam_user_info(steam_id: str) -> dict | None:
+    """Fetch the Steam player summary; ``None`` when unkeyed/unreachable."""
+    if not _steam_api_key():
+        return None
+    query = urllib.parse.urlencode({"key": _steam_api_key(), "steamids": steam_id})
+    try:
+        _, raw = _request(f"{STEAM_API_BASE}/ISteamUser/GetPlayerSummaries/v2/?{query}")
+    except OAuthProviderError:
+        return None
+    data = _parse_json(raw)
+    players = data.get("response", {}).get("players", [])
+    return players[0] if players else None
+
+
+def find_or_create_steam_user(steam_id: str) -> User:
+    """Return the Otix account owning ``steam_id``, creating it on first login."""
+    existing = User.objects.filter(steam_id=steam_id).first()
+    if existing is not None:
+        if not existing.is_active:
+            raise OAuthFlowError(403, "Account is deactivated")
+        return existing
+    profile = _get_steam_user_info(steam_id)
+    persona_name = f"steam_user_{steam_id}"
+    avatar_url = None
+    if profile is not None:
+        persona_name = profile.get("personaname", f"steam_user_{steam_id}")
+        avatar_url = profile.get("avatarfull")
+    base = re.sub(r"[^a-zA-Z0-9_-]", "", persona_name)[:64]
+    if not base:
+        base = f"steam_{steam_id[:8]}"
+    candidate, suffix = base, 1
+    while User.objects.filter(username=candidate).exists():
+        suffix += 1
+        candidate = f"{base}_{suffix}"
+    return User.objects.create_user(
+        username=candidate,
+        email=f"steam_{steam_id}@user.otix",
+        password=secrets.token_urlsafe(32),
+        steam_id=steam_id,
+        is_verified=True,
+        avatar_url=avatar_url,
+    )
+
+
+def link_steam_to_user(
+    request_user, steam_id: str, state_user_id: int | None
+) -> None:
+    """Bind ``steam_id`` to an authed user or the state's recorded owner."""
+    resolved_user = None
+    if request_user is not None and request_user.is_authenticated:
+        resolved_user = request_user
+    elif state_user_id is not None:
+        try:
+            resolved_user = User.objects.get(pk=state_user_id)
+        except (User.DoesNotExist, TypeError, ValueError):
+            resolved_user = None
+    if resolved_user is None:
+        raise OAuthFlowError(
+            401, "Authentication required. Please sign in and try again."
+        )
+    if resolved_user.steam_id == steam_id:
+        return  # Already linked to this same account
+    if resolved_user.steam_id is not None:
+        raise OAuthFlowError(
+            409,
+            "Your account is already linked to a different Steam account. "
+            "Unlink it first.",
+        )
+    if User.objects.filter(steam_id=steam_id).exists():
+        raise OAuthFlowError(
+            409, "This Steam account is already linked to another Otix account."
+        )
+    resolved_user.steam_id = steam_id
+    resolved_user.save(update_fields=("steam_id",))
+
+
+def unlink_steam_from_user(user: User) -> None:
+    if user.steam_id is None:
+        raise OAuthFlowError(400, "No Steam account linked")
+    user.steam_id = None
+    user.save(update_fields=("steam_id",))
+
+
+def authenticate_steam(params: dict, raw_query: str | None) -> User:
+    """Consume a login callback and return the resolved/created Steam user."""
+    steam_id = validate_steam_callback(params, raw_query)
+    return find_or_create_steam_user(steam_id)

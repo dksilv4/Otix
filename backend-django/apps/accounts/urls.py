@@ -32,6 +32,11 @@ from apps.accounts.views import (
     ResetPasswordView,
     SessionDetailView,
     SessionsView,
+    SteamDisconnectView,
+    SteamLinkCallbackView,
+    SteamLinkInitiateView,
+    SteamLoginCallbackView,
+    SteamLoginInitiateView,
     TwoFactorDisableView,
     TwoFactorEnableView,
     TwoFactorLoginVerifyView,
@@ -95,10 +100,17 @@ urlpatterns = [
     path("oauth/plex", PlexLinkInitiateView.as_view(), name="oauth-plex"),
     path("oauth/plex/callback", PlexLinkCallbackView.as_view(), name="oauth-plex-callback"),
     path("oauth/plex/disconnect", PlexDisconnectView.as_view(), name="oauth-plex-disconnect"),
+    # Steam link surface.
+    path("oauth/steam", SteamLinkInitiateView.as_view(), name="oauth-steam"),
+    path("oauth/steam/callback", SteamLinkCallbackView.as_view(), name="oauth-steam-callback"),
+    path("oauth/steam/disconnect", SteamDisconnectView.as_view(), name="oauth-steam-disconnect"),
     # Plex login family (unauthed; no owning Otix user at initiate).
     path("plex/initiate", PlexLoginInitiateView.as_view(), name="plex-login-initiate"),
     path("plex/callback", PlexLoginCallbackView.as_view(), name="plex-login-callback"),
     # Google login family (unauthed; no owning Otix user at initiate).
     path("google/initiate", GoogleLoginInitiateView.as_view(), name="google-login-initiate"),
     path("google/callback", GoogleLoginCallbackView.as_view(), name="google-login-callback"),
+    # Steam login family (unauthed; no owning Otix user at initiate).
+    path("steam/initiate", SteamLoginInitiateView.as_view(), name="steam-login-initiate"),
+    path("steam/callback", SteamLoginCallbackView.as_view(), name="steam-login-callback"),
 ]
