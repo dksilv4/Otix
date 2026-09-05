@@ -247,6 +247,15 @@ CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0
 # process loads the code. Only matters to the API for scan/enable metadata.
 PLUGINS_ROOT = os.environ.get("PLUGINS_ROOT", str(BASE_DIR / "plugin-root"))
 
+# First-party plugins that ship with the app (e.g. the reference Plex data
+# source) live under the repo, NOT the operator's gitignored PLUGINS_ROOT. The
+# host resolves a plugin's folder from either root; ``plugins_scan`` seeds these
+# as system rows (auto-enabled, never disabled/uninstalled — the Nextcloud
+# shipped-apps analog).
+BUNDLED_PLUGINS_ROOT = os.environ.get(
+    "BUNDLED_PLUGINS_ROOT", str(BASE_DIR / "bundled_plugins")
+)
+
 # Internal control API the plugin host serves on localhost; the Django API talks
 # to the host (never imports plugin code) using this shared secret. Bind stays
 # loopback-only.

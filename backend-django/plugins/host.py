@@ -32,7 +32,19 @@ logger = logging.getLogger(__name__)
 
 
 def plugin_folder(name: str) -> Path:
-    return Path(settings.PLUGINS_ROOT) / name
+    """The on-disk folder for ``name``: operator root wins, bundled falls back.
+
+    Operator-installed plugins (PLUGINS_ROOT, gitignored) take precedence over a
+    same-named first-party plugin (BUNDLED_PLUGINS_ROOT, checked in) — an
+    operator override shadows the shipped copy.
+    """
+    operator = Path(settings.PLUGINS_ROOT) / name
+    if (operator / "manifest.yaml").is_file():
+        return operator
+    bundled = Path(settings.BUNDLED_PLUGINS_ROOT) / name
+    if (bundled / "manifest.yaml").is_file():
+        return bundled
+    return operator
 
 
 def read_plugin_folder(name: str) -> tuple[PluginManifest | None, str | None]:

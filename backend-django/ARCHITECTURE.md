@@ -338,12 +338,27 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   `PluginPermissionDenied` — a plugin that *declares* `network:external` still
   cannot write its store until the operator *grants* `storage:local`. The
   `plugins/base.py` `Plugin` carries `self.services = None` so plugin code
-  imports cleanly outside the host. **Increments 1–4
-  tests: 71 plugins-green** (suite 391). Settings:
-  `PLUGINS_ROOT` env (default `<repo>/plugin-root`, gitignored) +
-  `PLUGIN_HOST_BIND/PORT/SECRET`. **Next increments:** reference Plex plugin
-  end-to-end, supervision/docs + Redis events. Conventions + status in
-  `plugins/README.md`.
+  imports cleanly outside the host. **Increment 5 DONE (reference Plex plugin
+  end-to-end):** first-party plugins ship checked in under a new
+  `BUNDLED_PLUGINS_ROOT` (`bundled_plugins/`, default = repo dir) — the
+  Nextcloud shipped-apps analog — seeded by `plugins/services.py: scan_bundled()`
+  as **system** rows (auto-enabled, never disabled/uninstalled; an operator
+  plugin of the same name shadows the bundled copy). `manage.py plugins_scan`
+  seeds bundled + scans the operator root by default; the host's `plugin_folder`
+  resolves across both roots (operator wins). Ships the reference
+  `bundled_plugins/plex/` (manifest + `plugin.py`): a real Plex data source that
+  reads `serverUrl`/`token` config and calls the Plex HTTP API (`/identity`,
+  `/library/sections`, `/library/sections/{key}/all`) through the gated
+  `HttpService`, returning JSON-safe payloads / clear `PluginError` envelopes.
+  `plugins/tests_plex.py` loads the actual shipped plugin and round-trips a data
+  method against a fake Plex server in-process; a live cross-process smoke
+  (sqlite migrate → `plugins_scan` → `plugin_host` on a port → `hostclient`
+  `describe`/`call` from a separate process) verified the full horizontal slice.
+  **Increments 1–5 tests: 81 plugins-green** (suite 401).
+  Settings: `PLUGINS_ROOT` env (default `<repo>/plugin-root`, gitignored) +
+  `BUNDLED_PLUGINS_ROOT` (default `<repo>/bundled_plugins`) +
+  `PLUGIN_HOST_BIND/PORT/SECRET`. **Next increment:** supervision/docs + Redis
+  events. Conventions + status in `plugins/README.md`.
 - **Parity harness** to diff DRF output against the frozen FastAPI OpenAPI
   contract (~263 routes) while porting feature-area by feature-area.
 

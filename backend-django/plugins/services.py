@@ -30,6 +30,10 @@ def plugin_root() -> Path:
     return Path(settings.PLUGINS_ROOT)
 
 
+def bundled_root() -> Path:
+    return Path(settings.BUNDLED_PLUGINS_ROOT)
+
+
 def _manifest_defaults(manifest: PluginManifest) -> dict[str, Any]:
     return {
         "version": manifest.version,
@@ -148,6 +152,44 @@ def scan_root(root: str | Path | None = None) -> list[dict]:
             report.append({"id": record.id, "ok": False, "error": record.error})
             continue
         plugin, created = register_plugin(record.manifest)
+        report.append(
+            {
+                "id": plugin.name,
+                "ok": True,
+                "created": created,
+                "enabled": plugin.enabled,
+                "version": plugin.version,
+            }
+        )
+    return report
+
+
+def scan_bundled() -> list[dict]:
+    """Seed first-party plugins (BUNDLED_PLUGINS_ROOT) as auto-enabled system rows.
+
+    Bundled plugins are shipped with the app and never disabled/uninstalled — the
+    Nextcloud shipped-apps analog. A same-named plugin the operator installed
+    under PLUGINS_ROOT shadows the bundled copy (their row stays operator-owned).
+    """
+    records = scan(bundled_root())
+    report: list[dict] = []
+    for record in records:
+        if not record.ok:
+            existing = Plugin.objects.filter(name=record.id).first()
+            if existing is not None:
+                existing.error = record.error or ""
+                existing.save(update_fields=("error", "updated_at"))
+            report.append({"id": record.id, "ok": False, "error": record.error})
+            continue
+        if Plugin.objects.filter(name=record.id, system=False).exists():
+            report.append(
+                {"id": record.id, "ok": True, "created": False, "skipped": "operator copy wins"}
+            )
+            continue
+        plugin, created = register_plugin(record.manifest, system=True)
+        if plugin.system and not plugin.enabled:
+            plugin.enabled = True
+            plugin.save(update_fields=("enabled", "updated_at"))
         report.append(
             {
                 "id": plugin.name,

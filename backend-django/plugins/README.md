@@ -56,6 +56,18 @@ Data methods read operator config / make gated calls through `self.services`
 Declaring a permission does **not** grant it — the operator approves it on
 enable, and the framework re-checks the grant before every service action.
 
+## Bundled (first-party) plugins
+
+Plugins Otix ships live in `../bundled_plugins/` (checked in, next to the repo
+root) rather than the operator's gitignored `PLUGINS_ROOT`. `plugins_scan`
+seeds them via `scan_bundled()` as **system** rows — auto-enabled, never
+disabled/uninstalled (the Nextcloud shipped-apps analog). The host resolves a
+plugin's folder across both roots, operator copy first, so an operator install
+of the same name shadows the bundled one. `bundled_plugins/plex/` is the
+reference plugin: a real Plex data source (manifest + `plugin.py`) that reads
+`serverUrl`/`token` config and calls the Plex HTTP API through the gated
+`HttpService`. End-to-end suite in `plugins/tests_plex.py`.
+
 ## Status
 
 - **Increment 1 (done):** API-owned registry state. `plugins_scan --root …`
@@ -83,5 +95,14 @@ enable, and the framework re-checks the grant before every service action.
   (`table:*`/downloads grow this surface later). Framework suite in
   `plugins/tests_framework.py` (grant math on the services + enforcement through
   a real loaded plugin in the host).
-- **Increments 5–6 (next):** reference Plex plugin end-to-end, supervision/docs
-  + Redis events.
+- **Increment 5 (done):** reference Plex plugin end-to-end. `bundled_plugins/`
+  root (checked in) + `scan_bundled()` seed first-party plugins as system rows;
+  `plugins_scan` runs it by default. The host resolves folders across operator
+  `PLUGINS_ROOT` and `BUNDLED_PLUGINS_ROOT` (operator copy wins). Ships
+  `bundled_plugins/plex/` — a real Plex data source exercising config, the gated
+  `HttpService`, JSON payloads and clear error envelopes. E2E suite
+  (`plugins/tests_plex.py`) loads the actual shipped plugin and round-trips a
+  data method against a fake Plex server; a live cross-process smoke
+  (migrate → `plugins_scan` → `plugin_host` → `hostclient`) verified describe +
+  call over the control API.
+- **Increment 6 (next):** supervision/docs + Redis events.
