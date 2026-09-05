@@ -1,12 +1,13 @@
 """Provider background-sync endpoints: enqueue (POST) + SSE progress (GET).
 
 ``POST /plex/sync`` and ``POST /youtube/sync`` create a ``SyncJob`` row and
-answer 202 with its ``task_id`` (the pk doubles as the SSE ``task_id``). The
-youtube POST then hands the row to ``run_sync_job`` (``.delay``) whose eager/real
-worker runs the registered ``youtube`` engine; plex is still enqueue-only until
-its engine is ported. ``GET /{provider}/sync/{task_id}/stream`` opens a Redis
-pub/sub SSE stream on ``{provider}:sync:{task_id}:events`` that self-terminates
-on a ``sync_complete``/``error`` frame, replaying a stored result/progress first.
+answer 202 with its ``task_id`` (the pk doubles as the SSE ``task_id``), then
+hand the row to ``run_sync_job`` (``.delay``) whose eager/real worker runs the
+registered ``plex``/``youtube`` engine (each POST also accepts a ``library_id``
+for a single-library plex scan). ``GET /{provider}/sync/{task_id}/stream`` opens
+a Redis pub/sub SSE stream on ``{provider}:sync:{task_id}:events`` that
+self-terminates on a ``sync_complete``/``error`` frame, replaying a stored
+result/progress first.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ class PlexSyncView(APIView):
             entity_type="library" if library_id else "user",
             external_id=library_id or str(request.user.id),
         )
+        run_sync_job.delay(job.pk)
         return Response({"task_id": str(job.pk)}, status=202)
 
 
@@ -41,6 +43,9 @@ class PlexSyncStreamView(APIView):
             f"plex:sync:{task_id}:events",
             terminal_events=("sync_complete", "error"),
             result_replay=lambda: sse_lib.read_json_key(f"plex:sync:{task_id}:result"),
+            progress_replay=lambda: sse_lib.read_json_key(
+                f"plex:sync:{task_id}:progress"
+            ),
         )
 
 

@@ -96,9 +96,10 @@ class SyncEnqueueEndpointTests(TestCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_plex_library_sync_202_returns_task_id_equal_pk(self):
-        resp = self.client.post(
-            self.plex_url, {"library_id": "lib-9"}, format="json"
-        )
+        with mock.patch("apps.integrations.views.sync.run_sync_job") as task:
+            resp = self.client.post(
+                self.plex_url, {"library_id": "lib-9"}, format="json"
+            )
         self.assertEqual(resp.status_code, 202)
         job = SyncJob.objects.get()
         self.assertEqual(resp.json(), {"task_id": str(job.pk)})
@@ -106,13 +107,16 @@ class SyncEnqueueEndpointTests(TestCase):
         self.assertEqual(job.entity_type, "library")
         self.assertEqual(job.external_id, "lib-9")
         self.assertEqual(job.status, "pending")
+        task.delay.assert_called_once_with(job.pk)
 
     def test_plex_user_sync_when_no_library_id(self):
-        resp = self.client.post(self.plex_url, {}, format="json")
+        with mock.patch("apps.integrations.views.sync.run_sync_job") as task:
+            resp = self.client.post(self.plex_url, {}, format="json")
         self.assertEqual(resp.status_code, 202)
         job = SyncJob.objects.get()
         self.assertEqual(job.entity_type, "user")
         self.assertEqual(job.external_id, str(self.user.id))
+        task.delay.assert_called_once_with(job.pk)
 
     def test_youtube_sync_requires_google_account(self):
         self.user.google_id = None

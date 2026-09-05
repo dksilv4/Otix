@@ -13,9 +13,12 @@ from celery import shared_task
 
 from apps.integrations.models import SyncJob
 
-# Importing the engine service runs its register_sync_engine decorator so the
-# worker (and the eager-mode task path) can resolve provider engines by name.
-from apps.integrations.services import youtube_sync  # noqa: F401
+# Importing the engine services runs their register_sync_engine decorators so
+# the worker (and the eager-mode task path) can resolve provider engines by name.
+from apps.integrations.services import (
+    plex_sync,  # noqa: F401
+    youtube_sync,  # noqa: F401
+)
 from apps.integrations.services.sync import execute_sync_job
 
 

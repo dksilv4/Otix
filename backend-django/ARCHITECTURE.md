@@ -735,6 +735,47 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   album/Person/MediaCredit fixture; match→interaction+channel-link+raw-upsert;
   no-token → error terminal; resync idempotent); endpoint dispatch test now
   patches `run_sync_job` so eager mode doesn't run the engine inline.
+- **Plex library user-sync engine (increment 29, 2026-09-05): parity 263/263
+  unchanged, full suite 746 (6 new).** Second REAL provider engine ported +
+  dispatched, closing out the provider-engine surface (both youtube + plex now
+  register and run off their enqueue POSTs). `apps/integrations/services/
+  plex_sync.py` registers `@register_sync_engine("plex")` with two entry modes
+  off the `SyncJob`: full-user (`entity_type="user"`) discovers the user's
+  servers + selected libraries (reusing the ported `plex.py` discovery) and
+  scans each; single-library (`entity_type="library"`, `external_id` =
+  `UserPlexLibrary` pk) scans just that stored library row (server off
+  `select_related`, token = stored `server.access_token or user.plex_auth_token`).
+  Each library is fetched paged (`X-Plex-Container-Start/Size=200`,
+  `includeGuids=1`, artist sections get `type=9`) and filtered to
+  movie/show/music (episodes never come back from a section `/all` walk — they
+  belong to watch-history scans). Per item: `_match_or_seed` resolves an
+  existing catalog `MediaItem` via the recorded plex guid (ExternalID
+  media_type=None) then third-party guids (movie/show/music media_type), else
+  seeds a completeness-0.15 stub + Movie/Show/Album subtype + ExternalID rows
+  (Album gets `track_count=child_count`); `_upsert_item` stores the full raw
+  `UserPlexItem` row on `(server, rating_key)`; `_apply_interactions` writes
+  movie `watched` (viewCount>0), music `listened` (viewCount>0 or lastViewedAt,
+  carrying artist/last-played/added metadata), and any `started` (viewOffset) —
+  all `source="plex"`. One library runs inside its own `transaction.atomic`;
+  library fetch/sync exceptions are caught per-library so a bad library never
+  fails the job (failures just don't add to the summary), mirroring the legacy
+  isolation. Deliberately deferred enrichment (documented in the module docstring
+  for later backfill): album-metadata hydration, person/genre/label creation,
+  plex `userRating` → ratings, Track backfill, and the episode-driven show
+  `watched` recompute. Frames: engine emits `syncing_library` /
+  `library_progress` (every 5 items) / `library_complete`; orchestrator owns
+  `sync_started`/`sync_complete` + stored result, and an error-returning engine
+  (no user / no token / unreachable discovery / library gone) → `_abort` error
+  terminal (increment-28 contract). Wiring: `tasks/__init__` imports both
+  `plex_sync` + `youtube_sync`; `PlexSyncView.post` now calls
+  `run_sync_job.delay(job.pk)` (library_id → single-library job, else full-user)
+  and its stream view gained the plex `progress_replay`. No migration. Tests:
+  6 engine roundtrips (patch `plex._request` canned page, discovery fns, and
+  `core.progress.get_client`; full-user seeds movie + writes watched interaction
+  + terminal frame order; existing plex-guid matches without duplicating; resync
+  idempotent — second run matched-not-seeded; single-library uses stored server
+  row; library-not-found + no-token → error terminal states); the two plex
+  enqueue endpoint tests now mock `run_sync_job` like the youtube one.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
@@ -844,9 +885,10 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   `integrations.run_sync_job`; Redis broker configured), but worker/beat
   processes only run when launched (`celery -A config worker/beat`), and the
   `CELERY_BEAT_SCHEDULE` hook stays empty until periodic maintenance tasks
-  (catalog hydration etc.) opt in. The youtube-liked engine is ported and
-  dispatched (increment 28); the plex-user ingest engine (the ~2170-line
-  ``plex_user_sync_service``) is the remaining provider engine to register.
+  (catalog hydration etc.) opt in. Both real provider engines now register and
+  dispatch from their enqueue POSTs — youtube-liked (increment 28) and plex-user
+  ingest (increment 29) — so worker deployment just needs the process started;
+  no further engine work is deferred.
 - **pgvector embeddings** (`pgvector.django`): media_items/people/companies/user
   `Vector(384)` + HNSW cosine indexes; plus `search_vector` trigram machinery.
 
