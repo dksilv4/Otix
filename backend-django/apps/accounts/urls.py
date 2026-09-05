@@ -20,6 +20,11 @@ from apps.accounts.views import (
     LogoutView,
     MePreferencesView,
     MeView,
+    PlexDisconnectView,
+    PlexLinkCallbackView,
+    PlexLinkInitiateView,
+    PlexLoginCallbackView,
+    PlexLoginInitiateView,
     RefreshView,
     RegisterView,
     ResetPasswordView,
@@ -85,4 +90,10 @@ urlpatterns = [
         GoogleDriveDisconnectView.as_view(),
         name="oauth-google-drive-disconnect",
     ),
+    path("oauth/plex", PlexLinkInitiateView.as_view(), name="oauth-plex"),
+    path("oauth/plex/callback", PlexLinkCallbackView.as_view(), name="oauth-plex-callback"),
+    path("oauth/plex/disconnect", PlexDisconnectView.as_view(), name="oauth-plex-disconnect"),
+    # Plex login family (unauthed; no owning Otix user at initiate).
+    path("plex/initiate", PlexLoginInitiateView.as_view(), name="plex-login-initiate"),
+    path("plex/callback", PlexLoginCallbackView.as_view(), name="plex-login-callback"),
 ]

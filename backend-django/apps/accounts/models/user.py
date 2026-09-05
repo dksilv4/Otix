@@ -121,6 +121,15 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     drive_refresh_token = models.TextField(null=True, blank=True)
     drive_token_expires_at = models.DateTimeField(null=True, blank=True)
 
+    # --- Plex integration profile (PIN auth is public; no token expiry) ---
+    plex_username = models.CharField(
+        max_length=MAX_DISPLAY_NAME_LENGTH, null=True, blank=True
+    )
+    plex_email = models.CharField(max_length=MAX_EMAIL_LENGTH, null=True, blank=True)
+    plex_thumb = models.CharField(max_length=MAX_AVATAR_URL_LENGTH, null=True, blank=True)
+    plex_auth_token = models.TextField(null=True, blank=True)
+    plex_watch_history_enabled = models.BooleanField(default=False)
+
     # --- Security ---
     two_factor_enabled = models.BooleanField(default=False)
     # base32 TOTP secret. Populated by /auth/2fa/setup *before* enable; kept

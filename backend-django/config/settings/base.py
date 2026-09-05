@@ -280,3 +280,11 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 # Browser base URL the OAuth redirect_uri + PIN forward-urls point back at.
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173")
 
+# Plex PIN auth is public (no client secret). The Plex.tv endpoints are
+# overridable so tests point them at a local fake instead of the live IdP.
+PLEX_CLIENT_IDENTIFIER = os.environ.get("PLEX_CLIENT_IDENTIFIER", "otix-web")
+PLEX_PRODUCT = os.environ.get("PLEX_PRODUCT", "Otix")
+PLEX_VERSION = os.environ.get("PLEX_VERSION", "0.1.0")
+PLEX_TV_BASE = os.environ.get("PLEX_TV_BASE", "https://plex.tv")
+PLEX_AUTH_URL = os.environ.get("PLEX_AUTH_URL", "https://app.plex.tv/auth")
+

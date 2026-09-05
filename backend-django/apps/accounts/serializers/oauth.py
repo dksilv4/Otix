@@ -8,3 +8,10 @@ class OAuthCallbackSerializer(serializers.Serializer):
 
     code = serializers.CharField(allow_blank=False)
     state = serializers.CharField(allow_blank=False)
+
+
+class PlexLinkCallbackSerializer(serializers.Serializer):
+    """Body of the Plex link callback: the state we issued + the PIN id."""
+
+    state = serializers.CharField(allow_blank=False)
+    pin_id = serializers.CharField(allow_blank=True, required=False, default="")

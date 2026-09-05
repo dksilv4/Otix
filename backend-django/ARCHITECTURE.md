@@ -278,9 +278,26 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   an `integration_disconnected` notification (social.Notification) on an
   external `invalid_grant`. Single-use state is DB-backed (`oauth_state`,
   migration 0004) not Redis — it is ephemeral + API-local, and a DB row needs no
-  broker. Parity 208→215 (auth 27→20). **Remaining OAuth:** plex/steam/tmdb
-  link + login families, google/plex/steam/tmdb *login* flow,
-  `GET /auth/oauth`, `GET /auth/me/integrations`.
+  broker. Parity 208→215 (auth 27→20).
+- **Plex OAuth link + login family (increment 8, 2026-09-05)** — same
+  `oauth.py` service + DB-backed state (migration 0005 adds `plex_id`,
+  `plex_username`, `plex_email`, `plex_thumb`, `plex_auth_token`,
+  `plex_watch_history_enabled` user columns). Plex auth is public PIN auth (no
+  client secret): the API `POST`s a PIN at `plex.tv/api/v2/pins?strong=true`,
+  returns `{auth_url, state, pin_id}` where `auth_url` =
+  `app.plex.tv/auth#?…` carrying `clientID`/`code`/`forwardUrl`/`context[device]`,
+  and the *frontend* drives the one-shot PIN poll (no server retry loop). Authed
+  `POST /auth/oauth/plex` → 400 when `plex_id` already set; unauthed
+  `POST …/callback` consumes state (pin cross-check), resolves the owning user
+  from state, polls the PIN for `authToken`, fetches `plex.tv/api/v2/user`,
+  links; `DELETE …/disconnect` nulls the `plex_*` columns. Login family
+  (`POST /auth/plex/initiate` + `/auth/plex/callback`, both unauthed) finds or
+  creates the Otix account by `plex_id` (unique-ified username
+  `re.sub(r"[^A-Za-z0-9_-]","",…)`, email `plex_<id>@user.otix` fallback,
+  `is_verified=True`, avatar = plex thumb) and boots a real session
+  (`begin_session` → `{access_token, token_type: bearer}` + `otix_refresh`
+  cookie). Parity 215→220 (auth 20→15). **Remaining OAuth:** google/steam/tmdb
+  login families + steam/tmdb link, `GET /auth/oauth`, `GET /auth/me/integrations`.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

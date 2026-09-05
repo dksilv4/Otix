@@ -25,6 +25,7 @@ import base64
 import hashlib
 import json
 import logging
+import re
 import secrets
 import urllib.error
 import urllib.parse
@@ -58,6 +59,16 @@ DRIVE_SCOPES = [
 
 GOOGLE_OAUTH_FLOW = "youtube"  # google link scopes are the youtube+identity set
 DRIVE_OAUTH_FLOW = "drive"
+
+PLEX_STATE_TTL_SECONDS = 900  # legacy TTL["AUTH"]["PLEX_PIN"] = 900
+
+_PLEX_TOKEN_COLUMNS = (
+    "plex_id",
+    "plex_username",
+    "plex_email",
+    "plex_thumb",
+    "plex_auth_token",
+)
 
 _GOOGLE_TOKEN_COLUMNS = (
     "google_id",
@@ -152,7 +163,7 @@ def _store_state(flow: str, *, user_id: int | None) -> tuple[str, str]:
     return state, verifier
 
 
-def _consume_state(state: str) -> dict | None:
+def _consume_state(state: str, *, ttl_seconds: int = OAUTH_STATE_TTL_SECONDS) -> dict | None:
     """Atomically read+delete one state; ``None`` when absent or expired."""
     try:
         row = OAuthState.objects.get(key=state)
@@ -160,7 +171,7 @@ def _consume_state(state: str) -> dict | None:
         return None
     row.delete()  # single-use regardless of expiry outcome
     age = timezone.now() - row.created_at
-    if age > timedelta(seconds=OAUTH_STATE_TTL_SECONDS):
+    if age > timedelta(seconds=ttl_seconds):
         return None
     return row.payload
 
@@ -412,3 +423,220 @@ def get_user_google_access_token(user: User) -> str | None:
     if expires_at is not None and timezone.now() < expires_at - timedelta(seconds=60):
         return user.google_access_token
     return _refresh_google_token(user)
+
+
+# ── Plex (public PIN auth; link + login) ─────────────────────────────────
+
+def _plex_headers() -> dict[str, str]:
+    """Common Plex.tv headers: the PIN/user API identifies the calling client."""
+    return {
+        "Accept": "application/json",
+        "X-Plex-Client-Identifier": getattr(settings, "PLEX_CLIENT_IDENTIFIER", "otix-web"),
+        "X-Plex-Product": getattr(settings, "PLEX_PRODUCT", "Otix"),
+        "X-Plex-Version": getattr(settings, "PLEX_VERSION", "0.1.0"),
+    }
+
+
+def _plex_tv_base() -> str:
+    return (getattr(settings, "PLEX_TV_BASE", "") or "https://plex.tv").rstrip("/")
+
+
+def _plex_auth_base() -> str:
+    return (getattr(settings, "PLEX_AUTH_URL", "") or "https://app.plex.tv/auth").rstrip("/")
+
+
+def _frontend_base() -> str:
+    return (getattr(settings, "FRONTEND_BASE_URL", "") or "").rstrip("/")
+
+
+def _create_plex_pin(start_error: str, invalid_error: str) -> tuple[str, str]:
+    """Create a Plex PIN; returns ``(pin_id, code)``."""
+    try:
+        status, raw = _request(
+            f"{_plex_tv_base()}/api/v2/pins?strong=true", method="POST", headers=_plex_headers()
+        )
+    except OAuthProviderError:
+        raise OAuthFlowError(502, start_error) from None
+    if status != 200:
+        raise OAuthFlowError(502, start_error)
+    body = _parse_json(raw)
+    pin_id = body.get("id")
+    code = body.get("code")
+    if not pin_id or not code:
+        raise OAuthFlowError(502, invalid_error)
+    return str(pin_id), str(code)
+
+
+def _plex_auth_url(code: str, state: str, callback: str) -> str:
+    forward_url = f"{callback}?{urllib.parse.urlencode({'state': state})}"
+    params = {
+        "clientID": getattr(settings, "PLEX_CLIENT_IDENTIFIER", "otix-web"),
+        "code": code,
+        "forwardUrl": forward_url,
+        "context[device][product]": getattr(settings, "PLEX_PRODUCT", "Otix"),
+        "context[device][version]": getattr(settings, "PLEX_VERSION", "0.1.0"),
+    }
+    return f"{_plex_auth_base()}#?{urllib.parse.urlencode(params)}"
+
+
+def build_plex_link_url(user_id: int) -> tuple[str, str, str]:
+    """Plex link initiate -> ``(auth_url, state, pin_id)``."""
+    pin_id, code = _create_plex_pin(
+        "Unable to start Plex linking. Please try again.",
+        "Plex returned an invalid linking response. Please try again.",
+    )
+    state = secrets.token_urlsafe(32)
+    OAuthState.objects.create(
+        key=state, payload={"v": "1", "pin_id": pin_id, "user_id": user_id}
+    )
+    callback = f"{_frontend_base()}/auth/plex/connect/callback"
+    return _plex_auth_url(code, state, callback), state, pin_id
+
+
+def build_plex_login_url() -> tuple[str, str, str]:
+    """Plex login initiate (no owning user) -> ``(auth_url, state, pin_id)``."""
+    pin_id, code = _create_plex_pin(
+        "Unable to start Plex login. Please try again.",
+        "Plex returned an invalid response. Please try again.",
+    )
+    state = secrets.token_urlsafe(32)
+    OAuthState.objects.create(
+        key=state, payload={"v": "1", "pin_id": pin_id, "flow": "login"}
+    )
+    callback = f"{_frontend_base()}/auth/callback/plex-login"
+    return _plex_auth_url(code, state, callback), state, pin_id
+
+
+def _get_plex_pin_auth_token(pin_id: str) -> str | None:
+    """One-shot poll of the PIN; ``None`` when Plex has not yet approved it."""
+    try:
+        status, raw = _request(
+            f"{_plex_tv_base()}/api/v2/pins/{pin_id}", headers=_plex_headers()
+        )
+    except OAuthProviderError:
+        raise OAuthFlowError(502, "Unable to verify with Plex. Please try again.") from None
+    if status != 200:
+        raise OAuthFlowError(502, "Unable to verify with Plex. Please try again.")
+    body = _parse_json(raw)
+    token = body.get("authToken") or body.get("auth_token")
+    return str(token) if token else None
+
+
+def _get_plex_user_info(auth_token: str) -> dict:
+    try:
+        status, raw = _request(
+            f"{_plex_tv_base()}/api/v2/user",
+            headers={**_plex_headers(), "X-Plex-Token": auth_token},
+        )
+    except OAuthProviderError:
+        raise OAuthFlowError(
+            502, "Unable to fetch Plex account details. Please try again."
+        ) from None
+    if status != 200:
+        raise OAuthFlowError(502, "Unable to fetch Plex account details. Please try again.")
+    return _parse_json(raw)
+
+
+def _plex_identity(profile: dict) -> str:
+    plex_id = str(profile.get("id") or profile.get("uuid") or "")
+    if not plex_id:
+        raise OAuthFlowError(502, "Plex returned an invalid account profile. Please try again.")
+    return plex_id
+
+
+def link_plex_to_user(request_user, state: str, pin_id: str | None) -> None:
+    """Consume the link state and bind the Plex account to the owning user."""
+    payload = _consume_state(state, ttl_seconds=PLEX_STATE_TTL_SECONDS)
+    if payload is None:
+        raise OAuthFlowError(400, "Plex linking session expired. Please try again.")
+    stored_pin = payload.get("pin_id")
+    if pin_id and str(stored_pin) != str(pin_id):
+        raise OAuthFlowError(400, "Invalid Plex linking session. Please try again.")
+    user = _resolve_callback_user(payload, request_user)
+    if user.plex_id:
+        raise OAuthFlowError(400, "Plex account already linked")
+    token = _get_plex_pin_auth_token(str(stored_pin))
+    if token is None:
+        raise OAuthFlowError(
+            400, "Plex has not approved this link yet. Please finish signing in."
+        )
+    profile = _get_plex_user_info(token)
+    plex_id = _plex_identity(profile)
+    if User.objects.filter(plex_id=plex_id).exclude(pk=user.pk).exists():
+        raise OAuthFlowError(
+            409, "This Plex account is already linked to another Otix account."
+        )
+    user.plex_id = plex_id
+    user.plex_username = profile.get("username") or profile.get("title")
+    user.plex_email = profile.get("email")
+    user.plex_thumb = profile.get("thumb")
+    user.plex_auth_token = token
+    user.save(update_fields=_PLEX_TOKEN_COLUMNS)
+
+
+def unlink_plex_from_user(user: User) -> None:
+    if user.plex_id is None:
+        raise OAuthFlowError(400, "No Plex account linked")
+    for column in _PLEX_TOKEN_COLUMNS:
+        setattr(user, column, None)
+    user.save(update_fields=_PLEX_TOKEN_COLUMNS)
+
+
+def find_or_create_plex_user(
+    plex_id: str,
+    *,
+    username: str | None,
+    email: str | None,
+    thumb: str | None,
+    auth_token: str,
+) -> User:
+    """Return the Otix account owning ``plex_id``, creating it on first login."""
+    existing = User.objects.filter(plex_id=plex_id).first()
+    if existing is not None:
+        if not existing.is_active:
+            raise OAuthFlowError(403, "Account is deactivated")
+        return existing
+    base = (username or email or f"plex_{plex_id[:8]}").strip()
+    clean = re.sub(r"[^A-Za-z0-9_-]", "", base)[:64] or f"plex_{plex_id[:8]}"
+    candidate, suffix = clean, 2
+    while User.objects.filter(username=candidate).exists():
+        suffix_part = f"_{suffix}"
+        candidate = clean[: 64 - len(suffix_part)] + suffix_part
+        suffix += 1
+    user = User.objects.create_user(
+        username=candidate,
+        email=(email or f"plex_{plex_id}@user.otix") or None,
+        password=secrets.token_urlsafe(32),
+        is_verified=True,
+        avatar_url=thumb,
+        plex_id=plex_id,
+        plex_username=username,
+        plex_email=email,
+        plex_thumb=thumb,
+        plex_auth_token=auth_token,
+    )
+    return user
+
+
+def authenticate_plex(state: str, pin_id: str | None = None) -> User:
+    """Consume a login state and return the resolved/created Plex user."""
+    payload = _consume_state(state, ttl_seconds=PLEX_STATE_TTL_SECONDS)
+    if payload is None:
+        # Legacy shares one ``_consume_state`` string across link + login flows.
+        raise OAuthFlowError(400, "Plex linking session expired. Please try again.")
+    stored_pin = payload.get("pin_id")
+    if pin_id and str(stored_pin) != str(pin_id):
+        raise OAuthFlowError(400, "Invalid Plex linking session. Please try again.")
+    token = _get_plex_pin_auth_token(str(stored_pin))
+    if token is None:
+        # Legacy shares the link wording here too (single ``_get_pin_auth_token``).
+        raise OAuthFlowError(400, "Plex has not approved this link yet. Please finish signing in.")
+    profile = _get_plex_user_info(token)
+    plex_id = _plex_identity(profile)
+    return find_or_create_plex_user(
+        plex_id,
+        username=profile.get("username") or profile.get("title"),
+        email=profile.get("email"),
+        thumb=profile.get("thumb"),
+        auth_token=token,
+    )

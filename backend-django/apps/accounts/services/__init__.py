@@ -6,13 +6,19 @@ here. The profile-hub reads in this package are the identity slice of the
 """
 
 from apps.accounts.services.oauth import (
+    authenticate_plex,
     build_google_drive_link_url,
     build_google_link_url,
+    build_plex_link_url,
+    build_plex_login_url,
+    find_or_create_plex_user,
     get_user_google_access_token,
     link_google_drive_to_user,
     link_google_to_user,
+    link_plex_to_user,
     unlink_google_drive_from_user,
     unlink_google_from_user,
+    unlink_plex_from_user,
 )
 from apps.accounts.services.user_profile import (
     build_user_profile,
@@ -21,14 +27,20 @@ from apps.accounts.services.user_profile import (
 )
 
 __all__ = [
+    "authenticate_plex",
     "build_google_drive_link_url",
     "build_google_link_url",
+    "build_plex_link_url",
+    "build_plex_login_url",
     "build_user_profile",
+    "find_or_create_plex_user",
     "get_user_by_username",
     "get_user_google_access_token",
     "link_google_drive_to_user",
     "link_google_to_user",
+    "link_plex_to_user",
     "search_users",
     "unlink_google_drive_from_user",
     "unlink_google_from_user",
+    "unlink_plex_from_user",
 ]

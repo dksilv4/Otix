@@ -26,6 +26,11 @@ from apps.accounts.views.oauth import (
     GoogleLinkCallbackView,
     GoogleLinkInitiateView,
     GoogleLinkTokenView,
+    PlexDisconnectView,
+    PlexLinkCallbackView,
+    PlexLinkInitiateView,
+    PlexLoginCallbackView,
+    PlexLoginInitiateView,
 )
 from apps.accounts.views.user_continue import ContinueWatchingView
 from apps.accounts.views.user_profile import UserDetailView, UserSearchView
@@ -44,6 +49,11 @@ __all__ = [
     "LogoutView",
     "MePreferencesView",
     "MeView",
+    "PlexDisconnectView",
+    "PlexLinkCallbackView",
+    "PlexLinkInitiateView",
+    "PlexLoginCallbackView",
+    "PlexLoginInitiateView",
     "RefreshView",
     "RegisterView",
     "ResetPasswordView",
