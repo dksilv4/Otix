@@ -19,6 +19,8 @@ from apps.integrations.views import (
     SteamLibraryScanView,
     SteamOwnedAppIdsView,
     SteamWishlistScanView,
+    TMDbRatingSyncView,
+    TMDbWatchlistImportView,
 )
 
 app_name = "integrations"
@@ -53,5 +55,16 @@ urlpatterns = [
         "steam/wishlist/scan",
         SteamWishlistScanView.as_view(),
         name="steam-wishlist-scan",
+    ),
+    # TMDb account sync (ratings both ways + watchlist import).
+    path(
+        "tmdb/rating-sync",
+        TMDbRatingSyncView.as_view(),
+        name="tmdb-rating-sync",
+    ),
+    path(
+        "tmdb/watchlist-import",
+        TMDbWatchlistImportView.as_view(),
+        name="tmdb-watchlist-import",
     ),
 ]

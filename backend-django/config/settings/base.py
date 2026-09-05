@@ -295,6 +295,10 @@ PLEX_WEBHOOK_SECRET = os.environ.get("PLEX_WEBHOOK_SECRET", "")
 # those routes answer 503 "Steam API key not configured").
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "")
 
+# TMDb v3 API key used by the account-sync routes (rating-sync/watchlist-import)
+# and the oauth link/login helpers in apps/accounts.services.oauth.
+TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
+
 # Image upload route (/api/v1/upload): allowed content written under UPLOAD_DIR
 # and served by the web tier from /uploads/<name>.
 UPLOAD_MAX_SIZE_MB = int(os.environ.get("UPLOAD_MAX_SIZE_MB", "5"))

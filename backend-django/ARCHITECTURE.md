@@ -547,6 +547,27 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   rate-limit layer. No model/DB surface → no migration. Tests redirect
   `UPLOAD_DIR` to a temp dir (12 new). Parity 250→251. **Remaining 12 = discover
   4, integrations 7, notifications 1.**
+- **TMDb rating-sync + watchlist-import (increment 22, 2026-09-05)** — `POST
+  /integrations/tmdb/rating-sync` + `/tmdb/watchlist-import` (legacy
+  ``tmdb_rating_service``; both run synchronously in-request, no Celery).
+  `apps/integrations/services/tmdb.py` adds a urllib ``_request`` leaf and
+  walks TMDb v3 ``/account/{id}/rated|watchlist/{movies,tv}`` pages; a
+  non-200/non-JSON/network page raises so the view answers a stable 500;
+  per-item failures are counted ``skipped`` and never raise. Stage-1 matching
+  only: a TMDB id resolves via an existing ``tmdb`` ``ExternalID`` row filtered
+  by ``media_type`` (movie vs show, increment-19 convention); unmatched items
+  are ``skipped`` — the legacy full TMDB catalog sync is DEFERRED. rating-sync
+  ``{direction}`` ∈ disabled/import/export/bidirectional persists
+  ``user.tmdb_rating_sync_direction`` only on success (transactional; mirrors
+  the legacy commit-after-sync); imported ratings go through
+  ``apps.media.services.rating.upsert_rating`` (keeps ``avg_rating``/
+  ``rating_count`` in sync), export writes ``/movie|/tv/{id}/rating``. Watchlist
+  import adds the ``owned`` interaction (Django proxy for legacy
+  ``is_in_library``), idempotent. Views: 400 no session (``TMDb account not
+  linked``) / invalid direction, 500 per-route. ``TMDB_API_KEY`` added to
+  base.py (env, default ""). Legacy auto-unlink-on-revoked deferred. Tests
+  patch ``tmdb._request`` (18 new). Parity 251→253. **Remaining 10 = discover 4,
+  integrations 5, notifications 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

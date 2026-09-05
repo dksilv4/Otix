@@ -21,6 +21,7 @@ from apps.integrations.services.plex import (
 )
 from apps.integrations.services.plex_watchlist import sync_plex_watchlist
 from apps.integrations.services.steam import scan_steam_library, scan_steam_wishlist
+from apps.integrations.services.tmdb import import_tmdb_watchlist, sync_tmdb_ratings
 
 __all__ = [
     "DISCOVER_UNEXPECTED",
@@ -40,7 +41,9 @@ __all__ = [
     "get_plex_stream_url",
     "list_plex_libraries",
     "resolve_stream_url_for_server_with_base",
+    "import_tmdb_watchlist",
     "scan_steam_library",
     "scan_steam_wishlist",
     "sync_plex_watchlist",
+    "sync_tmdb_ratings",
 ]
