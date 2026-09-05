@@ -55,8 +55,8 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
 
     ``username`` is the stable login handle; ``email`` is optional but, when
     present, unique. External identity columns (``google_id``, ``plex_id``,
-    ``steam_id``, ``tmdb_id``) are unique where set so each provider identity
-    maps to at most one user.
+    ``steam_id``, ``tmdb_session_id``/``tmdb_account_id``) are unique where set
+    so each provider identity maps to at most one user.
     """
 
     username = models.CharField(
@@ -100,8 +100,17 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     steam_id = models.CharField(
         max_length=17, null=True, blank=True, unique=True, db_index=True
     )
-    tmdb_id = models.CharField(
-        max_length=MAX_EXTERNAL_ID_LENGTH, null=True, blank=True, unique=True, db_index=True
+
+    # --- TMDb integration profile (request_token -> session_id dance; no OAuth) ---
+    # Legacy ``User`` carries no plain ``tmdb_id`` — the account is identified by
+    # the validated session + the TMDb account id fetched from it. ``tmdb_id``
+    # (0001 placeholder) was replaced by this set in 0006.
+    tmdb_session_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
+    tmdb_account_id = models.BigIntegerField(null=True, blank=True, unique=True)
+    tmdb_username = models.CharField(max_length=150, null=True, blank=True)
+    tmdb_avatar_hash = models.CharField(max_length=64, null=True, blank=True)
+    tmdb_rating_sync_direction = models.CharField(
+        max_length=16, default="disabled", null=False, blank=False
     )
 
     # --- Google / Google-Drive integration tokens + profile ---

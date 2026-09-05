@@ -20,8 +20,10 @@ from apps.accounts.views import (
     GoogleLoginInitiateView,
     LoginView,
     LogoutView,
+    MeIntegrationsView,
     MePreferencesView,
     MeView,
+    OAuthProvidersView,
     PlexDisconnectView,
     PlexLinkCallbackView,
     PlexLinkInitiateView,
@@ -37,6 +39,12 @@ from apps.accounts.views import (
     SteamLinkInitiateView,
     SteamLoginCallbackView,
     SteamLoginInitiateView,
+    TMDbDisconnectView,
+    TMDbLinkCallbackView,
+    TMDbLinkInitiateView,
+    TMDbLinkRedirectView,
+    TMDbLoginCallbackView,
+    TMDbLoginInitiateView,
     TwoFactorDisableView,
     TwoFactorEnableView,
     TwoFactorLoginVerifyView,
@@ -67,7 +75,10 @@ urlpatterns = [
         name="session-detail",
     ),
     path("me/preferences", MePreferencesView.as_view(), name="me-preferences"),
+    path("me/integrations", MeIntegrationsView.as_view(), name="me-integrations"),
     path("me", MeView.as_view(), name="me"),
+    # OAuth aggregate: five-provider linked status.
+    path("oauth", OAuthProvidersView.as_view(), name="oauth-providers"),
     # OAuth link surface (google + google-drive). Login families mount under
     # /auth/{provider}/ later; google/google-drive disconnect live here.
     path("oauth/google", GoogleLinkInitiateView.as_view(), name="oauth-google"),
@@ -104,6 +115,11 @@ urlpatterns = [
     path("oauth/steam", SteamLinkInitiateView.as_view(), name="oauth-steam"),
     path("oauth/steam/callback", SteamLinkCallbackView.as_view(), name="oauth-steam-callback"),
     path("oauth/steam/disconnect", SteamDisconnectView.as_view(), name="oauth-steam-disconnect"),
+    # TMDb link surface (connect).
+    path("oauth/tmdb", TMDbLinkInitiateView.as_view(), name="oauth-tmdb"),
+    path("oauth/tmdb/callback", TMDbLinkCallbackView.as_view(), name="oauth-tmdb-callback"),
+    path("oauth/tmdb/disconnect", TMDbDisconnectView.as_view(), name="oauth-tmdb-disconnect"),
+    path("oauth/tmdb/redirect", TMDbLinkRedirectView.as_view(), name="oauth-tmdb-redirect"),
     # Plex login family (unauthed; no owning Otix user at initiate).
     path("plex/initiate", PlexLoginInitiateView.as_view(), name="plex-login-initiate"),
     path("plex/callback", PlexLoginCallbackView.as_view(), name="plex-login-callback"),
@@ -113,4 +129,7 @@ urlpatterns = [
     # Steam login family (unauthed; no owning Otix user at initiate).
     path("steam/initiate", SteamLoginInitiateView.as_view(), name="steam-login-initiate"),
     path("steam/callback", SteamLoginCallbackView.as_view(), name="steam-login-callback"),
+    # TMDb login family (unauthed; no owning Otix user at initiate).
+    path("tmdb/initiate", TMDbLoginInitiateView.as_view(), name="tmdb-login-initiate"),
+    path("tmdb/callback", TMDbLoginCallbackView.as_view(), name="tmdb-login-callback"),
 ]

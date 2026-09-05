@@ -24,3 +24,10 @@ class SteamCallbackSerializer(serializers.Serializer):
     raw_query = serializers.CharField(
         allow_blank=True, allow_null=True, required=False, default=None
     )
+
+
+class TMDbLinkCallbackSerializer(serializers.Serializer):
+    """Body of the TMDb connect callback: the state we issued + the request token."""
+
+    state = serializers.CharField(allow_blank=False)
+    request_token = serializers.CharField(allow_blank=False)

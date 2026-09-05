@@ -1002,3 +1002,434 @@ def authenticate_steam(params: dict, raw_query: str | None) -> User:
     """Consume a login callback and return the resolved/created Steam user."""
     steam_id = validate_steam_callback(params, raw_query)
     return find_or_create_steam_user(steam_id)
+
+
+# ── TMDb (request_token -> session_id dance; link + login) ───────────────
+
+TMDB_API_BASE = "https://api.themoviedb.org/3"
+TMDB_AUTH_BASE = "https://www.themoviedb.org/authenticate"
+TMDB_STATE_TTL_SECONDS = 600  # legacy TTL["AUTH"]["TMDB_REQUEST_TOKEN"]
+
+
+def _tmdb_api_key() -> str:
+    return (getattr(settings, "TMDB_API_KEY", "") or "").strip()
+
+
+def _tmdb_rat() -> str:
+    return (getattr(settings, "TMDB_RAT", "") or "").strip()
+
+
+def _tmdb_rt_key(request_token: str) -> str:
+    return f"tmdb_rt:{request_token}"
+
+
+def _store_tmdb_state(
+    state: str, request_token: str, *, link: bool, user_id: int | None = None
+) -> None:
+    """Persist the flow under both the state key and the request token key.
+
+    TMDb may mangle ``state`` on the way back, so the callback can recover by
+    the request token (mirrors the legacy dual Redis keys).
+    """
+    payload: dict[str, Any] = {"v": "1", "request_token": request_token}
+    payload["flow"] = "link" if link else "login"
+    if link and user_id is not None:
+        payload["user_id"] = user_id
+    OAuthState.objects.create(key=state, payload=payload)
+    OAuthState.objects.create(key=_tmdb_rt_key(request_token), payload=payload)
+
+
+def _consume_tmdb_request_token(state: str, request_token: str | None) -> tuple[str, int | None]:
+    """Read+delete the flow state; returns ``(request_token, user_id_or_None)``."""
+    row = OAuthState.objects.filter(key=state).first()
+    if row is None and request_token:
+        row = OAuthState.objects.filter(key=_tmdb_rt_key(request_token)).first()
+    if row is None:
+        raise OAuthFlowError(400, "TMDb linking session expired. Please try again.")
+    payload = row.payload or {}
+    stored_token = str(payload.get("request_token") or "")
+    user_id = payload.get("user_id")
+    delete_keys = {state, request_token, stored_token}
+    OAuthState.objects.filter(key__in=[k for k in delete_keys if k]).delete()
+    if request_token and stored_token != str(request_token):
+        raise OAuthFlowError(400, "Invalid TMDb linking session. Please try again.")
+    return stored_token, user_id
+
+
+def _tmdb_fetch_request_token(start_error: str) -> str:
+    """GET a new unauth'd request token; TMDb's one-time pre-auth credential."""
+    api_key = _tmdb_api_key()
+    try:
+        _, raw = _request(f"{TMDB_API_BASE}/authentication/token/new?api_key={api_key}")
+    except OAuthProviderError:
+        raise OAuthFlowError(502, start_error) from None
+    data = _parse_json(raw)
+    if not data.get("success"):
+        raise OAuthFlowError(502, "TMDb returned an error. Please try again.")
+    request_token = data.get("request_token")
+    if not request_token:
+        raise OAuthFlowError(502, "TMDb returned an invalid response. Please try again.")
+    return request_token
+
+
+def build_tmdb_link_url(user_id: int, redirect_url: str) -> tuple[str, str]:
+    """TMDb connect initiate -> ``(auth_url, state)``; user links server-side."""
+    state = secrets.token_urlsafe(32)
+    request_token = _tmdb_fetch_request_token(
+        "Unable to start TMDb linking. Please try again."
+    )
+    _store_tmdb_state(state, request_token, link=True, user_id=user_id)
+    separator = "&" if "?" in redirect_url else "?"
+    redirect_to = urllib.parse.quote(
+        f"{redirect_url}{separator}state={state}", safe=""
+    )
+    return f"{TMDB_AUTH_BASE}/{request_token}?redirect_to={redirect_to}", state
+
+
+def build_tmdb_login_url() -> tuple[str, str]:
+    """TMDb login initiate (unauthed) -> ``(auth_url, state)``."""
+    state = secrets.token_urlsafe(32)
+    request_token = _tmdb_fetch_request_token("Unable to start TMDb login. Please try again.")
+    _store_tmdb_state(state, request_token, link=False)
+    redirect_to = urllib.parse.quote(
+        f"{_frontend_base()}/auth/callback/tmdb-login?state={state}", safe=""
+    )
+    return f"{TMDB_AUTH_BASE}/{request_token}?redirect_to={redirect_to}", state
+
+
+def _tmdb_create_session(request_token: str) -> str:
+    """Exchange an approved request token for a session id."""
+    api_key = _tmdb_api_key()
+    try:
+        _, raw = _request(
+            f"{TMDB_API_BASE}/authentication/session/new?api_key={api_key}",
+            method="POST",
+            data=json.dumps({"request_token": request_token}),
+            headers={"Content-Type": "application/json"},
+        )
+    except OAuthProviderError:
+        raise OAuthFlowError(502, "Unable to verify with TMDb. Please try again.") from None
+    data = _parse_json(raw)
+    if not data.get("success"):
+        raise OAuthFlowError(400, "TMDb authorization failed. Please try linking again.")
+    session_id = data.get("session_id")
+    if not session_id:
+        raise OAuthFlowError(502, "TMDb returned an invalid session. Please try again.")
+    return session_id
+
+
+def _tmdb_account(session_id: str) -> dict | None:
+    """Fetch the TMDb account profile; ``None`` on any failure (caller decides)."""
+    api_key = _tmdb_api_key()
+    try:
+        _, raw = _request(
+            f"{TMDB_API_BASE}/account?api_key={api_key}&session_id={session_id}"
+        )
+        return _parse_json(raw)
+    except OAuthProviderError:
+        return None
+
+
+def _tmdb_link_account(
+    user: User, request_token: str, session_id: str, account: dict | None
+) -> None:
+    """Guard + write the tmdb_* columns after session creation."""
+    if User.objects.exclude(pk=user.pk).filter(tmdb_session_id=session_id).exists():
+        raise OAuthFlowError(
+            409, "This TMDb account is already linked to another Otix account."
+        )
+    if account is None:
+        raise OAuthFlowError(502, "Unable to fetch TMDb account details. Please try again.")
+    account_id = account.get("id")
+    if not account_id:
+        raise OAuthFlowError(502, "TMDb returned an invalid account profile. Please try again.")
+    if User.objects.exclude(pk=user.pk).filter(tmdb_account_id=int(account_id)).exists():
+        raise OAuthFlowError(
+            409, "This TMDb account is already linked to another Otix account."
+        )
+    user.tmdb_session_id = session_id
+    user.tmdb_account_id = int(account_id)
+    user.tmdb_username = account.get("username") or account.get("name")
+    avatar = account.get("avatar")
+    if isinstance(avatar, dict) and isinstance(avatar.get("gravatar"), dict):
+        user.tmdb_avatar_hash = avatar["gravatar"].get("hash")
+    user.save(
+        update_fields=(
+            "tmdb_session_id",
+            "tmdb_account_id",
+            "tmdb_username",
+            "tmdb_avatar_hash",
+        )
+    )
+
+
+def link_tmdb_to_user(request_user, state: str, request_token: str) -> None:
+    """Bind TMDb to the authenticated user from a link callback."""
+    stored_token, state_user_id = _consume_tmdb_request_token(state, request_token)
+    if state_user_id is not None and state_user_id != request_user.pk:
+        raise OAuthFlowError(400, "Invalid TMDb linking session. Please try again.")
+    if request_user.tmdb_session_id is not None:
+        raise OAuthFlowError(400, "TMDb account already linked")
+    session_id = _tmdb_create_session(stored_token)
+    _tmdb_link_account(request_user, stored_token, session_id, _tmdb_account(session_id))
+
+
+def link_tmdb_state_to_user(state: str, request_token: str | None = None) -> User:
+    """Bind TMDb resolving the owning user from the flow state (303 hop / no JWT)."""
+    stored_token, state_user_id = _consume_tmdb_request_token(state, request_token)
+    if not state_user_id:
+        raise OAuthFlowError(400, "Invalid TMDb linking session. Please try again.")
+    user = User.objects.filter(pk=state_user_id).first()
+    if user is None or not user.is_active:
+        raise OAuthFlowError(400, "TMDb linking user is no longer available.")
+    if user.tmdb_session_id is not None:
+        raise OAuthFlowError(400, "TMDb account already linked")
+    session_id = _tmdb_create_session(stored_token)
+    _tmdb_link_account(user, stored_token, session_id, _tmdb_account(session_id))
+    return user
+
+
+def unlink_tmdb_from_user(user: User) -> None:
+    """Unlink TMDb; leaves the rating-sync columns untouched (integration-owned)."""
+    if user.tmdb_session_id is None:
+        raise OAuthFlowError(400, "No TMDb account linked")
+    user.tmdb_session_id = None
+    user.tmdb_account_id = None
+    user.tmdb_username = None
+    user.tmdb_avatar_hash = None
+    user.save(
+        update_fields=(
+            "tmdb_session_id",
+            "tmdb_account_id",
+            "tmdb_username",
+            "tmdb_avatar_hash",
+        )
+    )
+
+
+def find_or_create_tmdb_user(
+    session_id: str, account_id: int, username: str = ""
+) -> User:
+    """Return the Otix account owning ``account_id``, creating it on first login."""
+    existing = User.objects.filter(tmdb_account_id=account_id).first()
+    if existing is not None:
+        if not existing.is_active:
+            raise OAuthFlowError(403, "Account is deactivated")
+        return existing  # fresh session deliberately not persisted on a returning user
+    base = re.sub(r"[^a-zA-Z0-9_-]", "", (username or "")[:64]) or f"tmdb_{account_id}"
+    candidate, suffix = base, 1
+    while User.objects.filter(username=candidate).exists():
+        suffix += 1
+        candidate = f"{base}_{suffix}"
+    return User.objects.create_user(
+        username=candidate,
+        email=f"tmdb_{account_id}@user.otix",
+        password=secrets.token_urlsafe(32),
+        tmdb_session_id=session_id,
+        tmdb_account_id=account_id,
+        tmdb_username=username or None,
+        is_verified=True,
+    )
+
+
+def authenticate_tmdb_login(state: str, request_token: str | None) -> User:
+    """Consume a TMDb login callback and return the resolved/created user."""
+    stored_token, _user_id = _consume_tmdb_request_token(state, request_token)
+    session_id = _tmdb_create_session(stored_token)
+    account = _tmdb_account(session_id)
+    if account is None:
+        raise OAuthFlowError(502, "Unable to fetch TMDb account details. Please try again.")
+    account_id = account.get("id")
+    if not account_id:
+        raise OAuthFlowError(502, "TMDb returned an invalid account profile. Please try again.")
+    return find_or_create_tmdb_user(
+        session_id, int(account_id), account.get("username") or account.get("name", "")
+    )
+
+
+# ── OAuth aggregate reads (GET /auth/oauth + GET /auth/me/integrations) ──
+
+def _gravatar_url(avatar_hash: str | None) -> str | None:
+    if not avatar_hash:
+        return None
+    return f"https://www.gravatar.com/avatar/{avatar_hash}?s=200"
+
+
+def steam_profile_for_user(user: User) -> dict | None:
+    """SteamProfileResponse-shaped dict for GET /auth/oauth, or ``None``."""
+    if user.steam_id is None:
+        return None
+    info = _get_steam_user_info(user.steam_id)
+    if not info:
+        return None
+    keys = (
+        "personaname",
+        "avatarfull",
+        "profileurl",
+        "realname",
+        "loccountrycode",
+        "timecreated",
+        "personastate",
+        "lastlogoff",
+    )
+    return {key: info.get(key) for key in keys if key in info}
+
+
+def tmdb_stats_for_user(user: User) -> dict | None:
+    """TMDb rated/watchlist tallies for GET /auth/oauth, or ``None``.
+
+    ``None`` when not linked, or when the v4 read token/API key are unset. Each
+    sub-count degrades to 0 on a failed query (mirrors legacy). ``tmdb_account_id``
+    absent but ``tmdb_session_id`` set keeps ``None`` (no stats without the id).
+    """
+    if user.tmdb_session_id is None or user.tmdb_account_id is None:
+        return None
+    api_key = _tmdb_api_key()
+    rat = _tmdb_rat()
+    if not api_key or not rat:
+        return None
+    stats = {"rated_movies": 0, "rated_tv": 0, "watchlist_movies": 0, "watchlist_tv": 0}
+    base = f"{TMDB_API_BASE}/account/{user.tmdb_account_id}"
+    common = urllib.parse.urlencode(
+        {
+            "api_key": api_key,
+            "session_id": user.tmdb_session_id,
+            "language": "en-US",
+            "page": 1,
+        }
+    )
+    headers = {"Authorization": f"Bearer {rat}"}
+    routes = (
+        ("rated_movies", "rated/movies", True),
+        ("rated_tv", "rated/tv", True),
+        ("watchlist_movies", "watchlist/movies", False),
+        ("watchlist_tv", "watchlist/tv", False),
+    )
+    for key, path, sort in routes:
+        url = f"{base}/{path}?{common}"
+        if sort:
+            url += "&sort_by=created_at.desc"
+        try:
+            _, raw = _request(url, headers=headers)
+            stats[key] = int(_parse_json(raw).get("total_results", 0) or 0)
+        except (OAuthProviderError, ValueError):
+            stats[key] = 0
+    return stats
+
+
+def backfill_tmdb_avatar(user: User) -> None:
+    """Fill ``tmdb_avatar_hash`` from the account gravatar when missing."""
+    if user.tmdb_session_id is None or user.tmdb_avatar_hash:
+        return
+    account = _tmdb_account(user.tmdb_session_id)
+    avatar = (account or {}).get("avatar") if account else None
+    if isinstance(avatar, dict) and isinstance(avatar.get("gravatar"), dict):
+        avatar_hash = avatar["gravatar"].get("hash")
+        if avatar_hash:
+            user.tmdb_avatar_hash = avatar_hash
+            user.save(update_fields=("tmdb_avatar_hash",))
+
+
+def user_integrations_payload(user: User) -> dict:
+    """Body for GET /auth/me/integrations (MeIntegrationsResponse)."""
+    return {
+        "steam_id": user.steam_id,
+        "plex_id": user.plex_id,
+        "tmdb_account_id": user.tmdb_account_id,
+        "tmdb_username": user.tmdb_username,
+        "tmdb_avatar_url": _gravatar_url(user.tmdb_avatar_hash),
+        "tmdb_rating_sync_direction": user.tmdb_rating_sync_direction,
+        "google_id": user.google_id,
+        "google_email": user.google_email,
+        "google_name": user.google_name,
+        "google_avatar_url": user.google_avatar_url,
+        "drive_connected": user.drive_refresh_token is not None,
+        "plex_watch_history_enabled": user.plex_watch_history_enabled,
+    }
+
+
+def oauth_providers_payload(user: User) -> list[dict]:
+    """Five-provider list body for GET /auth/oauth (IntegrationsResponse).
+
+    Every provider object carries the full declared field set (nulls where
+    unset), mirroring FastAPI's un-omitted ``response_model`` serialization.
+    """
+    try:
+        backfill_tmdb_avatar(user)
+    except OAuthProviderError:
+        pass
+    tmdb_stats = tmdb_stats_for_user(user)
+    steam_profile = steam_profile_for_user(user)
+    tmdb_avatar_url = _gravatar_url(user.tmdb_avatar_hash)
+
+    def row(overrides: dict) -> dict:
+        fields = {
+            "name": None,
+            "connected": False,
+            "steam_id": None,
+            "steam_profile": None,
+            "plex_id": None,
+            "plex_username": None,
+            "plex_email": None,
+            "plex_thumb": None,
+            "tmdb_username": None,
+            "tmdb_avatar_url": None,
+            "tmdb_stats": None,
+            "tmdb_rating_sync_direction": None,
+            "google_email": None,
+            "google_name": None,
+            "google_avatar_url": None,
+        }
+        fields.update(overrides)
+        return fields
+
+    return [
+        row(
+            {
+                "name": "steam",
+                "connected": user.steam_id is not None,
+                "steam_id": user.steam_id,
+                "steam_profile": steam_profile,
+            }
+        ),
+        row(
+            {
+                "name": "plex",
+                "connected": user.plex_id is not None,
+                "plex_id": user.plex_id,
+                "plex_username": user.plex_username,
+                "plex_email": user.plex_email,
+                "plex_thumb": user.plex_thumb,
+            }
+        ),
+        row(
+            {
+                "name": "tmdb",
+                "connected": user.tmdb_session_id is not None,
+                "tmdb_username": user.tmdb_username,
+                "tmdb_avatar_url": tmdb_avatar_url,
+                "tmdb_stats": tmdb_stats,
+                "tmdb_rating_sync_direction": user.tmdb_rating_sync_direction,
+            }
+        ),
+        row(
+            {
+                "name": "google",
+                "connected": user.google_id is not None,
+                "google_email": user.google_email,
+                "google_name": user.google_name,
+                "google_avatar_url": user.google_avatar_url,
+            }
+        ),
+        row(
+            {
+                "name": "google_drive",
+                "connected": user.drive_refresh_token is not None,
+            }
+        ),
+    ]
+
+
+def frontend_base() -> str:
+    """Public accessor for the configured frontend origin (redirect targets)."""
+    return _frontend_base()

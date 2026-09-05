@@ -328,8 +328,34 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   unable-to-verify network, 403 deactivated. Steam views carry NO broad 500
   catch-all — legacy steam callbacks `raise` on everything else. Reuses the
   existing `steam_id` column (0001) — no migration. Parity 222→227 (auth 13→8).
-  **Remaining auth (8):** tmdb link+login family, `GET /auth/oauth`,
-  `GET /auth/me/integrations`.
+- **TMDb connect + login families + the oauth aggregates (increment 11,
+  2026-09-05)** — closes the /auth surface. TMDb is a request_token →
+  session_id dance (not OAuth2): initiate GETs `token/new`, hands the user to
+  TMDb `authenticate/{token}?redirect_to=…`, callback/session post swaps the
+  approved token for a session. Flow state stored under BOTH the `state` key
+  and a `tmdb_rt:{request_token}` key (TMDb mangles `state`) in the single-use
+  `OAuthState` table — `_consume_tmdb_request_token` falls back by request
+  token. Link family = authed `POST /auth/oauth/tmdb` initiate (redirect_url =
+  the API's own `/auth/oauth/tmdb/redirect`), a **server-side 303 hop**
+  `GET …/tmdb/redirect?approved&state&request_token` that links the state
+  owner then bounces the browser to the frontend `?tmdb_link=success|error`
+  (`HttpResponseRedirect(status=303)`), AllowAny `POST …/callback`
+  (authed-first else state user), authed `DELETE …/disconnect`. Login family =
+  unauthed `POST /auth/tmdb/initiate` (redirect_to = frontend
+  `/auth/callback/tmdb-login`) + `POST /auth/tmdb/callback` (bare dict body,
+  find-or-creates by `tmdb_account_id`). Errors byte-for-byte: 400 expired /
+  invalid-session / token-mismatch / already-linked / no-account / 403
+  deactivated / 409 both already-linked directions / 502 family. **Migration
+  0006** replaces the placeholder `User.tmdb_id` CharField with the legacy set
+  `tmdb_session_id`(unique)+`tmdb_account_id`(BigInt unique)+`tmdb_username`
+  +`tmdb_avatar_hash`+`tmdb_rating_sync_direction` (default "disabled");
+  admin fieldset updated. Aggregates: `GET /auth/oauth` returns the ordered
+  five-provider list (steam/plex/tmdb/google/google_drive) with the FULL field
+  set serialized on every row (nulls where unset) + tmdb avatar backfill +
+  best-effort `tmdb_stats`/steam_profile (None when unkeyed); `GET
+  /auth/me/integrations` returns the linked-identity columns. Parity 227→235
+  (auth 8→0). **Remaining 28 = discover 4, integrations 18, notifications 1,
+  saves 4, upload 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

@@ -70,7 +70,14 @@ class UserAdmin(BaseUserAdmin):
         (
             _("External identities"),
             {
-                "fields": ("google_id", "plex_id", "steam_id", "tmdb_id"),
+                "fields": (
+                    "google_id",
+                    "plex_id",
+                    "steam_id",
+                    "tmdb_session_id",
+                    "tmdb_account_id",
+                    "tmdb_username",
+                ),
                 "classes": ("wide",),
             },
         ),
