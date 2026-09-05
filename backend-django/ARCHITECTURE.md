@@ -493,6 +493,28 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   `google_drive._request` + accounts oauth `_request` seams (15 new; track app
   suite 23). Parity 243→247. **Remaining 16 = discover 4, integrations 10,
   notifications 1, upload 1.** (saves bucket now complete.)
+- **Plex watchlist sync — the media-seeding engine (increment 19, 2026-09-05)** —
+  `POST /integrations/plex/watchlist/sync` ports legacy `sync_plex_watchlist`
+  and is the first provider→catalog seeding route (the seam the steam/tmdb sync
+  routes will reuse). `apps/integrations/services/plex_watchlist.py` fetches
+  `discover.provider.plex.tv/.../watchlist/all?includeGuids=1` through the Plex
+  module `_request`/`_with_token`/`_plex_headers` leaves, keeps movie/show
+  items, then per item matches or seeds a stub `MediaItem` +
+  `Movie`/`Show` subtype + `ExternalID` rows and upserts the user's
+  `watchlisted` interaction (`apps.media.services.interaction.set_interaction`,
+  which recalcs `watchlist_count`). Matching mirrors legacy `_find_or_seed_media`:
+  the recorded plex guid first, then third-party tmdb/imdb/tvdb/musicbrainz
+  guids (parsed from the item's `Guid` list; plex rows store `media_type=None`,
+  third-party rows the concrete movie/show type so shared tmdb movie/show
+  numeric ids never cross-point); seeds carry title/slug/overview/
+  `release_date`(originallyAvailableAt)/`completeness_score=0.15`/
+  `next_sync_at`. `addedAt` → interaction `added_at`; any fetch failure → zeros
+  (never raises). View `PlexWatchlistSyncView` guards 400 when no `plex_id`,
+  500 on unexpected error. Tests patch the `plex._request` seam (14 new).
+  Parity 247→248. **Remaining 15 = discover 4, integrations 9, notifications 1,
+  upload 1.** (first media-seeding engine live; remaining integrations syncs
+  are steam/tmdb/youtube + plex/sync SSE, all needing the same engine or the
+  platform wave.)
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

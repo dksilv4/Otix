@@ -10,6 +10,8 @@ fetches a music album's track list and ``/sessions`` active playback, live from
 the user's Plex server.
 """
 
+import logging
+
 from django.http import HttpResponse
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
@@ -17,6 +19,8 @@ from rest_framework.views import APIView
 
 from apps.integrations import services as integrations_services
 from apps.integrations.models import UserPlexServer
+
+logger = logging.getLogger(__name__)
 
 # Matches ``accounts.services.oauth._PLEX_TOKEN_COLUMNS`` — the legacy
 # ``unlink_plex_quietly`` field set. Notifications dispatch is deferred to the
@@ -85,6 +89,23 @@ class PlexSessionsView(APIView):
         return Response(
             {"sessions": integrations_services.get_plex_sessions(request.user)}
         )
+
+
+class PlexWatchlistSyncView(APIView):
+    """POST /integrations/plex/watchlist/sync — seed the catalog from the watchlist."""
+
+    def post(self, request):
+        if not request.user.plex_id:
+            return Response({"detail": "No Plex account linked"}, status=400)
+        try:
+            result = integrations_services.sync_plex_watchlist(request.user)
+        except Exception:
+            logger.exception("plex watchlist sync failed unexpectedly")
+            return Response(
+                {"detail": "Failed to sync Plex watchlist. Please try again."},
+                status=500,
+            )
+        return Response(result)
 
 
 def _server_row(server) -> dict:
