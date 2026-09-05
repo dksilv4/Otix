@@ -1035,6 +1035,46 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   first real consumers of the four ported clients — maps legacy SQLAlchemy
   domain onto Django models, DB-touching/larger), then SteamGrid artwork
   hydration.
+- **TMDB media ingest service (increment 38, 2026-09-05): parity 263/263
+  unchanged, FULL suite 842 (6 new).** The FIRST real consumer of a ported
+  async provider client, and the pivot from porting machinery to wiring the
+  hydration path: ``apps/media/services/tmdb_ingest.py`` seeds a movie
+  MediaItem+Movie row from TMDB movie detail. Deliberate **architectural
+  divergence — NOT a faithful SQLAlchemy-transformer port.** The legacy
+  transformer/hydrator split returned unsaved SQLAlchemy domain instances whose
+  object graph was the persistence graph; that does not survive Django's
+  catalog shapes (MTI subtype PK = media_items.id, generic-FK ``ExternalID``,
+  explicit ``MediaGenre``/``MediaGenreType`` links, ``MediaAsset`` images), and
+  the ORM drift means a throwaway object-builder layer would be churn. So this
+  follows the increment-26 ``_seed_game_from_igdb`` idiom instead: a TMDB detail
+  dict maps straight onto the Django graph and persists it. ``seed_movie_from_tmdb
+  (raw) -> media_id``: dedup by tmdb ``ExternalID`` (provider "tmdb",
+  media_type "movie"), else same-slug ``movie`` hub (cross-provider), then
+  create MediaItem(title/overview/slug/release_date/popularity/original_language/
+  is_adult) + Movie subtype (runtime/budget/revenue/tagline/is_anime from the
+  legacy anime heuristic over keywords+genres+ja language), link canonical
+  ``Genre`` rows (dedup by name; names read directly from detail genres — no
+  legacy id→name map) tagged ``MediaGenreType`` movie + ``MediaGenre`` links,
+  upsert tmdb/imdb ``ExternalID`` rows and poster (w500)/backdrop (w780)
+  ``MediaAsset`` rows, and mark ``completeness_score`` 0.15 + ``next_sync_at``
+  so a later full-hydration pass completes the row (increment-26 posture).
+  Re-seed tops up a missing overview and re-links genres/assets idempotently.
+  ``fetch_and_seed_movie(tmdb_id, *, provider=None)`` fetches detail through
+  ``core/providers.tmdb.TMDBProvider`` then seeds — the DB write goes through
+  ``asgiref.sync.sync_to_async`` because Django forbids sync ORM inside an async
+  context (a real async service must hand DB work to a worker thread). Tests
+  (``apps/media/tests/test_tmdb_ingest.py``, 6) use ``django.test.TestCase``
+  over the in-memory sqlite: full-row assertions (hub+subtype+ext ids+genres+
+  assets+completeness), tmdb-id idempotency, same-slug reuse+overview top-up,
+  ja+Animation → is_anime, missing-id ValueError. **Test gotcha recorded:** the
+  async fetch test stubs ``seed_movie_from_tmdb`` and asserts the raw passes
+  through — it must NOT write the DB, because ``sync_to_async`` runs on a
+  worker-thread connection that escapes ``TestCase``'s per-test transaction and
+  would leak committed rows into the rest of the suite. No model fields added →
+  no migration. **Next deferred piece:** register a real TMDB sync engine on the
+  increment-27 ``apps/integrations/services/sync.py`` registry + wire it to a
+  seed driver (fetch popular/backlog), then extend to show/season/episode +
+  credits (the TMDB hydrator tail) and the MusicBrainz album ingest.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
