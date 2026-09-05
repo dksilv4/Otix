@@ -27,7 +27,10 @@ services:
       -c min_wal_size=1GB
       -c max_wal_size=4GB
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # Fresh volume for the Django cutover; the legacy alembic `otix_pgdata`
+      # volume is intentionally left orphaned (never mounted) so the FastAPI
+      # schema + data stay intact until a real data migration.
+      - pgdata_django:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U otix -d otix_dev"]
       interval: 5s
@@ -46,20 +49,21 @@ services:
       interval: 5s
       retries: 5
 
-
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
+      context: ./backend-django
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
+      - ./backend-django:/app
     env_file: ./.env
     environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      # Override .env's asyncpg FastAPI URL — Django's parser only accepts
+      # plain postgresql:// (see config/settings/base.py parse_database_url).
+      DATABASE_URL: postgresql://otix:password@db:5432/otix_dev
       ENABLE_RELOAD: "true"
-      FASTEMBED_CACHE_PATH: /app/.fastembed_cache
-      OMP_NUM_THREADS: "1"
     command: bash entrypoints/start-api.sh
     depends_on:
       db:
@@ -75,22 +79,25 @@ services:
           cpus: "0.5"
           memory: 1G
 
-  # ── Celery workers (all queues, single process per purpose) ──
+  # ── Celery worker + beat ──
+  # The Django task surface is small so far (run_sync_job on the default
+  # queue); the worker consumes `celery` only. As task-#6 machinery (ingest/
+  # enrich/embedding queues) lands, grow -Q here to match. Beat has no entries
+  # yet (CELERY_BEAT_SCHEDULE is empty) and simply idles.
 
   worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
+      context: ./backend-django
+      dockerfile: Dockerfile
     volumes:
-      - ./backend:/app
+      - ./backend-django:/app
     env_file: ./.env
     environment:
-      APP_ENV: development
-      CELERY_WORKER_PREFETCH_MULTIPLIER: "4"
-      FASTEMBED_CACHE_PATH: /app/.fastembed_cache
-      OMP_NUM_THREADS: "1"
-      OMP_WAIT_POLICY: PASSIVE
-    command: celery -A otix.infrastructure.celery worker -Q ingest-tmdb,ingest-steam,ingest-igdb,ingest-musicbrainz,ingest-deezer,enrich-fanart,enrich-omdb,enrich-steamgrid,enrich-lastfm,enrich-theaudiodb,enrich-lrclib,reactive-fast,reactive-user,maintain,embedding -c 6 -n otix-worker@%h --loglevel WARNING --pool=threads
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgresql://otix:password@db:5432/otix_dev
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    command: celery -A config worker -Q celery -c 2 -n otix-worker@%h --loglevel INFO
     depends_on:
       db:
         condition: service_healthy
@@ -107,14 +114,16 @@ services:
 
   beat:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
+      context: ./backend-django
+      dockerfile: Dockerfile
     volumes:
-      - ./backend:/app
+      - ./backend-django:/app
     env_file: ./.env
     environment:
-      APP_ENV: development
-    command: celery -A otix.infrastructure.celery beat --loglevel INFO --scheduler celery.beat.Scheduler --max-interval 30
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgresql://otix:password@db:5432/otix_dev
+      CELERY_BROKER_URL: redis://redis:6379/0
+    command: celery -A config beat --loglevel INFO
     depends_on:
       db:
         condition: service_healthy
@@ -153,6 +162,6 @@ services:
       - api
 
 volumes:
-  pgdata:
+  pgdata_django:
   redis_data:
   bot_logs:

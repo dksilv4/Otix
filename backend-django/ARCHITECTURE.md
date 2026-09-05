@@ -8,9 +8,13 @@ and conventional and update this file. Do not invent a parallel structure.
 
 - This directory (`backend-django/`) is a greenfield **Django + DRF** rewrite
   of the Otix platform backend.
-- The **FastAPI backend at `../backend` is LIVE** (hosted product + desktop
-  companion depend on it). It must **not be touched** from this work. It stays
-  running until a full cutover.
+- Since increment 31 the **local dev compose runs this Django backend**, not the
+  FastAPI tree at `../backend` (which is retired from dev but **not touched/
+  not deleted** — it stays for reference and a future data migration).
+  ``../backend`` should not be edited from this work. The **production compose
+  is NOT yet cut over**: `docker-compose.prod.yml` still builds `../backend`
+  because its 4-worker/15-queue/embeddings topology maps to deferred task-#6
+  machinery (cut that over with the production wave).
 - All new Django work lives **only** under `backend-django/` until absorption;
   never edit `../backend` or add Django code elsewhere in the repo.
 - Decision/design background: `../docs/superpowers/specs/2026-09-04-django-brain-rewrite-design.md`.
@@ -795,6 +799,34 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   (``apps/integrations/tests/_sse_fakes.py``) whose ``pubsub()`` returns an async
   ``FakePubSub`` while keeping the sync ``set/get/publish`` write half; a new
   assertion checks the response's ``streaming_content`` is an async iterator.
+- **Dev-compose cutover to Django (increment 31, 2026-09-05): parity 263/263
+  unchanged, full suite 747 (no new).** The local dev ``docker-compose.yml`` no
+  longer builds/launches the legacy FastAPI ``backend/`` — its ``api``/``worker``/
+  ``beat`` services now run the Django app from ``./backend-django``, so the
+  running dev environment *is* this codebase. Packaging added in
+  ``backend-django/``: a ``Dockerfile`` (python:3.12-slim + ``uv sync
+  --frozen --no-dev --no-install-project`` with ``UV_PROJECT_ENVIRONMENT=/usr/local``
+  so deps land in the global site-packages and the dev bind-mount of
+  ``./backend-django:/app`` still resolves imports), a ``.dockerignore``, and
+  ``entrypoints/start-api.sh`` (``manage.py migrate --noinput`` then
+  ``uvicorn config.asgi:application``, ``--reload`` when ``ENABLE_RELOAD=1``).
+  ``uvicorn`` is now a runtime dependency (the ASGI entrypoint is the real
+  server). ``docker-compose.yml``: api = the above ASGI server (health
+  ``/api/v1/health``); worker = ``celery -A config worker -Q celery`` (autodiscovers
+  ``run_sync_job``; the old 15-queue command is gone — grow ``-Q`` as the deferred
+  ingest/enrich/embedding tasks land); beat = ``celery -A config beat`` (empty
+  schedule idles). Each service overrides ``.env``'s FastAPI asyncpg
+  ``DATABASE_URL`` with a plain ``postgresql://`` URL (Django's parser rejects
+  the ``+asyncpg`` scheme) and exports ``DJANGO_SETTINGS_MODULE=config.settings.dev``.
+  DB cutover: ``db`` now mounts a NEW named volume ``pgdata_django``; the legacy
+  ``otix_pgdata`` volume is left orphaned (not mounted) so the FastAPI/alembic
+  schema + data stay intact until a real data migration. Verified live: stack
+  booted (db/redis/api/worker/beat healthy), migrations applied to a fresh
+  Postgres, worker pings + autodiscovers the task, and a register→login→``/auth/me``
+  roundtrip wrote/read a user through uvicorn. The legacy FastAPI tree
+  ``backend/`` is retired from dev compose but not deleted; ``docker-compose.prod.yml``
+  still targets it and is NOT cut over (its 4-worker/15-queue/embeddings topology
+  maps to deferred task-#6 machinery — do that with the production wave).
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
@@ -898,19 +930,22 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   live IdP, single-use Redis state, and per-provider token/profile columns,
   plus `/auth/me/preferences` + `/auth/me/integrations` reads.
 - **SSE / realtime serving** — the streaming transport is ASGI-native
-  (increment 30: async-generator content, no worker thread pinned), so realtime
-  only needs an ASGI server (uvicorn/daphne) in front of ``config.asgi``; a WSGI
-  deployment buffers streams and can't serve them long-lived. Desktop match
-  streams depend on this.
-- **Celery workers + beat** — task autodiscovery is wired (increment 27:
+  (increment 30: async-generator content, no worker thread pinned) and the dev
+  compose ``api`` now serves ``config.asgi`` through uvicorn (increment 31), so
+  realtime behaves in the dev environment. A production ASGI server in front of
+  ``config.asgi`` is still outstanding (a WSGI deployment buffers streams and
+  can't serve them long-lived; desktop match streams depend on this).
+- **Celery workers + beat** — autodiscovery is wired (increment 27:
   `config.celery` autodiscovers per-app `tasks` modules, e.g.
-  `integrations.run_sync_job`; Redis broker configured), but worker/beat
-  processes only run when launched (`celery -A config worker/beat`), and the
-  `CELERY_BEAT_SCHEDULE` hook stays empty until periodic maintenance tasks
-  (catalog hydration etc.) opt in. Both real provider engines now register and
-  dispatch from their enqueue POSTs — youtube-liked (increment 28) and plex-user
-  ingest (increment 29) — so worker deployment just needs the process started;
-  no further engine work is deferred.
+  `integrations.run_sync_job`; Redis broker configured) and the dev compose now
+  launches ``worker``/``beat`` against that broker (increment 31) — the running
+  dev stack consumes ``run_sync_job`` end to end. Deferred: a real production
+  worker/beat deployment, growing the worker's ``-Q`` queue set past the
+  default ``celery`` as the ingest/enrich/embedding tasks land, and populating
+  ``CELERY_BEAT_SCHEDULE`` once periodic maintenance (catalog hydration etc.)
+  opts in. Both real provider engines register + dispatch — youtube-liked
+  (increment 28) and plex-user ingest (increment 29); no further engine work is
+  deferred.
 - **pgvector embeddings** (`pgvector.django`): media_items/people/companies/user
   `Vector(384)` + HNSW cosine indexes; plus `search_vector` trigram machinery.
 

@@ -1,0 +1,24 @@
+# Keep the build context lean (deps install from uv.lock; source ships via
+# bind mount in dev, so only pyproject/uv.lock are COPYed at build time).
+.venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+staticfiles/
+/media/
+*.sqlite3
+*.db
+.env
+/Dockerfile
+/.dockerignore
+/README.md
+/ARCHITECTURE.md
+/.gitignore
+/plugin-root/
+/deploy/
+/bundled_plugins/
