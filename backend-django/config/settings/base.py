@@ -239,6 +239,11 @@ else:
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/0")
 
+# SSE / realtime (sync-progress + notification event streams): Redis pub/sub
+# backing the `text/event-stream` routes in core.sse. Defaults to the same
+# Redis as Celery; set REDIS_URL when it lives elsewhere.
+REDIS_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
+
 # ---------------------------------------------------------------------------
 # Plugins (server-side framework; see plugins/README.md)
 # ---------------------------------------------------------------------------

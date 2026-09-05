@@ -3,13 +3,13 @@
 Mirror the legacy ``backend/otix/api/user/notification/router.py``: list uses a
 cursor envelope ``{items, has_more, next_cursor}`` (not DRF page pagination),
 unread-count returns ``{count}``, and the read mutations return the legacy
-message bodies. ``GET /notifications/stream`` is a Redis-backed SSE stream in
-legacy and is deliberately deferred -- realtime/SSE is future work per
-ARCHITECTURE §7, so no polling stand-in is registered.
+message bodies. ``GET /notifications/stream`` is a Redis-backed SSE stream on
+channel ``user:{id}:notifications`` (persistent -- no terminal events).
 """
 
 from datetime import datetime
 
+from django.http import StreamingHttpResponse
 from rest_framework import status
 from rest_framework.exceptions import NotFound
 from rest_framework.request import Request
@@ -18,6 +18,7 @@ from rest_framework.views import APIView
 
 from apps.social import services
 from apps.social.serializers import NotificationOutSerializer
+from core import sse as sse_lib
 
 
 class NotificationListView(APIView):
@@ -83,3 +84,15 @@ class NotificationReadView(APIView):
         return Response(
             {"message": "Notification marked as read"}, status=status.HTTP_200_OK
         )
+
+
+class NotificationStreamView(APIView):
+    """``GET /api/v1/notifications/stream`` -- persistent SSE per-user channel.
+
+    Subscribes to Redis pub/sub channel ``user:{id}:notifications`` and streams
+    new notifications as ``data:`` frames until the client disconnects (no
+    terminal events; a 300s idle timeout closes the stream).
+    """
+
+    def get(self, request: Request) -> StreamingHttpResponse:
+        return sse_lib.sse_response(f"user:{request.user.id}:notifications")

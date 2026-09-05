@@ -20,6 +20,7 @@ from apps.social.views.notification import (
     NotificationListView,
     NotificationReadAllView,
     NotificationReadView,
+    NotificationStreamView,
     NotificationUnreadCountView,
 )
 from apps.social.views.review import ReviewVoteView
@@ -85,6 +86,7 @@ __all__ = [
     "NotificationListView",
     "NotificationReadAllView",
     "NotificationReadView",
+    "NotificationStreamView",
     "NotificationUnreadCountView",
     "RatingDistributionView",
     "RejectFriendRequestView",

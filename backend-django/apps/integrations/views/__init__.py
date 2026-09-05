@@ -14,6 +14,12 @@ from apps.integrations.views.steam import (
     SteamOwnedAppIdsView,
     SteamWishlistScanView,
 )
+from apps.integrations.views.sync import (
+    PlexSyncStreamView,
+    PlexSyncView,
+    YoutubeSyncStreamView,
+    YoutubeSyncView,
+)
 from apps.integrations.views.tmdb import TMDbRatingSyncView, TMDbWatchlistImportView
 from apps.integrations.views.webhook import PlexWebhookView
 
@@ -24,6 +30,8 @@ __all__ = [
     "PlexServersView",
     "PlexSessionsView",
     "PlexStreamView",
+    "PlexSyncStreamView",
+    "PlexSyncView",
     "PlexWatchlistSyncView",
     "PlexWebhookView",
     "SteamLibraryScanView",
@@ -31,4 +39,6 @@ __all__ = [
     "SteamWishlistScanView",
     "TMDbRatingSyncView",
     "TMDbWatchlistImportView",
+    "YoutubeSyncStreamView",
+    "YoutubeSyncView",
 ]

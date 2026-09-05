@@ -603,6 +603,28 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   `discover/sections` ahead of the list_type pair. Tests (2 new). Parity
   255→256. **Remaining 7 = discover 1 (free-games/match — IGDB GameMatcher
   bound), integrations 5, notifications 1.**
+- **SSE/Redis realtime layer (increment 25, 2026-09-05)** — sync-enqueue POSTs
+  + the terminal/per-user SSE stream GETs (5 of the remaining 7 routes). New
+  `core/redis.py` `get_client()` (lazy `redis.Redis.from_url(REDIS_URL)`, new
+  base.py setting defaulting to the Celery Redis) and `core/sse.py`, a DRF SSE
+  transport mirroring legacy `otix.lib.sse`: `sse_response()` wraps a sync
+  generator over Redis pub/sub (`sse_event_stream`) that opens Redis only when
+  the client starts reading (tests patch `core.sse.get_client`), replays a
+  stored result/progress key first, emits compact `data: {json}` frames +
+  `:keepalive` heartbeats, self-terminates on a `sync_complete`/`error` frame,
+  and unsubscribe/closes in `finally`. `POST /integrations/plex/sync` +
+  `/youtube/sync` persist a `SyncJob` via
+  `integrations.services.sync.enqueue_sync_job` (pk doubles as the SSE task_id
+  — no uuid column) and answer 202 `{task_id}` (youtube 400 when no google_id).
+  The two `GET .../sync/{task_id}/stream` views stream
+  `{provider}:sync:{task_id}:events` (plex: result replay; youtube: result +
+  progress replay). `GET /notifications/stream` is a persistent (no-terminal)
+  feed on `user:{id}:notifications` — wired into `apps.social.notifications_urls`
+  (docstring no longer says it 404s). asgi stays sync-safe; the actual
+  sync-worker publishers that drive these channels are DEFERRED platform work
+  (the streams idle/timeout until a worker publishes). Tests (15 new).
+  Parity 256→261. **Remaining 2 = discover free-games/match + steam
+  resolve-unmatched, both IGDB GameMatcher bound.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

@@ -14,6 +14,8 @@ from apps.integrations.views import (
     PlexServersView,
     PlexSessionsView,
     PlexStreamView,
+    PlexSyncStreamView,
+    PlexSyncView,
     PlexWatchlistSyncView,
     PlexWebhookView,
     SteamLibraryScanView,
@@ -21,6 +23,8 @@ from apps.integrations.views import (
     SteamWishlistScanView,
     TMDbRatingSyncView,
     TMDbWatchlistImportView,
+    YoutubeSyncStreamView,
+    YoutubeSyncView,
 )
 
 app_name = "integrations"
@@ -48,6 +52,19 @@ urlpatterns = [
     ),
     # Inbound provider webhook (AllowAny; HMAC-verified).
     path("plex/webhook", PlexWebhookView.as_view(), name="plex-webhook"),
+    # Provider background sync: enqueue (POST) + SSE progress stream (GET).
+    path("plex/sync", PlexSyncView.as_view(), name="plex-sync"),
+    path(
+        "plex/sync/<str:task_id>/stream",
+        PlexSyncStreamView.as_view(),
+        name="plex-sync-stream",
+    ),
+    path("youtube/sync", YoutubeSyncView.as_view(), name="youtube-sync"),
+    path(
+        "youtube/sync/<str:task_id>/stream",
+        YoutubeSyncStreamView.as_view(),
+        name="youtube-sync-stream",
+    ),
     # Steam read + scan surface.
     path("steam/owned-appids", SteamOwnedAppIdsView.as_view(), name="steam-owned-appids"),
     path("steam/scan", SteamLibraryScanView.as_view(), name="steam-scan"),
