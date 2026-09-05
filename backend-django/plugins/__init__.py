@@ -14,9 +14,12 @@ Public API:
 - ``discovery``  — filesystem scan of a plugins root
 - ``registry``   — load + hold live plugins, isolating per-plugin failures
 
-A plugin's own Django models/migrations (the §4 "plugin becomes an app" step)
-are a later increment: this layer is the manifest→load→dispatch foundation that
-step builds on.
+The Django API and the plugin host are separate processes: the API *owns plugin
+state* and never imports plugin code, so the state layer (``models`` /
+``services`` / ``admin`` / ``management``) lives in Django modules that the
+plain-Python core below never imports — plugin code and the host can import the
+core without model baggage. ``plugins.registry.load_plugin`` (the host side)
+loads code by file path in the host process only.
 """
 
 from plugins.base import Plugin, PluginError, to_json_safe
@@ -31,7 +34,7 @@ from plugins.manifest import (
 from plugins.permissions import codename_for, missing_grants, unsupported_grants
 from plugins.registry import PluginRegistry, default_registry, discover_and_load
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "DiscoveredPlugin",

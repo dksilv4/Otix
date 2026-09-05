@@ -6,6 +6,10 @@ a plugins root one level deep, loads + validates each manifest, and reports
 per-plugin errors instead of failing the whole scan — a broken plugin must not
 take the healthy ones down.
 
+The manifest ``name`` must equal the folder name (the Nextcloud app rule): the
+folder is the unit of identity, so an id that silently diverged from its
+location would make uninstall/upgrade ambiguous.
+
 Only folders that look like plugins (contain a ``manifest.yaml``) are
 considered; everything else under the root is ignored so a plugins root can
 also hold scaffolding, notes and the like.
@@ -52,6 +56,11 @@ def scan(root: str | Path) -> list[DiscoveredPlugin]:
     for folder in iter_plugin_roots(root):
         try:
             manifest = load_manifest(folder / MANIFEST_FILE)
+            if manifest.name != folder.name:
+                raise ManifestError(
+                    f"manifest 'name' ({manifest.name}) must match folder name "
+                    f"({folder.name})"
+                )
             entry = folder / manifest.entry_main
             if not entry.is_file():
                 raise ManifestError(

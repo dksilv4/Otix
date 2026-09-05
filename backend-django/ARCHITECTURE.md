@@ -285,19 +285,29 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   per-app). Redis broker already configured.
 - **pgvector embeddings** (`pgvector.django`): media_items/people/companies/user
   `Vector(384)` + HNSW cosine indexes; plus `search_vector` trigram machinery.
-- **Plugin framework** under `plugins/` (2026-09-05, task #5, step 1 DONE —
-  **foundation**): a server plugin is a drop-in folder (`manifest.yaml` +
-  `plugin.py`) the brain discovers and runs natively (no Node service), the §4
-  payoff of this rewrite. `plugins/` ships: `manifest.py` (YAML schema mirroring
-  `desktop/plugins/types.ts`), `permissions.py` (capability tokens → Django-safe
-  codenames + `table:*`/`network:*` grant math), `discovery.py` (root scan,
-  per-folder error isolation), `base.py` (`Plugin` base + `.`-namespaced data
-  method dispatch + JSON-safe output), `registry.py` (load-by-path entry modules,
-  re-scan replaces). 22 tests. **Next increments (task #5):** make a discovered
-  plugin *become a Django app* (its own models/migrations/admin + boot-time app
-  registration), host admin/config API + permission-grant store, plugin config
-  model + instances, then port a real plugin (Plex/Steam/arr) onto the
-  framework. Conventions + status in `plugins/README.md`.
+- **Plugin framework** under `plugins/` (2026-09-05, task #5) — **architecture
+  (design doc §4 vs Nextcloud AppAPI):** the Django API and the plugin host are
+  **separate processes**. The API *never imports plugin code*; it owns plugin
+  *state* rows (`plugins.Plugin`: manifest snapshot, enabled, granted
+  permissions, config/instances) + admin + `manage.py plugins_*` commands
+  (`occ app:*` analogs: scan/enable/disable/uninstall/list). The **host** (a
+  later increment) reads those rows and runs the code. `plugins/` keeps a
+  plain-Python core that plugin code imports without Django baggage:
+  `manifest.py` (YAML schema mirroring `desktop/plugins/types.ts`),
+  `permissions.py` (capability tokens → grant math; `table:any`/`network:any`
+  cover `table:*`/`network:*` scopes), `discovery.py` (root scan, per-folder
+  error isolation, **manifest name must equal folder name** — Nextcloud's
+  rule), `base.py` (`Plugin` base + `.`-namespaced data-method dispatch +
+  JSON-safe output), `registry.py` (load-by-path entry modules, re-scan
+  replaces). **Increment 1 DONE:** registry model (`plugins/models.py`,
+  migration 0001) + registry service (`services.py`: register/enable/disable/
+  unregister/scan — grant gating on enable: declared ⊆ granted) + admin +
+  `management/commands/plugins_{scan,enable,disable,uninstall,list}` + the 5
+  commands' DB-only lifecycle. 355 tests green. Settings: `PLUGINS_ROOT` env
+  (default `<repo>/plugin-root`, gitignored). **Next increments:** host process
+  skeleton + control API, PluginAPI DRF proxy + host client + capabilities,
+  grant-gated framework services, reference Plex plugin, supervision/docs.
+  Conventions + status in `plugins/README.md`.
 - **Parity harness** to diff DRF output against the frozen FastAPI OpenAPI
   contract (~263 routes) while porting feature-area by feature-area.
 

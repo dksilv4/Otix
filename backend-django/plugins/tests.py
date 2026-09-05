@@ -229,6 +229,19 @@ class DiscoveryRegistryTests(SimpleTestCase):
         self.assertIn("not a known capability", found["borked"].error)
         self.assertNotIn("notes", found)
 
+    def test_manifest_name_must_equal_folder_name(self) -> None:
+        # Folder "renamed" declares name "other" → broken, reported, not loaded.
+        self._write(
+            "renamed/manifest.yaml",
+            "name: other\nversion: 1.0.0\npermissions: [network:external]\n",
+        )
+        self._write("renamed/__init__.py", "")
+        self._write("renamed/plugin.py", "from plugins.base import Plugin\n")
+        found = {record.id: record for record in scan(self.root)}
+        self.assertFalse(found["renamed"].ok)
+        self.assertIn("must match folder name", found["renamed"].error)
+        self.assertNotIn("other", found)
+
     def test_registry_scan_and_load_runs_plugin(self) -> None:
         self._seed_plugin_folder()
         registry = PluginRegistry()

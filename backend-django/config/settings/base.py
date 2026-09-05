@@ -237,3 +237,13 @@ else:
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/0")
+
+# ---------------------------------------------------------------------------
+# Plugins (server-side framework; see plugins/README.md)
+# ---------------------------------------------------------------------------
+
+# Root the host process scans for drop-in plugin folders. The Django API owns
+# the registry rows (plugins/management commands + services); the separate host
+# process loads the code. Only matters to the API for scan/enable metadata.
+PLUGINS_ROOT = os.environ.get("PLUGINS_ROOT", str(BASE_DIR / "plugin-root"))
+
