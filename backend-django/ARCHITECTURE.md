@@ -590,6 +590,19 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   result-caching deferred across the port. Tests (17 new). Parity 253→255.
   **Remaining 8 = discover 2 (sections, free-games/match), integrations 5,
   notifications 1.**
+- **Discover sections (increment 24, 2026-09-05)** — `GET /discover/sections`.
+  The legacy route serves `PersonalizationService.default_sections()` for
+  anonymous callers (four static `PersonalizedSection` descriptors —
+  trending_movies/trending_shows/popular_games/new_music — each naming a
+  list_type feed already ported in increment 23). Per-user
+  `compute_profile`/`generate_sections` preference-signal personalization is
+  DEFERRED, so authed callers receive the same canonical defaults (the legacy
+  generate path is engine-bound); Redis caching deferred. New
+  `DiscoverSectionsView` + `default_sections()` service returning the full
+  section field set (nulls included, mirroring the pydantic schema), mounted at
+  `discover/sections` ahead of the list_type pair. Tests (2 new). Parity
+  255→256. **Remaining 7 = discover 1 (free-games/match — IGDB GameMatcher
+  bound), integrations 5, notifications 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

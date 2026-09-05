@@ -1,19 +1,24 @@
 """Routes for the discover domain.
 
 Mounted at ``/api/v1/discover/`` by ``config/urls.py``. No trailing slashes on
-routes (FastAPI parity; ``APPEND_SLASH`` is off project-wide). The literal
-``hero`` route precedes the ``{media_type}/{list_type}`` pair; both are public
-(``AllowAny``, optional user), matching legacy ``/discover``.
+routes (FastAPI parity; ``APPEND_SLASH`` is off project-wide). Literal routes
+(``hero``, ``sections``) precede the ``{media_type}/{list_type}`` pair; all are
+public (``AllowAny``, optional user), matching legacy ``/discover``.
 """
 
 from django.urls import path
 
-from apps.discover.views import DiscoverHeroView, DiscoverListView
+from apps.discover.views import (
+    DiscoverHeroView,
+    DiscoverListView,
+    DiscoverSectionsView,
+)
 
 app_name = "discover"
 
 urlpatterns = [
     path("hero", DiscoverHeroView.as_view(), name="hero"),
+    path("sections", DiscoverSectionsView.as_view(), name="sections"),
     path(
         "<str:media_type>/<str:list_type>",
         DiscoverListView.as_view(),

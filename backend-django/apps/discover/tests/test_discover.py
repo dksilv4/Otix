@@ -243,3 +243,42 @@ class DiscoverApiTests(TestCase):
         response = self.client.get(_list_url("music", "popular"))
         titles = [item["title"] for item in response.data["results"]]
         self.assertEqual(titles, ["An-Album"])
+
+    # ── /sections ────────────────────────────────────────────────────
+    SECTION_KEYS = {
+        "id",
+        "title",
+        "media_type",
+        "list_type",
+        "genre",
+        "language",
+        "is_anime",
+        "is_personalized",
+        "reason",
+    }
+
+    def test_sections_public_and_canonical(self) -> None:
+        response = self.client.get("/api/v1/discover/sections")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(set(response.data.keys()), {"sections"})
+        sections = response.data["sections"]
+        self.assertEqual(len(sections), 4)
+        self.assertEqual(
+            {s["id"] for s in sections},
+            {"trending_movies", "trending_shows", "popular_games", "new_music"},
+        )
+        for section in sections:
+            self.assertLessEqual(self.SECTION_KEYS, set(section.keys()))
+            self.assertIn(section["media_type"], {"movie", "show", "game", "music"})
+            self.assertIn(section["list_type"], {"trending", "popular"})
+            self.assertIs(section["is_personalized"], False)
+
+    def test_sections_default_for_authed_user_too(self) -> None:
+        # Per-user generate_sections/compute_profile is deferred; an authed
+        # caller still receives the canonical defaults (no crash).
+        response = self.staff_client.get("/api/v1/discover/sections")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [s["id"] for s in response.data["sections"]],
+            ["trending_movies", "trending_shows", "popular_games", "new_music"],
+        )

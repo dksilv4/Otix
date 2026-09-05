@@ -114,3 +114,60 @@ def list_feed(
         date_to=date_to,
         exclude_adult=exclude_adult,
     )
+
+
+def default_sections() -> list[dict]:
+    """The anonymous discover-page section set (legacy ``default_sections``).
+
+    Per-user ``generate_sections``/``compute_profile`` (preference signals) are
+    part of the deferred personalization engine, so every caller gets these four
+    canonical sections. Each is a descriptor for an already-ported list_type
+    feed, so the frontend can resolve each section against the discover list
+    routes. Field set mirrors ``PersonalizedSection`` (nulls included).
+    """
+    return [
+        {
+            "id": "trending_movies",
+            "title": "Trending Movies",
+            "media_type": "movie",
+            "list_type": "trending",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "is_personalized": False,
+            "reason": None,
+        },
+        {
+            "id": "trending_shows",
+            "title": "Trending Shows",
+            "media_type": "show",
+            "list_type": "trending",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "is_personalized": False,
+            "reason": None,
+        },
+        {
+            "id": "popular_games",
+            "title": "Popular Games",
+            "media_type": "game",
+            "list_type": "popular",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "is_personalized": False,
+            "reason": None,
+        },
+        {
+            "id": "new_music",
+            "title": "New Music",
+            "media_type": "music",
+            "list_type": "popular",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "is_personalized": False,
+            "reason": None,
+        },
+    ]
