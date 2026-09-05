@@ -296,8 +296,20 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   `re.sub(r"[^A-Za-z0-9_-]","",…)`, email `plex_<id>@user.otix` fallback,
   `is_verified=True`, avatar = plex thumb) and boots a real session
   (`begin_session` → `{access_token, token_type: bearer}` + `otix_refresh`
-  cookie). Parity 215→220 (auth 20→15). **Remaining OAuth:** google/steam/tmdb
-  login families + steam/tmdb link, `GET /auth/oauth`, `GET /auth/me/integrations`.
+  cookie). Parity 215→220 (auth 20→15).
+- **Google login family (increment 9, 2026-09-05)** — same PKCE machinery as
+  the google link flow but unauthed: `POST /auth/google/initiate` returns
+  ``{auth_url, state}`` (redirect_uri `…/auth/callback/google-login`, no
+  ``user_id`` in the state); `POST /auth/google/callback` exchanges the code
+  (that distinct redirect_uri), fetches the OIDC profile, and
+  find-or-creates by ``google_id`` — username = stripped display name
+  (`re.sub(r"[^A-Za-z0-9_-]","", name-or-part-before-@)` → `google_<id[:8]>`
+  fallback), email `google_<id>@user.otix` fallback, `is_verified=True`,
+  google_*/drive tokens written — then boots a real session. Errors byte-for-
+  byte: 503 unconfigured, 400 expired state / bad exchange, 502
+  invalid-response / profile / network, 403 deactivated, 500 catch-all.
+  Parity 220→222 (auth 15→13). **Remaining OAuth:** steam/tmdb link + login
+  families, `GET /auth/oauth`, `GET /auth/me/integrations`.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

@@ -8,7 +8,9 @@ Status/shape parity with the frozen FastAPI contract. Routes mount under
 - link callback (unauthed; user resolved from state) -> 200 ``{message}``;
 - disconnect (authed) -> 200 ``{message}``, 400 when never linked;
 - ``google/token`` (authed) -> 200 ``{access_token}``, 404 when unlinked/expired;
-- ``plex/initiate`` + ``plex/callback`` (both unauthed) -> Plex login family.
+- ``plex/initiate`` + ``plex/callback`` (both unauthed) -> Plex login family;
+- ``google/initiate`` + ``google/callback`` (both unauthed) -> Google login family
+  (find-or-create by google_id + session, like the plex login flow).
 """
 
 from rest_framework import permissions, status
@@ -239,6 +241,48 @@ class PlexLoginCallbackView(GenericAPIView):
             oauth_service.logger.exception("plex login callback failed")
             return Response(
                 {"detail": "Failed to sign in with Plex. Please try again."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        response = Response(
+            {"access_token": access, "token_type": "bearer"}, status=status.HTTP_200_OK
+        )
+        set_refresh_cookie(response, refresh)
+        return response
+
+
+class GoogleLoginInitiateView(GenericAPIView):
+    """POST /google/initiate — start the google login flow (no auth)."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        try:
+            auth_url, state = oauth_service.build_google_login_url()
+        except OAuthFlowError as exc:
+            return Response({"detail": exc.detail}, status=exc.status_code)
+        return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
+
+
+class GoogleLoginCallbackView(GenericAPIView):
+    """POST /google/callback — resolve/create the Google user and start a session."""
+
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = OAuthCallbackSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.validated_data["code"]
+        state = serializer.validated_data["state"]
+        try:
+            user = oauth_service.authenticate_google_login(code, state)
+            access, refresh = session_service.begin_session(user, request)
+        except OAuthFlowError as exc:
+            return Response({"detail": exc.detail}, status=exc.status_code)
+        except Exception:  # noqa: BLE001 - surface a stable detail on unexpected failures
+            oauth_service.logger.exception("google login callback failed")
+            return Response(
+                {"detail": "Failed to sign in with Google. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
         response = Response(

@@ -58,6 +58,7 @@ DRIVE_SCOPES = [
 ]
 
 GOOGLE_OAUTH_FLOW = "youtube"  # google link scopes are the youtube+identity set
+GOOGLE_LOGIN_FLOW = "login"  # google login carries the same youtube+identity set
 DRIVE_OAUTH_FLOW = "drive"
 
 PLEX_STATE_TTL_SECONDS = 900  # legacy TTL["AUTH"]["PLEX_PIN"] = 900
@@ -150,6 +151,11 @@ def _callback_url(provider: str) -> str:
     return f"{base}/auth/callback/{provider}"
 
 
+def _login_callback_url(provider: str) -> str:
+    base = (getattr(settings, "FRONTEND_BASE_URL", "") or "").rstrip("/")
+    return f"{base}/auth/callback/{provider}-login"
+
+
 # ── Single-use state ──────────────────────────────────────────────────────
 
 def _store_state(flow: str, *, user_id: int | None) -> tuple[str, str]:
@@ -184,14 +190,16 @@ def _require_google_configured(detail: str) -> None:
         raise OAuthFlowError(503, detail)
 
 
-def _authorization_url(flow: str, provider: str, *, user_id: int) -> tuple[str, str]:
+def _authorization_url(
+    flow: str, provider: str, *, user_id: int | None = None, callback: str | None = None
+) -> tuple[str, str]:
     client_id, _ = _google_credentials()
     state, verifier = _store_state(flow, user_id=user_id)
-    scopes = YOUTUBE_SCOPES if flow == GOOGLE_OAUTH_FLOW else DRIVE_SCOPES
+    scopes = YOUTUBE_SCOPES if flow in (GOOGLE_OAUTH_FLOW, GOOGLE_LOGIN_FLOW) else DRIVE_SCOPES
     params = {
         "client_id": client_id,
         "response_type": "code",
-        "redirect_uri": _callback_url(provider),
+        "redirect_uri": callback or _callback_url(provider),
         "state": state,
         "scope": " ".join(scopes),
         "access_type": "offline",
@@ -214,6 +222,14 @@ def build_google_drive_link_url(user_id: int) -> tuple[str, str]:
     return _authorization_url(DRIVE_OAUTH_FLOW, "google-drive", user_id=user_id)
 
 
+def build_google_login_url() -> tuple[str, str]:
+    """Google login initiate (no owning user) -> ``{auth_url, state}``."""
+    _require_google_configured("Google authentication is not configured.")
+    return _authorization_url(
+        GOOGLE_LOGIN_FLOW, "google", callback=_login_callback_url("google")
+    )
+
+
 # ── Callback: code -> tokens -> profile -> user columns ──────────────────
 
 def _resolve_callback_user(payload: dict, request_user) -> User:
@@ -230,7 +246,9 @@ def _resolve_callback_user(payload: dict, request_user) -> User:
         ) from None
 
 
-def _exchange_code(code: str, verifier: str, provider: str) -> dict:
+def _exchange_code(
+    code: str, verifier: str, provider: str, *, redirect_uri: str | None = None
+) -> dict:
     client_id, client_secret = _google_credentials()
     try:
         status, raw = _request(
@@ -239,7 +257,7 @@ def _exchange_code(code: str, verifier: str, provider: str) -> dict:
             form={
                 "grant_type": "authorization_code",
                 "code": code,
-                "redirect_uri": _callback_url(provider),
+                "redirect_uri": redirect_uri or _callback_url(provider),
                 "client_id": client_id,
                 "client_secret": client_secret,
                 "code_verifier": verifier,
@@ -323,6 +341,76 @@ def link_google_drive_to_user(request_user, code: str, state: str) -> None:
     user.drive_refresh_token = tokens.get("refresh_token")
     user.drive_token_expires_at = _expiry_from(tokens)
     user.save(update_fields=_DRIVE_TOKEN_COLUMNS)
+
+
+# ── Google login family (find-or-create, no owning user) ──────────────────
+
+def find_or_create_google_user(
+    google_id: str,
+    *,
+    email: str,
+    name: str,
+    avatar_url: str | None,
+    access_token: str | None,
+    refresh_token: str | None,
+    expires_in: int,
+) -> User:
+    """Return the Otix account owning ``google_id``, creating it on first login."""
+    existing = User.objects.filter(google_id=google_id).first()
+    if existing is not None:
+        if not existing.is_active:
+            raise OAuthFlowError(403, "Account is deactivated")
+        return existing
+    base = re.sub(r"[^A-Za-z0-9_-]", "", name.split("@")[0] if "@" in name else name)[
+        :64
+    ]
+    if not base:
+        base = f"google_{google_id[:8]}"
+    candidate, suffix = base, 2
+    while User.objects.filter(username=candidate).exists():
+        suffix_part = f"_{suffix}"
+        candidate = base[: 64 - len(suffix_part)] + suffix_part
+        suffix += 1
+    user = User.objects.create_user(
+        username=candidate,
+        email=(email or f"google_{google_id}@user.otix") or None,
+        password=secrets.token_urlsafe(32),
+        is_verified=True,
+        avatar_url=avatar_url,
+        google_id=google_id,
+        google_email=email or None,
+        google_name=name or None,
+        google_avatar_url=avatar_url,
+        google_access_token=access_token,
+        google_refresh_token=refresh_token,
+        google_token_expires_at=_expiry_from({"expires_in": expires_in}),
+    )
+    return user
+
+
+def authenticate_google_login(code: str, state: str) -> User:
+    """Consume a login state and return the resolved/created Google user."""
+    _require_google_configured("Google authentication is not configured.")
+    payload = _consume_state(state)
+    if payload is None:
+        raise OAuthFlowError(400, "Google linking session expired. Please try again.")
+    tokens = _exchange_code(
+        code,
+        payload.get("verifier", ""),
+        "google",
+        redirect_uri=_login_callback_url("google"),
+    )
+    profile = _fetch_google_profile(tokens["access_token"])
+    google_id = profile["sub"]
+    return find_or_create_google_user(
+        google_id,
+        email=profile.get("email", ""),
+        name=profile.get("name", ""),
+        avatar_url=profile.get("picture"),
+        access_token=tokens.get("access_token"),
+        refresh_token=tokens.get("refresh_token"),
+        expires_in=tokens.get("expires_in", 3600),
+    )
 
 
 # ── Disconnect ────────────────────────────────────────────────────────────

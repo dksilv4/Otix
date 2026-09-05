@@ -16,6 +16,8 @@ from apps.accounts.views import (
     GoogleLinkCallbackView,
     GoogleLinkInitiateView,
     GoogleLinkTokenView,
+    GoogleLoginCallbackView,
+    GoogleLoginInitiateView,
     LoginView,
     LogoutView,
     MePreferencesView,
@@ -96,4 +98,7 @@ urlpatterns = [
     # Plex login family (unauthed; no owning Otix user at initiate).
     path("plex/initiate", PlexLoginInitiateView.as_view(), name="plex-login-initiate"),
     path("plex/callback", PlexLoginCallbackView.as_view(), name="plex-login-callback"),
+    # Google login family (unauthed; no owning Otix user at initiate).
+    path("google/initiate", GoogleLoginInitiateView.as_view(), name="google-login-initiate"),
+    path("google/callback", GoogleLoginCallbackView.as_view(), name="google-login-callback"),
 ]
