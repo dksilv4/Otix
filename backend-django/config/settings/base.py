@@ -71,6 +71,15 @@ DEBUG = env_bool("DEBUG", default=False)
 # caches local/dev/test responses). Production overrides this to "production".
 APP_ENV = os.environ.get("APP_ENV", "local")
 
+# TMDb credentials/throttle (core.providers.tmdb client + the account-sync
+# service in apps.integrations). Empty by default so no real provider call can
+# succeed without credentials; tests exercise the HTTP layer through an injected
+# httpx transport, never a key.
+TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
+TMDB_RAT = os.environ.get("TMDB_RAT", "")  # v4 read-access bearer token
+TMDB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("TMDB_REQUEST_TIMEOUT_SECONDS", "30.0"))
+TMDB_GLOBAL_RPS_LIMIT = float(os.environ.get("TMDB_GLOBAL_RPS_LIMIT", "40.0"))
+
 # Dev-only fallback; production settings require an explicit env SECRET_KEY.
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
 

@@ -880,6 +880,40 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   accounting. No model/DB surface → no migration. The concrete keyed clients
   (TMDB/IGDB/SteamGrid/MusicBrainz) that subclass ``BaseProvider`` are the next
   deferred piece.
+- **Concrete TMDB async client (increment 34, 2026-09-05): parity 263/263
+  unchanged, full suite 792 (15 new).** The first keyed client on the
+  increment-33 machinery: ``core/providers/tmdb.py`` ports
+  ``otix.providers.tmdb.client``. A module-level ``get_http_client()`` returns a
+  process-shared ``httpx.AsyncClient`` bound to ``TMDBProvider.BASE_URL``
+  (``https://api.themoviedb.org/3``) with Bearer ``TMDB_RAT`` auth + the
+  ``TMDB_REQUEST_TIMEOUT_SECONDS`` timeout, discarding an inherited client when
+  the event loop changes (Celery prefork child). ``TMDBProvider(BaseProvider)``
+  names itself "tmdb" and throttles at ``rate == burst ==
+  TMDB_GLOBAL_RPS_LIMIT`` (default 40/s). Read methods pass **relative** paths
+  that httpx resolves against the ``…/3`` base_url (so requests actually land on
+  ``/3/<path>``); session-auth account endpoints additionally send the v3
+  ``api_key`` param. Coverage spans movies/shows/seasons/people/trending/
+  collections/companies/networks/watch-providers/keywords/search/
+  ``find``/configuration/discover/genres and the account rated/watchlist/
+  favorites families. **Write endpoints** (``rate_movie``/``rate_tv``/
+  ``delete_*_rating``/``add_to_watchlist``) are routed through the throttled
+  ``_post``/``_request`` path + ``raise_for_status()`` — fixing a **latent
+  legacy bug**: the old client referenced a ``self._client`` attribute
+  ``BaseProvider`` never set, so writes bypassed the breaker/limiter and died on
+  an AttributeError instead of failing loudly. New ``core/providers/types.py``
+  supplies the ``JSONValue`` alias; ``config/settings/base.py`` declares
+  ``TMDB_RAT``/``TMDB_API_KEY``/``TMDB_REQUEST_TIMEOUT_SECONDS``/
+  ``TMDB_GLOBAL_RPS_LIMIT``. Tests (``core/tests/test_tmdb_provider.py``, 15)
+  reuse the in-memory Redis double + ``httpx.MockTransport`` (client built with
+  ``base_url=TMDBProvider.BASE_URL``) and assert the issued request
+  method/path/params/body per endpoint — language+``append_to_response``,
+  pagination, ``search_multi`` query, ``find`` external_source, discover
+  param/language merge, account ``api_key``+``session_id``, images sending **no**
+  language param, POST/DELETE writes landing on the throttled path, a 4xx write
+  raising ``httpx.HTTPStatusError``, and the client factory's base_url/bearer/
+  timeout. No model/DB surface → no migration. **Next deferred piece:** the
+  remaining concrete keyed clients (IGDB/SteamGrid/MusicBrainz), then the TMDB
+  transformer/hydrator + catalog-seed pipeline those clients feed.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
