@@ -14,6 +14,9 @@ from config.settings.base import env_bool, env_list
 
 DEBUG = False
 
+# Never serve stale provider responses in production (see settings.base.APP_ENV).
+APP_ENV = os.environ.get("APP_ENV", "production")
+
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
 if not SECRET_KEY:
     raise ImproperlyConfigured("SECRET_KEY must be set in production.")

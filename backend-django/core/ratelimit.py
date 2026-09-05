@@ -104,6 +104,16 @@ class RateLimiter:
     def _key(self, bucket: str) -> str:
         return f"{self.key_prefix}:{bucket}"
 
+    @property
+    def redis(self) -> Any:
+        """Resolve the underlying async Redis client.
+
+        The provider layer (``core.providers.base``) writes cooldown/drain keys
+        on the *same* client the token bucket uses, so it reaches through this
+        accessor just like the legacy ``rate_limiter.redis`` attribute.
+        """
+        return self._get_client()
+
     async def acquire(
         self,
         bucket: str,

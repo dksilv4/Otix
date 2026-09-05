@@ -67,6 +67,10 @@ def parse_database_url(url: str) -> dict:
 
 DEBUG = env_bool("DEBUG", default=False)
 
+# Deployment shape for the provider API cache gate (core.providers.base only
+# caches local/dev/test responses). Production overrides this to "production".
+APP_ENV = os.environ.get("APP_ENV", "local")
+
 # Dev-only fallback; production settings require an explicit env SECRET_KEY.
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
 

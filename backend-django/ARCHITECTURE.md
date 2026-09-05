@@ -850,7 +850,36 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   migration. The async provider-client framework (TMDB/IGDB/Steam/
   MusicBrainz ingest clients + SteamGrid artwork + full ``GAME_FIELDS``
   hydration) that instantiates ``RateLimiter(..., key_prefix=f"ratelimit:
-  {name}")`` is the next deferred piece.
+  {name}")`` — its BaseProvider HTTP machinery landed next in increment 33.
+- **Async provider-client HTTP machinery (increment 33, 2026-09-05): parity
+  263/263 unchanged, full suite 777 (19 new).** Ports the HTTP layer the
+  concrete provider clients are built on, as a new ``core/providers/`` package:
+  ``circuit_breaker.py`` (failure-counting CLOSED/OPEN/HALF_OPEN with a timed
+  recovery probe), ``api_cache.py`` (filesystem JSON response cache keyed
+  provider/date/url-hash, dev/test only), ``metrics.py`` (pure-Python registry
+  + the full pre-declared ``otix_*`` counters/histograms/gauges incl.
+  ``CIRCUIT_BREAKER_STATE`` + ``track_api_call`` — ported whole so the deferred
+  hydration engines reuse the same ``SYNC_*``/``HYDRATION_*`` series), and
+  ``base.py``: ``BaseProvider`` + ``ProviderError``/``RateLimitError``
+  (``retry_after``)/``CircuitOpenError``. ``BaseProvider._get/_post`` funnel
+  through one ``_request`` pipeline: breaker allow → GET cache hit (HALF_OPEN
+  probes resolve via a cached 200 so they don't strand the breaker) →
+  ``RateLimiter.wait_and_acquire`` (the increment-32 bucket; the same async
+  Redis client is exposed via a new ``RateLimiter.redis`` accessor) → httpx
+  call under ``track_api_call`` → cache successful GETs → 429 sets a cooldown
+  key + drains the bucket then raises ``RateLimitError``, 5xx records a
+  failure + raises, 4xx passes through for the caller. ``httpx`` is now a
+  runtime dep; ApiCache gating reads a new ``APP_ENV`` setting (base default
+  "local"; prod overrides to "production"). Subclasses pass a name + an
+  ``httpx.AsyncClient`` (plus an optional async Redis; the ``core.redis`` seam
+  is the default). Tests (``core/tests/test_providers.py``, 19) drive a real
+  ``BaseProvider`` over an ``httpx.MockTransport`` with the in-memory async
+  Redis double (the test_ratelimit convention) — no broker/sockets/keys, and
+  they assert breaker open/recover, cache-hit-serves-without-network,
+  429-cooldown-and-drain, client-error pass-through, and network-failure
+  accounting. No model/DB surface → no migration. The concrete keyed clients
+  (TMDB/IGDB/SteamGrid/MusicBrainz) that subclass ``BaseProvider`` are the next
+  deferred piece.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
