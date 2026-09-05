@@ -237,11 +237,45 @@ avatar, staff/active/superuser flags, nullable unique external ids
 (`google_id`, `plex_id`, `steam_id`, `tmdb_id`), `two_factor_enabled`,
 timestamps.
 
+## 6a. Real auth (2026-09-05)
+
+Password/2FA/session auth is live under `/api/v1/auth/`; OAuth + preferences
+reads remain (task #6). Shape mirrors the frozen FastAPI contract.
+
+- **Auth chain** — `apps.accounts.authentication.JWTAuthentication` (Bearer
+  15-min HS256 access JWT) is the default; DRF `TokenAuthentication` stays as a
+  fallback for admin/older clients until the FastAPI cutover.
+- **Tokens** (`services/tokens.py`) — PyJWT HS256 over `JWT_SECRET_KEY`
+  (defaults to `SECRET_KEY`; env-overridable). Access `type="access"` 15 min;
+  refresh `type="refresh"` + `jti`/`session_key` claims 7 d, delivered **only**
+  as the httpOnly cookie `otix_refresh` (path `/api/v1/auth/`, samesite=lax);
+  `type="2fa_challenge"` 5 min, stateless.
+- **Session model** — `user_sessions`, `refresh_tokens`, `auth_action_tokens`
+  tables (`models/security.py`, legacy db_table names). One session + refresh
+  row per successful login. `services/sessions.py`:
+  `refresh_session` rotates (revokes the used row, new jti + same session_key);
+  presenting an already-revoked jti revokes *all* tokens (reuse detection);
+  `logout` stamps `users.global_logout_marker` (no row revocation) so every
+  earlier refresh fails — a global logout; `DELETE /sessions*` revokes
+  `user_sessions` rows only, mirroring legacy's cosmetic session UI.
+- **2FA** — `services/totp.py` pyotp base32 secret + ±1-step verify; setup
+  stores the secret pre-enable, enable verifies a code, disable re-checks the
+  password and clears. QR is inline SVG via the pure-Python `qrcode` package.
+- **Recovery** — emailed single-use tokens store only a sha-256 hash
+  (`services/action_tokens.py`, 24 h); new token of a purpose invalidates prior
+  unused ones. Mail defaults to console in dev, locmem in tests.
+- **Known divergence** — `/auth/register` returns the minimal identity
+  (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
+  `User` field set (no bio/background/preferences JSON yet); both land with the
+  profile-column wave.
+
 ## 7. Known future work (do not get surprised)
 
-- **Real auth** replacing placeholder token auth: JWT bearer + httpOnly refresh
-  cookie + TOTP 2FA + OAuth providers (google/plex/steam/tmdb) + session
-  management. The 2FA flag/secret scaffolding is already on `User`.
+- **OAuth auth** completing real auth: the password/2FA/session core shipped
+  (§6a). Remaining are the provider login/link families
+  (google/plex/steam/tmdb initiate+callback, `/auth/oauth/*`), each needing a
+  live IdP, single-use Redis state, and per-provider token/profile columns,
+  plus `/auth/me/preferences` + `/auth/me/integrations` reads.
 - **SSE / realtime** over ASGI (`config.asgi` exists; streaming handlers land
   later). Desktop match streams depend on this.
 - **Celery workers + beat** (`config.celery` is declarative only; tasks are
@@ -353,13 +387,19 @@ agents can trust the schema without re-reading the legacy FastAPI domain code.
 - **Coverage tool**: `scripts/parity_report.py` diffs the Django URLconf
   against the frozen contract at **METHOD+path granularity** (a template whose
   view lacks the frozen HTTP method is a *method-gap*, not silently counted).
-  Current (2026-09-05, wave #4 COMPLETE): **193/263 ported, 0 method-gaps**,
-  full suite **299 tests green**, `ruff check .` + `manage.py check` clean.
-  Every DB-backed area is ported; the remaining 70 are deliberately deferred to
-  the platform / real-auth wave (task #6): auth(42 — sessions/OAuth/2FA/password
-  reset all real-auth), integrations(18 incl Google-Drive cloud-save proxy),
-  Google-Drive saves proxy(4), upload(1), discover(4 — Redis+personalization+
-  IGDB bound, no tables), `/notifications/stream` SSE(1). Run
+  Current (2026-09-05, wave #4 COMPLETE): **207/263 ported, 0 method-gaps**,
+  full suite **314 tests green**, `ruff check .` + `manage.py check` clean.
+  Real-auth core shipped (2026-09-05): JWT access (15 min, Bearer) + rotating
+  httpOnly refresh cookie (7 d, path-scoped to `/api/v1/auth/`), session +
+  refresh-token + action-token tables, global logout, session list/revoke,
+  TOTP 2FA (setup/enable/disable/challenge-login) and forgot/reset/verify-email
+  (see §6a). Remaining 56 are deliberately deferred to the platform /
+  integrations wave (task #6): auth remainder(28 — OAuth provider link/login
+  families + `/auth/me/preferences` + `/auth/me/integrations`, all
+  IdP/Redis/preference-column bound), integrations(18 incl Google-Drive
+  cloud-save proxy), Google-Drive saves proxy(4), upload(1),
+  discover(4 — Redis+personalization+IGDB bound, no tables),
+  `/notifications/stream` SSE(1). Run
   `scripts/parity_report.py` for live numbers (it adds the repo root to
   `sys.path`, so it runs from any CWD).
 - **Porting order guidance**: media hub reads first (highest traffic), then
@@ -402,10 +442,13 @@ Conventions a porting agent must follow (mirror `apps/company`/`apps/people` +
 - Score ranges are read from the legacy request schema (often 1–5) and may be
   stricter than the model CheckConstraint (1–10); keep the legacy API range.
 - Ported areas may target different apps than legacy prefixes imply
-  (`/person` → `people` app, `/list` → `lists` app). Area→app map — **wave #4 is
-  COMPLETE (2026-09-05): parity 193/263, 0 method-gaps, 299 tests green**:
-  person(7)+company(5) done; auth(3: register/me/health) done — remaining 42
-  auth routes defer to §7 real-auth task; list(18)→`lists`; push(3)→`push`;
+  (`/person` → `people` app, `/list` → `lists` app). Area→app map — **wave #4 +
+  real-auth core COMPLETE (2026-09-05): parity 207/263, 0 method-gaps,
+  314 tests green**:
+  person(7)+company(5) done; auth(3: register/me/health) done; real-auth
+  slice(14: login/refresh/logout/sessions/2fa/forgot/reset/verify) done — the
+  remaining 28 auth routes (OAuth families + me/preferences + me/integrations)
+  defer to the §7 integrations wave; list(18)→`lists`; push(3)→`push`;
   blueprints(7)→`blueprint`; search(8)→`search`; library GET(10)→`library`;
   workout(9)+exercises(2)→`workout`; proposals(8)+admin(6)→`proposals`;
   media(50)→`media`; social surface 19/20 (friends8+notifications4+reviews3+
@@ -413,9 +456,11 @@ Conventions a porting agent must follow (mirror `apps/company`/`apps/people` +
   tracks(2)→`media` (music TrackRating); calendar(1)→`media`;
   saves(2 DB-backed locations/suggest)→`track`; users(32)→`accounts`+`social`
   (identity→accounts, engagement→social; single `/users` URL module imports
-  both). **Deferred to platform wave (task #6):** integrations(18),
-  Google-Drive saves proxy(4), upload(1), discover(4 — Redis+personalization+
-  IGDB/embedding bound; no tables), auth remainder(42).
+  both). **Deferred to platform wave (task #6):** auth remainder(28 — OAuth
+  link/login families + `/auth/me/preferences` + `/auth/me/integrations`),
+  integrations(18), Google-Drive saves proxy(4), upload(1),
+  discover(4 — Redis+personalization+IGDB/embedding bound; no tables),
+  `/notifications/stream`(1).
   Dispatch agents in PARALLEL only for areas in DIFFERENT apps (one agent owns
   one app dir) to avoid write collisions; each self-validates then `manage.py
   test` + `ruff check .` + the full suite are run by the coordinator.

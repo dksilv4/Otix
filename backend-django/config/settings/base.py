@@ -186,8 +186,10 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        # Placeholder until the real auth task lands (JWT bearer + httpOnly
-        # refresh cookie + TOTP 2FA). See ARCHITECTURE.md "Known future work".
+        # JWT bearer access tokens are primary. DRF Token stays as a secondary
+        # authenticator for admin/internal tooling and older clients until the
+        # FastAPI cutover is complete. See ARCHITECTURE.md §6.
+        "apps.accounts.authentication.JWTAuthentication",
         "rest_framework.authentication.TokenAuthentication",
     ],
     # Every API endpoint is private by default; opt out per-view (e.g. register).
@@ -197,6 +199,35 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "core.pagination.DefaultPagination",
     "PAGE_SIZE": 50,
 }
+
+# ---------------------------------------------------------------------------
+# Auth / tokens (JWT access + rotating refresh cookie; see ARCHITECTURE §6)
+# ---------------------------------------------------------------------------
+
+# Independent of SECRET_KEY so the long-lived JWT signer can be rotated without
+# invalidating Django password hashes/sessions. Defaults to SECRET_KEY for dev.
+JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", SECRET_KEY)
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_LIFETIME_MINUTES = int(os.environ.get("ACCESS_TOKEN_LIFETIME_MINUTES", 15))
+REFRESH_TOKEN_LIFETIME_DAYS = int(os.environ.get("REFRESH_TOKEN_LIFETIME_DAYS", 7))
+CHALLENGE_TOKEN_LIFETIME_MINUTES = int(os.environ.get("CHALLENGE_TOKEN_LIFETIME_MINUTES", 5))
+
+REFRESH_COOKIE_NAME = os.environ.get("REFRESH_COOKIE_NAME", "otix_refresh")
+# Path-scoped so the cookie is only sent on /auth/* requests.
+REFRESH_COOKIE_PATH = "/api/v1/auth/"
+REFRESH_COOKIE_SAMESITE = "lax"
+REFRESH_COOKIE_SECURE = env_bool("REFRESH_COOKIE_SECURE", default=False)
+
+# Action-token links point at the browser client. Email delivery defaults to
+# the console backend in dev; tests override to locmem; prod should set an
+# SMTP backend via env.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+else:
+    EMAIL_BACKEND = os.environ.get(
+        "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
+    )
 
 # ---------------------------------------------------------------------------
 # Celery (declarative only; workers/beat wired in a later task)

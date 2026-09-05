@@ -13,7 +13,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework.authtoken.admin import TokenAdmin
 from rest_framework.authtoken.models import Token
 
-from apps.accounts.models import User
+from apps.accounts.models import AuthActionToken, RefreshToken, User, UserSession
 
 
 class UserCreateForm(forms.ModelForm):
@@ -78,6 +78,7 @@ class UserAdmin(BaseUserAdmin):
             _("Permissions"),
             {
                 "fields": ("is_active", "is_staff", "is_superuser", "two_factor_enabled",
+                           "two_factor_secret", "is_verified", "global_logout_marker",
                            "groups", "user_permissions"),
                 "classes": ("wide",),
             },
@@ -101,3 +102,24 @@ class UserAdmin(BaseUserAdmin):
 @admin.register(Token)
 class OtixTokenAdmin(TokenAdmin):
     """Standard DRF token admin (read-mostly)."""
+
+
+@admin.register(RefreshToken)
+class RefreshTokenAdmin(admin.ModelAdmin):
+    list_display = ("user", "jti", "created_at", "revoked_at")
+    search_fields = ("jti", "user__username")
+    list_filter = ("revoked_at",)
+
+
+@admin.register(UserSession)
+class UserSessionAdmin(admin.ModelAdmin):
+    list_display = ("user", "session_key", "last_seen_at", "revoked_at", "created_at")
+    search_fields = ("session_key", "user__username")
+    list_filter = ("revoked_at",)
+
+
+@admin.register(AuthActionToken)
+class AuthActionTokenAdmin(admin.ModelAdmin):
+    list_display = ("user", "purpose", "created_at", "expires_at", "used_at")
+    search_fields = ("user__username",)
+    list_filter = ("purpose", "used_at")

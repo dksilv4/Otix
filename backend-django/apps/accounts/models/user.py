@@ -79,7 +79,16 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
 
     # --- Security ---
     two_factor_enabled = models.BooleanField(default=False)
-    # Real TOTP (secret + recovery codes) ships with the auth task.
+    # base32 TOTP secret. Populated by /auth/2fa/setup *before* enable; kept
+    # after enable so the same secret stays valid; cleared by disable.
+    two_factor_secret = models.CharField(max_length=64, null=True, blank=True)
+    is_verified = models.BooleanField(
+        default=False,
+        help_text="True once the account email has been verified.",
+    )
+    # Epoch marker for /auth/logout and password reset: any refresh token whose
+    # ``iat`` predates this is rejected, killing every session at once.
+    global_logout_marker = models.DateTimeField(null=True, blank=True)
 
     objects = UserManager()
 
