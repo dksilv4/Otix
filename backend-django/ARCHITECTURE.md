@@ -468,6 +468,31 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   Tests patch the `_request`/`_plex_server_get` seams (6 new). Parity 242→243.
   **Remaining 20 = discover 4, integrations 10, notifications 1, saves 4,
   upload 1.**
+- **Google-Drive cloud-save proxy (increment 18, 2026-09-05)** — the four
+  `/saves` cloud routes, completing the legacy `saves.py` router
+  (DB-backed locations were already ported to `apps/track`):
+  `GET /saves/{game_id}/files`, `POST /saves/{game_id}/upload`,
+  `GET /saves/{game_id}/download/{file_id}`,
+  `DELETE /saves/{game_id}/delete/{file_id}`. `apps/track/services/
+  google_drive.py` mirrors legacy `google_drive_service.py` as a urllib client
+  (Drive v3 + upload APIs) whose module `_request` leaf maps upstream
+  HTTP ≥ 400 to a typed `DriveRequestError` (401 → "Google authorization
+  expired. Please reconnect your account.", else 502 with the body truncated to
+  200 chars like `resp.text[:200]`); network transport errors propagate to the
+  per-route legacy 500 detail. `apps/track/services/cloud_saves.py` orchestrates
+  per route: token via the not-linked 401 when a usable Drive token is missing,
+  walk/create the `Otix Game Saves → game_id → profile_id` folder chain, then
+  delegate. Drive token refresh + external-revocation quiet-unlink added to
+  `apps/accounts/services/oauth.py` (`get_user_google_drive_access_token`,
+  reusing `_DRIVE_TOKEN_COLUMNS` + the google_drive `_quietly_unlink`
+  notification). Views mount in `apps/track/saves_urls.py` after the literal
+  `locations/...` routes; upload reads the `file` part + `filename/profile_id/
+  file_id` query params (filename may carry `/` subfolder segments →
+  `ensure_folder_path`), download streams octet-stream with
+  `Content-Disposition`, delete → `{"status": "success"}`. Tests mock the
+  `google_drive._request` + accounts oauth `_request` seams (15 new; track app
+  suite 23). Parity 243→247. **Remaining 16 = discover 4, integrations 10,
+  notifications 1, upload 1.** (saves bucket now complete.)
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

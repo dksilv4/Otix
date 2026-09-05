@@ -521,6 +521,59 @@ def get_user_google_access_token(user: User) -> str | None:
     return _refresh_google_token(user)
 
 
+def _refresh_drive_token(user: User) -> str | None:
+    """Refresh ``user``'s Drive-scoped access token; unlinks quietly on revoke."""
+    if not user.drive_refresh_token:
+        return None
+    client_id, client_secret = _google_credentials()
+    try:
+        status, raw = _request(
+            GOOGLE_TOKEN_URL,
+            method="POST",
+            form={
+                "grant_type": "refresh_token",
+                "refresh_token": user.drive_refresh_token,
+                "client_id": client_id,
+                "client_secret": client_secret,
+            },
+        )
+    except OAuthProviderError:
+        return None
+    body = _parse_json(raw)
+    if status == 400 and body.get("error") == "invalid_grant":
+        _quietly_unlink(user, _DRIVE_TOKEN_COLUMNS, "google_drive")
+        return None
+    if status != 200:
+        return None
+    access = body.get("access_token")
+    if not access:
+        return None
+    user.drive_access_token = access
+    try:
+        user.drive_token_expires_at = timezone.now() + timedelta(
+            seconds=int(body.get("expires_in", 3600))
+        )
+    except (TypeError, ValueError):
+        user.drive_token_expires_at = timezone.now() + timedelta(seconds=3600)
+    user.save(update_fields=("drive_access_token", "drive_token_expires_at"))
+    return access
+
+
+def get_user_google_drive_access_token(user: User) -> str | None:
+    """Return a usable Drive-scoped access token, refreshing when near/over expiry.
+
+    Mirrors legacy ``google_auth_service.get_user_google_drive_access_token``:
+    an absent refresh token, an unreachable refresh, or an externally-revoked
+    refresh all return ``None`` (the cloud-save routes then 401 as not linked).
+    """
+    if not user.drive_refresh_token:
+        return None
+    expires_at = user.drive_token_expires_at
+    if expires_at is not None and timezone.now() < expires_at - timedelta(seconds=60):
+        return user.drive_access_token
+    return _refresh_drive_token(user)
+
+
 # ── Plex (public PIN auth; link + login) ─────────────────────────────────
 
 def _plex_headers() -> dict[str, str]:
