@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Virtual envs
+.venv/
+venv/
+
+# Django
+staticfiles/
+*.sqlite3
+*.db
+db.sqlite3
+/media/
+
+# Env / secrets
+.env
+
+# Local throwaway databases from validation runs
+/validate.db
+/test_validate.db
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

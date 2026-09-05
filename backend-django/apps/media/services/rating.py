@@ -1,0 +1,57 @@
+"""Per-user 1-10 media ratings and the aggregate columns they drive.
+
+Port of the legacy ``MediaRatingService``: upsert keeps the ``MediaItem``
+``avg_rating``/``rating_count`` columns in sync (``reviews`` list reuses the
+per-reviewer rating rows for its ``rating`` embed).
+"""
+
+from __future__ import annotations
+
+from django.contrib.auth.models import AbstractBaseUser
+from django.db.models import Avg, Count
+
+from apps.media.models import MediaItem
+from apps.social.models import MediaItemRating
+
+
+def my_rating(user_id: int, media_item_id: int) -> MediaItemRating | None:
+    return MediaItemRating.objects.filter(user_id=user_id, media_item_id=media_item_id).first()
+
+
+def upsert_rating(user: AbstractBaseUser, media_item_id: int, score: int) -> dict:
+    """Create/update a rating and return the aggregate response payload."""
+    rating, _ = MediaItemRating.objects.update_or_create(
+        user=user,
+        media_item_id=media_item_id,
+        defaults={"score": score},
+    )
+    _recalc(media_item_id)
+    aggregate = _aggregates(media_item_id)
+    return {"score": rating.score, **aggregate}
+
+
+def delete_rating(user: AbstractBaseUser, media_item_id: int) -> bool:
+    deleted, _ = MediaItemRating.objects.filter(
+        user=user, media_item_id=media_item_id
+    ).delete()
+    if deleted:
+        _recalc(media_item_id)
+    return bool(deleted)
+
+
+def _aggregates(media_item_id: int) -> dict:
+    row = MediaItem.objects.filter(pk=media_item_id).values("avg_rating", "rating_count").first()
+    return {
+        "avg_rating": row["avg_rating"] if row else None,
+        "rating_count": row["rating_count"] if row else 0,
+    }
+
+
+def _recalc(media_item_id: int) -> None:
+    aggregate = MediaItemRating.objects.filter(media_item_id=media_item_id).aggregate(
+        avg=Avg("score"), count=Count("id")
+    )
+    avg = round(float(aggregate["avg"]), 2) if aggregate["avg"] is not None else None
+    MediaItem.objects.filter(pk=media_item_id).update(
+        avg_rating=avg, rating_count=aggregate["count"] or 0
+    )

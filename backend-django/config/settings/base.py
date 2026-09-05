@@ -1,0 +1,206 @@
+"""Shared Django settings for every environment.
+
+Environment-driven knobs (read from ``os.environ`` / ``.env``):
+- ``SECRET_KEY``
+- ``DEBUG``
+- ``ALLOWED_HOSTS`` (comma-separated)
+- ``DATABASE_URL`` (defaults to a local Postgres URL; platform runs Postgres +
+  pgvector). Override to ``sqlite:///./<file>.db`` only for throwaway local runs.
+- ``CORS_ALLOWED_ORIGINS`` (comma-separated) and ``CORS_ALLOW_ALL_ORIGINS``
+- ``CELERY_BROKER_URL`` / ``CELERY_RESULT_BACKEND`` (Redis)
+"""
+
+import os
+from pathlib import Path
+from urllib.parse import urlparse
+
+import dotenv
+
+# backend-django/config/settings/base.py -> backend-django/
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# Load .env from the project root if present. Real values (never checked in)
+# come from the process environment / deployment secrets.
+dotenv.load_dotenv(BASE_DIR / ".env")
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name: str, default: list[str]) -> list[str]:
+    raw = os.environ.get(name)
+    if raw is None:
+        return list(default)
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def parse_database_url(url: str) -> dict:
+    """Translate a single DATABASE_URL into Django DATABASES settings.
+
+    Supports ``postgresql://``/``postgres://`` and ``sqlite:///<path>``. This
+    hand-rolled parser keeps the dependency footprint small; if more schemes
+    are ever needed, swap it for ``dj-database-url``.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme in {"sqlite", "sqlite3"}:
+        name = parsed.path.lstrip("/") or ":memory:"
+        return {"ENGINE": "django.db.backends.sqlite3", "NAME": name}
+    if parsed.scheme not in {"postgres", "postgresql"}:
+        raise ValueError(f"Unsupported DATABASE_URL scheme: {parsed.scheme!r}")
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": parsed.path.lstrip("/") or "otix",
+        "USER": parsed.username or "",
+        "PASSWORD": parsed.password or "",
+        "HOST": parsed.hostname or "",
+        "PORT": parsed.port or "",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Core Django
+# ---------------------------------------------------------------------------
+
+DEBUG = env_bool("DEBUG", default=False)
+
+# Dev-only fallback; production settings require an explicit env SECRET_KEY.
+SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
+
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+
+DATABASES = {
+    "default": parse_database_url(
+        os.environ.get(
+            "DATABASE_URL",
+            "postgresql://otix:otix@127.0.0.1:5432/otix",
+        )
+    )
+}
+
+INSTALLED_APPS = [
+    # Django contrib
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    # Third-party
+    "rest_framework",
+    "rest_framework.authtoken",  # Placeholder auth tokens; see ARCHITECTURE.md
+    "corsheaders",
+    # Local apps. Dependency order matters for auto-discovery/migrations:
+    # media is the catalog hub; people/company FK back to it by string.
+    # Satellite apps (below) FK only media + accounts.User, never each other,
+    # so they can be ported in parallel without cross-app migration coupling.
+    "apps.accounts.apps.AccountsConfig",
+    "apps.media.apps.MediaConfig",
+    "apps.people.apps.PeopleConfig",
+    "apps.company.apps.CompanyConfig",
+    "apps.lists.apps.ListsConfig",
+    "apps.social.apps.SocialConfig",
+    "apps.proposals.apps.ProposalsConfig",
+    "apps.push.apps.PushConfig",
+    "apps.search.apps.SearchConfig",
+    "apps.integrations.apps.IntegrationsConfig",
+    "apps.library.apps.LibraryConfig",
+    "apps.track.apps.TrackConfig",
+    "apps.workout.apps.WorkoutConfig",
+    "apps.blueprint.apps.BlueprintConfig",
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
+
+AUTH_USER_MODEL = "accounts.User"
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+# Greenfield data model: standard integer auto-increment PKs (not legacy ULIDs).
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# API routes are declared without trailing slashes (FastAPI parity).
+APPEND_SLASH = False
+
+# ---------------------------------------------------------------------------
+# i18n / timezone
+# ---------------------------------------------------------------------------
+
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+
+CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", default=DEBUG)
+CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", default=[])
+
+# ---------------------------------------------------------------------------
+# Django REST Framework
+# ---------------------------------------------------------------------------
+
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        # Placeholder until the real auth task lands (JWT bearer + httpOnly
+        # refresh cookie + TOTP 2FA). See ARCHITECTURE.md "Known future work".
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    # Every API endpoint is private by default; opt out per-view (e.g. register).
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.DefaultPagination",
+    "PAGE_SIZE": 50,
+}
+
+# ---------------------------------------------------------------------------
+# Celery (declarative only; workers/beat wired in a later task)
+# ---------------------------------------------------------------------------
+
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/0")
