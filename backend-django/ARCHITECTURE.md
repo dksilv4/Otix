@@ -272,20 +272,10 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   `User` field set (no bio/background/preferences JSON yet); both land with the
   profile-column wave.
 
-## 7. Known future work (do not get surprised)
 
-- **OAuth auth** completing real auth: the password/2FA/session core shipped
-  (§6a). Remaining are the provider login/link families
-  (google/plex/steam/tmdb initiate+callback, `/auth/oauth/*`), each needing a
-  live IdP, single-use Redis state, and per-provider token/profile columns,
-  plus `/auth/me/preferences` + `/auth/me/integrations` reads.
-- **SSE / realtime** over ASGI (`config.asgi` exists; streaming handlers land
-  later). Desktop match streams depend on this.
-- **Celery workers + beat** (`config.celery` is declarative only; tasks are
-  per-app). Redis broker already configured.
-- **pgvector embeddings** (`pgvector.django`): media_items/people/companies/user
-  `Vector(384)` + HNSW cosine indexes; plus `search_vector` trigram machinery.
-- **Plugin framework** under `plugins/` (2026-09-05, task #5) — **architecture
+## 6b. Plugins framework (DONE — increments 1–6)
+
+**Plugin framework** under `plugins/` (2026-09-05, task #5) — **architecture
   (design doc §4 vs Nextcloud AppAPI):** the Django API and the plugin host are
   **separate processes**. The API *never imports plugin code*; it owns plugin
   *state* rows (`plugins.Plugin`: manifest snapshot, enabled, granted
@@ -354,11 +344,42 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   method against a fake Plex server in-process; a live cross-process smoke
   (sqlite migrate → `plugins_scan` → `plugin_host` on a port → `hostclient`
   `describe`/`call` from a separate process) verified the full horizontal slice.
-  **Increments 1–5 tests: 81 plugins-green** (suite 401).
+  **Increment 6 DONE (supervision + Redis events):** `deploy/plugin-host.service`
+  (systemd) + `deploy/plugin-host.supervisor.conf` supervise **only the host**
+  process — plugin code lives there, so the worst a bad plugin does is take the
+  host down and the supervisor restarts it; the host is stateless (re-reads
+  enabled rows on boot), so restart-only-the-host is safe. `plugin_host` maps
+  SIGTERM to a clean stop. `plugins/events.py` `publish_lifecycle` emits
+  `plugin.loaded` / `plugin.unloaded` / `plugin.error` (JSON: type/id/version/
+  error/at) onto `PLUGIN_EVENTS_CHANNEL` (default `otix.plugins.lifecycle`) of
+  `PLUGIN_EVENTS_URL` as the host reconciles — fail-open, disabled unless the
+  URL is set (tests never touch Redis); host calls are wired in `_load_row` /
+  `_unload` / `_fail`. A browser/SSE consumer later subscribes for live status.
+  **Increments 1–6 tests: 87 plugins-green** (suite 407).
   Settings: `PLUGINS_ROOT` env (default `<repo>/plugin-root`, gitignored) +
   `BUNDLED_PLUGINS_ROOT` (default `<repo>/bundled_plugins`) +
-  `PLUGIN_HOST_BIND/PORT/SECRET`. **Next increment:** supervision/docs + Redis
-  events. Conventions + status in `plugins/README.md`.
+  `PLUGIN_HOST_BIND/PORT/SECRET` + `PLUGIN_EVENTS_URL/CHANNEL`. Conventions +
+  status in `plugins/README.md`. The remaining framework surface —
+  `table:*`-scoped data ops + a downloads registry — returns later.
+
+## 7. Known future work (do not get surprised)
+
+- **OAuth auth** completing real auth: the password/2FA/session core shipped
+  (§6a). Remaining are the provider login/link families
+  (google/plex/steam/tmdb initiate+callback, `/auth/oauth/*`), each needing a
+  live IdP, single-use Redis state, and per-provider token/profile columns,
+  plus `/auth/me/preferences` + `/auth/me/integrations` reads.
+- **SSE / realtime** over ASGI (`config.asgi` exists; streaming handlers land
+  later). Desktop match streams depend on this.
+- **Celery workers + beat** (`config.celery` is declarative only; tasks are
+  per-app). Redis broker already configured.
+- **pgvector embeddings** (`pgvector.django`): media_items/people/companies/user
+  `Vector(384)` + HNSW cosine indexes; plus `search_vector` trigram machinery.
+
+- **Plugin framework (next surface):** the core shipped as increments 1–6 — see §6b.
+  Remaining: `table:*`-scoped data ops, a downloads registry, and a browser/SSE
+  consumer of the Redis lifecycle channel.
+
 - **Parity harness** to diff DRF output against the frozen FastAPI OpenAPI
   contract (~263 routes) while porting feature-area by feature-area.
 

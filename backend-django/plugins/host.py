@@ -23,6 +23,7 @@ from django.conf import settings
 
 from plugins.base import Plugin as LoadedPlugin
 from plugins.base import PluginError
+from plugins.events import publish_lifecycle
 from plugins.framework import build_services
 from plugins.manifest import ManifestError, PluginManifest, load_manifest
 from plugins.models import Plugin
@@ -133,6 +134,7 @@ class PluginHost:
         row.error = ""
         row.save(update_fields=("error", "updated_at"))
         logger.info("host loaded plugin %s %s", row.name, manifest.version)
+        publish_lifecycle("loaded", row.name, version=manifest.version)
         return plugin
 
     def _fail(self, row: Plugin, message: str) -> None:
@@ -141,6 +143,7 @@ class PluginHost:
         row.error = message
         row.save(update_fields=("error", "updated_at"))
         logger.error("plugin %s error: %s", row.name, message)
+        publish_lifecycle("error", row.name, version=row.version, error=message)
         return None
 
     def _unload(self, name: str) -> None:
@@ -152,6 +155,7 @@ class PluginHost:
         except Exception:  # noqa: BLE001 - a disable hook must never block the host
             logger.exception("plugin %s disable() hook raised", name)
         logger.info("host unloaded plugin %s", name)
+        publish_lifecycle("unloaded", name, version=plugin.manifest.version)
 
     # ── Status / call surface (served by HostControlServer) ────────────
     def status(self) -> list[dict]:

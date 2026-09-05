@@ -12,6 +12,7 @@ Run under its own supervisor/container, e.g.:
 
 from __future__ import annotations
 
+import signal
 import threading
 import time
 
@@ -52,6 +53,13 @@ class Command(BaseCommand):
         server = HostControlServer(
             host, secret=settings.PLUGIN_HOST_SECRET, bind=options["bind"], port=options["port"]
         )
+        # A supervisor (systemd/supervisord) stops the host with SIGTERM; route it
+        # through the existing KeyboardInterrupt path so serve_forever exits and
+        # the control server closes cleanly instead of the process being killed.
+        def _on_sigterm(_signum, _frame) -> None:
+            raise KeyboardInterrupt
+
+        signal.signal(signal.SIGTERM, _on_sigterm)
         self.stdout.write(f"plugin host control API listening at {server.address}")
         self.stdout.write(
             f"plugins root: {settings.PLUGINS_ROOT} "

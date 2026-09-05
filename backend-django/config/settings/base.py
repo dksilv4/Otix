@@ -265,3 +265,9 @@ PLUGIN_HOST_SECRET = os.environ.get(
     "PLUGIN_HOST_SECRET", "dev-plugin-host-secret-change-me"
 )
 
+# Plugin lifecycle events: when non-empty, the host publishes plugin.loaded /
+# unloaded / error onto this Redis URL + channel as JSON. Fail-open — a down or
+# unset Redis never blocks the host (DB rows stay the source of truth).
+PLUGIN_EVENTS_URL = os.environ.get("PLUGIN_EVENTS_URL", "")
+PLUGIN_EVENTS_CHANNEL = os.environ.get("PLUGIN_EVENTS_CHANNEL", "otix.plugins.lifecycle")
+

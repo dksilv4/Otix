@@ -29,6 +29,10 @@ Host process (separate from the API; runs plugin *code*):
 - `host.py`        — `PluginHost`: reads DB rows, loads enabled entry modules
                      into a registry, runs lifecycle hooks, writes errors back,
                      reconciles registry↔DB on `sync()`
+- `events.py`      — publishes `plugin.loaded` / `plugin.unloaded` /
+                     `plugin.error` to a Redis channel as the host reconciles
+                     (best-effort, fail-open: unset/down Redis never blocks the
+                     host — DB rows stay the source of truth)
 - `framework.py`   — grant-gated services the host injects onto a plugin fresh
                      on every dispatch: `HttpService` (outbound http/https,
                      `network:external`/`network:any`) and `StoreService`
@@ -39,7 +43,8 @@ Host process (separate from the API; runs plugin *code*):
                      `/health`, `/plugins`, `/plugins/<id>/reload`,
                      `/plugins/reload-all`, `/plugins/<id>/call`
 - `management/commands/plugin_host` — run the host service (`--port`,
-                     `--sync-interval`; enable/disable converge without restart)
+                     `--sync-interval`; enable/disable converge without restart;
+                     SIGTERM → clean stop for supervisors)
 
 ## Writing a plugin
 
@@ -105,4 +110,14 @@ reference plugin: a real Plex data source (manifest + `plugin.py`) that reads
   data method against a fake Plex server; a live cross-process smoke
   (migrate → `plugins_scan` → `plugin_host` → `hostclient`) verified describe +
   call over the control API.
-- **Increment 6 (next):** supervision/docs + Redis events.
+- **Increment 6 (done):** supervision + lifecycle events. `deploy/plugin-host.service`
+  (systemd) + `deploy/plugin-host.supervisor.conf` run **only the host** —
+  because plugin code lives in the host process, a bad plugin takes at most the
+  host down and the supervisor restarts it (the host is stateless: it re-reads
+  enabled rows from the DB on every boot). `plugin_host` routes SIGTERM to a
+  clean stop. `plugins/events.py` publishes `plugin.loaded`/`unloaded`/`error`
+  to Redis (`PLUGIN_EVENTS_URL`, channel `PLUGIN_EVENTS_CHANNEL`, default
+  `otix.plugins.lifecycle`) as the host reconciles; emission is fail-open and
+  disabled unless a URL is set. Events suite in `plugins/tests_events.py`.
+  Plugin framework done — plugin work returns in a later increment
+  (`table:*`-scoped data ops + a downloads registry).
