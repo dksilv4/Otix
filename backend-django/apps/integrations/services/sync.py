@@ -146,6 +146,11 @@ def execute_sync_job(job_pk: int) -> dict[str, Any]:
         logger.exception("sync job %s engine raised", task_id)
         return _abort(job, task_id, message=_ERROR_MESSAGE, detail=str(exc))
 
+    # An engine that returns ``{"error": ...}`` signals a handled failure (e.g.
+    # a missing Google token) — publish an error terminal state, don't claim success.
+    if summary.get("error"):
+        return _abort(job, task_id, message=summary["error"])
+
     frame = {**context, **summary}
     result = {**frame, "task_id": task_id}
     progress.store_result(task_id, result)

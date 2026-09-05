@@ -121,14 +121,17 @@ class SyncEnqueueEndpointTests(TestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp.json(), {"detail": "No Google account linked"})
 
-    def test_youtube_sync_202(self):
-        resp = self.client.post(self.youtube_url, {}, format="json")
+    def test_youtube_sync_202_enqueues_and_dispatches(self):
+        with mock.patch("apps.integrations.views.sync.run_sync_job") as task:
+            resp = self.client.post(self.youtube_url, {}, format="json")
         self.assertEqual(resp.status_code, 202)
         job = SyncJob.objects.get()
         self.assertEqual(resp.json(), {"task_id": str(job.pk)})
         self.assertEqual(job.provider, "youtube")
         self.assertEqual(job.entity_type, "watch-history")
         self.assertEqual(job.external_id, str(self.user.id))
+        self.assertEqual(job.status, "pending")
+        task.delay.assert_called_once_with(job.pk)
 
 
 class SyncStreamViewTests(TestCase):

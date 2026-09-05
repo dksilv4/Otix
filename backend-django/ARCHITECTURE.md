@@ -699,6 +699,42 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   lifecycle (pending→running→completed with started_at/completed_at), no-engine /
   engine-exception → failed, stored-result replay roundtrip, and a live pub/sub
   stream consuming the recorded frames. Suite 711→722. Parity unchanged 263/263.
+- **YouTube liked-music sync engine (increment 28, 2026-09-05): parity 263/263
+  unchanged, full suite 740 (18 new).** First REAL provider engine ported +
+  dispatched end to end. `apps/integrations/services/youtube_title_parser.py` =
+  faithful `parse_music_title` (normalize unicode dashes → extract artist/song
+  split + bracket markers + feat/remix/live detection → confidence; Topic
+  channels get artist from the channel title). `youtube.py` = sync urllib
+  `YouTubeClient` with a module `_request` leaf: non-2xx that names
+  "insufficient authentication scopes" → `YouTubeScopeError` (re-link message),
+  other errors → `YouTubeError`; network failures propagate (engine → generic
+  abort). `youtube_sync.py` registers `@register_sync_engine("youtube")`:
+  resolve user from `job.external_id`, `get_user_google_access_token` (accounts
+  oauth), no-token → returns `{"error": "No valid Google token. …"}`
+  (NEW orchestrator contract: `execute_sync_job` treats an error-returning
+  summary as a handled failure → `_abort` error frame + failed job, not a false
+  `sync_complete`); pages `videos.list myRating=like` (nextPageToken),
+  filters `categoryId == "10"`, parses titles, `_match_album` 3 strategies
+  (title iexact + artist credit → title icontains re-checked per album against
+  the artist credit → featuring-artist credits), `set_interaction(…, "listened",
+  extra={source, video_id, video_title, channel_title, published_at})`,
+  `_link_channel_to_person` = `ExternalID(content_type=Person,
+  provider="youtube_channel")` (already-linked guard + skip persons already
+  owning a youtube_channel id; sets `Person.youtube_channel_title`), and upserts
+  every music video into `UserYoutubeLikedVideo` (`update_or_create` on
+  user+video_id, clearing `matched_media_item` on re-sync when unmatched). Body
+  wrapped in `transaction.atomic` (all-or-nothing, mirrors legacy
+  commit-at-end). Intermediate frames publish + `store_progress` on the youtube
+  namespace; orchestrator still owns `sync_started`/`sync_complete` + stored
+  result. Wiring: `apps/integrations/tasks/__init__` now imports the engine
+  module (side-effect registration at worker start / task import);
+  `YoutubeSyncView.post` calls `run_sync_job.delay(job.pk)` after enqueuing
+  (plex stays enqueue-only until its engine ports). No migration (model + raw
+  table existed). Tests: 12 parser units + 6 engine roundtrip (patch the
+  oauth-token fn, `youtube._request` canned pages, `core.progress.get_client`;
+  album/Person/MediaCredit fixture; match→interaction+channel-link+raw-upsert;
+  no-token → error terminal; resync idempotent); endpoint dispatch test now
+  patches `run_sync_job` so eager mode doesn't run the engine inline.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
@@ -808,8 +844,9 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   `integrations.run_sync_job`; Redis broker configured), but worker/beat
   processes only run when launched (`celery -A config worker/beat`), and the
   `CELERY_BEAT_SCHEDULE` hook stays empty until periodic maintenance tasks
-  (catalog hydration etc.) opt in. The real provider sync engines (plex-user,
-  youtube-liked) still need porting to `register_sync_engine` + `.delay()`.
+  (catalog hydration etc.) opt in. The youtube-liked engine is ported and
+  dispatched (increment 28); the plex-user ingest engine (the ~2170-line
+  ``plex_user_sync_service``) is the remaining provider engine to register.
 - **pgvector embeddings** (`pgvector.django`): media_items/people/companies/user
   `Vector(384)` + HNSW cosine indexes; plus `search_vector` trigram machinery.
 
