@@ -948,6 +948,44 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   surface → no migration. **Next deferred piece:** the remaining concrete keyed
   clients (IGDB/SteamGridDB), then the TMDB/MusicBrainz transformer/hydrator +
   catalog-seed pipelines those clients feed.
+- **SteamGridDB async client (increment 36, 2026-09-05): parity 263/263
+  unchanged, full suite 819 (15 new).** ``core/providers/steamgrid.py`` ports
+  ``otix.providers.steamgrid.client`` — game artwork (grids/heroes/logos/icons),
+  the concrete client the deferred artwork hydration will consume. Distinctive
+  auth shape: the API key is **injected per request** (``_request`` override
+  adds ``Authorization: Bearer settings.STEAMGRID_API_KEY``) rather than set on
+  the shared client, so a key rotation needs only a settings refresh. Shared
+  ``get_http_client()`` binds a process-shared ``httpx.AsyncClient`` to
+  ``BASE_URL`` (``https://www.steamgriddb.com/api/v2``) + the
+  ``STEAMGRID_REQUEST_TIMEOUT_SECONDS`` timeout (loop-change aclose, TMDB
+  pattern). ``SteamGridDBProvider`` names itself "steamgrid", throttles at
+  ``rate == burst == STEAMGRID_GLOBAL_RPS_LIMIT`` (default 2/s — free tier is
+  ~100 req / 5 min), and adds its own ``SteamGridDBError`` +
+  ``_resolve_success`` (non-200 / ``success:false`` body → raise). Lookups
+  normalize misses to ``None``/``[]`` instead of raising:
+  ``get_game_by_platform_id`` (returns the ``data`` dict, or ``data[0]`` when a
+  list), ``get_game_by_steam_app_id`` (platform "steam"),
+  ``get_game_by_id``, ``search_games`` (autocomplete → list of
+  ``{id,name,types}``), and the asset endpoints ``get_grids`` (styles +
+  dimensions) / ``get_heroes`` / ``get_logos`` (``[]`` on
+  ``SteamGridDBError``/``ProviderError``) / ``get_icons`` (``[]`` on
+  ``SteamGridDBError`` only — a legacy narrower catch preserved). Divergence
+  note: the modern ``BaseProvider`` raises ``HTTPStatusError`` on ≥500 before
+  ``_resolve_success`` runs, so the error-parse path fires on 4xx bodies (the
+  realistic not-found case); a genuine upstream 5xx surfaces loudly rather than
+  degrading to ``[]``. ``config/settings/base.py`` declares
+  ``STEAMGRID_API_KEY`` (accepting the legacy ``STEAM_GRID_API_KEY`` env alias),
+  ``STEAMGRID_REQUEST_TIMEOUT_SECONDS`` (15s),
+  ``STEAMGRID_GLOBAL_RPS_LIMIT`` (2/s). Tests
+  (``core/tests/test_steamgrid_provider.py``, 15) reuse the in-memory Redis
+  double + MockTransport and assert: per-request Bearer injection (override the
+  key setting), path merged onto ``…/api/v2``, dict/list data normalization,
+  404 → ``None``, ``success:false`` → ``None``/``[]``, grid styles+dimensions
+  params, autocomplete list, and the ``_resolve_success`` parser raising on
+  non-200/error bodies, plus the factory base_url/timeout with **no**
+  client-level Authorization header. No model/DB surface → no migration. **Next
+  deferred piece:** the IGDB concrete client, then the TMDB/MusicBrainz
+  transformer/hydrator + catalog-seed pipelines those clients feed.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

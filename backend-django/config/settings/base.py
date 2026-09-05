@@ -87,6 +87,15 @@ MUSICBRAINZ_REQUEST_TIMEOUT_SECONDS = float(
 )
 MUSICBRAINZ_GLOBAL_RPS_LIMIT = float(os.environ.get("MUSICBRAINZ_GLOBAL_RPS_LIMIT", "1.0"))
 
+# SteamGridDB (game artwork: grids/heroes/logos/icons). Key is sent per request
+# as a Bearer header; accepts the legacy STEAM_GRID_API_KEY env alias. Free tier
+# is ~100 req / 5 min; the provider throttles to 2/s by default.
+STEAMGRID_API_KEY = os.environ.get("STEAMGRID_API_KEY", os.environ.get("STEAM_GRID_API_KEY", ""))
+STEAMGRID_REQUEST_TIMEOUT_SECONDS = float(
+    os.environ.get("STEAMGRID_REQUEST_TIMEOUT_SECONDS", "15.0")
+)
+STEAMGRID_GLOBAL_RPS_LIMIT = float(os.environ.get("STEAMGRID_GLOBAL_RPS_LIMIT", "2.0"))
+
 # Dev-only fallback; production settings require an explicit env SECRET_KEY.
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
 
