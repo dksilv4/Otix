@@ -312,11 +312,23 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   /health`, `GET /plugins`, `POST /plugins/{id}/reload`, `/plugins/reload-all`,
   `/plugins/{id}/call`) and `manage.py plugin_host` with a DB re-sync loop so
   enable/disable converge without restart. `PluginRegistry.unregister` added.
-  Live-smoke verified (scan → enable → boot → control calls). **Increment 1+2
-  tests: 46 plugins-green** (suite 366). Settings: `PLUGINS_ROOT` env (default
+  Live-smoke verified (scan → enable → boot → control calls). **Increment 3
+  DONE (API proxy):** `plugins/hostclient.py` (thin urllib client for the host
+  control API; `HostUnreachableError` degrades gracefully) + DRF additive routes
+  under `api/v1/plugins/` (`plugins/urls.py` + `views.py` + `serializers.py`,
+  mounted in `config/urls.py`) mirroring the frontend PluginAPI contract:
+  `GET/POST /plugins` (list + discover/scan), `GET/DELETE /plugins/<id>`,
+  `POST /plugins/<id>/{enable|disable|reload}`, `GET/PUT /plugins/<id>/config`
+  (flat config + instances), `POST /plugins/<id>/call` (data-method proxy to the
+  host; 503 when the host is down), `GET /plugins/capabilities` (Nextcloud-style
+  announcement: permission vocabulary + grantable wildcards + config field
+  types + stages + host status), and `GET /plugins/<id>/describe` merged from
+  the host. Auth = DRF default (JWT/Token, IsAuthenticated); these routes are
+  additive (not in the frozen 263) so parity is unchanged. **Increments 1–3
+  tests: 60 plugins-green** (suite 380). Settings: `PLUGINS_ROOT` env (default
   `<repo>/plugin-root`, gitignored) + `PLUGIN_HOST_BIND/PORT/SECRET`. **Next
-  increments:** PluginAPI DRF proxy + host client + capabilities,
-  grant-gated framework services, reference Plex plugin, supervision/docs.
+  increments:** grant-gated framework services (table/network scope
+  enforcement), reference Plex plugin, supervision/docs + Redis events.
   Conventions + status in `plugins/README.md`.
 - **Parity harness** to diff DRF output against the frozen FastAPI OpenAPI
   contract (~263 routes) while porting feature-area by feature-area.

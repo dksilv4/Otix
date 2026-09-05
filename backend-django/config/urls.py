@@ -41,5 +41,6 @@ urlpatterns = [
     path("api/v1/metric/", include("apps.social.metric_urls")),
     path("api/v1/proposals/", include("apps.proposals.urls")),
     path("api/v1/admin/", include("apps.proposals.admin_urls")),
+    path("api/v1/plugins/", include("plugins.urls")),
     path("api/v1/health", health, name="health"),
 ]

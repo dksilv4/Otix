@@ -53,6 +53,10 @@ my-plugin/           # folder name MUST equal manifest `name` (Nextcloud rule)
 - **Increment 2 (done):** host process. `manage.py plugin_host` boots
   `PluginHost`, loads enabled plugins, serves the internal control API. Host
   suite in `plugins/tests_host.py`.
-- **Increments 3–6 (next):** PluginAPI DRF proxy + host client + capabilities,
-  grant-gated framework services, reference Plex plugin end-to-end,
-  supervision/docs + Redis events.
+- **Increment 3 (done):** API proxy. DRF routes under `api/v1/plugins/`
+  (`hostclient.py` reaches the host; lifecycle/config are DB-only and work with
+  the host down; `call`/`describe` proxy to it; `capabilities` announces the
+  vocabulary). API suite in `plugins/tests_plugins_api.py`.
+- **Increments 4–6 (next):** grant-gated framework services (table/network
+  scope enforcement), reference Plex plugin end-to-end, supervision/docs +
+  Redis events.

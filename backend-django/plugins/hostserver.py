@@ -84,6 +84,10 @@ class _ControlHandler(BaseHTTPRequestHandler):
             return self._json(200, {"status": "ok", "plugins": len(self.server.host.status())})
         if path == "/plugins":
             return self._json(200, {"plugins": self.server.host.status()})
+        if path.endswith("/describe"):
+            name = path[len("/plugins/") : -len("/describe")]
+            if name:
+                return self._json(200, self.server.host.describe(name))
         self._json(404, {"error": "not found"})
 
     def do_POST(self) -> None:

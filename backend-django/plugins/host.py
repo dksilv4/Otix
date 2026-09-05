@@ -185,3 +185,13 @@ class PluginHost:
         except Exception as exc:  # noqa: BLE001 - a plugin bug must not kill the host
             return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
         return {"ok": True, "result": result}
+
+    def describe(self, name: str) -> dict:
+        """Advertise a loaded plugin's methods + manifest (host-side only)."""
+        plugin = self.registry.get(name)
+        if plugin is None:
+            return {"ok": False, "error": "plugin not loaded"}
+        try:
+            return {"ok": True, "result": plugin.describe()}
+        except Exception as exc:  # noqa: BLE001 - plugin describe must not kill host
+            return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
