@@ -11,6 +11,7 @@ from apps.integrations.views import (
     PlexAlbumTracksView,
     PlexConnectInfoView,
     PlexLibrariesView,
+    PlexServersView,
     PlexSessionsView,
     PlexWebhookView,
     SteamOwnedAppIdsView,
@@ -20,6 +21,7 @@ app_name = "integrations"
 
 urlpatterns = [
     # Plex read/library-state surface.
+    path("plex/servers", PlexServersView.as_view(), name="plex-servers"),
     path("plex/libraries", PlexLibrariesView.as_view(), name="plex-libraries"),
     path(
         "plex/connect-info/<int:media_item_id>",

@@ -6,6 +6,7 @@ Exercises the ported Plex + Steam read routes over the stored
 - ``GET /integrations/plex/connect-info/{media_item_id}``
 - ``GET /integrations/plex/album-tracks/{media_item_id}``
 - ``GET /integrations/plex/libraries``
+- ``GET /integrations/plex/servers`` (live plex.tv server/library discovery)
 - ``GET /integrations/plex/sessions``
 - ``GET /integrations/steam/owned-appids``
 - ``POST /integrations/plex/webhook`` (inbound; HMAC-verified, AllowAny)
@@ -18,6 +19,7 @@ or patch the service ``_request`` leaf.
 import hashlib
 import hmac
 import json
+import urllib.error
 from datetime import timedelta
 from unittest import mock
 
@@ -774,3 +776,214 @@ class SteamOwnedAppIdsTests(_ApiTestBase):
         resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(set(resp.json()["appids"]), {730, 570, 440})
+
+
+DISC_RESOURCE_M1 = {
+    "name": "Living Room",
+    "product": "Plex Media Server",
+    "clientIdentifier": "m1",
+    "provides": "server",
+    "owned": True,
+    "accessToken": "acc-1",
+    "platform": "Linux",
+    "connections": [
+        {"uri": "https://relay.plex.direct:32400", "local": False},
+        {"uri": "https://192-168-1-10.abc.plex.direct:32400", "local": True},
+    ],
+}
+
+DISC_SECTIONS = {
+    "MediaContainer": {
+        "Directory": [
+            {"key": "1", "type": "movie", "title": "Movies"},
+            {"key": "2", "type": "show", "title": "TV Shows"},
+            {"key": "3", "type": "artist", "title": "Music"},
+            {"key": "4", "type": "photo", "title": "Photos"},
+            {"key": "5", "type": "clip", "title": "Clips"},
+            {"key": "6", "type": "movie"},
+        ]
+    }
+}
+
+
+class PlexServersDiscoveryTests(_ApiTestBase):
+    URL = "/api/v1/integrations/plex/servers"
+    REVOKED_DETAIL = (
+        "Plex account was disconnected because access was revoked externally. "
+        "Please re-link your account."
+    )
+
+    def setUp(self):
+        super().setUp()
+        user = self.user
+        user.plex_id = "plex-u-1"
+        user.plex_username = "alice-plex"
+        user.plex_email = "alice@plex.tv"
+        user.plex_thumb = "http://img/plex"
+        user.plex_auth_token = "ptok"
+        user.save(
+            update_fields=[
+                "plex_id",
+                "plex_username",
+                "plex_email",
+                "plex_thumb",
+                "plex_auth_token",
+            ]
+        )
+
+    @staticmethod
+    def _discovery_fake(
+        resources=(200, json.dumps([DISC_RESOURCE_M1])),
+        sections=DISC_SECTIONS,
+        raise_resources=None,
+        raise_sections_host=None,
+    ):
+        def fake(url, **_kwargs):
+            if "/api/v2/resources" in url:
+                if raise_resources is not None:
+                    raise raise_resources
+                return resources
+            if raise_sections_host is not None and raise_sections_host in url:
+                raise urllib.error.URLError(ConnectionRefusedError("refused"))
+            return (200, json.dumps(sections))
+
+        return fake
+
+    def _get(self, **kwargs):
+        return mock.patch(
+            "apps.integrations.services.plex._request",
+            side_effect=self._discovery_fake(**kwargs),
+        )
+
+    def test_no_linked_account_400(self):
+        self.user.plex_auth_token = None
+        self.user.save(update_fields=["plex_auth_token"])
+        with mock.patch("apps.integrations.services.plex._request") as request:
+            resp = self.client.get(self.URL)
+        request.assert_not_called()
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json(), {"detail": "User has no linked Plex account"})
+
+    def test_unauthenticated_401(self):
+        resp = APIClient().get(self.URL)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_discovers_servers_and_libraries(self):
+        with self._get():
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertEqual(payload["unreachable_servers"], None)
+        self.assertEqual(len(payload["servers"]), 1)
+        server = payload["servers"][0]
+        self.assertEqual(server["machine_identifier"], "m1")
+        self.assertEqual(server["name"], "Living Room")
+        self.assertEqual(server["product"], "Plex Media Server")
+        self.assertEqual(server["platform"], "Linux")
+        self.assertEqual(server["base_url"], "https://192-168-1-10.abc.plex.direct:32400")
+        self.assertTrue(server["owned"])
+        self.assertTrue(server["selected"])
+        db_server = UserPlexServer.objects.get(machine_identifier="m1")
+        self.assertEqual(server["id"], db_server.id)
+        self.assertEqual(db_server.access_token, "acc-1")
+        self.assertEqual(UserPlexLibrary.objects.filter(server=db_server).count(), 4)
+        self.assertEqual(len(payload["libraries"]), 4)
+        titles = {lib["title"] for lib in payload["libraries"]}
+        self.assertEqual(titles, {"Movies", "TV Shows", "Music", "Plex Library"})
+        self.assertTrue(all(lib["server_id"] == db_server.id for lib in payload["libraries"]))
+
+    def test_updates_existing_server_and_keeps_db_only(self):
+        _make_server(
+            self.user, name="Old Name", base_url="http://old:32400", token="old-tok", machine="m1"
+        )
+        db_only = _make_server(
+            self.user, name="Offline", base_url="http://dbonly:32400", token="db-tok", machine="m2"
+        )
+        with self._get():
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        by_machine = {row["machine_identifier"]: row for row in payload["servers"]}
+        self.assertEqual(set(by_machine), {"m1", "m2"})
+        self.assertEqual(by_machine["m1"]["name"], "Living Room")
+        self.assertEqual(by_machine["m1"]["base_url"], "https://192-168-1-10.abc.plex.direct:32400")
+        self.assertEqual(by_machine["m2"]["base_url"], "http://dbonly:32400")
+        db_only.refresh_from_db()
+        self.assertEqual(db_only.name, "Offline")
+        self.assertEqual(UserPlexServer.objects.filter(user=self.user).count(), 2)
+
+    def test_db_only_server_without_base_url_excluded(self):
+        UserPlexServer.objects.create(
+            user=self.user, machine_identifier="m2", name="Headless", owned=True
+        )
+        with self._get():
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertEqual(len(payload["servers"]), 1)
+        self.assertEqual(payload["servers"][0]["machine_identifier"], "m1")
+
+    def test_skips_non_server_and_machineless_resources(self):
+        resources = [
+            {"name": "Phone", "provides": "client", "clientIdentifier": "c1"},
+            {"name": "NoMachine", "provides": "server"},
+            DISC_RESOURCE_M1,
+        ]
+        with self._get(resources=(200, json.dumps(resources))):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertEqual(len(payload["servers"]), 1)
+        self.assertEqual(payload["servers"][0]["machine_identifier"], "m1")
+
+    def test_unreachable_server_collected_but_others_served(self):
+        basement = dict(DISC_RESOURCE_M1)
+        basement["name"] = "Basement"
+        basement["clientIdentifier"] = "m2"
+        basement["connections"] = [{"uri": "https://basement.plex.direct:32400", "local": True}]
+        resources = [DISC_RESOURCE_M1, basement]
+        with self._get(
+            resources=(200, json.dumps(resources)),
+            raise_sections_host="basement.plex.direct",
+        ):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertEqual(len(payload["servers"]), 2)
+        self.assertEqual(payload["unreachable_servers"], ["Basement"])
+        server_ids = {row["machine_identifier"]: row["id"] for row in payload["servers"]}
+        self.assertEqual(len(payload["libraries"]), 4)
+        self.assertTrue(all(lib["server_id"] == server_ids["m1"] for lib in payload["libraries"]))
+
+    def test_plex_tv_http_error_502(self):
+        with self._get(resources=(500, "boom")):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 502)
+        detail = resp.json()["detail"]
+        self.assertTrue(detail.startswith("Plex returned 500 for https://plex.tv/api/v2/resources"))
+
+    def test_revoked_token_unlinks_and_410(self):
+        with self._get(resources=(401, "nope")):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 410)
+        self.assertEqual(resp.json()["detail"], self.REVOKED_DETAIL)
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.plex_id)
+        self.assertIsNone(self.user.plex_username)
+        self.assertIsNone(self.user.plex_email)
+        self.assertIsNone(self.user.plex_thumb)
+        self.assertIsNone(self.user.plex_auth_token)
+
+    def test_timeout_504(self):
+        with self._get(raise_resources=TimeoutError("timed out")):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 504)
+        detail = resp.json()["detail"]
+        self.assertTrue(detail.startswith("Connection to Plex timed out (https://plex.tv/api/v2/resources"))
+
+    def test_connection_refused_502(self):
+        with self._get(raise_resources=urllib.error.URLError(ConnectionRefusedError("refused"))):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 502)
+        detail = resp.json()["detail"]
+        self.assertTrue(detail.startswith("Could not connect to Plex at https://plex.tv/api/v2/resources"))

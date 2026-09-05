@@ -4,6 +4,7 @@ from apps.integrations.views.plex import (
     PlexAlbumTracksView,
     PlexConnectInfoView,
     PlexLibrariesView,
+    PlexServersView,
     PlexSessionsView,
 )
 from apps.integrations.views.steam import SteamOwnedAppIdsView
@@ -13,6 +14,7 @@ __all__ = [
     "PlexAlbumTracksView",
     "PlexConnectInfoView",
     "PlexLibrariesView",
+    "PlexServersView",
     "PlexSessionsView",
     "PlexWebhookView",
     "SteamOwnedAppIdsView",

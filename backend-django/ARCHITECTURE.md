@@ -429,6 +429,31 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   machinery is the platform wave; the handler is the seam it will hang off.
   Parity 240→241. **Remaining 22 = discover 4, integrations 12, notifications
   1, saves 4, upload 1.**
+- **Plex servers discovery (increment 16, 2026-09-05)** — `GET
+  /integrations/plex/servers` live-disovers the user's Plex servers + libraries
+  from plex.tv and persists them (`UserPlexServer`/`UserPlexLibrary` upsert by
+  `machine_identifier`/`section_key`). Service layer `discover_plex_servers`
+  requires `plex_auth_token` (else 400 "User has no linked Plex account");
+  GETs `plex.tv/api/v2/resources?includeHttps=1&includeRelay=1` (token as URL
+  query + client headers), keeps resources whose `provides` contains `server`,
+  picks `_best_connection` (local https → https → any), merges DB-only servers
+  still carrying a `base_url`, then `discover_plex_libraries` GETs each
+  server's `/library/sections` for movie/show/artist sections. Typed error
+  taxonomy (legacy router byte-for-byte): plex.tv 401 → quietly unlink the
+  user's Plex link (`_PLEX_DISCONNECT_COLUMNS`, legacy `unlink_plex_quietly`;
+  notifications dispatch deferred) + **410** "Plex account was disconnected
+  because access was revoked externally...", other plex.tv HTTP → **502**,
+  timeout → **504**, connect failure → **502**; a failing `/library/sections`
+  call only marks that server `unreachable_servers:[names]` (never 500s the
+  whole response). Response `{servers, libraries, unreachable_servers}` with
+  the full `PlexServerResponse`/`PlexLibraryResponse` field set (id,
+  machine_identifier, name, product/platform/base_url/owned/selected; server_id,
+  section_key, title, library_type, selected); `unreachable_servers` null when
+  empty. Outbound leaf `_plex_discovery_get` maps urllib `TimeoutError` /
+  `URLError(reason TimeoutError)` → 504 and other `URLError`/`OSError` → 502
+  over the token-embedded URL (as legacy echoed `request.url`). Tests patch the
+  `_request` leaf (11 new). Parity 241→242. **Remaining 21 = discover 4,
+  integrations 11, notifications 1, saves 4, upload 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

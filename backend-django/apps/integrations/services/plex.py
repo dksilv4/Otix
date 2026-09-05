@@ -3,9 +3,9 @@
 Mirrors the read + best-effort-live portion of the legacy ``plex_sync_service``
 (per-item connect info, album tracks, library listing) over the user's stored
 ``UserPlexServer`` / ``UserPlexLibrary`` / ``UserPlexItem`` rows, fetching live
-media from the user's Plex server over its base/alternative URLs. Sync, live
-sessions, the webhook and SSE surfaces are deferred to the platform wave
-(task #6).
+media from the user's Plex server over its base/alternative URLs — plus live
+sessions, the inbound webhook, and plex.tv server/library discovery. Library
+sync + SSE surfaces are deferred to the platform wave (task #6).
 """
 
 from __future__ import annotations
@@ -419,3 +419,222 @@ def get_plex_sessions(user) -> list[dict]:
                 }
             )
     return all_sessions
+
+
+# ── Discovery (GET /integrations/plex/servers) ───────────────────────────
+
+DISCOVER_NO_LINKED_ACCOUNT = "User has no linked Plex account"
+DISCOVER_ACCOUNT_REVOKED = (
+    "Plex account was disconnected because access was revoked externally. "
+    "Please re-link your account."
+)
+DISCOVER_UNEXPECTED = "Failed to discover Plex servers. Please try again later."
+
+
+def _http_status_detail(status: int, url: str) -> str:
+    return (
+        f"Plex returned {status} for {url}. The server may be unreachable or "
+        "the connection may need to be refreshed."
+    )
+
+
+def _timeout_detail(url: str) -> str:
+    return (
+        f"Connection to Plex timed out ({url}). Check that your server is "
+        "running and remote access is enabled."
+    )
+
+
+def _connect_detail(url: str) -> str:
+    return (
+        f"Could not connect to Plex at {url}. Check that your server is "
+        "running and remote access is enabled."
+    )
+
+
+class PlexDiscoveryError(Exception):
+    """Base class for discovery failures; carries the legacy ``detail``."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+class PlexNoLinkedAccount(PlexDiscoveryError):
+    """Raised when the user has no ``plex_auth_token`` (→ 400)."""
+
+
+class PlexDiscoveryAuthRevoked(PlexDiscoveryError):
+    """Raised on a 401 from plex.tv; the caller unlinks + returns 410."""
+
+
+class PlexDiscoveryHttpError(PlexDiscoveryError):
+    """Raised when the provider answers with an HTTP error status (→ 502)."""
+
+    def __init__(self, status: int, url: str) -> None:
+        self.status = status
+        self.url = url
+        super().__init__(_http_status_detail(status, url))
+
+
+class PlexDiscoveryTimeout(PlexDiscoveryError):
+    """Raised when an outbound discovery call times out (→ 504)."""
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+        super().__init__(_timeout_detail(url))
+
+
+class PlexDiscoveryConnectError(PlexDiscoveryError):
+    """Raised when an outbound discovery call cannot connect (→ 502)."""
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+        super().__init__(_connect_detail(url))
+
+
+def _best_connection(resource: dict) -> str | None:
+    """Pick the best reachable URI for a plex.tv resource.
+
+    Prefer a local HTTPS connection (direct LAN), then any HTTPS, then any
+    URI — mirrors the legacy helper. Non-local/relay plex.direct links are slow.
+    """
+    connections = _connections(resource)
+    for conn in connections:
+        uri = conn.get("uri")
+        if uri and str(uri).startswith("https://") and conn.get("local"):
+            return str(uri).rstrip("/")
+    for conn in connections:
+        uri = conn.get("uri")
+        if uri and str(uri).startswith("https://"):
+            return str(uri).rstrip("/")
+    for conn in connections:
+        uri = conn.get("uri")
+        if uri:
+            return str(uri).rstrip("/")
+    return None
+
+
+def _discovery_json(status: int, raw: str, url: str) -> Any:
+    """Parse a discovery payload; a non-JSON provider body → HTTP-level failure."""
+    try:
+        return json.loads(raw)
+    except ValueError:
+        raise PlexDiscoveryHttpError(status, url) from None
+
+
+def _plex_discovery_get(url: str, *, token: str, timeout: float = 15.0) -> tuple[int, str]:
+    """Outbound discovery leaf mapping urllib failures to typed errors.
+
+    ``url`` is echoed (token-embedded, as legacy echoed ``request.url``) in the
+    raised error details so the caller can tell the user which host failed.
+    """
+    full = _with_token(url, token)
+    try:
+        status, raw = _request(full, headers=_plex_headers(), timeout=timeout)
+    except TimeoutError:
+        raise PlexDiscoveryTimeout(full) from None
+    except urllib.error.URLError as exc:
+        reason = getattr(exc, "reason", None) or exc
+        if isinstance(reason, TimeoutError):
+            raise PlexDiscoveryTimeout(full) from None
+        raise PlexDiscoveryConnectError(full) from None
+    except OSError:
+        raise PlexDiscoveryConnectError(full) from None
+    if status >= 400:
+        raise PlexDiscoveryHttpError(status, full)
+    return status, raw
+
+
+def discover_plex_servers(user) -> list[UserPlexServer]:
+    """Upsert the user's Plex servers from plex.tv and return the full set.
+
+    Raises :class:`PlexNoLinkedAccount` (no token) or a ``PlexDiscovery*``
+    network error (plex.tv call failed). DB-only servers that plex.tv did not
+    list are appended when they still have a usable ``base_url``.
+    """
+    if not user.plex_auth_token:
+        raise PlexNoLinkedAccount(DISCOVER_NO_LINKED_ACCOUNT)
+
+    resources_url = f"{_plex_tv_base()}/api/v2/resources?includeHttps=1&includeRelay=1"
+    try:
+        status, raw = _plex_discovery_get(resources_url, token=user.plex_auth_token)
+    except PlexDiscoveryHttpError as exc:
+        # A 401 from plex.tv means the stored auth token was revoked externally.
+        if exc.status == 401:
+            raise PlexDiscoveryAuthRevoked(DISCOVER_ACCOUNT_REVOKED) from None
+        raise
+    resources = _discovery_json(status, raw, resources_url)
+
+    servers: list[UserPlexServer] = []
+    seen_machines: set[str] = set()
+    for resource in _as_list(resources):
+        if "server" not in str(resource.get("provides") or ""):
+            continue
+        machine_id = str(
+            resource.get("clientIdentifier") or resource.get("machineIdentifier") or ""
+        )
+        if not machine_id:
+            continue
+        server = UserPlexServer.objects.filter(
+            user=user, machine_identifier=machine_id
+        ).first()
+        if server is None:
+            server = UserPlexServer(
+                user=user, machine_identifier=machine_id, name="Plex Server"
+            )
+        server.name = str(resource.get("name") or server.name)
+        server.product = resource.get("product")
+        server.platform = resource.get("platform")
+        server.base_url = _best_connection(resource)
+        server.access_token = resource.get("accessToken") or user.plex_auth_token
+        server.owned = bool(resource.get("owned"))
+        server.save()
+        seen_machines.add(machine_id)
+        servers.append(server)
+
+    # Keep DB-only servers that plex.tv failed to list (e.g. temporarily off).
+    for server in UserPlexServer.objects.filter(user=user):
+        if server.machine_identifier not in seen_machines and server.base_url:
+            servers.append(server)
+    return servers
+
+
+def discover_plex_libraries(user, server: UserPlexServer) -> list[UserPlexLibrary]:
+    """Upsert the movie/show/music library sections on one Plex server.
+
+    Returns ``[]`` without a network call when the server has no token or
+    ``base_url``; otherwise raises a ``PlexDiscovery*`` network error on failure
+    so the caller can mark the server unreachable.
+    """
+    token = server.access_token or user.plex_auth_token
+    if not token or not server.base_url:
+        return []
+    url = f"{server.base_url}/library/sections"
+    status, raw = _plex_discovery_get(url, token=token)
+    data = _discovery_json(status, raw, url)
+
+    libraries: list[UserPlexLibrary] = []
+    for item in _container_items(data):
+        lib_type = item.get("type")
+        if lib_type not in {"movie", "show", "artist"}:
+            continue
+        key = str(item.get("key") or "")
+        if not key:
+            continue
+        library = UserPlexLibrary.objects.filter(
+            user=user, server=server, section_key=key
+        ).first()
+        if library is None:
+            library = UserPlexLibrary(
+                user=user,
+                server=server,
+                section_key=key,
+                title=str(item.get("title") or "Plex Library"),
+                library_type=lib_type,
+            )
+        library.title = str(item.get("title") or library.title)
+        library.library_type = lib_type
+        library.save()
+        libraries.append(library)
+    return libraries
