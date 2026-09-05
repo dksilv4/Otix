@@ -42,8 +42,7 @@ backend-django/
       migrations/
   core/                     # plain Python package, NOT an installed app — shared code
     __init__.py  models.py  exceptions.py  pagination.py
-  plugins/                  # reserved: future plugin framework
-    __init__.py  README.md
+  plugins/                  # server-side plugin framework (Django app + host core)
 ```
 
 **Why each layer:**
@@ -61,8 +60,12 @@ backend-django/
 - **`core/` is deliberately *not* an app.** Cross-cutting helpers shared by
   every app (model mixins, pagination, exceptions) must not be installed apps —
   no migrations, no accidental registration. Import them as plain modules.
-- **`plugins/` is reserved** for the plugin framework that motivates this
-  rewrite. Keep it empty; design arrives in a dedicated task.
+- **`plugins/` is the server-side plugin framework** that motivates this
+  rewrite. It is registered as a Django app (``plugins.apps.PluginsConfig``)
+  so host models/migrations/admin and its tests live with it, but the framework
+  core stays plain Python (manifest/discovery/registry/dispatch) so plugins can
+  import it without model baggage. Third-party plugin *folders* are discovered
+  from a plugins root, not listed here.
 
 ### The app template (mirror this exactly for every app)
 
@@ -282,8 +285,19 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   per-app). Redis broker already configured.
 - **pgvector embeddings** (`pgvector.django`): media_items/people/companies/user
   `Vector(384)` + HNSW cosine indexes; plus `search_vector` trigram machinery.
-- **Plugin framework** under `plugins/`: plugins become discoverable Django
-  apps with their own models/migrations/admin.
+- **Plugin framework** under `plugins/` (2026-09-05, task #5, step 1 DONE —
+  **foundation**): a server plugin is a drop-in folder (`manifest.yaml` +
+  `plugin.py`) the brain discovers and runs natively (no Node service), the §4
+  payoff of this rewrite. `plugins/` ships: `manifest.py` (YAML schema mirroring
+  `desktop/plugins/types.ts`), `permissions.py` (capability tokens → Django-safe
+  codenames + `table:*`/`network:*` grant math), `discovery.py` (root scan,
+  per-folder error isolation), `base.py` (`Plugin` base + `.`-namespaced data
+  method dispatch + JSON-safe output), `registry.py` (load-by-path entry modules,
+  re-scan replaces). 22 tests. **Next increments (task #5):** make a discovered
+  plugin *become a Django app* (its own models/migrations/admin + boot-time app
+  registration), host admin/config API + permission-grant store, plugin config
+  model + instances, then port a real plugin (Plex/Steam/arr) onto the
+  framework. Conventions + status in `plugins/README.md`.
 - **Parity harness** to diff DRF output against the frozen FastAPI OpenAPI
   contract (~263 routes) while porting feature-area by feature-area.
 

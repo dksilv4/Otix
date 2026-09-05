@@ -111,6 +111,8 @@ INSTALLED_APPS = [
     "apps.track.apps.TrackConfig",
     "apps.workout.apps.WorkoutConfig",
     "apps.blueprint.apps.BlueprintConfig",
+    # Plugin framework host (no legacy-parity counterpart; see plugins/README.md)
+    "plugins.apps.PluginsConfig",
 ]
 
 MIDDLEWARE = [
