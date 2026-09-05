@@ -1,11 +1,13 @@
-"""Tests for the SSE/Redis realtime sync surface.
+"""Tests for the SSE/Redis realtime sync surface (ASGI async transport).
 
 Covers the enqueue POSTs (``/integrations/plex/sync``, ``/youtube/sync``) which
 persist a ``SyncJob`` whose pk doubles as the SSE ``task_id``, the terminal
 sync-stream GETs (stored-result replay + live Redis pub/sub frames that close on
 ``sync_complete``/``error``), and the persistent ``/notifications/stream``
-generator. Redis is never touched for real: ``core.sse.get_client`` is patched
-with an in-memory fake (``.get`` for stored keys, ``.pubsub`` for live frames).
+generator. Redis is never touched for real: ``core.sse.get_client`` (sync key
+reads) and ``core.sse.get_async_client`` (async pub/sub) are patched with an
+in-memory fake, and the response's async streaming content is consumed to
+completion with ``collect_stream``.
 """
 
 import json
@@ -17,58 +19,15 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from apps.integrations.models import SyncJob
+from apps.integrations.tests._sse_fakes import (
+    FakeRedis,
+    _data_payloads,
+    collect_stream,
+    take_first_and_close,
+)
 from core import sse as sse_lib
 
 User = get_user_model()
-
-
-class FakePubSub:
-    def __init__(self, messages):
-        self._messages = list(messages)
-        self.subscribed = None
-        self.closed = False
-        self.unsubscribed = False
-
-    def subscribe(self, channel):
-        self.subscribed = channel
-
-    def get_message(self, ignore_subscribe_messages=True, timeout=None):
-        if self._messages:
-            return {"type": "message", "data": self._messages.pop(0)}
-        return None
-
-    def unsubscribe(self):
-        self.unsubscribed = True
-
-    def close(self):
-        self.closed = True
-
-
-class FakeRedis:
-    def __init__(self, stored=None, messages=()):
-        self._stored = stored or {}
-        self._messages = list(messages)
-        self.pubsubs = []
-
-    def get(self, key):
-        return self._stored.get(key)
-
-    def pubsub(self):
-        pubsub = FakePubSub(self._messages)
-        self.pubsubs.append(pubsub)
-        return pubsub
-
-
-def _data_payloads(chunks):
-    """Decode the ``data: {json}`` frames yielded by an SSE stream."""
-    payloads = []
-    for chunk in chunks:
-        if isinstance(chunk, bytes):
-            chunk = chunk.decode("utf-8")
-        for line in chunk.splitlines():
-            if line.startswith("data: "):
-                payloads.append(json.loads(line[len("data: "):]))
-    return payloads
 
 
 def _terminal_bytes(**payload):
@@ -171,8 +130,10 @@ class SyncStreamViewTests(TestCase):
         stored_key = f"plex:sync:{self.job.pk}:result"
         fake = FakeRedis(stored={stored_key: b'{"phase":"done","total":10}'})
         resp = self.client.get(self.plex_stream)
-        with mock.patch("core.sse.get_client", return_value=fake):
-            chunks = list(resp.streaming_content)
+        with mock.patch("core.sse.get_client", return_value=fake), mock.patch(
+            "core.sse.get_async_client", return_value=fake
+        ):
+            chunks = collect_stream(resp.streaming_content)
         self.assertEqual(
             _data_payloads(chunks),
             [{"type": "sync_complete", "phase": "done", "total": 10}],
@@ -184,8 +145,10 @@ class SyncStreamViewTests(TestCase):
             messages=[_terminal_bytes(type="sync_complete", phase="done")]
         )
         resp = self.client.get(self.plex_stream)
-        with mock.patch("core.sse.get_client", return_value=fake):
-            chunks = list(resp.streaming_content)
+        with mock.patch("core.sse.get_client", return_value=fake), mock.patch(
+            "core.sse.get_async_client", return_value=fake
+        ):
+            chunks = collect_stream(resp.streaming_content)
         self.assertEqual(
             _data_payloads(chunks),
             [{"type": "sync_complete", "phase": "done"}],
@@ -201,8 +164,10 @@ class SyncStreamViewTests(TestCase):
             messages=[_terminal_bytes(type="sync_complete", phase="done")],
         )
         resp = self.client.get(self.youtube_stream)
-        with mock.patch("core.sse.get_client", return_value=fake):
-            chunks = list(resp.streaming_content)
+        with mock.patch("core.sse.get_client", return_value=fake), mock.patch(
+            "core.sse.get_async_client", return_value=fake
+        ):
+            chunks = collect_stream(resp.streaming_content)
         self.assertEqual(
             _data_payloads(chunks),
             [
@@ -214,11 +179,26 @@ class SyncStreamViewTests(TestCase):
     def test_error_frame_closes_stream(self):
         fake = FakeRedis(messages=[_terminal_bytes(type="error", message="boom")])
         resp = self.client.get(self.plex_stream)
-        with mock.patch("core.sse.get_client", return_value=fake):
-            chunks = list(resp.streaming_content)
+        with mock.patch("core.sse.get_client", return_value=fake), mock.patch(
+            "core.sse.get_async_client", return_value=fake
+        ):
+            chunks = collect_stream(resp.streaming_content)
         self.assertEqual(
             _data_payloads(chunks), [{"type": "error", "message": "boom"}]
         )
+
+    def test_stream_content_is_an_async_generator(self):
+        """SSE responses stream over ASGI without pinning a worker thread."""
+        fake = FakeRedis(
+            messages=[_terminal_bytes(type="sync_complete", phase="done")]
+        )
+        resp = self.client.get(self.plex_stream)
+        with mock.patch("core.sse.get_client", return_value=fake), mock.patch(
+            "core.sse.get_async_client", return_value=fake
+        ):
+            content = resp.streaming_content
+        self.assertTrue(hasattr(content, "__aiter__"))
+        self.assertFalse(hasattr(content, "__iter__"))
 
 
 class NotificationStreamTests(TestCase):
@@ -246,13 +226,13 @@ class NotificationStreamTests(TestCase):
         fake = FakeRedis(
             messages=[_terminal_bytes(type="notification", id=7, text="hi")]
         )
-        with mock.patch("core.sse.get_client", return_value=fake):
-            stream = sse_lib.sse_event_stream(f"user:{self.user.id}:notifications")
-            chunks = [next(stream)]
-            # Generator is still alive after a non-terminal frame; close it.
-            stream.close()
+        with mock.patch("core.sse.get_async_client", return_value=fake):
+            stream = sse_lib.sse_event_generator(f"user:{self.user.id}:notifications")
+            first = take_first_and_close(stream)
+        # Generator is still alive after a non-terminal frame; closing it must
+        # unsubscribe + close the pubsub.
         self.assertEqual(
-            _data_payloads(chunks), [{"type": "notification", "id": 7, "text": "hi"}]
+            _data_payloads([first]), [{"type": "notification", "id": 7, "text": "hi"}]
         )
         self.assertEqual(fake.pubsubs[0].subscribed, f"user:{self.user.id}:notifications")
         self.assertTrue(fake.pubsubs[0].unsubscribed)

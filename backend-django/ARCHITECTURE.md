@@ -776,6 +776,25 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   idempotent — second run matched-not-seeded; single-library uses stored server
   row; library-not-found + no-token → error terminal states); the two plex
   enqueue endpoint tests now mock `run_sync_job` like the youtube one.
+- **ASGI SSE transport (increment 30, 2026-09-05): parity 263/263 unchanged,
+  full suite 747 (1 new).** The SSE read half now serves an *async generator*:
+  `core.sse.sse_event_generator` (replacing the sync `sse_event_stream`) polls an
+  async Redis pubsub (`core.redis.get_async_client`, `redis.asyncio`) and feeds a
+  Django ``StreamingHttpResponse`` whose content Django's ASGI handler consumes
+  via ``__aiter__`` on the event loop — so an idle/long-lived ``text/event-stream``
+  (notifications, sync progress) never pins a worker thread, and a client
+  disconnect cancels the stream task → the ``finally`` unsubscribes + ``aclose``s
+  (client disconnect also caught as ``CancelledError``/``RuntimeError``). Replay
+  callables stay the sync `read_json_key` lambdas (single fast key reads) — both
+  sync and async replay callables are supported. Views are unchanged: the three
+  sync ``APIView``s still return ``sse_lib.sse_response(...)``; only the content
+  is async now, so production SSE serving should run behind an ASGI server
+  (uvicorn/daphne) — a WSGI client that sync-iterates the response buffers it.
+  Tests: the lifecycle + stream suites drive the async generator to completion
+  with ``asgiref.sync.async_to_sync`` helpers over a shared in-memory fake
+  (``apps/integrations/tests/_sse_fakes.py``) whose ``pubsub()`` returns an async
+  ``FakePubSub`` while keeping the sync ``set/get/publish`` write half; a new
+  assertion checks the response's ``streaming_content`` is an async iterator.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
@@ -878,8 +897,11 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   (google/plex/steam/tmdb initiate+callback, `/auth/oauth/*`), each needing a
   live IdP, single-use Redis state, and per-provider token/profile columns,
   plus `/auth/me/preferences` + `/auth/me/integrations` reads.
-- **SSE / realtime** over ASGI (`config.asgi` exists; streaming handlers land
-  later). Desktop match streams depend on this.
+- **SSE / realtime serving** — the streaming transport is ASGI-native
+  (increment 30: async-generator content, no worker thread pinned), so realtime
+  only needs an ASGI server (uvicorn/daphne) in front of ``config.asgi``; a WSGI
+  deployment buffers streams and can't serve them long-lived. Desktop match
+  streams depend on this.
 - **Celery workers + beat** — task autodiscovery is wired (increment 27:
   `config.celery` autodiscovers per-app `tasks` modules, e.g.
   `integrations.run_sync_job`; Redis broker configured), but worker/beat

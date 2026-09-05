@@ -1,7 +1,9 @@
 """ASGI config for the Otix backend.
 
-SSE/WebSocket support lands with the ASGI/streaming task; this is the standard
-entry point gunicorn/uvicorn use today.
+SSE streaming (``core.sse``) serves async-generator ``text/event-stream``
+responses natively over ASGI, so long-lived/idle streams don't occupy a worker
+thread. Run with an ASGI server (uvicorn/daphne) for realtime to behave; this is
+the entry point it uses. WebSocket support is not part of the surface.
 """
 
 import os

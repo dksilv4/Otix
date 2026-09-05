@@ -1,7 +1,13 @@
-"""Server-Sent-Events transport over Redis pub/sub (DRF).
+"""Server-Sent-Events transport over Redis pub/sub (Django, ASGI-ready).
 
-Sync counterpart of the legacy ``otix.lib.sse`` framework: a generator powers a
-Django ``StreamingHttpResponse`` with ``text/event-stream``. Two stream kinds:
+A Django ``StreamingHttpResponse`` whose content is an *async generator* that
+polls a Redis pub/sub channel. Under ASGI (uvicorn/daphne) Django consumes the
+async iterator natively on the event loop, so an idle SSE connection never pins
+a worker thread, and a client disconnect cancels the generator — the ``finally``
+block unsubscribes + closes the pubsub. (A sync/WSGI client that iterates the
+response buffers the whole stream, so production SSE serving runs behind ASGI.)
+
+Mirrors the legacy ``otix.lib.sse`` semantics:
 
 * **Task** (sync progress) — ``terminal_events`` non-empty; the stream closes
   itself when a pub/sub frame whose JSON ``type`` is terminal arrives. A stored
@@ -10,21 +16,25 @@ Django ``StreamingHttpResponse`` with ``text/event-stream``. Two stream kinds:
 * **Persistent** (notifications) — ``terminal_events`` empty; runs until the
   client disconnects or ``timeout`` elapses.
 
-Redis is opened lazily inside the generator (client disconnect closes the
-connection via ``finally``), so the views never touch Redis until the response
-starts streaming. Tests inject a fake client by patching ``get_client``.
+Replay callables may be sync (a single Redis key read) or async; both are
+resolved before the generator subscribes. Redis opens lazily inside the
+generator, so the views never touch Redis until the response starts streaming.
+Tests inject fakes by patching ``get_client`` (sync key reads) and
+``get_async_client`` (async pub/sub).
 """
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import json
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import AsyncGenerator, Callable
 from typing import Any
 
 from django.http import StreamingHttpResponse
 
-from core.redis import get_client
+from core.redis import get_async_client, get_client
 
 _KEEPALIVE = ":keepalive\n\n"
 _POLL_TIMEOUT = 1.0
@@ -64,48 +74,61 @@ def normalize_stored_result(
 
 
 def read_json_key(key: str) -> dict[str, Any] | None:
-    """Read a Redis string key as JSON (result/progress replay)."""
-    client = get_client()
-    raw = client.get(key)
+    """Read a Redis string key as JSON (result/progress replay).
+
+    A single fast key read; replay lambdas pass the result into
+    ``sse_event_generator``, which resolves it before subscribing.
+    """
+    raw = get_client().get(key)
     if not raw:
         return None
     return json.loads(raw)
 
 
-def sse_event_stream(
+async def _resolve(replay: Callable[[], Any] | None) -> Any:
+    """Run a replay callable, awaiting it when it returns a coroutine."""
+    if replay is None:
+        return None
+    value = replay()
+    if inspect.isawaitable(value):
+        return await value
+    return value
+
+
+async def sse_event_generator(
     channel: str,
     *,
     terminal_events: tuple[str, ...] = (),
     timeout: int = 300,
-    result_replay: Callable[[], dict[str, Any] | None] | None = None,
-    progress_replay: Callable[[], dict[str, Any] | None] | None = None,
-) -> Iterator[str]:
+    result_replay: Callable[[], Any] | None = None,
+    progress_replay: Callable[[], Any] | None = None,
+) -> AsyncGenerator[str, None]:
     """Yield SSE chunks for ``channel`` until terminal / timeout / disconnect.
 
     Lifecycle: (1) replay a stored result and return if present; (2) subscribe
     to the Redis pub/sub channel; (3) replay the latest intermediate progress;
     (4) poll for messages, emitting ``data:`` frames and ``:keepalive`` idle
     heartbeats, closing on a terminal frame or the timeout; (5) always
-    unsubscribe + close the pubsub in ``finally`` (generator close on client
-    disconnect included).
+    unsubscribe + close the pubsub in ``finally`` — including when ASGI cancels
+    the generator because the client disconnected mid-stream.
     """
     if result_replay is not None:
-        stored = result_replay()
+        stored = await _resolve(result_replay)
         if stored is not None:
             yield format_sse(normalize_stored_result(stored, terminal_events))
             return
 
-    pubsub = get_client().pubsub()
-    pubsub.subscribe(channel)
+    pubsub = get_async_client().pubsub()
+    await pubsub.subscribe(channel)
     try:
         if progress_replay is not None:
-            latest = progress_replay()
+            latest = await _resolve(progress_replay)
             if latest is not None:
                 yield format_sse(latest)
 
         deadline = time.monotonic() + timeout
         while True:
-            message = pubsub.get_message(
+            message = await pubsub.get_message(
                 ignore_subscribe_messages=True, timeout=_POLL_TIMEOUT
             )
             if message is None:
@@ -128,13 +151,19 @@ def sse_event_stream(
                     continue
                 if event_type in terminal_events:
                     break
+    except (asyncio.CancelledError, RuntimeError):
+        # Client disconnected mid-yield: ASGI cancels the stream task and the
+        # transport is gone, so exit silently (cleanup runs in ``finally``).
+        return
+    except Exception:  # noqa: BLE001 - surface a terminal error frame
+        yield format_sse({"type": "error", "message": "Internal stream error"})
     finally:
         try:
-            pubsub.unsubscribe()
+            await pubsub.unsubscribe()
         except Exception:  # noqa: BLE001 - best-effort cleanup on any exit path
             pass
         try:
-            pubsub.close()
+            await pubsub.aclose()
         except Exception:  # noqa: BLE001
             pass
 
@@ -144,15 +173,21 @@ def sse_response(
     *,
     terminal_events: tuple[str, ...] = (),
     timeout: int = 300,
-    result_replay: Callable[[], dict[str, Any] | None] | None = None,
-    progress_replay: Callable[[], dict[str, Any] | None] | None = None,
+    result_replay: Callable[[], Any] | None = None,
+    progress_replay: Callable[[], Any] | None = None,
 ) -> StreamingHttpResponse:
-    """Wrap ``sse_event_stream`` in a ``text/event-stream`` response."""
-    stream = sse_event_stream(
+    """Wrap ``sse_event_generator`` in a ``text/event-stream`` response.
+
+    The content is an async generator: ASGI servers stream it without pinning a
+    worker thread, so idle/long-lived streams (notifications) stay cheap.
+    """
+    stream = sse_event_generator(
         channel=channel,
         terminal_events=terminal_events,
         timeout=timeout,
         result_replay=result_replay,
         progress_replay=progress_replay,
     )
-    return StreamingHttpResponse(stream, content_type="text/event-stream", headers=sse_headers())
+    return StreamingHttpResponse(
+        stream, content_type="text/event-stream", headers=sse_headers()
+    )

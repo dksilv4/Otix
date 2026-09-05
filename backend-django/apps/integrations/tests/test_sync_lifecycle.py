@@ -2,13 +2,14 @@
 
 The write half (``core.progress.RedisProgress``) publishes ``{provider}:sync``
 frames and stores result/progress keys; the read half (``core.sse``) streams them
-back. An autodiscovered Celery task (``run_sync_job``) executes a ``SyncJob`` in
-eager mode (no broker), driving the whole contract: claim → ``sync_started`` →
-engine → ``sync_complete`` + stored result → job completed, with ``error`` paths
-for missing engines / engine exceptions. Redis is faked by patching
-``core.progress.get_client`` and ``core.sse.get_client`` to the same in-memory
-client so writer and reader share state. Engines are registered under distinct
-providers so the module-global registry stays isolated between tests.
+back over an async generator. An autodiscovered Celery task (``run_sync_job``)
+executes a ``SyncJob`` in eager mode (no broker), driving the whole contract:
+claim → ``sync_started`` → engine → ``sync_complete`` + stored result → job
+completed, with ``error`` paths for missing engines / engine exceptions. Redis is
+faked by patching ``core.progress.get_client`` (sync writer), ``core.sse.get_client``
+(sync key reads) and ``core.sse.get_async_client`` (async pub/sub) to the same
+in-memory client so writer and reader share state. Engines are registered under
+distinct providers so the module-global registry stays isolated between tests.
 """
 
 import json
@@ -21,6 +22,7 @@ from apps.integrations.models import SyncJob
 from apps.integrations.services import register_sync_engine
 from apps.integrations.services.sync import execute_sync_job
 from apps.integrations.tasks import run_sync_job
+from apps.integrations.tests._sse_fakes import FakeRedis, _data_payloads, collect_stream
 from core import progress as progress_lib
 from core import sse as sse_lib
 
@@ -39,72 +41,6 @@ def _demo_engine(job: SyncJob) -> dict:
 @register_sync_engine("boom")
 def _boom_engine(job: SyncJob) -> dict:
     raise ValueError("kaput")
-
-
-class FakePubSub:
-    def __init__(self, messages):
-        self._messages = list(messages)
-        self.subscribed = None
-        self.closed = False
-        self.unsubscribed = False
-
-    def subscribe(self, channel):
-        self.subscribed = channel
-
-    def get_message(self, ignore_subscribe_messages=True, timeout=None):
-        if self._messages:
-            return {"type": "message", "data": self._messages.pop(0)}
-        return None
-
-    def unsubscribe(self):
-        self.unsubscribed = True
-
-    def close(self):
-        self.closed = True
-
-
-class FakeRedis:
-    """In-memory stand-in for ``redis.Redis`` shared by writer and reader."""
-
-    def __init__(self):
-        self.stored: dict[str, bytes | str] = {}
-        self.published: list[tuple[str, str]] = []
-        self.pubsubs: list[FakePubSub] = []
-
-    def set(self, key, value, ex=None):
-        self.stored[key] = value
-
-    def get(self, key):
-        return self.stored.get(key)
-
-    def publish(self, channel, message):
-        self.published.append((channel, message))
-        return 1
-
-    def pubsub(self):
-        pubsub = FakePubSub(self._live_messages())
-        self.pubsubs.append(pubsub)
-        return pubsub
-
-    def _live_messages(self):
-        # Every published frame is offered to a newly-joined subscriber; the
-        # read half consumes them in publish order until a terminal frame.
-        return [msg for (_channel, msg) in self.published]
-
-    def published_on(self, channel):
-        return [msg for (c, msg) in self.published if c == channel]
-
-
-def _data_payloads(chunks):
-    """Decode the ``data: {json}`` frames yielded by an SSE stream."""
-    payloads = []
-    for chunk in chunks:
-        if isinstance(chunk, bytes):
-            chunk = chunk.decode("utf-8")
-        for line in chunk.splitlines():
-            if line.startswith("data: "):
-                payloads.append(json.loads(line[len("data: "):]))
-    return payloads
 
 
 class RedisProgressWriteTests(TestCase):
@@ -177,6 +113,7 @@ class SyncJobExecutionTests(TestCase):
         patchers = [
             mock.patch("core.progress.get_client", return_value=self.fake),
             mock.patch("core.sse.get_client", return_value=self.fake),
+            mock.patch("core.sse.get_async_client", return_value=self.fake),
         ]
         for patcher in patchers:
             patcher.start()
@@ -218,14 +155,17 @@ class SyncJobExecutionTests(TestCase):
         run_sync_job.delay(job.pk).get()
 
         # A client connecting after completion hits the stored-result replay.
-        stream = sse_lib.sse_event_stream(
-            f"demo:sync:{job.pk}:events",
-            terminal_events=("sync_complete", "error"),
-            result_replay=lambda: sse_lib.read_json_key(
-                f"demo:sync:{job.pk}:result"
-            ),
+        payloads = _data_payloads(
+            collect_stream(
+                sse_lib.sse_event_generator(
+                    f"demo:sync:{job.pk}:events",
+                    terminal_events=("sync_complete", "error"),
+                    result_replay=lambda: sse_lib.read_json_key(
+                        f"demo:sync:{job.pk}:result"
+                    ),
+                )
+            )
         )
-        payloads = _data_payloads(stream)
         self.assertEqual(len(payloads), 1)
         self.assertEqual(payloads[0]["type"], "sync_complete")
         self.assertEqual(payloads[0]["provider"], "demo")
@@ -239,8 +179,10 @@ class SyncJobExecutionTests(TestCase):
 
         channel = f"demo:sync:{job.pk}:events"
         payloads = _data_payloads(
-            sse_lib.sse_event_stream(
-                channel, terminal_events=("sync_complete", "error")
+            collect_stream(
+                sse_lib.sse_event_generator(
+                    channel, terminal_events=("sync_complete", "error")
+                )
             )
         )
         self.assertEqual(

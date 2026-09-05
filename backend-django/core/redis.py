@@ -20,3 +20,15 @@ def get_client() -> Any:
 
     url = getattr(settings, "REDIS_URL", "") or "redis://127.0.0.1:6379/0"
     return Redis.from_url(url)
+
+
+def get_async_client() -> Any:
+    """Return an async ``redis.asyncio.Redis`` bound to ``settings.REDIS_URL``.
+
+    The SSE read half (``core.sse``) opens this so an idle event stream awaits
+    Redis on the event loop instead of occupying a worker thread while it polls.
+    """
+    from redis.asyncio import Redis
+
+    url = getattr(settings, "REDIS_URL", "") or "redis://127.0.0.1:6379/0"
+    return Redis.from_url(url)
