@@ -8,6 +8,7 @@ precede any parameterised sibling.
 from django.urls import path
 
 from apps.integrations.views import (
+    PlexAlbumTracksView,
     PlexConnectInfoView,
     PlexLibrariesView,
     SteamOwnedAppIdsView,
@@ -22,6 +23,11 @@ urlpatterns = [
         "plex/connect-info/<int:media_item_id>",
         PlexConnectInfoView.as_view(),
         name="plex-connect-info",
+    ),
+    path(
+        "plex/album-tracks/<int:media_item_id>",
+        PlexAlbumTracksView.as_view(),
+        name="plex-album-tracks",
     ),
     # Steam read surface.
     path("steam/owned-appids", SteamOwnedAppIdsView.as_view(), name="steam-owned-appids"),

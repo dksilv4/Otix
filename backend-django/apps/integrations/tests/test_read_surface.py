@@ -1,16 +1,19 @@
 """Endpoint tests for the integrations read/library-state surface (DRF).
 
-Exercises the ported pure-DB Plex + Steam routes over the stored
+Exercises the ported Plex + Steam read routes over the stored
 ``UserPlex*``/``UserSteamGame`` rows:
 
 - ``GET /integrations/plex/connect-info/{media_item_id}``
+- ``GET /integrations/plex/album-tracks/{media_item_id}``
 - ``GET /integrations/plex/libraries``
 - ``GET /integrations/steam/owned-appids``
 
-The Plex tv alt-URL fetch is best-effort outbound; tests either leave the user
-without a ``plex_auth_token`` (no call) or patch the service leaf.
+The Plex tv alt-URL fetch and live album-track children fetch are best-effort
+outbound; tests either leave the user without a ``plex_auth_token`` (no call)
+or patch the service ``_request`` leaf.
 """
 
+import json
 from datetime import timedelta
 from unittest import mock
 
@@ -312,6 +315,160 @@ class PlexLibrariesTests(_ApiTestBase):
         self._lib(srv_bob, "1", "BobLib", user=bob)
         resp = self.client.get(self.URL)
         self.assertEqual(resp.json(), {"libraries": []})
+
+
+ALBUM_CHILDREN_PAYLOAD = {
+    "MediaContainer": {
+        "Metadata": [
+            {
+                "ratingKey": "4001",
+                "title": "Track One",
+                "grandparentTitle": "Interstellar",
+                "index": 1,
+                "parentIndex": 1,
+                "duration": 240000,
+            },
+            {
+                "ratingKey": "4002",
+                "title": "Track Two",
+                "originalTitle": "Other Artist",
+                "index": 2,
+                "parentIndex": 2,
+            },
+        ]
+    }
+}
+
+
+class PlexAlbumTracksTests(_ApiTestBase):
+    def setUp(self):
+        super().setUp()
+        self.media = _make_media()
+        self.server = _make_server(self.user)
+        self.library = UserPlexLibrary.objects.create(
+            user=self.user,
+            server=self.server,
+            section_key="1",
+            title="Music",
+            library_type="music",
+        )
+        UserPlexItem.objects.create(
+            user=self.user,
+            server=self.server,
+            library=self.library,
+            media_item=self.media,
+            rating_key="4000",
+            media_type="music",
+            title="Interstellar",
+        )
+        self.url = reverse(
+            "integrations:plex-album-tracks", kwargs={"media_item_id": self.media.pk}
+        )
+
+    def test_unauthenticated_401(self):
+        resp = APIClient().get(self.url)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_no_plex_item_404(self):
+        other = _make_media("Dune")
+        resp = self.client.get(
+            reverse("integrations:plex-album-tracks", kwargs={"media_item_id": other.pk})
+        )
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json()["detail"], "Media item not found in your Plex library")
+
+    def test_returns_tracks_shape(self):
+        with mock.patch.object(
+            integrations_services.plex,
+            "_request",
+            return_value=(200, json.dumps(ALBUM_CHILDREN_PAYLOAD)),
+        ):
+            resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(
+            set(body), {"tracks", "base_url", "token", "rating_key", "album_thumb_url"}
+        )
+        self.assertEqual(
+            body["tracks"],
+            [
+                {
+                    "rating_key": "4001",
+                    "title": "Track One",
+                    "artist": "Interstellar",
+                    "track_number": 1,
+                    "disc_number": 1,
+                    "duration_ms": 240000,
+                },
+                {
+                    "rating_key": "4002",
+                    "title": "Track Two",
+                    "artist": "Other Artist",
+                    "track_number": 2,
+                    "disc_number": 2,
+                    "duration_ms": None,
+                },
+            ],
+        )
+        self.assertEqual(body["base_url"], self.server.base_url)
+        self.assertEqual(body["token"], self.server.access_token)
+        self.assertEqual(body["rating_key"], "4000")
+        self.assertEqual(
+            body["album_thumb_url"],
+            f"{self.server.base_url}/library/metadata/4000/thumb"
+            f"?X-Plex-Token={self.server.access_token}",
+        )
+
+    def test_empty_children_returns_empty_tracks(self):
+        with mock.patch.object(
+            integrations_services.plex,
+            "_request",
+            return_value=(200, json.dumps({"MediaContainer": {"Metadata": []}})),
+        ):
+            resp = self.client.get(self.url)
+        body = resp.json()
+        self.assertEqual(body["tracks"], [])
+        self.assertEqual(body["base_url"], self.server.base_url)
+
+    def test_no_token_502(self):
+        self.server.access_token = None
+        self.server.save(update_fields=("access_token",))
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 502)
+        self.assertEqual(resp.json()["detail"], "Could not fetch Plex album tracks")
+
+    def test_all_connections_fail_502(self):
+        with mock.patch.object(
+            integrations_services.plex, "_request", return_value=(500, "{}")
+        ):
+            resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 502)
+        self.assertEqual(resp.json()["detail"], "Could not fetch Plex album tracks")
+
+    def test_falls_back_to_alternative_base_url(self):
+        self.user.plex_auth_token = "user-tok"
+        self.user.save(update_fields=("plex_auth_token",))
+        self.server.access_token = None
+        self.server.save(update_fields=("access_token",))
+
+        def _fake(url, *args, **kwargs):
+            if "alt.example" in url:
+                return 200, json.dumps(ALBUM_CHILDREN_PAYLOAD)
+            return 500, "{}"
+
+        with mock.patch.object(
+            integrations_services.plex, "_request", side_effect=_fake
+        ), mock.patch.object(
+            integrations_services.plex,
+            "_get_alternative_plex_urls",
+            return_value=["https://alt.example"],
+        ):
+            resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["base_url"], "https://alt.example")
+        self.assertEqual(body["token"], "user-tok")
+        self.assertTrue(body["album_thumb_url"].startswith("https://alt.example/"))
 
 
 class SteamOwnedAppIdsTests(_ApiTestBase):

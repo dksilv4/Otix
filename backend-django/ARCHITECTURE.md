@@ -381,6 +381,22 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   sessions, webhook and SSE routes still await the platform wave. Parity
   235→238. **Remaining 25 = discover 4, integrations 15, notifications 1, saves
   4, upload 1.**
+- **Plex album-tracks (increment 13, 2026-09-05)** — `GET
+  /integrations/plex/album-tracks/{media_item_id}` closes the first live
+  (outbound-to-server) playback route: same DB lookup as connect-info (404
+  details byte-for-byte), then fetches the user's album track list from the
+  Plex server via the new `_plex_server_get` helper (tries the stored
+  `server.base_url` then the plex.tv-discovered alt URLs, 8s timeout, first
+  200 wins) on `/library/metadata/{rating_key}/children`; every connection
+  failing → 502 "Could not fetch Plex album tracks". Children parsed with
+  `_container_items` (`MediaContainer.Metadata`/`Directory` fallback) into
+  `{tracks: [{rating_key, title, artist = grandparentTitle||originalTitle,
+  track_number = index, disc_number = parentIndex, duration_ms = duration}],
+  base_url, token, rating_key, album_thumb_url}` (thumb only when a working
+  base URL + token + rating key). Also extracted a shared `_with_token(url,
+  token)` helper (X-Plex-Token query-param embedding used by both plex.tv
+  discovery and direct server GETs). Parity 238→239. **Remaining 24 = discover
+  4, integrations 14, notifications 1, saves 4, upload 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

@@ -1,9 +1,11 @@
-"""Plex integration service — read/library-state surface.
+"""Plex integration service — read/playback surface.
 
-Mirrors the read-only portion of the legacy ``plex_sync_service`` (per-item
-connect info + library listing over the user's stored ``UserPlexServer`` /
-``UserPlexLibrary`` / ``UserPlexItem`` rows). Sync, live sessions, the webhook
-and SSE surfaces are deferred to the platform wave (task #6).
+Mirrors the read + best-effort-live portion of the legacy ``plex_sync_service``
+(per-item connect info, album tracks, library listing) over the user's stored
+``UserPlexServer`` / ``UserPlexLibrary`` / ``UserPlexItem`` rows, fetching live
+media from the user's Plex server over its base/alternative URLs. Sync, live
+sessions, the webhook and SSE surfaces are deferred to the platform wave
+(task #6).
 """
 
 from __future__ import annotations
@@ -29,11 +31,20 @@ from apps.integrations.models import UserPlexItem, UserPlexLibrary, UserPlexServ
 
 CONNECT_INFO_ITEM_NOT_FOUND = "Media item not found in your Plex library"
 CONNECT_INFO_SERVER_NOT_FOUND = "Plex server not found"
+ALBUM_TRACKS_FETCH_ERROR = "Could not fetch Plex album tracks"
 
 
 class PlexConnectInfoNotFound(Exception):
-    """Raised when a connect-info request cannot be satisfied; carries the
-    legacy 404 detail string."""
+    """Raised when a Plex lookup cannot be satisfied; carries the legacy 404
+    detail string."""
+
+    def __init__(self, detail: str) -> None:
+        self.detail = detail
+        super().__init__(detail)
+
+
+class PlexAlbumTracksFetchError(Exception):
+    """Raised when no Plex connection succeeds in serving the album's tracks."""
 
     def __init__(self, detail: str) -> None:
         self.detail = detail
@@ -66,6 +77,18 @@ def _connections(resource: dict) -> list[dict]:
     return _as_list(resource.get("connections") or resource.get("Connection"))
 
 
+def _with_token(url: str, token: str) -> str:
+    """Embed ``token`` into ``url`` as an ``X-Plex-Token`` query param.
+
+    Some Plex server / relay configurations only accept the token as a query
+    parameter, not as a header (legacy ``_get_json`` behaviour).
+    """
+    parsed = urllib.parse.urlparse(url)
+    query = urllib.parse.parse_qs(parsed.query)
+    query["X-Plex-Token"] = [token]
+    return urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(query, doseq=True)))
+
+
 def _get_alternative_plex_urls(server: UserPlexServer, user) -> list[str]:
     """Return alternative base URLs for a server from plex.tv resources.
 
@@ -75,13 +98,8 @@ def _get_alternative_plex_urls(server: UserPlexServer, user) -> list[str]:
     if not user.plex_auth_token:
         return []
 
-    # plex.tv and relay endpoints accept the token as a query param (legacy
-    # ``_get_json`` behaviour) alongside the client-identification headers.
     resources_url = f"{_plex_tv_base()}/api/v2/resources?includeHttps=1&includeRelay=1"
-    parsed = urllib.parse.urlparse(resources_url)
-    query = urllib.parse.parse_qs(parsed.query)
-    query["X-Plex-Token"] = [user.plex_auth_token]
-    url = urllib.parse.urlunparse(parsed._replace(query=urllib.parse.urlencode(query, doseq=True)))
+    url = _with_token(resources_url, user.plex_auth_token)
     try:
         status, raw = _request(url, headers=_plex_headers())
         if status != 200:
@@ -211,3 +229,93 @@ def list_plex_libraries(user) -> list[dict]:
         }
         for lib in libraries
     ]
+
+
+def _container_items(data: dict) -> list[dict]:
+    container = data.get("MediaContainer", data)
+    return _as_list(container.get("Metadata") or container.get("Directory"))
+
+
+def _plex_server_get(server: UserPlexServer, user, path: str) -> tuple[dict, str] | None:
+    """GET a Plex server path, trying alternative base URLs on failure.
+
+    Returns ``(data, working_base_url)`` from the first base URL that answers
+    200, or ``None`` when no connection (or no token) works.
+    """
+    token = server.access_token or user.plex_auth_token
+    if not token:
+        return None
+
+    base_urls = [server.base_url] if server.base_url else []
+    for url in _get_alternative_plex_urls(server, user):
+        if url not in base_urls:
+            base_urls.append(url)
+
+    for base_url in base_urls:
+        try:
+            status, raw = _request(
+                _with_token(f"{base_url}{path}", token),
+                headers=_plex_headers(),
+                timeout=8.0,
+            )
+            if status != 200:
+                continue
+            return json.loads(raw), base_url
+        except Exception:
+            continue
+    return None
+
+
+def get_plex_album_tracks(user, media_item_id: int) -> dict:
+    """Return the user's Plex album tracks for a catalog music media item.
+
+    Mirrors the legacy response: ``{tracks, base_url, token, rating_key,
+    album_thumb_url}`` where each track carries ``{rating_key, title, artist,
+    track_number, disc_number, duration_ms}``. Raises ``PlexConnectInfoNotFound``
+    when the user has no such item/server and ``PlexAlbumTracksFetchError`` when
+    every Plex connection fails.
+    """
+    plex_item = (
+        UserPlexItem.objects.filter(user=user, media_item_id=media_item_id)
+        .select_related("server")
+        .first()
+    )
+    if plex_item is None:
+        raise PlexConnectInfoNotFound(CONNECT_INFO_ITEM_NOT_FOUND)
+    server = plex_item.server
+    if server is None:
+        raise PlexConnectInfoNotFound(CONNECT_INFO_SERVER_NOT_FOUND)
+
+    result = _plex_server_get(
+        server, user, f"/library/metadata/{plex_item.rating_key}/children"
+    )
+    if result is None:
+        raise PlexAlbumTracksFetchError(ALBUM_TRACKS_FETCH_ERROR)
+    data, working_base_url = result
+
+    token = server.access_token or user.plex_auth_token
+    album_thumb_url = None
+    if working_base_url and token and plex_item.rating_key:
+        album_thumb_url = (
+            f"{working_base_url}/library/metadata/{plex_item.rating_key}/thumb"
+            f"?X-Plex-Token={token}"
+        )
+
+    tracks = [
+        {
+            "rating_key": str(item.get("ratingKey", "")),
+            "title": item.get("title", ""),
+            "artist": item.get("grandparentTitle", "") or item.get("originalTitle", ""),
+            "track_number": item.get("index", 0),
+            "disc_number": item.get("parentIndex", 1),
+            "duration_ms": item.get("duration"),
+        }
+        for item in _container_items(data)
+    ]
+    return {
+        "tracks": tracks,
+        "base_url": working_base_url,
+        "token": token,
+        "rating_key": plex_item.rating_key,
+        "album_thumb_url": album_thumb_url,
+    }

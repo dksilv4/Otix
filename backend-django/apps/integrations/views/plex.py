@@ -1,9 +1,10 @@
-"""Plex integration read endpoints (library-state, authed).
+"""Plex integration read endpoints (library-state + playback, authed).
 
 ``/libraries`` lists the user's discovered Plex libraries with item counts;
 ``/connect-info/{media_item_id}`` returns connect details (base URLs + token +
-thumb URL) for the user's scanned copy of a catalog media item. Both are pure
-reads over the stored ``UserPlex*`` rows — no live Plex sync (deferred).
+thumb URL) for the user's scanned copy of a catalog media item; both are pure
+reads over the stored ``UserPlex*`` rows. ``/album-tracks/{media_item_id}``
+fetches a music album's track list live from the user's Plex server.
 """
 
 from rest_framework.exceptions import NotFound
@@ -32,4 +33,19 @@ class PlexConnectInfoView(APIView):
             )
         except integrations_services.PlexConnectInfoNotFound as exc:
             raise NotFound(exc.detail) from None
+        return Response(data)
+
+
+class PlexAlbumTracksView(APIView):
+    """GET /integrations/plex/album-tracks/{media_item_id}"""
+
+    def get(self, request, media_item_id: int):
+        try:
+            data = integrations_services.get_plex_album_tracks(
+                request.user, media_item_id
+            )
+        except integrations_services.PlexConnectInfoNotFound as exc:
+            raise NotFound(exc.detail) from None
+        except integrations_services.PlexAlbumTracksFetchError as exc:
+            return Response({"detail": exc.detail}, status=502)
         return Response(data)
