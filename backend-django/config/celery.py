@@ -1,7 +1,10 @@
 """Celery application instance.
 
-Declarative only: tasks live in later app work. Workers/beat + the task layer
-are wired in a dedicated task; do not add eager/queue runtime behaviour here.
+Config-driven: broker/result-backend and any periodic ``beat_schedule`` come
+from ``django.conf:settings`` under the ``CELERY_`` namespace, and tasks are
+autodiscovered from installed apps' ``tasks`` modules (``run_sync_job`` lives in
+``apps/integrations/tasks``). No runtime/eager behaviour is hardcoded here — the
+test settings opt into eager mode so job lifecycles run inline in the suite.
 """
 
 import os

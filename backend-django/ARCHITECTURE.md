@@ -621,8 +621,9 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   progress replay). `GET /notifications/stream` is a persistent (no-terminal)
   feed on `user:{id}:notifications` — wired into `apps.social.notifications_urls`
   (docstring no longer says it 404s). asgi stays sync-safe; the actual
-  sync-worker publishers that drive these channels are DEFERRED platform work
-  (the streams idle/timeout until a worker publishes). Tests (15 new).
+  sync-worker publishers that drive these channels were DEFERRED platform work at
+  the time (the streams idle/timeout until a worker publishes) — now real, see
+  the increment-27 bullet. Tests (15 new).
   Parity 256→261. **Remaining 2 = discover free-games/match + steam
   resolve-unmatched, both IGDB GameMatcher bound.**
 - **IGDB GameMatcher + final 2 routes (increment 26, 2026-09-05)** — closes the
@@ -665,6 +666,39 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   registered BEFORE the ``<str:media_type>/<str:list_type>`` pair in
   ``apps/discover/urls.py``. Tests patch the ``igdb._request`` seam (8 steam
   resolve + 8 free-games match). Parity 261→263. **Remaining 0.**
+- **Platform machinery: Celery wiring + sync-job lifecycle (increment 27,
+  2026-09-05)** — makes the increment-25 SSE channels real end to end (a write
+  half now exists to drive them). Celery: `config/celery.py` autodiscovers
+  per-app `tasks` modules (`apps/integrations/tasks` registers
+  `integrations.run_sync_job`); base.py gains a `CELERY_BEAT_SCHEDULE = {}` hook
+  + `REDIS_PROGRESS_TTL` (default 86400); test settings opt into
+  `CELERY_TASK_ALWAYS_EAGER` + `EAGER_PROPAGATES` so job lifecycles run inline
+  (no broker in the suite). Write half: new `core/progress.py`
+  `RedisProgress(namespace)` mirrors legacy ``otix.lib.redis_progress`` and writes
+  exactly the keys `core/sse` reads — pub/sub `{namespace}:{task_id}:events`
+  carries `{"type":…, **data}` frames, `…:result` stores the *bare* result dict
+  (read-side ``normalize_stored_result`` synthesizes the terminal `type` on
+  replay), `…:progress` stores the latest frame; writes are TTL'd and fail-open
+  (a Redis blip never aborts a sync). Lifecycle service
+  (`apps/integrations/services/sync.py`): engine registry
+  (`register_sync_engine(provider)` / `get_sync_engine`), `claim_job` (atomic
+  pending→running via `UPDATE … WHERE status='pending'` so exactly one worker
+  wins), `complete_job`/`fail_job`, and the orchestrator `execute_sync_job(pk)`:
+  claim → publish `sync_started` → run engine → store result + publish
+  `sync_complete` → completed; error paths store + publish an `error` terminal
+  state and mark failed (engine exceptions logged — job `error_message` keeps the
+  detail while the SSE frame stays generic "Sync failed unexpectedly"; no-engine
+  → failed naming the provider; re-running a finished job → `skipped`). Live
+  frames carry the provider context but omit `task_id` (the client holds it from
+  the channel); the stored result adds `task_id` so replays are self-describing.
+  `integrations.run_sync_job` fetches the row then delegates to the orchestrator.
+  Real provider engines (plex-user, youtube-liked) register under their provider
+  in later increments and call `.delay()` from the existing enqueue POSTs. Tests
+  (11 new) patch `core.progress.get_client` + `core.sse.get_client` to one shared
+  in-memory fake: write-half key shapes + fail-open, eager `run_sync_job.delay()`
+  lifecycle (pending→running→completed with started_at/completed_at), no-engine /
+  engine-exception → failed, stored-result replay roundtrip, and a live pub/sub
+  stream consuming the recorded frames. Suite 711→722. Parity unchanged 263/263.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
@@ -769,8 +803,13 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   plus `/auth/me/preferences` + `/auth/me/integrations` reads.
 - **SSE / realtime** over ASGI (`config.asgi` exists; streaming handlers land
   later). Desktop match streams depend on this.
-- **Celery workers + beat** (`config.celery` is declarative only; tasks are
-  per-app). Redis broker already configured.
+- **Celery workers + beat** — task autodiscovery is wired (increment 27:
+  `config.celery` autodiscovers per-app `tasks` modules, e.g.
+  `integrations.run_sync_job`; Redis broker configured), but worker/beat
+  processes only run when launched (`celery -A config worker/beat`), and the
+  `CELERY_BEAT_SCHEDULE` hook stays empty until periodic maintenance tasks
+  (catalog hydration etc.) opt in. The real provider sync engines (plex-user,
+  youtube-liked) still need porting to `register_sync_engine` + `.delay()`.
 - **pgvector embeddings** (`pgvector.django`): media_items/people/companies/user
   `Vector(384)` + HNSW cosine indexes; plus `search_vector` trigram machinery.
 

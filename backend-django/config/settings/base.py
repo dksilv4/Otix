@@ -233,16 +233,27 @@ else:
     )
 
 # ---------------------------------------------------------------------------
-# Celery (declarative only; workers/beat wired in a later task)
+# Celery (broker/backend live; beat schedule + per-task routing are filled in
+# as periodic maintenance tasks land)
 # ---------------------------------------------------------------------------
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/0")
 
+# Periodic schedule entries (celery.schedules.crontab). Populated by the
+# maintenance tasks that need them; empty here so beat runs no jobs until
+# something explicitly opts in.
+CELERY_BEAT_SCHEDULE = {}
+
 # SSE / realtime (sync-progress + notification event streams): Redis pub/sub
 # backing the `text/event-stream` routes in core.sse. Defaults to the same
 # Redis as Celery; set REDIS_URL when it lives elsewhere.
 REDIS_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
+
+# TTL (seconds) for sync-progress event/result/progress keys written by
+# core.progress. Long enough that a late-connecting SSE client can replay a
+# finished job's stored result; the read half truncates via Redis TTL.
+REDIS_PROGRESS_TTL = int(os.environ.get("REDIS_PROGRESS_TTL", 86400))
 
 # ---------------------------------------------------------------------------
 # Plugins (server-side framework; see plugins/README.md)
