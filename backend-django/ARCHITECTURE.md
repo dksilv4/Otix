@@ -986,6 +986,55 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   client-level Authorization header. No model/DB surface → no migration. **Next
   deferred piece:** the IGDB concrete client, then the TMDB/MusicBrainz
   transformer/hydrator + catalog-seed pipelines those clients feed.
+- **IGDB async client (increment 37, 2026-09-05): parity 263/263 unchanged,
+  full suite 836 (17 new).** ``core/providers/igdb.py`` ports
+  ``otix.providers.igdb.client`` — game metadata (v4), the last of the four
+  deferred concrete keyed clients and the one the game-matcher/hydration path
+  consumes. Distinctive auth shape: a **Twitch OAuth2 client-credentials grant**
+  (``IGDB_CLIENT_ID``/``IGDB_CLIENT_SECRET`` POSTed to ``id.twitch.tv``) whose
+  access token is cached in Redis (``igdb:access_token``,
+  ``IGDB_TOKEN_TTL_SECONDS`` default 50 days); every API request carries both a
+  ``Client-ID`` header and ``Authorization: Bearer``, and a single 401
+  invalidates + refetches the token once before returning. All reads are
+  **POSTs with an Apicalypse query-DSL body** (custom syntax, not GET), so the
+  increment-33 GET response cache never applies; repeat search results are
+  instead cached in Redis (``igdb:search:*``, ``IGDB_SEARCH_CACHE_TTL_SECONDS``
+  default 7 days) because raw IGDB metadata changes slowly and shouldn't burn
+  the quota. Shared ``get_http_client()`` binds ``httpx.AsyncClient`` to
+  ``https://api.igdb.com/v4`` + timeout (loop-change aclose, TMDB pattern).
+  ``IGDBProvider`` names itself "igdb", throttles at
+  ``rate == burst == IGDB_GLOBAL_RPS_LIMIT`` (default 4/s), and — unlike the
+  per-request-key peers — carries its own Redis for token/search caches, defaulted
+  to the rate limiter's cached client (``self.rate_limiter.redis``) so a shared
+  Redis connection is reused. Reads: ``get_games``/``get_game`` (``id`` set),
+  ``get_popular_games`` (aggregated_rating sort), ``get_recently_released_games``
+  (90-day window), ``get_upcoming_games`` (hypes>5), ``get_games_offset``
+  (main-games-only + release-window filter), ``get_franchise``,
+  ``get_changed_game_ids``, ``search_games`` (relevance) /
+  ``search_games_by_name`` (substring where-filter — exact-title games the
+  relevance search down-weights, e.g. "For The King"), plus the resolvers
+  ``get_cover``/``get_screenshots``/``get_artworks``/``get_videos``/
+  ``get_companies``/``get_involved_companies``/``get_age_ratings`` and the
+  external-id mappers ``lookup_external_game_ids`` (+ Steam/Epic/GOG wrappers).
+  Errors: non-200 → ``IGDBError`` (``IGDBAuthError`` for the OAuth grant);
+  429 hits the base token-bucket rate-limit path. ``config/settings/base.py``
+  declares the four IGDB settings next to the credentials:
+  ``IGDB_REQUEST_TIMEOUT_SECONDS`` (20s), ``IGDB_GLOBAL_RPS_LIMIT`` (4/s),
+  ``IGDB_TOKEN_TTL_SECONDS`` (50 d), ``IGDB_SEARCH_CACHE_TTL_SECONDS`` (7 d).
+  Tests (``core/tests/test_igdb_provider.py``, 17) add a ``setex`` method to the
+  in-memory Redis double and route the MockTransport on the request **host**
+  (``id.twitch.tv`` answers token requests, ``api.igdb.com`` the Apicalypse
+  API), asserting: provider identity + shared redis, Client-ID/Bearer headers,
+  token fetched-once-from-Twitch-then-cached, 401 invalidate+refetch-once (2
+  igdb + 2 twitch calls), Apicalypse POST bodies, Redis search caching (2nd
+  identical call → 1 transport hit), name-substring escaping, external
+  uid→game mapping + int-key Steam coercion, IGDBError on 4xx, RateLimitError
+  on 429, and the factory base_url/timeout with no client-level auth headers.
+  No model/DB surface → no migration. **Next deferred piece:** the
+  TMDB/MusicBrainz/IGDB transformer/hydrator + catalog-seed pipelines (the
+  first real consumers of the four ported clients — maps legacy SQLAlchemy
+  domain onto Django models, DB-touching/larger), then SteamGrid artwork
+  hydration.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

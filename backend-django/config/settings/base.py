@@ -350,6 +350,15 @@ TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
 # routes answer 503 "IGDB not configured" (steam) / skip IGDB hydration (free).
 IGDB_CLIENT_ID = os.environ.get("IGDB_CLIENT_ID", "")
 IGDB_CLIENT_SECRET = os.environ.get("IGDB_CLIENT_SECRET", "")
+# Access tokens (cached in Redis) and raw search responses (cached in Redis) both
+# live ~TTL long: IGDB metadata changes slowly and repeat re-matches shouldn't
+# burn the quota. Token TTL default 50 days; search-cache default 7 days.
+IGDB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("IGDB_REQUEST_TIMEOUT_SECONDS", "20.0"))
+IGDB_GLOBAL_RPS_LIMIT = float(os.environ.get("IGDB_GLOBAL_RPS_LIMIT", "4.0"))
+IGDB_TOKEN_TTL_SECONDS = int(os.environ.get("IGDB_TOKEN_TTL_SECONDS", str(50 * 24 * 3600)))
+IGDB_SEARCH_CACHE_TTL_SECONDS = int(
+    os.environ.get("IGDB_SEARCH_CACHE_TTL_SECONDS", str(7 * 24 * 3600))
+)
 
 # Image upload route (/api/v1/upload): allowed content written under UPLOAD_DIR
 # and served by the web tier from /uploads/<name>.
