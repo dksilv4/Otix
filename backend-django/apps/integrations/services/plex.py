@@ -319,3 +319,103 @@ def get_plex_album_tracks(user, media_item_id: int) -> dict:
         "rating_key": plex_item.rating_key,
         "album_thumb_url": album_thumb_url,
     }
+
+
+def _to_int(value: Any) -> int | None:
+    """Coerce a Plex integer field (may arrive as a string) to ``int``/``None``."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def get_plex_sessions(user) -> list[dict]:
+    """Return active playback sessions across the user's selected Plex servers.
+
+    Each selected server with a stored ``base_url``/``access_token`` is asked
+    for ``/status/sessions``; servers that error or answer non-200 are skipped.
+    Only ``movie``/``episode``/``track`` items are reported (legacy parity), and
+    relative thumbnails are made absolute against the serving server + token.
+    """
+    if not user.plex_auth_token:
+        return []
+
+    servers = UserPlexServer.objects.filter(user=user, selected=True)
+    all_sessions: list[dict] = []
+    for server in servers:
+        if not server.base_url or not server.access_token:
+            continue
+        try:
+            status, raw = _request(
+                _with_token(f"{server.base_url}/status/sessions", server.access_token),
+                headers=_plex_headers(),
+                timeout=30.0,
+            )
+            if status != 200:
+                continue
+            data = json.loads(raw)
+        except Exception:
+            continue
+
+        container = data.get("MediaContainer", data)
+        for item in _as_list(container.get("Metadata", [])):
+            media_type = item.get("type", "")
+            if media_type not in ("movie", "episode", "track"):
+                continue
+
+            user_info = item.get("User") or {}
+            player_info = item.get("Player") or {}
+            session_info = item.get("Session") or {}
+            media_parts = _as_list(item.get("Media", []))
+            media_info = media_parts[0] if media_parts else {}
+            transcode = item.get("TranscodeSession") or {}
+
+            # Bind per-iteration values as defaults (avoids late-binding the
+            # loop variable, mirroring the legacy closure).
+            def _full_thumb(raw, base_url=server.base_url, token=server.access_token):
+                if not raw:
+                    return None
+                url = str(raw)
+                if url.startswith("/"):
+                    url = f"{base_url}{url}"
+                if token:
+                    url = f"{url}{'&' if '?' in url else '?'}X-Plex-Token={token}"
+                return url
+
+            all_sessions.append(
+                {
+                    "session_id": session_info.get("id", str(item.get("ratingKey", ""))),
+                    "media_type": media_type,
+                    "title": item.get("title", ""),
+                    "grandparent_title": item.get("grandparentTitle"),
+                    "parent_title": item.get("parentTitle"),
+                    "index": _to_int(item.get("index")),
+                    "thumb": _full_thumb(item.get("thumb")),
+                    "duration": _to_int(item.get("duration")),
+                    "view_offset": _to_int(item.get("viewOffset")),
+                    "state": player_info.get("state", "paused"),
+                    "user_name": user_info.get("title", "Unknown"),
+                    "user_thumb": _full_thumb(user_info.get("thumb")),
+                    "player_title": player_info.get("title"),
+                    "player_device": player_info.get("device") or None,
+                    "player_platform": player_info.get("platform") or None,
+                    "server_name": server.name,
+                    "server_id": server.machine_identifier,
+                    "library_section": item.get("librarySectionTitle"),
+                    "year": _to_int(item.get("year")),
+                    "content_rating": item.get("contentRating"),
+                    "summary": item.get("summary"),
+                    "video_resolution": media_info.get("videoResolution"),
+                    "video_codec": media_info.get("videoCodec"),
+                    "audio_codec": media_info.get("audioCodec"),
+                    "audio_channels": _to_int(media_info.get("audioChannels")),
+                    "bitrate": _to_int(media_info.get("bitrate")),
+                    "video_decision": transcode.get("videoDecision") or "direct play",
+                    "audio_decision": transcode.get("audioDecision") or "direct play",
+                    "transcode_reason": transcode.get("transcodeReason") or None,
+                    "throttled": transcode.get("throttled") == "1" if transcode else False,
+                }
+            )
+    return all_sessions

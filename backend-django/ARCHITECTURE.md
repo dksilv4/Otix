@@ -397,6 +397,22 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   token)` helper (X-Plex-Token query-param embedding used by both plex.tv
   discovery and direct server GETs). Parity 238→239. **Remaining 24 = discover
   4, integrations 14, notifications 1, saves 4, upload 1.**
+- **Plex live sessions (increment 14, 2026-09-05)** — `GET
+  /integrations/plex/sessions` returns active playback across the user's
+  selected `UserPlexServer` rows: 400 "No Plex account linked" without
+  `plex_auth_token`, else per server with a stored `base_url` +
+  `access_token` GET `{base_url}/status/sessions` (token as X-Plex-Token query,
+  30s timeout); non-200/exceptions skip the server. `MediaContainer.Metadata`
+  filtered to `movie`/`episode`/`track`, mapped to the full 30-field session
+  shape (`session_id` from `Session.id`, state from `Player`, relative thumb
+  URLs absolutized against the serving server + token, int fields coerced via
+  `_to_int`, `throttled` = `TranscodeSession.throttled == "1"`,
+  `video/audio_decision` default "direct play"); non-listed media types (e.g.
+  photo) are dropped. Response `{sessions: [...]}`. Legacy router's
+  401-unlink/410/502 branches are effectively dead (per-server errors are
+  swallowed inside the service), so no unlink logic is ported. Parity 239→240.
+  **Remaining 23 = discover 4, integrations 13, notifications 1, saves 4,
+  upload 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

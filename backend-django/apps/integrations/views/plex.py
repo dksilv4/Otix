@@ -4,7 +4,8 @@
 ``/connect-info/{media_item_id}`` returns connect details (base URLs + token +
 thumb URL) for the user's scanned copy of a catalog media item; both are pure
 reads over the stored ``UserPlex*`` rows. ``/album-tracks/{media_item_id}``
-fetches a music album's track list live from the user's Plex server.
+fetches a music album's track list and ``/sessions`` active playback, live from
+the user's Plex server.
 """
 
 from rest_framework.exceptions import NotFound
@@ -49,3 +50,14 @@ class PlexAlbumTracksView(APIView):
         except integrations_services.PlexAlbumTracksFetchError as exc:
             return Response({"detail": exc.detail}, status=502)
         return Response(data)
+
+
+class PlexSessionsView(APIView):
+    """GET /integrations/plex/sessions"""
+
+    def get(self, request):
+        if not request.user.plex_auth_token:
+            return Response({"detail": "No Plex account linked"}, status=400)
+        return Response(
+            {"sessions": integrations_services.get_plex_sessions(request.user)}
+        )

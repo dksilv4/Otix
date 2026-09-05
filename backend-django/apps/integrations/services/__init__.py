@@ -5,6 +5,7 @@ from apps.integrations.services.plex import (
     PlexConnectInfoNotFound,
     get_plex_album_tracks,
     get_plex_connect_info,
+    get_plex_sessions,
     list_plex_libraries,
 )
 
@@ -13,5 +14,6 @@ __all__ = [
     "PlexConnectInfoNotFound",
     "get_plex_album_tracks",
     "get_plex_connect_info",
+    "get_plex_sessions",
     "list_plex_libraries",
 ]

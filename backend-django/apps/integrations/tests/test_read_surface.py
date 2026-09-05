@@ -6,6 +6,7 @@ Exercises the ported Plex + Steam read routes over the stored
 - ``GET /integrations/plex/connect-info/{media_item_id}``
 - ``GET /integrations/plex/album-tracks/{media_item_id}``
 - ``GET /integrations/plex/libraries``
+- ``GET /integrations/plex/sessions``
 - ``GET /integrations/steam/owned-appids``
 
 The Plex tv alt-URL fetch and live album-track children fetch are best-effort
@@ -469,6 +470,186 @@ class PlexAlbumTracksTests(_ApiTestBase):
         self.assertEqual(body["base_url"], "https://alt.example")
         self.assertEqual(body["token"], "user-tok")
         self.assertTrue(body["album_thumb_url"].startswith("https://alt.example/"))
+
+
+SESSION_MOVIE_ITEM = {
+    "type": "movie",
+    "ratingKey": "100",
+    "title": "Inception",
+    "thumb": "/library/metadata/100/thumb/abc",
+    "duration": 9000000,
+    "viewOffset": 120000,
+    "year": "2010",
+    "contentRating": "PG-13",
+    "summary": "A thief who steals corporate secrets.",
+    "librarySectionTitle": "Movies",
+    "User": {"title": "dk", "thumb": "/users/1"},
+    "Player": {"title": "Living Room", "device": "AppleTV", "platform": "tvOS", "state": "playing"},
+    "Session": {"id": "abcd1234"},
+    "Media": [
+        {
+            "videoResolution": "1080",
+            "videoCodec": "h264",
+            "audioCodec": "aac",
+            "audioChannels": 6,
+            "bitrate": 8000,
+        }
+    ],
+    "TranscodeSession": {
+        "videoDecision": "transcode",
+        "audioDecision": "transcode",
+        "transcodeReason": "1",
+        "throttled": "1",
+    },
+}
+
+SESSION_TRACK_ITEM = {
+    "type": "track",
+    "ratingKey": "77",
+    "title": "Cornfield Chase",
+    "grandparentTitle": "Interstellar",
+    "parentTitle": "Soundtrack",
+    "index": 3,
+    "duration": 200000,
+}
+
+SESSION_PHOTO_ITEM = {"type": "photo", "ratingKey": "9", "title": "holiday"}
+
+
+class PlexSessionsTests(_ApiTestBase):
+    URL = "/api/v1/integrations/plex/sessions"
+
+    def setUp(self):
+        super().setUp()
+        self.user.plex_auth_token = "user-tok"
+        self.user.save(update_fields=("plex_auth_token",))
+        self.server = _make_server(self.user, machine="srv-1")
+
+    def _stub_sessions(self, payload, **kwargs):
+        return mock.patch.object(
+            integrations_services.plex,
+            "_request",
+            return_value=(200, json.dumps(payload)),
+            **kwargs,
+        )
+
+    def test_unauthenticated_401(self):
+        resp = APIClient().get(self.URL)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_no_plex_account_400(self):
+        self.user.plex_auth_token = ""
+        self.user.save(update_fields=("plex_auth_token",))
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()["detail"], "No Plex account linked")
+
+    def test_returns_movie_and_track_sessions(self):
+        payload = {
+            "MediaContainer": {
+                "Metadata": [SESSION_MOVIE_ITEM, SESSION_PHOTO_ITEM, SESSION_TRACK_ITEM]
+            }
+        }
+        with self._stub_sessions(payload):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        sessions = resp.json()["sessions"]
+        self.assertEqual(len(sessions), 2)  # photo filtered out
+        movie = sessions[0]
+        self.assertEqual(set(movie), {
+            "session_id", "media_type", "title", "grandparent_title", "parent_title",
+            "index", "thumb", "duration", "view_offset", "state", "user_name",
+            "user_thumb", "player_title", "player_device", "player_platform",
+            "server_name", "server_id", "library_section", "year", "content_rating",
+            "summary", "video_resolution", "video_codec", "audio_codec",
+            "audio_channels", "bitrate", "video_decision", "audio_decision",
+            "transcode_reason", "throttled",
+        })
+        self.assertEqual(movie["session_id"], "abcd1234")
+        self.assertEqual(movie["media_type"], "movie")
+        self.assertEqual(movie["title"], "Inception")
+        self.assertEqual(
+            movie["thumb"],
+            f"{self.server.base_url}/library/metadata/100/thumb/abc"
+            f"?X-Plex-Token={self.server.access_token}",
+        )
+        self.assertEqual(movie["duration"], 9000000)
+        self.assertEqual(movie["view_offset"], 120000)
+        self.assertEqual(movie["state"], "playing")
+        self.assertEqual(movie["user_name"], "dk")
+        self.assertTrue(movie["user_thumb"].startswith(self.server.base_url))
+        self.assertEqual(movie["player_title"], "Living Room")
+        self.assertEqual(movie["player_device"], "AppleTV")
+        self.assertEqual(movie["player_platform"], "tvOS")
+        self.assertEqual(movie["server_name"], self.server.name)
+        self.assertEqual(movie["server_id"], self.server.machine_identifier)
+        self.assertEqual(movie["library_section"], "Movies")
+        self.assertEqual(movie["year"], 2010)
+        self.assertEqual(movie["content_rating"], "PG-13")
+        self.assertEqual(movie["video_resolution"], "1080")
+        self.assertEqual(movie["video_codec"], "h264")
+        self.assertEqual(movie["audio_channels"], 6)
+        self.assertEqual(movie["bitrate"], 8000)
+        self.assertEqual(movie["video_decision"], "transcode")
+        self.assertEqual(movie["audio_decision"], "transcode")
+        self.assertEqual(movie["transcode_reason"], "1")
+        self.assertTrue(movie["throttled"])
+        # bare track item: defaults for missing User/Player/TranscodeSession
+        track = sessions[1]
+        self.assertEqual(track["media_type"], "track")
+        self.assertEqual(track["user_name"], "Unknown")
+        self.assertEqual(track["state"], "paused")
+        self.assertEqual(track["player_title"], None)
+        self.assertEqual(track["thumb"], None)
+        self.assertEqual(track["video_decision"], "direct play")
+        self.assertEqual(track["audio_decision"], "direct play")
+        self.assertFalse(track["throttled"])
+        self.assertEqual(track["grandparent_title"], "Interstellar")
+        self.assertEqual(track["parent_title"], "Soundtrack")
+
+    def test_empty_metadata_returns_empty_sessions(self):
+        with self._stub_sessions({"MediaContainer": {"Metadata": []}}):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"sessions": []})
+
+    def test_erroring_and_tokenless_servers_are_skipped(self):
+        _make_server(
+            self.user, name="Bad", base_url="http://bad.example:32400", machine="srv-bad"
+        )
+        UserPlexServer.objects.create(
+            user=self.user, machine_identifier="srv-nourl", name="NoUrl", selected=True
+        )
+
+        def _fake(url, *args, **kwargs):
+            if "bad.example" in url:
+                return 500, "{}"
+            if self.server.base_url in url:
+                return 200, json.dumps(
+                    {"MediaContainer": {"Metadata": [SESSION_TRACK_ITEM]}}
+                )
+            raise AssertionError(f"unexpected url: {url}")
+
+        with mock.patch.object(
+            integrations_services.plex, "_request", side_effect=_fake
+        ):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        sessions = resp.json()["sessions"]
+        # bad 500 skipped, incomplete (no base_url/access_token) skipped
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(sessions[0]["server_name"], self.server.name)
+
+    def test_raises_are_skipped(self):
+        def _fake(url, *args, **kwargs):
+            raise OSError("server unreachable")
+
+        with mock.patch.object(
+            integrations_services.plex, "_request", side_effect=_fake
+        ):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"sessions": []})
 
 
 class SteamOwnedAppIdsTests(_ApiTestBase):

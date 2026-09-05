@@ -11,6 +11,7 @@ from apps.integrations.views import (
     PlexAlbumTracksView,
     PlexConnectInfoView,
     PlexLibrariesView,
+    PlexSessionsView,
     SteamOwnedAppIdsView,
 )
 
@@ -29,6 +30,7 @@ urlpatterns = [
         PlexAlbumTracksView.as_view(),
         name="plex-album-tracks",
     ),
+    path("plex/sessions", PlexSessionsView.as_view(), name="plex-sessions"),
     # Steam read surface.
     path("steam/owned-appids", SteamOwnedAppIdsView.as_view(), name="steam-owned-appids"),
 ]
