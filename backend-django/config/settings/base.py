@@ -305,6 +305,12 @@ STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "")
 # and the oauth link/login helpers in apps/accounts.services.oauth.
 TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
 
+# IGDB v4 API (Twitch client-credentials grant) used by the game matcher
+# (steam/resolve-unmatched + discover/free-games/match seeding). Empty => those
+# routes answer 503 "IGDB not configured" (steam) / skip IGDB hydration (free).
+IGDB_CLIENT_ID = os.environ.get("IGDB_CLIENT_ID", "")
+IGDB_CLIENT_SECRET = os.environ.get("IGDB_CLIENT_SECRET", "")
+
 # Image upload route (/api/v1/upload): allowed content written under UPLOAD_DIR
 # and served by the web tier from /uploads/<name>.
 UPLOAD_MAX_SIZE_MB = int(os.environ.get("UPLOAD_MAX_SIZE_MB", "5"))

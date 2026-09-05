@@ -625,6 +625,46 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   (the streams idle/timeout until a worker publishes). Tests (15 new).
   Parity 256→261. **Remaining 2 = discover free-games/match + steam
   resolve-unmatched, both IGDB GameMatcher bound.**
+- **IGDB GameMatcher + final 2 routes (increment 26, 2026-09-05)** — closes the
+  last 2 contract routes → **263/263 ported, 0 method-gaps, 0 remaining**. New
+  `apps/media/services/game_matcher.py`: a sync port of the legacy 4-phase
+  matcher (`match_batch` runs phases in-request). Phase 1 = direct external-id
+  match over existing ``ExternalID`` rows (DIRECT, confidence by confirmed_by).
+  Phase 2 = otix catalog exact-title (`_comparison_key`) then OR'd ILIKE
+  substring passes over ``media_type="game"`` (trigram pass DEFERRED). Phase 3 =
+  IGDB, gated on ``configured()``: 3a cross-references steam app ids / epic ids
+  through IGDB ``external_games`` (category 1/26) and reuses-or-seeds the mapped
+  IGDB game; 3b title-searches for stragglers (``":"``-short-query retry +
+  ``search_games_by_name`` fallback), exact-key hits seed while fuzzy hits only
+  linger at ≥0.70. Phase 4 = dedupe/rank/auto-match (DIRECT always; needs_import
+  only when ≥0.90 exact igdb_search; else ≥0.95; else ≥0.85 single candidate or
+  ≥0.10 gap). ``_seed_game_from_igdb`` slug-dedups across providers, else creates
+  MediaItem (``completeness_score=0.15``, ``next_sync_at``) + ``Game`` + igdb and
+  request ``ExternalID`` rows + poster ``MediaAsset``; ``hydrate_free_game``
+  (exact-only) seeds free-game refs. Provider = ``apps/media/services/igdb.py``
+  (urllib ``_request`` leaf — the test seam; Twitch client-credentials token,
+  in-process 60-day cache, 401-refetch-once). SteamGrid artwork, the Redis
+  rate-limiter, trigram, Celery hydration, and full ``GAME_FIELDS`` fetches stay
+  DEFERRED (matcher sends the lean ``SEARCH_FIELDS`` shape). **Route A:**
+  `POST /integrations/steam/resolve-unmatched`
+  (`apps/integrations/services/steam_igdb.py` ``resolve_unmatched_steam_games``
+  + ``repair_bare_steam_links`` — relinks overview/game-bare stubs to canonical
+  matches; returns legacy ``{resolved,synced,failed,total}``, ``synced`` = item
+  seeded this run, i.e. absent from the pre-match catalog snapshot). View guards
+  byte-for-byte 400 no-steam-id / 503 IGDB-unconfigured / 500. This supersedes
+  the increment-20 note that the scan tail's resolver was unported: users now hit
+  this route instead (the legacy scan itself still reports stage-1-only counts).
+  **Route B:** `POST /discover/free-games/match` (PUBLIC AllowAny — the desktop
+  aggregator sends no token) `apps/discover/services/free_games.py` +
+  `views/free_games.py`: exact ``ExternalID`` lookup → Epic bare-offerId
+  fallback (aggregator sends ``namespace:offerId``) → ``hydrate_free_game`` for
+  unmatched Epic refs carrying a title → per-ref ``FreeGameResult`` key order
+  (``media_item`` = `MediaItemDetailSerializer` detail or ``null``, matched,
+  store, store_label, original_price, free_end_date, claim_url, poster_url,
+  title, external_id) in ``{items:[...]}``. Literal ``free-games/match`` route is
+  registered BEFORE the ``<str:media_type>/<str:list_type>`` pair in
+  ``apps/discover/urls.py``. Tests patch the ``igdb._request`` seam (8 steam
+  resolve + 8 free-games match). Parity 261→263. **Remaining 0.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

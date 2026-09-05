@@ -15,11 +15,13 @@ from rest_framework.views import APIView
 
 from apps.integrations import services as integrations_services
 from apps.integrations.models import UserSteamGame
+from apps.media.services import igdb
 
 logger = logging.getLogger(__name__)
 
 _NO_ACCOUNT = "No Steam account linked"
 _NO_KEY = "Steam API key not configured"
+_IGDB_NOT_CONFIGURED = "IGDB not configured"
 
 
 class SteamOwnedAppIdsView(APIView):
@@ -68,3 +70,32 @@ class SteamWishlistScanView(APIView):
                 {"detail": "Failed to scan Steam wishlist. Please try again."}, status=500
             )
         return Response(result)
+
+
+class SteamResolveUnmatchedView(APIView):
+    """POST /integrations/steam/resolve-unmatched — run unmatched games
+    through the IGDB matcher and relink results to the catalog."""
+
+    def post(self, request):
+        if not request.user.steam_id:
+            return Response({"detail": _NO_ACCOUNT}, status=400)
+        if not igdb.configured():
+            return Response({"detail": _IGDB_NOT_CONFIGURED}, status=503)
+        try:
+            result = integrations_services.resolve_unmatched_steam_games(
+                request.user
+            )
+        except Exception:
+            logger.exception("steam resolve-unmatched failed")
+            return Response(
+                {"detail": "Failed to resolve unmatched game. Please try again."},
+                status=500,
+            )
+        return Response(
+            {
+                "resolved": result.resolved,
+                "synced": result.synced,
+                "failed": result.failed,
+                "total": result.total,
+            }
+        )

@@ -20,6 +20,7 @@ from apps.integrations.views import (
     PlexWebhookView,
     SteamLibraryScanView,
     SteamOwnedAppIdsView,
+    SteamResolveUnmatchedView,
     SteamWishlistScanView,
     TMDbRatingSyncView,
     TMDbWatchlistImportView,
@@ -72,6 +73,11 @@ urlpatterns = [
         "steam/wishlist/scan",
         SteamWishlistScanView.as_view(),
         name="steam-wishlist-scan",
+    ),
+    path(
+        "steam/resolve-unmatched",
+        SteamResolveUnmatchedView.as_view(),
+        name="steam-resolve-unmatched",
     ),
     # TMDb account sync (ratings both ways + watchlist import).
     path(

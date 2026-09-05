@@ -12,6 +12,7 @@ from apps.integrations.views.plex import (
 from apps.integrations.views.steam import (
     SteamLibraryScanView,
     SteamOwnedAppIdsView,
+    SteamResolveUnmatchedView,
     SteamWishlistScanView,
 )
 from apps.integrations.views.sync import (
@@ -36,6 +37,7 @@ __all__ = [
     "PlexWebhookView",
     "SteamLibraryScanView",
     "SteamOwnedAppIdsView",
+    "SteamResolveUnmatchedView",
     "SteamWishlistScanView",
     "TMDbRatingSyncView",
     "TMDbWatchlistImportView",
