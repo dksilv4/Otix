@@ -47,6 +47,7 @@ from apps.accounts.views.oauth import (
     TMDbLoginCallbackView,
     TMDbLoginInitiateView,
 )
+from apps.accounts.views.upload import UploadFileView
 from apps.accounts.views.user_continue import ContinueWatchingView
 from apps.accounts.views.user_profile import UserDetailView, UserSearchView
 
@@ -93,6 +94,7 @@ __all__ = [
     "TwoFactorEnableView",
     "TwoFactorLoginVerifyView",
     "TwoFactorSetupView",
+    "UploadFileView",
     "UserDetailView",
     "UserSearchView",
     "VerifyEmailSendView",

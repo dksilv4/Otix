@@ -533,6 +533,20 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   "Steam API key not configured", 500 per-route. Tests patch the `_request` seam
   (20 new). Parity 248→250. **Remaining 13 = discover 4, integrations 7,
   notifications 1, upload 1.**
+- **Image upload (increment 21, 2026-09-05)** — `POST /api/v1/upload` (legacy
+  FastAPI ``/upload``), the whole upload bucket. `apps/accounts/views/upload.py`
+  `UploadFileView` mirrors the legacy route exactly: accepts a multipart ``file``
+  field, validates declared content-type + filename extension against the allowed
+  image set (png/jpeg/webp/gif), sniffs magic bytes, enforces the size cap
+  (`UPLOAD_MAX_SIZE_MB`, default 5), then writes the blob under `UPLOAD_DIR`
+  (env; default `<repo>/uploads`) as `uuid4().hex + ext` and returns 201
+  `{"url": "<proto>://<host>/uploads/<name>"}` (honours `X-Forwarded-Proto`).
+  Guards: 401 (global auth), 400 unsupported content-type/extension or
+  non-image magic bytes, 413 too large (`UploadTooLarge` — DRF lacks a 413
+  shortcut). Legacy per-IP auth rate limiter deferred like the rest of the
+  rate-limit layer. No model/DB surface → no migration. Tests redirect
+  `UPLOAD_DIR` to a temp dir (12 new). Parity 250→251. **Remaining 12 = discover
+  4, integrations 7, notifications 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

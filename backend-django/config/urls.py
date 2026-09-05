@@ -9,6 +9,8 @@ from django.contrib import admin
 from django.http import HttpRequest, JsonResponse
 from django.urls import include, path
 
+from apps.accounts.views import UploadFileView
+
 
 def health(_request: HttpRequest) -> JsonResponse:
     """Liveness probe. No auth, no DB dependency."""
@@ -43,5 +45,6 @@ urlpatterns = [
     path("api/v1/proposals/", include("apps.proposals.urls")),
     path("api/v1/admin/", include("apps.proposals.admin_urls")),
     path("api/v1/plugins/", include("plugins.urls")),
+    path("api/v1/upload", UploadFileView.as_view(), name="upload"),
     path("api/v1/health", health, name="health"),
 ]
