@@ -356,6 +356,31 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   /auth/me/integrations` returns the linked-identity columns. Parity 227→235
   (auth 8→0). **Remaining 28 = discover 4, integrations 18, notifications 1,
   saves 4, upload 1.**
+- **Integrations read/library-state surface (increment 12, 2026-09-05)** —
+  first slice of the integrations app (`apps/integrations/`), mounting the
+  previously DB-only routes that need no sync machinery: `GET
+  /integrations/plex/libraries` (the user's `UserPlexLibrary` rows joined to
+  their server for the display name, each annotated with `item_count` = the
+  scanned `UserPlexItem` count via `Count` subquery coalesced to 0 and
+  `last_synced_at` = the newest item `updated_at` via a `[:1]` subquery,
+  ordered `server__name, title`), `GET
+  /integrations/plex/connect-info/{media_item_id}` (finds the user's
+  `UserPlexItem` matched to the catalog media item → `{base_url, base_urls,
+  token, rating_key, album_thumb_url}`, where `base_urls` = stored
+  `server.base_url` plus best-effort alternative URLs fetched from
+  `plex.tv/api/v2/resources` — token as a URL query param + client
+  `X-Plex-Client-Identifier` headers, legacy `_get_json` behaviour; any failure
+  → `[]` so the stored URL is the fallback; 404 detail strings
+  byte-for-byte "Media item not found in your Plex library" / "Plex server not
+  found") and `GET /integrations/steam/owned-appids` (the user's
+  `UserSteamGame.steam_app_id` set, for the Steam plugin's free-to-keep
+  cross-reference). Layout follows the small-app exemplar: `services/plex.py`
+  holds the read logic + a local urllib `_request` leaf; `views/{plex,steam}.py`
+  are thin; `urls.py` mounted at `/api/v1/integrations/`; path converter
+  `<int:media_item_id>` (parity tool normalizes). No new infra — sync, live
+  sessions, webhook and SSE routes still await the platform wave. Parity
+  235→238. **Remaining 25 = discover 4, integrations 15, notifications 1, saves
+  4, upload 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

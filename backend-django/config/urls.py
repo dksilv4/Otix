@@ -39,6 +39,7 @@ urlpatterns = [
     path("api/v1/reviews/", include("apps.social.reviews_urls")),
     path("api/v1/mood-checkins/", include("apps.social.mood_checkins_urls")),
     path("api/v1/metric/", include("apps.social.metric_urls")),
+    path("api/v1/integrations/", include("apps.integrations.urls")),
     path("api/v1/proposals/", include("apps.proposals.urls")),
     path("api/v1/admin/", include("apps.proposals.admin_urls")),
     path("api/v1/plugins/", include("plugins.urls")),
