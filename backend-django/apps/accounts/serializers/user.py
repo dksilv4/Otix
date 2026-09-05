@@ -20,7 +20,13 @@ class UserIdentitySerializer(serializers.ModelSerializer):
 
 
 class UserSelfSerializer(serializers.ModelSerializer):
-    """The current user's own profile — used by ``GET /auth/me``."""
+    """The current user's own profile — used by ``GET /auth/me``.
+
+    Scalar profile fields only (superset of legacy ``MeResponse``); the
+    preference lists/dicts live behind ``GET /auth/me/preferences``.
+    ``date_of_birth`` is readable here but deliberately absent from
+    ``UserUpdateSerializer`` (legacy never lets PATCH change it).
+    """
 
     class Meta:
         model = User
@@ -31,6 +37,17 @@ class UserSelfSerializer(serializers.ModelSerializer):
             "display_name",
             "avatar_url",
             "is_active",
+            "is_verified",
+            "two_factor_enabled",
+            "bio",
+            "background_url",
+            "date_of_birth",
+            "country",
+            "is_private",
+            "show_adult_content",
+            "is_bot",
+            "total_xp",
+            "onboarding_completed",
             "created_at",
             "updated_at",
         )
@@ -40,17 +57,60 @@ class UserSelfSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     """Partial self-update of the authenticated user (``PATCH /auth/me``).
 
-    Mirrors legacy ``UserUpdateRequest`` semantics: only the profile fields the
-    greenfield ``User`` currently carries are writable; any other body key is
-    silently ignored by DRF (it is not a declared field). Uniqueness on
-    username/email is enforced with the current instance excluded.
+    Writable set mirrors the legacy ``_UPDATABLE_FIELDS`` allow-list (plus
+    greenfield ``display_name``); any other body key is silently ignored by
+    DRF because it is not a declared field. Username/email uniqueness is
+    enforced with the current instance excluded. Non-editable columns
+    (``is_bot``, ``total_xp``, ``date_of_birth``, security flags) are read-only
+    on ``UserSelfSerializer``.
     """
 
     email = serializers.EmailField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ("username", "email", "display_name", "avatar_url")
+        fields = (
+            "username",
+            "email",
+            "display_name",
+            "bio",
+            "avatar_url",
+            "background_url",
+            "country",
+            "is_private",
+            "show_adult_content",
+            "daily_mood_checkins_enabled",
+            "onboarding_completed",
+            "integration_visibility",
+            "profile_sections",
+            "profile_card_sections",
+            "hall_of_fame_media_ids",
+            "notification_preferences",
+            "preferred_media_types",
+            "preferred_genres",
+            "preferred_languages",
+            "discover_emphases",
+        )
+
+
+class UserPreferencesSerializer(serializers.ModelSerializer):
+    """Read-only preference blob behind ``GET /auth/me/preferences``."""
+
+    class Meta:
+        model = User
+        fields = (
+            "preferred_media_types",
+            "preferred_genres",
+            "preferred_languages",
+            "discover_emphases",
+            "daily_mood_checkins_enabled",
+            "hall_of_fame_media_ids",
+            "profile_sections",
+            "profile_card_sections",
+            "integration_visibility",
+            "notification_preferences",
+        )
+        read_only_fields = fields
 
 
 class RegisterSerializer(serializers.Serializer):

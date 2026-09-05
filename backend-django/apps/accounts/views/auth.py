@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from apps.accounts.serializers import (
     RegisterSerializer,
     UserIdentitySerializer,
+    UserPreferencesSerializer,
     UserSelfSerializer,
     UserUpdateSerializer,
 )
@@ -59,3 +60,17 @@ class MeView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(UserSelfSerializer(user).data)
+
+
+class MePreferencesView(generics.GenericAPIView):
+    """The authenticated user's preference blob (``GET /auth/me/preferences``).
+
+    Read-only: preference updates flow through ``PATCH /auth/me`` with the
+    same allow-list, mirroring the legacy single-endpoint design (legacy has no
+    separate preferences write route).
+    """
+
+    serializer_class = UserPreferencesSerializer
+
+    def get(self, request, *args, **kwargs):
+        return Response(UserPreferencesSerializer(request.user).data)

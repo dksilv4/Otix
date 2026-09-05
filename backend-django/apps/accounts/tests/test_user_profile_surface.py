@@ -10,6 +10,7 @@ from django.test import TestCase
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
+from apps.accounts.models.user import DEFAULT_PROFILE_SECTIONS
 from apps.media.models import MediaItem
 from apps.social.models import UserMediaInteraction
 
@@ -51,7 +52,9 @@ class UserProfileHubApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["friendship_status"]["status"], "none")
         self.assertEqual(response.data["follower_count"], 0)
-        self.assertIsInstance(response.data["profile_sections"], type(None))
+        self.assertEqual(response.data["profile_sections"], DEFAULT_PROFILE_SECTIONS)
+        self.assertEqual(response.data["total_xp"], 0)
+        self.assertFalse(response.data["is_private"])
 
     def test_user_search_is_public(self) -> None:
         response = self.anon.get("/api/v1/users/search", {"q": "ali"})

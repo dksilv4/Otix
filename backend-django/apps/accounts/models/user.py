@@ -21,6 +21,33 @@ MAX_USERNAME_LENGTH = 150
 MAX_DISPLAY_NAME_LENGTH = 150
 MAX_AVATAR_URL_LENGTH = 2048
 MAX_EXTERNAL_ID_LENGTH = 64
+MAX_BACKGROUND_URL_LENGTH = 2048
+MAX_COUNTRY_LENGTH = 100
+
+# New-account defaults mirroring the legacy ``User`` column server defaults.
+DEFAULT_PROFILE_SECTIONS = [
+    "hof_movie",
+    "hof_show",
+    "hof_game",
+    "hof_music",
+    "library_breakdown",
+    "mood_timeline",
+]
+DEFAULT_PROFILE_CARD_SECTIONS = ["reviews", "stats", "top_rated", "recent_activity"]
+DEFAULT_PREFERRED_MEDIA_TYPES = ["movie", "show", "game", "music"]
+
+
+# Importable defaults (migrations can only serialise dotted paths, not lambdas).
+def default_profile_sections() -> list[str]:
+    return list(DEFAULT_PROFILE_SECTIONS)
+
+
+def default_profile_card_sections() -> list[str]:
+    return list(DEFAULT_PROFILE_CARD_SECTIONS)
+
+
+def default_preferred_media_types() -> list[str]:
+    return list(DEFAULT_PREFERRED_MEDIA_TYPES)
 
 
 class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
@@ -89,6 +116,39 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     # Epoch marker for /auth/logout and password reset: any refresh token whose
     # ``iat`` predates this is rejected, killing every session at once.
     global_logout_marker = models.DateTimeField(null=True, blank=True)
+
+    # --- Profile & preferences ---
+    # Column set/defaults mirror the legacy ``User`` row (``backend/otix/
+    # domain/user.py``). Integration-specific token columns (plex_*/tmdb_*/
+    # google_*/drive_*) land with their OAuth slices, and the pgvector
+    # ``embedding`` stays deferred (sqlite-safe schema).
+    bio = models.TextField(null=True, blank=True)
+    background_url = models.URLField(
+        max_length=MAX_BACKGROUND_URL_LENGTH, null=True, blank=True
+    )
+    date_of_birth = models.DateField(null=True, blank=True)
+    country = models.CharField(max_length=MAX_COUNTRY_LENGTH, null=True, blank=True)
+    is_private = models.BooleanField(default=False)
+    show_adult_content = models.BooleanField(default=False)
+    is_bot = models.BooleanField(default=False)
+    total_xp = models.BigIntegerField(default=0)
+    daily_mood_checkins_enabled = models.BooleanField(default=True)
+    onboarding_completed = models.BooleanField(default=False)
+    integration_visibility = models.JSONField(default=dict, blank=True)
+    profile_sections = models.JSONField(
+        default=default_profile_sections, blank=True
+    )
+    profile_card_sections = models.JSONField(
+        default=default_profile_card_sections, blank=True
+    )
+    hall_of_fame_media_ids = models.JSONField(default=dict, blank=True)
+    notification_preferences = models.JSONField(default=dict, blank=True)
+    preferred_media_types = models.JSONField(
+        default=default_preferred_media_types, blank=True
+    )
+    preferred_genres = models.JSONField(default=list, blank=True)
+    preferred_languages = models.JSONField(default=list, blank=True)
+    discover_emphases = models.JSONField(default=list, blank=True)
 
     objects = UserManager()
 

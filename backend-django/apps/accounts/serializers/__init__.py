@@ -13,6 +13,7 @@ from apps.accounts.serializers.auth import (
 from apps.accounts.serializers.user import (
     RegisterSerializer,
     UserIdentitySerializer,
+    UserPreferencesSerializer,
     UserSelfSerializer,
     UserUpdateSerializer,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "TwoFactorEnableSerializer",
     "TwoFactorLoginVerifySerializer",
     "UserIdentitySerializer",
+    "UserPreferencesSerializer",
     "UserProfileSerializer",
     "UserSearchResultSerializer",
     "UserSelfSerializer",

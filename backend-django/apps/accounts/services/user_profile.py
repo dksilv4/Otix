@@ -1,10 +1,12 @@
 """Public profile hub reads: detail context and username search.
 
 Port of the legacy ``/users/{username}`` detail and ``/users/search`` handlers.
-The greenfield ``accounts.User`` carries only identity columns, so the many
-legacy profile columns without a model home are returned at their schema
-defaults (see module docstrings / report for the explicit gap list) and the
-social aggregates are computed from the social/workout/proposals apps read-only.
+Profile columns (``bio``/``background_url``/``is_private``/``total_xp``/
+``profile_sections``/``hall_of_fame_media_ids``) now read straight off
+``accounts.User``; the social aggregates are computed from the
+social/workout/proposals apps read-only. Engagement stand-ins that still need a
+later pass: ``level``/``level_title``/``xp_rank``/``xp_percentile`` and the
+steam/plex/tmdb integration blocks.
 """
 
 from __future__ import annotations
@@ -60,23 +62,23 @@ def build_user_profile(user: User, viewer) -> dict:
         "id": user.id,
         "username": user.username,
         "avatar_url": user.avatar_url,
-        "bio": None,
-        "background_url": None,
+        "bio": user.bio,
+        "background_url": user.background_url,
         "created_at": user.created_at,
         "review_count": review_count,
-        "total_xp": 0,
+        "total_xp": user.total_xp,
         "avg_user_rating": rating_aggregates["avg_user_rating"],
         "user_rating_count": rating_aggregates["user_rating_count"],
         "is_admin": bool(user.is_staff or user.is_superuser),
         "composite_score": reputation["composite_score"],
-        "profile_sections": None,
-        "hall_of_fame_media_ids": {},
+        "profile_sections": user.profile_sections,
+        "hall_of_fame_media_ids": user.hall_of_fame_media_ids,
         "steam": None,
         "plex": None,
         "tmdb_username": None,
         "friendship_status": friendship_status,
         "is_following": is_following_viewer,
-        "is_private": False,
+        "is_private": user.is_private,
         "follower_count": counts["followers"],
         "following_count": counts["following"],
         "level": 1,
@@ -104,7 +106,7 @@ def search_users(query: str, limit: int) -> list[dict]:
             "id": user.id,
             "username": user.username,
             "avatar_url": user.avatar_url,
-            "bio": None,
+            "bio": user.bio,
             "level": 1,
             "level_title": LEVEL_TITLE,
             "is_admin": bool(user.is_staff or user.is_superuser),

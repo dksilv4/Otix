@@ -11,6 +11,7 @@ from apps.accounts.views import (
     ForgotPasswordView,
     LoginView,
     LogoutView,
+    MePreferencesView,
     MeView,
     RefreshView,
     RegisterView,
@@ -46,5 +47,6 @@ urlpatterns = [
         SessionDetailView.as_view(),
         name="session-detail",
     ),
+    path("me/preferences", MePreferencesView.as_view(), name="me-preferences"),
     path("me", MeView.as_view(), name="me"),
 ]

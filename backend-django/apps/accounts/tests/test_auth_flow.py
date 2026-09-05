@@ -93,15 +93,17 @@ class AuthFlowTests(TestCase):
         self.assertEqual(user.display_name, "Davey")
 
     def test_me_patch_ignores_unknown_keys(self) -> None:
-        client, _ = self._authed_client()
+        client, user = self._authed_client()
         response = client.patch(
             "/api/v1/auth/me",
-            {"bio": "not a field", "display_name": "Updated"},
+            {"is_admin": True, "display_name": "Updated"},
             format="json",
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["display_name"], "Updated")
-        self.assertNotIn("bio", response.data)
+        self.assertNotIn("is_admin", response.data)
+        user.refresh_from_db()
+        self.assertEqual(user.display_name, "Updated")
 
     def test_me_patch_duplicate_username_rejected(self) -> None:
         User.objects.create_user(username="taken", password="a-strong-pass-123")

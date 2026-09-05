@@ -387,16 +387,19 @@ agents can trust the schema without re-reading the legacy FastAPI domain code.
 - **Coverage tool**: `scripts/parity_report.py` diffs the Django URLconf
   against the frozen contract at **METHOD+path granularity** (a template whose
   view lacks the frozen HTTP method is a *method-gap*, not silently counted).
-  Current (2026-09-05, wave #4 COMPLETE): **207/263 ported, 0 method-gaps**,
-  full suite **314 tests green**, `ruff check .` + `manage.py check` clean.
+  Current (2026-09-05, wave #4 COMPLETE): **208/263 ported, 0 method-gaps**,
+  full suite **320 tests green**, `ruff check .` + `manage.py check` clean.
   Real-auth core shipped (2026-09-05): JWT access (15 min, Bearer) + rotating
   httpOnly refresh cookie (7 d, path-scoped to `/api/v1/auth/`), session +
   refresh-token + action-token tables, global logout, session list/revoke,
   TOTP 2FA (setup/enable/disable/challenge-login) and forgot/reset/verify-email
-  (see §6a). Remaining 56 are deliberately deferred to the platform /
-  integrations wave (task #6): auth remainder(28 — OAuth provider link/login
-  families + `/auth/me/preferences` + `/auth/me/integrations`, all
-  IdP/Redis/preference-column bound), integrations(18 incl Google-Drive
+  (see §6a). Profile/preference columns + enriched `/auth/me` +
+  `GET /auth/me/preferences` shipped (migration 0003; writable set = legacy
+  `_UPDATABLE_FIELDS` allow-list, `date_of_birth`/`total_xp`/`is_bot` stay
+  read-only). Remaining 55 are deliberately deferred to the platform /
+  integrations wave (task #6): auth remainder(27 — OAuth provider link/login
+  families + `/auth/me/integrations`, all
+  IdP/Redis/state bound), integrations(18 incl Google-Drive
   cloud-save proxy), Google-Drive saves proxy(4), upload(1),
   discover(4 — Redis+personalization+IGDB bound, no tables),
   `/notifications/stream` SSE(1). Run
@@ -443,11 +446,12 @@ Conventions a porting agent must follow (mirror `apps/company`/`apps/people` +
   stricter than the model CheckConstraint (1–10); keep the legacy API range.
 - Ported areas may target different apps than legacy prefixes imply
   (`/person` → `people` app, `/list` → `lists` app). Area→app map — **wave #4 +
-  real-auth core COMPLETE (2026-09-05): parity 207/263, 0 method-gaps,
-  314 tests green**:
+  real-auth core + profile/preferences COMPLETE (2026-09-05): parity 208/263,
+  0 method-gaps, 320 tests green**:
   person(7)+company(5) done; auth(3: register/me/health) done; real-auth
-  slice(14: login/refresh/logout/sessions/2fa/forgot/reset/verify) done — the
-  remaining 28 auth routes (OAuth families + me/preferences + me/integrations)
+  slice(14: login/refresh/logout/sessions/2fa/forgot/reset/verify) done;
+  profile/preferences slice(1: GET /auth/me/preferences + enriched /auth/me)
+  done — the remaining 27 auth routes (OAuth families + me/integrations)
   defer to the §7 integrations wave; list(18)→`lists`; push(3)→`push`;
   blueprints(7)→`blueprint`; search(8)→`search`; library GET(10)→`library`;
   workout(9)+exercises(2)→`workout`; proposals(8)+admin(6)→`proposals`;
@@ -456,8 +460,8 @@ Conventions a porting agent must follow (mirror `apps/company`/`apps/people` +
   tracks(2)→`media` (music TrackRating); calendar(1)→`media`;
   saves(2 DB-backed locations/suggest)→`track`; users(32)→`accounts`+`social`
   (identity→accounts, engagement→social; single `/users` URL module imports
-  both). **Deferred to platform wave (task #6):** auth remainder(28 — OAuth
-  link/login families + `/auth/me/preferences` + `/auth/me/integrations`),
+  both). **Deferred to platform wave (task #6):** auth remainder(27 — OAuth
+  link/login families + `/auth/me/integrations`),
   integrations(18), Google-Drive saves proxy(4), upload(1),
   discover(4 — Redis+personalization+IGDB/embedding bound; no tables),
   `/notifications/stream`(1).
