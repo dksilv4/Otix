@@ -104,6 +104,23 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
         max_length=MAX_EXTERNAL_ID_LENGTH, null=True, blank=True, unique=True, db_index=True
     )
 
+    # --- Google / Google-Drive integration tokens + profile ---
+    # Populated by the /auth/oauth/google(+drive) link + callback flows; a null
+    # google_id / drive_refresh_token respectively marks the account as not
+    # linked. Token columns mirror the legacy ``User`` row column-for-column
+    # (``backend/otix/domain/user.py``).
+    google_email = models.CharField(max_length=MAX_EMAIL_LENGTH, null=True, blank=True)
+    google_name = models.CharField(max_length=MAX_DISPLAY_NAME_LENGTH, null=True, blank=True)
+    google_avatar_url = models.CharField(
+        max_length=MAX_AVATAR_URL_LENGTH, null=True, blank=True
+    )
+    google_access_token = models.TextField(null=True, blank=True)
+    google_refresh_token = models.TextField(null=True, blank=True)
+    google_token_expires_at = models.DateTimeField(null=True, blank=True)
+    drive_access_token = models.TextField(null=True, blank=True)
+    drive_refresh_token = models.TextField(null=True, blank=True)
+    drive_token_expires_at = models.DateTimeField(null=True, blank=True)
+
     # --- Security ---
     two_factor_enabled = models.BooleanField(default=False)
     # base32 TOTP secret. Populated by /auth/2fa/setup *before* enable; kept

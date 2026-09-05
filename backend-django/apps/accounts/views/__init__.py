@@ -18,12 +18,28 @@ from apps.accounts.views.auth_session import (
     SessionDetailView,
     SessionsView,
 )
+from apps.accounts.views.oauth import (
+    GoogleDisconnectView,
+    GoogleDriveDisconnectView,
+    GoogleDriveLinkCallbackView,
+    GoogleDriveLinkInitiateView,
+    GoogleLinkCallbackView,
+    GoogleLinkInitiateView,
+    GoogleLinkTokenView,
+)
 from apps.accounts.views.user_continue import ContinueWatchingView
 from apps.accounts.views.user_profile import UserDetailView, UserSearchView
 
 __all__ = [
     "ContinueWatchingView",
     "ForgotPasswordView",
+    "GoogleDisconnectView",
+    "GoogleDriveDisconnectView",
+    "GoogleDriveLinkCallbackView",
+    "GoogleDriveLinkInitiateView",
+    "GoogleLinkCallbackView",
+    "GoogleLinkInitiateView",
+    "GoogleLinkTokenView",
     "LoginView",
     "LogoutView",
     "MePreferencesView",

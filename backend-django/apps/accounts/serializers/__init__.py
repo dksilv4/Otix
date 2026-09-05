@@ -10,6 +10,7 @@ from apps.accounts.serializers.auth import (
     TwoFactorLoginVerifySerializer,
     VerifyEmailSerializer,
 )
+from apps.accounts.serializers.oauth import OAuthCallbackSerializer
 from apps.accounts.serializers.user import (
     RegisterSerializer,
     UserIdentitySerializer,
@@ -27,6 +28,7 @@ __all__ = [
     "ContinueItemSerializer",
     "ForgotPasswordSerializer",
     "LoginSerializer",
+    "OAuthCallbackSerializer",
     "RegisterSerializer",
     "ResetPasswordSerializer",
     "SessionSerializer",

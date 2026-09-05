@@ -6,6 +6,7 @@ all public model classes re-exported here so app code writes
 """
 
 from apps.accounts.models.managers import UserManager
+from apps.accounts.models.oauth import OAUTH_STATE_TTL_SECONDS, OAuthState
 from apps.accounts.models.security import (
     ACTION_TOKEN_HOURS,
     PURPOSE_CHOICES,
@@ -20,6 +21,8 @@ from apps.accounts.models.user import User
 
 __all__ = [
     "ACTION_TOKEN_HOURS",
+    "OAUTH_STATE_TTL_SECONDS",
+    "OAuthState",
     "PURPOSE_CHOICES",
     "PURPOSE_PASSWORD_RESET",
     "PURPOSE_VERIFY_EMAIL",

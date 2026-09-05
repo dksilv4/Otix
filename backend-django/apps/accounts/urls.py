@@ -9,6 +9,13 @@ from django.urls import path
 
 from apps.accounts.views import (
     ForgotPasswordView,
+    GoogleDisconnectView,
+    GoogleDriveDisconnectView,
+    GoogleDriveLinkCallbackView,
+    GoogleDriveLinkInitiateView,
+    GoogleLinkCallbackView,
+    GoogleLinkInitiateView,
+    GoogleLinkTokenView,
     LoginView,
     LogoutView,
     MePreferencesView,
@@ -49,4 +56,33 @@ urlpatterns = [
     ),
     path("me/preferences", MePreferencesView.as_view(), name="me-preferences"),
     path("me", MeView.as_view(), name="me"),
+    # OAuth link surface (google + google-drive). Login families mount under
+    # /auth/{provider}/ later; google/google-drive disconnect live here.
+    path("oauth/google", GoogleLinkInitiateView.as_view(), name="oauth-google"),
+    path(
+        "oauth/google/callback",
+        GoogleLinkCallbackView.as_view(),
+        name="oauth-google-callback",
+    ),
+    path("oauth/google/token", GoogleLinkTokenView.as_view(), name="oauth-google-token"),
+    path(
+        "oauth/google/disconnect",
+        GoogleDisconnectView.as_view(),
+        name="oauth-google-disconnect",
+    ),
+    path(
+        "oauth/google-drive",
+        GoogleDriveLinkInitiateView.as_view(),
+        name="oauth-google-drive",
+    ),
+    path(
+        "oauth/google-drive/callback",
+        GoogleDriveLinkCallbackView.as_view(),
+        name="oauth-google-drive-callback",
+    ),
+    path(
+        "oauth/google-drive/disconnect",
+        GoogleDriveDisconnectView.as_view(),
+        name="oauth-google-drive-disconnect",
+    ),
 ]

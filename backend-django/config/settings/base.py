@@ -271,3 +271,12 @@ PLUGIN_HOST_SECRET = os.environ.get(
 PLUGIN_EVENTS_URL = os.environ.get("PLUGIN_EVENTS_URL", "")
 PLUGIN_EVENTS_CHANNEL = os.environ.get("PLUGIN_EVENTS_CHANNEL", "otix.plugins.lifecycle")
 
+# OAuth provider credentials. Google + Google-Drive link/login share one OAuth
+# client (Google identity); other providers (plex/steam/tmdb) read their own.
+# Empty => the OAuth endpoints 503 "not configured" (never a silent success).
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+
+# Browser base URL the OAuth redirect_uri + PIN forward-urls point back at.
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173")
+

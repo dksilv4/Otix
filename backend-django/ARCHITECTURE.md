@@ -267,6 +267,20 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
 - **Recovery** — emailed single-use tokens store only a sha-256 hash
   (`services/action_tokens.py`, 24 h); new token of a purpose invalidates prior
   unused ones. Mail defaults to console in dev, locmem in tests.
+- **OAuth link — google + google-drive (increment 7, 2026-09-05)** —
+  `apps/accounts/services/oauth.py` ports the link-only family (drive has no
+  login). Authed `POST /auth/oauth/{google,google-drive}` return
+  `{auth_url, state}` (PKCE S256; google = youtube-identity scopes, drive =
+  `drive.file`); unauthed `POST …/callback` consumes single-use state → resolves
+  the owning user → code-for-token exchange → (google) OIDC userinfo → writes
+  the `google_*`/`drive_*` user columns; `DELETE …/disconnect` nulls them;
+  `GET /auth/oauth/google/token` lazily refreshes, quietly unlinking + writing
+  an `integration_disconnected` notification (social.Notification) on an
+  external `invalid_grant`. Single-use state is DB-backed (`oauth_state`,
+  migration 0004) not Redis — it is ephemeral + API-local, and a DB row needs no
+  broker. Parity 208→215 (auth 27→20). **Remaining OAuth:** plex/steam/tmdb
+  link + login families, google/plex/steam/tmdb *login* flow,
+  `GET /auth/oauth`, `GET /auth/me/integrations`.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
