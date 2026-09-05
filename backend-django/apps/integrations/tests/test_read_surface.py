@@ -8,18 +8,21 @@ Exercises the ported Plex + Steam read routes over the stored
 - ``GET /integrations/plex/libraries``
 - ``GET /integrations/plex/sessions``
 - ``GET /integrations/steam/owned-appids``
+- ``POST /integrations/plex/webhook`` (inbound; HMAC-verified, AllowAny)
 
 The Plex tv alt-URL fetch and live album-track children fetch are best-effort
 outbound; tests either leave the user without a ``plex_auth_token`` (no call)
 or patch the service ``_request`` leaf.
 """
 
+import hashlib
+import hmac
 import json
 from datetime import timedelta
 from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
@@ -650,6 +653,99 @@ class PlexSessionsTests(_ApiTestBase):
             resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {"sessions": []})
+
+
+class PlexWebhookTests(TestCase):
+    URL = "/api/v1/integrations/plex/webhook"
+    SECRET = "test-webhook-secret"
+
+    @staticmethod
+    def _sign(body: bytes, secret: str = SECRET) -> str:
+        digest = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+        return f"sha256={digest}"
+
+    def test_not_configured_403(self):
+        with override_settings(PLEX_WEBHOOK_SECRET=""):
+            resp = APIClient().post(self.URL, data="{}", content_type="application/json")
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json()["detail"], "Webhook not configured")
+
+    def test_missing_signature_401(self):
+        with override_settings(PLEX_WEBHOOK_SECRET=self.SECRET):
+            resp = APIClient().post(
+                self.URL, data='{"event": "media.play"}', content_type="application/json"
+            )
+        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.json()["detail"], "Missing signature")
+
+    def test_invalid_signature_401(self):
+        with override_settings(PLEX_WEBHOOK_SECRET=self.SECRET):
+            resp = APIClient().post(
+                self.URL,
+                data='{"event": "media.play"}',
+                content_type="application/json",
+                HTTP_X_PLEX_SIGNATURE="sha256=deadbeef",
+            )
+        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.json()["detail"], "Invalid signature")
+
+    def test_valid_json_accepted(self):
+        body = b'{"event": "media.play", "Metadata": {"key": "1"}}'
+        with override_settings(PLEX_WEBHOOK_SECRET=self.SECRET):
+            resp = APIClient().post(
+                self.URL,
+                data=body,
+                content_type="application/json",
+                HTTP_X_PLEX_SIGNATURE=self._sign(body),
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.json(), {"status": "accepted", "event": "media.play"}
+        )
+
+    def test_json_without_event_returns_none(self):
+        body = b'{"Metadata": {}}'
+        with override_settings(PLEX_WEBHOOK_SECRET=self.SECRET):
+            resp = APIClient().post(
+                self.URL,
+                data=body,
+                content_type="application/json",
+                HTTP_X_PLEX_SIGNATURE=self._sign(body),
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"status": "accepted", "event": None})
+
+    def test_undecodable_body_accepted_with_null_event(self):
+        body = b"this is not json"
+        with override_settings(PLEX_WEBHOOK_SECRET=self.SECRET):
+            resp = APIClient().post(
+                self.URL,
+                data=body,
+                content_type="application/json",
+                HTTP_X_PLEX_SIGNATURE=self._sign(body),
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"status": "accepted", "event": None})
+
+    def test_multipart_payload_accepted(self):
+        boundary = "OtixBoundary123"
+        payload = json.dumps({"event": "library.new", "Metadata": {}})
+        multipart = (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="payload"\r\n'
+            "\r\n"
+            f"{payload}\r\n"
+            f"--{boundary}--\r\n"
+        ).encode()
+        with override_settings(PLEX_WEBHOOK_SECRET=self.SECRET):
+            resp = APIClient().post(
+                self.URL,
+                data=multipart,
+                content_type=f"multipart/form-data; boundary={boundary}",
+                HTTP_X_PLEX_SIGNATURE=self._sign(multipart),
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"status": "accepted", "event": "library.new"})
 
 
 class SteamOwnedAppIdsTests(_ApiTestBase):

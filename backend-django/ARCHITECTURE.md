@@ -413,6 +413,22 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   swallowed inside the service), so no unlink logic is ported. Parity 239→240.
   **Remaining 23 = discover 4, integrations 13, notifications 1, saves 4,
   upload 1.**
+- **Plex webhook (increment 15, 2026-09-05)** — `POST /integrations/plex/webhook`
+  is the inbound, unauthenticated (AllowAny) Plex outbound-notification
+  endpoint; authenticity is entirely the HMAC-SHA256 `X-Plex-Signature` header
+  over the RAW request body signed with `PLEX_WEBHOOK_SECRET` (new setting,
+  env `PLEX_WEBHOOK_SECRET`, empty → endpoint rejects). Guards byte-for-byte:
+  403 "Webhook not configured" when secret unset, 401 "Missing signature",
+  401 "Invalid signature" (`hmac.compare_digest` of `sha256=<hex>`). Reads
+  `request.body` raw first (so form/JSON parsing can follow), then parses the
+  payload by content-type: `multipart/form-data` → the `payload` form field
+  (JSON string) or `application/json` → the raw JSON body; parse failures →
+  `None`. Answers `{"status": "accepted", "event": payload.get("event") if
+  dict else None}`. Legacy's fire-and-forget celery rescan dispatch
+  (`maintenance.sync_plex_accounts`) is deliberately NOT called yet — the sync
+  machinery is the platform wave; the handler is the seam it will hang off.
+  Parity 240→241. **Remaining 22 = discover 4, integrations 12, notifications
+  1, saves 4, upload 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

@@ -287,4 +287,7 @@ PLEX_PRODUCT = os.environ.get("PLEX_PRODUCT", "Otix")
 PLEX_VERSION = os.environ.get("PLEX_VERSION", "0.1.0")
 PLEX_TV_BASE = os.environ.get("PLEX_TV_BASE", "https://plex.tv")
 PLEX_AUTH_URL = os.environ.get("PLEX_AUTH_URL", "https://app.plex.tv/auth")
+# Shared secret for inbound Plex webhook HMAC-SHA256 verification
+# (X-Plex-Signature: sha256=...). Empty disables the webhook endpoint.
+PLEX_WEBHOOK_SECRET = os.environ.get("PLEX_WEBHOOK_SECRET", "")
 

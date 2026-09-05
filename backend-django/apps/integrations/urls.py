@@ -12,6 +12,7 @@ from apps.integrations.views import (
     PlexConnectInfoView,
     PlexLibrariesView,
     PlexSessionsView,
+    PlexWebhookView,
     SteamOwnedAppIdsView,
 )
 
@@ -31,6 +32,8 @@ urlpatterns = [
         name="plex-album-tracks",
     ),
     path("plex/sessions", PlexSessionsView.as_view(), name="plex-sessions"),
+    # Inbound provider webhook (AllowAny; HMAC-verified).
+    path("plex/webhook", PlexWebhookView.as_view(), name="plex-webhook"),
     # Steam read surface.
     path("steam/owned-appids", SteamOwnedAppIdsView.as_view(), name="steam-owned-appids"),
 ]
