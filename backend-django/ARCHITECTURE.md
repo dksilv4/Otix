@@ -351,15 +351,17 @@ agents can trust the schema without re-reading the legacy FastAPI domain code.
   `class-not-fully-defined`), so response-shape parity is read per area from
   `backend/otix/api/<area>/**` + `backend/otix/schemas/**` until that is fixed.
 - **Coverage tool**: `scripts/parity_report.py` diffs the Django URLconf
-  against the frozen contract and prints remaining routes grouped by area.
-  Current (2026-09-05): **156/263 ported**, full suite **256 tests green**,
-  `ruff check .` + `manage.py check` clean. Every DB-backed area is ported or
-  in flight; the remaining ~70 are deliberately deferred to the platform /
-  real-auth wave (task #6): auth(42), integrations(18 incl Google-Drive
-  cloud-save proxy), upload(1), discover(4 — Redis+personalization+IGDB bound,
-  no tables), `/notifications/stream` SSE. In flight: users(32)→`accounts`+
-  `social`, and the small tail (tracks rating + calendar→`media`,
-  saves-locations→`track`). Run `scripts/parity_report.py` for live numbers.
+  against the frozen contract at **METHOD+path granularity** (a template whose
+  view lacks the frozen HTTP method is a *method-gap*, not silently counted).
+  Current (2026-09-05, wave #4 COMPLETE): **193/263 ported, 0 method-gaps**,
+  full suite **299 tests green**, `ruff check .` + `manage.py check` clean.
+  Every DB-backed area is ported; the remaining 70 are deliberately deferred to
+  the platform / real-auth wave (task #6): auth(42 — sessions/OAuth/2FA/password
+  reset all real-auth), integrations(18 incl Google-Drive cloud-save proxy),
+  Google-Drive saves proxy(4), upload(1), discover(4 — Redis+personalization+
+  IGDB bound, no tables), `/notifications/stream` SSE(1). Run
+  `scripts/parity_report.py` for live numbers (it adds the repo root to
+  `sys.path`, so it runs from any CWD).
 - **Porting order guidance**: media hub reads first (highest traffic), then
   people/company, social, lists, proposals, integrations/push, search, workout,
   library/track/blueprint, admin. Each area agent mirrors the accounts golden
@@ -400,7 +402,8 @@ Conventions a porting agent must follow (mirror `apps/company`/`apps/people` +
 - Score ranges are read from the legacy request schema (often 1–5) and may be
   stricter than the model CheckConstraint (1–10); keep the legacy API range.
 - Ported areas may target different apps than legacy prefixes imply
-  (`/person` → `people` app, `/list` → `lists` app). Area→app map (all DB-backed areas DONE except where noted):
+  (`/person` → `people` app, `/list` → `lists` app). Area→app map — **wave #4 is
+  COMPLETE (2026-09-05): parity 193/263, 0 method-gaps, 299 tests green**:
   person(7)+company(5) done; auth(3: register/me/health) done — remaining 42
   auth routes defer to §7 real-auth task; list(18)→`lists`; push(3)→`push`;
   blueprints(7)→`blueprint`; search(8)→`search`; library GET(10)→`library`;

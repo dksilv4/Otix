@@ -8,7 +8,12 @@ business/domain logic that grows beyond a line or two moves to
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
-from apps.accounts.serializers import RegisterSerializer, UserIdentitySerializer, UserSelfSerializer
+from apps.accounts.serializers import (
+    RegisterSerializer,
+    UserIdentitySerializer,
+    UserSelfSerializer,
+    UserUpdateSerializer,
+)
 
 
 class RegisterView(generics.GenericAPIView):
@@ -32,13 +37,25 @@ class RegisterView(generics.GenericAPIView):
         )
 
 
-class MeView(generics.RetrieveAPIView):
-    """Return the authenticated user's own profile.
+class MeView(generics.GenericAPIView):
+    """The authenticated user's own profile (GET) and partial update (PATCH).
 
-    Inherits the global ``IsAuthenticated`` permission and token auth.
+    ``PATCH /auth/me`` mirrors legacy ``UserUpdateRequest``: only the fields on
+    ``UserUpdateSerializer`` are writable and unrecognised keys are ignored.
     """
 
     serializer_class = UserSelfSerializer
+    update_serializer_class = UserUpdateSerializer
 
     def get_object(self):
         return self.request.user
+
+    def get(self, request, *args, **kwargs):
+        return Response(UserSelfSerializer(self.get_object()).data)
+
+    def patch(self, request, *args, **kwargs):
+        user = self.get_object()
+        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSelfSerializer(user).data)

@@ -9,8 +9,19 @@ suggest POST, reading ``GameSaveOfficialPath`` / ``GameSavePathSuggestion``).
 The four Google-Drive cloud-sync routes (files/download/upload/delete) are
 deferred: they proxy Google Drive via the integrations/real-OAuth platform
 (ARCHITECTURE §7) and are intentionally not mounted.
-
-Populated by the wave-#4 tail owner.
 """
 
-urlpatterns = []
+from django.urls import path
+
+from apps.track.views import SaveLocationSuggestView, SaveLocationsView
+
+app_name = "saves"
+
+urlpatterns = [
+    path("locations/<int:media_item_id>", SaveLocationsView.as_view(), name="save-locations"),
+    path(
+        "locations/<int:media_item_id>/suggest",
+        SaveLocationSuggestView.as_view(),
+        name="save-location-suggest",
+    ),
+]

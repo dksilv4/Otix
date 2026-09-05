@@ -37,6 +37,22 @@ class UserSelfSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """Partial self-update of the authenticated user (``PATCH /auth/me``).
+
+    Mirrors legacy ``UserUpdateRequest`` semantics: only the profile fields the
+    greenfield ``User`` currently carries are writable; any other body key is
+    silently ignored by DRF (it is not a declared field). Uniqueness on
+    username/email is enforced with the current instance excluded.
+    """
+
+    email = serializers.EmailField(required=False, allow_blank=True)
+
+    class Meta:
+        model = User
+        fields = ("username", "email", "display_name", "avatar_url")
+
+
 class RegisterSerializer(serializers.Serializer):
     """Create a new account.
 

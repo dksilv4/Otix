@@ -68,3 +68,55 @@ class AuthFlowTests(TestCase):
         self.assertEqual(response.data["username"], "carol")
         self.assertEqual(response.data["email"], "carol@example.com")
         self.assertIn("created_at", response.data)
+
+    # ── PATCH /auth/me (self-update) ───────────────────────────────
+    def _authed_client(self) -> tuple[APIClient, User]:
+        user = User.objects.create_user(
+            username="dave", email="dave@example.com", password="a-strong-pass-123"
+        )
+        token = Token.objects.create(user=user)
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+        return client, user
+
+    def test_me_patch_updates_profile_fields(self) -> None:
+        client, _ = self._authed_client()
+        response = client.patch(
+            "/api/v1/auth/me",
+            {"display_name": "Davey", "avatar_url": "https://cdn.example.com/x.png"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["display_name"], "Davey")
+        self.assertEqual(response.data["avatar_url"], "https://cdn.example.com/x.png")
+        user = User.objects.get(username="dave")
+        self.assertEqual(user.display_name, "Davey")
+
+    def test_me_patch_ignores_unknown_keys(self) -> None:
+        client, _ = self._authed_client()
+        response = client.patch(
+            "/api/v1/auth/me",
+            {"bio": "not a field", "display_name": "Updated"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["display_name"], "Updated")
+        self.assertNotIn("bio", response.data)
+
+    def test_me_patch_duplicate_username_rejected(self) -> None:
+        User.objects.create_user(username="taken", password="a-strong-pass-123")
+        client, _ = self._authed_client()
+        response = client.patch(
+            "/api/v1/auth/me",
+            {"username": "taken"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_me_patch_requires_auth(self) -> None:
+        response = APIClient().patch(
+            "/api/v1/auth/me",
+            {"display_name": "anon"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 401)
