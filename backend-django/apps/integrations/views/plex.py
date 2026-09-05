@@ -4,16 +4,19 @@
 ``/connect-info/{media_item_id}`` returns connect details (base URLs + token +
 thumb URL) for the user's scanned copy of a catalog media item; both are pure
 reads over the stored ``UserPlex*`` rows. ``/servers`` discovers the user's
-servers + libraries live from plex.tv. ``/album-tracks/{media_item_id}``
+servers + libraries live from plex.tv. ``/stream/{rating_key}`` 302-redirects
+to a signed browser-streamable URL for a media item. ``/album-tracks/{media_item_id}``
 fetches a music album's track list and ``/sessions`` active playback, live from
 the user's Plex server.
 """
 
+from django.http import HttpResponse
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.integrations import services as integrations_services
+from apps.integrations.models import UserPlexServer
 
 # Matches ``accounts.services.oauth._PLEX_TOKEN_COLUMNS`` — the legacy
 # ``unlink_plex_quietly`` field set. Notifications dispatch is deferred to the
@@ -152,3 +155,29 @@ class PlexServersView(APIView):
                 "unreachable_servers": unreachable_servers or None,
             }
         )
+
+
+class PlexStreamView(APIView):
+    """GET /integrations/plex/stream/{rating_key} — 302 to a signed stream URL."""
+
+    def get(self, request, rating_key: str):
+        user = request.user
+        # Fast path: resolve against an explicit base URL (no discovery).
+        base_url_hint = request.query_params.get("base_url")
+        if base_url_hint:
+            token = user.plex_auth_token
+            for server in UserPlexServer.objects.filter(user=user):
+                if server.access_token:
+                    token = server.access_token
+                    break
+            if token:
+                url = integrations_services.resolve_stream_url_for_server_with_base(
+                    base_url_hint, token, rating_key
+                )
+                if url is not None:
+                    return HttpResponse(status=302, headers={"Location": url})
+
+        url = integrations_services.get_plex_stream_url(user, rating_key)
+        if url is None:
+            raise NotFound("Stream URL not available")
+        return HttpResponse(status=302, headers={"Location": url})

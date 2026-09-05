@@ -7,6 +7,7 @@ Exercises the ported Plex + Steam read routes over the stored
 - ``GET /integrations/plex/album-tracks/{media_item_id}``
 - ``GET /integrations/plex/libraries``
 - ``GET /integrations/plex/servers`` (live plex.tv server/library discovery)
+- ``GET /integrations/plex/stream/{rating_key}`` (302 to a signed stream URL)
 - ``GET /integrations/plex/sessions``
 - ``GET /integrations/steam/owned-appids``
 - ``POST /integrations/plex/webhook`` (inbound; HMAC-verified, AllowAny)
@@ -987,3 +988,125 @@ class PlexServersDiscoveryTests(_ApiTestBase):
         self.assertEqual(resp.status_code, 502)
         detail = resp.json()["detail"]
         self.assertTrue(detail.startswith("Could not connect to Plex at https://plex.tv/api/v2/resources"))
+
+
+STREAM_METADATA = {
+    "MediaContainer": {
+        "Metadata": [
+            {
+                "ratingKey": "123",
+                "title": "Interstellar",
+                "Media": [{"Part": [{"key": "/library/parts/987/file.mkv"}]}],
+            }
+        ]
+    }
+}
+
+
+class PlexStreamTests(_ApiTestBase):
+    URL = "/api/v1/integrations/plex/stream/123"
+
+    def setUp(self):
+        super().setUp()
+        self.user.plex_auth_token = "ptok"
+        self.user.save(update_fields=["plex_auth_token"])
+
+    def _synced_item(self, server, rating_key="123"):
+        return UserPlexItem.objects.create(
+            user=self.user,
+            server=server,
+            rating_key=rating_key,
+            media_type="movie",
+            title="Interstellar",
+        )
+
+    @staticmethod
+    def _fake(metadata=STREAM_METADATA, bad_hosts=()):
+        body = json.dumps(metadata)
+
+        def fake(url, **_kwargs):
+            if any(host in url for host in bad_hosts):
+                return (500, "boom")
+            return (200, body)
+
+        return fake
+
+    def test_fast_path_redirects_with_base_url_query(self):
+        with mock.patch(
+            "apps.integrations.services.plex._request", side_effect=self._fake()
+        ):
+            resp = self.client.get(self.URL + "?base_url=http://192.168.1.5:32400")
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            resp.headers["Location"],
+            "http://192.168.1.5:32400/library/parts/987/file.mkv?X-Plex-Token=ptok",
+        )
+
+    def test_fast_path_falls_through_when_hint_fails(self):
+        server = _make_server(
+            self.user, name="NAS", base_url="http://server:32400", token="srv-tok"
+        )
+        self._synced_item(server)
+        with mock.patch(
+            "apps.integrations.services.plex._request",
+            side_effect=self._fake(bad_hosts=("http://bad:32400",)),
+        ):
+            resp = self.client.get(self.URL + "?base_url=http://bad:32400")
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            resp.headers["Location"],
+            "http://server:32400/library/parts/987/file.mkv?X-Plex-Token=srv-tok",
+        )
+
+    def test_no_base_url_uses_synced_item_server(self):
+        server = _make_server(
+            self.user, name="NAS", base_url="http://server:32400", token="srv-tok"
+        )
+        self._synced_item(server)
+        with mock.patch(
+            "apps.integrations.services.plex._request", side_effect=self._fake()
+        ):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            resp.headers["Location"],
+            "http://server:32400/library/parts/987/file.mkv?X-Plex-Token=srv-tok",
+        )
+
+    def test_falls_back_across_servers_without_synced_item(self):
+        _make_server(
+            self.user, name="Broken", base_url="http://broken:32400", token="tok1", machine="m1"
+        )
+        _make_server(
+            self.user, name="Backup", base_url="http://srv2:32400", token="tok2", machine="m2"
+        )
+
+        def fake(server, _user, _path):
+            if server.machine_identifier == "m1":
+                return None
+            return STREAM_METADATA, server.base_url
+
+        with mock.patch(
+            "apps.integrations.services.plex._plex_server_get", side_effect=fake
+        ):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            resp.headers["Location"],
+            "http://srv2:32400/library/parts/987/file.mkv?X-Plex-Token=tok2",
+        )
+
+    def test_404_when_no_server_resolves(self):
+        with mock.patch("apps.integrations.services.plex._plex_server_get", return_value=None):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json(), {"detail": "Stream URL not available"})
+
+    def test_with_base_non_200_returns_none(self):
+        with mock.patch(
+            "apps.integrations.services.plex._request", return_value=(500, "boom")
+        ):
+            url = integrations_services.resolve_stream_url_for_server_with_base(
+                "http://x:32400", "tok", "9"
+            )
+        self.assertIsNone(url)

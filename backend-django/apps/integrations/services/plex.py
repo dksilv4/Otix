@@ -638,3 +638,83 @@ def discover_plex_libraries(user, server: UserPlexServer) -> list[UserPlexLibrar
         library.save()
         libraries.append(library)
     return libraries
+
+
+# ── Stream URL (GET /integrations/plex/stream/{rating_key}) ──────────────
+
+def _signed_stream_url(base_url: str, token: str, data: dict) -> str | None:
+    """Build the signed Plex media-file URL from a metadata payload's first part."""
+    container = data.get("MediaContainer", data)
+    items = _as_list(container.get("Metadata"))
+    if not items:
+        return None
+    media_parts = _as_list(items[0].get("Media"))
+    if not media_parts:
+        return None
+    parts = _as_list(media_parts[0].get("Part"))
+    if not parts:
+        return None
+    part_key = parts[0].get("key")
+    if not part_key:
+        return None
+    url = f"{base_url}{part_key}"
+    return f"{url}{'&' if '?' in url else '?'}X-Plex-Token={token}"
+
+
+def _resolve_stream_url_for_server(server: UserPlexServer, user, rating_key: str) -> str | None:
+    """Resolve a stream URL through one Plex server (base URL + alt fallbacks)."""
+    token = server.access_token or user.plex_auth_token
+    if not token:
+        return None
+    result = _plex_server_get(server, user, f"/library/metadata/{rating_key}")
+    if result is None:
+        return None
+    data, working_base_url = result
+    return _signed_stream_url(working_base_url, token, data)
+
+
+def resolve_stream_url_for_server_with_base(
+    base_url: str, token: str, rating_key: str
+) -> str | None:
+    """Fast path: resolve a stream URL against one explicit base URL (no discovery).
+
+    Mirrors legacy ``_resolve_stream_url_for_server_with_base`` — any network
+    failure, non-200, or missing media part yields ``None`` (caller falls back).
+    """
+    try:
+        status, raw = _request(
+            _with_token(f"{base_url}/library/metadata/{rating_key}", token),
+            headers=_plex_headers(),
+            timeout=8.0,
+        )
+    except Exception:
+        return None
+    if status != 200:
+        return None
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return None
+    return _signed_stream_url(base_url, token, data)
+
+
+def get_plex_stream_url(user, rating_key: str) -> str | None:
+    """Resolve a Plex ``rating_key`` to a signed browser-streamable URL (or None).
+
+    Prefers the server behind the user's synced ``UserPlexItem`` for the rating
+    key, then tries every stored server in turn (legacy ordering).
+    """
+    plex_item = (
+        UserPlexItem.objects.filter(user=user, rating_key=rating_key)
+        .select_related("server")
+        .first()
+    )
+    if plex_item is not None and plex_item.server is not None:
+        url = _resolve_stream_url_for_server(plex_item.server, user, rating_key)
+        if url is not None:
+            return url
+    for server in UserPlexServer.objects.filter(user=user):
+        url = _resolve_stream_url_for_server(server, user, rating_key)
+        if url is not None:
+            return url
+    return None

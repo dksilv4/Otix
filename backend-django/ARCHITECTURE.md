@@ -454,6 +454,20 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   over the token-embedded URL (as legacy echoed `request.url`). Tests patch the
   `_request` leaf (11 new). Parity 241→242. **Remaining 21 = discover 4,
   integrations 11, notifications 1, saves 4, upload 1.**
+- **Plex stream URL (increment 17, 2026-09-05)** — `GET
+  /integrations/plex/stream/{rating_key}` 302-redirects to a signed
+  browser-streamable Plex media URL (the player's direct-stream link). Optional
+  `?base_url=` fast path (first stored server `access_token`, else the user's
+  `plex_auth_token`) mirrors legacy `_resolve_stream_url_for_server_with_base`
+  — single explicit-base GET, any failure → fall through. Main path
+  `get_plex_stream_url` prefers the server behind the user's synced
+  `UserPlexItem` for the rating key, then every stored server, via the existing
+  `_plex_server_get` base-url/alt fallback. Shared `_signed_stream_url` helper
+  pulls the first `Media.Part.key` and appends `?X-Plex-Token=<token>`.
+  Unresolvable → 404 `{"detail": "Stream URL not available"}` (byte-for-byte).
+  Tests patch the `_request`/`_plex_server_get` seams (6 new). Parity 242→243.
+  **Remaining 20 = discover 4, integrations 10, notifications 1, saves 4,
+  upload 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
