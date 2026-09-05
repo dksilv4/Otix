@@ -9,7 +9,11 @@ from apps.integrations.views.plex import (
     PlexStreamView,
     PlexWatchlistSyncView,
 )
-from apps.integrations.views.steam import SteamOwnedAppIdsView
+from apps.integrations.views.steam import (
+    SteamLibraryScanView,
+    SteamOwnedAppIdsView,
+    SteamWishlistScanView,
+)
 from apps.integrations.views.webhook import PlexWebhookView
 
 __all__ = [
@@ -21,5 +25,7 @@ __all__ = [
     "PlexStreamView",
     "PlexWatchlistSyncView",
     "PlexWebhookView",
+    "SteamLibraryScanView",
     "SteamOwnedAppIdsView",
+    "SteamWishlistScanView",
 ]

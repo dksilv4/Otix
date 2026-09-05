@@ -291,3 +291,7 @@ PLEX_AUTH_URL = os.environ.get("PLEX_AUTH_URL", "https://app.plex.tv/auth")
 # (X-Plex-Signature: sha256=...). Empty disables the webhook endpoint.
 PLEX_WEBHOOK_SECRET = os.environ.get("PLEX_WEBHOOK_SECRET", "")
 
+# Steam Web API key used by the library/wishlist scan routes (optional; unset →
+# those routes answer 503 "Steam API key not configured").
+STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "")
+

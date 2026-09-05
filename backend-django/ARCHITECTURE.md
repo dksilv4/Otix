@@ -515,6 +515,24 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   upload 1.** (first media-seeding engine live; remaining integrations syncs
   are steam/tmdb/youtube + plex/sync SSE, all needing the same engine or the
   platform wave.)
+- **Steam library + wishlist scans (increment 20, 2026-09-05)** —
+  `POST /integrations/steam/scan` + `POST /integrations/steam/wishlist/scan`
+  port the legacy ``steam_library_service`` scan core. `apps/integrations/
+  services/steam.py` fetches owned games (Steam Web API `IPlayerService/
+  GetOwnedGames/v1/` with `STEAM_API_KEY`/steamid/include_appinfo/
+  include_played_free_games) or the wishlist (undocumented `store.steampowered
+  .com/wishlist/profiles/{id}/wishlistdata/?p=0`, which needs no key and answers
+  HTML/redirect for private profiles → `private: True`) through a module
+  `_request` urllib leaf; matches appids to catalog games via existing ``steam``
+  ``ExternalID`` rows (stage-1), then upserts `UserSteamGame`/`UserSteamWishlist`
+  (preload-existing + `bulk_create` for new rows). The legacy scan tail delegates
+  unmatched games to the IGDB `GameMatcher` resolver (4-stage pipeline) which is
+  NOT ported — deferred platform slice; the 5-field scan shape is kept truthful:
+  `resolved`/`synced`=0 and `failed`= the count left unmatched. New `STEAM_API_KEY`
+  setting (env; default ""). Views guard 400 "No Steam account linked", 503
+  "Steam API key not configured", 500 per-route. Tests patch the `_request` seam
+  (20 new). Parity 248→250. **Remaining 13 = discover 4, integrations 7,
+  notifications 1, upload 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

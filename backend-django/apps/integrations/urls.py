@@ -16,7 +16,9 @@ from apps.integrations.views import (
     PlexStreamView,
     PlexWatchlistSyncView,
     PlexWebhookView,
+    SteamLibraryScanView,
     SteamOwnedAppIdsView,
+    SteamWishlistScanView,
 )
 
 app_name = "integrations"
@@ -44,6 +46,12 @@ urlpatterns = [
     ),
     # Inbound provider webhook (AllowAny; HMAC-verified).
     path("plex/webhook", PlexWebhookView.as_view(), name="plex-webhook"),
-    # Steam read surface.
+    # Steam read + scan surface.
     path("steam/owned-appids", SteamOwnedAppIdsView.as_view(), name="steam-owned-appids"),
+    path("steam/scan", SteamLibraryScanView.as_view(), name="steam-scan"),
+    path(
+        "steam/wishlist/scan",
+        SteamWishlistScanView.as_view(),
+        name="steam-wishlist-scan",
+    ),
 ]
