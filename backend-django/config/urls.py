@@ -31,6 +31,7 @@ urlpatterns = [
     path("api/v1/search/", include("apps.search.urls")),
     path("api/v1/library/", include("apps.library.urls")),
     path("api/v1/media/", include("apps.media.urls")),
+    path("api/v1/discover/", include("apps.discover.urls")),
     path("api/v1/tracks/", include("apps.media.tracks_urls")),
     path("api/v1/calendar", include("apps.media.calendar_urls")),
     path("api/v1/saves/", include("apps.track.saves_urls")),

@@ -568,6 +568,28 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   base.py (env, default ""). Legacy auto-unlink-on-revoked deferred. Tests
   patch ``tmdb._request`` (18 new). Parity 251→253. **Remaining 10 = discover 4,
   integrations 5, notifications 1.**
+- **Discover hero + list_type (increment 23, 2026-09-05)** — `GET
+  /discover/hero` + `GET /discover/{media_type}/{list_type}` (2 of the remaining
+  10 routes). New read-only `apps/discover` domain (no models → no migration):
+  `apps/discover/services/discover.py` holds the legacy list-type vocabulary
+  (`_LIST_CONFIG`, `_date_filter` windows: trending_window/recent/future) and
+  both feed builders. `apps/media/services/catalog.list_media` gained optional
+  ``has_artwork``/``has_logo``/``date_from``/``date_to`` filters (has_artwork
+  mirrors the legacy textless-poster rule: movie/show need a ``textless_poster``
+  asset, game/music fall back to ``poster``; has_logo = ``logo`` asset exists).
+  Both views are public (``AllowAny``, optional user): hero pulls a shuffled
+  pool of ``min(limit*4, 50)`` artwork-backed rows and returns
+  ``{items, has_more, next_cursor}``; list_type reuses the page-paginated
+  browse machinery (``DefaultPagination`` + ``enrich_summaries`` +
+  ``MediaItemSummarySerializer``) with media/list-type validation → 400. Legacy
+  personalization seeding is DEFERRED: collaborative/semantic/integration_steam/
+  integration_plex fall through to the generic popularity listing (exactly
+  legacy's no-seeds branch) and ``new_season_for_you`` returns an empty feed
+  (nothing to seed it from); /sections + /free-games/match stay deferred. Adult
+  policy + language (en-US→en prefix) + is_anime narrowing mirrored. Redis
+  result-caching deferred across the port. Tests (17 new). Parity 253→255.
+  **Remaining 8 = discover 2 (sections, free-games/match), integrations 5,
+  notifications 1.**
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

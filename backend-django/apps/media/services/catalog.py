@@ -8,12 +8,14 @@ used, so serializers can read ``obj.poster_url`` etc. without per-field queries.
 
 from __future__ import annotations
 
+from datetime import date
+
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Exists, OuterRef, Q
 from django.db.models.query import QuerySet
 
 from apps.company.models import Company
-from apps.media.models import ExternalID, Genre, MediaItem, MediaRelease
+from apps.media.models import ExternalID, Genre, MediaAsset, MediaItem, MediaRelease
 from apps.media.services.interaction import attach_user_interactions
 
 _User = AbstractBaseUser | AnonymousUser | None
@@ -122,13 +124,20 @@ def list_media(
     sort_by: str | None = None,
     sort_dir: str = "desc",
     person_id: int | None = None,
+    has_artwork: bool = False,
+    has_logo: bool = False,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> QuerySet:
     """Paginated catalog browse (legacy ``MediaService.list_media``).
 
-    Financial sorts and artwork/credit-role filters that required legacy joins
-    are approximated: ``revenue``/``budget`` sort against the movie subtype and
-    ``person_id`` filters on credited person. Embedding-dependent features are
-    not represented (schema defers vectors).
+    Financial sorts and credit-role filters that required legacy joins are
+    approximated: ``revenue``/``budget`` sort against the movie subtype and
+    ``person_id`` filters on credited person. ``has_artwork`` mirrors the
+    legacy textless-poster rule (game/music fall back to plain poster);
+    ``has_logo``/``date_from``/``date_to`` filter on logo assets and
+    ``release_date``. Embedding-dependent features are not represented
+    (schema defers vectors).
     """
     qs = MediaItem.objects.all()
     if media_type:
@@ -148,6 +157,33 @@ def list_media(
         qs = qs.filter(is_adult=False)
     if person_id is not None:
         qs = qs.filter(credits__person_id=person_id)
+    if has_artwork:
+        # Movies/shows need a textless poster (TMDB+Fanart provide it); games
+        # (IGDB covers) and music (album art) have text baked in, so their
+        # plain poster counts. Mirrors legacy `MediaService.list_media`.
+        qs = qs.annotate(
+            _has_textless=Exists(
+                MediaAsset.objects.filter(
+                    media_item_id=OuterRef("pk"), asset_type="textless_poster"
+                )
+            ),
+            _has_poster=Exists(
+                MediaAsset.objects.filter(media_item_id=OuterRef("pk"), asset_type="poster")
+            ),
+        ).filter(
+            Q(_has_textless=True)
+            | (Q(media_type__in=["game", "music"]) & Q(_has_poster=True))
+        )
+    if has_logo:
+        qs = qs.filter(
+            Exists(
+                MediaAsset.objects.filter(media_item_id=OuterRef("pk"), asset_type="logo")
+            )
+        )
+    if date_from is not None:
+        qs = qs.filter(release_date__gte=date_from)
+    if date_to is not None:
+        qs = qs.filter(release_date__lte=date_to)
 
     direction = "-" if sort_dir == "desc" else ""
     sort_map = {
