@@ -1194,6 +1194,40 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   appear; entries missing a tmdb id or name are skipped). **Next deferred
   piece:** the MusicBrainz album ingest engine, then the bulk catalog-seed
   driver, then the IGDB/SteamGrid hydration tail.
+- **MusicBrainz album ingest engine (increment 43, 2026-09-05): parity 263/263
+  unchanged, FULL suite 873 (10 new).** The album analogue of the TMDB engine:
+  ``seed_album_from_musicbrainz`` in ``apps/media/services/musicbrainz_ingest.py``
+  maps a release lookup onto ``MediaItem`` (``media_type="music"`` — the
+  discriminator albums use; the ``Album`` subtype PK = hub pk) + ``Album``
+  subtype + ``Track`` rows + a ``musicbrainz`` ``ExternalID`` scoped
+  ``media_type="music"``. Resolution is by the musicbrainz ExternalID only —
+  albums share titles, so there is deliberately **no same-slug cross-provider
+  fallback** (unlike movies/shows) to avoid merging distinct releases. ``Album``
+  growth fields (``release_type`` from the release-group primary-type map,
+  ``format``/``catalog_number``/``barcode`` from the medium/label-info, track/
+  disc counts, summed ``duration_ms``) refresh each sync; tracks are upserted
+  **add-only keyed on the recording MBID** (the legacy ``hydrate_tracks``
+  semantics) so a re-sync never duplicates or drops existing track rows (their
+  user ratings survive) while new tracks are added — removed tracks are not
+  deleted. Per-track recording ``ExternalID`` rows are content-type-``Track``.
+  ``completeness_score`` 0.15 + ``next_sync_at`` mirror the base-seed posture.
+  ``fetch_and_seed_album`` async driver fetches over
+  ``core.providers.musicbrainz.get_release``; a registered ``musicbrainz`` sync
+  engine (``apps/integrations/services/musicbrainz_sync.py``, ``entity_type``
+  must be ``album``, external_id = MBID string — blank errors) mirrors the tmdb
+  engine's ``asyncio.run`` bridge, ``musicbrainz_progress`` prefab, and
+  call-time ``globals()`` fetcher resolution; wired into the eager/real worker
+  task imports. No model fields → no migration. Tests: 5 media-level
+  (``SeedAlbumFromMusicbrainzTests`` — full hub/album/tracks + release & recording
+  ExternalID mapping incl. disc/track order and summed duration; re-seed refresh
+  adds a new disc-2 track only once; same title + different MBID are separate
+  rows; missing-id ValueError — plus a ``FetchAndSeedAlbumTests`` stub-seed fetch
+  roundtrip) + 5 engine roundtrip tests (album job → ``fetching_album``/
+  ``album_seeded`` frames + stored result, existing-MBID ``album_matched``,
+  unsupported entity_type + blank MBID + fetch-failure error paths). **Next
+  deferred piece:** the bulk catalog-seed driver, then the IGDB/SteamGrid
+  hydration tail (artist credits/labels/genres/cover + url-rel ids for albums
+  remain the MBZ full-hydration pass).
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
