@@ -1225,9 +1225,40 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   roundtrip) + 5 engine roundtrip tests (album job → ``fetching_album``/
   ``album_seeded`` frames + stored result, existing-MBID ``album_matched``,
   unsupported entity_type + blank MBID + fetch-failure error paths). **Next
-  deferred piece:** the bulk catalog-seed driver, then the IGDB/SteamGrid
-  hydration tail (artist credits/labels/genres/cover + url-rel ids for albums
-  remain the MBZ full-hydration pass).
+  deferred piece:** the bulk catalog-seed driver (now increment 44), then the
+  IGDB/SteamGrid hydration tail (artist credits/labels/genres/cover + url-rel
+  ids for albums remain the MBZ full-hydration pass).
+- **Bulk catalog-seed driver (increment 44, 2026-09-05): parity 263/263
+  unchanged, FULL suite 887 (14 new).** The bulk counterpart to the per-id
+  ``POST .../sync`` enqueue: ``apps/integrations/services/catalog_seed.py``
+  mirrors the legacy ``priority_seed`` / ``drain_priority`` pair minus the Redis
+  priority-ZSET and the ``ExternalID``-stub backlog — the durable ``SyncJob``
+  table is itself the queue, so ``enqueue_seed_jobs`` dedupes (skips ids a
+  catalog row already maps on the media content type via ``ExternalID``, and
+  ids a live pending/running job already targets; completed jobs do *not* block
+  re-enqueue) and persists one pending ``SyncJob`` per unseen id, while
+  ``run_pending_jobs`` drains the oldest pending rows (optional provider/
+  entity_type filter, limit) through ``execute_sync_job`` — so it doubles as the
+  body of a future beat task. ``enqueue_tmdb_popular`` is the first concrete
+  discovery source (the legacy ``priority_seed`` TMDB discover step): it pages
+  the popular movie/show list up to a limit over the ported async client and
+  enqueues every id that is not already mapped, crossing the DB write to a
+  worker thread via ``sync_to_async``. First management command
+  (``apps/integrations/management/commands/catalog_seed.py``, the repo's first
+  ``management`` package): ``catalog_seed --kind movie --limit 25 --drain``
+  tops up the queue and optionally consumes it. IGDB/SteamGrid/MusicBrainz
+  discovery sources, the daily TMDB export import, and a periodic beat schedule
+  stay deferred (the inc-36/37 clients and album engine are wired for them).
+  No model fields → no migration. Tests: 6 enqueue-dedupe (per-id create /
+  already-mapped skip / live-job skip / completed-does-not-block / blank+dup
+  collapse / all-blank no-op), 3 drain (oldest-up-to-limit FIFO, entity-type
+  filter, failed/skipped counting — orchestrator seam stubbed), 4 discovery
+  (pages-to-limit over ``MockTransport`` popular payloads with the enqueue step
+  stubbed, empty-page stop, created-id reporting, unsupported entity_type
+  ValueError), 1 command smoke (enqueue awaited with kind/limit + drain called,
+  both patched). **Next deferred piece:** the IGDB/SteamGrid hydration tail
+  (artist credits/labels/genres/cover + url-rel ids for albums remain the MBZ
+  full-hydration pass), then a periodic beat schedule + the daily TMDB export.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
