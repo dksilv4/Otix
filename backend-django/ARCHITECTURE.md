@@ -1361,6 +1361,45 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   ``get_cover_art`` stubs plus a cover-attached-after-seed roundtrip. **Next
   deferred piece:** a periodic beat schedule + the daily TMDB export import,
   then the ingest/enrich/embedding queue machinery.
+- **TMDB daily-export import + periodic beat schedule (increment 48, 2026-09-06):
+  parity 263/263 unchanged, FULL suite 939 (17 new).** Closes the inc-44
+  deferred "daily export import + beat" — the catalog-seed driver now runs on a
+  schedule and gains its full-catalog discovery source.
+  ``apps/integrations/services/catalog_seed.py``: ``enqueue_tmdb_daily(
+  entity_type, limit=None)`` mirrors the legacy ``seed.tmdb_daily_import`` minus
+  the ExternalID-stub backlog and deletion scan (no TMDBDeletedID table here;
+  both stay deferred) — it downloads the daily ``movie_ids``/``tv_series_ids``
+  dump from files.tmdb.org and enqueues a tmdb ``SyncJob`` per id the catalog
+  does not already map, so a re-run after the build is a cheap no-op that only
+  picks up new ids. ``download_tmdb_export`` streams today's gzip export (then
+  yesterday's; 403/404 = not-published/pruned → previous day; any real
+  HTTP/transport error propagates) to a temp file over an injectable httpx
+  client it owns + closes; ``iter_export_ids`` walks the bracket/NDJSON lines.
+  Ids are fed to ``enqueue_seed_jobs`` through ``sync_to_async`` in
+  ``_ENQUEUE_BATCH_SIZE`` (2000) chunks so the dedupe IN stays bounded on a
+  full-file run; ``export`` unavailable is reported, not raised; unsupported
+  entity_type raises (movie/show only today). ``run_daily_tmdb_import`` = the
+  sync beat body (two sequential ``asyncio.run`` passes, movie then show).
+  Beat wrappers in ``apps/integrations/tasks/__init__.py`` — resolved through
+  the ``catalog_seed`` module attribute at call time so tests patch them:
+  ``integrations.catalog_daily_tmdb`` (no-ops ``unconfigured`` without a TMDB
+  API key; per-kind walk bounded by ``CATALOG_DAILY_TMDB_LIMIT``, default whole
+  file) and ``integrations.catalog_drain`` (``run_pending_jobs`` bounded by
+  ``CATALOG_DRAIN_LIMIT`` default 200) — exactly the beat body inc-44 promised
+  the driver would double as. ``config/settings/base.py`` now fills
+  ``CELERY_BEAT_SCHEDULE``: daily ``crontab(hour=3, minute=7)`` +
+  backlog ``crontab(minute="*/5")`` (dev-compose beat has idled until now).
+  ``catalog_seed`` command gains ``--source popular|daily`` (``--limit 0`` =
+  whole export for daily; popular still rejects 0). Tests: 17 (``iter_export_ids``
+  marker/comma/bad-row + limit; download today / 404-today-fallback-yesterday /
+  both-404-None / 500-propagates over MockTransport + real gzip bytes;
+  enqueue chunked-feed via a lowered batch-size + unavailable + unsupported;
+  run_daily imports movie then show; beat tasks unconfigured / limited / drain /
+  schedule-targets-both-tasks; command daily whole-file + bounded + popular-zero
+  reject). No model fields → no migration. **Next deferred piece:** the
+  ingest/enrich/embedding queue machinery (the four worker / multi-queue task-#6
+  half of the beat schedule above), then trigram, embeddings, prod-compose
+  cutover.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

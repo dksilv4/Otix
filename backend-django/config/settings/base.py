@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import dotenv
+from celery.schedules import crontab
 
 # backend-django/config/settings/base.py -> backend-django/
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -262,17 +263,34 @@ else:
     )
 
 # ---------------------------------------------------------------------------
-# Celery (broker/backend live; beat schedule + per-task routing are filled in
-# as periodic maintenance tasks land)
+# Celery — broker/backend + the catalog-maintenance beat schedule (below).
+# Per-task queue routing stays default (single `celery` queue; the task-#6
+# purpose-built queues/prod routing remain deferred).
 # ---------------------------------------------------------------------------
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/0")
 
-# Periodic schedule entries (celery.schedules.crontab). Populated by the
-# maintenance tasks that need them; empty here so beat runs no jobs until
-# something explicitly opts in.
-CELERY_BEAT_SCHEDULE = {}
+# Periodic schedule entries (celery.schedules.crontab). The catalog-seed driver
+# (increment 44) doubles as the body of the backlog drain: the daily import tops
+# up the tmdb movie/show queue from TMDB's ID exports once a day, and the drain
+# consumes the oldest pending jobs every few minutes. Both no-op cheaply when the
+# queue is empty or (for the import) no TMDB API key is configured.
+CATALOG_DAILY_TMDB_LIMIT = os.environ.get("CATALOG_DAILY_TMDB_LIMIT")
+if CATALOG_DAILY_TMDB_LIMIT is not None:
+    CATALOG_DAILY_TMDB_LIMIT = int(CATALOG_DAILY_TMDB_LIMIT)
+CATALOG_DRAIN_LIMIT = int(os.environ.get("CATALOG_DRAIN_LIMIT", "200"))
+
+CELERY_BEAT_SCHEDULE = {
+    "catalog-daily-tmdb-import": {
+        "task": "integrations.catalog_daily_tmdb",
+        "schedule": crontab(hour=3, minute=7),
+    },
+    "catalog-backlog-drain": {
+        "task": "integrations.catalog_drain",
+        "schedule": crontab(minute="*/5"),
+    },
+}
 
 # SSE / realtime (sync-progress + notification event streams): Redis pub/sub
 # backing the `text/event-stream` routes in core.sse. Defaults to the same

@@ -10,18 +10,30 @@ oldest pending jobs through ``execute_sync_job`` (which routes them to the
 registered provider engine — tmdb movie/show via increments 39/40, musicbrainz
 album via increment 43).
 
-``enqueue_tmdb_popular`` is the first concrete discovery source: it pages the
-TMDB popular movie/show list up to a limit and enqueues every id that does not
-already own a tmdb mapping. IGDB/SteamGrid/MusicBrainz bulk sources and a
-periodic beat schedule stay deferred (the ported inc-36/37 clients and the album
-engine are already wired for future sources).
+Two concrete discovery sources feed it. ``enqueue_tmdb_popular`` pages the TMDB
+popular movie/show list up to a limit; ``enqueue_tmdb_daily`` is the full-catalog
+source — it downloads TMDB's daily ``movie_ids`` / ``tv_series_ids`` ID export
+from files.tmdb.org (today, falling back to yesterday) and enqueues every id the
+catalog does not already map. Both dedupe against already-mapped rows before
+persisting pending jobs. The task wrappers in ``apps.integrations.tasks`` drive a
+periodic beat schedule (increment 48): the daily import + a ``run_pending_jobs``
+backlog drain. IGDB/SteamGrid/MusicBrainz bulk sources stay deferred (the ported
+inc-36/37 clients and the album engine are already wired for future sources).
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+import asyncio
+import gzip
+import json
+import os
+import tempfile
+from collections.abc import Iterable, Iterator
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
+import httpx
 from asgiref.sync import sync_to_async
 from django.contrib.contenttypes.models import ContentType
 
@@ -188,4 +200,184 @@ async def enqueue_tmdb_popular(
         "discovered": len(ids),
         "enqueued": len(created),
         "external_ids": [job.external_id for job in created],
+    }
+
+
+# TMDB daily-ID export files (files.tmdb.org) -> the tmdb engine entity_type
+# they feed. Only movie/show are seeded today (the tmdb engine dispatches those);
+# the legacy person/collection/network/company/keyword + adult dumps map to no
+# Django engine yet and stay out.
+TMDB_EXPORT_BASE = "https://files.tmdb.org/p/exports"
+_TMDB_EXPORT_FILE: dict[str, str] = {
+    "movie": "movie_ids",
+    "show": "tv_series_ids",
+}
+
+# Ids handed to enqueue_seed_jobs per call — bounds the dedupe IN + bulk_create
+# no matter how large a requested export slice is.
+_ENQUEUE_BATCH_SIZE = 2000
+
+
+def _export_dates() -> tuple[str, str]:
+    """Today's + yesterday's TMDB export date stamps (the file name format)."""
+    now = datetime.now(UTC)
+    yesterday = now - timedelta(days=1)
+    return now.strftime("%m_%d_%Y"), yesterday.strftime("%m_%d_%Y")
+
+
+async def download_tmdb_export(
+    export_type: str,
+    *,
+    client: httpx.AsyncClient | None = None,
+    api_key: str | None = None,
+) -> Path | None:
+    """Stream today's (then yesterday's) TMDB ID export to a temp file.
+
+    Returns the temp file path (the caller deletes it) or None when neither
+    day's file is published — 403/404 (not uploaded yet / pruned) move to the
+    previous day; any real HTTP/transport error propagates so a beat run
+    surfaces it rather than silently serving a stale catalog.
+    """
+    owned = client is None
+    if owned:
+        client = httpx.AsyncClient(
+            timeout=httpx.Timeout(300, connect=30),
+            follow_redirects=True,
+        )
+    params = {"api_key": api_key} if api_key else {}
+    try:
+        for date_str in _export_dates():
+            url = f"{TMDB_EXPORT_BASE}/{export_type}_{date_str}.json.gz"
+            tmp = tempfile.NamedTemporaryFile(
+                delete=False, prefix=f"otix_{export_type}_", suffix=".json.gz"
+            )
+            try:
+                async with client.stream("GET", url, params=params) as response:
+                    if response.status_code in (403, 404):
+                        tmp.close()
+                        os.unlink(tmp.name)
+                        continue
+                    response.raise_for_status()
+                    async for chunk in response.aiter_bytes(chunk_size=65536):
+                        tmp.write(chunk)
+                tmp.close()
+                return Path(tmp.name)
+            except Exception:
+                tmp.close()
+                try:
+                    os.unlink(tmp.name)
+                except OSError:
+                    pass
+                raise
+        return None
+    finally:
+        if owned:
+            await client.aclose()
+
+
+def iter_export_ids(path: str | os.PathLike, *, limit: int | None = None) -> Iterator[str]:
+    """Yield every integer ``id`` in a gzip'd TMDB export file, oldest first.
+
+    The dumps are gzip'd newline-DELIMITED JSON rows bracketed as one array, so
+    the bare opening/closing markers and a trailing comma per row are skipped and
+    rows that fail to parse are ignored. *limit* stops the walk early.
+    """
+    count = 0
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line in ("[", "]", "{", "}"):
+                continue
+            if line.endswith(","):
+                line = line[:-1]
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            row_id = row.get("id")
+            if not isinstance(row_id, int):
+                continue
+            yield str(row_id)
+            count += 1
+            if limit is not None and count >= limit:
+                return
+
+
+async def enqueue_tmdb_daily(
+    entity_type: str,
+    *,
+    limit: int | None = None,
+    api_key: str | None = None,
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
+    """Enqueue the unseen ids from TMDB's daily {entity_type} ID export.
+
+    The driver's full-catalog discovery source (mirrors the legacy
+    ``seed.tmdb_daily_import`` minus the ExternalID-stub backlog + deletion
+    scan): downloads today's ``movie_ids`` / ``tv_series_ids`` dump from
+    files.tmdb.org and enqueues a tmdb sync job per id the catalog does not
+    already map — so a re-run after the catalog is built is a cheap no-op that
+    only picks up new ids. *limit* bounds the walk (None = whole file, the
+    operator-facing full rebuild); ids are fed to ``enqueue_seed_jobs`` in fixed
+    batches so the dedupe IN stays bounded for a very large dump. The DB write
+    crosses to a worker thread via ``sync_to_async``; the export being
+    unavailable (None) is reported, not raised. *api_key*/*client* are injectable
+    for tests.
+    """
+    export_type = _TMDB_EXPORT_FILE.get(entity_type)
+    if export_type is None:
+        raise ValueError(
+            f"TMDB daily-export seeding does not yet support entity_type '{entity_type}'"
+        )
+    path = await download_tmdb_export(
+        export_type, client=client, api_key=api_key
+    )
+    if path is None:
+        return {
+            "provider": "tmdb",
+            "entity_type": entity_type,
+            "export": "unavailable",
+            "discovered": 0,
+            "enqueued": 0,
+        }
+    try:
+        created: list[SyncJob] = []
+        walked = 0
+        batch: list[str] = []
+        for external_id in iter_export_ids(path, limit=limit):
+            batch.append(external_id)
+            walked += 1
+            if len(batch) >= _ENQUEUE_BATCH_SIZE:
+                created += await sync_to_async(enqueue_seed_jobs)(
+                    provider="tmdb", entity_type=entity_type, external_ids=batch
+                )
+                batch = []
+        if batch:
+            created += await sync_to_async(enqueue_seed_jobs)(
+                provider="tmdb", entity_type=entity_type, external_ids=batch
+            )
+    finally:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+    return {
+        "provider": "tmdb",
+        "entity_type": entity_type,
+        "discovered": walked,
+        "enqueued": len(created),
+        "external_ids": [job.external_id for job in created],
+    }
+
+
+def run_daily_tmdb_import(limit: int | None = None) -> dict[str, Any]:
+    """Beat body for the daily refresh: enqueue unseen movie + show export ids.
+
+    Two sequential ``asyncio.run`` passes (each owns its event loop + the HTTP
+    client it downloads with), so a missing movie export never blocks the show
+    pass. Sync wrapper for the beat worker over the async service.
+    """
+    return {
+        "movie": asyncio.run(enqueue_tmdb_daily("movie", limit=limit)),
+        "show": asyncio.run(enqueue_tmdb_daily("show", limit=limit)),
     }

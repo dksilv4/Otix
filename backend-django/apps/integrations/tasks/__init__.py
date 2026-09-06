@@ -10,12 +10,16 @@ runs the provider's registered engine, and publishes the SSE terminal frame.
 from __future__ import annotations
 
 from celery import shared_task
+from django.conf import settings
 
 from apps.integrations.models import SyncJob
 
 # Importing the engine services runs their register_sync_engine decorators so
 # the worker (and the eager-mode task path) can resolve provider engines by name.
+# catalog_seed is imported for its beat bodies (the tasks reference the module
+# attributes at call time so tests patch them).
 from apps.integrations.services import (
+    catalog_seed,  # noqa: F401
     igdb_sync,  # noqa: F401
     musicbrainz_sync,  # noqa: F401
     plex_sync,  # noqa: F401
@@ -33,3 +37,23 @@ def run_sync_job(sync_job_pk: int) -> dict:
     if job is None:
         return {"status": "missing", "task_id": str(sync_job_pk)}
     return execute_sync_job(sync_job_pk)
+
+
+@shared_task(name="integrations.catalog_daily_tmdb")
+def catalog_daily_tmdb() -> dict:
+    """Daily catalog refresh — enqueue the unseen movie/show ids from the TMDB
+    ID exports. No-ops (``unconfigured``) without a TMDB API key so a beat
+    process that has none does not error every night; the per-kind walk is
+    bounded by ``CATALOG_DAILY_TMDB_LIMIT`` (None = whole file). Resolved via the
+    service module attribute at call time so tests patch the body."""
+    if not settings.TMDB_API_KEY:
+        return {"status": "unconfigured"}
+    return catalog_seed.run_daily_tmdb_import(limit=settings.CATALOG_DAILY_TMDB_LIMIT)
+
+
+@shared_task(name="integrations.catalog_drain")
+def catalog_drain() -> dict:
+    """Backlog drain — run the oldest pending sync jobs through the engines,
+    bounded by ``CATALOG_DRAIN_LIMIT``. Doubles as the periodic beat body the
+    catalog-seed driver was designed for (inc 44)."""
+    return catalog_seed.run_pending_jobs(limit=settings.CATALOG_DRAIN_LIMIT)
