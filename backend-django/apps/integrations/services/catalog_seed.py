@@ -10,14 +10,17 @@ oldest pending jobs through ``execute_sync_job`` (which routes them to the
 registered provider engine — tmdb movie/show via increments 39/40, musicbrainz
 album via increment 43).
 
-Two concrete discovery sources feed it. ``enqueue_tmdb_popular`` pages the TMDB
-popular movie/show list up to a limit; ``enqueue_tmdb_daily`` is the full-catalog
-source — it downloads TMDB's daily ``movie_ids`` / ``tv_series_ids`` ID export
-from files.tmdb.org (today, falling back to yesterday) and enqueues every id the
-catalog does not already map. Both dedupe against already-mapped rows before
-persisting pending jobs. The task wrappers in ``apps.integrations.tasks`` drive a
-periodic beat schedule (increment 48): the daily import + a ``run_pending_jobs``
-backlog drain. IGDB/SteamGrid/MusicBrainz bulk sources stay deferred (the ported
+The discovery sources feed it. ``enqueue_tmdb_popular`` pages the TMDB popular
+movie/show list up to a limit; ``enqueue_igdb_popular`` asks the IGDB client for
+the most-rated games (the game-kind source); ``enqueue_tmdb_daily`` is the
+full-catalog source — it downloads TMDB's daily ``movie_ids`` / ``tv_series_ids``
+ID export from files.tmdb.org (today, falling back to yesterday) and enqueues
+every id the catalog does not already map. All dedupe against already-mapped
+rows before persisting pending jobs. The task wrappers in
+``apps.integrations.tasks`` drive a periodic beat schedule (increment 48): the
+daily import + a ``run_pending_jobs`` backlog drain (the drain is provider-agnostic,
+so igdb game jobs enqueued off popular are consumed by the same backlog beat).
+SteamGrid artwork and a MusicBrainz bulk source stay deferred (the ported
 inc-36/37 clients and the album engine are already wired for future sources).
 """
 
@@ -40,6 +43,7 @@ from django.contrib.contenttypes.models import ContentType
 from apps.integrations.models import SyncJob
 from apps.integrations.services.sync import execute_sync_job
 from apps.media.models import ExternalID, MediaItem
+from core.providers.igdb import IGDBProvider
 from core.providers.tmdb import TMDBProvider
 
 # Popular-list fetcher per supported TMDB media kind (maps onto the SyncJob
@@ -203,8 +207,56 @@ async def enqueue_tmdb_popular(
     }
 
 
-# TMDB daily-ID export files (files.tmdb.org) -> the tmdb engine entity_type
-# they feed. Only movie/show are seeded today (the tmdb engine dispatches those);
+# IGDB's popular query is one-shot (no offset paging) and the API caps a single
+# request at 500 rows, so that is also the largest discovery slice worth asking for.
+_IGDB_QUERY_LIMIT = 500
+
+
+async def enqueue_igdb_popular(
+    *,
+    limit: int = 500,
+    provider: IGDBProvider | None = None,
+) -> dict[str, Any]:
+    """Enqueue the unseen ids from IGDB's most-rated games list.
+
+    The game-kind discovery source (the legacy ``popular_games`` task only ever
+    walked Steam app ids, so this is the IGDB-native replacement): asks the
+    client for up to *limit* popular games (``get_popular_games`` sorts by
+    ``aggregated_rating``; the query is clamped to ``_IGDB_QUERY_LIMIT``), then
+    enqueues one ``SyncJob`` per id the catalog does not already map, which the
+    igdb engine (increment 45) consumes and the generic backlog-drain beat picks
+    up. Rows without an integer ``id`` (and duplicate ids within a page) are
+    skipped. Dedupe and pending-job checks live in ``enqueue_seed_jobs``; the DB
+    write crosses to a worker thread via ``sync_to_async``. *provider* is
+    injectable for tests and defaults to a real IGDB client.
+    """
+    if provider is None:
+        provider = IGDBProvider()
+    results = await provider.get_popular_games(limit=min(limit, _IGDB_QUERY_LIMIT))
+
+    ids: list[str] = []
+    seen: set[int] = set()
+    for game in results:
+        raw_id = game.get("id")
+        if not isinstance(raw_id, int) or raw_id in seen:
+            continue
+        seen.add(raw_id)
+        ids.append(str(raw_id))
+
+    created = await sync_to_async(enqueue_seed_jobs)(
+        provider="igdb", entity_type="game", external_ids=ids
+    )
+    return {
+        "provider": "igdb",
+        "entity_type": "game",
+        "discovered": len(ids),
+        "enqueued": len(created),
+        "external_ids": [job.external_id for job in created],
+    }
+
+
+# TMDB daily-ID export files (files.tmdb.org) -> the tmdb engine entity_type they
+# feed. Only movie/show are seeded today (the tmdb engine dispatches those);
 # the legacy person/collection/network/company/keyword + adult dumps map to no
 # Django engine yet and stay out.
 TMDB_EXPORT_BASE = "https://files.tmdb.org/p/exports"

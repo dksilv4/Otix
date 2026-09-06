@@ -1400,6 +1400,32 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   ingest/enrich/embedding queue machinery (the four worker / multi-queue task-#6
   half of the beat schedule above), then trigram, embeddings, prod-compose
   cutover.
+- **IGDB popular-games bulk discovery source (increment 49, 2026-09-06): parity
+  263/263 unchanged, FULL suite 948 (9 new).** Adds the game-kind counterpart to
+  the tmdb movie/show discovery sources — ``enqueue_igdb_popular`` in
+  ``apps/integrations/services/catalog_seed.py`` asks the ported inc-37 IGDB
+  client for the most-rated games (``get_popular_games`` sorts by
+  ``aggregated_rating`` with ``rating_count > 10``; the one-shot query is clamped
+  to ``_IGDB_QUERY_LIMIT`` = 500, IGDB's per-request ceiling) and enqueues an
+  igdb ``SyncJob`` (``entity_type="game"``) per id the catalog does not already
+  map — non-integer/duplicate ids are skipped and the DB write crosses to a
+  worker thread via ``sync_to_async``, dedupe/pending checks living in
+  ``enqueue_seed_jobs``. Consumed by the inc-45 igdb engine and the *same*
+  provider-agnostic ``catalog_drain`` backlog beat — an operator run is just
+  ``catalog_seed --provider igdb --kind game --drain`` (no new beat task or
+  queue). The legacy ``popular_games`` task never touched IGDB (it walked Steam
+  app ids), so this is the IGDB-native replacement. ``catalog_seed`` command
+  gains ``--provider tmdb|igdb`` (default tmdb): igdb + ``--kind game`` +
+  ``--source popular`` only — ``--source daily`` / non-game kinds reject with a
+  CommandError guiding the operator. Tests: 9 (discovery collects integer ids
+  skipping non-int/empty/dups and feeds ``enqueue_seed_jobs`` with
+  ``provider="igdb"/entity_type="game"``; empty results enqueue nothing; the
+  limit is clamped to 500; created ids reported; ``provider=None`` constructs a
+  real client; command igdb run enqueues + drains to ``igdb``/``game``;
+  non-game kind / daily source / tmdb-game-kind all reject). No model fields →
+  no migration. **Next deferred piece:** the ingest/enrich/embedding queue
+  machinery (the four worker / multi-queue task-#6 half), then trigram,
+  embeddings, prod-compose cutover.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
