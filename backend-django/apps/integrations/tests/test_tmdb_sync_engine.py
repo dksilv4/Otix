@@ -119,15 +119,35 @@ class TmdbSyncEngineTests(TestCase):
         self.assertIn("movie_matched", types)
         self.assertNotIn("movie_seeded", types)
 
+    def test_show_job_dispatches_to_show_seed_and_completes(self):
+        job = self.job(entity_type="show", external_id="1396")
+        with mock.patch(
+            "apps.integrations.services.tmdb_sync.fetch_and_seed_show",
+            new=mock.AsyncMock(return_value=777),
+        ) as fetch:
+            outcome = run_sync_job.delay(job.pk).get()
+
+        fetch.assert_awaited_once_with(1396)
+        self.assertEqual(outcome["status"], "success")
+        self.assertEqual(outcome["media_item_id"], 777)
+        self.assertEqual(outcome["tmdb_id"], 1396)
+        self.assertTrue(outcome["seeded"])
+        channel = f"tmdb:sync:{job.pk}:events"
+        types = [json.loads(msg)["type"] for msg in self.fake.published_on(channel)]
+        self.assertEqual(
+            types,
+            ["sync_started", "fetching_show", "show_seeded", "sync_complete"],
+        )
+
     def test_unsupported_entity_type_aborts_to_error(self):
-        job = self.job(entity_type="show")
+        job = self.job(entity_type="episode")  # per-episode sync is still deferred
         outcome = run_sync_job.delay(job.pk).get()
 
         job.refresh_from_db()
         self.assertEqual(outcome["status"], "failed")
-        self.assertIn("entity_type 'show'", outcome["error"])
+        self.assertIn("entity_type 'episode'", outcome["error"])
         self.assertEqual(job.status, "failed")
-        self.assertIn("entity_type 'show'", job.error_message)
+        self.assertIn("entity_type 'episode'", job.error_message)
         last_frame = json.loads(
             self.fake.published_on(f"tmdb:sync:{job.pk}:events")[-1]
         )

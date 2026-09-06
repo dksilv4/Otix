@@ -1108,6 +1108,37 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   show/season/episode + credits (the TMDB hydrator tail) and add the MusicBrainz
   album ingest, then the bulk catalog-seed driver (fetch popular/backlog →
   enqueue per-id jobs).
+- **TMDB TV ingest (increment 40, 2026-09-05): parity 263/263 unchanged, FULL
+  suite 854 (7 new).** TV now mirrors movie on the inc-38/39 surface:
+  ``seed_show_from_tmdb`` in ``apps/media/services/tmdb_ingest.py`` seeds a
+  ``MediaItem`` hub (``media_type="show"``, release date = first air date) +
+  ``Show`` subtype + ``Season`` summary rows straight from the ``/tv/{id}``
+  detail's embedded ``seasons`` array (special season 0 skipped; per-season
+  episodes are *not* seeded — episode hydration is the deferred full pass),
+  plus poster/backdrop assets, genres via ``MediaGenreType media_type="show"``,
+  and tmdb+imdb ``ExternalID`` rows scoped ``media_type="show"`` (so shared
+  numeric ids never cross-point to movies). Row resolution: an existing tmdb
+  ``show`` ExternalID wins (survives renames), else a same-slug ``show`` hub
+  (fills cross-provider stubs). Unlike movie seeding there is **no early-out on
+  a known id** — a re-sync of a continuing series must refresh the Show's
+  growth-prone fields (status, air dates, anime flag, season/episode counts)
+  and upsert newly aired season summaries; every write is ``get_or_create`` so
+  repeats never duplicate. The increment-39 engine now dispatches on
+  ``entity_type`` (``movie``→``fetch_and_seed_movie``, ``show``→
+  ``fetch_and_seed_show``); fetchers are resolved via ``globals()`` at call time
+  (not bound at import) so the engine roundtrip tests can patch them. The two
+  shared helpers ``_upsert_genres``/``_upsert_external`` gained a ``media_type``
+  param (default ``"movie"`` keeps the movie path byte-identical). Tests: 6 new
+  media-level (``SeedShowFromTmdbTests`` 5 — full row + seasons + externals,
+  idempotency, same-id re-sync refreshing counts + adding a new season,
+  ja+Animation→is_anime, missing-id ValueError; ``FetchAndSeedShowTests`` 1 —
+  ``/3/tv/{id}`` MockTransport → passes raw to a stubbed seed) + 1 engine
+  roundtrip (``entity_type="show"`` job → ``fetching_show``/``show_seeded``
+  frames, summary). No model fields → no migration. **Next deferred piece:**
+  the TMDB hydrator tail — per-season episode seeding
+  (``/tv/{id}/season/{n}``) and credits (Person + MediaCredit) for movies and
+  shows — then the MusicBrainz album ingest engine, then the bulk catalog-seed
+  driver.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
