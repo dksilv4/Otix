@@ -16,12 +16,16 @@ the most-rated games (the game-kind source); ``enqueue_tmdb_daily`` is the
 full-catalog source — it downloads TMDB's daily ``movie_ids`` / ``tv_series_ids``
 ID export from files.tmdb.org (today, falling back to yesterday) and enqueues
 every id the catalog does not already map. All dedupe against already-mapped
-rows before persisting pending jobs. The task wrappers in
-``apps.integrations.tasks`` drive a periodic beat schedule (increment 48): the
-daily import + a ``run_pending_jobs`` backlog drain (the drain is provider-agnostic,
-so igdb game jobs enqueued off popular are consumed by the same backlog beat).
-SteamGrid artwork and a MusicBrainz bulk source stay deferred (the ported
-inc-36/37 clients and the album engine are already wired for future sources).
+rows before persisting pending jobs. ``run_daily_tmdb_import`` also runs the
+upstream-deletion scan (increment 52): after the enqueue passes it re-downloads
+each export and records every mapped tmdb id the file no longer lists as a
+``TMDBDeletedID`` row, so sync never recreates an upstream-deleted title. The
+task wrappers in ``apps.integrations.tasks`` drive a periodic beat schedule
+(increment 48): the daily import + a ``run_pending_jobs`` backlog drain (the
+drain is provider-agnostic, so igdb game jobs enqueued off popular are consumed
+by the same backlog beat). SteamGrid artwork and a MusicBrainz bulk source stay
+deferred (the ported inc-36/37 clients and the album engine are already wired
+for future sources).
 """
 
 from __future__ import annotations
@@ -43,6 +47,7 @@ from django.contrib.contenttypes.models import ContentType
 from apps.integrations.models import SyncJob
 from apps.integrations.services.sync import execute_sync_job
 from apps.media.models import ExternalID, MediaItem
+from apps.proposals.models import TMDBDeletedID
 from core.providers.igdb import IGDBProvider
 from core.providers.tmdb import TMDBProvider
 
@@ -365,13 +370,15 @@ async def enqueue_tmdb_daily(
     """Enqueue the unseen ids from TMDB's daily {entity_type} ID export.
 
     The driver's full-catalog discovery source (mirrors the legacy
-    ``seed.tmdb_daily_import`` minus the ExternalID-stub backlog + deletion
-    scan): downloads today's ``movie_ids`` / ``tv_series_ids`` dump from
-    files.tmdb.org and enqueues a tmdb sync job per id the catalog does not
-    already map — so a re-run after the catalog is built is a cheap no-op that
-    only picks up new ids. *limit* bounds the walk (None = whole file, the
-    operator-facing full rebuild); ids are fed to ``enqueue_seed_jobs`` in fixed
-    batches so the dedupe IN stays bounded for a very large dump. The DB write
+    ``seed.tmdb_daily_import`` minus the ExternalID-stub backlog; the
+    upstream-deletion scan is the sibling ``detect_tmdb_deletions`` pass in
+    ``run_daily_tmdb_import``): downloads today's ``movie_ids`` /
+    ``tv_series_ids`` dump from files.tmdb.org and enqueues a tmdb sync job per
+    id the catalog does not already map — so a re-run after the catalog is built
+    is a cheap no-op that only picks up new ids. *limit* bounds the walk (None =
+    whole file, the operator-facing full rebuild); ids are fed to
+    ``enqueue_seed_jobs`` in fixed batches so the dedupe IN stays bounded for a
+    very large dump. The DB write
     crosses to a worker thread via ``sync_to_async``; the export being
     unavailable (None) is reported, not raised. *api_key*/*client* are injectable
     for tests.
@@ -425,11 +432,111 @@ async def enqueue_tmdb_daily(
 def run_daily_tmdb_import(limit: int | None = None) -> dict[str, Any]:
     """Beat body for the daily refresh: enqueue unseen movie + show export ids.
 
-    Two sequential ``asyncio.run`` passes (each owns its event loop + the HTTP
-    client it downloads with), so a missing movie export never blocks the show
-    pass. Sync wrapper for the beat worker over the async service.
+    Runs the enqueue passes (two sequential ``asyncio.run`` calls, each owning
+    its event loop + the HTTP client it downloads with, so a missing movie
+    export never blocks the show pass) then the upstream-deletion scan, which
+    records TMDB ids that left the exports as ``TMDBDeletedID`` rows. Sync
+    wrapper for the beat worker over the async services.
     """
     return {
         "movie": asyncio.run(enqueue_tmdb_daily("movie", limit=limit)),
         "show": asyncio.run(enqueue_tmdb_daily("show", limit=limit)),
+        "deletions": run_tmdb_deletion_scan(),
     }
+
+
+def run_tmdb_deletion_scan() -> dict[str, Any]:
+    """Sync wrapper over the async deletion-detection passes (movie then show)."""
+    return {
+        "movie": asyncio.run(detect_tmdb_deletions("movie")),
+        "show": asyncio.run(detect_tmdb_deletions("show")),
+    }
+
+
+async def detect_tmdb_deletions(entity_type: str) -> dict[str, Any]:
+    """Record TMDB ids we mapped that are no longer in today's official dump.
+
+    The inc-48 daily import enqueues brand-new ids; this scan (the legacy
+    ``seed.tmdb_daily`` deletion half, increment 52) finds the reverse — tmdb
+    ``ExternalID`` rows whose id the current ``movie_ids``/``tv_series_ids``
+    export no longer lists — and records them as ``TMDBDeletedID`` rows keyed on
+    (tmdb_id, media_type) so a later sync never recreates an upstream-deleted
+    title. Detection re-downloads the export (the enqueue pass already deleted
+    its temp file) and streams the valid-id set to discard mapped ids; only ids
+    never seen are reported. DB reads/writes cross to a worker thread via
+    ``sync_to_async``.
+    """
+    export_type = _TMDB_EXPORT_FILE.get(entity_type)
+    if export_type is None:
+        raise ValueError(
+            f"deletion scan only covers movie/show; got {entity_type!r}"
+        )
+
+    rows = await sync_to_async(_mapped_tmdb_rows)(entity_type)
+    mapped: dict[int, tuple[int | None, str | None]] = {}
+    for ext_id, media_pk, title in rows:
+        try:
+            mapped[int(ext_id)] = (media_pk, title)
+        except (TypeError, ValueError):
+            continue
+    if not mapped:
+        return _scan_summary(entity_type, 0, 0)
+
+    path = await download_tmdb_export(export_type)
+    if path is None:
+        return {**_scan_summary(entity_type, 0, 0), "export": "unavailable"}
+    try:
+        for file_id in iter_export_ids(path):
+            mapped.pop(int(file_id), None)
+    finally:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+    deleted = list(mapped.items())
+    recorded = await sync_to_async(_record_deleted)(entity_type, deleted)
+    return _scan_summary(entity_type, len(deleted), recorded)
+
+
+def _scan_summary(entity_type: str, deleted: int, recorded: int, **extra) -> dict[str, Any]:
+    return {
+        "provider": "tmdb",
+        "entity_type": entity_type,
+        "deleted": deleted,
+        "recorded": recorded,
+        **extra,
+    }
+
+
+def _mapped_tmdb_rows(entity_type: str) -> list[tuple[str, int | None, str | None]]:
+    """The catalog's tmdb ``ExternalID`` rows for a movie/show entity type.
+
+    ``ExternalID`` reaches its ``MediaItem`` through a ``GenericForeignKey``, so
+    the title is resolved with a second pk lookup rather than an ORM join.
+    """
+    ext_rows = list(
+        ExternalID.objects.filter(provider="tmdb", media_type=entity_type)
+        .values_list("external_id", "object_id")
+    )
+    pks = {pk for _, pk in ext_rows}
+    titles = dict(
+        MediaItem.objects.filter(pk__in=pks).values_list("pk", "title")
+    )
+    return [(ext_id, pk, titles.get(pk)) for ext_id, pk in ext_rows]
+
+
+def _record_deleted(
+    entity_type: str,
+    deleted: list[tuple[int, tuple[int | None, str | None]]],
+) -> int:
+    """Persist detected-upstream-deleted ids as TMDBDeletedID rows (idempotent)."""
+    created = 0
+    for tmdb_id, (media_pk, title) in deleted:
+        _, was_created = TMDBDeletedID.objects.get_or_create(
+            tmdb_id=tmdb_id,
+            media_type=entity_type,
+            defaults={"media_item_id": media_pk, "title": title},
+        )
+        if was_created:
+            created += 1
+    return created

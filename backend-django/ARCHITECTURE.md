@@ -1495,6 +1495,34 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   0.25). No model fields → no migration. **Next deferred piece:** the
   ingest/enrich/embedding queue machinery (the four worker / multi-queue task-#6
   half), then trigram, embeddings, prod-compose cutover.
+- **TMDB daily upstream-deletion scan (increment 52, 2026-09-06): parity 263/263
+  unchanged, FULL suite 970 (7 new).** Closes the inc-48 "no TMDBDeletedID table
+  here" deferral — the reverse half of the daily import. ``run_daily_tmdb_import``
+  now also returns a ``deletions`` key from ``run_tmdb_deletion_scan()``, which
+  runs ``detect_tmdb_deletions("movie")`` then ``("show")`` (each its own
+  ``asyncio.run`` pass, mirroring ``run_daily_tmdb_import``'s style). A scan reads
+  the catalog's current tmdb ``ExternalID`` rows for that entity type
+  (``_mapped_tmdb_rows``: generic ``ExternalID.target`` → ``MediaItem`` pk resolved
+  with a second pk→title lookup, since a ``GenericForeignKey`` cannot be ORM-joined),
+  re-downloads the official ``movie_ids``/``tv_series_ids`` gzip dump through the
+  existing ``download_tmdb_export``, discards every dump-listed id (the on-disk
+  iterator yields strings, so ids are int()-normalised before ``pop``), and records
+  the survivors as ``TMDBDeletedID`` rows via ``_record_deleted`` (idempotent
+  ``get_or_create`` on the ``(tmdb_id, media_type)`` unique key, carrying the
+  ``media_item`` pk + title so sync can inspect/delete). An empty mapped set skips
+  the download; an unavailable export is reported as ``summary["export"] =
+  "unavailable"`` not raised. Like the daily/popular feeders, the async
+  orchestrator is asserted with its worker-thread sync DB helpers patched, while
+  the rollback-safe sync helpers run against the real test DB. Tests: 7 in
+  ``apps/integrations/tests/test_catalog_seed_deletions.py`` (records only ids
+  missing from the export; skips the download when nothing is mapped; unavailable
+  export reported not raised; unsupported entity type raises; the scan wrapper runs
+  movie then show; mapped rows include only the entity type; record persists
+  idempotently). ``RunDailyTmdBImportTests.test_imports_movie_then_show`` now
+  patches ``run_tmdb_deletion_scan`` and asserts the ``deletions`` key alongside
+  the per-entity summaries. No model fields → no migration. **Next deferred piece:**
+  the ingest/enrich/embedding queue machinery (the four worker / multi-queue task-#6
+  half), then trigram, embeddings, prod-compose cutover.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

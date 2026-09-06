@@ -207,11 +207,14 @@ class RunDailyTmdBImportTests(TestCase):
             "movie": {"entity_type": "movie", "discovered": 2, "enqueued": 1},
             "show": {"entity_type": "show", "discovered": 1, "enqueued": 0},
         }
+        deletions = {"movie": {"deleted": 0}, "show": {"deleted": 0}}
         with mock.patch.object(
             catalog_seed,
             "enqueue_tmdb_daily",
             new=mock.AsyncMock(side_effect=lambda entity_type, **kw: summaries[entity_type]),
-        ) as enqueue:
+        ) as enqueue, mock.patch.object(
+            catalog_seed, "run_tmdb_deletion_scan", return_value=deletions
+        ) as deletion_scan:
             result = catalog_seed.run_daily_tmdb_import(limit=10)
 
         self.assertEqual(
@@ -219,7 +222,11 @@ class RunDailyTmdBImportTests(TestCase):
         )
         for c in enqueue.await_args_list:
             self.assertEqual(c.kwargs["limit"], 10)
-        self.assertEqual(result, {"movie": summaries["movie"], "show": summaries["show"]})
+        deletion_scan.assert_called_once_with()
+        self.assertEqual(
+            result,
+            {"movie": summaries["movie"], "show": summaries["show"], "deletions": deletions},
+        )
 
 
 class CatalogBeatTaskTests(TestCase):
