@@ -16,13 +16,18 @@ no same-slug cross-provider fallback (unlike movies/shows) to avoid merging
 distinct releases. Tracks are upserted add-only keyed on each recording's MBID
 (the legacy ``hydrate_tracks`` semantics), so a re-sync never duplicates or
 destroys existing track rows (their user ratings survive) while new tracks are
-added. Credits (artist → Person/MediaCredit), labels, genres, cover art and the
-url-relation provider ids (Deezer/Apple/...) remain the deferred full-hydration
-tail.
+added. The full-hydration tail (increment 47) is folded into the same seed:
+artist credits (→ Person/MediaCredit), record labels (→ Company/
+InvolvedCompany), typed genres (→ Genre/MediaGenre, capped at 8), the
+url-relation provider ids (Deezer/Apple/... → ExternalID rows) and — via the
+async driver's separate Cover Art Archive fetch — front/back cover assets. Each
+enrichment is add-only and idempotent, so re-syncs never duplicate.
 """
 
 from __future__ import annotations
 
+import asyncio
+import re
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
@@ -32,10 +37,32 @@ from django.db.models import Max, Sum
 from django.utils import timezone as dj_timezone
 from django.utils.text import slugify
 
-from apps.media.models import Album, ExternalID, MediaItem, Track
+from apps.company.models import Company, InvolvedCompany
+from apps.media.models import Album, ExternalID, MediaAsset, MediaItem, Track
+from apps.media.models.genre import Genre, MediaGenre
+from apps.people.models import MediaCredit, Person
 
 if TYPE_CHECKING:
     from core.providers.musicbrainz import MusicBrainzProvider
+
+# MusicBrainz ``url-rels`` (release ``relations``) map streaming/store URLs onto
+# a provider name + extracted service id, ported from the legacy transformer.
+_PROVIDER_PATTERNS: list[tuple[str, str]] = [
+    ("youtube_music", r"music\.youtube\.com/playlist\?list=([\w-]+)"),
+    ("apple_music", r"music\.apple\.com/\w+/album/[^/]+/(\d+)"),
+    ("deezer", r"deezer\.com/(?:\w+/)?album/(\d+)"),
+    ("tidal", r"tidal\.com/(?:browse/)?album/(\d+)"),
+    ("amazon", r"amazon\.\w+(?:\.\w+)?/(?:[^/]+/)?(?:dp|gp/product)/(\w{10})"),
+    ("discogs", r"discogs\.com/(?:release|master)/(\d+)"),
+    ("soundcloud", r"soundcloud\.com/([^/]+/sets/[^/?]+)"),
+    ("bandcamp", r"([\w-]+\.bandcamp\.com/album/[^/?]+)"),
+    ("wikidata", r"wikidata\.org/(?:wiki|entity)/(Q\d+)"),
+    ("genius", r"genius\.com/albums/[^/]+/(\d+)"),
+    ("rateyourmusic", r"rateyourmusic\.com/release/album/[^/]+/([^/]+)"),
+    ("qobuz", r"qobuz\.com/\w+/album/[^/]+/(\w+)"),
+    ("napster", r"napster\.com/artist/[^/]+/album/[^/]+/(\w+)"),
+    ("allmusic", r"allmusic\.com/album/[^/]+/(mw\d+)"),
+]
 
 _RELEASE_TYPE_MAP: dict[str, str] = {
     "Album": "album",
@@ -131,6 +158,219 @@ def _iter_release_tracks(raw: dict[str, Any]):
             )
 
 
+def _person_ct() -> ContentType:
+    return ContentType.objects.get_for_model(Person)
+
+
+def _extract_provider_id(url: str) -> tuple[str, str] | None:
+    for provider, pattern in _PROVIDER_PATTERNS:
+        match = re.search(pattern, url)
+        if match:
+            return provider, match.group(1)
+    return None
+
+
+def _url_external_ids(relations: list[Any]) -> list[tuple[str, str]]:
+    """Extract (provider, external_id) pairs from MusicBrainz url-rels."""
+    results: list[tuple[str, str]] = []
+    for rel in relations:
+        if not isinstance(rel, dict):
+            continue
+        url_obj = rel.get("url")
+        url = (
+            str(url_obj.get("resource", "")) if isinstance(url_obj, dict) else None
+        )
+        if not url:
+            continue
+        pair = _extract_provider_id(url)
+        if pair and pair not in results:
+            results.append(pair)
+    return results
+
+
+def _resolve_artist(mbid: str, name: str) -> Person:
+    """Resolve an artist Person by musicbrainz_artist id (creating a stub).
+
+    The legacy cross-provider wikidata lookup is deferred (nothing else seeds
+    artists yet, so the musicbrainz_artist ``ExternalID`` alone is idempotent);
+    a person with the same name that does *not* yet own a musicbrainz_artist id
+    is backfilled instead of duplicated.
+    """
+    ct = _person_ct()
+    existing = ExternalID.objects.filter(
+        content_type=ct, provider="musicbrainz_artist", external_id=mbid
+    ).first()
+    if existing is not None and existing.object_id:
+        person = Person.objects.filter(pk=existing.object_id).first()
+        if person is not None:
+            return person
+    for person in Person.objects.filter(name__iexact=name):
+        owns_mbid = ExternalID.objects.filter(
+            content_type=ct, provider="musicbrainz_artist", object_id=person.pk
+        ).exists()
+        if not owns_mbid:
+            ExternalID.objects.get_or_create(
+                content_type=ct,
+                provider="musicbrainz_artist",
+                external_id=mbid,
+                defaults={"object_id": person.pk},
+            )
+            return person
+    person = Person.objects.create(name=name)
+    ExternalID.objects.get_or_create(
+        content_type=ct,
+        provider="musicbrainz_artist",
+        external_id=mbid,
+        defaults={"object_id": person.pk},
+    )
+    return person
+
+
+def _upsert_album_artists(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Link album ``artist-credit`` artists as add-only Person credits.
+
+    Mirrors the legacy ``hydrate_artists``: the array position decides the role
+    (``primary`` for the first entry, ``featured`` after) and the joinphrase is
+    folded onto the credit's ``character_name``. Existing ``(person, role)``
+    rows are left untouched, so re-syncs never duplicate credits.
+    """
+    credits = raw.get("artist-credit")
+    if not isinstance(credits, list) or not credits:
+        return
+    existing = set(
+        MediaCredit.objects.filter(media_item=media).values_list("person_id", "role")
+    )
+    rows: list[MediaCredit] = []
+    for idx, ac in enumerate(credits):
+        artist = ac.get("artist") if isinstance(ac, dict) else None
+        if not isinstance(artist, dict):
+            continue
+        mbid = artist.get("id")
+        name = str(artist.get("name") or "").strip()
+        if not mbid or not name:
+            continue
+        person = _resolve_artist(str(mbid), name)
+        role = "primary" if idx == 0 else "featured"
+        if (person.pk, role) in existing:
+            continue
+        join_str = ac.get("joinphrase") or ""
+        character_name = f"{name}{join_str}".strip() if join_str else name
+        existing.add((person.pk, role))
+        rows.append(
+            MediaCredit(
+                media_item=media,
+                person=person,
+                role=role,
+                character_name=character_name,
+                sort_order=idx,
+            )
+        )
+    if rows:
+        MediaCredit.objects.bulk_create(rows)
+
+
+def _upsert_album_labels(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Link ``label-info`` record labels as ``publisher`` involved companies."""
+    infos = raw.get("label-info")
+    if not isinstance(infos, list):
+        return
+    existing = set(
+        InvolvedCompany.objects.filter(media_item=media).values_list(
+            "company_id", flat=True
+        )
+    )
+    for li in infos:
+        label = li.get("label") if isinstance(li, dict) else None
+        if not isinstance(label, dict):
+            continue
+        name = str(label.get("name") or "").strip()
+        if not name:
+            continue
+        slug = name.lower().replace(" ", "-").replace("'", "")
+        company, _ = Company.objects.get_or_create(slug=slug, defaults={"name": name})
+        if company.pk in existing:
+            continue
+        existing.add(company.pk)
+        InvolvedCompany.objects.create(media_item=media, company=company, publisher=True)
+
+
+def _upsert_album_genres(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Link MusicBrainz typed ``genres`` (capped at 8) as genre links."""
+    genres = raw.get("genres")
+    if not isinstance(genres, list):
+        return
+    existing = set(
+        MediaGenre.objects.filter(media_item=media).values_list("genre_id", flat=True)
+    )
+    for tag in genres[:8]:
+        if not isinstance(tag, dict):
+            continue
+        name = str(tag.get("name") or "").strip()
+        if not name:
+            continue
+        genre, _ = Genre.objects.get_or_create(name=name, defaults={"slug": slugify(name)})
+        if genre.pk in existing:
+            continue
+        existing.add(genre.pk)
+        MediaGenre.objects.create(media_item=media, genre=genre)
+
+
+def _upsert_album_url_ids(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Store release ``url-rels`` (Deezer/Apple/...) as media ExternalIDs."""
+    relations = raw.get("relations")
+    if not isinstance(relations, list):
+        return
+    ct = _media_ct()
+    for provider, external_id in _url_external_ids(relations):
+        ExternalID.objects.get_or_create(
+            content_type=ct,
+            provider=provider,
+            external_id=external_id,
+            media_type="music",
+            defaults={"object_id": media.pk},
+        )
+
+
+def attach_album_cover(media_id: int, images: list[Any]) -> int:
+    """Upsert Cover Art Archive ``front``/``back`` images as album assets.
+
+    ``front`` images become a ``poster`` (``label="album_cover"``), ``back``
+    images a ``backdrop``; the URL prefers ``thumbnails.large`` over the full
+    ``image``. Idempotent on the ``(media_item, url, asset_type)`` natural key.
+    Legacy hardcoded 1000x1000 dims it could not know — we leave width/height
+    null instead. Returns the number of new rows.
+    """
+    added = 0
+    if not isinstance(images, list):
+        return 0
+    for img in images[:4]:
+        if not isinstance(img, dict):
+            continue
+        url = img.get("image")
+        if not url:
+            continue
+        asset_type = "poster"
+        if img.get("back"):
+            asset_type = "backdrop"
+        elif not img.get("front"):
+            continue
+        thumbs = img.get("thumbnails")
+        thumb = thumbs.get("large") if isinstance(thumbs, dict) else None
+        image_url = thumb or url
+        _, created = MediaAsset.objects.get_or_create(
+            media_item_id=media_id,
+            url=image_url,
+            asset_type=asset_type,
+            defaults={
+                "provider": "musicbrainz",
+                "label": "album_cover" if asset_type == "poster" else None,
+            },
+        )
+        if created:
+            added += 1
+    return added
+
+
 def seed_album_from_musicbrainz(raw: dict[str, Any]) -> int:
     """Create (or refresh) a MediaItem+Album+Track set from a release lookup.
 
@@ -139,8 +379,9 @@ def seed_album_from_musicbrainz(raw: dict[str, Any]) -> int:
     album titles repeat. An existing row is not overwritten wholesale: only
     missing overview is topped up and the ``Album`` growth fields refresh; track
     rows are upserted add-only keyed on the recording MBID (re-syncs never
-    duplicate or drop tracks). ``completeness_score`` starts at 0.15 so the later
-    full-hydration pass (credits/labels/genres/cover) completes the row.
+    duplicate or drop tracks). Credits/labels/genres/url-rels hydrate inline and
+    cover art follows in the async driver; ``completeness_score`` stays at 0.15
+    (the completeness recompute is a separate deferred machinery piece).
     """
     mbid = raw.get("id")
     if not mbid:
@@ -250,15 +491,30 @@ def seed_album_from_musicbrainz(raw: dict[str, Any]) -> int:
         media_type="music",
         defaults={"object_id": media_id},
     )
+    # Full-hydration tail: everything the release lookup embeds — artist
+    # credits, record labels, genres and url-rel provider ids — is add-only and
+    # idempotent, so it runs on every seed (fresh or re-sync) without duplicating.
+    _upsert_album_artists(media, raw)
+    _upsert_album_labels(media, raw)
+    _upsert_album_genres(media, raw)
+    _upsert_album_url_ids(media, raw)
     return media_id
 
 
 async def fetch_and_seed_album(mbid: str, *, provider: MusicBrainzProvider | None = None) -> int:
-    """Fetch a MusicBrainz release through a provider client, then seed it."""
+    """Fetch a MusicBrainz release + its cover art, then seed + attach them."""
     if provider is None:
         from core.providers.musicbrainz import MusicBrainzProvider
 
         provider = MusicBrainzProvider()
-    raw = await provider.get_release(mbid)
-    # ORM write leaves the async context (Django's sync-ORM-in-async guard).
-    return await sync_to_async(seed_album_from_musicbrainz)(raw)
+    # The release lookup and the (sister-project, unthrottled) Cover Art Archive
+    # request are independent — fetch in parallel, seed, then attach the cover.
+    raw, cover = await asyncio.gather(
+        provider.get_release(mbid), provider.get_cover_art(mbid)
+    )
+    # ORM writes leave the async context (Django's sync-ORM-in-async guard).
+    media_id = await sync_to_async(seed_album_from_musicbrainz)(raw)
+    images = cover.get("images") if cover else None
+    if images:
+        await sync_to_async(attach_album_cover)(media_id, images)
+    return media_id

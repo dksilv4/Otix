@@ -1330,8 +1330,37 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   stored result, existing-SteamGridDB-id ``matched``, missing-SGDB-entry still
   completes, unlinked Steam App ID + unsupported entity_type + blank id +
   non-numeric id errors). **Next deferred piece:** the MBZ full-hydration tail
-  (artist credits/labels/genres/cover + url-rel ids), then a periodic beat
-  schedule + the daily TMDB export import.
+  (now increment 47), then a periodic beat schedule + the daily TMDB export
+  import.
+- **MBZ album full-hydration tail (increment 47, 2026-09-06): parity 263/263
+  unchanged, FULL suite 922 (7 new).** Closes the inc-43 deferred tail by folding
+  the MBZ enrichment pass into ``seed_album_from_musicbrainz``
+  (``apps/media/services/musicbrainz_ingest.py``), all add-only + idempotent so a
+  re-seed never duplicates: artist credits → ``Person`` (content-type-Person
+  ``musicbrainz_artist`` ExternalID; same-name-no-mbid backfill avoids duplicate
+  artists; wikidata cross-provider deferred) + ``MediaCredit`` rows with
+  array-position role (``primary`` then ``featured``) and the joinphrase folded
+  onto ``character_name``; ``label-info`` labels → ``Company`` (replace-slug) +
+  ``InvolvedCompany(publisher=True)``; typed ``genres`` (capped at the legacy 8)
+  → ``Genre``/``MediaGenre``; release ``url-rels`` (Deezer/Apple/Tidal/... regex
+  map ported verbatim from the legacy transformer, no Spotify rule) → media
+  ExternalIDs with ``provider=<name>``/``external_id`` ``media_type="music"``.
+  The async ``fetch_and_seed_album`` driver now fetches the Cover Art Archive
+  ``provider.get_cover_art`` in parallel with the release lookup, then crosses
+  ``attach_album_cover`` via ``sync_to_async``: ``front`` images → ``poster``
+  (``label="album_cover"``), ``back`` → ``backdrop``, URL preferring
+  ``thumbnails.large``, ``provider="musicbrainz"``, idempotent on the
+  ``(media_item, url, asset_type)`` natural key (the legacy hardcoded 1000x1000
+  dims are left null — honest, dimensions unknown). All target models already
+  existed (people/company/media genre/asset) → no model fields, no migration.
+  Tests: 4 seed-level tail assertions (full artist-credit/label/genre-cap-8/
+  url-ids mapping with the unknown provider dropped, idempotent re-seed, shared
+  artist across two releases = one Person row, same-name-no-mbid backfill) + 2
+  ``AttachAlbumCoverTests`` (front+back → poster with ``thumbnails.large`` +
+  backdrop + untyped dropped; idempotent) — the driver tests gained
+  ``get_cover_art`` stubs plus a cover-attached-after-seed roundtrip. **Next
+  deferred piece:** a periodic beat schedule + the daily TMDB export import,
+  then the ingest/enrich/embedding queue machinery.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
