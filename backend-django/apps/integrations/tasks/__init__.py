@@ -19,6 +19,7 @@ from apps.integrations.services import (
     igdb_sync,  # noqa: F401
     musicbrainz_sync,  # noqa: F401
     plex_sync,  # noqa: F401
+    steamgrid_sync,  # noqa: F401
     tmdb_sync,  # noqa: F401
     youtube_sync,  # noqa: F401
 )

@@ -1292,9 +1292,46 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   ``ValueError``) + 6 engine roundtrips (game job → ``fetching_game``/
   ``game_seeded`` frames + stored result, existing-igdb ``game_matched``,
   unsupported entity_type + blank id + non-numeric id errors, fetch-failure →
-  job failed). **Next deferred piece:** the SteamGrid artwork attach for games +
-  the MBZ full-hydration tail (artist credits/labels/genres/cover + url-rel
-  ids), then a periodic beat schedule + the daily TMDB export import.
+  job failed). **Next deferred piece:** the SteamGrid artwork attach for games
+  (now increment 46), then the MBZ full-hydration tail (artist credits/labels/
+  genres/cover + url-rel ids), then a periodic beat schedule + the daily TMDB
+  export import.
+- **SteamGrid artwork attach for games (increment 46, 2026-09-06): parity
+  263/263 unchanged, FULL suite 915 (15 new).** The artwork half of the game
+  full-hydration tail: ``apps/media/services/steamgrid_artwork.py`` attaches
+  SteamGridDB artwork to a Steam-linked catalog game (a ``MediaItem`` whose
+  ``provider="steam"`` ``ExternalID`` carries the App ID). Each artwork family
+  maps onto the legacy hydrator taxonomy — every grid → ``poster`` (grids styled
+  ``no_logo``/``material`` ALSO become a same-URL ``textless_poster`` copy),
+  heroes → ``backdrop``, logos → ``logo``, icons → ``icon`` — each row recording
+  ``provider="steamgrid"`` + width/height/language/style/score and a
+  style-derived label. Upserts are idempotent on the ``(media_item, url,
+  asset_type)`` natural key; an existing row only gets a missing ``lang``
+  backfilled (the legacy ``DO UPDATE ... WHERE lang IS NULL``). The SteamGridDB
+  internal game id is stored as a ``provider="steamgrid"`` ``ExternalID`` so
+  later hydrations reuse it. ``fetch_and_attach_game_artwork`` async driver looks
+  the game up by Steam App ID (no SGDB entry for an App ID = benign no-op, not
+  failure — artwork is best-effort enrichment), fetches grids/heroes/logos/icons
+  in parallel, and crosses the pure-DB attach via ``sync_to_async``. Registered
+  ``steamgrid`` sync engine (``apps/integrations/services/steamgrid_sync.py``,
+  ``entity_type`` must be ``game``, external_id = the numeric Steam App ID —
+  blank/non-numeric ids and an App ID with no ``provider="steam"`` catalog link
+  error handled) resolves the target media through the Steam link and reports
+  ``matched`` when the game already owns a SteamGridDB id; mirrors the igdb
+  ``asyncio.run`` bridge, ``steamgrid_progress`` prefab, and call-time
+  ``globals()`` driver resolution. No model fields → no migration. Tests: 8
+  media-level (``AttachSteamgridAssetsTests`` — hero/logo/icon → backdrop/logo/
+  icon with style labels + width/height/score; ``no_logo``/``material`` grid →
+  poster AND textless_poster, other grid styles poster-only; idempotent re-run
+  that backfills a missing ``lang``; url-less entries dropped; SteamGridDB
+  ExternalID backfill — plus ``FetchAndAttachGameArtworkTests`` stub-attach
+  family-fetch roundtrip and a missing-SGDB-game benign no-op) + 7 engine
+  roundtrips (game job → ``attaching_artwork``/``artwork_attached`` frames +
+  stored result, existing-SteamGridDB-id ``matched``, missing-SGDB-entry still
+  completes, unlinked Steam App ID + unsupported entity_type + blank id +
+  non-numeric id errors). **Next deferred piece:** the MBZ full-hydration tail
+  (artist credits/labels/genres/cover + url-rel ids), then a periodic beat
+  schedule + the daily TMDB export import.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
