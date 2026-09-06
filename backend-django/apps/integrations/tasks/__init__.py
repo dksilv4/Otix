@@ -16,6 +16,7 @@ from apps.integrations.models import SyncJob
 # Importing the engine services runs their register_sync_engine decorators so
 # the worker (and the eager-mode task path) can resolve provider engines by name.
 from apps.integrations.services import (
+    igdb_sync,  # noqa: F401
     musicbrainz_sync,  # noqa: F401
     plex_sync,  # noqa: F401
     tmdb_sync,  # noqa: F401

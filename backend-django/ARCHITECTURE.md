@@ -1256,9 +1256,45 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   (pages-to-limit over ``MockTransport`` popular payloads with the enqueue step
   stubbed, empty-page stop, created-id reporting, unsupported entity_type
   ValueError), 1 command smoke (enqueue awaited with kind/limit + drain called,
-  both patched). **Next deferred piece:** the IGDB/SteamGrid hydration tail
-  (artist credits/labels/genres/cover + url-rel ids for albums remain the MBZ
-  full-hydration pass), then a periodic beat schedule + the daily TMDB export.
+  both patched). **Next deferred piece:** the IGDB game seed engine (now
+  increment 45), then the MBZ/SteamGrid full-hydration tail + a periodic beat
+  schedule + the daily TMDB export.
+- **IGDB game seed engine (increment 45, 2026-09-05): parity 263/263 unchanged,
+  FULL suite 900 (13 new).** Game-catalog seed driver and the first consumer of
+  the inc-37 async IGDB client: ``apps/media/services/igdb_ingest.py``
+  ``seed_game_from_igdb(raw, igdb_id)`` maps an IGDB game lookup onto
+  ``MediaItem`` (``media_type="game"``) + ``Game`` subtype + a
+  ``provider="igdb"`` ``ExternalID`` scoped ``media_type="game"`` + the cover as
+  the top-scoring poster ``MediaAsset`` (via the shared ``cover_url`` helper).
+  Resolution is by the igdb ``ExternalID`` first; a same-slug ``game`` title is
+  the cross-provider fallback — the *same* semantics the inc-26
+  ``GameMatcher._seed_game_from_igdb`` uses (Steam/other seeds write an igdb id
+  too), so the two idempotently agree and no duplication arises; consolidation
+  onto this module is left as future cleanup. Growth fields start at the
+  minimal-seed posture (``completeness_score`` 0.15, ``next_sync_at`` stamped)
+  so the deferred full-hydration pass (platforms/involved companies/
+  screenshots/videos + SteamGrid artwork) completes them. ``fetch_and_seed_game``
+  async driver fetches ``core.providers.igdb.get_game`` with the minimal
+  ``GAME_SEED_FIELDS`` (raising ``ValueError`` for an id IGDB has no game for)
+  and crosses the seed to a worker thread via ``sync_to_async``. Registered
+  ``igdb`` sync engine (``apps/integrations/services/igdb_sync.py``,
+  ``entity_type`` must be ``game``, external_id = the numeric IGDB id — blank or
+  non-numeric errors) mirrors the tmdb/musicbrainz ``asyncio.run`` bridge,
+  ``igdb_progress`` prefab, and call-time ``globals()`` fetcher resolution;
+  wired into the eager/real worker task imports (engine imports now alphabetical
+  igdb→musicbrainz→plex→tmdb→youtube). No model fields → no migration. Tests: 7
+  media-level (``SeedGameFromIgdbTests`` — full hub/game/ExternalID/poster
+  mapping incl. parsed release date + storyline-over-summary overview; re-seed
+  of a mapped id returns early; same-slug different-id merges into one row
+  (second igdb id attaches); missing cover/release-date stays empty; blank name
+  + missing slug falls back to ``Unknown Game``/slugified title — plus a
+  ``FetchAndSeedGameTests`` stub-seed fetch roundtrip and a missing-game
+  ``ValueError``) + 6 engine roundtrips (game job → ``fetching_game``/
+  ``game_seeded`` frames + stored result, existing-igdb ``game_matched``,
+  unsupported entity_type + blank id + non-numeric id errors, fetch-failure →
+  job failed). **Next deferred piece:** the SteamGrid artwork attach for games +
+  the MBZ full-hydration tail (artist credits/labels/genres/cover + url-rel
+  ids), then a periodic beat schedule + the daily TMDB export import.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
