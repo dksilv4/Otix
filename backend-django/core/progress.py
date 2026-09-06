@@ -122,3 +122,4 @@ class RedisProgress:
 # sync engines address their own namespace; add further prefabs as engines land.
 plex_progress = RedisProgress("plex:sync")
 youtube_progress = RedisProgress("youtube:sync")
+tmdb_progress = RedisProgress("tmdb:sync")

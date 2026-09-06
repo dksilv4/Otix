@@ -17,6 +17,7 @@ from apps.integrations.models import SyncJob
 # the worker (and the eager-mode task path) can resolve provider engines by name.
 from apps.integrations.services import (
     plex_sync,  # noqa: F401
+    tmdb_sync,  # noqa: F401
     youtube_sync,  # noqa: F401
 )
 from apps.integrations.services.sync import execute_sync_job

@@ -1075,6 +1075,39 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   increment-27 ``apps/integrations/services/sync.py`` registry + wire it to a
   seed driver (fetch popular/backlog), then extend to show/season/episode +
   credits (the TMDB hydrator tail) and the MusicBrainz album ingest.
+- **TMDB sync engine (increment 39, 2026-09-05): parity 263/263 unchanged, FULL
+  suite 847 (5 new).** The increment-38 ingest is now a real registered engine:
+  ``apps/integrations/services/tmdb_sync.py`` carries ``@register_sync_engine
+  ("tmdb")``, so a ``SyncJob(provider="tmdb", entity_type="movie",
+  external_id=<tmdb id>)`` enqueued through the increment-27 registry is driven
+  end to end by ``execute_sync_job`` → the engine runs the increment-38
+  ``fetch_and_seed_movie`` and seeds/reuses the catalog movie. Engine registry is
+  synchronous while the ported TMDB client is async, so the engine bridges with
+  ``asyncio.run`` — safe because ``execute_sync_job`` runs engines on a worker
+  thread/process (Celery eager or prefork) with no live event loop, and both the
+  shared httpx client (``core/providers.tmdb.get_http_client``) and the per-call
+  async redis client tolerate a fresh loop. Wired into
+  ``apps/integrations/tasks/__init__.py`` engine imports (so the eager/real
+  worker resolves it) and given a ``tmdb_progress`` prefab in ``core/progress.py``.
+  The engine snapshots a ``matched``/``seeded`` pre-state (an existing tmdb
+  ``ExternalID`` mapping already resolving the movie), emits ``fetching_movie``
+  then ``movie_seeded``/``movie_matched`` frames, and returns a summary
+  (``tmdb_id``/``media_item_id``/``matched``/``seeded``). Handled errors return
+  ``{"error": ...}`` (unsupported ``entity_type`` — only ``movie`` today — and a
+  non-numeric TMDB id); fetch/network failures raise and the orchestrator turns
+  them into an ``error`` terminal frame. Tests
+  (``apps/integrations/tests/test_tmdb_sync_engine.py``, 5) mirror the
+  youtube/plex engine roundtrips through ``run_sync_job.delay`` but stub
+  ``fetch_and_seed_movie`` — its real ORM write runs under ``sync_to_async`` on a
+  worker-thread connection that would escape ``TestCase`` rollback (the
+  increment-38 gotcha) — asserting the engine drives it with the job's TMDB id,
+  the matched-vs-seeded report, and both error paths. No API route added (no
+  frozen FastAPI counterpart); the bulk catalog-seed driver that enqueues movie
+  jobs from popular/backlog pages is the deferred next step. No model fields →
+  no migration. **Next deferred piece:** extend the engine to
+  show/season/episode + credits (the TMDB hydrator tail) and add the MusicBrainz
+  album ingest, then the bulk catalog-seed driver (fetch popular/backlog →
+  enqueue per-id jobs).
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
