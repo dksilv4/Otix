@@ -14,10 +14,12 @@ hub's pk).
 Seeding is intentionally *minimal* (a base title, not full hydration):
 ``completeness_score`` starts at 0.15 and ``next_sync_at`` is stamped so a later
 full-hydration pass completes the row — exactly the posture increment 26 uses
-for IGDB games. For TV that later pass fetches per-season episodes
-(``/tv/{id}/season/{n}``) and credits; a re-seed of an existing show refreshes
-its growth-prone fields (status, air dates, season/episode counts) and upserts
-any newly aired season summaries rather than only topping up the overview.
+for IGDB games. ``fetch_and_seed_show`` (increment 41) now also hydrates
+per-season episodes by looping the detail's season summaries and fetching each
+``/tv/{id}/season/{n}``; credits (Person + MediaCredit) remain the deferred
+tail. A re-seed of an existing show refreshes its growth-prone fields (status,
+air dates, season/episode counts) and upserts any newly aired season summaries
+rather than only topping up the overview.
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone as dj_timezone
 from django.utils.text import slugify
 
-from apps.media.models import ExternalID, MediaAsset, MediaItem, Movie, Season, Show
+from apps.media.models import Episode, ExternalID, MediaAsset, MediaItem, Movie, Season, Show
 from apps.media.models.genre import Genre, MediaGenre, MediaGenreType
 
 if TYPE_CHECKING:
@@ -195,9 +197,10 @@ def _upsert_seasons(show_pk: int, raw: dict[str, Any]) -> None:
     """Upsert Season summary rows from a TV detail's embedded ``seasons`` array.
 
     ``/tv/{id}`` embeds season summaries (name/overview/poster/episode_count) but
-    not the episodes themselves, so a base seed stops at seasons — per-season
-    episode hydration is the deferred full pass. ``show_pk`` is the ``Show``
-    subtype pk, which equals the hub's ``media_items.id``.
+    not the episodes themselves, so the detail mapper stops at seasons; episodes
+    are filled per season by ``fetch_and_seed_show`` via ``/tv/{id}/season/{n}``.
+    ``show_pk`` is the ``Show`` subtype pk, which equals the hub's
+    ``media_items.id``.
     """
     for season_data in raw.get("seasons", []) or []:
         number = season_data.get("season_number")
@@ -298,6 +301,40 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
     return media_id
 
 
+def seed_episodes_from_season(
+    show_id: int, season_number: int, season_raw: dict[str, Any]
+) -> int:
+    """Seed a season's Episode rows from a ``/tv/{id}/season/{n}`` payload.
+
+    Idempotent (``get_or_create`` keyed on season + episode_number); returns how
+    many episodes were newly created. ``show_id`` is the ``Show`` subtype pk (==
+    hub pk) and the matching ``Season`` row must already exist —
+    ``seed_show_from_tmdb`` created it from the detail's seasons summary, so a
+    season missing from that array is skipped.
+    """
+    season = Season.objects.filter(show_id=show_id, season_number=season_number).first()
+    if season is None:
+        return 0
+    created = 0
+    for ep_data in season_raw.get("episodes", []) or []:
+        number = ep_data.get("episode_number")
+        if number is None:
+            continue
+        _, was_created = Episode.objects.get_or_create(
+            season=season,
+            episode_number=int(number),
+            defaults={
+                "name": ep_data.get("name"),
+                "overview": ep_data.get("overview"),
+                "runtime": ep_data.get("runtime"),
+                "air_date": _parse_date(ep_data.get("air_date")),
+                "still_url": _image_url(ep_data.get("still_path"), size="w300"),
+            },
+        )
+        created += int(was_created)
+    return created
+
+
 async def fetch_and_seed_movie(tmdb_id: int, *, provider: TMDBProvider | None = None) -> int:
     """Fetch TMDB movie detail through a provider client, then seed it."""
     if provider is None:
@@ -311,10 +348,24 @@ async def fetch_and_seed_movie(tmdb_id: int, *, provider: TMDBProvider | None = 
 
 
 async def fetch_and_seed_show(tmdb_id: int, *, provider: TMDBProvider | None = None) -> int:
-    """Fetch TMDB TV detail through a provider client, then seed it."""
+    """Fetch TMDB TV detail through a provider client, then seed it.
+
+    Also hydrates per-season episodes: after the base Show (and its Season
+    summaries) is seeded from the detail, each season summary with
+    ``season_number > 0`` is fetched via ``/tv/{id}/season/{n}`` and mapped onto
+    ``Episode`` rows under its ``Season``. The HTTP fetches stay in the async
+    context; only the ORM writes cross to a worker thread via ``sync_to_async``.
+    """
     if provider is None:
         from core.providers.tmdb import TMDBProvider
 
         provider = TMDBProvider()
     raw = await provider.get_show(tmdb_id)
-    return await sync_to_async(seed_show_from_tmdb)(raw)
+    media_id = await sync_to_async(seed_show_from_tmdb)(raw)
+    for season_data in raw.get("seasons", []) or []:
+        number = season_data.get("season_number")
+        if not number or int(number) <= 0:
+            continue
+        season_raw = await provider.get_season(tmdb_id, int(number))
+        await sync_to_async(seed_episodes_from_season)(media_id, int(number), season_raw)
+    return media_id

@@ -1139,6 +1139,32 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   (``/tv/{id}/season/{n}``) and credits (Person + MediaCredit) for movies and
   shows — then the MusicBrainz album ingest engine, then the bulk catalog-seed
   driver.
+- **TMDB per-season episode hydration (increment 41, 2026-09-05): parity 263/263
+  unchanged, FULL suite 858 (4 new).** Closes the first half of the inc-40
+  hydrator tail: ``fetch_and_seed_show`` now hydrates a show's episodes, not just
+  its Season summaries. After the base ``seed_show_from_tmdb`` pass, it loops the
+  detail's embedded ``seasons`` array and, for each aired season summary
+  (``season_number > 0``), fetches ``/tv/{id}/season/{n}`` over the async
+  provider client and maps it via the new ``seed_episodes_from_season(show_id,
+  season_number, season_raw)`` onto ``Episode`` rows under the matching ``Season``
+  (idempotent ``get_or_create`` keyed on season + episode_number; fields name,
+  overview, runtime, ``air_date`` parsed, ``still_url`` w300). Episodes whose
+  episode_number is missing are skipped, and a season whose summary the base seed
+  didn't create (e.g. special 0) is skipped — so hydration can never orphan
+  rows. The HTTP fetches stay in the async context; only the ORM writes cross to
+  a worker thread via ``sync_to_async``. ``Episode`` joins the model import; the
+  base ``seed_show_from_tmdb`` path is unchanged (still summary-only), so movie/
+  show engine behavior is identical except that a show sync now also populates
+  episodes. Tests: 4 new media-level (``SeedEpisodesFromSeasonTests`` — payload
+  → row mapping incl. w300 still + parsed air date, idempotent re-seed returns 0,
+  missing Season row skips, number-less episode skipped) and the
+  ``FetchAndSeedShowTests`` roundtrip rewritten to route ``/3/tv/1396`` vs
+  ``/3/tv/1396/season/{n}`` in the MockTransport handler, stubbing *both* seed
+  fns (episode seeding escapes TestCase rollback via sync_to_async like the show
+  seed) and asserting per-season call order (1, then 2). No model fields → no
+  migration. **Next deferred piece:** the TMDB hydrator tail's credits half
+  (Person + MediaCredit for movies and shows), then the MusicBrainz album ingest
+  engine, then the bulk catalog-seed driver.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

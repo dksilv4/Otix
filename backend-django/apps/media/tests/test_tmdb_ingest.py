@@ -31,6 +31,7 @@ from apps.media.models.genre import Genre, MediaGenre, MediaGenreType
 from apps.media.services.tmdb_ingest import (
     fetch_and_seed_movie,
     fetch_and_seed_show,
+    seed_episodes_from_season,
     seed_movie_from_tmdb,
     seed_show_from_tmdb,
 )
@@ -78,6 +79,27 @@ def _show_raw(**overrides):
                 "episode_count": 13,
                 "poster_path": "/s2.jpg",
             },
+        ],
+    }
+    raw.update(overrides)
+    return raw
+
+
+def _season_raw(**overrides):
+    """A ``/tv/{id}/season/{n}`` payload for Breaking Bad's Season 1."""
+    raw = {
+        "id": 3572,
+        "season_number": 1,
+        "name": "Season 1",
+        "episodes": [
+            {
+                "episode_number": 1,
+                "name": "Pilot",
+                "overview": "Walt cooks.",
+                "runtime": 58,
+                "air_date": "2008-01-20",
+                "still_path": "/still1.jpg",
+            }
         ],
     }
     raw.update(overrides)
@@ -283,8 +305,9 @@ class SeedShowFromTmdbTests(TestCase):
         self.assertEqual(show.number_of_episodes, 62)
         self.assertFalse(show.is_anime)
 
-        # season summaries seeded from the embedded array; specials (0) skipped;
-        # episodes are a deferred full pass.
+        # season summaries seeded from the embedded array; specials (0) skipped.
+        # Episodes are not part of the base seed — fetch_and_seed_show hydrates
+        # them per season from /tv/{id}/season/{n}.
         seasons = list(Season.objects.filter(show_id=media_id).order_by("season_number"))
         self.assertEqual(
             [(s.season_number, s.name) for s in seasons],
@@ -364,6 +387,76 @@ class SeedShowFromTmdbTests(TestCase):
             seed_show_from_tmdb({"name": "No id here"})
 
 
+class SeedEpisodesFromSeasonTests(TestCase):
+    """Maps ``/tv/{id}/season/{n}`` episodes onto Episode rows (increment 41)."""
+
+    def setUp(self):
+        # seed_show_from_tmdb is a plain sync DB write, safe under rollback; it
+        # leaves a Season-1 summary in place for the episode seeding to attach to.
+        self.media_id = seed_show_from_tmdb(_show_raw())
+
+    def season1(self):
+        return Season.objects.get(show_id=self.media_id, season_number=1)
+
+    def test_maps_season_payload_episodes_onto_rows(self):
+        payload = {
+            "season_number": 1,
+            "episodes": [
+                {
+                    "episode_number": 1,
+                    "name": "Pilot",
+                    "overview": "Walt cooks.",
+                    "runtime": 58,
+                    "air_date": "2008-01-20",
+                    "still_path": "/still1.jpg",
+                },
+                {
+                    "episode_number": 2,
+                    "name": "Cat's in the Bag...",
+                    "overview": None,
+                    "runtime": 48,
+                    "air_date": "2008-01-27",
+                    "still_path": None,
+                },
+            ],
+        }
+        created = seed_episodes_from_season(self.media_id, 1, payload)
+        self.assertEqual(created, 2)
+        season = self.season1()
+        eps = list(Episode.objects.filter(season=season).order_by("episode_number"))
+        self.assertEqual([e.episode_number for e in eps], [1, 2])
+        self.assertEqual(eps[0].name, "Pilot")
+        self.assertEqual(eps[0].runtime, 58)
+        self.assertEqual(str(eps[0].air_date), "2008-01-20")
+        self.assertTrue(eps[0].still_url.endswith("/w300/still1.jpg"))
+        self.assertIsNone(eps[1].overview)
+        self.assertIsNone(eps[1].still_url)
+        # all rows landed under this season; the sibling Season 2 is untouched
+        self.assertEqual(Episode.objects.count(), 2)
+
+    def test_idempotent_reseed_returns_zero_new(self):
+        payload = _season_raw()
+        self.assertEqual(seed_episodes_from_season(self.media_id, 1, payload), 1)
+        self.assertEqual(seed_episodes_from_season(self.media_id, 1, payload), 0)
+        self.assertEqual(Episode.objects.filter(season=self.season1()).count(), 1)
+
+    def test_missing_season_row_skips(self):
+        # no Season-3 summary exists (the fixture only has seasons 1-2)
+        self.assertEqual(seed_episodes_from_season(self.media_id, 3, _season_raw()), 0)
+        self.assertEqual(Episode.objects.count(), 0)
+
+    def test_episodes_without_a_number_are_skipped(self):
+        payload = {
+            "season_number": 1,
+            "episodes": [
+                {"episode_number": 1, "name": "Pilot"},
+                {"name": "No number"},
+            ],
+        }
+        self.assertEqual(seed_episodes_from_season(self.media_id, 1, payload), 1)
+        self.assertEqual(Episode.objects.filter(season=self.season1()).count(), 1)
+
+
 class FetchAndSeedShowTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -376,13 +469,31 @@ class FetchAndSeedShowTests(TestCase):
         BaseProvider._api_cache = cls._orig_cache
         super().tearDownClass()
 
-    def test_fetches_through_provider_and_passes_raw_to_seed(self):
-        raw = _show_raw()
+    def test_fetches_show_then_hydrates_episodes_per_season(self):
+        show_raw = _show_raw()
+        season1 = _season_raw(
+            episodes=[
+                {"episode_number": 1, "name": "Pilot", "air_date": "2008-01-20"},
+                {"episode_number": 2, "name": "Cat's in the Bag...", "air_date": "2008-01-27"},
+            ]
+        )
+        season2 = _season_raw(
+            season_number=2,
+            episodes=[{"episode_number": 1, "name": "Seven Thirty-Seven"}],
+        )
+        season_payloads = {
+            "/3/tv/1396/season/1": season1,
+            "/3/tv/1396/season/2": season2,
+        }
 
         def handler(request):
-            self.assertEqual(request.url.path, "/3/tv/1396")
             self.assertEqual(request.headers["Authorization"], "Bearer test-rat")
-            return httpx.Response(200, json=raw)
+            path = request.url.path
+            if path == "/3/tv/1396":
+                return httpx.Response(200, json=show_raw)
+            payload = season_payloads.get(path)
+            self.assertIsNotNone(payload, f"unexpected season path {path}")
+            return httpx.Response(200, json=payload)
 
         fake = FakeAsyncRedis()
         client = httpx.AsyncClient(
@@ -392,10 +503,20 @@ class FetchAndSeedShowTests(TestCase):
         )
         provider = TMDBProvider(redis=fake, http_client=client)
 
+        # Both seed writes run their ORM inserts via sync_to_async on a
+        # worker-thread connection that escapes TestCase rollback, so stub them.
         with mock.patch(
             "apps.media.services.tmdb_ingest.seed_show_from_tmdb", return_value=54321
-        ) as seed:
+        ) as seed_show, mock.patch(
+            "apps.media.services.tmdb_ingest.seed_episodes_from_season", return_value=0
+        ) as seed_eps:
             result = _run(fetch_and_seed_show(1396, provider=provider))
-        seed.assert_called_once_with(raw)
+
+        seed_show.assert_called_once_with(show_raw)
         self.assertEqual(result, 54321)
+        # one per aired season summary (specials 0 excluded), in order
+        self.assertEqual([c.args for c in seed_eps.call_args_list], [
+            (54321, 1, season1),
+            (54321, 2, season2),
+        ])
         _run(client.aclose())
