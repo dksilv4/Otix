@@ -1,22 +1,26 @@
-"""IGDB game ingest — seed catalog game rows from IGDB detail JSON.
+"""IGDB game ingest — seed + fully hydrate catalog game rows from IGDB JSON.
 
 The first consumer of the ported async IGDB client (``core.providers.igdb``,
 increment 37). Mirrors the sync posture ``GameMatcher._seed_game_from_igdb``
 established in increment 26: an IGDB game lookup maps onto the Django MTI graph
 (``MediaItem`` hub with ``media_type="game"`` + ``Game`` subtype) plus a
 ``provider="igdb"`` ``ExternalID`` row and the cover as the top poster
-``MediaAsset``. Seeding is intentionally *minimal* like every catalog-seed
-engine — ``completeness_score`` starts 0.15 and ``next_sync_at`` is stamped so
-the later full-hydration pass (platforms/involved companies/screenshots/videos,
-SteamGrid artwork) completes the row.
+``MediaAsset``. Since increment 50 the seed also folds in the game full-hydration
+pass (genres/platforms/game-modes/involved companies + Game growth fields), so a
+newly seeded (or re-synced) row is complete rather than the minimal posture the
+increment-45 seed left for a later pass — SteamGrid artwork is attached by its
+own engine (increment 46); screenshots/artworks/videos + age ratings still wait
+on an asset-family decision.
 
 Resolution is by the igdb ``ExternalID`` first; a same-slug ``game`` catalog
 title is the cross-provider fallback (Steam/other seeds write an igdb id too, so
 a title seeded via a different provider is refreshed rather than duplicated) —
-the same semantics the GameMatcher seeder uses, so both idempotently agree. The
-async fetch driver returns a bare media id; raised provider errors (or an id
-IGDB has no game for) bubble to the caller (a sync engine), which turns them
-into an ``error`` terminal frame.
+the same semantics the GameMatcher seeder uses, so both idempotently agree.
+Unlike the increment-45 early return, a mapped re-seed now falls through to the
+idempotent hydration so the drain can grow previously-minimal rows. The async
+fetch driver returns a bare media id; raised provider errors (or an id IGDB has
+no game for) bubble to the caller (a sync engine), which turns them into an
+``error`` terminal frame.
 """
 
 from __future__ import annotations
@@ -30,15 +34,60 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.text import slugify
 
-from apps.media.models import ExternalID, Game, MediaAsset, MediaItem
-from apps.media.services.igdb import cover_url
+from apps.company.models import Company, InvolvedCompany
+from apps.media.models import (
+    ExternalID,
+    Franchise,
+    Game,
+    GameMode,
+    Genre,
+    MediaAsset,
+    MediaGameMode,
+    MediaGenre,
+    MediaItem,
+    MediaPlatform,
+    Platform,
+)
+from apps.media.services.igdb import _PLATFORM_NORMALIZATION, cover_url
 
 if TYPE_CHECKING:
     from core.providers.igdb import IGDBProvider
 
-# Field set the seed consumes. Platform/company/screenshot/video enrichment and
-# SteamGrid artwork stay the deferred full-hydration pass.
-GAME_SEED_FIELDS = "id,name,slug,cover.image_id,first_release_date,storyline,summary"
+# Field set the seed consumes — the minimal posture fields plus the hydration
+# vocabulary/subtype fields the increment-50 pass maps (game modes carry the
+# multiplayer flag; the official website lands on Game.website). Screenshots/
+# artworks/videos + age ratings stay out until an asset family is chosen.
+GAME_HYDRATION_FIELDS = (
+    "id,name,slug,cover.image_id,first_release_date,storyline,summary,"
+    "status,game_type,franchise.name,parent_game.name,"
+    "websites.url,websites.type,"
+    "platforms.name,genres.name,game_modes.name,"
+    "involved_companies.developer,involved_companies.publisher,"
+    "involved_companies.porting,involved_companies.supporting,"
+    "involved_companies.company.name,involved_companies.company.slug"
+)
+
+# IGDB game ``status`` categories (returned as an int) -> the release_status text.
+_IGDB_STATUS = {
+    0: "released",
+    2: "alpha",
+    3: "beta",
+    4: "early_access",
+    5: "offline",
+    6: "cancelled",
+    7: "rumored",
+    8: "delisted",
+}
+
+# IGDB game_mode names that imply other players (anything else is single-player).
+_MULTIPLAYER_MODES = {
+    "multiplayer",
+    "co-operative",
+    "online co-op",
+    "split screen",
+    "massively multiplayer",
+    "battle royale",
+}
 
 _MEDIA_CT: ContentType | None = None
 
@@ -92,13 +141,14 @@ def _upsert_poster_asset(media: MediaItem, url: str) -> None:
 
 
 def seed_game_from_igdb(raw: dict[str, Any], igdb_id: int) -> int:
-    """Map an IGDB game lookup onto a minimal MediaItem + Game; return its pk.
+    """Map an IGDB game lookup onto a MediaItem + Game, hydrate it; return its pk.
 
-    Idempotent: an existing igdb ``ExternalID`` resolves to its media row and
-    returns early; otherwise a same-slug ``game`` title is reused (refreshing a
-    missing overview + poster, mirroring the GameMatcher cross-provider dedup);
-    otherwise a fresh hub + subtype row is created. All growth fields start at
-    the minimal-seed posture so the later hydration pass fills them in.
+    Idempotent: an igdb ``ExternalID`` resolves to its media row (a mapped
+    re-seed is a refresh that grows a previously-minimal row); otherwise a
+    same-slug ``game`` title is reused (cross-provider dedup, mirroring the
+    GameMatcher); otherwise a fresh hub + subtype row is created. Every path then
+    runs the add-only full-hydration pass (``_hydrate_game``), so repeated seeds
+    never duplicate vocab/company links and missing subtype fields are topped up.
     """
     igdb_id_str = str(igdb_id)
     existing = ExternalID.objects.filter(
@@ -107,35 +157,198 @@ def seed_game_from_igdb(raw: dict[str, Any], igdb_id: int) -> int:
         external_id=igdb_id_str,
         media_type="game",
     ).first()
+    media = None
     if existing is not None and existing.object_id:
-        return existing.object_id
+        media = MediaItem.objects.filter(pk=existing.object_id).first()
 
-    title = (raw.get("name") or "Unknown Game").strip() or "Unknown Game"
-    overview = raw.get("storyline") or raw.get("summary")
-    poster_url = cover_url(raw.get("cover"))
-    slug = _game_slug(raw, title)
-    release_date = _ts_to_date(raw.get("first_release_date"))
-
-    media = MediaItem.objects.filter(media_type="game", slug=slug).first()
     if media is None:
-        media = MediaItem.objects.create(
-            media_type="game",
-            title=title,
-            slug=slug,
-            overview=overview,
-            release_date=release_date,
-            completeness_score=0.15,
-            next_sync_at=timezone.now(),
+        title = (raw.get("name") or "Unknown Game").strip() or "Unknown Game"
+        overview = raw.get("storyline") or raw.get("summary")
+        poster_url = cover_url(raw.get("cover"))
+        slug = _game_slug(raw, title)
+        release_date = _ts_to_date(raw.get("first_release_date"))
+        media = MediaItem.objects.filter(media_type="game", slug=slug).first()
+        if media is None:
+            media = MediaItem.objects.create(
+                media_type="game",
+                title=title,
+                slug=slug,
+                overview=overview,
+                release_date=release_date,
+                completeness_score=0.15,
+                next_sync_at=timezone.now(),
+            )
+        elif media.overview is None and overview:
+            media.overview = overview
+            media.save(update_fields=("overview", "updated_at"))
+        if poster_url:
+            _upsert_poster_asset(media, poster_url)
+        _upsert_external(media.pk, igdb_id_str)
+
+    game, _ = Game.objects.get_or_create(media_item_id=media.pk)
+    _hydrate_game(media, game, raw)
+    return media.pk
+
+
+def _hydrate_game(media: MediaItem, game: Game, raw: dict[str, Any]) -> None:
+    """Fold the IGDB full-hydration pass onto an existing media + game row.
+
+    Add-only + idempotent (the increment-50 mirror of the MBZ album tail): each
+    vocab/company link is skipped when already present, so a mapped re-seed grows
+    a previously-minimal row without duplicating. Screenshots/artworks/videos and
+    age ratings stay deferred until an asset family is chosen.
+    """
+    _upsert_game_genres(media, raw.get("genres"))
+    _upsert_game_platforms(media, raw.get("platforms"))
+    _upsert_game_modes(media, game, raw.get("game_modes"))
+    _upsert_game_companies(media, raw.get("involved_companies"))
+    _apply_game_growth(game, raw)
+
+
+def _upsert_game_genres(media: MediaItem, raw_genres: Any) -> None:
+    """Link IGDB ``genres`` as genre links (add-only)."""
+    if not isinstance(raw_genres, list):
+        return
+    existing = set(
+        MediaGenre.objects.filter(media_item=media).values_list("genre_id", flat=True)
+    )
+    for entry in raw_genres:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        genre, _ = Genre.objects.get_or_create(name=name, defaults={"slug": slugify(name)})
+        if genre.pk in existing:
+            continue
+        existing.add(genre.pk)
+        MediaGenre.objects.create(media_item=media, genre=genre)
+
+
+def _upsert_game_platforms(media: MediaItem, raw_platforms: Any) -> None:
+    """Link IGDB ``platforms`` as platform links (add-only)."""
+    if not isinstance(raw_platforms, list):
+        return
+    existing = set(
+        MediaPlatform.objects.filter(media_item=media).values_list("platform_id", flat=True)
+    )
+    for entry in raw_platforms:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        slug = _PLATFORM_NORMALIZATION.get(name) or slugify(name)
+        platform, _ = Platform.objects.get_or_create(slug=slug, defaults={"name": name})
+        if platform.pk in existing:
+            continue
+        existing.add(platform.pk)
+        MediaPlatform.objects.create(media_item=media, platform=platform)
+
+
+def _upsert_game_modes(media: MediaItem, game: Game, raw_modes: Any) -> None:
+    """Link IGDB ``game_modes`` and flag the game multiplayer when any imply it."""
+    if not isinstance(raw_modes, list):
+        return
+    existing = set(
+        MediaGameMode.objects.filter(media_item=media).values_list("game_mode_id", flat=True)
+    )
+    multiplayer = False
+    for entry in raw_modes:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        if name.lower() in _MULTIPLAYER_MODES:
+            multiplayer = True
+        mode, _ = GameMode.objects.get_or_create(slug=slugify(name), defaults={"name": name})
+        if mode.pk in existing:
+            continue
+        existing.add(mode.pk)
+        MediaGameMode.objects.create(media_item=media, game_mode=mode)
+    if multiplayer and not game.has_multiplayer:
+        game.has_multiplayer = True
+        game.save(update_fields=("has_multiplayer",))
+
+
+def _upsert_game_companies(media: MediaItem, raw_involved: Any) -> None:
+    """Link IGDB ``involved_companies`` as role-flagged involved companies."""
+    if not isinstance(raw_involved, list):
+        return
+    role_flags = ("developer", "publisher", "porting", "supporting")
+    for entry in raw_involved:
+        if not isinstance(entry, dict):
+            continue
+        company_raw = entry.get("company")
+        if not isinstance(company_raw, dict):
+            continue
+        name = str(company_raw.get("name") or "").strip()
+        if not name:
+            continue
+        flags = {flag: bool(entry.get(flag)) for flag in role_flags}
+        if not any(flags.values()):
+            continue
+        raw_slug = str(company_raw.get("slug") or "").strip()
+        slug = raw_slug or name.lower().replace(" ", "-").replace("'", "")
+        company, _ = Company.objects.get_or_create(slug=slug, defaults={"name": name})
+        row, _ = InvolvedCompany.objects.get_or_create(
+            media_item=media, company=company, defaults=flags
         )
-    elif media.overview is None and overview:
-        media.overview = overview
-        media.save(update_fields=("overview", "updated_at"))
-    media_id = media.pk
-    Game.objects.get_or_create(media_item_id=media_id)
-    if poster_url:
-        _upsert_poster_asset(media, poster_url)
-    _upsert_external(media_id, igdb_id_str)
-    return media_id
+        changed = [flag for flag in role_flags if flags[flag] and not getattr(row, flag)]
+        if changed:
+            for flag in changed:
+                setattr(row, flag, True)
+            row.save(update_fields=(*changed,))
+
+
+def _apply_game_growth(game: Game, raw: dict[str, Any]) -> None:
+    """Top up the Game subtype's growth fields from the hydration payload."""
+    updates: dict[str, Any] = {}
+    status = raw.get("status")
+    if isinstance(status, int):
+        label = _IGDB_STATUS.get(status)
+        if label and game.release_status != label:
+            updates["release_status"] = label
+    game_type = raw.get("game_type")
+    if isinstance(game_type, str) and game_type.strip() and game.game_type != game_type.strip():
+        updates["game_type"] = game_type.strip()
+    parent = raw.get("parent_game")
+    if isinstance(parent, dict):
+        parent_title = str(parent.get("name") or "").strip()
+        if parent_title and game.parent_game_title != parent_title:
+            updates["parent_game_title"] = parent_title
+    website = _official_website(raw.get("websites"))
+    if website and game.website != website:
+        updates["website"] = website
+    franchise_raw = raw.get("franchise")
+    if (
+        isinstance(franchise_raw, dict)
+        and str(franchise_raw.get("name") or "").strip()
+        and game.franchise_id is None
+    ):
+        franchise_name = str(franchise_raw["name"]).strip()
+        franchise, _ = Franchise.objects.get_or_create(
+            name=franchise_name, defaults={"slug": slugify(franchise_name)}
+        )
+        updates["franchise"] = franchise
+    if updates:
+        for field, value in updates.items():
+            setattr(game, field, value)
+        game.save(update_fields=(*updates.keys(),))
+
+
+def _official_website(websites: Any) -> str | None:
+    """The official website URL from IGDB ``websites`` (fallback: the first url)."""
+    if not isinstance(websites, list):
+        return None
+    urls = [w.get("url") for w in websites if isinstance(w, dict) and w.get("url")]
+    if not urls:
+        return None
+    for w in websites:
+        if isinstance(w, dict) and w.get("type") == 1 and w.get("url"):
+            return w["url"]
+    return urls[0]
 
 
 async def fetch_and_seed_game(
@@ -146,7 +359,7 @@ async def fetch_and_seed_game(
         from core.providers.igdb import IGDBProvider  # local: avoid eager client build
 
         provider = IGDBProvider()
-    raw = await provider.get_game(igdb_id, GAME_SEED_FIELDS)
+    raw = await provider.get_game(igdb_id, GAME_HYDRATION_FIELDS)
     if not raw:
         raise ValueError(f"IGDB returned no game for id {igdb_id}")
     return await sync_to_async(seed_game_from_igdb)(raw, igdb_id)

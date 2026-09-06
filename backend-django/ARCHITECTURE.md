@@ -1426,6 +1426,39 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   no migration. **Next deferred piece:** the ingest/enrich/embedding queue
   machinery (the four worker / multi-queue task-#6 half), then trigram,
   embeddings, prod-compose cutover.
+- **IGDB game full-hydration pass (increment 50, 2026-09-06): parity 263/263
+  unchanged, FULL suite 955 (7 new).** Closes the inc-45/46 "later hydration
+  pass" deferral — the igdb game seed now folds in the game full-hydration
+  vocabulary/subtype fields so a freshly seeded (or drained re-sync) row is
+  complete rather than the minimal posture the increment-45 seed left. In
+  ``apps/media/services/igdb_ingest.py`` ``seed_game_from_igdb`` no longer
+  early-returns on a mapped igdb id: after resolving the ``MediaItem`` hub (igdb
+  ``ExternalID`` mapping, else same-slug ``game`` title cross-provider fallback,
+  else fresh hub + ``Game`` subtype) it always ``get_or_create``s the ``Game``
+  row and runs ``_hydrate_game`` — the increment-47 MBZ-album-tail mirror, an
+  idempotent add-only fold of five helpers. ``_upsert_game_genres`` /
+  ``_upsert_game_platforms`` / ``_upsert_game_modes`` link ``Genre`` /
+  ``Platform`` / ``GameMode`` rows through their join tables (existing-set
+  guards; platform slug via ``_PLATFORM_NORMALIZATION`` else slugify; a
+  multiplayer/co-op mode flags ``game.has_multiplayer`` add-only);
+  ``_upsert_game_companies`` maps role-flagged ``involved_companies`` onto
+  ``Company`` + ``InvolvedCompany`` rows (slug from IGDB else slugified name;
+  developer/publisher/porting/supporting OR-ed add-only);
+  ``_apply_game_growth`` tops up the ``Game`` subtype growth fields
+  (``release_status`` from the IGDB status int, ``game_type``,
+  ``parent_game_title``, official ``website``, ``franchise``) with a single
+  ``save(update_fields=...)``. The async fetch driver's field request widens to
+  ``GAME_HYDRATION_FIELDS`` (adds the hydration vocabulary + websites +
+  involved-companies + franchise). Game rows carry no timestamp columns, so the
+  top-up ``save`` drops the ``updated_at`` that the MediaItem-centered helpers
+  pass. Tests: 7 in ``apps/media/tests/test_igdb_ingest.py`` (full seed links
+  vocab + sets growth fields; a mapped re-seed grows a previously-minimal row;
+  both roles on one company → one InvolvedCompany row; a re-seed upgrades a
+  role flag in place; single-player mode leaves multiplayer False; unknown
+  platform gets a slugified slug; minimal raw hydrates nothing). No model fields
+  → no migration. **Next deferred piece:** the
+  ingest/enrich/embedding queue machinery (the four worker / multi-queue task-#6
+  half), then trigram, embeddings, prod-compose cutover.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
