@@ -35,6 +35,7 @@ from apps.media.services.tmdb_ingest import (
     seed_movie_from_tmdb,
     seed_show_from_tmdb,
 )
+from apps.people.models import MediaCredit, Person
 from core.providers.api_cache import ApiCache
 from core.providers.base import BaseProvider
 from core.providers.tmdb import TMDBProvider
@@ -127,6 +128,37 @@ def _movie_raw(**overrides):
     }
     raw.update(overrides)
     return raw
+
+
+def _fight_club_credits():
+    """Fight Club (550) cast+crew for the credits-seed tests."""
+    return {
+        "cast": [
+            {
+                "id": 819,
+                "name": "Edward Norton",
+                "character": "The Narrator",
+                "order": 0,
+                "profile_path": "/norton.jpg",
+            },
+            {
+                "id": 287,
+                "name": "Brad Pitt",
+                "character": "Tyler Durden",
+                "order": 1,
+                "profile_path": "/pitt.jpg",
+            },
+        ],
+        "crew": [
+            {
+                "id": 7467,
+                "name": "David Fincher",
+                "job": "Director",
+                "order": 0,
+                "profile_path": "/fincher.jpg",
+            },
+        ],
+    }
 
 
 # ── In-memory async Redis double (token-bucket script transcription) ──
@@ -244,6 +276,87 @@ class SeedMovieFromTmdbTests(TestCase):
     def test_missing_id_raises_value_error(self):
         with self.assertRaises(ValueError):
             seed_movie_from_tmdb({"title": "No id here"})
+
+
+class SeedCreditsTests(TestCase):
+    """Cast/crew seeding from the detail's appended ``credits`` (increment 42)."""
+
+    def test_movie_seed_creates_person_stubs_and_cast_crew_rows(self):
+        media_id = seed_movie_from_tmdb(_movie_raw(credits=_fight_club_credits()))
+        self.assertEqual(Person.objects.count(), 3)
+        credits = list(MediaCredit.objects.filter(media_item_id=media_id).order_by("id"))
+        # cast rows first (in TMDB order), then crew
+        self.assertEqual([c.role for c in credits], ["cast", "cast", "crew"])
+        self.assertEqual(
+            [(c.person.name, c.character_name, c.sort_order) for c in credits],
+            [
+                ("Edward Norton", "The Narrator", 0),
+                ("Brad Pitt", "Tyler Durden", 1),
+                ("David Fincher", "Director", 0),
+            ],
+        )
+        # person stubs carry a w500 profile photo + a Person-scoped tmdb id
+        norton = Person.objects.get(name="Edward Norton")
+        self.assertTrue(norton.photo_url.endswith("/w500/norton.jpg"))
+        ext = norton.external_ids.get(provider="tmdb")
+        self.assertEqual(ext.external_id, "819")
+        self.assertIsNone(ext.media_type)
+
+    def test_shared_actor_across_titles_reuses_one_person(self):
+        first = seed_movie_from_tmdb(_movie_raw(credits=_fight_club_credits()))
+        second_raw = _movie_raw(
+            id=807,
+            title="Fight Club Two",
+            imdb_id="tt0414055",
+            credits=_fight_club_credits(),
+        )
+        second = seed_movie_from_tmdb(second_raw)
+        self.assertNotEqual(first, second)
+        # both titles link the same Norton row; no duplicate person stubs
+        self.assertEqual(Person.objects.count(), 3)
+        norton = Person.objects.get(name="Edward Norton")
+        self.assertEqual(
+            set(
+                MediaCredit.objects.filter(person=norton).values_list(
+                    "media_item_id", flat=True
+                )
+            ),
+            {first, second},
+        )
+        self.assertEqual(
+            ExternalID.objects.filter(content_type__model="person", provider="tmdb").count(),
+            3,
+        )
+
+    def test_movie_reseed_refreshes_credit_snapshot(self):
+        raw = _movie_raw(credits=_fight_club_credits())
+        media_id = seed_movie_from_tmdb(raw)
+        self.assertEqual(MediaCredit.objects.filter(media_item_id=media_id).count(), 3)
+        # second billing drops Pitt; the mapped re-sync rebuilds (delete+add)
+        raw["credits"]["cast"] = raw["credits"]["cast"][:1]
+        seed_movie_from_tmdb(raw)
+        credits = list(MediaCredit.objects.filter(media_item_id=media_id))
+        self.assertEqual(
+            {c.person.name for c in credits}, {"Edward Norton", "David Fincher"}
+        )
+        # the dropped actor's Person row survives (it may credit other titles)
+        self.assertTrue(Person.objects.filter(name="Brad Pitt").exists())
+
+    def test_show_reseed_seeds_credits_once_they_appear(self):
+        media_id = seed_show_from_tmdb(_show_raw())  # detail carries no credits
+        self.assertEqual(MediaCredit.objects.filter(media_item_id=media_id).count(), 0)
+        # a continuing-series re-sync whose detail now has credits hydrates them
+        seed_show_from_tmdb(_show_raw(credits=_fight_club_credits()))
+        self.assertEqual(MediaCredit.objects.filter(media_item_id=media_id).count(), 3)
+        self.assertEqual(Person.objects.count(), 3)
+
+    def test_entries_missing_tmdb_id_or_name_are_skipped(self):
+        credits = _fight_club_credits()
+        credits["cast"].append({"name": "No Id", "character": "x", "order": 9})
+        credits["crew"].append({"id": 999999, "order": 0})  # no name
+        media_id = seed_movie_from_tmdb(_movie_raw(credits=credits))
+        self.assertEqual(MediaCredit.objects.filter(media_item_id=media_id).count(), 3)
+        self.assertEqual(Person.objects.count(), 3)
 
 
 class FetchAndSeedMovieTests(TestCase):

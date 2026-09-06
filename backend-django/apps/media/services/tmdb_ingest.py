@@ -16,10 +16,12 @@ Seeding is intentionally *minimal* (a base title, not full hydration):
 full-hydration pass completes the row — exactly the posture increment 26 uses
 for IGDB games. ``fetch_and_seed_show`` (increment 41) now also hydrates
 per-season episodes by looping the detail's season summaries and fetching each
-``/tv/{id}/season/{n}``; credits (Person + MediaCredit) remain the deferred
-tail. A re-seed of an existing show refreshes its growth-prone fields (status,
-air dates, season/episode counts) and upserts any newly aired season summaries
-rather than only topping up the overview.
+``/tv/{id}/season/{n}``. Credits (cast/crew → ``Person`` + ``MediaCredit`` rows)
+are seeded by both movie and show paths (increment 42) from the appended
+``credits`` payload as a delete-and-rebuild snapshot, so re-seeds track TMDB's
+current billing. A re-seed of an existing show refreshes its growth-prone fields
+(status, air dates, season/episode counts) and upserts any newly aired season
+summaries rather than only topping up the overview.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ from django.utils.text import slugify
 
 from apps.media.models import Episode, ExternalID, MediaAsset, MediaItem, Movie, Season, Show
 from apps.media.models.genre import Genre, MediaGenre, MediaGenreType
+from apps.people.models import MediaCredit, Person
 
 if TYPE_CHECKING:
     from core.providers.tmdb import TMDBProvider
@@ -102,6 +105,120 @@ def _upsert_asset(media: MediaItem, url: str, asset_type: str, score: int) -> No
     )
 
 
+def _credit_photo(entry: dict[str, Any]) -> str | None:
+    return _image_url(entry.get("profile_path"))
+
+
+def _resolve_persons(entries: list[dict[str, Any]]) -> dict[int, Person]:
+    """Resolve credit persons by their tmdb ``ExternalID``, creating stubs.
+
+    Mirrors the legacy hydrator's cast/crew person resolution (its wikidata and
+    name-without-tmdb cross-provider backfill phases are deferred — nothing else
+    seeds ``Person`` rows yet, so a tmdb ``ExternalID`` key alone is
+    idempotent). Keyed by int tmdb id so a shared actor across titles — or cast
+    *and* crew of the same title — reuses one row. New stubs carry a w500
+    profile photo and a content-type-``Person`` tmdb ``ExternalID`` with
+    ``media_type`` NULL (the model's convention for non-media entities).
+    """
+    wanted: dict[int, dict[str, Any]] = {}
+    for entry in entries:
+        tid = entry.get("id")
+        name = (entry.get("name") or "").strip()
+        if tid is None or not name:
+            continue
+        wanted.setdefault(int(tid), entry)
+    if not wanted:
+        return {}
+
+    content_type = ContentType.objects.get_for_model(Person)
+    tmdb_ids = {str(t) for t in wanted}
+    existing = ExternalID.objects.filter(
+        content_type=content_type, provider="tmdb", external_id__in=tmdb_ids
+    ).values_list("external_id", "object_id")
+
+    persons: dict[int, Person] = {}
+    if existing:
+        by_pk = {p.pk: p for p in Person.objects.filter(pk__in=[o for _, o in existing])}
+        for external_id, object_id in existing:
+            person = by_pk.get(object_id)
+            if person is None:
+                continue
+            if person.photo_url is None:
+                photo = _credit_photo(wanted.get(int(external_id)) or {})
+                if photo:
+                    person.photo_url = photo
+                    person.save(update_fields=("photo_url",))
+            persons[int(external_id)] = person
+
+    for tid, entry in wanted.items():
+        if tid in persons:
+            continue
+        person = Person.objects.create(
+            name=entry["name"].strip(),
+            photo_url=_credit_photo(entry),
+        )
+        ExternalID.objects.get_or_create(
+            content_type=content_type,
+            provider="tmdb",
+            external_id=str(tid),
+            defaults={"object_id": person.pk},
+        )
+        persons[tid] = person
+    return persons
+
+
+def _upsert_credits(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Snapshot-replace a title's cast/crew credits from TMDB detail ``credits``.
+
+    Mirrors the legacy ``hydrate_credits``: the media item's existing credits
+    are deleted then rebuilt from the appended ``credits`` payload, so a re-seed
+    reflects TMDB's current billing (roles removed upstream vanish). Cast rows
+    get ``role="cast"`` with the character; crew rows ``role="crew"`` with the
+    job in ``character_name`` (the legacy convention the detail serializer
+    renders); both keep TMDB ``order`` in ``sort_order``. Person rows are
+    resolved/created by ``_resolve_persons``. A missing ``credits`` key or an
+    empty cast+crew leaves existing rows untouched.
+    """
+    credits = raw.get("credits") or {}
+    if not credits:
+        return
+    cast = credits.get("cast") or []
+    crew = credits.get("crew") or []
+    if not cast and not crew:
+        return
+    persons = _resolve_persons([*cast, *crew])
+    MediaCredit.objects.filter(media_item=media).delete()
+    rows: list[MediaCredit] = []
+    for entry in cast:
+        person = persons.get(entry.get("id"))
+        if person is None:
+            continue
+        rows.append(
+            MediaCredit(
+                media_item=media,
+                person=person,
+                role="cast",
+                character_name=entry.get("character"),
+                sort_order=entry.get("order", 0),
+            )
+        )
+    for entry in crew:
+        person = persons.get(entry.get("id"))
+        if person is None:
+            continue
+        rows.append(
+            MediaCredit(
+                media_item=media,
+                person=person,
+                role="crew",
+                character_name=entry.get("job"),
+                sort_order=entry.get("order", 0),
+            )
+        )
+    if rows:
+        MediaCredit.objects.bulk_create(rows)
+
+
 def _media_content_type() -> ContentType:
     return ContentType.objects.get_for_model(MediaItem)
 
@@ -142,6 +259,11 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
         content_type=content_type, provider="tmdb", external_id=str(tmdb_id), media_type="movie"
     ).first()
     if existing is not None and existing.object_id:
+        media = MediaItem.objects.filter(pk=existing.object_id, media_type="movie").first()
+        if media is not None:
+            # A known title is not re-seeded (movie fields are static), but its
+            # credit snapshot still refreshes on a re-sync like the show path.
+            _upsert_credits(media, raw)
         return existing.object_id
 
     title = (raw.get("title") or raw.get("name") or "Unknown Movie").strip() or "Unknown Movie"
@@ -185,6 +307,7 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
         _upsert_asset(media, poster_url, "poster", 100)
         _upsert_asset(media, backdrop_url, "backdrop", 100)
 
+    _upsert_credits(media, raw)
     _upsert_genres(media, _genre_names(raw))
     _upsert_external(content_type, media_id, "tmdb", str(tmdb_id))
     imdb_id = raw.get("imdb_id") or (raw.get("external_ids") or {}).get("imdb_id")
@@ -292,6 +415,7 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
     )
     _upsert_asset(media, poster_url, "poster", 100)
     _upsert_asset(media, backdrop_url, "backdrop", 100)
+    _upsert_credits(media, raw)
     _upsert_seasons(media_id, raw)
     _upsert_genres(media, _genre_names(raw), media_type="show")
     _upsert_external(content_type, media_id, "tmdb", str(tmdb_id), media_type="show")

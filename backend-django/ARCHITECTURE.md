@@ -1165,6 +1165,35 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   migration. **Next deferred piece:** the TMDB hydrator tail's credits half
   (Person + MediaCredit for movies and shows), then the MusicBrainz album ingest
   engine, then the bulk catalog-seed driver.
+- **TMDB credits hydrator (increment 42, 2026-09-05): parity 263/263 unchanged,
+  FULL suite 863 (5 new).** Closes the credits half of the TMDB hydrator tail —
+  both ``seed_movie_from_tmdb`` and ``seed_show_from_tmdb`` now seed cast/crew
+  from the detail's appended ``credits`` payload (movie/show ``append_to_response``
+  both carry it, so it rides along in the same ``raw``). ``_upsert_credits``
+  mirrors the legacy ``hydrate_credits`` delete-and-rebuild snapshot: the media
+  item's ``MediaCredit`` rows are wiped and rebuilt each sync so re-seeds track
+  TMDB's current billing (roles removed upstream vanish); cast rows store
+  ``role="cast"`` with ``character``, crew rows ``role="crew"`` with the TMDB
+  ``job`` in ``character_name`` (the legacy convention the detail serializer
+  renders), and both keep TMDB ``order`` in ``sort_order``. ``_resolve_persons``
+  keys persons to a content-type-``Person`` tmdb ``ExternalID`` (``media_type``
+  NULL, per the model's non-media convention) so a shared actor across titles —
+  or cast *and* crew of the same title — reuses one row; new stubs carry the w500
+  profile photo. The legacy wikidata + name-without-tmdb cross-provider backfill
+  phases are deferred (nothing else seeds Person rows yet, so the tmdb key alone
+  is idempotent). Movie re-syncs keep their no-reseed posture for static fields
+  but now refresh the credit snapshot on a mapped id (the show path always
+  refreshed, so a continuing series picks up credits/changes each sync). Empty
+  ``credits`` payloads leave existing rows untouched. ``apps.people.models``
+  (``MediaCredit``/``Person``) joins the module's imports — no new model fields
+  → no migration. Tests: 5 new media-level (``SeedCreditsTests`` — cast/crew row
+  mapping incl. crew-job-in-character_name + w500 photo + Person-scoped external
+  id with NULL media_type; shared actor across two titles reuses one person; a
+  mapped movie re-sync rebuilds credits after a cast change (dropped role
+  vanishes, person row survives); a show re-sync hydrates credits once they
+  appear; entries missing a tmdb id or name are skipped). **Next deferred
+  piece:** the MusicBrainz album ingest engine, then the bulk catalog-seed
+  driver, then the IGDB/SteamGrid hydration tail.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
