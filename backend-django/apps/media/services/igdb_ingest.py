@@ -48,6 +48,7 @@ from apps.media.models import (
     MediaPlatform,
     Platform,
 )
+from apps.media.services.completeness import recompute_completeness
 from apps.media.services.igdb import _PLATFORM_NORMALIZATION, cover_url
 
 if TYPE_CHECKING:
@@ -187,6 +188,7 @@ def seed_game_from_igdb(raw: dict[str, Any], igdb_id: int) -> int:
 
     game, _ = Game.objects.get_or_create(media_item_id=media.pk)
     _hydrate_game(media, game, raw)
+    recompute_completeness(media)
     return media.pk
 
 

@@ -40,6 +40,7 @@ from django.utils.text import slugify
 from apps.company.models import Company, InvolvedCompany
 from apps.media.models import Album, ExternalID, MediaAsset, MediaItem, Track
 from apps.media.models.genre import Genre, MediaGenre
+from apps.media.services.completeness import recompute_completeness
 from apps.people.models import MediaCredit, Person
 
 if TYPE_CHECKING:
@@ -368,6 +369,8 @@ def attach_album_cover(media_id: int, images: list[Any]) -> int:
         )
         if created:
             added += 1
+    if added:
+        recompute_completeness(MediaItem.objects.get(pk=media_id))
     return added
 
 
@@ -380,8 +383,10 @@ def seed_album_from_musicbrainz(raw: dict[str, Any]) -> int:
     missing overview is topped up and the ``Album`` growth fields refresh; track
     rows are upserted add-only keyed on the recording MBID (re-syncs never
     duplicate or drop tracks). Credits/labels/genres/url-rels hydrate inline and
-    cover art follows in the async driver; ``completeness_score`` stays at 0.15
-    (the completeness recompute is a separate deferred machinery piece).
+    cover art follows in the async driver; the completeness score is recomputed +
+    persisted at the tail (and again once the cover lands in
+    ``attach_album_cover``), so a seeded album reads its truthful score rather
+    than the create-time 0.15 base.
     """
     mbid = raw.get("id")
     if not mbid:
@@ -498,6 +503,7 @@ def seed_album_from_musicbrainz(raw: dict[str, Any]) -> int:
     _upsert_album_labels(media, raw)
     _upsert_album_genres(media, raw)
     _upsert_album_url_ids(media, raw)
+    recompute_completeness(media)
     return media_id
 
 

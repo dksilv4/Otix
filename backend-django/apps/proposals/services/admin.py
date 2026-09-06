@@ -22,6 +22,7 @@ from django.db.models.functions import TruncDay, TruncHour, TruncMinute
 from django.utils import timezone
 
 from apps.media.models import ExternalRating, MediaAsset, MediaItem
+from apps.media.services.completeness import completeness_flags, score_from_flags
 from apps.people.models import Person
 from apps.proposals.models import MediaEditProposal, ProposalVote, TMDBDeletedID
 
@@ -59,38 +60,8 @@ _HYDRATION_SORTS = {
     "has_age_ratings",
 }
 
-_CORE_FLAGS = [
-    "has_overview",
-    "has_poster",
-    "has_backdrop",
-    "has_logo",
-    "has_textless_poster",
-    "has_release_date",
-    "has_embedding",
-]
-_RELATION_FLAGS = [
-    "has_genres",
-    "has_credits",
-    "has_external_ids",
-    "has_external_ratings",
-    "has_videos",
-    "has_assets",
-    "has_releases",
-    "has_keywords",
-    "has_companies",
-    "has_watch_providers",
-]
-_TYPE_FLAG_GROUPS = {
-    "movie": [
-        "has_original_language",
-        "has_runtime",
-        "has_budget",
-        "has_revenue",
-        "has_collection",
-    ],
-    "show": ["has_original_language", "has_show_status", "has_episodes"],
-    "game": ["has_platforms", "has_game_modes", "has_age_ratings"],
-}
+# Flag names + scorer live in apps.media.services.completeness (the ingest
+# pipeline persists its scores there too), so the two can never drift.
 
 _ENRICHMENT_PROVIDERS = (
     "fanart",
@@ -197,80 +168,15 @@ def hydration_summary() -> dict:
 
 
 def _hydration_item(media_item: MediaItem) -> dict:
-    item = _flag_probe(media_item)
+    item = completeness_flags(media_item)
     item["id"] = media_item.pk
     item["title"] = media_item.title
     item["media_type"] = media_item.media_type
     item["slug"] = media_item.slug
-    item["completeness_score"] = _score_from_flags(media_item.media_type, item)
+    item["completeness_score"] = score_from_flags(media_item.media_type, item)
     item["synced_at"] = media_item.synced_at
     item["next_sync_at"] = media_item.next_sync_at
     return item
-
-
-def _flag_probe(media_item: MediaItem) -> dict:
-    """One set of hydration flags for a single media item (bool or None)."""
-    has = {
-        "has_overview": bool(media_item.overview),
-        "has_poster": bool(_poster_url(media_item)),
-        "has_backdrop": bool(
-            media_item.assets.filter(asset_type="backdrop").exists()
-        ),
-        "has_logo": bool(media_item.assets.filter(asset_type="logo").exists()),
-        "has_textless_poster": bool(
-            media_item.assets.filter(asset_type="textless_poster").exists()
-        ),
-        "has_release_date": media_item.release_date is not None,
-        "has_embedding": False,  # embedding vector deferred from the schema
-        "has_original_language": media_item.original_language is not None,
-        "has_genres": media_item.media_genres.exists(),
-        "has_credits": media_item.credits.exists(),
-        "has_external_ids": media_item.external_ids.exists(),
-        "has_external_ratings": media_item.external_ratings.exists(),
-        "has_videos": media_item.videos.exists(),
-        "has_assets": media_item.assets.exists(),
-        "has_releases": media_item.releases.exists(),
-        "has_keywords": media_item.media_keywords.exists(),
-        "has_companies": media_item.involved_companies.exists(),
-        "has_watch_providers": media_item.watch_providers.exists(),
-    }
-    media_type = media_item.media_type
-    has["has_runtime"] = has["has_budget"] = has["has_revenue"] = has["has_collection"] = None
-    has["has_show_status"] = has["has_episodes"] = None
-    has["has_platforms"] = has["has_game_modes"] = has["has_age_ratings"] = None
-    if media_type == "movie":
-        has["has_runtime"] = _subtype_bool(media_item, "runtime")
-        has["has_budget"] = _subtype_bool(media_item, "budget")
-        has["has_revenue"] = _subtype_bool(media_item, "revenue")
-        has["has_collection"] = _subtype_bool(media_item, "collection")
-    elif media_type == "show":
-        has["has_show_status"] = _subtype_bool(media_item, "status")
-        has["has_episodes"] = _subtype_bool(media_item, "number_of_episodes")
-    elif media_type == "game":
-        has["has_platforms"] = media_item.platforms.exists()
-        has["has_game_modes"] = media_item.game_modes.exists()
-        has["has_age_ratings"] = media_item.releases.filter(certification__isnull=False).exists()
-    return has
-
-
-def _subtype_bool(media_item: MediaItem, field: str) -> bool:
-    try:
-        subtype = media_item.movie if media_item.media_type == "movie" else media_item.show
-    except AttributeError:
-        return False
-    return bool(getattr(subtype, field, None))
-
-
-def _score_from_flags(media_type: str, flags: dict) -> float:
-    required: list[str] = []
-    if media_type in _TYPE_FLAG_GROUPS:
-        required = _CORE_FLAGS + _RELATION_FLAGS + _TYPE_FLAG_GROUPS[media_type]
-    else:
-        required = _CORE_FLAGS + _RELATION_FLAGS
-    if not required:
-        return 0.0
-    hits = sum(1 for flag in required if flags.get(flag))
-    return round(hits / len(required), 3)
 
 
 def _hydration_sort_key(sort_by: str):

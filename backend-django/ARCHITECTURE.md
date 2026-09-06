@@ -1459,6 +1459,42 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   → no migration. **Next deferred piece:** the
   ingest/enrich/embedding queue machinery (the four worker / multi-queue task-#6
   half), then trigram, embeddings, prod-compose cutover.
+- **Canonical completeness recompute (increment 51, 2026-09-06): parity 263/263
+  unchanged, FULL suite 963 (8 new).** Closes the "the completeness recompute is
+  a separate deferred machinery piece" deferral every ingest docstring carried —
+  the stored ``MediaItem.completeness_score`` is now recomputed + persisted at
+  each catalog-ingest seed/hydration tail, so a seeded row reads its truthful
+  score instead of the arbitrary ``0.15`` create-time base and the admin
+  hydration panel can no longer drift from it. New canonical module
+  ``apps/media/services/completeness.py`` ports the legacy
+  ``services/completeness.py`` gate (CORE 7 + RELATION 10 + per-type flags:
+  movie 5 / show 3 / game 3; ``score_from_flags`` fractions rounded to 3 dp;
+  ``completeness_flags(media)`` per-instance probe with inapplicable subtype
+  keys padded to ``None`` and ``has_embedding`` pinned False since embeddings
+  are schema-deferred). ``recompute_completeness(media)`` scores + persists with
+  a single ``save(update_fields=("completeness_score", "updated_at"))`` no-op
+  guard. The prior private scorer in ``apps/proposals/services/admin.py`` is
+  deleted — ``get_hydration_status`` now imports ``completeness_flags`` +
+  ``score_from_flags`` from the shared module (payload shape unchanged). Wired
+  recompute into the seed tails that grow a row's graph: TMDB
+  ``seed_movie_from_tmdb`` (both the mapped re-sync refresh branch and the fresh
+  tail), ``seed_show_from_tmdb``; MusicBrainz ``seed_album_from_musicbrainz`` +
+  ``attach_album_cover`` (poster/backdrop land there, so the score rises once
+  cover art attaches); IGDB ``seed_game_from_igdb`` after ``_hydrate_game``; and
+  SteamGrid ``attach_steamgrid_assets`` (grids/heroes/logos raise
+  poster/backdrop/logo flags). Recompute runs on the same worker-thread ORM
+  connection as the seed writes, so the async fetch paths stay correct. The
+  plex_seed watchlist/scan stubs are NOT recomputed (they set 0.15 for a media
+  row that a later catalog re-sync will score). Tests: 8 in the new
+  ``apps/media/tests/test_completeness.py`` (flag counts; all-true = 1.0;
+  partial fractions — movie 11/22 = 0.5, hydrated game 9/20 = 0.45; recompute
+  persists + reflects added graph + no-op when unchanged; IGDB full hydration
+  outranks the minimal seed 0.25 → 0.45; admin hydration-status scores from the
+  same flags as the stored score). The four seed-posture assertions that pinned
+  0.15 now assert the recomputed values (movie 0.5, show 0.5, album 0.118, game
+  0.25). No model fields → no migration. **Next deferred piece:** the
+  ingest/enrich/embedding queue machinery (the four worker / multi-queue task-#6
+  half), then trigram, embeddings, prod-compose cutover.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

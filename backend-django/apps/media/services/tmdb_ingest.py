@@ -37,6 +37,7 @@ from django.utils.text import slugify
 
 from apps.media.models import Episode, ExternalID, MediaAsset, MediaItem, Movie, Season, Show
 from apps.media.models.genre import Genre, MediaGenre, MediaGenreType
+from apps.media.services.completeness import recompute_completeness
 from apps.people.models import MediaCredit, Person
 
 if TYPE_CHECKING:
@@ -264,6 +265,7 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
             # A known title is not re-seeded (movie fields are static), but its
             # credit snapshot still refreshes on a re-sync like the show path.
             _upsert_credits(media, raw)
+            recompute_completeness(media)
         return existing.object_id
 
     title = (raw.get("title") or raw.get("name") or "Unknown Movie").strip() or "Unknown Movie"
@@ -313,6 +315,7 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
     imdb_id = raw.get("imdb_id") or (raw.get("external_ids") or {}).get("imdb_id")
     if imdb_id:
         _upsert_external(content_type, media_id, "imdb", str(imdb_id))
+    recompute_completeness(media)
     return media_id
 
 
@@ -422,6 +425,7 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
     imdb_id = raw.get("imdb_id") or (raw.get("external_ids") or {}).get("imdb_id")
     if imdb_id:
         _upsert_external(content_type, media_id, "imdb", str(imdb_id), media_type="show")
+    recompute_completeness(media)
     return media_id
 
 

@@ -215,7 +215,8 @@ class SeedMovieFromTmdbTests(TestCase):
         self.assertEqual(media.popularity, 60.0)
         self.assertEqual(media.original_language, "en")
         self.assertFalse(media.is_adult)
-        self.assertEqual(media.completeness_score, 0.15)
+        # Recompute at the seed tail: 11/22 movie flags (no credits in the raw).
+        self.assertEqual(media.completeness_score, 0.5)
         self.assertIsNotNone(media.next_sync_at)
 
         movie = Movie.objects.get(media_item_id=media_id)
@@ -407,7 +408,8 @@ class SeedShowFromTmdbTests(TestCase):
         self.assertEqual(media.popularity, 300.0)
         self.assertEqual(media.original_language, "en")
         self.assertFalse(media.is_adult)
-        self.assertEqual(media.completeness_score, 0.15)
+        # Recompute at the seed tail: 10/20 show flags (no credits in the raw).
+        self.assertEqual(media.completeness_score, 0.5)
         self.assertIsNotNone(media.next_sync_at)
 
         show = Show.objects.get(media_item_id=media_id)

@@ -101,7 +101,9 @@ class SeedGameFromIgdbTests(TestCase):
         self.assertEqual(media.slug, "hades")
         self.assertEqual(media.overview, _game_raw()["storyline"])
         self.assertEqual(str(media.release_date), "2020-09-17")
-        self.assertEqual(media.completeness_score, 0.15)
+        # Recompute at the seed tail: overview/poster/release_date/external_ids/
+        # assets satisfied = 5/20 flags.
+        self.assertEqual(media.completeness_score, 0.25)
         self.assertIsNotNone(media.next_sync_at)
 
         Game.objects.get(media_item_id=media_id)

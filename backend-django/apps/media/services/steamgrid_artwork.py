@@ -32,6 +32,7 @@ from asgiref.sync import sync_to_async
 from django.contrib.contenttypes.models import ContentType
 
 from apps.media.models import ExternalID, MediaAsset, MediaItem
+from apps.media.services.completeness import recompute_completeness
 
 if TYPE_CHECKING:
     from core.providers.steamgrid import SteamGridDBProvider
@@ -167,6 +168,8 @@ def attach_steamgrid_assets(
                 elif lang and asset.lang is None:
                     asset.lang = lang
                     asset.save(update_fields=("lang",))
+    if added:
+        recompute_completeness(MediaItem.objects.get(pk=media_item_id))
     return added
 
 

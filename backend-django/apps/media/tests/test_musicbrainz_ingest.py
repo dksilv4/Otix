@@ -142,7 +142,8 @@ class SeedAlbumFromMusicbrainzTests(TestCase):
         self.assertEqual(media.media_type, "music")
         self.assertEqual(media.title, "In Rainbows")
         self.assertEqual(str(media.release_date), "2007-10-10")
-        self.assertEqual(media.completeness_score, 0.15)
+        # Recompute at the seed tail: 2/17 music flags (no cover in the plain seed).
+        self.assertEqual(media.completeness_score, 0.118)
         self.assertIsNotNone(media.next_sync_at)
 
         album = Album.objects.get(media_item_id=media_id)
