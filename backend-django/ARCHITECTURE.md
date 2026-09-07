@@ -1542,6 +1542,38 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   stub. **Next deferred piece:** the ingest/enrich/embedding queue machinery (the
   four worker / multi-queue task-#6 half), then trigram, embeddings, prod-compose
   cutover.
+- **TMDB relation hydration on the movie/show seed tails (increment 54,
+  2026-09-07; plan item 1.1): parity 263/263 unchanged, FULL suite 974 (4 new).**
+  First increment of the ingestion/enrichment overhaul (skip embeddings). Both
+  ``seed_movie_from_tmdb`` / ``seed_show_from_tmdb`` tails now fold the TMDB
+  detail's remaining relation payload onto the row *before*
+  ``recompute_completeness``, so the flags ``has_companies`` / ``has_releases`` /
+  ``has_videos`` / ``has_keywords`` / ``has_logo`` / ``has_textless_poster`` /
+  ``has_external_ratings`` flip True from TMDB data alone. New add-only +
+  idempotent helpers in ``apps/media/services/tmdb_ingest.py`` (all called by one
+  ``_hydrate_relations(media, raw)``): ``_upsert_involved_companies`` (movie
+  ``production_companies``; show also ``networks`` → ``Company`` slugged by name +
+  ``production``-flagged ``InvolvedCompany`` + a content-type-``Company`` tmdb
+  ``ExternalID``, mirroring ``igdb_ingest._upsert_game_companies``),
+  ``_upsert_releases`` (movie ``release_dates.results`` one row per country from
+  the theatrical/type-3 entry so premiere date + certification land together;
+  show ``content_ratings.results`` → certification-only rows; keyed add-only on
+  item+country+date+cert since ``MediaRelease`` has no unique constraint),
+  ``_upsert_videos`` (first 10 YouTube/Vimeo ``videos.results`` → ``MediaVideo``),
+  ``_upsert_keywords`` (movie ``keywords``/``{keywords:[...]}`` and show
+  ``{results:[...]}`` shapes → ``Keyword`` + ``MediaKeyword``), ``_upsert_tmdb_images``
+  (``images`` backdrops/logos + null-``iso_639_1`` posters → backdrop/logo/
+  textless-poster ``MediaAsset`` rows, deduped on item+url+type) and
+  ``_upsert_tmdb_rating`` (``vote_average``/``vote_count`` → one ``ExternalRating``
+  provider=tmdb). The known-title movie early-out (mapped re-sync) also runs
+  ``_hydrate_relations``, so pre-1.1 minimal rows grow on re-sync. No model fields
+  → no migration. Tests in ``apps/media/tests/test_tmdb_ingest.py``: a
+  ``TmdbRelationHydrationTests`` class (rich movie/show raws asserting each family
+  + idempotent re-seed + mapped-movie enrichment); the base movie-seed score moves
+  0.5 → 0.545 because ``_movie_raw``'s ``keywords`` are now persisted (12/22).
+  **Next deferred piece:** the ingest/enrich/embedding queue machinery (the four
+  worker / multi-queue task-#6 half), then trigram, embeddings, prod-compose
+  cutover.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
