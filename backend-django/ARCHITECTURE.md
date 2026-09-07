@@ -1599,6 +1599,29 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   two Hydrate tests (screenshot/backdrop assets, MediaVideo fields, age-release
   country/cert rows + unknown-org skip, and idempotent re-seed) + two Fetch tests
   (id list resolved + attached before the seed mock; sub-fetch failure tolerated).
+- **SteamGrid artwork resolution — stored-id reuse + name-search fallback (increment
+  56, 2026-09-07; plan item 1.3, lean scope): parity 263/263 unchanged, FULL suite
+  984 (6 new).** The SteamGrid asset families (grid→poster/+no_logo→textless_poster,
+  heroes→backdrop, logos→logo, icons→icon) and the Steam-App-ID lookup already
+  landed in increment 46, so 1.3 is scoped to resolution breadth in the async
+  driver ``fetch_and_attach_game_artwork`` (``apps/media/services/steamgrid_artwork.py``).
+  It is now media-first: ``_stored_steamgrid_game_id`` reads the row's existing
+  ``provider="steamgrid"`` ``ExternalID`` and, when present, reuses that game id —
+  a re-sync skips the Steam App ID lookup (only missing artwork is fetched),
+  finally honoring the id's backfill promise. On an App-ID miss the driver falls
+  back to a name search via ``provider.search_games`` on the catalog title
+  (``_media_title``), preferring the exact normalized-name candidate over prefix
+  hits (``_pick_search_match``: ``Hades`` beats ``Hades II``) before giving up —
+  a no-entry game stays a benign no-op. The summary now carries ``resolved_by``
+  (``steamgrid``/``steam``/``name``). The engine contract is unchanged
+  (``steamgrid_sync`` still drives ``fetch_and_attach_game_artwork(media_item_id,
+  steam_app_id)``), so no sync job/engine churn. No model fields → no migration.
+  Tests: the async ``FetchAndAttachGameArtworkTests`` stub the two DB resolution
+  helpers (they run through ``sync_to_async`` where a ``TestCase`` transaction is
+  invisible) and cover all four branches — steam hit, name-fallback exact-match
+  win, stored-id reuse with no platform lookup, and no-entry noop; a sync
+  ``SteamgridResolutionHelpersTests`` covers the real DB reads + the pure match
+  picker.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
