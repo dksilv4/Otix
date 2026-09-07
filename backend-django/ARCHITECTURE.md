@@ -1622,6 +1622,39 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   win, stored-id reuse with no platform lookup, and no-entry noop; a sync
   ``SteamgridResolutionHelpersTests`` covers the real DB reads + the pure match
   picker.
+- **OMDb ratings enrichment on the movie/show tails (increment 57, 2026-09-07; plan
+  item 1.4): parity 263/263 unchanged, FULL suite 1005 (21 new).** The first keyed
+  secondary-provider enrich stage of the ingestion overhaul. New
+  ``core/providers/omdb.py`` client (port of ``otix.providers.omdb.client``'s
+  ``get_by_imdb_id``): the apikey rides a per-request ``?apikey=`` query param
+  (``OMDB_API_KEY``; ``OMDB_REQUEST_TIMEOUT_SECONDS``/``OMDB_GLOBAL_RPS_LIMIT``
+  settings added), and OMDb's HTTP-200 ``Response: "False"`` miss (or a
+  transport/5xx/rate-limit error) is normalized to ``None`` — a benign no-op for
+  callers. New ``apps/media/services/omdb_ingest.py``: the pure parsers
+  ``_parse_score``/``_parse_votes``/``_rating_specs`` map the ``Ratings`` array
+  (Internet Movie Database /10 with the ``imdbVotes`` count, Rotten Tomatoes
+  /100, Metacritic /100) plus a top-level ``imdbRating`` fallback when the array
+  omits IMDb (``N/A``/unknown sources skipped); ``_stored_imdb_id`` reads back
+  the TMDB seed's ``provider="imdb"`` ``ExternalID``; the sync
+  ``upsert_omdb_ratings`` writes one ``ExternalRating`` per provider (idempotent,
+  refreshes drifted ``score``/``max_score``/``vote_count``,
+  ``recompute_completeness`` on change); the async ``omdb_enrich_ratings`` driver
+  is media-first + best-effort — unconfigured key, no IMDb id, or an OMDb miss
+  each return a benign result dict with a ``reason`` (nothing fetched/raised),
+  *provider* injectable for tests. Both TMDB fetch tails
+  (``fetch_and_seed_movie``/``fetch_and_seed_show``) now call a key-gated
+  ``_omdb_enrich_after_seed`` after the seed, so a TMDB-synced movie/show with an
+  IMDb id gains IMDb/RT/Metacritic rows when ``OMDB_API_KEY`` is configured;
+  unset → the helper returns before any DB read or client build, and errors are
+  swallowed so enrichment never fails the seed. ``has_external_ratings`` reads
+  ``external_ratings.exists()``, so OMDb rows contribute to the completeness
+  score alongside the TMDB rating. No model fields → no migration. Tests: new
+  ``apps/media/tests/test_omdb_ingest.py`` (pure parsers/specs; real-DB upsert +
+  stored-imdb read; async driver with the two DB helpers stubbed — they cross
+  ``sync_to_async`` onto a worker thread a ``TestCase`` can't see — covering all
+  four branches; ``httpx.MockTransport`` client tests for key injection + miss
+  normalization) plus three ``OmdbEnrichFoldInTests`` in ``test_tmdb_ingest.py``
+  (movie/show tails enrich when keyed, skip when unset).
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
