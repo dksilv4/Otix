@@ -44,10 +44,32 @@ class DiscoverListView(APIView):
             return Response({"detail": str(exc)}, status=400)
 
         paginator = self.pagination_class()
+        paginator.page_size = _page_size(request)
         page = paginator.paginate_queryset(qs, request, view=self)
         catalog_service.enrich_summaries(page, request.user)
         serializer = MediaItemSummarySerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        # Summary-list envelope mirrors /discover/hero + catalog similar/
+        # recommendations payloads (items + has_more/next_cursor), not the
+        # DRF page envelope. The frontend discover feed flattens ``items``.
+        has_more = bool(paginator.page.has_next())
+        return Response(
+            {
+                "items": serializer.data,
+                "has_more": has_more,
+                "next_cursor": str(paginator.page.next_page_number())
+                if has_more
+                else None,
+            }
+        )
+
+
+def _page_size(request) -> int:
+    """Resolve feed page size from ``page_size``/``limit`` (default 20)."""
+    try:
+        raw = request.query_params.get("page_size") or request.query_params.get("limit") or 20
+        return max(1, min(int(raw), 50))
+    except (TypeError, ValueError):
+        return 20
 
 
 def _bool_or_none(value: str | None) -> bool | None:

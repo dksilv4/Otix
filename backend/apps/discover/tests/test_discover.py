@@ -148,23 +148,25 @@ class DiscoverApiTests(TestCase):
         response = self.client.get(_list_url("movie", "popular"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            set(response.data.keys()), {"count", "next", "previous", "results"}
+            set(response.data.keys()), {"items", "has_more", "next_cursor"}
         )
-        self.assertEqual(response.data["count"], 1)
-        self.assertEqual(response.data["results"][0]["id"], top.pk)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["has_more"], False)
+        self.assertIsNone(response.data["next_cursor"])
+        self.assertEqual(response.data["items"][0]["id"], top.pk)
 
     def test_top_rated_sorts_rating_desc(self) -> None:
         high = _item("High-Rating", popularity=1, avg_rating=9.5)
         _item("Low-Rating", popularity=10, avg_rating=5.0)
         response = self.client.get(_list_url("movie", "top_rated"))
-        self.assertEqual(response.data["results"][0]["id"], high.pk)
+        self.assertEqual(response.data["items"][0]["id"], high.pk)
 
     def test_trending_date_window(self) -> None:
         _item("Recent", popularity=90, release_date=_days(-10))
         _item("Ancient", popularity=80, release_date=_days(-400))
         _item("Far-Future", popularity=70, release_date=_days(400))
         response = self.client.get(_list_url("movie", "trending"))
-        titles = [item["title"] for item in response.data["results"]]
+        titles = [item["title"] for item in response.data["items"]]
         self.assertIn("Recent", titles)
         self.assertNotIn("Ancient", titles)
         self.assertNotIn("Far-Future", titles)
@@ -174,23 +176,24 @@ class DiscoverApiTests(TestCase):
         _item("Later", popularity=99, release_date=_days(400))
         _item("Past", popularity=50, release_date=_days(-10))
         response = self.client.get(_list_url("movie", "upcoming"))
-        titles = [item["title"] for item in response.data["results"]]
+        titles = [item["title"] for item in response.data["items"]]
         self.assertEqual(titles, ["Sooner", "Later"])
-        self.assertEqual(response.data["results"][0]["id"], first.pk)
+        self.assertEqual(response.data["items"][0]["id"], first.pk)
 
     def test_now_playing_recent_window(self) -> None:
         _item("Fresh", popularity=40, release_date=_days(-10))
         _item("Old", popularity=90, release_date=_days(-400))
         response = self.client.get(_list_url("movie", "now_playing"))
-        titles = [item["title"] for item in response.data["results"]]
+        titles = [item["title"] for item in response.data["items"]]
         self.assertEqual(titles, ["Fresh"])
 
     def test_new_season_for_you_is_empty(self) -> None:
         _item("A-Show", media_type="show", popularity=90)
         response = self.client.get(_list_url("show", "new_season_for_you"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["count"], 0)
-        self.assertEqual(response.data["results"], [])
+        self.assertEqual(response.data["has_more"], False)
+        self.assertIsNone(response.data["next_cursor"])
+        self.assertEqual(response.data["items"], [])
 
     def test_personalized_list_types_fall_back_to_popularity(self) -> None:
         top = _item("Alpha", popularity=90)
@@ -198,7 +201,7 @@ class DiscoverApiTests(TestCase):
         for list_type in ("collaborative", "semantic", "integration_steam", "integration_plex"):
             response = self.client.get(_list_url("movie", list_type))
             self.assertEqual(response.status_code, 200, list_type)
-            self.assertEqual(response.data["results"][0]["id"], top.pk, list_type)
+            self.assertEqual(response.data["items"][0]["id"], top.pk, list_type)
 
     # ── narrowing + adult policy ─────────────────────────────────────
     def test_artwork_requirement_drops_under_language_filter(self) -> None:
@@ -208,10 +211,10 @@ class DiscoverApiTests(TestCase):
         narrowed = self.client.get(_list_url("movie", "popular"), {"language": "en-US"})
         plain = self.client.get(_list_url("movie", "popular"))
         self.assertEqual(
-            [item["id"] for item in narrowed.data["results"]], [logo_only.pk]
+            [item["id"] for item in narrowed.data["items"]], [logo_only.pk]
         )
         self.assertNotIn(
-            "En-Only", [item["title"] for item in plain.data["results"]]
+            "En-Only", [item["title"] for item in plain.data["items"]]
         )
 
     def test_is_anime_filter(self) -> None:
@@ -220,7 +223,7 @@ class DiscoverApiTests(TestCase):
         response = self.client.get(
             _list_url("movie", "popular"), {"is_anime": "true"}
         )
-        titles = [item["title"] for item in response.data["results"]]
+        titles = [item["title"] for item in response.data["items"]]
         self.assertEqual(titles, ["Shonen"])
 
     def test_feed_excludes_adult_for_anon_but_staff_sees(self) -> None:
@@ -228,8 +231,8 @@ class DiscoverApiTests(TestCase):
         adult = _item("Mature", popularity=500, is_adult=True)
         anon = self.client.get(_list_url("movie", "popular"))
         staff = self.staff_client.get(_list_url("movie", "popular"))
-        anon_ids = [item["id"] for item in anon.data["results"]]
-        staff_ids = [item["id"] for item in staff.data["results"]]
+        anon_ids = [item["id"] for item in anon.data["items"]]
+        staff_ids = [item["id"] for item in staff.data["items"]]
         self.assertNotIn(adult.pk, anon_ids)
         self.assertIn(adult.pk, staff_ids)
 
@@ -241,7 +244,7 @@ class DiscoverApiTests(TestCase):
             assets=("logo", "poster"),
         )
         response = self.client.get(_list_url("music", "popular"))
-        titles = [item["title"] for item in response.data["results"]]
+        titles = [item["title"] for item in response.data["items"]]
         self.assertEqual(titles, ["An-Album"])
 
     # ── /sections ────────────────────────────────────────────────────

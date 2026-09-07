@@ -585,9 +585,14 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   asset, game/music fall back to ``poster``; has_logo = ``logo`` asset exists).
   Both views are public (``AllowAny``, optional user): hero pulls a shuffled
   pool of ``min(limit*4, 50)`` artwork-backed rows and returns
-  ``{items, has_more, next_cursor}``; list_type reuses the page-paginated
-  browse machinery (``DefaultPagination`` + ``enrich_summaries`` +
-  ``MediaItemSummarySerializer``) with media/list-type validation → 400. Legacy
+  ``{items, has_more, next_cursor}``; list_type slices through
+  ``DefaultPagination`` (``page_size``/``limit``, default 20) + ``enrich_summaries``
+  + ``MediaItemSummarySerializer`` and returns the SAME summary-list envelope
+  ``{items, has_more, next_cursor}`` (has_more/next_cursor reflect the DRF page
+  for cursor continuation) — the frontend discover feed flattens ``items`` and
+  a DRF ``results`` envelope made every non-empty/empty list render an
+  ``undefined`` item and crash (fixed alongside the feed). media/list-type
+  validation → 400. Legacy
   personalization seeding is DEFERRED: collaborative/semantic/integration_steam/
   integration_plex fall through to the generic popularity listing (exactly
   legacy's no-seeds branch) and ``new_season_for_you`` returns an empty feed
