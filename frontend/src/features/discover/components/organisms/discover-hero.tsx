@@ -5,6 +5,7 @@ import { Badge } from '@ui/atoms/badge'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { MEDIA_TYPE_LABEL, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { useHeroCarousel } from '@discover/hooks/use-hero-carousel'
+import { DiscoverEmptyFeed } from '@discover/components/organisms/discover-empty-feed'
 import { HeroCard } from '@discover/components/molecules/discover-hero-card'
 import { HeroIndicator } from '@discover/components/molecules/discover-hero-indicator'
 import { MediaLogo } from '@/lib/media/media-logo'
@@ -176,7 +177,9 @@ export function DiscoverHero({ className }: { className?: string }) {
     )
   }
 
-  if (!isActuallyLoading && items.length === 0) return null
+  if (!isActuallyLoading && items.length === 0) {
+    return <DiscoverEmptyFeed onRefresh={async () => { await refetch() }} />
+  }
 
   // ── Render ───────────────────────────────────────────────────
 
