@@ -1799,10 +1799,28 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   stored result on ``{provider}:sync`` so the original requester's SSE closes.
   Follow-ons noted: the async keyed enrichment tails (omdb/fanart) are not yet
   re-run on the proxy path, and an awaiting_client job has no timeout reaper yet.
-  **Next (Phase 2.2):** the desktop-companion fetch worker (TypeScript mirror +
-  SSE subscribe + result POST) and a heartbeat cadence. Still deferred:
-  prod-compose Django cutover + task-#6 ingest/enrich/embedding queue machinery +
-  trigram + embeddings.
+  Phase 2.2 (below) is the desktop companion's headless core.
+- **Phase-2.2 desktop proxy-fetch worker (increment 65, 2026-09-07): desktop
+  tree only — ``desktop/fetch/``.** Headless companion that answers the server
+  seam: ``ProxyFetchWorker`` (worker.ts) registers a ``ClientDevice``
+  (``POST /api/v1/fetch/device``) with the user's per-provider keys +
+  ``capabilities.providers``, holds ``GET /api/v1/fetch/stream`` open, and for
+  each ``fetch_request`` frame runs the matching provider mirror with the
+  user's local keys and ``POST /api/v1/fetch/result`` with the raw dict — so a
+  self-hosted server lacking a provider key still seeds via the user's machine.
+  Providers mirrored (providers.ts) are exactly the dispatchable+seedable pairs
+  (tmdb movie/show appended detail; igdb game ``GAME_HYDRATION_FIELDS`` +
+  resolved ``/age_ratings`` composite, replicating the seed-raw contract), so
+  the device never advertises a provider it cannot serve. Transport/SSE/keys/
+  clock are injected; net.ts supplies the real Node transport (global fetch)
+  + SSE opener (http/https incremental parser); sse.ts is a reusable
+  LF/CRLF-tolerant frame parser. The worker only opens the stream when keyed,
+  heartbeats registration below the server's 120s online TTL, and reconnects
+  with backoff on stream drop. **Wiring follow-up (2.2b):** start/stop the
+  worker from an Otix-connected main-process/IPC context with a durable
+  per-provider key store + device_id; no main.ts changes land in 65. Still
+  deferred: prod-compose Django cutover + task-#6 ingest/enrich/embedding
+  queue machinery + trigram + embeddings.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
