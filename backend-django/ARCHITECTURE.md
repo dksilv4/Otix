@@ -1655,6 +1655,39 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   four branches; ``httpx.MockTransport`` client tests for key injection + miss
   normalization) plus three ``OmdbEnrichFoldInTests`` in ``test_tmdb_ingest.py``
   (movie/show tails enrich when keyed, skip when unset).
+- **Last.fm album enrichment on the MusicBrainz album tail (increment 58, 2026-09-07;
+  plan item 1.5): parity 263/263 unchanged, FULL suite 1025 (20 new).** The second
+  keyed secondary-provider enrich stage. New ``core/providers/lastfm.py`` client
+  (port of ``otix.providers.lastfm.client``'s album path): the api_key rides the
+  per-request query string (``LASTFM_API_KEY``;
+  ``LASTFM_REQUEST_TIMEOUT_SECONDS``/``LASTFM_GLOBAL_RPS_LIMIT`` settings added),
+  throttled through the increment-32 token bucket, and Last.fm's HTTP-200 JSON
+  ``error`` envelope without an ``album`` key (or a transport/5xx/rate-limit
+  error) is normalized to ``None`` — a benign no-op. New
+  ``apps/media/services/lastfm_ingest.py``: the pure extractors
+  ``extract_wiki_summary`` (Last.fm wiki HTML + Read-more link stripped to plain
+  text) and ``extract_tags`` (``tags.tag``/``toptags.tag`` names) feed the sync
+  ``apply_album_enrichment`` — overview fills ``MediaItem.overview`` only when the
+  row has none, the first 6 tags become ``Genre`` + ``MediaGenre`` rows, and
+  playcount/listeners become ``ExternalRating`` rows (``lastfm`` /1_000_000,
+  ``lastfm_listeners`` /100_000; a missing or zero count emits no row — a 0
+  popularity signal is not meaningful), all idempotent, with
+  ``recompute_completeness`` on change. ``_album_context`` resolves the lookup
+  tuple (primary ``role="primary"`` artist credit + album title + stored release
+  MBID), returning ``None`` (benign skip) when there's nothing to look up by. The
+  async ``lastfm_enrich_album`` driver is media-first + best-effort — unconfigured
+  key, no context, or a Last.fm miss each return a benign result dict with a
+  ``reason``, *provider* injectable for tests. ``fetch_and_seed_album``'s tail now
+  calls a key-gated ``_lastfm_enrich_after_seed`` (swallows errors so enrichment
+  never fails the seed), so a MusicBrainz-seeded album with a primary-artist
+  credit gains a wiki overview + genre tags + popularity rows when
+  ``LASTFM_API_KEY`` is configured. No model fields → no migration. Tests: new
+  ``apps/media/tests/test_lastfm_ingest.py`` (pure extractors; real-DB
+  ``_album_context`` read + idempotent apply; async driver with the two DB
+  helpers stubbed across all four branches; ``httpx.MockTransport`` client tests
+  for param/key injection + error-envelope + non-200 normalization) plus two
+  ``LastfmEnrichFoldInTests`` in ``test_musicbrainz_ingest.py`` (album tail
+  enriches when keyed, skips when unset).
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
