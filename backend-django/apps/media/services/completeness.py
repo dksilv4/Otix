@@ -10,11 +10,12 @@ seeded row reads its truthful score rather than the arbitrary ``0.15`` base the
 create path stamps; the admin panel scores live from the same functions so the
 two can never drift.
 
-Embeddings are deferred from the schema, so ``has_embedding`` is always False;
-screenshots/videos + age-rating ``MediaRelease`` rows are not yet produced by any
-ingest stage, so those flags currently read False too. Flags for a media type's
-inapplicable subtype columns (e.g. ``has_runtime`` on a game) are returned as
-``None`` to keep the admin payload shape stable.
+Embeddings are deferred from the schema, so ``has_embedding`` is always False.
+Game ingest has produced screenshot/backdrop assets, videos and age-rating
+``MediaRelease`` rows since increment 55, so those flags now read True for a fully
+hydrated game. Flags for a media type's inapplicable subtype columns (e.g.
+``has_runtime`` on a game) are returned as ``None`` to keep the admin payload
+shape stable.
 """
 
 from __future__ import annotations

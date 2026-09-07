@@ -9,8 +9,11 @@ established in increment 26: an IGDB game lookup maps onto the Django MTI graph
 pass (genres/platforms/game-modes/involved companies + Game growth fields), so a
 newly seeded (or re-synced) row is complete rather than the minimal posture the
 increment-45 seed left for a later pass — SteamGrid artwork is attached by its
-own engine (increment 46); screenshots/artworks/videos + age ratings still wait
-on an asset-family decision.
+own engine (increment 46), and since increment 55 the fold also stores the game's
+screenshots/artworks (MediaAsset rows), videos (MediaVideo) and age ratings
+(MediaRelease certification rows; the ``age_ratings`` id list the games endpoint
+returns is resolved to org/label rows through a separate IGDB ``/age_ratings``
+fetch in the async driver).
 
 Resolution is by the igdb ``ExternalID`` first; a same-slug ``game`` catalog
 title is the cross-provider fallback (Steam/other seeds write an igdb id too, so
@@ -46,6 +49,8 @@ from apps.media.models import (
     MediaGenre,
     MediaItem,
     MediaPlatform,
+    MediaRelease,
+    MediaVideo,
     Platform,
 )
 from apps.media.services.completeness import recompute_completeness
@@ -56,13 +61,17 @@ if TYPE_CHECKING:
 
 # Field set the seed consumes — the minimal posture fields plus the hydration
 # vocabulary/subtype fields the increment-50 pass maps (game modes carry the
-# multiplayer flag; the official website lands on Game.website). Screenshots/
-# artworks/videos + age ratings stay out until an asset family is chosen.
+# multiplayer flag; the official website lands on Game.website). Since increment
+# 55 the set also embeds the screenshot/artwork/video image-ids the asset + video
+# hydrators map; ``age_ratings`` returns as an id list the async driver resolves
+# through a separate IGDB fetch before seeding.
 GAME_HYDRATION_FIELDS = (
     "id,name,slug,cover.image_id,first_release_date,storyline,summary,"
     "status,game_type,franchise.name,parent_game.name,"
     "websites.url,websites.type,"
     "platforms.name,genres.name,game_modes.name,"
+    "screenshots.image_id,artworks.image_id,"
+    "videos.video_id,videos.name,age_ratings,"
     "involved_companies.developer,involved_companies.publisher,"
     "involved_companies.porting,involved_companies.supporting,"
     "involved_companies.company.name,involved_companies.company.slug"
@@ -88,6 +97,35 @@ _MULTIPLAYER_MODES = {
     "split screen",
     "massively multiplayer",
     "battle royale",
+}
+
+# IGDB age-rating ``organization`` values -> (system label, ISO country code).
+_AGE_RATING_ORG_MAP: dict[int, tuple[str, str]] = {
+    1: ("ESRB", "US"),
+    2: ("PEGI", "GB"),
+    3: ("CERO", "JP"),
+    4: ("USK", "DE"),
+    5: ("GRAC", "KR"),
+    6: ("ClassInd", "BR"),
+    7: ("ACB", "AU"),
+}
+
+# IGDB age-rating ``rating_category`` values -> the per-org rating label.
+_AGE_RATING_LABEL_MAP: dict[int, str] = {
+    # ESRB (org=1)
+    1: "RP", 2: "EC", 3: "E", 4: "E10+", 5: "T", 6: "M", 7: "AO",
+    # PEGI (org=2)
+    8: "3", 9: "7", 10: "12", 11: "16", 12: "18",
+    # CERO (org=3)
+    13: "A", 14: "B", 15: "C", 16: "D", 17: "Z",
+    # USK (org=4)
+    18: "0", 19: "6", 20: "12", 21: "16", 22: "18",
+    # GRAC (org=5)
+    23: "ALL", 24: "12+", 25: "15+", 26: "18+",
+    # ClassInd (org=6)
+    27: "ER", 28: "L", 29: "10", 30: "12", 31: "14", 32: "16", 33: "18",
+    # ACB (org=7)
+    34: "G", 35: "PG", 36: "M", 37: "MA15+", 38: "R18+",
 }
 
 _MEDIA_CT: ContentType | None = None
@@ -139,6 +177,81 @@ def _upsert_poster_asset(media: MediaItem, url: str) -> None:
         url=url,
         defaults={"label": "official", "provider": "igdb", "score": 100},
     )
+
+
+def _image_url(image_id: Any, size: str) -> str | None:
+    """Build an IGDB image-CDN URL for a screenshot/artwork ``image_id``."""
+    if not isinstance(image_id, str) or not image_id:
+        return None
+    return f"https://images.igdb.com/igdb/image/upload/{size}/{image_id}.jpg"
+
+
+def _upsert_game_image_assets(
+    media: MediaItem, raw_entries: Any, *, asset_type: str, label: str, size: str
+) -> None:
+    """Store IGDB screenshots/artworks as MediaAsset rows (add-only)."""
+    if not isinstance(raw_entries, list):
+        return
+    for i, entry in enumerate(raw_entries[:10]):
+        if not isinstance(entry, dict):
+            continue
+        url = _image_url(entry.get("image_id"), size)
+        if not url:
+            continue
+        MediaAsset.objects.get_or_create(
+            media_item=media,
+            asset_type=asset_type,
+            url=url,
+            defaults={"label": label, "provider": "igdb", "score": 90 - i * 5},
+        )
+
+
+def _upsert_game_videos(media: MediaItem, raw_videos: Any) -> None:
+    """Store IGDB ``game_videos`` as MediaVideo rows (add-only)."""
+    if not isinstance(raw_videos, list):
+        return
+    for entry in raw_videos[:10]:
+        if not isinstance(entry, dict):
+            continue
+        video_id = str(entry.get("video_id") or "").strip()
+        if not video_id:
+            continue
+        MediaVideo.objects.get_or_create(
+            media_item=media,
+            provider="igdb",
+            provider_id=video_id,
+            defaults={
+                "video_type": "game_video",
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+            },
+        )
+
+
+def _upsert_game_age_ratings(media: MediaItem, raw_ratings: Any) -> None:
+    """Fold IGDB ``/age_ratings`` entries into MediaRelease certification rows.
+
+    The games endpoint returns ``age_ratings`` as an id list, so the async driver
+    resolves the ids through ``get_age_ratings`` and attaches the rows as
+    ``raw["age_rating_details"]`` — each an ``{"organization", "rating_category"}``
+    dict. Organizations/categories outside the maps are skipped (add-only).
+    """
+    if not isinstance(raw_ratings, list):
+        return
+    for entry in raw_ratings:
+        if not isinstance(entry, dict):
+            continue
+        org = entry.get("organization")
+        cat = entry.get("rating_category")
+        if org not in _AGE_RATING_ORG_MAP or cat not in _AGE_RATING_LABEL_MAP:
+            continue
+        system, country_code = _AGE_RATING_ORG_MAP[org]
+        label = _AGE_RATING_LABEL_MAP[cat]
+        MediaRelease.objects.get_or_create(
+            media_item=media,
+            country_code=country_code,
+            release_date=None,
+            certification=f"{system}: {label}",
+        )
 
 
 def seed_game_from_igdb(raw: dict[str, Any], igdb_id: int) -> int:
@@ -197,13 +310,29 @@ def _hydrate_game(media: MediaItem, game: Game, raw: dict[str, Any]) -> None:
 
     Add-only + idempotent (the increment-50 mirror of the MBZ album tail): each
     vocab/company link is skipped when already present, so a mapped re-seed grows
-    a previously-minimal row without duplicating. Screenshots/artworks/videos and
-    age ratings stay deferred until an asset family is chosen.
+    a previously-minimal row without duplicating. Since increment 55 the fold also
+    stores the game's screenshot/artwork assets, videos and age-rating releases.
     """
     _upsert_game_genres(media, raw.get("genres"))
     _upsert_game_platforms(media, raw.get("platforms"))
     _upsert_game_modes(media, game, raw.get("game_modes"))
     _upsert_game_companies(media, raw.get("involved_companies"))
+    _upsert_game_image_assets(
+        media,
+        raw.get("screenshots"),
+        asset_type="screenshot",
+        label="screenshot",
+        size="t_screenshot_big",
+    )
+    _upsert_game_image_assets(
+        media,
+        raw.get("artworks"),
+        asset_type="backdrop",
+        label="clean",
+        size="t_1080p",
+    )
+    _upsert_game_videos(media, raw.get("videos"))
+    _upsert_game_age_ratings(media, raw.get("age_rating_details"))
     _apply_game_growth(game, raw)
 
 
@@ -364,4 +493,16 @@ async def fetch_and_seed_game(
     raw = await provider.get_game(igdb_id, GAME_HYDRATION_FIELDS)
     if not raw:
         raise ValueError(f"IGDB returned no game for id {igdb_id}")
+    # ``age_ratings`` comes back as an id list; resolve the org/label rows through
+    # a separate /age_ratings fetch (best-effort: a sub-fetch failure shouldn't
+    # abort an otherwise successful seed, mirroring the legacy hydrator).
+    if isinstance(raw.get("age_ratings"), list) and raw["age_ratings"]:
+        try:
+            details = await provider.get_age_ratings(
+                [int(r) for r in raw["age_ratings"] if r is not None]
+            )
+            if details:
+                raw["age_rating_details"] = details
+        except Exception:
+            pass
     return await sync_to_async(seed_game_from_igdb)(raw, igdb_id)

@@ -27,8 +27,11 @@ from apps.media.models import (
     MediaGenre,
     MediaItem,
     MediaPlatform,
+    MediaRelease,
+    MediaVideo,
     Platform,
 )
+from apps.media.services.completeness import completeness_flags
 from apps.media.services.igdb_ingest import (
     GAME_HYDRATION_FIELDS,
     fetch_and_seed_game,
@@ -85,6 +88,23 @@ def _full_game_raw(**overrides):
                 "supporting": False,
                 "company": {"id": 2, "name": "Private Division", "slug": "private-division"},
             },
+        ],
+    )
+    raw.update(overrides)
+    return raw
+
+
+def _enriched_game_raw(**overrides):
+    """A full-hydration payload plus the increment-55 image/video/age fields."""
+    raw = _full_game_raw(
+        screenshots=[{"id": 1, "image_id": "sc01"}, {"id": 2, "image_id": "sc02"}],
+        artworks=[{"id": 1, "image_id": "ar01"}, {"id": 2, "image_id": "ar02"}],
+        videos=[{"video_id": "abc123", "name": "Launch Trailer"}],
+        age_ratings=[1001, 1002],
+        age_rating_details=[
+            {"organization": 1, "rating_category": 6},  # ESRB: M -> US
+            {"organization": 2, "rating_category": 12},  # PEGI: 18 -> GB
+            {"organization": 9, "rating_category": 1},  # unknown org -> skipped
         ],
     )
     raw.update(overrides)
@@ -188,6 +208,40 @@ class FetchAndSeedGameTests(TestCase):
         provider.get_game = mock.AsyncMock(return_value=None)
         with self.assertRaises(ValueError):
             _run(fetch_and_seed_game(IGDB_ID, provider=provider))
+
+    def test_age_rating_ids_resolved_and_attached_before_seed(self):
+        raw = _full_game_raw(age_ratings=[1001, 1002])
+        details = [
+            {"organization": 1, "rating_category": 6},
+            {"organization": 2, "rating_category": 12},
+        ]
+        provider = mock.Mock()
+        provider.get_game = mock.AsyncMock(return_value=raw)
+        provider.get_age_ratings = mock.AsyncMock(return_value=details)
+        with mock.patch(
+            "apps.media.services.igdb_ingest.seed_game_from_igdb",
+            return_value=9876,
+        ) as seed:
+            result = _run(fetch_and_seed_game(IGDB_ID, provider=provider))
+
+        provider.get_age_ratings.assert_awaited_once_with([1001, 1002])
+        self.assertEqual(seed.call_args[0][0]["age_rating_details"], details)
+        self.assertEqual(result, 9876)
+
+    def test_age_rating_sub_fetch_failure_does_not_abort_seed(self):
+        raw = _full_game_raw(age_ratings=[1001])
+        provider = mock.Mock()
+        provider.get_game = mock.AsyncMock(return_value=raw)
+        provider.get_age_ratings = mock.AsyncMock(side_effect=RuntimeError("boom"))
+        with mock.patch(
+            "apps.media.services.igdb_ingest.seed_game_from_igdb",
+            return_value=9876,
+        ) as seed:
+            result = _run(fetch_and_seed_game(IGDB_ID, provider=provider))
+
+        provider.get_age_ratings.assert_awaited_once_with([1001])
+        self.assertEqual(result, 9876)
+        self.assertNotIn("age_rating_details", seed.call_args[0][0])
 
 
 class HydrateGameFromIgdbTests(TestCase):
@@ -305,6 +359,56 @@ class HydrateGameFromIgdbTests(TestCase):
         platform = MediaPlatform.objects.get(media_item_id=media_id).platform
         self.assertEqual(platform.slug, "amiga-cd32")
         self.assertEqual(platform.name, "Amiga CD32")
+
+    def test_full_seed_folds_assets_videos_and_age_ratings(self):
+        media_id = seed_game_from_igdb(_enriched_game_raw(), IGDB_ID)
+        media = MediaItem.objects.get(pk=media_id)
+
+        flags = completeness_flags(media)
+        self.assertTrue(flags["has_videos"])
+        self.assertTrue(flags["has_age_ratings"])
+        self.assertTrue(flags["has_backdrop"])
+
+        asset_types = set(
+            MediaAsset.objects.filter(media_item_id=media_id).values_list(
+                "asset_type", flat=True
+            )
+        )
+        self.assertIn("screenshot", asset_types)
+        self.assertIn("backdrop", asset_types)
+        self.assertEqual(
+            MediaAsset.objects.filter(media_item_id=media_id, asset_type="screenshot").count(), 2
+        )
+        self.assertEqual(
+            MediaAsset.objects.filter(media_item_id=media_id, asset_type="backdrop").count(), 2
+        )
+
+        video = MediaVideo.objects.get(media_item_id=media_id)
+        self.assertEqual(video.provider, "igdb")
+        self.assertEqual(video.provider_id, "abc123")
+        self.assertEqual(video.video_type, "game_video")
+        self.assertEqual(video.url, "https://www.youtube.com/watch?v=abc123")
+
+        releases = {
+            (r.country_code, r.certification): r
+            for r in MediaRelease.objects.filter(media_item_id=media_id)
+        }
+        self.assertIn(("US", "ESRB: M"), releases)
+        self.assertIn(("GB", "PEGI: 18"), releases)
+        self.assertEqual(len(releases), 2)  # the unknown org is skipped
+
+    def test_asset_video_age_enrichment_is_idempotent(self):
+        media_id = seed_game_from_igdb(_enriched_game_raw(), IGDB_ID)
+        seed_game_from_igdb(_enriched_game_raw(), IGDB_ID)
+
+        self.assertEqual(MediaVideo.objects.filter(media_item_id=media_id).count(), 1)
+        self.assertEqual(MediaRelease.objects.filter(media_item_id=media_id).count(), 2)
+        self.assertEqual(
+            MediaAsset.objects.filter(media_item_id=media_id, asset_type="screenshot").count(), 2
+        )
+        self.assertEqual(
+            MediaAsset.objects.filter(media_item_id=media_id, asset_type="backdrop").count(), 2
+        )
 
     def test_minimal_raw_hydrates_nothing(self):
         media_id = seed_game_from_igdb(_game_raw(), IGDB_ID)
