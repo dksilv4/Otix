@@ -43,6 +43,7 @@ from apps.media.models import Album, ExternalID, MediaAsset, MediaItem, Track
 from apps.media.models.genre import Genre, MediaGenre
 from apps.media.services.completeness import recompute_completeness
 from apps.media.services.lastfm_ingest import lastfm_enrich_album
+from apps.media.services.lrclib_ingest import lrclib_enrich_album
 from apps.people.models import MediaCredit, Person
 
 if TYPE_CHECKING:
@@ -525,6 +526,20 @@ async def _lastfm_enrich_after_seed(media_id: int) -> None:
         pass
 
 
+async def _lrclib_enrich_after_seed(media_id: int) -> None:
+    """Best-effort LRCLIB lyric enrich on a freshly-seeded album row.
+
+    LRCLIB is free + no-auth, so unlike the keyed stages this runs whenever the
+    seeded album has a primary-artist credit + tracks missing lyrics (the enrich
+    driver is itself a benign no-op otherwise). Errors are swallowed —
+    enrichment never fails the seed that produced the row.
+    """
+    try:
+        await lrclib_enrich_album(media_id)
+    except Exception:
+        pass
+
+
 async def fetch_and_seed_album(mbid: str, *, provider: MusicBrainzProvider | None = None) -> int:
     """Fetch a MusicBrainz release + its cover art, then seed + attach them."""
     if provider is None:
@@ -542,4 +557,5 @@ async def fetch_and_seed_album(mbid: str, *, provider: MusicBrainzProvider | Non
     if images:
         await sync_to_async(attach_album_cover)(media_id, images)
     await _lastfm_enrich_after_seed(media_id)
+    await _lrclib_enrich_after_seed(media_id)
     return media_id

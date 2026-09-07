@@ -110,6 +110,12 @@ LASTFM_API_KEY = os.environ.get("LASTFM_API_KEY", "")
 LASTFM_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LASTFM_REQUEST_TIMEOUT_SECONDS", "15.0"))
 LASTFM_GLOBAL_RPS_LIMIT = float(os.environ.get("LASTFM_GLOBAL_RPS_LIMIT", "5.0"))
 
+# LRCLIB (album-track lyrics). Free, no-auth REST API; the per-track lyric
+# enrich tail is ungated (no key to configure) and self-limits to albums that
+# have a primary-artist credit + tracks missing lyrics.
+LRCLIB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LRCLIB_REQUEST_TIMEOUT_SECONDS", "10.0"))
+LRCLIB_GLOBAL_RPS_LIMIT = float(os.environ.get("LRCLIB_GLOBAL_RPS_LIMIT", "5.0"))
+
 # Dev-only fallback; production settings require an explicit env SECRET_KEY.
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
 

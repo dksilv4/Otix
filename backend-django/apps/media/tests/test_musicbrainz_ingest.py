@@ -492,3 +492,35 @@ class LastfmEnrichFoldInTests(TestCase):
 
         self.assertEqual(result, 54321)
         enrich.assert_not_awaited()
+
+
+class LrclibEnrichFoldInTests(TestCase):
+    """The album fetch tail folds in LRCLIB lyric enrichment (ungated).
+
+    LRCLIB is free + no-auth, so unlike the Last.fm stage there is no key gate —
+    the fold runs on every album seed and the driver self-limits (no primary
+    artist or no lyrics-missing tracks is a benign no-op). The seed writes are
+    stubbed (a real write crosses ``sync_to_async`` onto a worker thread a
+    ``TestCase`` can't see) and the enrich driver is patched at its imported
+    home in ``musicbrainz_ingest``.
+    """
+
+    def test_album_tail_enriches(self):
+        provider = mock.Mock()
+        provider.get_release = mock.AsyncMock(return_value=_release_raw())
+        provider.get_cover_art = mock.AsyncMock(return_value=None)
+        with mock.patch(
+            "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
+            return_value=54321,
+        ), mock.patch(
+            "apps.media.services.musicbrainz_ingest.lrclib_enrich_album",
+            new_callable=mock.AsyncMock,
+        ) as enrich:
+            result = _run(
+                fetch_and_seed_album(
+                    "2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider
+                )
+            )
+
+        self.assertEqual(result, 54321)
+        enrich.assert_awaited_once_with(54321)
