@@ -104,6 +104,12 @@ OMDB_API_KEY = os.environ.get("OMDB_API_KEY", "")
 OMDB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("OMDB_REQUEST_TIMEOUT_SECONDS", "15.0"))
 OMDB_GLOBAL_RPS_LIMIT = float(os.environ.get("OMDB_GLOBAL_RPS_LIMIT", "5.0"))
 
+# Last.fm (album wiki/tags/playcount enrichment). Key rides an api_key query
+# param per request; empty default makes the album enrich tail a benign no-op.
+LASTFM_API_KEY = os.environ.get("LASTFM_API_KEY", "")
+LASTFM_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LASTFM_REQUEST_TIMEOUT_SECONDS", "15.0"))
+LASTFM_GLOBAL_RPS_LIMIT = float(os.environ.get("LASTFM_GLOBAL_RPS_LIMIT", "5.0"))
+
 # Dev-only fallback; production settings require an explicit env SECRET_KEY.
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
 

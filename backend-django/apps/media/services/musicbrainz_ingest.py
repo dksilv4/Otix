@@ -32,6 +32,7 @@ from datetime import date
 from typing import TYPE_CHECKING, Any
 
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Max, Sum
 from django.utils import timezone as dj_timezone
@@ -41,6 +42,7 @@ from apps.company.models import Company, InvolvedCompany
 from apps.media.models import Album, ExternalID, MediaAsset, MediaItem, Track
 from apps.media.models.genre import Genre, MediaGenre
 from apps.media.services.completeness import recompute_completeness
+from apps.media.services.lastfm_ingest import lastfm_enrich_album
 from apps.people.models import MediaCredit, Person
 
 if TYPE_CHECKING:
@@ -507,6 +509,22 @@ def seed_album_from_musicbrainz(raw: dict[str, Any]) -> int:
     return media_id
 
 
+async def _lastfm_enrich_after_seed(media_id: int) -> None:
+    """Best-effort Last.fm enrich on a freshly-seeded album row.
+
+    Gated on the Last.fm key being configured (the common case is unset, so this
+    returns before any DB read or client build); the enrich driver itself is a
+    benign no-op for an album with no primary-artist context or a Last.fm miss.
+    Errors are swallowed — enrichment never fails the seed that produced the row.
+    """
+    if not settings.LASTFM_API_KEY:
+        return
+    try:
+        await lastfm_enrich_album(media_id)
+    except Exception:
+        pass
+
+
 async def fetch_and_seed_album(mbid: str, *, provider: MusicBrainzProvider | None = None) -> int:
     """Fetch a MusicBrainz release + its cover art, then seed + attach them."""
     if provider is None:
@@ -523,4 +541,5 @@ async def fetch_and_seed_album(mbid: str, *, provider: MusicBrainzProvider | Non
     images = cover.get("images") if cover else None
     if images:
         await sync_to_async(attach_album_cover)(media_id, images)
+    await _lastfm_enrich_after_seed(media_id)
     return media_id

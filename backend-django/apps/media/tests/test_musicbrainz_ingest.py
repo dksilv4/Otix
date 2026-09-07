@@ -17,7 +17,7 @@ from __future__ import annotations
 import asyncio
 from unittest import mock
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from apps.company.models import Company, InvolvedCompany
 from apps.media.models import (
@@ -437,3 +437,58 @@ class FetchAndSeedAlbumTests(TestCase):
         seed.assert_called_once_with(raw)
         attach.assert_called_once_with(54321, images)
         self.assertEqual(result, 54321)
+
+
+class LastfmEnrichFoldInTests(TestCase):
+    """The album fetch tail folds in Last.fm enrichment (key-gated).
+
+    The seed/cover writes are stubbed (a real write crosses ``sync_to_async``
+    onto a worker thread a ``TestCase`` can't see) and the Last.fm enrich driver
+    is patched at its imported home in ``musicbrainz_ingest``; these tests assert
+    the gate + call wiring, not the Last.fm mapping (covered by
+    ``test_lastfm_ingest.py``).
+    """
+
+    def test_album_tail_enriches_when_key_configured(self):
+        provider = mock.Mock()
+        provider.get_release = mock.AsyncMock(return_value=_release_raw())
+        provider.get_cover_art = mock.AsyncMock(return_value=None)
+        with override_settings(LASTFM_API_KEY="test-key"), mock.patch(
+            "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
+            return_value=54321,
+        ), mock.patch(
+            "apps.media.services.musicbrainz_ingest.lastfm_enrich_album",
+            new_callable=mock.AsyncMock,
+        ) as enrich:
+            result = _run(
+                fetch_and_seed_album(
+                    "2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider
+                )
+            )
+
+        self.assertEqual(result, 54321)
+        enrich.assert_awaited_once_with(54321)
+
+    def test_unconfigured_key_skips_enrich(self):
+        provider = mock.Mock()
+        provider.get_release = mock.AsyncMock(return_value=_release_raw())
+        provider.get_cover_art = mock.AsyncMock(return_value=None)
+
+        async def _boom(media_id):
+            raise AssertionError("Last.fm enrich ran with no key configured")
+
+        with mock.patch(
+            "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
+            return_value=54321,
+        ), mock.patch(
+            "apps.media.services.musicbrainz_ingest.lastfm_enrich_album",
+            new=mock.AsyncMock(side_effect=_boom),
+        ) as enrich:
+            result = _run(
+                fetch_and_seed_album(
+                    "2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider
+                )
+            )
+
+        self.assertEqual(result, 54321)
+        enrich.assert_not_awaited()
