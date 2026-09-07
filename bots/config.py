@@ -5,7 +5,9 @@ from dataclasses import dataclass, field
 
 # ── Environment ──────────────────────────────────────────
 
-API_BASE_URL = os.getenv("BOT_API_BASE_URL", "http://localhost:8000/api")
+# Django serves the DRF surface under /api/v1/ (the legacy FastAPI mount was
+# /api). httpx merges this base with the leading-slash paths below.
+API_BASE_URL = os.getenv("BOT_API_BASE_URL", "http://localhost:8000/api/v1")
 API_TIMEOUT = int(os.getenv("BOT_API_TIMEOUT", "30"))
 BOT_COUNT = int(os.getenv("BOT_COUNT", "10000"))
 BOT_ACTIVE_POOL = int(os.getenv("BOT_ACTIVE_POOL", "150"))

@@ -1913,6 +1913,29 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   the first probe with 0 DisallowedHost lines in the api log. ``BOT_COUNT=0`` keeps
   the sim inert by default; bots is left stopped. Battery green (ruff clean, no
   migration drift, parity 263/263 0 gaps).
+- **bots Django-compat fixes from a live 10-bot run (increment 71, 2026-09-07):
+  ``bots/client.py`` + ``bots/config.py`` + ``docker-compose.yml``.** Running the
+  sim for real surfaced three bugs that kept every bot from authenticating —
+  all legacy FastAPI assumptions the Django port changed:
+  (1) the whole bots client was one namespace short — it used base
+  ``http://api:8000/api`` but Django serves DRF under ``/api/v1/``, so every
+  request 404ed (HTML) and ``login`` crashed on the non-JSON body. Fixed the base
+  in ``bots/config.py`` (default ``http://localhost:8000/api/v1``) and the dev
+  compose bots env (``http://api:8000/api/v1``);
+  (2) ``register`` assumed the 201 body carried an ``access_token`` — Django's
+  register returns the minimal identity (this project's known divergence, no
+  auto-login token), so it crashed with ``KeyError: 'access_token'``. Now a 201
+  is followed by ``login`` to mint the session token;
+  (3) ``login``/``register`` called ``r.json()`` unguarded, so a non-JSON error
+  body (the 404 HTML above, or any rate-limit/empty response) raised instead of
+  degrading to ``None``. Wrapped in try/except → returns ``None`` → the caller
+  falls through to register. Verified live (dev compose, API host ``api`` allowed
+  by inc 70): 10/10 bots register → profile-setup → ``ready`` → run sessions
+  against discover/media/list endpoints; per-step ``action_error`` entries remain
+  (response-shape mismatches like a list endpoint returning string ids) but are
+  tolerated and logged, not fatal. Bots code is COPY-baked into the image, so a
+  ``bots/*`` edit needs ``docker compose build bots`` (or a ``-v .../bots:/app/bots:ro``
+  run mount to iterate without rebuilding).
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

@@ -143,7 +143,7 @@ services:
       context: .
       dockerfile: bots/Dockerfile
     environment:
-      BOT_API_BASE_URL: http://api:8000/api
+      BOT_API_BASE_URL: http://api:8000/api/v1
       BOT_COUNT: "0"
       BOT_ACTIVE_POOL: "30"
       BOT_ACTION_BURST: "3"
