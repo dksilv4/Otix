@@ -1868,8 +1868,7 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   ``--workers N`` when ``>1`` and reload is off (prod concurrency; default 1).
   Verified: ``docker compose -f docker-compose.prod.yml config`` resolves clean
   (no legacy asyncpg/worker-fast refs; api/worker/beat all context ``./backend``).
-  Still deferred: a real ``docker build`` + live prod boot (needs secrets/registry)
-  and the stale-root Makefile.
+  Still deferred: a real ``docker build`` + live prod boot (needs secrets/registry).
 - **CI Django job (increment 68, 2026-09-07): ``.github/workflows/ci.yml`` only.**
   The ``backend`` job that validated the retired legacy tree (``old-backend/`` —
   ``pip install .[dev]``, alembic migrate-check, mypy) is replaced by a hermetic
@@ -1885,6 +1884,20 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   ``config.settings.test`` before committing: ruff clean, no migration drift,
   parity 263/263 with 0 method-gaps/remaining, full suite 1098 OK (~224s). The
   legacy FastAPI tree is now fully retired from CI.
+- **Root Makefile repointed to Django (increment 69, 2026-09-07): ``Makefile``
+  only.** The legacy Makefile (four retired worker log targets, alembic migrate/
+  rollback, ``otix.tasks.*`` sync enqueues, wrong ``/api/health`` URL) is
+  rewritten around the Django dev reality. Compose targets talk to the dev
+  stack (``up`` prints the real ``/api/v1/health`` URL; worker targets collapse
+  to the single ``worker`` service; ``db-shell``/``redis-shell`` kept). Django
+  maintenance runs against the compose DB via the api container (``migrate``,
+  ``makemigrations app=<label>``, ``seed`` wrapping the real
+  ``catalog_seed`` mgmt command with ``provider/kind/source/limit`` defaults).
+  Host code checks mirror the CI Django job (``deps`` = ``uv sync --frozen``,
+  ``lint`` = ``ruff check .``, ``drift``, ``parity`` hard gate, ``test`` =
+  full suite, ``check`` = lint+drift+parity+test), plus single-worker celery
+  introspection targets. Verified: ``make help`` lists targets and ``make lint
+  drift parity`` all pass. ``migrate``/``seed`` still need a running dev stack.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
