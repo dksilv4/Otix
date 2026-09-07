@@ -3,6 +3,7 @@
 from django.contrib import admin
 
 from apps.integrations.models import (
+    ClientDevice,
     ProviderState,
     SyncJob,
     UserPlexItem,
@@ -13,6 +14,7 @@ from apps.integrations.models import (
     UserYoutubeLikedVideo,
 )
 
+admin.site.register(ClientDevice, admin.ModelAdmin)
 admin.site.register(SyncJob, admin.ModelAdmin)
 admin.site.register(ProviderState, admin.ModelAdmin)
 admin.site.register(UserPlexServer, admin.ModelAdmin)
