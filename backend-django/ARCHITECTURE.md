@@ -1688,6 +1688,39 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   for param/key injection + error-envelope + non-200 normalization) plus two
   ``LastfmEnrichFoldInTests`` in ``test_musicbrainz_ingest.py`` (album tail
   enriches when keyed, skips when unset).
+- **LRCLIB per-track lyric enrichment on the MusicBrainz album tail (increment
+  59, 2026-09-07; plan item 1.6): parity 263/263 unchanged, FULL suite 1043 (18
+  new).** The free/no-auth secondary-provider enrich stage — unlike the keyed
+  stages there is no API key to gate on, so the fold is ungated and self-limits
+  to albums that actually have work to do. New ``core/providers/lrclib.py``
+  client (port of ``otix.providers.lrclib.client``): ``get_lyrics`` sends
+  ``track_name``/``artist_name`` (+ optional ``album_name``/``duration`` hints;
+  ``LRCLIB_REQUEST_TIMEOUT_SECONDS``/``LRCLIB_GLOBAL_RPS_LIMIT`` settings added,
+  timeout 10/rps 5 mirroring legacy), throttled through the increment-32 token
+  bucket; LRCLIB's HTTP-200 ``statusCode: 404`` envelope, a payload carrying
+  neither ``plainLyrics`` nor ``syncedLyrics`` (e.g. instrumental tracks), or a
+  transport/5xx/rate-limit error is normalized to ``None`` — a benign no-op.
+  New ``apps/media/services/lrclib_ingest.py``: ``_lyrics_text`` prefers
+  ``plainLyrics`` over timestamped ``syncedLyrics``; ``_album_context`` resolves
+  the fill target (primary ``role="primary"`` artist credit + album title +
+  the album's lyric-less tracks), returning ``None`` when there's no primary
+  artist (nothing to attribute lookups to); the sync ``_apply_lyrics`` writes
+  lyric text only onto tracks that still have ``lyrics`` NULL (re-guarded, so a
+  track that gained lyrics since the read is skipped), returning the count
+  written. The async ``lrclib_enrich_album`` driver is media-first + best-effort
+  — no primary-artist context ("no context"), no lyric-less tracks ("no
+  tracks"), or all-miss lookups ("no results") each return a benign result dict
+  without failing, *provider* injectable for tests; ``Track.duration_ms`` is
+  divided by 1000 before being sent as the whole-second ``duration`` hint.
+  Lyrics feed no MediaItem completeness flag, so no recompute runs. No model
+  fields → no migration. Tests: new ``apps/media/tests/test_lrclib_ingest.py``
+  (``_lyrics_text`` plain-over-synced; real-DB ``_album_context`` read + add-only
+  ``_apply_lyrics``; async driver with the two DB helpers stubbed across every
+  branch incl. a two-track fetch asserting per-track kwargs + plain/synced
+  text rows; ``httpx.MockTransport`` client tests for param building + the
+  404-envelope/non-200/no-lyric-fields normalizations) plus one
+  ``LrclibEnrichFoldInTests`` in ``test_musicbrainz_ingest.py`` (ungated album
+  tail enriches).
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
