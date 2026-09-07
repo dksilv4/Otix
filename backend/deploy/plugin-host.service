@@ -16,8 +16,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/otix/backend-django
-ExecStart=/opt/otix/backend-django/.venv/bin/python manage.py plugin_host
+WorkingDirectory=/opt/otix/backend
+ExecStart=/opt/otix/backend/.venv/bin/python manage.py plugin_host
 Restart=always
 RestartSec=3
 # Emit plugin.loaded / unloaded / error lifecycle events (best-effort; empty

@@ -51,12 +51,12 @@ services:
 
   api:
     build:
-      context: ./backend-django
+      context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - ./backend-django:/app
+      - ./backend:/app
     env_file: ./.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
@@ -87,10 +87,10 @@ services:
 
   worker:
     build:
-      context: ./backend-django
+      context: ./backend
       dockerfile: Dockerfile
     volumes:
-      - ./backend-django:/app
+      - ./backend:/app
     env_file: ./.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
@@ -114,10 +114,10 @@ services:
 
   beat:
     build:
-      context: ./backend-django
+      context: ./backend
       dockerfile: Dockerfile
     volumes:
-      - ./backend-django:/app
+      - ./backend:/app
     env_file: ./.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev

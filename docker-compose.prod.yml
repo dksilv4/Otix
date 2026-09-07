@@ -135,7 +135,7 @@ services:
 
   api:
     build:
-      context: ./backend
+      context: ./old-backend
       dockerfile: Dockerfile
       args:
         HF_TOKEN: ${HF_TOKEN}
@@ -162,7 +162,7 @@ services:
 
   worker-fast:
     build:
-      context: ./backend
+      context: ./old-backend
       dockerfile: Dockerfile
       args:
         HF_TOKEN: ${HF_TOKEN}
@@ -188,7 +188,7 @@ services:
 
   worker-provider:
     build:
-      context: ./backend
+      context: ./old-backend
       dockerfile: Dockerfile
       args:
         HF_TOKEN: ${HF_TOKEN}
@@ -214,7 +214,7 @@ services:
 
   worker-user:
     build:
-      context: ./backend
+      context: ./old-backend
       dockerfile: Dockerfile
       args:
         HF_TOKEN: ${HF_TOKEN}
@@ -240,7 +240,7 @@ services:
 
   worker-control:
     build:
-      context: ./backend
+      context: ./old-backend
       dockerfile: Dockerfile
       args:
         HF_TOKEN: ${HF_TOKEN}
@@ -266,7 +266,7 @@ services:
 
   beat:
     build:
-      context: ./backend
+      context: ./old-backend
       dockerfile: Dockerfile
       args:
         HF_TOKEN: ${HF_TOKEN}

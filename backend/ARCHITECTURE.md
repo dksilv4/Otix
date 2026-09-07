@@ -1,28 +1,30 @@
 # Otix Django backend — Architecture & Conventions
 
 This document is the **contract** for every agent and developer working in
-`backend-django/`. If a decision is not recorded here, keep the change small
+`backend/`. If a decision is not recorded here, keep the change small
 and conventional and update this file. Do not invent a parallel structure.
 
 ## 1. Repo context
 
-- This directory (`backend-django/`) is a greenfield **Django + DRF** rewrite
-  of the Otix platform backend.
-- Since increment 31 the **local dev compose runs this Django backend**, not the
-  FastAPI tree at `../backend` (which is retired from dev but **not touched/
-  not deleted** — it stays for reference and a future data migration).
-  ``../backend`` should not be edited from this work. The **production compose
-  is NOT yet cut over**: `docker-compose.prod.yml` still builds `../backend`
+- This directory (`backend/`) is the **Django + DRF** rewrite of the Otix
+  platform backend. The legacy FastAPI/Celery tree it replaces lives at
+  `../old-backend` (renamed from `backend/` in the directory cutover; kept for
+  reference and a future data migration, **not edited from this work**).
+- Since increment 31 the **local dev compose runs this Django backend**, and the
+  **directory cutover (increment 61)** renamed `backend-django/` → `backend/`
+  and `backend/` → `old-backend/`, with the dev compose, `.gitignore`/
+  `.dockerignore`, and CI repointed accordingly. The **production compose is
+  NOT yet cut over**: `docker-compose.prod.yml` still builds `../old-backend`
   because its 4-worker/15-queue/embeddings topology maps to deferred task-#6
   machinery (cut that over with the production wave).
-- All new Django work lives **only** under `backend-django/` until absorption;
-  never edit `../backend` or add Django code elsewhere in the repo.
+- All new work lives **only** under `backend/`; never edit `../old-backend` or
+  add Django code elsewhere in the repo.
 - Decision/design background: `../docs/superpowers/specs/2026-09-04-django-brain-rewrite-design.md`.
 
 ## 2. Canonical layout (and why)
 
 ```
-backend-django/
+backend/
   manage.py
   pyproject.toml            # uv project "otix"; ruff (line-length 100, py312)
   README.md
@@ -804,12 +806,13 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
 - **Dev-compose cutover to Django (increment 31, 2026-09-05): parity 263/263
   unchanged, full suite 747 (no new).** The local dev ``docker-compose.yml`` no
   longer builds/launches the legacy FastAPI ``backend/`` — its ``api``/``worker``/
-  ``beat`` services now run the Django app from ``./backend-django``, so the
+  ``beat`` services now run the Django app from ``./backend`` (the directory
+  was renamed from ``backend-django/`` in the increment-61 cutover), so the
   running dev environment *is* this codebase. Packaging added in
-  ``backend-django/``: a ``Dockerfile`` (python:3.12-slim + ``uv sync
+  ``backend/``: a ``Dockerfile`` (python:3.12-slim + ``uv sync
   --frozen --no-dev --no-install-project`` with ``UV_PROJECT_ENVIRONMENT=/usr/local``
   so deps land in the global site-packages and the dev bind-mount of
-  ``./backend-django:/app`` still resolves imports), a ``.dockerignore``, and
+  ``./backend:/app`` still resolves imports), a ``.dockerignore``, and
   ``entrypoints/start-api.sh`` (``manage.py migrate --noinput`` then
   ``uvicorn config.asgi:application``, ``--reload`` when ``ENABLE_RELOAD=1``).
   ``uvicorn`` is now a runtime dependency (the ASGI entrypoint is the real

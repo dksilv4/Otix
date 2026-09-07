@@ -34,11 +34,14 @@ jobs:
       - name: Unit tests
         run: npm test 2>/dev/null || echo "No test script configured"
 
+  # Legacy FastAPI tree (backend/ renamed to old-backend/ in the Django
+  # cutover). This job keeps validating the legacy code it runs; a Django CI job
+  # (manage.py test + ruff + makemigrations check) is a deferred follow-up.
   backend:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: old-backend
 
     services:
       postgres:

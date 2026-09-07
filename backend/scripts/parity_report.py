@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Parity report: frozen FastAPI route contract vs the Django urlconf.
 
-Usage (from backend-django/):
+Usage (from backend/):
 
     DJANGO_SETTINGS_MODULE=config.settings.dev .venv/bin/python scripts/parity_report.py
 

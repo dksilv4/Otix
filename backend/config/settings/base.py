@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 import dotenv
 from celery.schedules import crontab
 
-# backend-django/config/settings/base.py -> backend-django/
+# backend/config/settings/base.py -> backend/
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Load .env from the project root if present. Real values (never checked in)
