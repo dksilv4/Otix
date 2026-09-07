@@ -34,39 +34,18 @@ jobs:
       - name: Unit tests
         run: npm test 2>/dev/null || echo "No test script configured"
 
-  # Legacy FastAPI tree (backend/ renamed to old-backend/ in the Django
-  # cutover). This job keeps validating the legacy code it runs; a Django CI job
-  # (manage.py test + ruff + makemigrations check) is a deferred follow-up.
+  # Django backend (backend/). The suite is hermetic: config.settings.test
+  # forces an in-memory SQLite test DB + eager Celery, and the Redis-backed
+  # surfaces (SSE/sync/rate-limit) run against in-memory doubles — so no
+  # Postgres/Redis services are required. The legacy FastAPI tree now lives at
+  # old-backend/ and is retired from CI (not built or tested here).
   backend:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: old-backend
-
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_DB: otix_test
-          POSTGRES_USER: otix
-          POSTGRES_PASSWORD: password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U otix -d otix_test"
-          --health-interval 2s
-          --health-timeout 5s
-          --health-retries 10
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 2s
-          --health-timeout 5s
-          --health-retries 10
+        working-directory: backend
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
 
     steps:
       - uses: actions/checkout@v4
@@ -75,29 +54,28 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install .[dev]
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
-      - name: Verify migrations apply to an empty database
-        run: python scripts/migrate-check.py
-        env:
-          DATABASE_URL_SYNC: postgresql://otix:password@localhost:5432/otix_test
-          APP_ENV: test
+      - name: Install locked dependencies
+        run: uv sync --frozen
 
-      - name: Format check (ruff)
-        run: ruff format --check .
+      - name: Add the project venv to PATH
+        run: echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Lint (ruff)
         run: ruff check .
 
-      - name: Type check (mypy)
-        run: mypy otix/ --config-file pyproject.toml
+      - name: No migration drift
+        run: python manage.py makemigrations --check --dry-run
+
+      # Frozen contract gate: the route contract must stay 263/263 served with
+      # zero method-gaps / remaining routes (scripts/parity_report.py).
+      - name: Frozen route-contract parity
+        run: |
+          python scripts/parity_report.py | tee parity.txt
+          grep -qE "method-gaps: 0; remaining: 0" parity.txt
 
       - name: Unit tests
-        run: pytest tests/unit/ -v
-        env:
-          DATABASE_URL: postgresql+asyncpg://otix:password@localhost:5432/otix_test
-          DATABASE_URL_SYNC: postgresql://otix:password@localhost:5432/otix_test
-          REDIS_URL: redis://localhost:6379/1
-          JWT_SECRET_KEY: ci-test-key-do-not-use-in-prod
-          APP_ENV: test
+        run: python manage.py test

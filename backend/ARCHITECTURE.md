@@ -1868,9 +1868,23 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   ``--workers N`` when ``>1`` and reload is off (prod concurrency; default 1).
   Verified: ``docker compose -f docker-compose.prod.yml config`` resolves clean
   (no legacy asyncpg/worker-fast refs; api/worker/beat all context ``./backend``).
-  Still deferred: a real ``docker build`` + live prod boot (needs secrets/registry),
-  the CI Django job (.github/workflows — still pinned to legacy ``old-backend``),
+  Still deferred: a real ``docker build`` + live prod boot (needs secrets/registry)
   and the stale-root Makefile.
+- **CI Django job (increment 68, 2026-09-07): ``.github/workflows/ci.yml`` only.**
+  The ``backend`` job that validated the retired legacy tree (``old-backend/`` —
+  ``pip install .[dev]``, alembic migrate-check, mypy) is replaced by a hermetic
+  Django job over ``backend/``. No Postgres/Redis services: ``config.settings.test``
+  forces an in-memory SQLite test DB + eager Celery, and the Redis-backed surfaces
+  (SSE/sync/rate-limit) run against in-memory doubles. Steps: checkout →
+  setup-python 3.12 → ``astral-sh/setup-uv@v7`` → ``uv sync --frozen`` (locked
+  runtime + dev/ruff group) → add ``.venv/bin`` to PATH → ``ruff check .`` →
+  ``python manage.py makemigrations --check --dry-run`` (migration-drift gate) →
+  parity gate (``scripts/parity_report.py`` piped through ``grep -qE
+  "method-gaps: 0; remaining: 0"``, so any frozen-contract regression fails the
+  build) → ``python manage.py test``. All four gates verified green locally under
+  ``config.settings.test`` before committing: ruff clean, no migration drift,
+  parity 263/263 with 0 method-gaps/remaining, full suite 1098 OK (~224s). The
+  legacy FastAPI tree is now fully retired from CI.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
