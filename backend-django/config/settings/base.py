@@ -116,6 +116,13 @@ LASTFM_GLOBAL_RPS_LIMIT = float(os.environ.get("LASTFM_GLOBAL_RPS_LIMIT", "5.0")
 LRCLIB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LRCLIB_REQUEST_TIMEOUT_SECONDS", "10.0"))
 LRCLIB_GLOBAL_RPS_LIMIT = float(os.environ.get("LRCLIB_GLOBAL_RPS_LIMIT", "5.0"))
 
+# Fanart.tv (movie/show artwork — logos/textless posters/backdrops). Key rides an
+# api_key query param per request; empty default makes the movie/show enrich tail
+# a benign no-op. Fanart grants ~1 req/s on a free key (project keys are higher).
+FANART_API_KEY = os.environ.get("FANART_API_KEY", "")
+FANART_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("FANART_REQUEST_TIMEOUT_SECONDS", "15.0"))
+FANART_GLOBAL_RPS_LIMIT = float(os.environ.get("FANART_GLOBAL_RPS_LIMIT", "1.0"))
+
 # Dev-only fallback; production settings require an explicit env SECRET_KEY.
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
 

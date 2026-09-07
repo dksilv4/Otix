@@ -509,6 +509,29 @@ class SeedShowFromTmdbTests(TestCase):
         with self.assertRaises(ValueError):
             seed_show_from_tmdb({"name": "No id here"})
 
+    def test_captures_tvdb_external_id_when_present(self):
+        raw = _show_raw(
+            external_ids={"imdb_id": "tt0903747", "tvdb_id": 73713}
+        )
+        media_id = seed_show_from_tmdb(raw)
+        exts = ExternalID.objects.filter(
+            content_type__model="mediaitem", object_id=media_id
+        )
+        self.assertIn(
+            ("tvdb", "73713", "show"),
+            {(e.provider, e.external_id, e.media_type) for e in exts},
+        )
+
+    def test_omits_tvdb_external_id_when_absent(self):
+        media_id = seed_show_from_tmdb(_show_raw())
+        self.assertFalse(
+            ExternalID.objects.filter(
+                content_type__model="mediaitem",
+                object_id=media_id,
+                provider="tvdb",
+            ).exists()
+        )
+
 
 class SeedEpisodesFromSeasonTests(TestCase):
     """Maps ``/tv/{id}/season/{n}`` episodes onto Episode rows (increment 41)."""
@@ -880,6 +903,73 @@ class OmdbEnrichFoldInTests(TestCase):
             "apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876
         ), mock.patch(
             "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
+            new=mock.AsyncMock(side_effect=_boom),
+        ) as enrich:
+            result = _run(fetch_and_seed_movie(550, provider=provider))
+
+        self.assertEqual(result, 9876)
+        enrich.assert_not_awaited()
+
+
+class FanartEnrichFoldInTests(TestCase):
+    """The movie/show fetch tails fold in Fanart artwork enrich (key-gated).
+
+    Mirror of ``OmdbEnrichFoldInTests``: the seed write is stubbed (a real write
+    crosses ``sync_to_async`` onto a worker-thread connection ``TestCase`` can't
+    see) and the Fanart enrich driver is patched at its imported home in
+    ``tmdb_ingest`` — these tests assert the gate + wiring, not Fanart mapping
+    (covered by ``test_fanart_ingest.py``).
+    """
+
+    def test_movie_tail_enriches_when_key_configured(self):
+        provider = mock.Mock()
+        provider.get_movie = mock.AsyncMock(return_value=_movie_raw())
+
+        with override_settings(FANART_API_KEY="test-key"), mock.patch(
+            "apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876
+        ), mock.patch(
+            "apps.media.services.tmdb_ingest.fanart_enrich_images",
+            new_callable=mock.AsyncMock,
+        ) as enrich:
+            result = _run(fetch_and_seed_movie(550, provider=provider))
+
+        self.assertEqual(result, 9876)
+        enrich.assert_awaited_once_with(9876)
+
+    def test_show_tail_enriches_after_episode_hydration(self):
+        provider = mock.Mock()
+        provider.get_show = mock.AsyncMock(return_value=_show_raw())
+        provider.get_season = mock.AsyncMock(return_value={})
+
+        with override_settings(FANART_API_KEY="test-key"), mock.patch(
+            "apps.media.services.tmdb_ingest.seed_show_from_tmdb", return_value=9876
+        ), mock.patch(
+            "apps.media.services.tmdb_ingest.seed_episodes_from_season"
+        ), mock.patch(
+            "apps.media.services.tmdb_ingest.fanart_enrich_images",
+            new_callable=mock.AsyncMock,
+        ) as enrich:
+            result = _run(fetch_and_seed_show(1396, provider=provider))
+
+        self.assertEqual(result, 9876)
+        enrich.assert_awaited_once_with(9876)
+
+    def test_unconfigured_key_skips_enrich(self):
+        provider = mock.Mock()
+        provider.get_movie = mock.AsyncMock(return_value=_movie_raw())
+
+        async def _boom(media_id):
+            raise AssertionError("Fanart enrich ran with no key configured")
+
+        # OMDb is configured so the movie tail reaches the Fanart gate; an unset
+        # FANART_API_KEY must return before the enrich driver is ever awaited.
+        with override_settings(OMDB_API_KEY="test-key"), mock.patch(
+            "apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876
+        ), mock.patch(
+            "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
+            new_callable=mock.AsyncMock,
+        ), mock.patch(
+            "apps.media.services.tmdb_ingest.fanart_enrich_images",
             new=mock.AsyncMock(side_effect=_boom),
         ) as enrich:
             result = _run(fetch_and_seed_movie(550, provider=provider))

@@ -60,6 +60,7 @@ from apps.media.models import (
 )
 from apps.media.models.genre import Genre, Keyword, MediaGenre, MediaGenreType, MediaKeyword
 from apps.media.services.completeness import recompute_completeness
+from apps.media.services.fanart_ingest import fanart_enrich_images
 from apps.media.services.omdb_ingest import omdb_enrich_ratings
 from apps.people.models import MediaCredit, Person
 
@@ -693,6 +694,9 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
     imdb_id = raw.get("imdb_id") or (raw.get("external_ids") or {}).get("imdb_id")
     if imdb_id:
         _upsert_external(content_type, media_id, "imdb", str(imdb_id), media_type="show")
+    tvdb_id = (raw.get("external_ids") or {}).get("tvdb_id")
+    if tvdb_id:
+        _upsert_external(content_type, media_id, "tvdb", str(tvdb_id), media_type="show")
     _hydrate_relations(media, raw)
     recompute_completeness(media)
     return media_id
@@ -748,6 +752,22 @@ async def _omdb_enrich_after_seed(media_id: int) -> None:
         pass
 
 
+async def _fanart_enrich_after_seed(media_id: int) -> None:
+    """Best-effort Fanart artwork enrich on a freshly-seeded movie/show row.
+
+    Gated on the Fanart key being configured (the common case is unset, so this
+    returns before any DB read or client build); the enrich driver itself is a
+    benign no-op for a movie/show with no tmdb/tvdb ExternalID or a Fanart miss.
+    Errors are swallowed — enrichment never fails the seed that produced the row.
+    """
+    if not settings.FANART_API_KEY:
+        return
+    try:
+        await fanart_enrich_images(media_id)
+    except Exception:
+        pass
+
+
 async def fetch_and_seed_movie(tmdb_id: int, *, provider: TMDBProvider | None = None) -> int:
     """Fetch TMDB movie detail through a provider client, then seed it."""
     if provider is None:
@@ -759,6 +779,7 @@ async def fetch_and_seed_movie(tmdb_id: int, *, provider: TMDBProvider | None = 
     # guard); sync_to_async runs it in a worker thread.
     media_id = await sync_to_async(seed_movie_from_tmdb)(raw)
     await _omdb_enrich_after_seed(media_id)
+    await _fanart_enrich_after_seed(media_id)
     return media_id
 
 
@@ -784,4 +805,5 @@ async def fetch_and_seed_show(tmdb_id: int, *, provider: TMDBProvider | None = N
         season_raw = await provider.get_season(tmdb_id, int(number))
         await sync_to_async(seed_episodes_from_season)(media_id, int(number), season_raw)
     await _omdb_enrich_after_seed(media_id)
+    await _fanart_enrich_after_seed(media_id)
     return media_id
