@@ -97,6 +97,13 @@ STEAMGRID_REQUEST_TIMEOUT_SECONDS = float(
 )
 STEAMGRID_GLOBAL_RPS_LIMIT = float(os.environ.get("STEAMGRID_GLOBAL_RPS_LIMIT", "2.0"))
 
+# OMDb (movie/show IMDb/Rotten Tomatoes/Metacritic ratings via an imdb_id
+# lookup). Key is sent per request as an ?apikey= query param; empty default
+# makes the movie/show enrich tail a benign no-op (best-effort enrichment).
+OMDB_API_KEY = os.environ.get("OMDB_API_KEY", "")
+OMDB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("OMDB_REQUEST_TIMEOUT_SECONDS", "15.0"))
+OMDB_GLOBAL_RPS_LIMIT = float(os.environ.get("OMDB_GLOBAL_RPS_LIMIT", "5.0"))
+
 # Dev-only fallback; production settings require an explicit env SECRET_KEY.
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
 

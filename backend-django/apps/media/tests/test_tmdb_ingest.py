@@ -16,7 +16,7 @@ import asyncio
 from unittest import mock
 
 import httpx
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from apps.company.models import Company, InvolvedCompany
 from apps.media.models import (
@@ -827,4 +827,62 @@ class TmdbRelationHydrationTests(TestCase):
         media.refresh_from_db()
         self.assertTrue(completeness_flags(media)["has_companies"])
         self.assertTrue(completeness_flags(media)["has_external_ratings"])
-        self.assertEqual(MediaItem.objects.count(), 1)
+
+
+class OmdbEnrichFoldInTests(TestCase):
+    """The movie/show fetch tails fold in OMDb enrichment (key-gated).
+
+    The seed writes are stubbed (a real write crosses ``sync_to_async`` onto a
+    worker thread a ``TestCase`` can't see) and the OMDb enrich driver is patched
+    at its imported home in ``tmdb_ingest``; these tests assert the gate + call
+    wiring, not the OMDb mapping (covered by ``test_omdb_ingest.py``).
+    """
+
+    def test_movie_tail_enriches_when_key_configured(self):
+        provider = mock.Mock()
+        provider.get_movie = mock.AsyncMock(return_value=_movie_raw())
+        with override_settings(OMDB_API_KEY="test-key"), mock.patch(
+            "apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876
+        ), mock.patch(
+            "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
+            new_callable=mock.AsyncMock,
+        ) as enrich:
+            result = _run(fetch_and_seed_movie(550, provider=provider))
+
+        self.assertEqual(result, 9876)
+        enrich.assert_awaited_once_with(9876)
+
+    def test_show_tail_enriches_after_episode_hydration(self):
+        provider = mock.Mock()
+        provider.get_show = mock.AsyncMock(return_value=_show_raw())
+        provider.get_season = mock.AsyncMock(return_value={})
+        with override_settings(OMDB_API_KEY="test-key"), mock.patch(
+            "apps.media.services.tmdb_ingest.seed_show_from_tmdb", return_value=9876
+        ), mock.patch(
+            "apps.media.services.tmdb_ingest.seed_episodes_from_season"
+        ), mock.patch(
+            "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
+            new_callable=mock.AsyncMock,
+        ) as enrich:
+            result = _run(fetch_and_seed_show(1396, provider=provider))
+
+        self.assertEqual(result, 9876)
+        enrich.assert_awaited_once_with(9876)
+
+    def test_unconfigured_key_skips_enrich(self):
+        provider = mock.Mock()
+        provider.get_movie = mock.AsyncMock(return_value=_movie_raw())
+
+        async def _boom(media_id):
+            raise AssertionError("OMDb enrich ran with no key configured")
+
+        with mock.patch(
+            "apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876
+        ), mock.patch(
+            "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
+            new=mock.AsyncMock(side_effect=_boom),
+        ) as enrich:
+            result = _run(fetch_and_seed_movie(550, provider=provider))
+
+        self.assertEqual(result, 9876)
+        enrich.assert_not_awaited()

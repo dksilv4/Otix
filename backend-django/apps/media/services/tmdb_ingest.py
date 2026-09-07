@@ -40,6 +40,7 @@ from datetime import date
 from typing import TYPE_CHECKING, Any
 
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone as dj_timezone
 from django.utils.text import slugify
@@ -59,6 +60,7 @@ from apps.media.models import (
 )
 from apps.media.models.genre import Genre, Keyword, MediaGenre, MediaGenreType, MediaKeyword
 from apps.media.services.completeness import recompute_completeness
+from apps.media.services.omdb_ingest import omdb_enrich_ratings
 from apps.people.models import MediaCredit, Person
 
 if TYPE_CHECKING:
@@ -730,6 +732,22 @@ def seed_episodes_from_season(
     return created
 
 
+async def _omdb_enrich_after_seed(media_id: int) -> None:
+    """Best-effort OMDb ratings enrich on a freshly-seeded movie/show row.
+
+    Gated on the OMDb key being configured (the common case is unset, so this
+    returns before any DB read or client build); the enrich driver itself is a
+    benign no-op for a row with no IMDb id or an OMDb miss. Errors are swallowed —
+    enrichment never fails the seed that produced the row.
+    """
+    if not settings.OMDB_API_KEY:
+        return
+    try:
+        await omdb_enrich_ratings(media_id)
+    except Exception:
+        pass
+
+
 async def fetch_and_seed_movie(tmdb_id: int, *, provider: TMDBProvider | None = None) -> int:
     """Fetch TMDB movie detail through a provider client, then seed it."""
     if provider is None:
@@ -739,7 +757,9 @@ async def fetch_and_seed_movie(tmdb_id: int, *, provider: TMDBProvider | None = 
     raw = await provider.get_movie(tmdb_id)
     # The ORM write must leave the async context (Django's sync-ORM-in-async
     # guard); sync_to_async runs it in a worker thread.
-    return await sync_to_async(seed_movie_from_tmdb)(raw)
+    media_id = await sync_to_async(seed_movie_from_tmdb)(raw)
+    await _omdb_enrich_after_seed(media_id)
+    return media_id
 
 
 async def fetch_and_seed_show(tmdb_id: int, *, provider: TMDBProvider | None = None) -> int:
@@ -763,4 +783,5 @@ async def fetch_and_seed_show(tmdb_id: int, *, provider: TMDBProvider | None = N
             continue
         season_raw = await provider.get_season(tmdb_id, int(number))
         await sync_to_async(seed_episodes_from_season)(media_id, int(number), season_raw)
+    await _omdb_enrich_after_seed(media_id)
     return media_id
