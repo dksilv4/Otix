@@ -13,7 +13,12 @@ export function useSectionFetch(section: PersonalizedSection) {
     enabled: isInView,
   })
 
-  const items = useMemo(() => query.data?.pages.flatMap((p) => p.items) ?? [], [query.data])
+  const items = useMemo(() => {
+    const pages = query.data?.pages ?? []
+    // Guard against a page payload lacking an array `items` (e.g. a DRF
+    // `results` envelope) which would otherwise inject an [undefined] item.
+    return pages.flatMap((p) => (Array.isArray(p?.items) ? p.items : []))
+  }, [query.data])
 
   const showSkeleton = !isInView || query.isLoading
   const isEmpty = isInView && !query.isLoading && items.length === 0

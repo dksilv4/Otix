@@ -5,7 +5,7 @@ import { getDesktopAPI } from '../desktop/api'
 import { showErrorToast } from '@/old-features/ui/molecules/toast'
 import { reportNetworkFailure, reportOnline } from '@/lib/offline'
 
-const CACHE_BUSTER = 'v2'
+const CACHE_BUSTER = 'v3'
 const STORAGE_KEY = `otix_query_cache_${CACHE_BUSTER}`
 
 function createElectronPersister(): Persister {
