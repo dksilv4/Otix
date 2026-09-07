@@ -1721,6 +1721,51 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   404-envelope/non-200/no-lyric-fields normalizations) plus one
   ``LrclibEnrichFoldInTests`` in ``test_musicbrainz_ingest.py`` (ungated album
   tail enriches).
+- **Fanart movie/show artwork enrichment (increment 60, 2026-09-07; plan item
+  1.8): parity 263/263 unchanged, FULL suite 1070 (27 new).** The keyed
+  secondary-provider artwork stage for movies/shows — the music/artist endpoint
+  and ``Person.logo_url`` mapping deferred by the 2026-09-07 audio scope cut.
+  Fanart is authoritative for the logo/textless families TMDB doesn't ship well;
+  movies resolve by their stored ``tmdb`` ExternalID (Fanart ``/movies/{id}``),
+  shows by their ``tvdb`` ExternalID (``/tv/{id}``) — so the TMDB show seed tail
+  now captures a ``tvdb`` ExternalID whenever the raw detail carries a
+  ``tvdb_id`` (additive-safe; fixtures without one still pass). New
+  ``core/providers/fanart.py`` client (port of ``otix.providers.fanart.client``
+  movie/show lookups): ``BASE_URL`` carries the ``/v3`` prefix, the API key rides
+  a per-request ``?api_key=`` param (``FANART_API_KEY``,
+  ``FANART_REQUEST_TIMEOUT_SECONDS`` 15 / ``FANART_GLOBAL_RPS_LIMIT`` 1 mirroring
+  legacy), throttled through the increment-32 token bucket; a non-200/5xx JSON
+  error body/non-dict payload is normalized to ``None`` (benign no-op). New
+  ``apps/media/services/fanart_ingest.py``: ``_MOVIE_CATEGORIES`` /
+  ``_SHOW_CATEGORIES`` map Fanart categories onto tracked families —
+  ``hdmovielogo``/``movielogo``/``hdtvlogo``/``clearlogo``/``tvlogo`` -> ``logo``,
+  ``movieposter``/``tvposter``/``seasonposter`` -> ``poster`` (entries whose
+  ``lang`` is blank/``0``/``00``/``zxx`` -> ``textless_poster``),
+  ``moviebackground``/``showbackground`` -> ``backdrop`` — with a per-type cap
+  (``_MAX_PER_TYPE`` 8) and (url, type) dedupe; the sync ``_context`` resolves
+  the (kind, lookup_id) Fanart keys on (movie -> tmdb, show -> tvdb), ``None``
+  for a game/music row or a movie/show with no numeric id (nothing to look up
+  by); ``_apply_assets`` stores one ``MediaAsset`` row per (item, url, type) via
+  idempotent ``get_or_create`` (provider ``fanart``; logo/textless/backdrop
+  scores 90 rank above TMDB's secondary 60-series artwork but below its primary
+  poster/backdrop 100) and recomputes completeness when any asset landed, so
+  ``has_logo``/``has_textless_poster``/``has_backdrop`` flip. The async
+  ``fanart_enrich_images`` driver is media-first + best-effort — no resolvable
+  id ("no context"), Fanart miss ("no result"), or payload with no tracked
+  artwork ("no assets") each return a benign result dict without failing;
+  *provider* injectable for tests. Both ``fetch_and_seed_movie`` and
+  ``fetch_and_seed_show`` fold in the key-gated ``_fanart_enrich_after_seed``
+  (returns before any DB read/client build when ``FANART_API_KEY`` is unset,
+  errors swallowed) right after the OMDb tail. No model fields -> no migration.
+  Tests: new ``apps/media/tests/test_fanart_ingest.py`` (extractor category ->
+  family/textless/dedupe/cap, real-DB ``_context`` tmdb/tvdb resolution + None
+  cases and idempotent ``_apply_assets`` flipping completeness flags, async
+  driver with the two DB helpers stubbed across every branch,
+  ``httpx.MockTransport`` client tests asserting the resolved ``/v3/...`` path +
+  api_key param and the miss normalizations) plus three
+  ``FanartEnrichFoldInTests`` in ``test_tmdb_ingest.py`` (movie/show tails
+  enrich when the key is set, skip when unset) and two ``SeedShowFromTmdbTests``
+  tvdb-capture cases.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
