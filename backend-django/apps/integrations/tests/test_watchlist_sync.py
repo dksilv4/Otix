@@ -147,7 +147,9 @@ class PlexWatchlistSyncSeedingTests(WatchlistSyncTestBase):
         self.assertEqual(movie.overview, MOVIE_INTERSTELLAR["summary"])
         self.assertEqual(movie.release_date.isoformat(), "2014-11-05")
         self.assertEqual(movie.slug, "interstellar-2014")
-        self.assertAlmostEqual(movie.completeness_score, 0.15)
+        # 3 of 22 movie flags (overview + release date + external ids) → the
+        # score is recomputed from the stub graph, not the legacy 0.15 base.
+        self.assertAlmostEqual(movie.completeness_score, 0.136)
         self.assertIsNotNone(movie.next_sync_at)
         self.assertEqual(Movie.objects.get(media_item=movie).media_item_id, movie.pk)
 

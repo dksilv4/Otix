@@ -24,6 +24,7 @@ from django.utils.text import slugify
 
 from apps.integrations.services import plex as _plex
 from apps.media.models import ExternalID, MediaItem, Movie, Show
+from apps.media.services.completeness import recompute_completeness
 from apps.media.services.interaction import set_interaction
 
 logger = logging.getLogger(__name__)
@@ -172,6 +173,8 @@ def _find_or_seed_media(
         _upsert_external(media_ct, media.pk, "plex", plex_guid, None)
     for provider, external_id in guids.items():
         _upsert_external(media_ct, media.pk, provider, external_id, media_type)
+    # The stub's 0.15 create-time base is a placeholder, not its graph truth.
+    recompute_completeness(media)
     return media.pk, False
 
 

@@ -1523,6 +1523,25 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   the per-entity summaries. No model fields → no migration. **Next deferred piece:**
   the ingest/enrich/embedding queue machinery (the four worker / multi-queue task-#6
   half), then trigram, embeddings, prod-compose cutover.
+- **Plex completeness recompute at the stub-seed tails (increment 53, 2026-09-06):
+  parity 263/263 unchanged, FULL suite 970 (0 new — two assertions updated).**
+  Closes the last ``0.15``-stamped seed sites for the inc-51 recompute story: the
+  plex watchlist + library-scan routes still persisted the arbitrary create-time
+  ``completeness_score=0.15`` base (the only catalog-ingest seeds that did —
+  TMDB/MBZ/IGDB already recompute at their tails). Both stub tails —
+  ``apps/integrations/services/plex_watchlist.py``
+  ``_find_or_seed_media`` and ``apps/integrations/services/plex_sync.py``
+  ``_match_or_seed`` (movie/show/music) — now call ``recompute_completeness(media)``
+  after the subtype + ``ExternalID`` upserts, so a freshly plex-seeded row reads
+  its graph-truthful flag fraction (e.g. a movie with overview + release date +
+  guids scores 3/22 = ``0.136``, a bare show stub 1/20 = ``0.05``) instead of the
+  flat stub base. plex_sync's module docstring drops the "completeness 0.15"
+  stub-convention claim. No model fields → no migration. Tests: the watchlist
+  seeded-row assertion moves ``0.15`` → ``0.136`` (3/22 with rationale); the plex
+  full-user-sync engine test pins the same recomputed value for its seeded Matrix
+  stub. **Next deferred piece:** the ingest/enrich/embedding queue machinery (the
+  four worker / multi-queue task-#6 half), then trigram, embeddings, prod-compose
+  cutover.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

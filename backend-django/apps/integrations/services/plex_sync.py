@@ -23,10 +23,10 @@ Interactions mirror the legacy behaviour. Catalog-depth enrichment the
 legacy folded into the loop — album metadata hydration, person/genre/label
 creation, plex ``userRating`` -> ratings, Track backfill, and the final
 episode-driven show ``watched`` recompute — is deferred: the match/seed layer
-reuses the stub-seeding convention from the watchlist route (completeness 0.15,
-`next_sync_at`), and raw plex payloads are preserved in ``UserPlexItem.raw`` for
-later backfill. The watchlist is *not* re-synced here — Django exposes it as its
-own POST route.
+stamps a stub with `next_sync_at` and recomputes the completeness score from the
+stub's present graph (increment 53), and raw plex payloads are preserved in
+``UserPlexItem.raw`` for later backfill. The watchlist is *not* re-synced here —
+Django exposes it as its own POST route.
 """
 
 from __future__ import annotations
@@ -51,6 +51,7 @@ from apps.integrations.services.plex_watchlist import (
 )
 from apps.integrations.services.sync import register_sync_engine
 from apps.media.models import Album, MediaItem, Movie, Show
+from apps.media.services.completeness import recompute_completeness
 from apps.media.services.interaction import set_interaction
 from core import progress as progress_lib
 
@@ -135,6 +136,8 @@ def _match_or_seed(
         _upsert_external(media_ct, media.pk, provider, external_id, media_type)
     if plex_guid:
         _upsert_external(media_ct, media.pk, "plex", plex_guid, None)
+    # The stub's 0.15 create-time base is a placeholder, not its graph truth.
+    recompute_completeness(media)
     return media.pk, False
 
 

@@ -135,6 +135,9 @@ class PlexSyncEngineTests(TestCase):
         media = MediaItem.objects.get(title="The Matrix")
         self.assertEqual(media.media_type, "movie")
         self.assertTrue(Movie.objects.filter(media_item=media).exists())
+        # 3 of 22 movie flags (overview + release date + external ids) — the
+        # stub is recomputed at seed, not stamped with the legacy 0.15 base.
+        self.assertAlmostEqual(media.completeness_score, 0.136)
         self.assertEqual(media.watched_count, 1)
         self.assertTrue(
             UserMediaInteraction.objects.filter(
