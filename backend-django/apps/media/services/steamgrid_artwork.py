@@ -16,16 +16,20 @@ Each row records ``provider="steamgrid"`` plus the artwork's ``width``/``height`
 idempotent on the ``(media_item, url, asset_type)`` natural key; an existing row
 only has a missing ``lang`` backfilled (the legacy ``DO UPDATE ... WHERE lang IS
 NULL``). The SteamGridDB internal game id is stored as a ``provider="steamgrid"``
-``ExternalID`` so later hydrations reuse it instead of re-looking-up. The async
-fetch is deliberately lenient: SteamGridDB entries missing for an App ID (or an
-endpoint erroring) are a benign no-op, not a hard failure — artwork is
-best-effort enrichment. The pure-DB attach runs in a sync function (crossed from
-the async driver via ``sync_to_async``) so its write stays on a worker thread.
+``ExternalID`` and, since increment 56, the async driver honors the reuse promise:
+a row that already owns one skips the platform lookup on re-sync (only missing
+artwork is fetched). A Steam App ID SteamGridDB has no entry for falls back to a
+title search on the catalog title (picking the exact-name candidate) before the
+driver gives up. The async fetch is deliberately lenient: entries missing for an
+App ID (or an endpoint erroring) are a benign no-op, not a hard failure — artwork
+is best-effort enrichment. The pure-DB attach runs in a sync function (crossed
+from the async driver via ``sync_to_async``) so its write stays on a worker thread.
 """
 
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import TYPE_CHECKING, Any
 
 from asgiref.sync import sync_to_async
@@ -173,6 +177,54 @@ def attach_steamgrid_assets(
     return added
 
 
+def _stored_steamgrid_game_id(media_item_id: int) -> int | None:
+    """The media row's stored SteamGridDB game id, if a prior attach wrote one."""
+    value = ExternalID.objects.filter(
+        content_type=_media_ct(),
+        provider="steamgrid",
+        media_type="game",
+        object_id=media_item_id,
+    ).values_list("external_id", flat=True).first()
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _media_title(media_item_id: int) -> str | None:
+    """The catalog title used for the name-search fallback (blank-safe)."""
+    title = (
+        MediaItem.objects.filter(pk=media_item_id)
+        .values_list("title", flat=True)
+        .first()
+    )
+    return str(title).strip() if title else None
+
+
+def _normalize(value: str) -> str:
+    """Lowercase alnum-only form used to compare titles case-insensitively."""
+    return re.sub(r"[^a-z0-9]+", "", value.casefold())
+
+
+def _pick_search_match(candidates: list[dict[str, Any]], title: str) -> dict[str, Any] | None:
+    """Pick the SteamGridDB autocomplete hit whose name exactly equals the title.
+
+    The search endpoint returns prefix matches, so an exact normalized title hit
+    is preferred over a merely-prefix title (e.g. "Hades" over "Hades II");
+    otherwise the first candidate stands in.
+    """
+    if not candidates:
+        return None
+    want = _normalize(title)
+    for candidate in candidates:
+        name = str(candidate.get("name") or "")
+        if name and _normalize(name) == want:
+            return candidate
+    return candidates[0]
+
+
 async def fetch_and_attach_game_artwork(
     media_item_id: int,
     steam_app_id: int,
@@ -181,25 +233,42 @@ async def fetch_and_attach_game_artwork(
 ) -> dict[str, Any]:
     """Resolve a game's SteamGridDB artwork and attach it to the media row.
 
-    Looks the game up by Steam App ID (no SteamGridDB entry for an App ID is a
-    benign no-op), fetches its grids/heroes/logos/icons in parallel, and crosses
-    the upsert to a worker thread via ``sync_to_async``. *provider* is
-    injectable for tests and defaults to a real SteamGridDB client.
+    Resolution is media-first: a row that already owns a ``provider="steamgrid"``
+    game id (a prior attach wrote it) reuses it and skips the platform lookup — a
+    re-sync only fetches what's missing. Otherwise the Steam App ID lookup runs,
+    and a miss falls back to a title search on the catalog title, preferring the
+    exact-name candidate. No SteamGridDB entry at all is a benign no-op. The
+    grids/heroes/logos/icons are fetched in parallel and crossed to a worker
+    thread via ``sync_to_async``. *provider* is injectable for tests and defaults
+    to a real SteamGridDB client. ``resolved_by`` reports the path that produced
+    the game id: ``steamgrid`` (stored id reused), ``steam``, or ``name``.
     """
     if provider is None:
         from core.providers.steamgrid import SteamGridDBProvider  # local: avoid eager build
 
         provider = SteamGridDBProvider()
-    game = await provider.get_game_by_steam_app_id(steam_app_id)
-    if game is None:
-        return {
-            "steam_app_id": steam_app_id,
-            "media_item_id": media_item_id,
-            "sgdb_game_id": None,
-            "attached": False,
-            "assets_added": 0,
-        }
-    sgdb_game_id = int(game.get("id"))
+    resolved_by = "steamgrid"
+    sgdb_game_id = await sync_to_async(_stored_steamgrid_game_id)(media_item_id)
+    if sgdb_game_id is None:
+        game = await provider.get_game_by_steam_app_id(steam_app_id)
+        if game is not None:
+            resolved_by = "steam"
+        else:
+            resolved_by = "name"
+            title = await sync_to_async(_media_title)(media_item_id)
+            game = _pick_search_match(
+                await provider.search_games(title) if title else [], title or ""
+            )
+        if game is None:
+            return {
+                "steam_app_id": steam_app_id,
+                "media_item_id": media_item_id,
+                "sgdb_game_id": None,
+                "attached": False,
+                "assets_added": 0,
+                "resolved_by": resolved_by,
+            }
+        sgdb_game_id = int(game.get("id"))
     grids, heroes, logos, icons = await asyncio.gather(
         provider.get_grids(sgdb_game_id),
         provider.get_heroes(sgdb_game_id),
@@ -215,4 +284,5 @@ async def fetch_and_attach_game_artwork(
         "sgdb_game_id": sgdb_game_id,
         "attached": added > 0,
         "assets_added": added,
+        "resolved_by": resolved_by,
     }

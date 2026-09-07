@@ -15,10 +15,14 @@ from __future__ import annotations
 import asyncio
 import unittest.mock as mock
 
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from apps.media.models import ExternalID, MediaAsset, MediaItem
 from apps.media.services.steamgrid_artwork import (
+    _media_title,
+    _pick_search_match,
+    _stored_steamgrid_game_id,
     attach_steamgrid_assets,
     fetch_and_attach_game_artwork,
 )
@@ -160,27 +164,53 @@ class AttachSteamgridAssetsTests(TestCase):
 
 
 class FetchAndAttachGameArtworkTests(TestCase):
-    def test_fetches_families_and_attaches(self):
-        media = _media()
+    """Async driver: resolution (stored-id reuse / steam / name fallback) + attach.
+
+    The two DB-backed resolution helpers run through ``sync_to_async`` on a worker
+    thread, where a ``TestCase`` transaction isn't visible, so they're stubbed to
+    keep each branch deterministic; their real DB reads are covered by
+    ``SteamgridResolutionHelpersTests`` below.
+    """
+
+    def setUp(self):
+        self.media = _media()
+
+    def _provider(self, *, game=None, candidates=None, **asset_overrides):
         provider = mock.Mock()
-        provider.get_game_by_steam_app_id = mock.AsyncMock(
-            return_value={"id": SGDB_GAME_ID}
-        )
+        provider.get_game_by_steam_app_id = mock.AsyncMock(return_value=game)
+        provider.search_games = mock.AsyncMock(return_value=candidates or [])
         provider.get_grids = mock.AsyncMock(return_value=[{"url": "g1"}])
         provider.get_heroes = mock.AsyncMock(return_value=[{"url": "h1"}])
         provider.get_logos = mock.AsyncMock(return_value=[])
         provider.get_icons = mock.AsyncMock(return_value=[{"url": "i1"}])
+        for name, value in asset_overrides.items():
+            setattr(provider, name, value)
+        return provider
+
+    def _resolution_patches(self, *, stored_id=None, title="Hades"):
+        stored = mock.patch(
+            "apps.media.services.steamgrid_artwork._stored_steamgrid_game_id",
+            return_value=stored_id,
+        )
+        title_getter = mock.patch(
+            "apps.media.services.steamgrid_artwork._media_title", return_value=title
+        )
+        return stored, title_getter
+
+    def test_fetches_families_and_attaches(self):
+        provider = self._provider(game={"id": SGDB_GAME_ID})
         with mock.patch(
             "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
             return_value=3,
         ) as attach:
             result = _run(
                 fetch_and_attach_game_artwork(
-                    media.pk, STEAM_APP_ID, provider=provider
+                    self.media.pk, STEAM_APP_ID, provider=provider
                 )
             )
 
         provider.get_game_by_steam_app_id.assert_awaited_once_with(STEAM_APP_ID)
+        provider.search_games.assert_not_called()
         for getter in (
             provider.get_grids,
             provider.get_heroes,
@@ -189,7 +219,7 @@ class FetchAndAttachGameArtworkTests(TestCase):
         ):
             getter.assert_awaited_once_with(SGDB_GAME_ID)
         attach.assert_called_once_with(
-            media.pk,
+            self.media.pk,
             SGDB_GAME_ID,
             [{"url": "g1"}],
             [{"url": "h1"}],
@@ -199,21 +229,124 @@ class FetchAndAttachGameArtworkTests(TestCase):
         self.assertEqual(result["sgdb_game_id"], SGDB_GAME_ID)
         self.assertTrue(result["attached"])
         self.assertEqual(result["assets_added"], 3)
+        self.assertEqual(result["resolved_by"], "steam")
 
-    def test_missing_sgdb_game_is_benign_noop(self):
-        media = _media()
-        provider = mock.Mock()
-        provider.get_game_by_steam_app_id = mock.AsyncMock(return_value=None)
-        with mock.patch(
+    def test_steam_lookup_miss_falls_back_to_exact_title_search(self):
+        provider = self._provider(
+            game=None,
+            candidates=[
+                {"id": 5, "name": "Hades II"},
+                {"id": SGDB_GAME_ID, "name": "Hades"},
+            ],
+        )
+        stored, title_getter = self._resolution_patches(stored_id=None)
+        with stored, title_getter, mock.patch(
+            "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
+            return_value=1,
+        ) as attach:
+            result = _run(
+                fetch_and_attach_game_artwork(
+                    self.media.pk, STEAM_APP_ID, provider=provider
+                )
+            )
+
+        provider.search_games.assert_awaited_once_with("Hades")
+        # The exact "Hades" hit wins over the prefix "Hades II" candidate.
+        provider.get_grids.assert_awaited_once_with(SGDB_GAME_ID)
+        attach.assert_called_once_with(
+            self.media.pk,
+            SGDB_GAME_ID,
+            [{"url": "g1"}],
+            [{"url": "h1"}],
+            [],
+            [{"url": "i1"}],
+        )
+        self.assertEqual(result["sgdb_game_id"], SGDB_GAME_ID)
+        self.assertTrue(result["attached"])
+        self.assertEqual(result["resolved_by"], "name")
+
+    def test_stored_steamgrid_id_reused_without_platform_lookup(self):
+        provider = self._provider()
+        stored, title_getter = self._resolution_patches(stored_id=SGDB_GAME_ID)
+        with stored, title_getter, mock.patch(
+            "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
+            return_value=2,
+        ) as attach:
+            result = _run(
+                fetch_and_attach_game_artwork(
+                    self.media.pk, STEAM_APP_ID, provider=provider
+                )
+            )
+
+        provider.get_game_by_steam_app_id.assert_not_called()
+        provider.search_games.assert_not_called()
+        provider.get_grids.assert_awaited_once_with(SGDB_GAME_ID)
+        attach.assert_called_once_with(
+            self.media.pk,
+            SGDB_GAME_ID,
+            [{"url": "g1"}],
+            [{"url": "h1"}],
+            [],
+            [{"url": "i1"}],
+        )
+        self.assertEqual(result["sgdb_game_id"], SGDB_GAME_ID)
+        self.assertTrue(result["attached"])
+        self.assertEqual(result["resolved_by"], "steamgrid")
+
+    def test_no_steamgrid_entry_at_all_is_benign_noop(self):
+        provider = self._provider(game=None, candidates=[])
+        stored, title_getter = self._resolution_patches(stored_id=None)
+        with stored, title_getter, mock.patch(
             "apps.media.services.steamgrid_artwork.attach_steamgrid_assets"
         ) as attach:
             result = _run(
                 fetch_and_attach_game_artwork(
-                    media.pk, STEAM_APP_ID, provider=provider
+                    self.media.pk, STEAM_APP_ID, provider=provider
                 )
             )
 
+        provider.search_games.assert_awaited_once_with("Hades")
         attach.assert_not_called()
         self.assertIsNone(result["sgdb_game_id"])
         self.assertFalse(result["attached"])
         self.assertEqual(result["assets_added"], 0)
+        self.assertEqual(result["resolved_by"], "name")
+
+
+class SteamgridResolutionHelpersTests(TestCase):
+    """Sync DB reads + the pure match picker the async driver relies on."""
+
+    def _media_ct(self):
+        return ContentType.objects.get_for_model(MediaItem)
+
+    def test_stored_steamgrid_id_reads_back_a_backfilled_external_id(self):
+        media = _media()
+        self.assertIsNone(_stored_steamgrid_game_id(media.pk))
+        ExternalID.objects.create(
+            content_type=self._media_ct(),
+            object_id=media.pk,
+            provider="steamgrid",
+            external_id=str(SGDB_GAME_ID),
+            media_type="game",
+        )
+        self.assertEqual(_stored_steamgrid_game_id(media.pk), SGDB_GAME_ID)
+        self.assertIsNone(_stored_steamgrid_game_id(media.pk + 1000))
+
+    def test_media_title_reads_the_catalog_title(self):
+        media = _media()
+        self.assertEqual(_media_title(media.pk), "Hades")
+        self.assertIsNone(_media_title(media.pk + 1000))
+
+    def test_pick_search_match_prefers_exact_title_over_prefix(self):
+        candidates = [
+            {"id": 5, "name": "Hades II"},
+            {"id": SGDB_GAME_ID, "name": "Hades"},
+        ]
+        hit = _pick_search_match(candidates, "Hades")
+        self.assertEqual(hit["id"], SGDB_GAME_ID)
+        self.assertIsNone(_pick_search_match([], "Hades"))
+
+    def test_pick_search_match_is_case_and_punctuation_insensitive(self):
+        candidates = [{"id": 7, "name": "Hades"}]
+        hit = _pick_search_match(candidates, "hades!")
+        self.assertEqual(hit["id"], 7)
