@@ -38,7 +38,7 @@ import { PluginManager } from './plugins/manager';
 import { eventBus } from './plugins/event-bus';
 import { registerPluginIPC, setPluginMainWebContents } from './plugins/ipc';
 import { wireOrchestratorEvents } from './ipc/plugins';
-import { GameScanOrchestrator } from './game/orchestrator';
+import { GameScanOrchestrator } from './game/orchestrator'; import { FetchWorkerBridge } from './fetch/bridge';
 import { registerNotificationIPC } from './ipc/notifications';
 import { registerUpdaterIPC, checkForUpdatesOnStartup } from './ipc/updater';
 import { setDefaultAutoSelectFamily } from 'node:net';
@@ -52,6 +52,7 @@ let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
 let pluginManager: PluginManager | null = null;
 let permissionManager: PermissionManager | null = null;
+let fetchBridge: FetchWorkerBridge | null = null;
 let pendingDeepLink: string | null = null;
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -661,11 +662,21 @@ app.on('ready', async () => {
     // ── Initialize GameScanOrchestrator ──
     const orchestrator = new GameScanOrchestrator(pluginManager);
     orchestrator.setApiBaseUrl(getApiBaseUrl());
+
+    // ── Proxy-fetch worker (Phase 2.2b) ──
+    // Answers provider fetches for a connected Otix server that lacks the
+    // provider key (desktop/fetch bridge): registers this device, holds the
+    // user's fetch_request SSE stream, and mirrors with the user's local keys.
+    fetchBridge = new FetchWorkerBridge({
+      filePath: path.join(app.getPath('userData'), 'fetch-client.json'),
+    });
+
     // Wire auth token changes
     const origSetAuth = pluginManager.setAuthToken.bind(pluginManager);
     pluginManager.setAuthToken = (token: string) => {
       origSetAuth(token);
       orchestrator.setAuthToken(token);
+      fetchBridge?.setCredentials(getApiBaseUrl(), token);
     };
     setScanOrchestrator(orchestrator);
     setPluginManager(pluginManager);
@@ -718,6 +729,33 @@ app.on('ready', async () => {
           }
         }
       }
+      // Mirror the IGDB source-plugin credentials into the proxy-fetch bridge so
+      // a desktop whose launcher already fetches IGDB can serve that provider to
+      // a connected Otix server. Refresh on later config edits (setConfig emits
+      // plugin:config-changed). Only igdb auto-seeds here; tmdb + others await a
+      // dedicated key store/UI (2.2c).
+      const igdbPluginKeys = (): { client_id: string; client_secret: string } | null => {
+        if (!fetchBridge) return null;
+        const cfg = pluginManager!.getConfig('igdb-source');
+        const clientId = cfg?.igdb_client_id;
+        const clientSecret = cfg?.igdb_client_secret;
+        if (typeof clientId === 'string' && clientId && typeof clientSecret === 'string' && clientSecret) {
+          return { client_id: clientId, client_secret: clientSecret };
+        }
+        return null;
+      };
+      // Startup: seed the bridge only when the plugin already has IGDB keys and
+      // the bridge store does not (a future dedicated key store may set igdb
+      // independently, so never wipe on launch).
+      const seededIgdb = igdbPluginKeys();
+      if (seededIgdb && !fetchBridge!.configured.includes('igdb')) {
+        fetchBridge!.setProvider('igdb', seededIgdb);
+      }
+      // Later plugin config edits mirror exactly (adding or removing igdb).
+      eventBus.on('plugin:config-changed', ({ pluginId }) => {
+        if (pluginId !== 'igdb-source') return;
+        fetchBridge!.setProvider('igdb', igdbPluginKeys() ?? undefined);
+      }, 'main');
     }).catch(err => {
       console.error('[plugins] Discovery failed:', err);
     });
@@ -764,6 +802,7 @@ app.on('ready', async () => {
     console.log('[main] before-quit fired');
     mainWindow?.webContents.send('app:clean-quit');
     pluginManager?.shutdown().catch(() => {});
+    fetchBridge?.stop();
     try { closeDb() } catch (err) {
       console.error('[main] Failed to close database connections:', err);
     }
@@ -789,6 +828,7 @@ app.on('window-all-closed', () => {
   console.log('[main] window-all-closed fired');
   gameDetector?.stopAll();
   pluginManager?.shutdown().catch(() => {});
+  fetchBridge?.stop();
   try { closeDb() } catch (err) {
     console.error('[main] Failed to close database connections:', err);
   }

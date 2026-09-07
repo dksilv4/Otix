@@ -1816,11 +1816,31 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   + SSE opener (http/https incremental parser); sse.ts is a reusable
   LF/CRLF-tolerant frame parser. The worker only opens the stream when keyed,
   heartbeats registration below the server's 120s online TTL, and reconnects
-  with backoff on stream drop. **Wiring follow-up (2.2b):** start/stop the
-  worker from an Otix-connected main-process/IPC context with a durable
-  per-provider key store + device_id; no main.ts changes land in 65. Still
-  deferred: prod-compose Django cutover + task-#6 ingest/enrich/embedding
-  queue machinery + trigram + embeddings.
+  with backoff on stream drop. No main.ts changes land in 65; the wiring that
+  brings the worker to life in the desktop main process is increment 66 below.
+- **Phase-2.2b desktop main-process wiring (increment 66, 2026-09-07): desktop
+  tree only.** Makes the headless worker live. ``FetchWorkerBridge``
+  (desktop/fetch/bridge.ts) owns the durable ``FetchClientStore``
+  (desktop/fetch/store.ts, ``userData/fetch-client.json`` — a stable install
+  device_id minted once + the per-provider key maps, atomic writes) and the
+  ``ProxyFetchWorker`` built over the real Node transports. The bridge runs the
+  worker only while the desktop is both connected to Otix (renderer auth token)
+  AND has at least one provider it can mirror (igdb/tmdb), so a keyless or
+  offline desktop never registers or holds the SSE stream; clearing the token
+  (logout) stops it, and provider keys added while running are picked up on the
+  next heartbeat register. main.ts constructs the bridge in the plugin-ready
+  block, forwards credentials from the patched ``pluginManager.setAuthToken``
+  (renderer login -> bridge.setCredentials), and stops it on before-quit /
+  window-all-closed. IGDB keys auto-seed from the existing ``igdb-source``
+  plugin config secrets (startup seed is additive-only; ``plugin:config-changed``
+  mirrors later edits), so a desktop whose launcher already fetches IGDB serves
+  IGDB proxy-fetch jobs for its Otix server with no new UI. New vitest: store
+  device-id stability/persistence + bridge lifecycle (connect+key gating, logout
+  stop, live key pickup across heartbeats, configured-vs-advertised split);
+  desktop suite 239 passed + 2 skipped, tsc clean. tmdb (and other providers)
+  await a dedicated key store/IPC + settings UI (2.2c). Still deferred:
+  prod-compose Django cutover + task-#6 ingest/enrich/embedding queue machinery
+  + trigram + embeddings.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
