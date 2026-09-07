@@ -1769,6 +1769,40 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   ``FanartEnrichFoldInTests`` in ``test_tmdb_ingest.py`` (movie/show tails
   enrich when the key is set, skip when unset) and two ``SeedShowFromTmdbTests``
   tvdb-capture cases.
+- **Phase-2 proxy-fetch server seam (increments 62–64, 2026-09-07): parity
+  263/263 unchanged, FULL suite 1098 (22 new).** The split-fetch/split-seed
+  seam that lets a connected client fetch provider raw payloads with the user's
+  own API keys when the server lacks them. The seed services already accepted a
+  raw dict (``seed_*_from_*``), so the machinery rides that boundary without
+  touching the engine fetch paths. (62) ``ClientDevice`` (integrations model
+  0002): user-owned registered device (desktop/browser) with a stable per-user
+  ``device_id`` upsert, ``provider_keys`` + ``capabilities`` JSON, a
+  ``last_seen`` online-freshness window (``ONLINE_TTL_SECONDS``, 120s), and
+  ``can_fetch``/``capable_devices`` gating key+capability+active+online. (63)
+  ``SyncJob.user`` nullable FK (migration 0003) + the dispatch gate inside
+  ``execute_sync_job`` (after claim + ``sync_started``, before the engine): a
+  provider with a key profile (``tmdb``/``igdb``/``steamgrid``/``omdb``/
+  ``lastfm``/``fanart``) missing its settings key defers to
+  ``fetch_proxy.dispatch_to_client``, which parks the job ``awaiting_client``
+  (adopting the device owner as ``job.user``) and publishes a ``fetch_request``
+  on ``fetch:{user_id}:requests:events``; keyless/unknown providers are always
+  server-handled and a server that holds the key — or finds no device online —
+  runs the engine exactly as before. (64) The client surface under
+  ``/api/v1/fetch/*`` (mounted via ``config/urls.py``; all Bearer-authenticated,
+  desktop-first since browser EventSource can't set headers): ``GET
+  /fetch/stream`` persistent SSE on the user's fetch-request channel (connect
+  touches device ``last_seen``), ``POST /fetch/device`` upsert+heartbeat, and
+  ``POST /fetch/result`` — validates an ``awaiting_client`` job owned by the
+  caller, seeds the client-POSTed ``raw`` through the ``(provider, entity_type)``
+  seeder registry in ``fetch_result.py`` (tmdb movie/show, igdb game, musicbrainz
+  album), then completes the job with a ``sync_complete`` terminal frame +
+  stored result on ``{provider}:sync`` so the original requester's SSE closes.
+  Follow-ons noted: the async keyed enrichment tails (omdb/fanart) are not yet
+  re-run on the proxy path, and an awaiting_client job has no timeout reaper yet.
+  **Next (Phase 2.2):** the desktop-companion fetch worker (TypeScript mirror +
+  SSE subscribe + result POST) and a heartbeat cadence. Still deferred:
+  prod-compose Django cutover + task-#6 ingest/enrich/embedding queue machinery +
+  trigram + embeddings.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
