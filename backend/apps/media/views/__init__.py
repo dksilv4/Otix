@@ -31,6 +31,13 @@ from apps.media.views.interaction import (
     SeasonWatchedView,
     ShowWatchedView,
 )
+from apps.media.views.local_assets import (
+    AssetFileView,
+    DownloadAssetsView,
+    MirroringView,
+    PurgeAssetsView,
+    StorageUsageView,
+)
 from apps.media.views.proposals import (
     EditProposalListCreateView,
     EditProposalModerationView,
@@ -46,9 +53,11 @@ from apps.media.views.rating_review import (
 )
 
 __all__ = [
+    "AssetFileView",
     "CertificationListView",
     "ClaimView",
     "CompanyLookupView",
+    "DownloadAssetsView",
     "EditProposalListCreateView",
     "EditProposalModerationView",
     "EditProposalVoteView",
@@ -70,6 +79,8 @@ __all__ = [
     "MediaAssetsView",
     "MediaDetailView",
     "MediaListView",
+    "MirroringView",
+    "PurgeAssetsView",
     "RatingView",
     "RecommendationView",
     "RehydrateStreamView",
@@ -79,5 +90,6 @@ __all__ = [
     "SeasonWatchedView",
     "ShowWatchedView",
     "SimilarMediaView",
+    "StorageUsageView",
     "SyncLocalGamesView",
 ]

@@ -70,7 +70,13 @@ def _show_raw(**overrides):
         "external_ids": {"imdb_id": "tt0903747"},
         "genres": [{"id": 18, "name": "Drama"}, {"id": 80, "name": "Crime"}],
         "seasons": [
-            {"id": 0, "name": "Specials", "season_number": 0, "episode_count": 1},
+            {
+                "id": 0,
+                "name": "Specials",
+                "season_number": 0,
+                "episode_count": 1,
+                "air_date": None,
+            },
             {
                 "id": 3572,
                 "name": "Season 1",
@@ -78,6 +84,7 @@ def _show_raw(**overrides):
                 "season_number": 1,
                 "episode_count": 7,
                 "poster_path": "/s1.jpg",
+                "air_date": "2008-01-20",
             },
             {
                 "id": 3573,
@@ -86,6 +93,7 @@ def _show_raw(**overrides):
                 "season_number": 2,
                 "episode_count": 13,
                 "poster_path": "/s2.jpg",
+                "air_date": "2009-03-08",
             },
         ],
     }
@@ -438,6 +446,7 @@ class SeedShowFromTmdbTests(TestCase):
         )
         self.assertEqual(seasons[1].overview, "Second season.")
         self.assertTrue(seasons[1].poster_url.endswith("/s2.jpg"))
+        self.assertEqual([str(s.air_date) for s in seasons], ["2008-01-20", "2009-03-08"])
         self.assertEqual(Episode.objects.filter(season__show_id=media_id).count(), 0)
 
         # tmdb + imdb external ids, both scoped to media_type "show"
@@ -494,6 +503,30 @@ class SeedShowFromTmdbTests(TestCase):
         self.assertEqual(show.number_of_seasons, 6)
         self.assertEqual(show.number_of_episodes, 78)
         self.assertEqual(Season.objects.filter(show_id=media_id).count(), 3)
+
+    def test_reseed_refreshes_existing_season_air_date(self) -> None:
+        media_id = seed_show_from_tmdb(_show_raw())
+        # Re-seed with Season 2's premiere moved (update_or_create, not get).
+        raw = _show_raw()
+        raw["seasons"][2]["air_date"] = "2009-06-01"
+        reseeded_id = seed_show_from_tmdb(raw)
+        self.assertEqual(reseeded_id, media_id)
+        self.assertEqual(Season.objects.filter(show_id=media_id).count(), 2)
+        season2 = Season.objects.get(show_id=media_id, season_number=2)
+        self.assertEqual(str(season2.air_date), "2009-06-01")
+
+    def test_null_season_air_date_backfilled_on_reseed(self) -> None:
+        raw = _show_raw()
+        raw["seasons"][1].pop("air_date")  # Season 1 has no premiere yet
+        media_id = seed_show_from_tmdb(raw)
+        season1 = Season.objects.get(show_id=media_id, season_number=1)
+        self.assertIsNone(season1.air_date)
+        # Upstream adds the premiere; a re-seed fills the previously-null row.
+        reseeded_id = seed_show_from_tmdb(_show_raw())
+        self.assertEqual(reseeded_id, media_id)
+        season1.refresh_from_db()
+        self.assertEqual(str(season1.air_date), "2008-01-20")
+
 
     def test_anime_heuristic_japanese_animation(self):
         raw = _show_raw(

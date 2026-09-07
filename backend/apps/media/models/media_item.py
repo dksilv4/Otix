@@ -136,9 +136,13 @@ class Season(models.Model):
     name = models.CharField(max_length=1000, null=True, blank=True)
     overview = models.TextField(null=True, blank=True)
     poster_url = models.CharField(max_length=2000, null=True, blank=True)
+    air_date = models.DateField(null=True, blank=True, db_index=True)
 
     class Meta:
         db_table = "seasons"
+        indexes = [
+            models.Index(fields=["show", "season_number"], name="seasons_show_num_idx"),
+        ]
 
     def __str__(self) -> str:
         name = self.name or f"Season {self.season_number}"

@@ -15,6 +15,7 @@ from apps.media.views import (
     CertificationListView,
     ClaimView,
     CompanyLookupView,
+    DownloadAssetsView,
     EditProposalListCreateView,
     EditProposalModerationView,
     EditProposalVoteView,
@@ -36,6 +37,8 @@ from apps.media.views import (
     MediaAssetsView,
     MediaDetailView,
     MediaListView,
+    MirroringView,
+    PurgeAssetsView,
     RatingView,
     RecommendationView,
     RehydrateStreamView,
@@ -45,6 +48,7 @@ from apps.media.views import (
     SeasonWatchedView,
     ShowWatchedView,
     SimilarMediaView,
+    StorageUsageView,
     SyncLocalGamesView,
 )
 
@@ -71,6 +75,14 @@ urlpatterns = [
         MatchProposalModerationView.as_view(action="reject"),
         name="match-proposal-reject",
     ),
+    path(
+        "admin/media-items/<int:media_id>/download-assets",
+        DownloadAssetsView.as_view(),
+        name="admin-download-assets",
+    ),
+    path("admin/mirroring", MirroringView.as_view(), name="admin-mirroring"),
+    path("admin/assets", PurgeAssetsView.as_view(), name="admin-purge-assets"),
+    path("admin/storage", StorageUsageView.as_view(), name="admin-storage"),
     # Import / match / sync-local-games (literal verbs; no media_id prefix).
     path("import", ImportView.as_view(), name="media-import"),
     path("import/igdb", ImportIgdbView.as_view(), name="media-import-igdb"),

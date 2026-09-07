@@ -28,7 +28,9 @@ function SettingsLayoutInner() {
 
   const activeSection = location.pathname.replace('/settings/', '').split('/')[0] || 'overview'
   const { tabs: pluginTabs } = usePluginTabs()
-  const filteredNav = getNavItems(pluginTabs).filter(i => !DESKTOP_SECTIONS.has(i.id) || desktop)
+  const filteredNav = getNavItems(pluginTabs)
+    .filter((i) => !DESKTOP_SECTIONS.has(i.id) || desktop)
+    .filter((i) => !i.adminOnly || user?.isAdmin)
 
   // Listen for sidebar collapse changes from other components (e.g. Appearance page)
   useEffect(() => {
@@ -56,9 +58,7 @@ function SettingsLayoutInner() {
   const navLinkClass = (isActive: boolean) =>
     cn(
       'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200',
-      isActive
-        ? 'bg-white/10 text-white shadow-sm font-semibold'
-        : 'text-white/50 hover:text-white hover:bg-white/5',
+      isActive ? 'bg-white/10 text-white shadow-sm font-semibold' : 'text-white/50 hover:text-white hover:bg-white/5',
     )
 
   return (
@@ -102,22 +102,24 @@ function SettingsLayoutInner() {
                 Preferences
               </span>
             </div>
-            {filteredNav.filter(i => i.group === 'preferences').map((item) => {
-              const Icon = item.icon
-              const isActive = activeSection === item.id
-              return (
-                <Link
-                  key={item.id}
-                  to={`/settings/${item.id}`}
-                  data-active={isActive || undefined}
-                  onClick={() => setMobileOpen(false)}
-                  className={navLinkClass(isActive)}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1">{item.label}</span>
-                </Link>
-              )
-            })}
+            {filteredNav
+              .filter((i) => i.group === 'preferences')
+              .map((item) => {
+                const Icon = item.icon
+                const isActive = activeSection === item.id
+                return (
+                  <Link
+                    key={item.id}
+                    to={`/settings/${item.id}`}
+                    data-active={isActive || undefined}
+                    onClick={() => setMobileOpen(false)}
+                    className={navLinkClass(isActive)}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">{item.label}</span>
+                  </Link>
+                )
+              })}
 
             {/* Account Group */}
             <div className="mt-4 mb-1 pt-3">
@@ -130,24 +132,26 @@ function SettingsLayoutInner() {
                 )}
               </span>
             </div>
-            {filteredNav.filter(i => i.group === 'account').map((item) => {
-              const Icon = item.icon
-              const isActive = activeSection === item.id
-              const showLock = item.requiresAuth && !user
-              return (
-                <Link
-                  key={item.id}
-                  to={`/settings/${item.id}`}
-                  data-active={isActive || undefined}
-                  onClick={() => setMobileOpen(false)}
-                  className={navLinkClass(isActive)}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1">{item.label}</span>
-                  {showLock && <Lock className="h-3 w-3 text-white/30 shrink-0" />}
-                </Link>
-              )
-            })}
+            {filteredNav
+              .filter((i) => i.group === 'account')
+              .map((item) => {
+                const Icon = item.icon
+                const isActive = activeSection === item.id
+                const showLock = item.requiresAuth && !user
+                return (
+                  <Link
+                    key={item.id}
+                    to={`/settings/${item.id}`}
+                    data-active={isActive || undefined}
+                    onClick={() => setMobileOpen(false)}
+                    className={navLinkClass(isActive)}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">{item.label}</span>
+                    {showLock && <Lock className="h-3 w-3 text-white/30 shrink-0" />}
+                  </Link>
+                )
+              })}
           </nav>
 
           {user && (
@@ -157,9 +161,7 @@ function SettingsLayoutInner() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">
                     {user.username}
-                    {user.isAdmin && (
-                      <Shield className="h-3 w-3 inline-block ml-1 text-amber-400/80" />
-                    )}
+                    {user.isAdmin && <Shield className="h-3 w-3 inline-block ml-1 text-amber-400/80" />}
                   </p>
                   <p className="text-xs text-white/40 truncate">{user.email}</p>
                 </div>
@@ -175,33 +177,36 @@ function SettingsLayoutInner() {
         <aside
           id="settings-sidebar"
           className={cn(
-            "hidden sm:flex flex-col shrink-0 h-full pb-6 transition-all duration-300 ease-in-out",
-            collapsed ? "w-16 lg:w-20" : "w-56 lg:w-64",
-            desktop ? "pt-24 sm:pt-28" : "pt-16 sm:pt-20"
+            'hidden sm:flex flex-col shrink-0 h-full pb-6 transition-all duration-300 ease-in-out',
+            collapsed ? 'w-16 lg:w-20' : 'w-56 lg:w-64',
+            desktop ? 'pt-24 sm:pt-28' : 'pt-16 sm:pt-20',
           )}
         >
           <div
             className={cn(
-              "glass-card flex flex-col h-full pt-6 pb-5 transition-all duration-300",
-              collapsed ? "px-2 items-center" : "px-5"
+              'glass-card flex flex-col h-full pt-6 pb-5 transition-all duration-300',
+              collapsed ? 'px-2 items-center' : 'px-5',
             )}
             style={{ backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.3)' }}
           >
             {/* Header with collapse button */}
-            <div className={cn("flex items-center mb-5 w-full", collapsed ? "justify-center" : "justify-between")}>
+            <div className={cn('flex items-center mb-5 w-full', collapsed ? 'justify-center' : 'justify-between')}>
               {!collapsed && <h1 className="text-lg font-bold">Settings</h1>}
               <button
                 type="button"
                 onClick={toggleCollapsed}
-                title={collapsed ? "Expand settings menu" : "Collapse settings menu"}
-                aria-label={collapsed ? "Expand settings menu" : "Collapse settings menu"}
+                title={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
+                aria-label={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
                 className="flex h-8 w-8 items-center justify-center rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
               >
                 {collapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
               </button>
             </div>
 
-            <nav ref={navRef} className={cn("flex flex-col gap-1 flex-1 overflow-y-auto pr-1 w-full", collapsed && "items-center")}>
+            <nav
+              ref={navRef}
+              className={cn('flex flex-col gap-1 flex-1 overflow-y-auto pr-1 w-full', collapsed && 'items-center')}
+            >
               {/* Preferences Group */}
               {!collapsed ? (
                 <div className="mb-1">
@@ -211,25 +216,27 @@ function SettingsLayoutInner() {
                 </div>
               ) : null}
 
-              {filteredNav.filter(i => i.group === 'preferences').map((item) => {
-                const Icon = item.icon
-                const isActive = activeSection === item.id
-                return (
-                  <Link
-                    key={item.id}
-                    to={`/settings/${item.id}`}
-                    data-active={isActive || undefined}
-                    title={collapsed ? item.label : undefined}
-                    className={cn(
-                      navLinkClass(isActive),
-                      collapsed && "justify-center px-0 py-2.5 w-10 h-10 rounded-xl"
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
-                  </Link>
-                )
-              })}
+              {filteredNav
+                .filter((i) => i.group === 'preferences')
+                .map((item) => {
+                  const Icon = item.icon
+                  const isActive = activeSection === item.id
+                  return (
+                    <Link
+                      key={item.id}
+                      to={`/settings/${item.id}`}
+                      data-active={isActive || undefined}
+                      title={collapsed ? item.label : undefined}
+                      className={cn(
+                        navLinkClass(isActive),
+                        collapsed && 'justify-center px-0 py-2.5 w-10 h-10 rounded-xl',
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                    </Link>
+                  )
+                })}
 
               {/* Account Group */}
               {!collapsed ? (
@@ -247,47 +254,47 @@ function SettingsLayoutInner() {
                 <div className="my-2 h-px w-8 bg-white/10 shrink-0" />
               )}
 
-              {filteredNav.filter(i => i.group === 'account').map((item) => {
-                const Icon = item.icon
-                const isActive = activeSection === item.id
-                const showLock = item.requiresAuth && !user
-                return (
-                  <Link
-                    key={item.id}
-                    to={`/settings/${item.id}`}
-                    data-active={isActive || undefined}
-                    title={collapsed ? `${item.label}${showLock ? ' (Requires Sign In)' : ''}` : undefined}
-                    className={cn(
-                      navLinkClass(isActive),
-                      collapsed && "justify-center px-0 py-2.5 w-10 h-10 rounded-xl relative"
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && (
-                      <>
-                        <span className="flex-1 truncate">{item.label}</span>
-                        {showLock && <Lock className="h-3 w-3 text-white/30 shrink-0" />}
-                      </>
-                    )}
-                    {collapsed && showLock && (
-                      <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400/80" />
-                    )}
-                  </Link>
-                )
-              })}
+              {filteredNav
+                .filter((i) => i.group === 'account')
+                .map((item) => {
+                  const Icon = item.icon
+                  const isActive = activeSection === item.id
+                  const showLock = item.requiresAuth && !user
+                  return (
+                    <Link
+                      key={item.id}
+                      to={`/settings/${item.id}`}
+                      data-active={isActive || undefined}
+                      title={collapsed ? `${item.label}${showLock ? ' (Requires Sign In)' : ''}` : undefined}
+                      className={cn(
+                        navLinkClass(isActive),
+                        collapsed && 'justify-center px-0 py-2.5 w-10 h-10 rounded-xl relative',
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1 truncate">{item.label}</span>
+                          {showLock && <Lock className="h-3 w-3 text-white/30 shrink-0" />}
+                        </>
+                      )}
+                      {collapsed && showLock && (
+                        <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400/80" />
+                      )}
+                    </Link>
+                  )
+                })}
             </nav>
 
             {user && (
-              <div className={cn("mt-auto pt-4 w-full", collapsed && "flex justify-center")}>
+              <div className={cn('mt-auto pt-4 w-full', collapsed && 'flex justify-center')}>
                 {!collapsed ? (
                   <div className="flex items-center gap-3 px-1 py-2">
                     <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">
                         {user.username}
-                        {user.isAdmin && (
-                          <Shield className="h-3 w-3 inline-block ml-1 text-amber-400/80" />
-                        )}
+                        {user.isAdmin && <Shield className="h-3 w-3 inline-block ml-1 text-amber-400/80" />}
                       </p>
                       <p className="text-xs text-white/40 truncate">{user.email}</p>
                     </div>
@@ -308,8 +315,8 @@ function SettingsLayoutInner() {
             <div
               key={location.pathname}
               className={cn(
-                "min-h-full w-full max-w-5xl xl:max-w-6xl mx-auto px-1 sm:px-3 lg:px-4 pb-28",
-                desktop ? "pt-24 sm:pt-28 lg:pt-32" : "pt-16 sm:pt-20 lg:pt-24"
+                'min-h-full w-full max-w-5xl xl:max-w-6xl mx-auto px-1 sm:px-3 lg:px-4 pb-28',
+                desktop ? 'pt-24 sm:pt-28 lg:pt-32' : 'pt-16 sm:pt-20 lg:pt-24',
               )}
               style={{ animation: 'settings-enter 0.2s ease-out' }}
             >
@@ -318,7 +325,7 @@ function SettingsLayoutInner() {
                 className="sm:hidden flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors self-start mb-4 px-2 py-1"
               >
                 <ChevronDown className="h-4 w-4 rotate-90" />
-                {NAV_ITEMS.find(i => i.id === activeSection)?.label || 'Settings'}
+                {NAV_ITEMS.find((i) => i.id === activeSection)?.label || 'Settings'}
               </button>
               <Outlet />
             </div>

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { DiscoverHero } from './discover-hero'
 import { MediaSection } from './discover-media-section'
+import { TrendingSeasonsSection } from './trending-seasons-section'
 import { FreeGamesSection } from './free-games-section'
 import { discoverQueries } from '../../queries/discover-queries'
 
@@ -36,6 +37,7 @@ export function DiscoverFeed() {
             mediaType="show"
             listType="trending"
           />
+          <TrendingSeasonsSection />
           <MediaSection
             title="Trending Games"
             mediaType="game"

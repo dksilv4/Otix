@@ -114,6 +114,7 @@ class SeasonOutSerializer(serializers.ModelSerializer):
             "name",
             "overview",
             "poster_url",
+            "air_date",
             "episode_count",
             "episodes",
         )
@@ -127,6 +128,19 @@ class SeasonOutSerializer(serializers.ModelSerializer):
 
     def get_episodes(self, obj: Season):
         return EpisodeOutSerializer(self._episodes(obj), many=True).data
+
+
+class SeasonSummarySerializer(serializers.Serializer):
+    """Feed/summary shape for a Season as a discover item (Trending Shows)."""
+
+    id = serializers.IntegerField()
+    show_id = serializers.IntegerField()
+    show_title = serializers.CharField(source="show.media_item.title")
+    season_number = serializers.IntegerField()
+    name = serializers.CharField(allow_null=True)
+    overview = serializers.CharField(allow_null=True)
+    poster_url = serializers.CharField(allow_null=True)
+    air_date = serializers.DateField(allow_null=True)
 
 
 class CollectionMovieOutSerializer(serializers.Serializer):

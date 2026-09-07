@@ -337,6 +337,30 @@ class BaseProviderTests(SimpleTestCase):
 
             _run(run())
 
+    def test_cache_key_folds_query_params_so_pages_do_not_collide(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            BaseProvider._api_cache = ApiCache(cache_dir=tmp)
+            self.addCleanup(self._restore_cache)
+
+            def page_handler(request):
+                page = request.url.params.get("page")
+                return httpx.Response(200, json={"page": int(page), "id": int(page)})
+
+            async def run():
+                provider, fake, calls = self._make_provider(page_handler)
+                async with provider.http:
+                    seen = []
+                    for n in (1, 2, 3):
+                        resp = await provider._get(
+                            "https://api.example.test/movie/popular", params={"page": n}
+                        )
+                        seen.append(resp.json())
+                    # Every distinct page reached the transport (no cache collision).
+                    self.assertEqual(len(calls), 3)
+                    self.assertEqual([r["page"] for r in seen], [1, 2, 3])
+
+            _run(run())
+
     def test_half_open_cache_probe_resolves_breaker(self):
         with tempfile.TemporaryDirectory() as tmp:
             BaseProvider._api_cache = ApiCache(cache_dir=tmp)

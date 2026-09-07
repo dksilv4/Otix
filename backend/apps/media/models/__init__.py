@@ -36,6 +36,7 @@ from apps.media.models.media_item import (
     Show,
 )
 from apps.media.models.platform import GameMode, MediaGameMode, MediaPlatform, Platform
+from apps.media.models.setting import MediaServerSetting
 from apps.media.models.track import Track, TrackRating
 from apps.media.models.watch_provider import MediaWatchProvider, WatchProvider
 
@@ -58,6 +59,7 @@ __all__ = [
     "MediaKeyword",
     "MediaPlatform",
     "MediaRelease",
+    "MediaServerSetting",
     "MediaVideo",
     "MediaWatchProvider",
     "Movie",

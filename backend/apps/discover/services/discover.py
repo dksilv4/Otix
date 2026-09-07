@@ -13,9 +13,10 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+from django.db.models import OuterRef, Subquery
 from django.db.models.query import QuerySet
 
-from apps.media.models import MediaItem
+from apps.media.models import MediaItem, Season
 from apps.media.services import catalog as catalog_service
 
 VALID_MEDIA_TYPES = {"movie", "show", "game", "music"}
@@ -114,6 +115,65 @@ def list_feed(
         date_to=date_to,
         exclude_adult=exclude_adult,
     )
+
+
+def trending_seasons(
+    *,
+    genre: str | None,
+    language: str | None,
+    is_anime: bool | None,
+    exclude_adult: bool,
+) -> list:
+    """Latest season per show whose season premiered in the trending window.
+
+    Trending Shows surfaces a show's *latest* season (by ``season_number``) as the
+    item instead of the show itself, gated on the season's premiere (``air_date``)
+    falling within ``[today-365d, today+180d]`` — a show whose latest season aired
+    over a year ago drops out; one announced to premiere within the window is
+    kept but *demoted* below seasons that have already aired (a not-yet-aired
+    season isn't what people can watch right now). ``has_logo``/artwork gating is
+    deliberately skipped: the season card renders its own poster (falling back to
+    the show's poster) and plain-text title, and requiring show-level
+    logo/textless assets would wrongly hide fresh seasons.
+
+    Returns the ordered list (materialized here — the candidate set is bounded by
+    the date window and one season per show, and Python lets the two date
+    directions sort portably across Postgres/SQLite): aired seasons newest-first,
+    then future seasons soonest-first.
+    """
+    today = date.today()
+    date_from = today - timedelta(days=365)
+    date_to = today + timedelta(days=180)
+
+    latest_number = (
+        Season.objects.filter(show_id=OuterRef("show_id"))
+        .order_by("-season_number")
+        .values("season_number")[:1]
+    )
+    qs = Season.objects.filter(
+        air_date__isnull=False,
+        air_date__gte=date_from,
+        air_date__lte=date_to,
+        season_number=Subquery(latest_number),
+    )
+    if genre:
+        qs = qs.filter(show__media_item__media_genres__genre__slug=genre)
+    if language:
+        qs = qs.filter(show__media_item__original_language=language)
+    if is_anime is not None:
+        qs = qs.filter(show__is_anime=is_anime)
+    if exclude_adult:
+        qs = qs.filter(show__media_item__is_adult=False)
+    seasons = list(qs.select_related("show__media_item").distinct())
+
+    def _sort_key(season: Season) -> tuple[int, int]:
+        days_to_premiere = (season.air_date - today).days
+        if days_to_premiere <= 0:
+            return (0, -days_to_premiere)  # aired, newest first
+        return (1, days_to_premiere)  # future, soonest first
+
+    seasons.sort(key=_sort_key)
+    return seasons
 
 
 def default_sections() -> list[dict]:

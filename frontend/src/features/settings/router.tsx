@@ -5,20 +5,47 @@ import { PluginSettingsPage } from '@/features/plugins/components/PluginSettings
 import { PluginSettingsTabRoute } from '@/features/plugins/components/PluginSettingsTabRoute'
 import type { PluginSettingsTab } from '@/features/_config/slots'
 
-const SettingsLayout = lazy(() => import('./pages/settings-layout').then(m => ({ default: m.SettingsLayout })))
-const SettingsOverviewPage = lazy(() => import('./pages/settings-overview-page').then(m => ({ default: m.SettingsOverviewPage })))
-const SettingsProfilePage = lazy(() => import('./pages/settings-profile-page').then(m => ({ default: m.SettingsProfilePage })))
-const SettingsAccountPage = lazy(() => import('./pages/settings-account-page').then(m => ({ default: m.SettingsAccountPage })))
-const SettingsAppearancePage = lazy(() => import('./pages/settings-appearance-page').then(m => ({ default: m.SettingsAppearancePage })))
-const SettingsNotificationsPage = lazy(() => import('./pages/settings-notifications-page').then(m => ({ default: m.SettingsNotificationsPage })))
-const SettingsGeneralPage = lazy(() => import('./pages/settings-general-page').then(m => ({ default: m.SettingsGeneralPage })))
-const SettingsIntegrationsPage = lazy(() => import('./pages/settings-integrations-page').then(m => ({ default: m.SettingsIntegrationsPage })))
+const SettingsLayout = lazy(() => import('./pages/settings-layout').then((m) => ({ default: m.SettingsLayout })))
+const SettingsOverviewPage = lazy(() =>
+  import('./pages/settings-overview-page').then((m) => ({ default: m.SettingsOverviewPage })),
+)
+const SettingsProfilePage = lazy(() =>
+  import('./pages/settings-profile-page').then((m) => ({ default: m.SettingsProfilePage })),
+)
+const SettingsAccountPage = lazy(() =>
+  import('./pages/settings-account-page').then((m) => ({ default: m.SettingsAccountPage })),
+)
+const SettingsAppearancePage = lazy(() =>
+  import('./pages/settings-appearance-page').then((m) => ({ default: m.SettingsAppearancePage })),
+)
+const SettingsNotificationsPage = lazy(() =>
+  import('./pages/settings-notifications-page').then((m) => ({ default: m.SettingsNotificationsPage })),
+)
+const SettingsGeneralPage = lazy(() =>
+  import('./pages/settings-general-page').then((m) => ({ default: m.SettingsGeneralPage })),
+)
+const SettingsIntegrationsPage = lazy(() =>
+  import('./pages/settings-integrations-page').then((m) => ({ default: m.SettingsIntegrationsPage })),
+)
+const SettingsStoragePage = lazy(() =>
+  import('./pages/settings-storage-page').then((m) => ({ default: m.SettingsStoragePage })),
+)
 
-const SettingsLibraryPage = lazy(() => import('./pages/settings-library-page').then(m => ({ default: m.SettingsLibraryPage })))
-const SettingsDesktopPage = lazy(() => import('./pages/settings-desktop-page').then(m => ({ default: m.SettingsDesktopPage })))
-const SettingsPluginsPage = lazy(() => import('@/features/plugins/pages/plugins-page').then(m => ({ default: m.SettingsPluginsPage })))
-const SettingsScannedGamesPage = lazy(() => import('./pages/settings-scanned-games-page').then(m => ({ default: m.SettingsScannedGamesPage })))
-const ProposalsPage = lazy(() => import('@/features/proposals/pages/proposals-page').then(m => ({ default: m.ProposalsPage })))
+const SettingsLibraryPage = lazy(() =>
+  import('./pages/settings-library-page').then((m) => ({ default: m.SettingsLibraryPage })),
+)
+const SettingsDesktopPage = lazy(() =>
+  import('./pages/settings-desktop-page').then((m) => ({ default: m.SettingsDesktopPage })),
+)
+const SettingsPluginsPage = lazy(() =>
+  import('@/features/plugins/pages/plugins-page').then((m) => ({ default: m.SettingsPluginsPage })),
+)
+const SettingsScannedGamesPage = lazy(() =>
+  import('./pages/settings-scanned-games-page').then((m) => ({ default: m.SettingsScannedGamesPage })),
+)
+const ProposalsPage = lazy(() =>
+  import('@/features/proposals/pages/proposals-page').then((m) => ({ default: m.ProposalsPage })),
+)
 
 export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSettingsTab[]) {
   const settingsRoute = createRoute({
@@ -91,7 +118,9 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
   const settingsAdminProposalsRedirect = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/admin/proposals',
-    beforeLoad: () => { throw redirect({ to: '/settings/proposals' }) },
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/proposals' })
+    },
   })
 
   const settingsLibraryRoute = createRoute({
@@ -112,18 +141,26 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsPluginsPage,
   })
 
+  const settingsStorageRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/storage',
+    component: SettingsStoragePage,
+  })
+
   const settingsLauncherRedirect = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/launcher',
-    beforeLoad: () => { throw redirect({ to: '/settings/general' }) },
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/general' })
+    },
   })
 
-  const pluginRoutes = (pluginTabs || []).map(tab =>
+  const pluginRoutes = (pluginTabs || []).map((tab) =>
     createRoute({
       getParentRoute: () => settingsRoute,
       path: tab.path.replace('/settings/', ''),
       component: () => <PluginSettingsPage tab={tab} />,
-    })
+    }),
   )
 
   // Dynamic plugin settings tab: /settings/<tabId> resolves the tab at render
@@ -150,6 +187,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsLibraryRoute,
     settingsDesktopRoute,
     settingsPluginsRoute,
+    settingsStorageRoute,
     settingsLauncherRedirect,
     ...pluginRoutes,
     pluginSettingsTabRoute,

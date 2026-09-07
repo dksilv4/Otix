@@ -14,7 +14,7 @@ import asyncio
 import unittest.mock as mock
 
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from apps.company.models import Company, InvolvedCompany
 from apps.media.models import (
@@ -187,6 +187,39 @@ class SeedGameFromIgdbTests(TestCase):
         self.assertEqual(media.slug, "unknown-game")
         self.assertIsNone(media.overview)
 
+    def test_tops_up_popularity_from_aggregated_rating(self):
+        media_id = seed_game_from_igdb(
+            _full_game_raw(aggregated_rating=91.25), IGDB_ID
+        )
+        media = MediaItem.objects.get(pk=media_id)
+        self.assertAlmostEqual(media.popularity, 91.25)
+
+    def test_reseed_tops_up_a_pre_fix_zero_popularity_row(self):
+        # A row seeded before the popularity fold (no rating fetched) stays 0.0;
+        # a re-seed with an IGDB rating now fills the gap.
+        media_id = seed_game_from_igdb(
+            _full_game_raw(aggregated_rating=None), IGDB_ID
+        )
+        self.assertEqual(MediaItem.objects.get(pk=media_id).popularity, 0.0)
+        reseeded = seed_game_from_igdb(
+            _full_game_raw(aggregated_rating=95.0), IGDB_ID
+        )
+        media = MediaItem.objects.get(pk=reseeded)
+        self.assertEqual(reseeded, media_id)
+        self.assertAlmostEqual(media.popularity, 95.0)
+
+    def test_already_populated_popularity_is_not_clobbered(self):
+        media_id = seed_game_from_igdb(
+            _full_game_raw(aggregated_rating=88.0), IGDB_ID
+        )
+        MediaItem.objects.filter(pk=media_id).update(popularity=4123.5)
+        reseeded = seed_game_from_igdb(
+            _full_game_raw(aggregated_rating=99.0), IGDB_ID
+        )
+        self.assertAlmostEqual(
+            MediaItem.objects.get(pk=reseeded).popularity, 4123.5
+        )
+
 
 class FetchAndSeedGameTests(TestCase):
     def test_fetches_through_provider_and_passes_raw_to_seed(self):
@@ -242,6 +275,72 @@ class FetchAndSeedGameTests(TestCase):
         provider.get_age_ratings.assert_awaited_once_with([1001])
         self.assertEqual(result, 9876)
         self.assertNotIn("age_rating_details", seed.call_args[0][0])
+
+    def test_fetch_attaches_steamgrid_logos_when_keyed_and_steam_linked(self):
+        raw = _game_raw(
+            external_games=[
+                {"external_game_source": 1, "uid": "1145360"},
+                {"external_game_source": 20, "uid": "9P3J32CTXLRZ"},
+            ]
+        )
+        provider = mock.Mock()
+        provider.get_game = mock.AsyncMock(return_value=raw)
+        with (
+            mock.patch(
+                "apps.media.services.igdb_ingest.seed_game_from_igdb",
+                return_value=9876,
+            ),
+            mock.patch(
+                "apps.media.services.steamgrid_artwork.fetch_and_attach_game_logos",
+                new=mock.AsyncMock(),
+            ) as logos,
+            override_settings(STEAMGRID_API_KEY="test-key"),
+        ):
+            result = _run(fetch_and_seed_game(IGDB_ID, provider=provider))
+
+        logos.assert_awaited_once_with(9876, 1145360)
+        self.assertEqual(result, 9876)
+
+    def test_fetch_attaches_via_name_search_when_game_has_no_steam_link(self):
+        provider = mock.Mock()
+        provider.get_game = mock.AsyncMock(return_value=_game_raw())
+        with (
+            mock.patch(
+                "apps.media.services.igdb_ingest.seed_game_from_igdb",
+                return_value=9876,
+            ),
+            mock.patch(
+                "apps.media.services.steamgrid_artwork.fetch_and_attach_game_logos",
+                new=mock.AsyncMock(),
+            ) as logos,
+            override_settings(STEAMGRID_API_KEY="test-key"),
+        ):
+            result = _run(fetch_and_seed_game(IGDB_ID, provider=provider))
+
+        logos.assert_awaited_once_with(9876, None)
+        self.assertEqual(result, 9876)
+
+    def test_fetch_skips_steamgrid_attach_without_a_key(self):
+        raw = _game_raw(
+            external_games=[{"external_game_source": 1, "uid": "1145360"}]
+        )
+        provider = mock.Mock()
+        provider.get_game = mock.AsyncMock(return_value=raw)
+        with (
+            mock.patch(
+                "apps.media.services.igdb_ingest.seed_game_from_igdb",
+                return_value=9876,
+            ),
+            mock.patch(
+                "apps.media.services.steamgrid_artwork.fetch_and_attach_game_logos",
+                new=mock.AsyncMock(),
+            ) as logos,
+            override_settings(STEAMGRID_API_KEY=""),
+        ):
+            result = _run(fetch_and_seed_game(IGDB_ID, provider=provider))
+
+        logos.assert_not_called()
+        self.assertEqual(result, 9876)
 
 
 class HydrateGameFromIgdbTests(TestCase):

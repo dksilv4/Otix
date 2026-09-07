@@ -31,7 +31,8 @@ def media_type_or_none(media_id: int) -> str | None:
     return value
 
 
-def _pick_asset(item: MediaItem, asset_type: str) -> str | None:
+def _best_asset(item: MediaItem, asset_type: str) -> MediaAsset | None:
+    """Highest-``score`` asset of ``asset_type`` with a usable remote URL."""
     best = None
     for asset in item.assets.all():
         if (asset.asset_type or "").lower() != asset_type:
@@ -40,7 +41,21 @@ def _pick_asset(item: MediaItem, asset_type: str) -> str | None:
             continue
         if best is None or (asset.score or 0) > (best.score or 0):
             best = asset
-    return best.url if best else None
+    return best
+
+
+def _local_asset_url(asset: MediaAsset | None) -> str | None:
+    """Serve URL for a locally mirrored asset, or None when not downloaded."""
+    if asset is not None and asset.local_name:
+        return f"/api/v1/assets/{asset.local_name}"
+    return None
+
+
+def _pick_asset(item: MediaItem, asset_type: str) -> str | None:
+    best = _best_asset(item, asset_type)
+    if best is None:
+        return None
+    return _local_asset_url(best) or best.url
 
 
 def _logo_color_guess(item: MediaItem) -> str | None:
@@ -88,6 +103,37 @@ def enrich_summaries(items: list[MediaItem], user: _User) -> None:
         _attach_summary_derived(item)
     if user is not None and user.is_authenticated:
         attach_user_interactions(items, user)
+
+
+def attach_season_poster_urls(seasons: list) -> None:
+    """Backfill each Season's ``poster_url`` from its show when the season has none.
+
+    Seasons carry only their own TMDB poster, which is frequently null (TMDB does
+    not always upload one per season). The trending-shows card renders the
+    season's poster, so fall back to the show's best poster (then backdrop)
+    asset to avoid blank cards. Mutates the instances in place for the
+    serializer to read; one bulk ``MediaAsset`` fetch, no per-season N+1.
+    """
+    if not seasons:
+        return
+    show_ids = list({s.show_id for s in seasons})
+    posters: dict[int, tuple[str, int]] = {}
+    backdrops: dict[int, tuple[str, int]] = {}
+    rows = MediaAsset.objects.filter(
+        media_item_id__in=show_ids,
+        asset_type__in=("poster", "backdrop"),
+    ).values_list("media_item_id", "asset_type", "url", "score")
+    for media_item_id, asset_type, url, score in rows:
+        if not url:
+            continue
+        bucket = posters if asset_type == "poster" else backdrops
+        if media_item_id not in bucket or (score or 0) > bucket[media_item_id][1]:
+            bucket[media_item_id] = (url, score or 0)
+    for season in seasons:
+        if season.poster_url:
+            continue
+        fallback = posters.get(season.show_id) or backdrops.get(season.show_id)
+        season.poster_url = fallback[0] if fallback else None
 
 
 def _attach_summary_derived(item: MediaItem) -> None:

@@ -591,23 +591,25 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
 def _upsert_seasons(show_pk: int, raw: dict[str, Any]) -> None:
     """Upsert Season summary rows from a TV detail's embedded ``seasons`` array.
 
-    ``/tv/{id}`` embeds season summaries (name/overview/poster/episode_count) but
-    not the episodes themselves, so the detail mapper stops at seasons; episodes
-    are filled per season by ``fetch_and_seed_show`` via ``/tv/{id}/season/{n}``.
-    ``show_pk`` is the ``Show`` subtype pk, which equals the hub's
-    ``media_items.id``.
+    ``/tv/{id}`` embeds season summaries (name/overview/poster/air_date/episode
+    count) but not the episodes themselves, so the detail mapper stops at
+    seasons; episodes are filled per season by ``fetch_and_seed_show`` via
+    ``/tv/{id}/season/{n}``. ``show_pk`` is the ``Show`` subtype pk, which equals
+    the hub's ``media_items.id``. ``update_or_create`` refreshes name/overview/
+    poster and the new ``air_date`` on re-seed so existing rows get backfilled.
     """
     for season_data in raw.get("seasons", []) or []:
         number = season_data.get("season_number")
         if not number or int(number) <= 0:
             continue
-        Season.objects.get_or_create(
+        Season.objects.update_or_create(
             show_id=show_pk,
             season_number=int(number),
             defaults={
                 "name": season_data.get("name"),
                 "overview": season_data.get("overview"),
                 "poster_url": _image_url(season_data.get("poster_path")),
+                "air_date": _parse_date(season_data.get("air_date")),
             },
         )
 

@@ -4,7 +4,6 @@ import { Search, ArrowRight, Shield, User, Lock, Sparkles, Settings } from 'luci
 import { useAuth } from '@/lib/providers/auth'
 import { DkAvatar } from '@/old-features/ui/atoms/avatar'
 
-import { cn } from '@/lib/utils'
 import { NAV_ITEMS } from '../constants'
 import type { NavItem } from '../constants'
 import { SettingsCard } from '../components/molecules/settings-card'
@@ -20,6 +19,7 @@ const ITEM_DESCRIPTIONS: Record<string, string> = {
   profile: 'Customize your public avatar, cover photo, bio, and social links.',
   account: 'Manage account credentials, email verification, 2FA, and active sessions.',
   proposals: 'Review and participate in community feature proposals and voting.',
+  storage: 'Inspect locally downloaded artwork and disk usage on the server.',
 }
 
 export function SettingsOverviewPage() {
@@ -28,7 +28,7 @@ export function SettingsOverviewPage() {
 
   const filteredItems = useMemo(() => {
     // Exclude overview itself from the grid items
-    const nav = NAV_ITEMS.filter((i) => i.id !== 'overview')
+    const nav = NAV_ITEMS.filter((i) => i.id !== 'overview' && (!i.adminOnly || user?.isAdmin))
     if (!searchQuery.trim()) return nav
     const q = searchQuery.toLowerCase()
     return nav.filter(
@@ -37,7 +37,7 @@ export function SettingsOverviewPage() {
         item.id.toLowerCase().includes(q) ||
         (ITEM_DESCRIPTIONS[item.id] || '').toLowerCase().includes(q),
     )
-  }, [searchQuery])
+  }, [searchQuery, user])
 
   const prefItems = useMemo(() => filteredItems.filter((i) => i.group === 'preferences'), [filteredItems])
   const accountItems = useMemo(() => filteredItems.filter((i) => i.group === 'account'), [filteredItems])
@@ -109,7 +109,6 @@ export function SettingsOverviewPage() {
           </button>
         )}
       </div>
-
 
       {/* ===== Preferences Category ===== */}
       {prefItems.length > 0 && (

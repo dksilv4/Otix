@@ -30,6 +30,7 @@ db.sqlite3
 .mypy_cache/
 .coverage
 htmlcov/
+.api_cache/
 
 # OS / editor
 .DS_Store

@@ -26,7 +26,11 @@ class UserSelfSerializer(serializers.ModelSerializer):
     preference lists/dicts live behind ``GET /auth/me/preferences``.
     ``date_of_birth`` is readable here but deliberately absent from
     ``UserUpdateSerializer`` (legacy never lets PATCH change it).
+    ``is_admin`` is derived read-only from the user's staff flag so the web
+    client can gate admin UI (avatar-bearing consumers can't send a header).
     """
+
+    is_admin = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -46,12 +50,16 @@ class UserSelfSerializer(serializers.ModelSerializer):
             "is_private",
             "show_adult_content",
             "is_bot",
+            "is_admin",
             "total_xp",
             "onboarding_completed",
             "created_at",
             "updated_at",
         )
         read_only_fields = fields
+
+    def get_is_admin(self, obj: User) -> bool:
+        return bool(obj.is_staff)
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):

@@ -409,3 +409,7 @@ IGDB_SEARCH_CACHE_TTL_SECONDS = int(
 UPLOAD_MAX_SIZE_MB = int(os.environ.get("UPLOAD_MAX_SIZE_MB", "5"))
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", str(BASE_DIR / "uploads"))
 
+# Locally mirrored artwork (admin "download images"): MediaAsset copies written
+# under MEDIA_DIR/assets and served from /api/v1/assets/<name>.
+MEDIA_DIR = os.environ.get("OTIX_MEDIA_DIR", str(BASE_DIR / "media"))
+

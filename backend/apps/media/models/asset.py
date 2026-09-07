@@ -23,6 +23,14 @@ class MediaAsset(BaseModel):
     provider = models.CharField(max_length=20, null=True, blank=True)
     color_guess = models.CharField(max_length=20, null=True, blank=True)
 
+    # Mirrored local copy on the backend's own disk. ``local_name`` is the
+    # unguessable filename under ``MEDIA_DIR/assets``; when set, catalog
+    # ``_pick_asset`` returns the local ``/api/v1/assets/<name>`` URL instead of
+    # the provider's remote ``url``. Null until downloaded.
+    local_name = models.CharField(max_length=64, null=True, blank=True)
+    local_size = models.BigIntegerField(null=True, blank=True)
+    downloaded_at = models.DateTimeField(null=True, blank=True)
+
     class Meta(BaseModel.Meta):
         db_table = "media_assets"
         constraints = [

@@ -225,6 +225,38 @@ def _pick_search_match(candidates: list[dict[str, Any]], title: str) -> dict[str
     return candidates[0]
 
 
+async def _resolve_sgdb_game(
+    provider: SteamGridDBProvider,
+    media_item_id: int,
+    steam_app_id: int | None,
+) -> tuple[int | None, str]:
+    """Resolve the SteamGridDB game id for a media row (reuse → steam → name).
+
+    Media-first: a stored ``provider="steamgrid"`` game id (written by a prior
+    attach) is reused and skips the platform lookup — a re-sync only fetches what
+    is missing. Otherwise the Steam App ID lookup runs when *steam_app_id* is
+    known, and a miss (or a game with no Steam link at all) falls back to a title
+    search on the catalog title, preferring the exact-name candidate. Returns
+    ``(sgdb_game_id, resolved_by)`` where ``resolved_by`` is ``steamgrid`` /
+    ``steam`` / ``name``; ``sgdb_game_id`` is ``None`` when SteamGridDB has no
+    entry at all (a benign no-op for the caller).
+    """
+    sgdb_game_id = await sync_to_async(_stored_steamgrid_game_id)(media_item_id)
+    if sgdb_game_id is not None:
+        return sgdb_game_id, "steamgrid"
+    if steam_app_id is not None:
+        game = await provider.get_game_by_steam_app_id(int(steam_app_id))
+        if game is not None:
+            return int(game.get("id")), "steam"
+    title = await sync_to_async(_media_title)(media_item_id)
+    game = _pick_search_match(
+        await provider.search_games(title) if title else [], title or ""
+    )
+    if game is None:
+        return None, "name"
+    return int(game.get("id")), "name"
+
+
 async def fetch_and_attach_game_artwork(
     media_item_id: int,
     steam_app_id: int,
@@ -247,28 +279,18 @@ async def fetch_and_attach_game_artwork(
         from core.providers.steamgrid import SteamGridDBProvider  # local: avoid eager build
 
         provider = SteamGridDBProvider()
-    resolved_by = "steamgrid"
-    sgdb_game_id = await sync_to_async(_stored_steamgrid_game_id)(media_item_id)
+    sgdb_game_id, resolved_by = await _resolve_sgdb_game(
+        provider, media_item_id, steam_app_id
+    )
     if sgdb_game_id is None:
-        game = await provider.get_game_by_steam_app_id(steam_app_id)
-        if game is not None:
-            resolved_by = "steam"
-        else:
-            resolved_by = "name"
-            title = await sync_to_async(_media_title)(media_item_id)
-            game = _pick_search_match(
-                await provider.search_games(title) if title else [], title or ""
-            )
-        if game is None:
-            return {
-                "steam_app_id": steam_app_id,
-                "media_item_id": media_item_id,
-                "sgdb_game_id": None,
-                "attached": False,
-                "assets_added": 0,
-                "resolved_by": resolved_by,
-            }
-        sgdb_game_id = int(game.get("id"))
+        return {
+            "steam_app_id": steam_app_id,
+            "media_item_id": media_item_id,
+            "sgdb_game_id": None,
+            "attached": False,
+            "assets_added": 0,
+            "resolved_by": resolved_by,
+        }
     grids, heroes, logos, icons = await asyncio.gather(
         provider.get_grids(sgdb_game_id),
         provider.get_heroes(sgdb_game_id),
@@ -277,6 +299,54 @@ async def fetch_and_attach_game_artwork(
     )
     added = await sync_to_async(attach_steamgrid_assets)(
         media_item_id, sgdb_game_id, grids, heroes, logos, icons
+    )
+    return {
+        "steam_app_id": steam_app_id,
+        "media_item_id": media_item_id,
+        "sgdb_game_id": sgdb_game_id,
+        "attached": added > 0,
+        "assets_added": added,
+        "resolved_by": resolved_by,
+    }
+
+
+async def fetch_and_attach_game_logos(
+    media_item_id: int,
+    steam_app_id: int | None = None,
+    *,
+    provider: SteamGridDBProvider | None = None,
+) -> dict[str, Any]:
+    """Attach the logo/icon artwork SteamGridDB has for a catalog game.
+
+    Lighter sibling of ``fetch_and_attach_game_artwork`` for seeds that already
+    carry a poster (cover) and backdrops from another provider (IGDB) but no logo
+    — the discover rails gate on a ``logo`` asset. Resolution is the same
+    media-first reuse → Steam App ID → title-search path; only logos and icons are
+    fetched (grids/heroes already exist as poster/backdrop). Returns the same
+    summary shape; no SteamGridDB entry is a benign no-op.
+    """
+    if provider is None:
+        from core.providers.steamgrid import SteamGridDBProvider  # local: avoid eager build
+
+        provider = SteamGridDBProvider()
+    sgdb_game_id, resolved_by = await _resolve_sgdb_game(
+        provider, media_item_id, steam_app_id
+    )
+    if sgdb_game_id is None:
+        return {
+            "steam_app_id": steam_app_id,
+            "media_item_id": media_item_id,
+            "sgdb_game_id": None,
+            "attached": False,
+            "assets_added": 0,
+            "resolved_by": resolved_by,
+        }
+    logos, icons = await asyncio.gather(
+        provider.get_logos(sgdb_game_id),
+        provider.get_icons(sgdb_game_id),
+    )
+    added = await sync_to_async(attach_steamgrid_assets)(
+        media_item_id, sgdb_game_id, [], [], logos, icons
     )
     return {
         "steam_app_id": steam_app_id,

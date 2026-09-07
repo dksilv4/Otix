@@ -30,6 +30,27 @@ from core.redis import get_async_client
 logger = logging.getLogger(__name__)
 
 
+def _url_for_cache(url: str, kwargs: dict) -> str:
+    """Cache key url, folding query params passed separately into the path.
+
+    Providers page list endpoints by calling ``_get("/movie/popular", params=
+    {"page": N})`` — the params live in kwargs, not the path. The ApiCache keys
+    on the url alone, so without folding params in, every page would collide on
+    the first (page-1) cached response and no request would ever page deeper.
+    """
+    params = kwargs.get("params")
+    if not params:
+        return url
+    if isinstance(params, str):
+        raw = params[1:] if params.startswith("?") else params
+    else:
+        raw = str(httpx.QueryParams(params))
+    if not raw:
+        return url
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}{raw}"
+
+
 class ProviderError(Exception):
     pass
 
@@ -118,8 +139,9 @@ class BaseProvider:
         # limiter so cached responses don't consume provider quota or block
         # on the token bucket. ──
         _cache = self._get_cache()
+        _cache_key = _url_for_cache(url, kwargs)
         if method == "GET" and _cache and _cache.enabled:
-            cached = _cache.get(self.name, url)
+            cached = _cache.get(self.name, _cache_key)
             if cached is not None:
                 # A HALF_OPEN recovery probe that lands on a cached response
                 # never resolves the breaker state (no success/failure is
@@ -158,7 +180,7 @@ class BaseProvider:
         if method == "GET" and _cache and _cache.enabled and response.status_code < 400:
             try:
                 data = response.json()
-                _cache.set(self.name, url, data)
+                _cache.set(self.name, _cache_key, data)
             except Exception:
                 pass
 

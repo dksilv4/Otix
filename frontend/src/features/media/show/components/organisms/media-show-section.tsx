@@ -5,6 +5,7 @@ import { DkDialog } from "@ui/molecules/dialog"
 import { SeasonProgressBar } from "./media-show-season-progress-bar"
 import { EpisodeModal } from "./media-show-episode-modal"
 import { useQuery } from '@tanstack/react-query'
+import { useSearch } from '@tanstack/react-router'
 import { mediaQueries, formatDate, formatRuntime, getPreferredSeason, useMediaParams, type SeasonOut } from "@media"
 import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched } from "@/features/interaction/episode-interaction-queries"
 import { useModal } from "@/lib/modals"
@@ -19,6 +20,10 @@ export function ShowSection({
 }: ShowSectionProps = {}) {
   const { mediaType, mediaId } = useMediaParams()
   const { openModal } = useModal()
+  // ?season=N deep link (discover season rails) — parsed by the route's
+  // validateSearch, so it survives hard refresh/share.
+  const seasonSearch = useSearch({ strict: false }) as { season?: number }
+  const requestedSeasonNum = typeof seasonSearch.season === 'number' ? seasonSearch.season : undefined
 
   const { data } = useQuery(mediaQueries.detail('show', mediaId))
   const show = data?.show
@@ -41,7 +46,11 @@ export function ShowSection({
  .sort((a, b) => a.seasonNumber - b.seasonNumber)
  }, [show.seasons])
 
- const [selectedSeasonNum, setSelectedSeasonNum] = useState<number>(() => getPreferredSeason(seasons))
+ const [selectedSeasonNum, setSelectedSeasonNum] = useState<number>(() =>
+   seasons.some((s) => s.seasonNumber === requestedSeasonNum)
+     ? (requestedSeasonNum as number)
+     : getPreferredSeason(seasons),
+ )
  const flipSourceRef = useRef<DOMRect | null>(null)
 
  const tabsRef = useRef<HTMLDivElement>(null)
@@ -79,8 +88,12 @@ export function ShowSection({
  useEffect(() => {
  if (seasons.length === 0) return
  if (seasons.some((s) => s.seasonNumber === selectedSeasonNum)) return
+ if (requestedSeasonNum != null && seasons.some((s) => s.seasonNumber === requestedSeasonNum)) {
+   setSelectedSeasonNum(requestedSeasonNum)
+   return
+ }
  setSelectedSeasonNum(getPreferredSeason(seasons))
- }, [seasons, selectedSeasonNum])
+ }, [seasons, selectedSeasonNum, requestedSeasonNum])
 
  const scrollTabs = (dir: "left" | "right") => {
  tabsRef.current?.scrollBy({ left: dir === "left" ? -200 : 200, behavior: "smooth" })

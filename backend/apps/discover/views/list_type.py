@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.discover import services as discover_services
-from apps.media.serializers import MediaItemSummarySerializer
+from apps.media.serializers import MediaItemSummarySerializer, SeasonSummarySerializer
 from apps.media.services import catalog as catalog_service
 from core.pagination import DefaultPagination
 
@@ -31,23 +31,42 @@ class DiscoverListView(APIView):
         exclude_adult = not (
             request.user.is_authenticated and getattr(request.user, "is_staff", False)
         )
-        try:
-            qs = discover_services.list_feed(
-                media_type=media_type,
-                list_type=list_type,
-                genre=request.query_params.get("genre") or None,
+        genre = request.query_params.get("genre") or None
+        is_anime = _bool_or_none(request.query_params.get("is_anime"))
+
+        if media_type == "season" and list_type == "trending":
+            # /discover/season/trending lists each eligible show's latest
+            # *season* as the item (gated on the season's premiere date), not
+            # the show itself. show/trending stays a normal shows feed below.
+            qs = discover_services.trending_seasons(
+                genre=genre,
                 language=language,
-                is_anime=_bool_or_none(request.query_params.get("is_anime")),
+                is_anime=is_anime,
                 exclude_adult=exclude_adult,
             )
-        except ValueError as exc:
-            return Response({"detail": str(exc)}, status=400)
+            serializer_cls = SeasonSummarySerializer
+        else:
+            try:
+                qs = discover_services.list_feed(
+                    media_type=media_type,
+                    list_type=list_type,
+                    genre=genre,
+                    language=language,
+                    is_anime=is_anime,
+                    exclude_adult=exclude_adult,
+                )
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=400)
+            serializer_cls = MediaItemSummarySerializer
 
         paginator = self.pagination_class()
         paginator.page_size = _page_size(request)
         page = paginator.paginate_queryset(qs, request, view=self)
-        catalog_service.enrich_summaries(page, request.user)
-        serializer = MediaItemSummarySerializer(page, many=True)
+        if serializer_cls is MediaItemSummarySerializer:
+            catalog_service.enrich_summaries(page, request.user)
+        elif serializer_cls is SeasonSummarySerializer:
+            catalog_service.attach_season_poster_urls(page)
+        serializer = serializer_cls(page, many=True)
         # Summary-list envelope mirrors /discover/hero + catalog similar/
         # recommendations payloads (items + has_more/next_cursor), not the
         # DRF page envelope. The frontend discover feed flattens ``items``.

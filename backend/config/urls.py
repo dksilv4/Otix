@@ -10,6 +10,7 @@ from django.http import HttpRequest, JsonResponse
 from django.urls import include, path
 
 from apps.accounts.views import UploadFileView
+from apps.media.views import AssetFileView
 
 
 def health(_request: HttpRequest) -> JsonResponse:
@@ -48,5 +49,6 @@ urlpatterns = [
     path("api/v1/admin/", include("apps.proposals.admin_urls")),
     path("api/v1/plugins/", include("plugins.urls")),
     path("api/v1/upload", UploadFileView.as_view(), name="upload"),
+    path("api/v1/assets/<str:name>", AssetFileView.as_view(), name="asset-file"),
     path("api/v1/health", health, name="health"),
 ]

@@ -18,7 +18,15 @@ from django.test import TestCase
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
-from apps.media.models import MediaAsset, MediaItem, Movie
+from apps.media.models import (
+    Genre,
+    MediaAsset,
+    MediaGenre,
+    MediaItem,
+    Movie,
+    Season,
+    Show,
+)
 
 User = get_user_model()
 
@@ -285,3 +293,198 @@ class DiscoverApiTests(TestCase):
             [s["id"] for s in response.data["sections"]],
             ["trending_movies", "trending_shows", "popular_games", "new_music"],
         )
+
+
+# ── Trending Shows (latest-season feed) ──────────────────────────────
+
+SEASON_KEYS = {
+    "id",
+    "show_id",
+    "show_title",
+    "season_number",
+    "name",
+    "overview",
+    "poster_url",
+    "air_date",
+}
+
+
+def _make_show(
+    title: str,
+    *,
+    seasons: list[tuple[int, date | None]],
+    popularity: float = 0.0,
+    is_adult: bool = False,
+    original_language: str | None = None,
+    is_anime: bool = False,
+    genre: str | None = None,
+    assets: tuple[str, ...] = (),
+    season_poster: bool = True,
+) -> Show:
+    item = MediaItem.objects.create(
+        media_type="show",
+        title=title,
+        slug=f"{title.lower().replace(' ', '-')}-{abs(hash(title)) % 10**6}",
+        popularity=popularity,
+        is_adult=is_adult,
+        original_language=original_language,
+    )
+    for asset_type in assets:
+        MediaAsset.objects.create(
+            media_item=item, asset_type=asset_type, url=f"http://img/{item.pk}/{asset_type}.png"
+        )
+    show = Show.objects.create(media_item=item, is_anime=is_anime)
+    for number, air_date in seasons:
+        Season.objects.create(
+            show=show,
+            season_number=number,
+            air_date=air_date,
+            name=f"{title} S{number}",
+            overview=f"{title} season {number}",
+            poster_url=f"http://img/season/{show.pk}-{number}.png"
+            if season_poster
+            else None,
+        )
+    if genre:
+        g, _ = Genre.objects.get_or_create(name=genre.title(), slug=genre)
+        MediaGenre.objects.create(media_item=item, genre=g)
+    return show
+
+
+class TrendingShowsSeasonTests(TestCase):
+    """/discover/season/trending returns each show's latest Season within window."""
+
+    def setUp(self) -> None:
+        self.staff = User.objects.create_user(
+            username="mod2", password="a-strong-pass", is_staff=True
+        )
+        self.staff_token = Token.objects.create(user=self.staff)
+        self.client = APIClient()  # anonymous
+        self.staff_client = APIClient()
+        self.staff_client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+    def _feed(self, params: dict | None = None):
+        response = self.client.get(_list_url("season", "trending"), params or {})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(set(response.data.keys()), {"items", "has_more", "next_cursor"})
+        return response.data["items"]
+
+    def test_latest_season_within_window_is_the_item(self) -> None:
+        show = _make_show("Runner", seasons=[(1, _days(-300)), (2, _days(-10))])
+        items = self._feed()
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(set(item.keys()), SEASON_KEYS)
+        self.assertEqual(item["show_id"], show.pk)
+        self.assertEqual(item["season_number"], 2)
+        self.assertEqual(item["show_title"], "Runner")
+        self.assertEqual(item["name"], "Runner S2")
+        self.assertEqual(item["air_date"], str(_days(-10)))
+
+    def test_latest_out_of_window_drops_show_even_if_older_season_in_window(self) -> None:
+        _make_show("Stale", seasons=[(1, _days(-300)), (2, _days(-400))])
+        self.assertEqual(self._feed(), [])
+
+    def test_null_air_date_latest_season_excluded(self) -> None:
+        _make_show("Unreleased", seasons=[(1, _days(-10)), (2, None)])
+        self.assertEqual(self._feed(), [])
+
+    def test_future_in_window_included_but_far_future_excluded(self) -> None:
+        _make_show("Announced", seasons=[(1, _days(30))])
+        _make_show("Far-Off", seasons=[(1, _days(400))])
+        titles = [i["show_title"] for i in self._feed()]
+        self.assertEqual(titles, ["Announced"])
+
+    def test_orders_newest_premiere_first(self) -> None:
+        _make_show("Older", seasons=[(2, _days(-40))])
+        _make_show("Newer", seasons=[(3, _days(-5))])
+        titles = [i["show_title"] for i in self._feed()]
+        self.assertEqual(titles, ["Newer", "Older"])
+
+    def test_demotes_future_premieres_below_aired(self) -> None:
+        # Not-yet-aired (announced) seasons still appear, but rank after every
+        # already-aired season: aired newest-first, then future soonest-first.
+        _make_show("Announced-Far", seasons=[(3, _days(60))])
+        _make_show("Aired-Older", seasons=[(1, _days(-40))])
+        _make_show("Announced-Soon", seasons=[(2, _days(10))])
+        _make_show("Aired-Newer", seasons=[(4, _days(-5))])
+        titles = [i["show_title"] for i in self._feed()]
+        self.assertEqual(titles, ["Aired-Newer", "Aired-Older", "Announced-Soon", "Announced-Far"])
+
+    def test_season_without_poster_falls_back_to_show_art(self) -> None:
+        show = _make_show(
+            "Poster-Less",
+            seasons=[(2, _days(-5))],
+            assets=("poster", "backdrop"),
+            season_poster=False,
+        )
+        items = self._feed()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["show_title"], "Poster-Less")
+        self.assertEqual(items[0]["poster_url"], f"http://img/{show.pk}/poster.png")
+
+    def test_season_without_any_show_art_keeps_null_poster(self) -> None:
+        _make_show("No-Art", seasons=[(2, _days(-5))], season_poster=False)
+        items = self._feed()
+        self.assertEqual(len(items), 1)
+        self.assertIsNone(items[0]["poster_url"])
+
+    def test_genre_filter(self) -> None:
+        _make_show("Drama-One", seasons=[(1, _days(-10))], genre="drama")
+        _make_show("Comedy-One", seasons=[(1, _days(-10))], genre="comedy")
+        items = self._feed({"genre": "drama"})
+        self.assertEqual([i["show_title"] for i in items], ["Drama-One"])
+
+    def test_language_filter(self) -> None:
+        _make_show("En-One", seasons=[(1, _days(-10))], original_language="en")
+        _make_show("Ja-One", seasons=[(1, _days(-10))], original_language="ja")
+        items = self._feed({"language": "en"})
+        self.assertEqual([i["show_title"] for i in items], ["En-One"])
+
+    def test_is_anime_filter(self) -> None:
+        _make_show("Anime-One", seasons=[(1, _days(-10))], is_anime=True)
+        _make_show("Live-One", seasons=[(1, _days(-10))], is_anime=False)
+        items = self._feed({"is_anime": "true"})
+        self.assertEqual([i["show_title"] for i in items], ["Anime-One"])
+
+    def test_adult_excluded_for_anon_but_staff_sees(self) -> None:
+        adult = _make_show("Mature-Show", seasons=[(1, _days(-10))], is_adult=True)
+        _make_show("Family-Show", seasons=[(1, _days(-10))])
+        anon_titles = [i["show_title"] for i in self._feed()]
+        self.assertNotIn("Mature-Show", anon_titles)
+        response = self.staff_client.get(_list_url("season", "trending"))
+        self.assertEqual(response.status_code, 200)
+        staff_ids = [i["show_id"] for i in response.data["items"]]
+        self.assertIn(adult.pk, staff_ids)
+
+    def test_movie_trending_still_returns_media_item_summary(self) -> None:
+        _item("Film", popularity=90, release_date=_days(-5))
+        _make_show("Runner", seasons=[(1, _days(-10))])
+        response = self.client.get(_list_url("movie", "trending"))
+        self.assertEqual(response.status_code, 200)
+        items = response.data["items"]
+        self.assertTrue(items)
+        item = items[0]
+        self.assertEqual(item["media_type"], "movie")
+        self.assertLessEqual(SUMMARY_KEYS, set(item.keys()))
+        self.assertNotIn("show_id", item)
+
+    def test_show_trending_returns_normal_show_summary(self) -> None:
+        # show/trending is the generic shows feed again; the latest-season
+        # behavior lives at /discover/season/trending instead.
+        _make_show("Runner", seasons=[(1, _days(-10))])
+        top = _item(
+            "Fresh-Show",
+            media_type="show",
+            popularity=90,
+            release_date=_days(-5),
+        )
+        response = self.client.get(_list_url("show", "trending"))
+        self.assertEqual(response.status_code, 200)
+        items = response.data["items"]
+        self.assertTrue(items)
+        item = items[0]
+        self.assertEqual(item["id"], top.pk)
+        self.assertEqual(item["media_type"], "show")
+        self.assertLessEqual(SUMMARY_KEYS, set(item.keys()))
+        self.assertNotIn("show_id", item)

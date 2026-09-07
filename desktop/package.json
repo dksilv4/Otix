@@ -24,7 +24,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "concurrently": "^10.0.1",
     "cross-env": "^10.1.0",
-    "electron": "^42.3.0",
+    "electron": "^42.11.0",
     "electron-builder": "^25.1.8",
     "electron-rebuild": "^3.2.9",
     "patch-package": "^8.0.1",

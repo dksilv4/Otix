@@ -168,6 +168,18 @@ export interface SeasonOut {
   episodes: EpisodeOut[]
 }
 
+/** Discover feed item shape for Trending Shows — a show's latest Season. */
+export interface SeasonSummary {
+  id: string
+  showId: string
+  showTitle: string
+  seasonNumber: number
+  name: string | null
+  overview: string | null
+  posterUrl: string | null
+  airDate: string | null
+}
+
 export interface ShowDetail {
   status?: string
   firstAirDate?: string

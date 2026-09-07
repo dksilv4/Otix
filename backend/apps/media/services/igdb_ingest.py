@@ -33,6 +33,7 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any
 
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.text import slugify
@@ -74,7 +75,9 @@ GAME_HYDRATION_FIELDS = (
     "videos.video_id,videos.name,age_ratings,"
     "involved_companies.developer,involved_companies.publisher,"
     "involved_companies.porting,involved_companies.supporting,"
-    "involved_companies.company.name,involved_companies.company.slug"
+    "involved_companies.company.name,involved_companies.company.slug,"
+    "aggregated_rating,rating,"
+    "external_games.external_game_source,external_games.uid"
 )
 
 # IGDB game ``status`` categories (returned as an int) -> the release_status text.
@@ -301,8 +304,67 @@ def seed_game_from_igdb(raw: dict[str, Any], igdb_id: int) -> int:
 
     game, _ = Game.objects.get_or_create(media_item_id=media.pk)
     _hydrate_game(media, game, raw)
+    _top_up_media_popularity(media, raw)
     recompute_completeness(media)
     return media.pk
+
+
+def _top_up_media_popularity(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Fold an IGDB popularity proxy onto a game hub row that has none yet.
+
+    IGDB carries no ``popularity``; the discover rail's ``popular`` list sorts the
+    catalog by ``MediaItem.popularity``. The closest IGDB scalar is its own
+    ``aggregated_rating`` — the exact field the IGDB popular discovery source
+    sorts by — so a row still at the 0.0 default (fresh seed, or a pre-fix
+    minimal row) is topped up from it (falling back to the community ``rating``).
+    An already-populated row is left alone so a later source (e.g. Steam play
+    time) can own the field without a re-seed clobbering it.
+    """
+    if media.popularity:
+        return
+    proxy = raw.get("aggregated_rating")
+    if proxy is None:
+        proxy = raw.get("rating")
+    if not proxy:
+        return
+    media.popularity = float(proxy)
+    media.save(update_fields=("popularity", "updated_at"))
+
+
+def _steam_app_id(raw: dict[str, Any]) -> int | None:
+    """Pull the game's Steam app id out of IGDB ``external_games``.
+
+    IGDB ``external_games.external_game_source`` category 1 is Steam; each entry
+    carries the store ``uid``. Returns the first numeric Steam id, else ``None``
+    (console exclusives, store-less titles).
+    """
+    for entry in raw.get("external_games") or []:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("external_game_source") != 1:
+            continue
+        uid = str(entry.get("uid") or "").strip()
+        if uid.isdigit():
+            return int(uid)
+    return None
+
+
+async def _steamgrid_enrich_after_seed(media_id: int, steam_app_id: int | None) -> None:
+    """Best-effort SteamGridDB logo/icon attach on a freshly-seeded game row.
+
+    Gated on the SteamGridDB key being configured (the common case is unset, so
+    this returns before any client build); attach is a benign no-op for a game
+    SteamGridDB has no entry for. Errors are swallowed — artwork enrichment never
+    fails the seed that produced the row.
+    """
+    if not settings.STEAMGRID_API_KEY:
+        return
+    try:
+        from apps.media.services.steamgrid_artwork import fetch_and_attach_game_logos
+
+        await fetch_and_attach_game_logos(media_id, steam_app_id)
+    except Exception:
+        pass
 
 
 def _hydrate_game(media: MediaItem, game: Game, raw: dict[str, Any]) -> None:
@@ -505,4 +567,6 @@ async def fetch_and_seed_game(
                 raw["age_rating_details"] = details
         except Exception:
             pass
-    return await sync_to_async(seed_game_from_igdb)(raw, igdb_id)
+    media_id = await sync_to_async(seed_game_from_igdb)(raw, igdb_id)
+    await _steamgrid_enrich_after_seed(media_id, _steam_app_id(raw))
+    return media_id

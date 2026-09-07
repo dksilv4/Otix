@@ -101,9 +101,11 @@ class AuthFlowTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["display_name"], "Updated")
-        self.assertNotIn("is_admin", response.data)
+        # is_admin is derived from staff — a PATCH cannot escalate it.
+        self.assertIs(response.data["is_admin"], False)
         user.refresh_from_db()
         self.assertEqual(user.display_name, "Updated")
+        self.assertFalse(user.is_staff)
 
     def test_me_patch_duplicate_username_rejected(self) -> None:
         User.objects.create_user(username="taken", password="a-strong-pass-123")
