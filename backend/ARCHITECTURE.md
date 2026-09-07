@@ -1839,8 +1839,38 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   stop, live key pickup across heartbeats, configured-vs-advertised split);
   desktop suite 239 passed + 2 skipped, tsc clean. tmdb (and other providers)
   await a dedicated key store/IPC + settings UI (2.2c). Still deferred:
-  prod-compose Django cutover + task-#6 ingest/enrich/embedding queue machinery
-  + trigram + embeddings.
+  task-#6 ingest/enrich/embedding queue machinery + trigram + embeddings.
+- **Production-compose Django cutover (increment 67, 2026-09-07): infra only —
+  ``docker-compose.prod.yml``, ``backend/Dockerfile``, ``backend/.dockerignore``,
+  ``backend/entrypoints/start-api.sh``.** The prod compose now builds the Django
+  tree: the legacy 4-worker/15-queue/embeddings FastAPI topology (``worker-fast``/
+  ``worker-provider``/``worker-user``/``worker-control`` over ``otix.infrastructure.celery``)
+  collapses to a single-queue celery pair, and ``x-otix-env`` is rewritten to
+  Django settings names — ``DJANGO_SETTINGS_MODULE=config.settings.prod``
+  (fail-fast on missing ``SECRET_KEY``/``ALLOWED_HOSTS``), ``DEBUG=false``,
+  ``DATABASE_URL`` as plain ``postgresql://…@pgbouncer:6432/…`` (psycopg3,
+  transaction pool, ``CONN_MAX_AGE=0`` — no ``+asyncpg``), ``REDIS_URL`` +
+  ``CELERY_BROKER_URL``/``CELERY_RESULT_BACKEND`` (0/1 DBs), provider keys
+  (TMDB/OMDb/Fanart/Last.fm/IGDB/Steam/SteamGrid + ``MUSICBRAINZ_GLOBAL_RPS_LIMIT``),
+  the ``EMAIL_*`` SMTP block, ``PLUGIN_HOST_SECRET``, ``UPLOAD_DIR=/app/uploads``.
+  ``db``/``pgbouncer``/``redis``/``frontend`` service blocks are untouched. New
+  service surface: ``api`` (``build ./backend``, ``command:
+  bash entrypoints/start-api.sh`` = migrate-on-boot + uvicorn ``config.asgi``,
+  healthcheck hits ``/api/v1/health`` which has no DB dependency, uploads volume),
+  ``worker`` (``celery -A config worker -Q celery -c ${CELERY_WORKER_CONCURRENCY:-4}
+  -n otix-worker@%h``), ``beat`` (``celery -A config beat --loglevel INFO
+  --max-interval 30``; both ping via ``celery -A config inspect``). To make the
+  api image runnable outside compose, ``backend/Dockerfile`` now bakes the source
+  (``COPY . /app``) and sets ``CMD ["bash", "entrypoints/start-api.sh"]`` — dev's
+  bind-mount of ``./backend`` over ``/app`` still hides those layers; ``.dockerignore``
+  already guards ``.env`` and now also excludes ``/uploads/`` + ``/celerybeat-schedule/``.
+  ``entrypoints/start-api.sh`` honors ``WEB_CONCURRENCY`` by passing uvicorn
+  ``--workers N`` when ``>1`` and reload is off (prod concurrency; default 1).
+  Verified: ``docker compose -f docker-compose.prod.yml config`` resolves clean
+  (no legacy asyncpg/worker-fast refs; api/worker/beat all context ``./backend``).
+  Still deferred: a real ``docker build`` + live prod boot (needs secrets/registry),
+  the CI Django job (.github/workflows — still pinned to legacy ``old-backend``),
+  and the stale-root Makefile.
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the

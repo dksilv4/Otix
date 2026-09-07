@@ -32,4 +32,12 @@ else
   reload_flag=""
 fi
 
-exec uvicorn config.asgi:application --host 0.0.0.0 --port "${PORT:-8000}" ${reload_flag}
+# WEB_CONCURRENCY fans the ASGI app out across N uvicorn worker processes
+# (prod). Mutually exclusive with --reload, so it only applies when reload is
+# off; a non-numeric value falls through to a single worker.
+workers_flag=""
+if [ -z "${reload_flag}" ] && [ "${WEB_CONCURRENCY:-1}" -gt 1 ] 2>/dev/null; then
+  workers_flag="--workers ${WEB_CONCURRENCY}"
+fi
+
+exec uvicorn config.asgi:application --host 0.0.0.0 --port "${PORT:-8000}" ${reload_flag} ${workers_flag}

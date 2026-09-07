@@ -21,8 +21,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install only the locked runtime deps (no dev group, no project build). Source
-# ships via bind mount in dev and via a later COPY in a prod Dockerfile stage.
+# ships via bind mount in dev and via the COPY below for image-only (prod) runs.
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project && uv cache clean
 
+# Bake the Django app source for image-only runs (prod compose, standalone
+# deploys). Dev still bind-mounts ./backend over /app, which hides these layers
+# so the running source stays the host checkout. `entrypoints/start-api.sh` is
+# the default command (migrate + uvicorn config.asgi); worker/beat services
+# override it with their own `celery -A config` commands.
+COPY . /app
+
 EXPOSE 8000
+
+CMD ["bash", "entrypoints/start-api.sh"]

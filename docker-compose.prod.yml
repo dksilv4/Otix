@@ -1,55 +1,57 @@
-# Otix — production compose file
+# Otix — production compose file (Django backend; legacy FastAPI stack is
+# retired to old-backend/ and no longer built here).
 x-otix-env: &otix-env
-  # ── Database (via pgbouncer pooler) ──
-  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@pgbouncer:6432/${POSTGRES_DB:-otix}
-  DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@pgbouncer:6432/${POSTGRES_DB:-otix}
-  DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
-  DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-5}
-  REDIS_URL: redis://redis:6379/1
-  CELERY_BROKER_URL: redis://redis:6379/0
-  # ── App ──
+  # ── Django run env (config/settings.prod; fails fast without SECRET_KEY /
+  # ALLOWED_HOSTS) ──
+  DJANGO_SETTINGS_MODULE: config.settings.prod
   APP_ENV: production
   DEBUG: "false"
-  LOG_LEVEL: ${LOG_LEVEL:-INFO}
-  # ── Auth ──
+  SECRET_KEY: ${SECRET_KEY}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
   JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-  # ── CORS ──
+  # TLS is terminated by the edge proxy/reverse proxy; Django itself must not
+  # redirect the container's internal HTTP healthcheck. Set to true when the
+  # proxy forwards X-Forwarded-Proto and you want an app-level redirect.
+  SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-false}
+  # ── Database (via pgbouncer pooler). Django parses plain postgresql:// only
+  # (no +asyncpg). psycopg3 + transaction pooling needs no persistent conns,
+  # which is Django's default (CONN_MAX_AGE=0). ──
+  DATABASE_URL: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@pgbouncer:6432/${POSTGRES_DB:-otix}
+  # ── Redis (broker/result-backend + SSE pub/sub) ──
+  REDIS_URL: redis://redis:6379/1
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/0
+  # ── CORS / browser ──
   FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-  # ── TMDB ──
+  # Action/email links (registration, 2FA, reset) point at the public frontend
+  # origin; set alongside FRONTEND_BASE_URL.
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+  # ── Provider keys ──
   TMDB_API_KEY: ${TMDB_API_KEY}
-  TMDB_RAT: ${TMDB_RAT}
-  # ── OMDb ──
+  TMDB_RAT: ${TMDB_RAT}                  # TMDB v4 read-access token
   OMDB_API_KEY: ${OMDB_API_KEY}
-  # ── Fanart ──
   FANART_API_KEY: ${FANART_API_KEY}
-  FANART_CLIENT_KEY: ${FANART_CLIENT_KEY}
-  # ── IGDB ──
+  LASTFM_API_KEY: ${LASTFM_API_KEY}
   IGDB_CLIENT_ID: ${IGDB_CLIENT_ID}
   IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET}
-  # ── Steam ──
   STEAM_API_KEY: ${STEAM_API_KEY}
-  # ── Steam Grid ──
-  STEAM_GRID_API_KEY: ${STEAM_GRID_API_KEY}
-  # ── RAWG ──
-  RAWG_API_KEY: ${RAWG_API_KEY}
-  # ── Email ──
-  RESEND_API_KEY: ${RESEND_API_KEY}
-  EMAIL_FROM: ${EMAIL_FROM:-admin@otix.app}
-  # ── Spotify ──
-  SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
-  SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
-  # ── Last.fm ──
-  LASTFM_API_KEY: ${LASTFM_API_KEY}
-  # ── MusicBrainz ──
-  MUSICBRAINZ_RPS_LIMIT: ${MUSICBRAINZ_RPS_LIMIT:-1}
-  # ── Celery ──
-  CELERY_WORKER_FAST_CONCURRENCY: ${CELERY_WORKER_FAST_CONCURRENCY:-4}
-  CELERY_WORKER_PROVIDER_CONCURRENCY: ${CELERY_WORKER_PROVIDER_CONCURRENCY:-2}
-  CELERY_WORKER_USER_CONCURRENCY: ${CELERY_WORKER_USER_CONCURRENCY:-1}
-  CELERY_WORKER_CONTROL_CONCURRENCY: ${CELERY_WORKER_CONTROL_CONCURRENCY:-2}
-  # ── Embeddings ──
-  HF_TOKEN: ${HF_TOKEN}
+  STEAM_GRID_API_KEY: ${STEAM_GRID_API_KEY}   # SteamGridDB alias read by Django
+  MUSICBRAINZ_GLOBAL_RPS_LIMIT: ${MUSICBRAINZ_RPS_LIMIT:-1}
+  # ── Email (Django SMTP backend; unset EMAIL_HOST → localhost:25 like Django's
+  # default). Registration/2FA links use FRONTEND_URL above. ──
+  EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.smtp.EmailBackend}
+  EMAIL_HOST: ${EMAIL_HOST:-}
+  EMAIL_PORT: ${EMAIL_PORT:-25}
+  EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+  EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+  EMAIL_USE_TLS: ${EMAIL_USE_TLS:-false}
+  # ── Plugin host (server-side plugins; the host process is deployed separately
+  # from the compose API/worker/beat — loopback-only secret, see deploy/). ──
+  PLUGIN_HOST_SECRET: ${PLUGIN_HOST_SECRET:-dev-plugin-host-secret-change-me}
+  # ── Image uploads ──
+  UPLOAD_DIR: /app/uploads
+  UPLOAD_MAX_SIZE_MB: ${UPLOAD_MAX_SIZE_MB:-5}
 
 services:
   db:
@@ -133,20 +135,23 @@ services:
     volumes:
       - redisdata:/data
 
+  # Django ASGI (uvicorn config.asgi). Runs `manage.py migrate` on boot unless
+  # RUN_MIGRATIONS=false; the reverse proxy terminates TLS and routes /api to
+  # this service. Health probe hits /api/v1/health (no DB dependency).
   api:
     build:
-      context: ./old-backend
+      context: ./backend
       dockerfile: Dockerfile
-      args:
-        HF_TOKEN: ${HF_TOKEN}
     environment:
       <<: *otix-env
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+    command: bash entrypoints/start-api.sh
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)\""]
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 20s
     depends_on:
       pgbouncer:
         condition: service_started
@@ -160,14 +165,16 @@ services:
         limits:
           memory: 1024M
 
-  worker-fast:
+  # Django Celery worker (single `celery` queue — the whole task surface is
+  # run_sync_job + the beat catalog jobs; purpose-built per-queue routing stays
+  # deferred with task-#6). The legacy four-worker multi-queue topology is gone.
+  worker:
     build:
-      context: ./old-backend
+      context: ./backend
       dockerfile: Dockerfile
-      args:
-        HF_TOKEN: ${HF_TOKEN}
     environment:
       <<: *otix-env
+    command: celery -A config worker -Q celery -c ${CELERY_WORKER_CONCURRENCY:-4} -n otix-worker@%h --loglevel WARNING
     depends_on:
       pgbouncer:
         condition: service_started
@@ -179,99 +186,21 @@ services:
         limits:
           memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery inspect ping 2>&1 | grep -q OK || exit 1"]
+      test: ["CMD-SHELL", "celery -A config inspect ping 2>&1 | grep -q OK || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
-    command: celery -A otix.infrastructure.celery worker -Q reactive-fast -c ${CELERY_WORKER_FAST_CONCURRENCY:-6} -n fast@%h --loglevel WARNING
+      start_period: 20s
 
-  worker-provider:
-    build:
-      context: ./old-backend
-      dockerfile: Dockerfile
-      args:
-        HF_TOKEN: ${HF_TOKEN}
-    environment:
-      <<: *otix-env
-    depends_on:
-      pgbouncer:
-        condition: service_started
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery inspect ping 2>&1 | grep -q OK || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    command: celery -A otix.infrastructure.celery worker -Q ingest-tmdb,ingest-steam,ingest-igdb,ingest-musicbrainz,ingest-deezer,enrich-fanart,enrich-omdb,enrich-steamgrid,enrich-lastfm,enrich-theaudiodb,enrich-lrclib -c ${CELERY_WORKER_PROVIDER_CONCURRENCY:-3} -n provider@%h --loglevel WARNING
-
-  worker-user:
-    build:
-      context: ./old-backend
-      dockerfile: Dockerfile
-      args:
-        HF_TOKEN: ${HF_TOKEN}
-    environment:
-      <<: *otix-env
-    depends_on:
-      pgbouncer:
-        condition: service_started
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery inspect ping 2>&1 | grep -q OK || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    command: celery -A otix.infrastructure.celery worker -Q reactive-user -c ${CELERY_WORKER_USER_CONCURRENCY:-2} -n user@%h --loglevel WARNING
-
-  worker-control:
-    build:
-      context: ./old-backend
-      dockerfile: Dockerfile
-      args:
-        HF_TOKEN: ${HF_TOKEN}
-    environment:
-      <<: *otix-env
-    depends_on:
-      pgbouncer:
-        condition: service_started
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 1024M
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery inspect ping 2>&1 | grep -q OK || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    command: celery -A otix.infrastructure.celery worker -Q maintain,embedding -c ${CELERY_WORKER_CONTROL_CONCURRENCY:-1} -n control@%h --loglevel WARNING
-
+  # Django Celery beat. Drives the catalog maintenance schedule from settings
+  # (CELERY_BEAT_SCHEDULE): the daily TMDB ID-export import + backlog drain.
   beat:
     build:
-      context: ./old-backend
+      context: ./backend
       dockerfile: Dockerfile
-      args:
-        HF_TOKEN: ${HF_TOKEN}
     environment:
       <<: *otix-env
+    command: celery -A config beat --loglevel INFO --max-interval 30
     depends_on:
       pgbouncer:
         condition: service_started
@@ -283,12 +212,11 @@ services:
         limits:
           memory: 256M
     healthcheck:
-      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery inspect ping 2>&1 | grep -q OK || kill -0 1"]
+      test: ["CMD-SHELL", "celery -A config inspect ping 2>&1 | grep -q OK || kill -0 1"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
-    command: celery -A otix.infrastructure.celery beat --loglevel INFO --scheduler celery.beat.Scheduler --max-interval 30
 
   frontend:
     build:
@@ -310,4 +238,3 @@ volumes:
   pgdata:
   redisdata:
   uploads:
-

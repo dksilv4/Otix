@@ -1,5 +1,6 @@
-# Keep the build context lean (deps install from uv.lock; source ships via
-# bind mount in dev, so only pyproject/uv.lock are COPYed at build time).
+# Keep the build context lean. Deps install from uv.lock; source is baked via
+# `COPY . /app` for image-only (prod) runs and hidden by the dev bind mount.
+# Everything below is dev/runtime-local state that must never reach an image.
 .venv/
 **/__pycache__/
 *.py[cod]
@@ -11,6 +12,8 @@
 htmlcov/
 staticfiles/
 /media/
+/uploads/
+/celerybeat-schedule/
 *.sqlite3
 *.db
 .env
