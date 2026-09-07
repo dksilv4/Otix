@@ -1574,6 +1574,31 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   **Next deferred piece:** the ingest/enrich/embedding queue machinery (the four
   worker / multi-queue task-#6 half), then trigram, embeddings, prod-compose
   cutover.
+- **IGDB game age-rating + screenshot/artwork/video hydration (increment 55,
+  2026-09-07; plan item 1.2): parity 263/263 unchanged, FULL suite 978 (4 new).**
+  Completes the game leg of the enrichment overhaul. ``GAME_HYDRATION_FIELDS``
+  now also embeds ``screenshots.image_id,artworks.image_id,videos.video_id,
+  videos.name,age_ratings``, and ``_hydrate_game`` (in
+  ``apps/media/services/igdb_ingest.py``) folds them onto the row add-only:
+  ``_upsert_game_image_assets`` stores screenshots → ``screenshot`` and artworks →
+  ``backdrop`` ``MediaAsset`` rows (CDN via ``_image_url`` at ``t_screenshot_big``
+  / ``t_1080p``), ``_upsert_game_videos`` stores ``game_videos`` → ``MediaVideo``
+  (provider igdb, ``game_video``, YouTube watch URL) and ``_upsert_game_age_ratings``
+  turns IGDB ``/age_ratings`` entries → ``MediaRelease`` certification rows
+  (``"{system}: {label}"`` from org/rating maps ported verbatim off legacy
+  ``otix/providers/igdb/hydrator.py``; unknown org/category skipped). ``age_ratings``
+  comes back from the games endpoint as an id list, so the async
+  ``fetch_and_seed_game`` resolves it through ``provider.get_age_ratings`` and
+  attaches the rows as ``raw["age_rating_details"]`` before seeding (best-effort:
+  a sub-fetch failure doesn't abort an otherwise-successful seed, mirroring the
+  legacy hydrator). ``has_videos`` / ``has_age_ratings`` now read True and
+  ``has_backdrop`` flips True when artwork is present on a fully hydrated game;
+  the ``completeness.py`` docstring no longer claims those rows are unproduced by
+  any ingest stage. No model fields → no migration. Tests in
+  ``apps/media/tests/test_igdb_ingest.py``: an ``_enriched_game_raw`` payload +
+  two Hydrate tests (screenshot/backdrop assets, MediaVideo fields, age-release
+  country/cert rows + unknown-org skip, and idempotent re-seed) + two Fetch tests
+  (id list resolved + attached before the seed mock; sub-fetch failure tolerated).
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
