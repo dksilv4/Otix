@@ -1,5 +1,10 @@
 """Integrations API views, re-exported for convenient imports."""
 
+from apps.integrations.views.fetch import (
+    FetchDeviceView,
+    FetchRequestStreamView,
+    FetchResultView,
+)
 from apps.integrations.views.plex import (
     PlexAlbumTracksView,
     PlexConnectInfoView,
@@ -25,6 +30,9 @@ from apps.integrations.views.tmdb import TMDbRatingSyncView, TMDbWatchlistImport
 from apps.integrations.views.webhook import PlexWebhookView
 
 __all__ = [
+    "FetchDeviceView",
+    "FetchRequestStreamView",
+    "FetchResultView",
     "PlexAlbumTracksView",
     "PlexConnectInfoView",
     "PlexLibrariesView",
