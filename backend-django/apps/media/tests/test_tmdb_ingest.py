@@ -18,16 +18,23 @@ from unittest import mock
 import httpx
 from django.test import TestCase
 
+from apps.company.models import Company, InvolvedCompany
 from apps.media.models import (
     Episode,
     ExternalID,
+    ExternalRating,
+    Keyword,
     MediaAsset,
     MediaItem,
+    MediaKeyword,
+    MediaRelease,
+    MediaVideo,
     Movie,
     Season,
     Show,
 )
 from apps.media.models.genre import Genre, MediaGenre, MediaGenreType
+from apps.media.services.completeness import completeness_flags
 from apps.media.services.tmdb_ingest import (
     fetch_and_seed_movie,
     fetch_and_seed_show,
@@ -215,8 +222,9 @@ class SeedMovieFromTmdbTests(TestCase):
         self.assertEqual(media.popularity, 60.0)
         self.assertEqual(media.original_language, "en")
         self.assertFalse(media.is_adult)
-        # Recompute at the seed tail: 11/22 movie flags (no credits in the raw).
-        self.assertEqual(media.completeness_score, 0.5)
+        # Recompute at the seed tail: 12/22 movie flags (no credits; the raw's
+        # ``keywords`` are now persisted so has_keywords is True).
+        self.assertEqual(media.completeness_score, 0.545)
         self.assertIsNotNone(media.next_sync_at)
 
         movie = Movie.objects.get(media_item_id=media_id)
@@ -635,3 +643,188 @@ class FetchAndSeedShowTests(TestCase):
             (54321, 2, season2),
         ])
         _run(client.aclose())
+
+
+def _rich_movie_raw(**overrides):
+    """``_movie_raw`` plus every relation section increment-54 enrichment maps."""
+    raw = _movie_raw(
+        production_companies=[
+            {"id": 508, "logo_path": "/cxw.jpg", "name": "Regency Enterprises",
+             "origin_country": "US"},
+            {"id": 711, "logo_path": None, "name": "Fox 2000 Pictures", "origin_country": "US"},
+        ],
+        release_dates={
+            "results": [
+                {
+                    "iso_3166_1": "US",
+                    "release_dates": [
+                        {"certification": "R", "release_type": 3,
+                         "release_date": "1999-10-15T00:00:00.000Z"},
+                        {"certification": "R", "release_type": 4,
+                         "release_date": "1999-11-09T00:00:00.000Z"},
+                    ],
+                },
+                {
+                    "iso_3166_1": "GB",
+                    "release_dates": [
+                        {"certification": "18", "release_type": 3,
+                         "release_date": "1999-11-12T00:00:00.000Z"},
+                    ],
+                },
+            ]
+        },
+        videos={
+            "results": [
+                {"id": "abc123", "key": "oB6q8T4P4eA", "site": "YouTube", "type": "Trailer"},
+                {"id": "skip9", "key": "zzz", "site": "Dailymotion", "type": "Trailer"},
+            ]
+        },
+        images={
+            "backdrops": [{"file_path": "/bk1.jpg", "width": 1920, "height": 1080}],
+            "logos": [{"file_path": "/lg1.png", "iso_639_1": "en"}],
+            "posters": [
+                {"file_path": "/pst0.jpg", "iso_639_1": None},
+                {"file_path": "/pst_en.jpg", "iso_639_1": "en"},
+            ],
+        },
+        vote_average=8.4,
+        vote_count=28000,
+    )
+    raw.update(overrides)
+    return raw
+
+
+class TmdbRelationHydrationTests(TestCase):
+    """Increment-54: seed tails fold the detail's relation payload onto the row."""
+
+    def test_movie_seed_hydrates_companies_releases_videos_keywords_artwork_rating(self):
+        media_id = seed_movie_from_tmdb(_rich_movie_raw())
+        flags = completeness_flags(MediaItem.objects.get(pk=media_id))
+        for flag in (
+            "has_companies",
+            "has_releases",
+            "has_videos",
+            "has_keywords",
+            "has_logo",
+            "has_textless_poster",
+            "has_external_ratings",
+        ):
+            self.assertTrue(flags[flag], f"{flag} should be True")
+
+        # production companies -> Company + production InvolvedCompany + tmdb id
+        companies = Company.objects.filter(involved_companies__media_item_id=media_id)
+        self.assertEqual({c.name for c in companies}, {"Regency Enterprises", "Fox 2000 Pictures"})
+        self.assertEqual(
+            InvolvedCompany.objects.filter(media_item_id=media_id, production=True).count(), 2
+        )
+        company_exts = ExternalID.objects.filter(
+            content_type__model="company", provider="tmdb"
+        )
+        self.assertEqual({e.external_id for e in company_exts}, {"508", "711"})
+
+        # country releases prefer the theatrical (type 3) date + certification
+        rows = MediaRelease.objects.filter(media_item_id=media_id).order_by("country_code")
+        self.assertEqual(
+            [(r.country_code, str(r.release_date), r.certification) for r in rows],
+            [
+                ("GB", "1999-11-12", "18"),
+                ("US", "1999-10-15", "R"),
+            ],
+        )
+
+        # only the embeddable (YouTube) video lands; Dailymotion is skipped
+        videos = MediaVideo.objects.filter(media_item_id=media_id)
+        self.assertEqual([(v.provider, v.provider_id, v.video_type) for v in videos], [
+            ("tmdb", "abc123", "Trailer"),
+        ])
+        self.assertTrue(videos[0].url.endswith("watch?v=oB6q8T4P4eA"))
+
+        # keyword rows carry the movie-keyword shape
+        kw_names = list(
+            MediaKeyword.objects.filter(media_item_id=media_id).values_list(
+                "keyword__name", flat=True
+            )
+        )
+        self.assertEqual(kw_names, ["insomnia"])
+        self.assertEqual(Keyword.objects.filter(name="insomnia").count(), 1)
+
+        # image families land as logo / textless-poster / extra backdrop assets
+        asset_types = set(
+            MediaAsset.objects.filter(media_item_id=media_id).values_list("asset_type", flat=True)
+        )
+        self.assertEqual(asset_types, {"poster", "backdrop", "logo", "textless_poster"})
+
+        rating = ExternalRating.objects.get(media_item_id=media_id, provider="tmdb")
+        self.assertEqual((rating.score, rating.max_score, rating.vote_count), (8.4, 10.0, 28000))
+
+    def test_show_seed_adds_networks_and_content_ratings(self):
+        raw = _show_raw(
+            production_companies=[
+                {"id": 7580, "logo_path": None, "name": "High Bridge Productions",
+                 "origin_country": "US"}
+            ],
+            networks=[
+                {"id": 174, "logo_path": "/amc.jpg", "name": "AMC", "origin_country": "US"}
+            ],
+            content_ratings={"results": [{"iso_3166_1": "US", "rating": "TV-MA"}]},
+            keywords={"results": [{"id": 100, "name": "antihero"}]},
+            vote_average=9.5,
+            vote_count=15000,
+            images={"backdrops": [{"file_path": "/sbk.jpg"}], "logos": [], "posters": []},
+        )
+        media_id = seed_show_from_tmdb(raw)
+        media = MediaItem.objects.get(pk=media_id)
+
+        # networks + production companies are both production companies
+        company_names = set(
+            Company.objects.filter(involved_companies__media_item_id=media_id).values_list(
+                "name", flat=True
+            )
+        )
+        self.assertEqual(company_names, {"High Bridge Productions", "AMC"})
+        self.assertTrue(
+            ExternalID.objects.filter(
+                content_type__model="company", provider="tmdb", external_id="174"
+            ).exists()
+        )
+        # certification-only release row per country (no date)
+        rel = MediaRelease.objects.get(media_item_id=media_id, country_code="US")
+        self.assertEqual(rel.certification, "TV-MA")
+        self.assertIsNone(rel.release_date)
+        # show keyword shape ({results}) resolves too
+        show_kw = list(
+            MediaKeyword.objects.filter(media_item_id=media_id).values_list(
+                "keyword__name", flat=True
+            )
+        )
+        self.assertEqual(show_kw, ["antihero"])
+        self.assertEqual(
+            ExternalRating.objects.get(media_item_id=media_id, provider="tmdb").score, 9.5
+        )
+        self.assertTrue(completeness_flags(media)["has_releases"])
+
+    def test_relation_enrichment_is_idempotent(self):
+        media_id = seed_movie_from_tmdb(_rich_movie_raw())
+        seed_movie_from_tmdb(_rich_movie_raw())
+        self.assertEqual(
+            Company.objects.filter(involved_companies__media_item_id=media_id).count(), 2
+        )
+        self.assertEqual(
+            ExternalRating.objects.filter(media_item_id=media_id, provider="tmdb").count(), 1
+        )
+        self.assertEqual(MediaRelease.objects.filter(media_item_id=media_id).count(), 2)
+        self.assertEqual(MediaVideo.objects.filter(media_item_id=media_id).count(), 1)
+        self.assertEqual(MediaKeyword.objects.filter(media_item_id=media_id).count(), 1)
+        self.assertEqual(MediaGenre.objects.filter(media_item_id=media_id).count(), 2)
+        self.assertEqual(MediaAsset.objects.filter(media_item_id=media_id).count(), 5)
+
+    def test_mapped_movie_resync_enriches_a_previously_minimal_row(self):
+        media_id = seed_movie_from_tmdb(_movie_raw())
+        media = MediaItem.objects.get(pk=media_id)
+        self.assertFalse(completeness_flags(media)["has_companies"])
+        # Second sync of the same tmdb id (early-out path) folds in the relations.
+        self.assertEqual(seed_movie_from_tmdb(_rich_movie_raw()), media_id)
+        media.refresh_from_db()
+        self.assertTrue(completeness_flags(media)["has_companies"])
+        self.assertTrue(completeness_flags(media)["has_external_ratings"])
+        self.assertEqual(MediaItem.objects.count(), 1)

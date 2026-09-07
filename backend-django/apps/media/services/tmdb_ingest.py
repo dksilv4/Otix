@@ -11,17 +11,26 @@ seeds ``Season`` summary rows straight from the embedded ``/tv/{id}`` seasons
 array (``Season`` PK-foreign-keyed off the ``Show`` subtype, which shares the
 hub's pk).
 
-Seeding is intentionally *minimal* (a base title, not full hydration):
-``completeness_score`` starts at 0.15 and ``next_sync_at`` is stamped so a later
-full-hydration pass completes the row — exactly the posture increment 26 uses
-for IGDB games. ``fetch_and_seed_show`` (increment 41) now also hydrates
-per-season episodes by looping the detail's season summaries and fetching each
+Seeding started *minimal* (a base title, ``completeness_score`` 0.15, with
+``next_sync_at`` stamped for a later pass), but enrichment has since folded into
+the seed itself. ``fetch_and_seed_show`` (increment 41) hydrates per-season
+episodes by looping the detail's season summaries and fetching each
 ``/tv/{id}/season/{n}``. Credits (cast/crew → ``Person`` + ``MediaCredit`` rows)
 are seeded by both movie and show paths (increment 42) from the appended
 ``credits`` payload as a delete-and-rebuild snapshot, so re-seeds track TMDB's
 current billing. A re-seed of an existing show refreshes its growth-prone fields
 (status, air dates, season/episode counts) and upserts any newly aired season
 summaries rather than only topping up the overview.
+
+Since increment 54 (relation hydration) both seed paths also fold the detail's
+remaining relation payload onto the row before recomputing completeness:
+production companies/networks (``Company`` + ``InvolvedCompany`` + a tmdb
+``ExternalID``), release dates / content ratings (``MediaRelease``), videos
+(``MediaVideo``), keywords (``Keyword`` + ``MediaKeyword``), supplementary
+artwork from the appended ``images`` list (logo / textless-poster / backdrop
+``MediaAsset`` rows) and the audience rating (``ExternalRating``). Each helper is
+add-only and idempotent, so a mapped re-sync grows a previously-minimal row —
+the known-title movie early-out refreshes enrichment too — without duplicating.
 """
 
 from __future__ import annotations
@@ -35,8 +44,20 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone as dj_timezone
 from django.utils.text import slugify
 
-from apps.media.models import Episode, ExternalID, MediaAsset, MediaItem, Movie, Season, Show
-from apps.media.models.genre import Genre, MediaGenre, MediaGenreType
+from apps.company.models import Company, InvolvedCompany
+from apps.media.models import (
+    Episode,
+    ExternalID,
+    ExternalRating,
+    MediaAsset,
+    MediaItem,
+    MediaRelease,
+    MediaVideo,
+    Movie,
+    Season,
+    Show,
+)
+from apps.media.models.genre import Genre, Keyword, MediaGenre, MediaGenreType, MediaKeyword
 from apps.media.services.completeness import recompute_completeness
 from apps.people.models import MediaCredit, Person
 
@@ -244,6 +265,248 @@ def _upsert_external(
         row.save(update_fields=("object_id", "updated_at"))
 
 
+_COMPANY_CT: ContentType | None = None
+
+
+def _company_content_type() -> ContentType:
+    global _COMPANY_CT
+    if _COMPANY_CT is None:
+        _COMPANY_CT = ContentType.objects.get_for_model(Company)
+    return _COMPANY_CT
+
+
+def _clean_cert(value: Any) -> str | None:
+    """TMDB certifications are '' when none applies -> store as None."""
+    cert = str(value or "").strip()
+    return cert or None
+
+
+def _image_entry_asset(media: MediaItem, entry: Any, asset_type: str, score: int) -> None:
+    """Store one ``images`` list entry (``file_path`` + size) as an asset."""
+    if not isinstance(entry, dict):
+        return
+    size = "w780" if asset_type == "backdrop" else "w500"
+    url = _image_url(entry.get("file_path"), size=size)
+    if not url:
+        return
+    _upsert_asset(media, url, asset_type, score)
+
+
+def _upsert_involved_companies(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Link the detail's companies as production companies.
+
+    Movies carry ``production_companies`` top-level; shows also add ``networks``
+    (the airing networks). Mirrors ``igdb_ingest._upsert_game_companies``: each
+    company becomes a ``Company`` (slug from name, tmdb id as its ExternalID)
+    plus a ``production``-flagged ``InvolvedCompany`` on the item.
+    """
+    entries = list(raw.get("production_companies") or [])
+    if media.media_type == "show":
+        entries += list(raw.get("networks") or [])
+    company_ct = _company_content_type()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        tmdb_id = entry.get("id")
+        name = str(entry.get("name") or "").strip()
+        if tmdb_id is None or not name:
+            continue
+        slug = slugify(name) or f"tmdb-company-{tmdb_id}"
+        company, _ = Company.objects.get_or_create(
+            slug=slug,
+            defaults={
+                "name": name,
+                "logo_url": _image_url(entry.get("logo_path"), size="w185"),
+                "origin_country": entry.get("origin_country") or None,
+            },
+        )
+        _upsert_external(company_ct, company.pk, "tmdb", str(tmdb_id), media_type=None)
+        row, _ = InvolvedCompany.objects.get_or_create(
+            media_item=media, company=company, defaults={"production": True}
+        )
+        if not row.production:
+            row.production = True
+            row.save(update_fields=("production",))
+
+
+def _upsert_releases(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Map release dates/certifications onto ``MediaRelease`` rows.
+
+    Movies read ``release_dates.results`` — one row per country using the
+    theatrical (type 3) entry so premiere date and certification land together.
+    Shows read ``content_ratings.results`` — a certification-only row per
+    country. Add-only against (item, country, date, cert) since the table has no
+    natural unique constraint, so re-syncs never duplicate.
+    """
+    if media.media_type == "show":
+        for country in (raw.get("content_ratings") or {}).get("results") or []:
+            if not isinstance(country, dict):
+                continue
+            code = str(country.get("iso_3166_1") or "").upper()
+            if not code:
+                continue
+            MediaRelease.objects.get_or_create(
+                media_item=media,
+                country_code=code,
+                release_date=None,
+                certification=_clean_cert(country.get("rating")),
+            )
+        return
+    for group in (raw.get("release_dates") or {}).get("results") or []:
+        if not isinstance(group, dict):
+            continue
+        code = str(group.get("iso_3166_1") or "").upper()
+        if not code:
+            continue
+        best = _preferred_release_entry(group.get("release_dates") or [])
+        if best is None:
+            continue
+        MediaRelease.objects.get_or_create(
+            media_item=media,
+            country_code=code,
+            release_date=_parse_date(str(best.get("release_date") or "")[:10]),
+            certification=_clean_cert(best.get("certification")),
+        )
+
+
+def _preferred_release_entry(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The theatrical (type 3) entry of a country's release list, else the first
+    dated one, else any entry — ``None`` when the list is empty."""
+    if not entries:
+        return None
+    for entry in entries:
+        if isinstance(entry, dict) and entry.get("release_type") == 3:
+            return entry
+    for entry in entries:
+        if isinstance(entry, dict) and entry.get("release_date"):
+            return entry
+    return entries[0] if isinstance(entries[0], dict) else None
+
+
+def _upsert_videos(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Store the first 10 embeddable videos (trailers/teasers) as MediaVideos."""
+    site_urls = {
+        "YouTube": "https://www.youtube.com/watch?v={}",
+        "Vimeo": "https://vimeo.com/{}",
+    }
+    added = 0
+    for entry in (raw.get("videos") or {}).get("results") or []:
+        if not isinstance(entry, dict) or added >= 10:
+            continue
+        template = site_urls.get(entry.get("site"))
+        key = entry.get("key")
+        provider_id = entry.get("id")
+        if not template or not key or provider_id is None:
+            continue
+        _, created = MediaVideo.objects.get_or_create(
+            media_item=media,
+            provider="tmdb",
+            provider_id=str(provider_id),
+            defaults={
+                "url": template.format(key),
+                "video_type": entry.get("type") or None,
+            },
+        )
+        added += int(created)
+
+
+def _upsert_keywords(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Link the detail's ``keywords`` as Keyword + MediaKeyword rows (add-only).
+
+    Movie and TV payloads nest the list under different keys (``keywords`` vs
+    ``results``), so both are accepted.
+    """
+    container = raw.get("keywords")
+    if isinstance(container, list):
+        entries = container
+    elif isinstance(container, dict):
+        entries = container.get("keywords") or container.get("results") or []
+    else:
+        entries = []
+    existing = set(
+        MediaKeyword.objects.filter(media_item=media).values_list("keyword_id", flat=True)
+    )
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        keyword, _ = Keyword.objects.get_or_create(name=name)
+        if keyword.pk in existing:
+            continue
+        existing.add(keyword.pk)
+        MediaKeyword.objects.create(media_item=media, keyword=keyword)
+
+
+def _upsert_tmdb_images(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Store supplementary artwork families from the appended ``images`` payload.
+
+    Backdrops/logos land as backdrop/logo assets; posters with a null
+    ``iso_639_1`` are language-neutral originals, stored as textless posters.
+    Unique on (item, url, type), so the existing primary poster/backdrop rows are
+    never duplicated.
+    """
+    images = raw.get("images")
+    if not isinstance(images, dict):
+        return
+    # Decreasing scores keep the primary poster/backdrop (score 100) on top.
+    for i, entry in enumerate((images.get("backdrops") or [])[:8]):
+        _image_entry_asset(media, entry, "backdrop", 60 - i * 5)
+    for i, entry in enumerate((images.get("logos") or [])[:8]):
+        _image_entry_asset(media, entry, "logo", 60 - i * 5)
+    textless = [e for e in (images.get("posters") or []) if e.get("iso_639_1") is None]
+    for i, entry in enumerate(textless[:8]):
+        _image_entry_asset(media, entry, "textless_poster", 60 - i * 5)
+
+
+def _upsert_tmdb_rating(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Record the title's ``vote_average``/``vote_count`` as a tmdb ExternalRating."""
+    score = raw.get("vote_average")
+    if score is None:
+        return
+    score = float(score)
+    if score <= 0 and not (raw.get("vote_count") or 0):
+        return  # placeholder 0.0/0 row, not a real audience rating
+    vote_count = raw.get("vote_count") or 0
+    row = ExternalRating.objects.filter(media_item=media, provider="tmdb").first()
+    if row is None:
+        ExternalRating.objects.create(
+            media_item=media,
+            provider="tmdb",
+            score=score,
+            max_score=10.0,
+            vote_count=vote_count,
+        )
+        return
+    changes = {
+        key: val
+        for key, val in (("score", score), ("vote_count", vote_count))
+        if getattr(row, key) != val
+    }
+    if changes:
+        for key, val in changes.items():
+            setattr(row, key, val)
+        row.save(update_fields=tuple(changes.keys()))
+
+
+def _hydrate_relations(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Fold the detail's relation enrichment onto *media*.
+
+    Add-only + idempotent: production companies/networks, releases, videos,
+    keywords, supplementary artwork and the tmdb rating each skip already-present
+    rows, so a mapped re-sync grows a previously-minimal row without duplicating.
+    Both movie and show paths share the raw shapes; keyword/release container
+    differences are resolved per helper.
+    """
+    _upsert_involved_companies(media, raw)
+    _upsert_releases(media, raw)
+    _upsert_videos(media, raw)
+    _upsert_keywords(media, raw)
+    _upsert_tmdb_images(media, raw)
+    _upsert_tmdb_rating(media, raw)
+
+
 def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
     """Create (or reuse) a minimal MediaItem+Movie from TMDB movie detail.
 
@@ -263,8 +526,10 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
         media = MediaItem.objects.filter(pk=existing.object_id, media_type="movie").first()
         if media is not None:
             # A known title is not re-seeded (movie fields are static), but its
-            # credit snapshot still refreshes on a re-sync like the show path.
+            # credit snapshot + relation enrichment still refresh on a re-sync
+            # like the show path (how pre-1.1 minimal rows grow their data).
             _upsert_credits(media, raw)
+            _hydrate_relations(media, raw)
             recompute_completeness(media)
         return existing.object_id
 
@@ -315,6 +580,7 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
     imdb_id = raw.get("imdb_id") or (raw.get("external_ids") or {}).get("imdb_id")
     if imdb_id:
         _upsert_external(content_type, media_id, "imdb", str(imdb_id))
+    _hydrate_relations(media, raw)
     recompute_completeness(media)
     return media_id
 
@@ -425,6 +691,7 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
     imdb_id = raw.get("imdb_id") or (raw.get("external_ids") or {}).get("imdb_id")
     if imdb_id:
         _upsert_external(content_type, media_id, "imdb", str(imdb_id), media_type="show")
+    _hydrate_relations(media, raw)
     recompute_completeness(media)
     return media_id
 
