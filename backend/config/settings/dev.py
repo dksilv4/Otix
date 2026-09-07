@@ -12,8 +12,10 @@ from config.settings.base import env_bool, env_list
 
 DEBUG = True
 
+# "api" is the compose service name — the bots load-test sim and other
+# containers call the API over the docker network as http://api:8000.
 ALLOWED_HOSTS = env_list(
-    "ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "0.0.0.0"]
+    "ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "0.0.0.0", "api"]
 )
 
 # Browsable/verbose error pages and permissive CORS are acceptable in dev.

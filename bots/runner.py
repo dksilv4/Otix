@@ -91,7 +91,7 @@ class Runner:
         logger.info("runner.waiting_for_api")
         for i in range(max_retries):
             try:
-                r = await self.client.client.get("/health")
+                r = await self.client.client.get("/v1/health")
                 if r.status_code == 200:
                     logger.info("runner.api_ready")
                     return

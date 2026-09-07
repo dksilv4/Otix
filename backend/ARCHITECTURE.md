@@ -1898,6 +1898,21 @@ reads remain (task #6). Shape mirrors the frozen FastAPI contract.
   full suite, ``check`` = lint+drift+parity+test), plus single-worker celery
   introspection targets. Verified: ``make help`` lists targets and ``make lint
   drift parity`` all pass. ``migrate``/``seed`` still need a running dev stack.
+- **bots load-test sim fix (increment 70, 2026-09-07): ``dev.py`` ALLOWED_HOSTS +
+  ``bots/runner.py``.** Live-stack run of the bot sim against the Django API
+  exposed two issues, neither a stack fault: dev ``ALLOWED_HOSTS`` excluded the
+  ``api`` compose hostname, so every bots request with ``Host: api:8000`` got a
+  400 DisallowedHost (spamming the api log), and ``Runner._wait_for_api`` still
+  probed the removed legacy ``/api/health`` route (404 → never became ready even
+  with the host allowed). Fix: ``config/settings/dev.py`` default ALLOWED_HOSTS
+  is now ``["localhost","127.0.0.1","0.0.0.0","api"]``, and ``bots/runner.py``
+  readiness probe hits ``/v1/health`` (httpx merges base ``http://api:8000/api``
+  + ``/v1/health`` → the real ``/api/v1/health``). Verified live: rebuilt the bots
+  image (its code is COPY-baked, not bind-mounted — only ``bot_logs`` volume is
+  mounted), recreated the container, and the runner logged ``runner.api_ready`` on
+  the first probe with 0 DisallowedHost lines in the api log. ``BOT_COUNT=0`` keeps
+  the sim inert by default; bots is left stopped. Battery green (ruff clean, no
+  migration drift, parity 263/263 0 gaps).
 - **Known divergence** — `/auth/register` returns the minimal identity
   (no auto-login tokens/cookie) and `GET/PATCH /auth/me` covers the slimmed
   `User` field set (no bio/background/preferences JSON yet); both land with the
