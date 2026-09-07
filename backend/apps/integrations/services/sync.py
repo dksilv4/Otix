@@ -19,6 +19,7 @@ from typing import Any
 from django.utils import timezone
 
 from apps.integrations.models import SyncJob
+from apps.integrations.services.fetch_proxy import dispatch_to_client, server_can_fetch
 from core import progress as progress_lib
 
 logger = logging.getLogger(__name__)
@@ -139,6 +140,15 @@ def execute_sync_job(job_pk: int) -> dict[str, Any]:
             task_id,
             message=f"No sync engine registered for provider '{job.provider}'",
         )
+
+    # Proxy-fetch: when the server lacks the provider key but an online,
+    # capable client device holds one, park the job for that client instead of
+    # running the server-side httpx fetch (which would fail keyless). The client
+    # fetches the raw payload with its own key and POSTs it back to the result
+    # endpoint, which seeds + completes the job. When no device is online the
+    # engine still runs (and surfaces the key error) — unchanged behaviour.
+    if not server_can_fetch(job.provider) and dispatch_to_client(job, task_id=task_id):
+        return {"status": "awaiting_client", "task_id": task_id, **_job_context(job)}
 
     try:
         summary = engine(job)

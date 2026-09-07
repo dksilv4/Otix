@@ -12,6 +12,8 @@ access-token storage convention in this app (``UserPlexServer.access_token``).
 Encryption-at-rest is a deferred hardening item shared across those columns.
 """
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -82,3 +84,21 @@ class ClientDevice(TimestampedModel):
             and provider in caps
             and self.has_provider_key(provider)
         )
+
+    @classmethod
+    def capable_devices(cls, provider: str) -> list["ClientDevice"]:
+        """Online, active devices able to fetch for *provider*, newest first.
+
+        Dispatch picks the head of this list to own a parked fetch job.
+        """
+        cutoff = timezone.now() - timedelta(seconds=ONLINE_TTL_SECONDS)
+        devices = cls.objects.filter(
+            is_active=True, last_seen__gte=cutoff
+        ).order_by("-last_seen")
+        capable = [
+            d
+            for d in devices
+            if provider in (d.capabilities.get("providers") or [])
+            and d.has_provider_key(provider)
+        ]
+        return capable

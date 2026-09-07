@@ -1,5 +1,6 @@
 """Provider sync jobs and per-provider sync cursor state."""
 
+from django.conf import settings
 from django.db import models
 
 from core.models import BaseModel
@@ -9,10 +10,19 @@ class SyncJob(BaseModel):
     """A queued/running/finished sync job for an external provider entity.
 
     ``parent`` links child jobs (e.g. per-library or per-item refreshes) back
-    to the top-level job that spawned them.
+    to the top-level job that spawned them. ``user`` stays null for
+    server-driven bulk/catalog jobs; the proxy-fetch dispatcher sets it to the
+    owner of the client device a job is parked on (``awaiting_client``).
     """
 
     provider = models.CharField(max_length=20)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sync_jobs",
+    )
     entity_type = models.CharField(max_length=20)
     external_id = models.CharField(max_length=100)
     status = models.CharField(max_length=20, default="pending")
