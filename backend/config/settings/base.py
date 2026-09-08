@@ -307,6 +307,11 @@ if CATALOG_DAILY_TMDB_LIMIT is not None:
     CATALOG_DAILY_TMDB_LIMIT = int(CATALOG_DAILY_TMDB_LIMIT)
 CATALOG_DRAIN_LIMIT = int(os.environ.get("CATALOG_DRAIN_LIMIT", "200"))
 
+# Auto artwork mirroring: the discover sweep mirrors at most this many catalog
+# items per run (beat fires every 10 min; the one-shot ``mirror_artwork``
+# command default). A rate knob only — on/off stays the mirroring switch.
+MIRROR_SWEEP_LIMIT = int(os.environ.get("MIRROR_SWEEP_LIMIT", "50"))
+
 CELERY_BEAT_SCHEDULE = {
     "catalog-daily-tmdb-import": {
         "task": "integrations.catalog_daily_tmdb",
@@ -315,6 +320,10 @@ CELERY_BEAT_SCHEDULE = {
     "catalog-backlog-drain": {
         "task": "integrations.catalog_drain",
         "schedule": crontab(minute="*/5"),
+    },
+    "mirror-discover-artwork": {
+        "task": "media.mirror_discover_artwork",
+        "schedule": crontab(minute="*/10"),
     },
 }
 

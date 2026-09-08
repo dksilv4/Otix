@@ -185,3 +185,61 @@ def download_primary_assets(media_item: MediaItem) -> dict:
         "bytes": total_bytes,
         "types": downloaded_types,
     }
+
+
+def mirror_media_artwork(media_item_id: int) -> bool:
+    """Auto-mirror a freshly fetched item's primary artwork (best-effort).
+
+    Runs ``download_primary_assets`` for the item just seeded by a single-title
+    fetch. Gated on the mirroring switch and swallows any error so a mirroring
+    failure never breaks the ingest that triggered it; returns True only when
+    mirroring ran (the underlying downloads are themselves best-effort).
+    """
+    if not mirroring_enabled():
+        return False
+    item = (
+        MediaItem.objects.filter(pk=media_item_id).prefetch_related("assets").first()
+    )
+    if item is None:
+        return False
+    try:
+        download_primary_assets(item)
+        return True
+    except Exception:  # noqa: BLE001 - never let artwork break an ingest
+        logger.exception("auto-mirror failed for media %s", media_item_id)
+        return False
+
+
+def sweep_unmirrored_media(limit: int = 50) -> dict:
+    """Mirror artwork for the highest-profile items that lack a local copy.
+
+    Repeatedly drains catalog items that carry any remote primary-type artwork
+    URL but no locally mirrored copy yet, highest-popularity first, mirroring up
+    to ``limit`` items per run. Gated on the mirroring switch (off => no-op).
+    Drives the ``mirror_discover_artwork`` beat task and ``mirror_artwork``
+    operator command, covering discover/feed titles that were never fetched.
+    """
+    if not mirroring_enabled():
+        return {"scanned": 0, "mirrored": 0, "bytes": 0}
+    candidate_ids = (
+        MediaAsset.objects.filter(
+            asset_type__in=PRIMARY_ASSET_TYPES,
+            local_name__isnull=True,
+        )
+        .exclude(url="")
+        .values_list("media_item_id", flat=True)
+        .distinct()
+    )
+    candidates = (
+        MediaItem.objects.filter(pk__in=candidate_ids)
+        .order_by("-popularity", "id")[:limit]
+        .prefetch_related("assets")
+    )
+    scanned = mirrored = bytes_written = 0
+    for item in candidates:
+        scanned += 1
+        report = download_primary_assets(item)
+        if report["downloaded"]:
+            mirrored += 1
+            bytes_written += report["bytes"]
+    return {"scanned": scanned, "mirrored": mirrored, "bytes": bytes_written}

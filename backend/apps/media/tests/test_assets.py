@@ -26,7 +26,10 @@ from apps.media.services.assets import (
     asset_dir,
     download_asset,
     download_primary_assets,
+    mirror_media_artwork,
     mirroring_enabled,
+    set_mirroring_enabled,
+    sweep_unmirrored_media,
 )
 from apps.media.services.catalog import _best_asset, _pick_asset
 
@@ -443,3 +446,130 @@ class PrimaryReconcileTests(AssetTestCase):
         self.assertTrue((asset_dir() / "only.png").exists())
         client.assert_not_called()
         self.assertEqual(report["downloaded"], 1)
+
+
+class AutoMirrorArtworkTests(AssetTestCase):
+    """``mirror_media_artwork`` gate + best-effort auto-mirroring."""
+
+    def test_mirrors_when_enabled(self) -> None:
+        self.add_asset(url="http://img.example/poster.png")
+        with _patch_http(_FakeResponse(PNG)):
+            ran = mirror_media_artwork(self.item.pk)
+
+        self.assertTrue(ran)
+        asset = self.item.assets.get()
+        asset.refresh_from_db()
+        self.assertTrue(asset.local_name)
+        self.assertTrue((asset_dir() / asset.local_name).is_file())
+
+    def test_disabled_switch_noops(self) -> None:
+        asset = self.add_asset(url="http://img.example/poster.png")
+        set_mirroring_enabled(False)
+        with mock.patch("httpx.Client") as client:
+            ran = mirror_media_artwork(self.item.pk)
+
+        self.assertFalse(ran)
+        asset.refresh_from_db()
+        self.assertIsNone(asset.local_name)
+        client.assert_not_called()
+
+    def test_missing_item_returns_false(self) -> None:
+        with mock.patch("httpx.Client") as client:
+            ran = mirror_media_artwork(999999)
+        self.assertFalse(ran)
+        client.assert_not_called()
+
+    def test_mirror_failure_is_swallowed(self) -> None:
+        self.add_asset(url="http://img.example/poster.png")
+        with mock.patch(
+            "apps.media.services.assets._best_asset", side_effect=RuntimeError("boom")
+        ):
+            ran = mirror_media_artwork(self.item.pk)
+        self.assertFalse(ran)
+
+
+class SweepUnmirroredMediaTests(AssetTestCase):
+    """``sweep_unmirrored_media`` drains discover items missing local copies."""
+
+    def _item(self, title: str, popularity: float) -> MediaItem:
+        return MediaItem.objects.create(
+            media_type="movie",
+            title=title,
+            slug=f"sweep-{title.lower()}-{popularity}",
+            popularity=popularity,
+        )
+
+    def _poster(
+        self,
+        item: MediaItem,
+        *,
+        url: str = "http://img.example/p.png",
+        local_name: str | None = None,
+    ) -> MediaAsset:
+        if local_name:
+            (asset_dir() / local_name).write_bytes(PNG)
+        return MediaAsset.objects.create(
+            media_item=item,
+            asset_type="poster",
+            url=url,
+            score=50,
+            local_name=local_name,
+            local_size=len(PNG) if local_name else None,
+        )
+
+    def test_mirrors_unmirrored_catalog_items(self) -> None:
+        items = [
+            self._item("Alpha", 100),
+            self._item("Bravo", 90),
+            self._item("Charlie", 80),
+        ]
+        for item in items:
+            self._poster(item, url=f"http://img.example/{item.slug}.png")
+
+        with _patch_http(_FakeResponse(PNG)):
+            report = sweep_unmirrored_media(limit=10)
+
+        self.assertEqual(report["scanned"], 3)
+        self.assertEqual(report["mirrored"], 3)
+        self.assertEqual(report["bytes"], len(PNG) * 3)
+        for item in items:
+            asset = MediaAsset.objects.get(media_item=item)
+            asset.refresh_from_db()
+            self.assertTrue(asset.local_name)
+
+    def test_respects_limit_by_popularity(self) -> None:
+        for n in range(1, 6):
+            self._poster(self._item(f"Item{n}", float(n)))
+        with _patch_http(_FakeResponse(PNG)):
+            report = sweep_unmirrored_media(limit=2)
+        self.assertEqual(report["scanned"], 2)
+
+    def test_skips_fully_mirrored_and_blank_urls_and_foreign_types(self) -> None:
+        # Fully mirrored (local copy present) -> not a candidate.
+        mirrored = self._item("Mirrored", 60)
+        self._poster(mirrored, local_name="already.png")
+        # No usable remote URL -> excluded.
+        blank = self._item("Blank", 50)
+        self._poster(blank, url="")
+        # Only a non-primary asset type -> not a candidate.
+        fanart = self._item("Fanart", 40)
+        MediaAsset.objects.create(
+            media_item=fanart,
+            asset_type="fanart",
+            url="http://img.example/fan.png",
+            score=50,
+        )
+
+        with mock.patch("httpx.Client") as client:
+            report = sweep_unmirrored_media(limit=10)
+
+        self.assertEqual(report, {"scanned": 0, "mirrored": 0, "bytes": 0})
+        client.assert_not_called()
+
+    def test_disabled_switch_noops(self) -> None:
+        self._poster(self._item("Alpha", 100))
+        set_mirroring_enabled(False)
+        with mock.patch("httpx.Client") as client:
+            report = sweep_unmirrored_media(limit=10)
+        self.assertEqual(report, {"scanned": 0, "mirrored": 0, "bytes": 0})
+        client.assert_not_called()

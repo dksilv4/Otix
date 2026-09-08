@@ -21,6 +21,7 @@ from typing import Any
 from apps.integrations.models import SyncJob
 from apps.integrations.services.fetch_proxy import AWAITING_CLIENT
 from apps.integrations.services.sync import complete_job, fail_job
+from apps.media.services import assets as assets_service
 from core import progress as progress_lib
 
 logger = logging.getLogger(__name__)
@@ -113,6 +114,11 @@ def complete_from_client(job: SyncJob, raw: dict[str, Any]) -> dict[str, Any]:
         logger.warning("fetch result %s failed to seed: %s", task_id, exc)
         fail_job(job, error=str(exc))
         return {"error": f"Seeding failed: {exc}"}
+
+    # Client-driven fetches are on-demand single-title jobs: mirror their
+    # artwork now. ``is_bulk`` guard keeps any parked bulk job from mirroring.
+    if not job.is_bulk:
+        assets_service.mirror_media_artwork(media_id)
 
     context = {
         "provider": job.provider,

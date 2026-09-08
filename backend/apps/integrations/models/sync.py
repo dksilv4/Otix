@@ -13,6 +13,9 @@ class SyncJob(BaseModel):
     to the top-level job that spawned them. ``user`` stays null for
     server-driven bulk/catalog jobs; the proxy-fetch dispatcher sets it to the
     owner of the client device a job is parked on (``awaiting_client``).
+    ``is_bulk`` distinguishes those server-driven bulk backfills (which must
+    skip side effects like artwork auto-mirroring) from on-demand single-title
+    fetches.
     """
 
     provider = models.CharField(max_length=20)
@@ -28,6 +31,7 @@ class SyncJob(BaseModel):
     status = models.CharField(max_length=20, default="pending")
     priority = models.IntegerField(default=5)
     phase = models.CharField(max_length=20, default="core")
+    is_bulk = models.BooleanField(default=False)
     parent = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True, related_name="children"
     )

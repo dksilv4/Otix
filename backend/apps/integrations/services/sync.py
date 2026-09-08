@@ -20,6 +20,7 @@ from django.utils import timezone
 
 from apps.integrations.models import SyncJob
 from apps.integrations.services.fetch_proxy import dispatch_to_client, server_can_fetch
+from apps.media.services import assets as assets_service
 from core import progress as progress_lib
 
 logger = logging.getLogger(__name__)
@@ -160,6 +161,14 @@ def execute_sync_job(job_pk: int) -> dict[str, Any]:
     # a missing Google token) — publish an error terminal state, don't claim success.
     if summary.get("error"):
         return _abort(job, task_id, message=summary["error"])
+
+    # Mirror freshly-fetched artwork before the completion frame fires so the
+    # client sees ready local copies. Skipped for bulk backfills (``is_bulk``),
+    # which pass through this same executor by the hundreds/thousands.
+    if not job.is_bulk:
+        media_id = summary.get("media_item_id") or summary.get("media_id")
+        if media_id:
+            assets_service.mirror_media_artwork(media_id)
 
     frame = {**context, **summary}
     result = {**frame, "task_id": task_id}

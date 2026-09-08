@@ -118,6 +118,7 @@ def enqueue_seed_jobs(
             external_id=external_id,
             status="pending",
             phase="core",
+            is_bulk=True,
             priority=priority,
         )
         for external_id in sorted(fresh - live)
