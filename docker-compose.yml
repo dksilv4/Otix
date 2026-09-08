@@ -82,8 +82,15 @@ services:
   # ── Celery worker + beat ──
   # The Django task surface is small so far (run_sync_job on the default
   # queue); the worker consumes `celery` only. As task-#6 machinery (ingest/
-  # enrich/embedding queues) lands, grow -Q here to match. Beat has no entries
-  # yet (CELERY_BEAT_SCHEDULE is empty) and simply idles.
+  # enrich/embedding queues) lands, grow -Q here to match. Beat runs the
+  # catalog daily-import / backlog-drain / discover-artwork sweep (see
+  # CELERY_BEAT_SCHEDULE in config/settings/base.py).
+  #
+  # Both worker and beat must point their result backend at the real Redis:
+  # beat's schedule sends call the result backend (apply_async -> on_task_call),
+  # and the settings default is 127.0.0.1, which is unreachable inside either
+  # container. Omit it here and every scheduled task dies with "Retry limit
+  # exceeded while trying to reconnect to the Celery result store".
 
   worker:
     build:
@@ -123,6 +130,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DATABASE_URL: postgresql://otix:password@db:5432/otix_dev
       CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     command: celery -A config beat --loglevel INFO
     depends_on:
       db:
