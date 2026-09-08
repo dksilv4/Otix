@@ -11,24 +11,45 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+from datetime import timedelta
 from pathlib import Path
 from unittest import mock
 
 import httpx
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
-from apps.media.models import MediaAsset, MediaItem
+from apps.media.models import MediaAsset, MediaItem, MediaServerSetting
 from apps.media.services.assets import (
+    MIN_FREE_GB_KEY,
+    SWEEP_LAST_RUN_KEY,
     asset_dir,
+    discover_enabled,
+    disk_safe,
     download_asset,
     download_primary_assets,
+    enabled_asset_types,
+    fetch_enabled,
+    local_games_enabled,
+    min_free_gb,
+    mirror_local_game_artwork,
     mirror_media_artwork,
     mirroring_enabled,
+    record_sweep_run,
+    set_asset_types,
+    set_discover_enabled,
+    set_fetch_enabled,
+    set_local_games_enabled,
+    set_min_free_gb,
     set_mirroring_enabled,
+    set_sweep_interval_minutes,
+    should_run_sweep,
+    sweep_interval_minutes,
+    sweep_limit,
     sweep_unmirrored_media,
 )
 from apps.media.services.catalog import _best_asset, _pick_asset
@@ -109,6 +130,10 @@ class AssetTestCase(TestCase):
         self.item = MediaItem.objects.create(
             media_type="movie", title="Dune", slug="dune-assets"
         )
+
+        # Keep the disk safety cap out of play for the shared fixtures; disk-cap
+        # enforcement is exercised explicitly in DiskCapTests below.
+        set_min_free_gb(0)
 
     def add_asset(
         self,
@@ -611,3 +636,259 @@ class SweepUnmirroredMediaTests(AssetTestCase):
         backdrop = MediaAsset.objects.get(media_item=item, asset_type="backdrop")
         backdrop.refresh_from_db()
         self.assertTrue(backdrop.local_name)
+
+
+class ArtworkSubSettingTests(AssetTestCase):
+    """Defaults + toggling of the fetch/discover/local-games switches & types."""
+
+    def test_defaults(self) -> None:
+        self.assertTrue(fetch_enabled())
+        self.assertTrue(discover_enabled())
+        self.assertFalse(local_games_enabled())
+        self.assertEqual(sweep_limit(), settings.MIRROR_SWEEP_LIMIT)
+        self.assertEqual(sweep_interval_minutes(), 10)
+        self.assertEqual(
+            enabled_asset_types(),
+            ("poster", "backdrop", "logo", "textless_poster", "icon"),
+        )
+
+    def test_min_free_gb_defaults_to_five_when_unset(self) -> None:
+        MediaServerSetting.objects.filter(key=MIN_FREE_GB_KEY).delete()
+        self.assertEqual(min_free_gb(), 5)
+
+    def test_toggle_setters_roundtrip(self) -> None:
+        set_fetch_enabled(False)
+        set_discover_enabled(False)
+        set_local_games_enabled(True)
+        self.assertFalse(fetch_enabled())
+        self.assertFalse(discover_enabled())
+        self.assertTrue(local_games_enabled())
+
+    def test_asset_types_partial_and_invalid(self) -> None:
+        set_asset_types(["poster", "backdrop", "bogus"])
+        self.assertEqual(enabled_asset_types(), ("poster", "backdrop"))
+        set_asset_types(["logo"])
+        self.assertEqual(enabled_asset_types(), ("logo",))
+
+    def test_asset_types_requires_at_least_one(self) -> None:
+        with self.assertRaises(ValueError):
+            set_asset_types(["bogus"])
+        # nothing was persisted
+        self.assertEqual(
+            enabled_asset_types(),
+            ("poster", "backdrop", "logo", "textless_poster", "icon"),
+        )
+
+    def test_fetch_toggle_off_blocks_mirror_media_artwork(self) -> None:
+        self.add_asset(url="http://img.example/poster.png")
+        set_fetch_enabled(False)
+        with mock.patch("httpx.Client") as client:
+            ran = mirror_media_artwork(self.item.pk)
+        self.assertFalse(ran)
+        client.assert_not_called()
+        asset = MediaAsset.objects.get(media_item=self.item)
+        asset.refresh_from_db()
+        self.assertIsNone(asset.local_name)
+
+    def test_discover_toggle_off_blocks_sweep(self) -> None:
+        self.add_asset(url="http://img.example/poster.png")
+        set_discover_enabled(False)
+        with mock.patch("httpx.Client") as client:
+            report = sweep_unmirrored_media(limit=10)
+        self.assertEqual(report, {"scanned": 0, "mirrored": 0, "bytes": 0})
+        client.assert_not_called()
+
+    def test_sweep_only_targets_enabled_types(self) -> None:
+        poster_item = MediaItem.objects.create(
+            media_type="movie", title="Poster pick", slug="type-poster", popularity=99
+        )
+        backdrop_item = MediaItem.objects.create(
+            media_type="movie", title="Backdrop pick", slug="type-backdrop", popularity=98
+        )
+        MediaAsset.objects.create(
+            media_item=poster_item, asset_type="poster", url="http://x/p.png", score=50
+        )
+        MediaAsset.objects.create(
+            media_item=backdrop_item, asset_type="backdrop", url="http://x/b.png", score=50
+        )
+        set_asset_types(["poster"])
+        with _patch_http(_FakeResponse(PNG)):
+            report = sweep_unmirrored_media(limit=10)
+        self.assertEqual(report["scanned"], 1)
+        poster = MediaAsset.objects.get(media_item=poster_item, asset_type="poster")
+        poster.refresh_from_db()
+        self.assertTrue(poster.local_name)
+        backdrop = MediaAsset.objects.get(media_item=backdrop_item, asset_type="backdrop")
+        backdrop.refresh_from_db()
+        self.assertIsNone(backdrop.local_name)
+
+
+class DiskCapTests(AssetTestCase):
+    """The disk safety cap pauses new downloads when free space is low."""
+
+    def test_download_skips_when_below_cap(self) -> None:
+        self.add_asset(url="http://img.example/poster.png")
+        set_min_free_gb(5)
+        with mock.patch(
+            "apps.media.services.assets.disk_free_bytes", return_value=1
+        ) as _free, mock.patch("httpx.Client") as client:
+            written = download_asset(MediaAsset.objects.get(media_item=self.item))
+        self.assertIsNone(written)
+        client.assert_not_called()
+
+    def test_download_proceeds_when_cap_disabled(self) -> None:
+        asset = self.add_asset(url="http://img.example/poster.png")
+        set_min_free_gb(0)
+        with mock.patch("apps.media.services.assets.disk_free_bytes", return_value=1):
+            with _patch_http(_FakeResponse(PNG)):
+                written = download_asset(asset)
+        self.assertEqual(written, len(PNG))
+        asset.refresh_from_db()
+        self.assertTrue(asset.local_name)
+
+    def test_min_free_gb_zero_roundtrip(self) -> None:
+        set_min_free_gb(0)
+        self.assertEqual(min_free_gb(), 0)
+        self.assertTrue(disk_safe())
+
+
+class LocalGameMirrorTests(AssetTestCase):
+    """``mirror_local_game_artwork`` mirrors only games when its toggle is on."""
+
+    def _game(self) -> MediaItem:
+        return MediaItem.objects.create(
+            media_type="game", title="Hades", slug="local-game-hades"
+        )
+
+    def test_mirrors_game_when_enabled(self) -> None:
+        game = self._game()
+        MediaAsset.objects.create(
+            media_item=game, asset_type="poster", url="http://img.example/hades.png", score=50
+        )
+        set_local_games_enabled(True)
+        with _patch_http(_FakeResponse(PNG)):
+            ran = mirror_local_game_artwork(game.pk)
+        self.assertTrue(ran)
+        poster = MediaAsset.objects.get(media_item=game, asset_type="poster")
+        poster.refresh_from_db()
+        self.assertTrue(poster.local_name)
+
+    def test_skips_non_game(self) -> None:
+        self.add_asset(url="http://img.example/poster.png")
+        set_local_games_enabled(True)
+        with mock.patch("httpx.Client") as client:
+            ran = mirror_local_game_artwork(self.item.pk)
+        self.assertFalse(ran)
+        client.assert_not_called()
+
+    def test_skips_when_toggle_off(self) -> None:
+        game = self._game()
+        MediaAsset.objects.create(
+            media_item=game, asset_type="poster", url="http://img.example/hades.png", score=50
+        )
+        with mock.patch("httpx.Client") as client:
+            ran = mirror_local_game_artwork(game.pk)
+        self.assertFalse(ran)
+        client.assert_not_called()
+
+    def test_skips_when_master_off(self) -> None:
+        game = self._game()
+        MediaAsset.objects.create(
+            media_item=game, asset_type="poster", url="http://img.example/hades.png", score=50
+        )
+        set_local_games_enabled(True)
+        set_mirroring_enabled(False)
+        with mock.patch("httpx.Client") as client:
+            ran = mirror_local_game_artwork(game.pk)
+        self.assertFalse(ran)
+        client.assert_not_called()
+
+
+class SweepThrottleTests(AssetTestCase):
+    """``should_run_sweep`` lets the beat task throttle to a configured interval."""
+
+    def test_first_run_then_blocked_within_interval(self) -> None:
+        set_sweep_interval_minutes(10)
+        self.assertTrue(should_run_sweep())  # no recorded run yet
+        record_sweep_run()
+        self.assertFalse(should_run_sweep())  # just ran
+
+    def test_zero_interval_runs_every_tick(self) -> None:
+        set_sweep_interval_minutes(0)
+        record_sweep_run()
+        self.assertTrue(should_run_sweep())
+
+    def test_elapsed_interval_allows_run(self) -> None:
+        set_sweep_interval_minutes(10)
+        record_sweep_run()
+        past = (timezone.now() - timedelta(minutes=11)).isoformat()
+        MediaServerSetting.objects.filter(key=SWEEP_LAST_RUN_KEY).update(value=past)
+        self.assertTrue(should_run_sweep())
+
+
+class ArtworkSettingsEndpointTests(AssetTestCase):
+    """``/api/v1/media/admin/artwork-settings`` GET/PUT round-trip + gating."""
+
+    def _url(self) -> str:
+        return "/api/v1/media/admin/artwork-settings"
+
+    def test_get_returns_payload(self) -> None:
+        response = self.staff_client.get(self._url())
+        self.assertEqual(response.status_code, 200)
+        body = response.data
+        for key in (
+            "fetch_enabled",
+            "discover_enabled",
+            "local_games_enabled",
+            "sweep_limit",
+            "sweep_interval_minutes",
+            "asset_types",
+            "min_free_gb",
+            "disk",
+        ):
+            self.assertIn(key, body)
+        self.assertIs(body["fetch_enabled"], True)
+        self.assertIs(body["local_games_enabled"], False)
+        self.assertIn("tripped", body["disk"])
+
+    def test_put_updates_fields(self) -> None:
+        response = self.staff_client.put(
+            self._url(),
+            {
+                "fetch_enabled": False,
+                "asset_types": ["poster", "backdrop"],
+                "min_free_gb": 2,
+                "sweep_interval_minutes": 30,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.data["fetch_enabled"], False)
+        self.assertEqual(response.data["asset_types"], ["poster", "backdrop"])
+        self.assertEqual(response.data["min_free_gb"], 2)
+        self.assertFalse(fetch_enabled())
+        self.assertEqual(enabled_asset_types(), ("poster", "backdrop"))
+
+    def test_put_rejects_bad_values(self) -> None:
+        for payload in (
+            {"fetch_enabled": "yes"},
+            {"min_free_gb": -1},
+            {"sweep_limit": "x"},
+            {"asset_types": []},
+            {"asset_types": ["bogus"]},
+        ):
+            response = self.staff_client.put(self._url(), payload, format="json")
+            self.assertEqual(response.status_code, 400, payload)
+        # nothing was persisted
+        self.assertTrue(fetch_enabled())
+        self.assertEqual(
+            enabled_asset_types(),
+            ("poster", "backdrop", "logo", "textless_poster", "icon"),
+        )
+
+    def test_staff_gating(self) -> None:
+        self.assertEqual(self.client.get(self._url()).status_code, 401)
+        self.assertEqual(self.user_client.get(self._url()).status_code, 403)
+        self.assertEqual(
+            self.user_client.put(self._url(), {"fetch_enabled": False}).status_code, 403
+        )

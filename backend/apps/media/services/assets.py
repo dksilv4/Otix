@@ -12,7 +12,9 @@ remote URL keeps being used.
 from __future__ import annotations
 
 import logging
+import shutil
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -28,6 +30,18 @@ PRIMARY_ASSET_TYPES = ("poster", "backdrop", "logo", "textless_poster", "icon")
 
 MIRRORING_ENABLED_KEY = "local_asset_mirroring_enabled"
 MIRRORING_DEFAULT_ENABLED = True
+
+FETCH_KEY = "mirror_on_fetch"
+DISCOVER_KEY = "mirror_on_discover"
+LOCAL_GAMES_KEY = "mirror_local_games_enabled"
+SWEEP_LIMIT_KEY = "mirror_sweep_limit"
+SWEEP_INTERVAL_KEY = "mirror_sweep_interval_minutes"
+SWEEP_LAST_RUN_KEY = "mirror_sweep_last_run_at"
+ASSET_TYPES_KEY = "mirror_asset_types"
+MIN_FREE_GB_KEY = "mirror_min_free_gb"
+
+DEFAULT_SWEEP_INTERVAL_MINUTES = 10
+DEFAULT_MIN_FREE_GB = 5
 
 _TIMEOUT = httpx.Timeout(20.0)
 
@@ -64,6 +78,9 @@ def download_asset(asset: MediaAsset) -> int | None:
         return asset.local_size
     if not asset.url:
         return None
+    if not disk_safe():
+        logger.warning("asset download skipped: free disk below the mirror_min_free_gb cap")
+        return None
     try:
         with httpx.Client(timeout=_TIMEOUT, follow_redirects=True) as client:
             response = client.get(asset.url)
@@ -84,19 +101,161 @@ def download_asset(asset: MediaAsset) -> int | None:
         return None
 
 
-def mirroring_enabled() -> bool:
-    """Server-wide toggle: may new artwork be mirrored to local disk."""
-    row = MediaServerSetting.objects.filter(key=MIRRORING_ENABLED_KEY).only("value").first()
+def _bool_setting(key: str, default: bool) -> bool:
+    row = MediaServerSetting.objects.filter(key=key).only("value").first()
     if row is None:
-        return MIRRORING_DEFAULT_ENABLED
+        return default
     return row.value != "0"
 
 
+def _int_setting(key: str, default: int) -> int:
+    row = MediaServerSetting.objects.filter(key=key).only("value").first()
+    if row is None or row.value == "":
+        return default
+    try:
+        return int(row.value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _set_setting(key: str, value: str) -> None:
+    MediaServerSetting.objects.update_or_create(key=key, defaults={"value": value})
+
+
+def mirroring_enabled() -> bool:
+    """Master switch: may new artwork be mirrored to local disk at all."""
+    return _bool_setting(MIRRORING_ENABLED_KEY, MIRRORING_DEFAULT_ENABLED)
+
+
 def set_mirroring_enabled(enabled: bool) -> None:
-    MediaServerSetting.objects.update_or_create(
-        key=MIRRORING_ENABLED_KEY,
-        defaults={"value": "1" if enabled else "0"},
-    )
+    _set_setting(MIRRORING_ENABLED_KEY, "1" if enabled else "0")
+
+
+def fetch_enabled() -> bool:
+    """Auto-mirror after single-title fetches (not bulk backfills)."""
+    return _bool_setting(FETCH_KEY, True)
+
+
+def discover_enabled() -> bool:
+    """Auto-mirror during the periodic discover sweep."""
+    return _bool_setting(DISCOVER_KEY, True)
+
+
+def local_games_enabled() -> bool:
+    """Auto-mirror artwork for claimed/owned local games."""
+    return _bool_setting(LOCAL_GAMES_KEY, False)
+
+
+def set_fetch_enabled(enabled: bool) -> None:
+    _set_setting(FETCH_KEY, "1" if enabled else "0")
+
+
+def set_discover_enabled(enabled: bool) -> None:
+    _set_setting(DISCOVER_KEY, "1" if enabled else "0")
+
+
+def set_local_games_enabled(enabled: bool) -> None:
+    _set_setting(LOCAL_GAMES_KEY, "1" if enabled else "0")
+
+
+def sweep_limit() -> int:
+    return _int_setting(SWEEP_LIMIT_KEY, settings.MIRROR_SWEEP_LIMIT)
+
+
+def sweep_interval_minutes() -> int:
+    return _int_setting(SWEEP_INTERVAL_KEY, DEFAULT_SWEEP_INTERVAL_MINUTES)
+
+
+def sweep_last_run_at() -> datetime | None:
+    row = MediaServerSetting.objects.filter(key=SWEEP_LAST_RUN_KEY).only("value").first()
+    if row is None or not row.value:
+        return None
+    try:
+        return datetime.fromisoformat(row.value)
+    except ValueError:
+        return None
+
+
+def record_sweep_run() -> None:
+    _set_setting(SWEEP_LAST_RUN_KEY, timezone.now().isoformat())
+
+
+def should_run_sweep() -> bool:
+    """Whether the interval since the last sweep run has elapsed (beat throttle)."""
+    last = sweep_last_run_at()
+    if last is None:
+        return True
+    interval = sweep_interval_minutes()
+    if interval <= 0:
+        return True
+    return (timezone.now() - last).total_seconds() >= interval * 60
+
+
+def set_sweep_limit(limit: int) -> None:
+    _set_setting(SWEEP_LIMIT_KEY, str(limit))
+
+
+def set_sweep_interval_minutes(minutes: int) -> None:
+    _set_setting(SWEEP_INTERVAL_KEY, str(minutes))
+
+
+def enabled_asset_types() -> tuple[str, ...]:
+    """Primary asset types selected for mirroring, in canonical order."""
+    row = MediaServerSetting.objects.filter(key=ASSET_TYPES_KEY).only("value").first()
+    if row is None or not row.value.strip():
+        return PRIMARY_ASSET_TYPES
+    selected = {part.strip().lower() for part in row.value.split(",") if part.strip()}
+    chosen = tuple(t for t in PRIMARY_ASSET_TYPES if t in selected)
+    return chosen or PRIMARY_ASSET_TYPES
+
+
+def set_asset_types(types) -> None:
+    selected = set(types or [])
+    chosen = tuple(t for t in PRIMARY_ASSET_TYPES if t in selected)
+    if not chosen:
+        raise ValueError("at least one asset type is required")
+    _set_setting(ASSET_TYPES_KEY, ",".join(chosen))
+
+
+def min_free_gb() -> int:
+    """Disk cap in GB; <=0 disables the safety check."""
+    return _int_setting(MIN_FREE_GB_KEY, DEFAULT_MIN_FREE_GB)
+
+
+def disk_free_bytes() -> int:
+    return shutil.disk_usage(asset_dir()).free
+
+
+def disk_safe() -> bool:
+    gb = min_free_gb()
+    if gb <= 0:
+        return True
+    return disk_free_bytes() >= gb * 1024**3
+
+
+def set_min_free_gb(gb: int) -> None:
+    _set_setting(MIN_FREE_GB_KEY, str(gb))
+
+
+def artwork_settings_payload() -> dict:
+    """Current settings + disk state, as served by the admin settings view."""
+    usage = shutil.disk_usage(asset_dir())
+    cap_bytes = min_free_gb() * 1024**3
+    return {
+        "fetch_enabled": fetch_enabled(),
+        "discover_enabled": discover_enabled(),
+        "local_games_enabled": local_games_enabled(),
+        "sweep_limit": sweep_limit(),
+        "sweep_interval_minutes": sweep_interval_minutes(),
+        "asset_types": list(enabled_asset_types()),
+        "min_free_gb": min_free_gb(),
+        "disk": {
+            "total": usage.total,
+            "used": usage.used,
+            "free": usage.free,
+            "tripped": cap_bytes > 0 and usage.free < cap_bytes,
+        },
+    }
 
 
 def _remove_local_file(asset: MediaAsset) -> int:
@@ -156,7 +315,7 @@ def download_primary_assets(media_item: MediaItem) -> dict:
     downloaded_types: list[str] = []
     count = 0
     total_bytes = 0
-    for asset_type in PRIMARY_ASSET_TYPES:
+    for asset_type in enabled_asset_types():
         best = _best_asset(media_item, asset_type)
         stale = (
             MediaAsset.objects.filter(
@@ -187,46 +346,62 @@ def download_primary_assets(media_item: MediaItem) -> dict:
     }
 
 
-def mirror_media_artwork(media_item_id: int) -> bool:
-    """Auto-mirror a freshly fetched item's primary artwork (best-effort).
-
-    Runs ``download_primary_assets`` for the item just seeded by a single-title
-    fetch. Gated on the mirroring switch and swallows any error so a mirroring
-    failure never breaks the ingest that triggered it; returns True only when
-    mirroring ran (the underlying downloads are themselves best-effort).
-    """
-    if not mirroring_enabled():
-        return False
-    item = (
-        MediaItem.objects.filter(pk=media_item_id).prefetch_related("assets").first()
-    )
+def _mirror_item(media_item_id: int, kind: str) -> bool:
+    item = MediaItem.objects.filter(pk=media_item_id).prefetch_related("assets").first()
     if item is None:
         return False
     try:
         download_primary_assets(item)
         return True
     except Exception:  # noqa: BLE001 - never let artwork break an ingest
-        logger.exception("auto-mirror failed for media %s", media_item_id)
+        logger.exception("auto-mirror failed for %s %s", kind, media_item_id)
         return False
 
 
-def sweep_unmirrored_media(limit: int = 50) -> dict:
+def mirror_media_artwork(media_item_id: int) -> bool:
+    """Auto-mirror a freshly fetched item's primary artwork (best-effort).
+
+    Gated on the master switch + the fetch toggle; swallows any error so a
+    mirroring failure never breaks the ingest that triggered it. Returns True
+    only when mirroring ran (the underlying downloads are best-effort).
+    """
+    if not mirroring_enabled() or not fetch_enabled():
+        return False
+    return _mirror_item(media_item_id, "media")
+
+
+def mirror_local_game_artwork(media_item_id: int) -> bool:
+    """Auto-mirror a claimed/owned local game's primary artwork.
+
+    Gated on the master switch + the local-games toggle, and only fires for
+    ``media_type="game"`` rows. Best-effort like ``mirror_media_artwork``.
+    """
+    if not mirroring_enabled() or not local_games_enabled():
+        return False
+    if not MediaItem.objects.filter(pk=media_item_id, media_type="game").exists():
+        return False
+    return _mirror_item(media_item_id, "local game")
+
+
+def sweep_unmirrored_media(limit: int | None = None) -> dict:
     """Mirror artwork for the highest-profile items with an uncovered type.
 
-    An item counts as a candidate only when it has a primary type whose artwork
-    is entirely remote — that is, a type it carries a URL for but has no local
-    copy of at all. Items that already mirror their best per type but still hold
-    leftover lower-scored sibling URLs (TMDB ships many backdrops/logos per
-    title) are NOT re-scanned: only the single best per type is ever mirrored,
-    so re-visiting them would burn a sweep slot and download nothing. Highest
-    popularity first, up to ``limit`` items per run. Gated on the mirroring
-    switch (off => no-op). Drives the ``mirror_discover_artwork`` beat task and
-    the ``mirror_artwork`` operator command.
+    An item counts as a candidate only when it has an enabled primary type whose
+    artwork is entirely remote — that is, a type it carries a URL for but has no
+    local copy of at all. Items that already mirror their best per type but still
+    hold leftover lower-scored sibling URLs (TMDB ships many backdrops/logos per
+    title) are NOT re-scanned: only the single best per type is ever mirrored, so
+    re-visiting them would burn a sweep slot and download nothing. Highest
+    popularity first, up to ``limit`` items per run (defaults to the configured
+    ``sweep_limit()``). Gated on the master mirroring switch + the discover
+    toggle (either off => no-op). Drives the ``mirror_discover_artwork`` beat
+    task and the ``mirror_artwork`` operator command.
     """
-    if not mirroring_enabled():
+    if not mirroring_enabled() or not discover_enabled():
         return {"scanned": 0, "mirrored": 0, "bytes": 0}
+    bound = limit if limit is not None else sweep_limit()
     rows = MediaAsset.objects.filter(
-        asset_type__in=PRIMARY_ASSET_TYPES,
+        asset_type__in=enabled_asset_types(),
     ).values_list("media_item_id", "asset_type", "local_name", "url")
     present: dict[int, set[str]] = {}
     covered: dict[int, set[str]] = {}
@@ -244,7 +419,7 @@ def sweep_unmirrored_media(limit: int = 50) -> dict:
     ]
     candidates = (
         MediaItem.objects.filter(pk__in=candidate_ids)
-        .order_by("-popularity", "id")[:limit]
+        .order_by("-popularity", "id")[:bound]
         .prefetch_related("assets")
     )
     scanned = mirrored = bytes_written = 0

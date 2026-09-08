@@ -307,9 +307,10 @@ if CATALOG_DAILY_TMDB_LIMIT is not None:
     CATALOG_DAILY_TMDB_LIMIT = int(CATALOG_DAILY_TMDB_LIMIT)
 CATALOG_DRAIN_LIMIT = int(os.environ.get("CATALOG_DRAIN_LIMIT", "200"))
 
-# Auto artwork mirroring: the discover sweep mirrors at most this many catalog
-# items per run (beat fires every 10 min; the one-shot ``mirror_artwork``
-# command default). A rate knob only — on/off stays the mirroring switch.
+# Auto artwork mirroring: MIRROR_SWEEP_LIMIT is the default per-run sweep cap
+# (the one-shot ``mirror_artwork`` command + the DB ``mirror_sweep_limit``
+# setting default). On/off + sweep controls live in the admin MediaServerSetting
+# store, editable from the settings UI.
 MIRROR_SWEEP_LIMIT = int(os.environ.get("MIRROR_SWEEP_LIMIT", "50"))
 
 CELERY_BEAT_SCHEDULE = {
@@ -321,9 +322,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "integrations.catalog_drain",
         "schedule": crontab(minute="*/5"),
     },
+    # Fires every minute; media.mirror_discover_artwork self-throttles to the
+    # admin-configured mirror_sweep_interval_minutes (DB setting), so the beat
+    # interval stays fixed and the runtime knob lives in the UI.
     "mirror-discover-artwork": {
         "task": "media.mirror_discover_artwork",
-        "schedule": crontab(minute="*/10"),
+        "schedule": crontab(minute="*"),
     },
 }
 

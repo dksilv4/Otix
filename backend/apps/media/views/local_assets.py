@@ -111,6 +111,56 @@ class MirroringView(APIView):
         return Response({"enabled": assets_service.mirroring_enabled()})
 
 
+_BOOL_FIELDS = ("fetch_enabled", "discover_enabled", "local_games_enabled")
+_INT_FIELDS = ("sweep_limit", "sweep_interval_minutes", "min_free_gb")
+
+
+class ArtworkSettingsView(APIView):
+    """``GET/PUT /media/admin/artwork-settings`` — auto-mirror sub-settings.
+
+    Sits alongside the master ``MirroringView``: this view owns the automatic
+    download toggles (fetch / discover sweep / local games), the sweep rate
+    controls (per-run limit + interval), the enabled asset-type selection, and
+    the disk safety cap. GET returns current values plus disk state; PUT accepts
+    any subset of the mutable fields. Staff-only.
+    """
+
+    permission_classes = (IsAuthenticated, IsAdminUser)
+
+    def get(self, request) -> Response:
+        return Response(assets_service.artwork_settings_payload())
+
+    def put(self, request) -> Response:
+        data = request.data if isinstance(request.data, dict) else {}
+        for field in _BOOL_FIELDS:
+            if field not in data:
+                continue
+            value = data[field]
+            if not isinstance(value, bool):
+                raise ValidationError({field: "must be a boolean"})
+            getattr(assets_service, f"set_{field}")(value)
+        for field in _INT_FIELDS:
+            if field not in data:
+                continue
+            value = data[field]
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValidationError({field: "must be a non-negative integer"})
+            getattr(assets_service, f"set_{field}")(value)
+        if "asset_types" in data:
+            types = data["asset_types"]
+            if not isinstance(types, list) or not types or not all(
+                isinstance(t, str) for t in types
+            ):
+                raise ValidationError(
+                    {"asset_types": "must be a non-empty list of strings"}
+                )
+            try:
+                assets_service.set_asset_types(types)
+            except ValueError as exc:
+                raise ValidationError({"asset_types": str(exc)}) from None
+        return Response(assets_service.artwork_settings_payload())
+
+
 class PurgeAssetsView(APIView):
     """``DELETE /media/admin/assets`` — delete every locally mirrored file.
 

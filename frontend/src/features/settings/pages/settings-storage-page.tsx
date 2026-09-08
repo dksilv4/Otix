@@ -5,14 +5,33 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { formatBytes, cn } from '@/lib/utils'
+import { DkCheckbox } from '@/old-features/ui/atoms/checkbox'
+import { DkInput } from '@/old-features/ui/atoms/input'
+import { DkSelect } from '@/old-features/ui/atoms/select'
 import { DkSwitch } from '@/old-features/ui/atoms/switch'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
 import { useToast } from '@/old-features/ui/molecules/toast'
-import { HardDrive, Image, FolderOpen, ShieldAlert, ShieldCheck, Loader2, Trash2, AlertTriangle } from 'lucide-react'
 import {
+  AlertTriangle,
+  Download,
+  FolderOpen,
+  Gauge,
+  HardDrive,
+  Image,
+  Layers,
+  Loader2,
+  ShieldAlert,
+  ShieldCheck,
+  Trash2,
+} from 'lucide-react'
+import {
+  ASSET_TYPE_OPTIONS,
+  type ArtworkSettingsPatch,
   mediaAdminQueryKeys,
+  useArtworkSettings,
   useMirroring,
   usePurgeAssets,
+  useSetArtworkSettings,
   useSetMirroring,
 } from '@/features/media/hooks/use-media-admin-settings'
 import { SectionHeader } from '../components/molecules/settings-section-header'
@@ -86,6 +105,219 @@ function AccessBlock({ signedOut }: { signedOut: boolean }) {
         </div>
       )}
     </SettingsCard>
+  )
+}
+
+const SWEEP_INTERVAL_OPTIONS = [
+  { value: '1', label: 'Every 1 minute' },
+  { value: '5', label: 'Every 5 minutes' },
+  { value: '10', label: 'Every 10 minutes' },
+  { value: '15', label: 'Every 15 minutes' },
+  { value: '30', label: 'Every 30 minutes' },
+  { value: '60', label: 'Every hour' },
+]
+
+function ToggleRow({
+  title,
+  description,
+  checked,
+  disabled,
+  onCheckedChange,
+}: {
+  title: string
+  description: string
+  checked: boolean
+  disabled?: boolean
+  onCheckedChange: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <div className="min-w-0">
+        <p className="text-sm font-bold text-white">{title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-white/40">{description}</p>
+      </div>
+      <DkSwitch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
+    </div>
+  )
+}
+
+/** Auto-mirror sub-settings: fetch/discover/local-game triggers, sweep rate,
+ * enabled artwork types, and the disk safety cap. Grayed out while the master
+ * mirroring switch (owned by SettingsStoragePage) is off. */
+function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
+  const { toast } = useToast()
+  const { data: settings, isLoading } = useArtworkSettings()
+  const setSettings = useSetArtworkSettings()
+  // Local edit drafts for the number fields; null means "show the server value".
+  // Nothing is synced in an effect — a successful commit resets the draft back
+  // to null so the field re-binds to the acknowledged server number.
+  const [sweepDraft, setSweepDraft] = useState<string | null>(null)
+  const [capDraft, setCapDraft] = useState<string | null>(null)
+  const off = !masterEnabled || setSettings.isPending
+
+  const commit = async (patch: ArtworkSettingsPatch): Promise<boolean> => {
+    try {
+      await setSettings.mutateAsync(patch)
+      toast({ title: 'Artwork settings updated', variant: 'success' })
+      return true
+    } catch {
+      toast({ title: 'Could not update artwork settings', variant: 'error' })
+      return false
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <SettingsCard className="flex items-center justify-center gap-3 py-10 text-white/50">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-xs">Loading artwork settings…</span>
+      </SettingsCard>
+    )
+  }
+  if (!settings) return null
+
+  const toggleType = (value: string, checked: boolean) => {
+    const next = checked
+      ? [...settings.assetTypes, value]
+      : settings.assetTypes.filter((t) => t !== value)
+    if (next.length === 0) return
+    commit({ assetTypes: next })
+  }
+
+  const sweepValue = sweepDraft ?? String(settings.sweepLimit)
+  const capValue = capDraft ?? String(settings.minFreeGb)
+
+  const commitSweep = async (raw: string) => {
+    const parsed = Number.parseInt(raw, 10)
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed === settings.sweepLimit) {
+      setSweepDraft(null)
+      return
+    }
+    if (await commit({ sweepLimit: parsed })) setSweepDraft(null)
+  }
+
+  const commitCap = async (raw: string) => {
+    const parsed = Number.parseInt(raw, 10)
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed === settings.minFreeGb) {
+      setCapDraft(null)
+      return
+    }
+    if (await commit({ minFreeGb: parsed })) setCapDraft(null)
+  }
+
+  const capPaused = settings.disk.tripped
+
+  return (
+    <>
+      <SettingsCard>
+        <SectionHeader
+          icon={Download}
+          title="Automatic downloads"
+          description="Mirror provider artwork to this server automatically. Each trigger is independent; the master switch above pauses everything."
+        />
+        <div className="mt-4 space-y-1">
+          <ToggleRow
+            title="After a single-title fetch"
+            description="When a title is fetched on demand (not a bulk catalog backfill), download its selected artwork right away."
+            checked={settings.fetchEnabled}
+            disabled={off}
+            onCheckedChange={(v) => commit({ fetchEnabled: v })}
+          />
+          <ToggleRow
+            title="Discover sweep"
+            description="Periodically scan the catalog for popular titles still missing a local copy and download them."
+            checked={settings.discoverEnabled}
+            disabled={off}
+            onCheckedChange={(v) => commit({ discoverEnabled: v })}
+          />
+          <div className="grid gap-4 py-3 sm:grid-cols-2">
+            <DkInput
+              label="Sweep limit (per run)"
+              type="number"
+              min={1}
+              disabled={off}
+              value={sweepValue}
+              onChange={(e) => setSweepDraft(e.target.value)}
+              onBlur={(e) => commitSweep(e.target.value)}
+            />
+            <DkSelect
+              label="Sweep interval"
+              disabled={off}
+              value={String(settings.sweepIntervalMinutes)}
+              onChange={(e) =>
+                commit({
+                  sweepIntervalMinutes: Number.parseInt(e.target.value, 10),
+                })
+              }
+            >
+              {SWEEP_INTERVAL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </DkSelect>
+          </div>
+          <ToggleRow
+            title="Claimed local games"
+            description="When you claim an installed game, download its artwork so the library has it locally."
+            checked={settings.localGamesEnabled}
+            disabled={off}
+            onCheckedChange={(v) => commit({ localGamesEnabled: v })}
+          />
+        </div>
+      </SettingsCard>
+
+      <SettingsCard>
+        <SectionHeader
+          icon={Layers}
+          title="Artwork types"
+          description="Which artwork a downloaded title gets. Already-downloaded files are kept even if a type is unchecked."
+        />
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
+          {ASSET_TYPE_OPTIONS.map((option) => (
+            <DkCheckbox
+              key={option.value}
+              label={option.label}
+              checked={settings.assetTypes.includes(option.value)}
+              disabled={off}
+              onCheckedChange={(checked) => toggleType(option.value, Boolean(checked))}
+            />
+          ))}
+        </div>
+      </SettingsCard>
+
+      <SettingsCard>
+        <SectionHeader
+          icon={Gauge}
+          title="Disk safety cap"
+          description="Pause all artwork downloads when free disk drops below this threshold, so images never fill the drive."
+        />
+        {capPaused && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-200">
+            <ShieldAlert className="h-4 w-4 shrink-0" />
+            <span>
+              Downloads are paused — only {formatBytes(settings.disk.free)} free, below your{' '}
+              {settings.minFreeGb} GB cap. Free up space or raise the cap to resume.
+            </span>
+          </div>
+        )}
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <DkInput
+            label="Minimum free space (GB)"
+            type="number"
+            min={0}
+            disabled={off}
+            value={capValue}
+            onChange={(e) => setCapDraft(e.target.value)}
+            onBlur={(e) => commitCap(e.target.value)}
+            hint="0 disables the cap."
+          />
+          <div className="flex items-end pb-1 text-xs text-white/40">
+            {formatBytes(settings.disk.free)} free of {formatBytes(settings.disk.total)}
+          </div>
+        </div>
+      </SettingsCard>
+    </>
   )
 }
 
@@ -201,6 +433,8 @@ export function SettingsStoragePage() {
               </div>
             )}
           </SettingsCard>
+
+          <AutoMirrorControls masterEnabled={mirroringEnabled} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <StatCard

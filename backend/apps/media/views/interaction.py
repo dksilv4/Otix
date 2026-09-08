@@ -21,6 +21,7 @@ from apps.media.serializers.social import (
     InteractionCreateBodySerializer,
     InteractionToggleResponseSerializer,
 )
+from apps.media.services import assets as assets_service
 
 _VALID_TOGGLE_TYPES = set(INTERACTION_TOGGLE_KEYS)
 
@@ -90,6 +91,7 @@ class ClaimView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         services.set_interaction(request.user, media_id, "owned")
+        assets_service.mirror_local_game_artwork(media_id)
         return Response({"status": "claimed"}, status=status.HTTP_201_CREATED)
 
     def delete(self, request, media_id: int) -> Response:

@@ -32,6 +32,7 @@ from apps.media.views.interaction import (
     ShowWatchedView,
 )
 from apps.media.views.local_assets import (
+    ArtworkSettingsView,
     AssetFileView,
     DownloadAssetsView,
     MirroringView,
@@ -53,6 +54,7 @@ from apps.media.views.rating_review import (
 )
 
 __all__ = [
+    "ArtworkSettingsView",
     "AssetFileView",
     "CertificationListView",
     "ClaimView",

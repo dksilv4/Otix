@@ -10,6 +10,8 @@ only touch the local database.
 
 from __future__ import annotations
 
+import logging
+
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
@@ -17,6 +19,24 @@ from django.utils import timezone
 from apps.library.models import UserLocalGame
 from apps.media.models import ExternalID, MediaItem
 from apps.media.services.interaction import set_interaction
+
+logger = logging.getLogger(__name__)
+
+
+def _enqueue_local_game_mirror(media_item_id: int) -> None:
+    """Best-effort offload of a local game's artwork mirror to the worker.
+
+    The task is imported lazily: ``apps.media.tasks`` -> ``assets`` ->
+    ``apps.media.services`` eagerly pulls in this module, so a module-level task
+    import here would circle back to the partially-initialized ``tasks`` when
+    Celery autodiscovers it first.
+    """
+    try:
+        from apps.media.tasks import mirror_local_game_artwork_task
+
+        mirror_local_game_artwork_task.delay(media_item_id)
+    except Exception:  # noqa: BLE001 - an enqueue failure never breaks a sync
+        logger.exception("could not enqueue local-game mirror for %s", media_item_id)
 
 
 def resolve_imported_item(
@@ -105,6 +125,7 @@ def sync_local_games(user: AbstractBaseUser, games: list[dict]) -> dict:
                 existing.save()
         if otix_media_id:
             set_interaction(user, int(otix_media_id), "owned")
+            _enqueue_local_game_mirror(int(otix_media_id))
     deleted = 0
     for key, existing in list(existing_by_key.items()):
         if key not in incoming_keys:

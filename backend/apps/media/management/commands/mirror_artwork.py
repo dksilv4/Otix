@@ -2,14 +2,13 @@
 
 Wraps ``assets_service.sweep_unmirrored_media`` so an operator can drain catalog
 items that have remote primary artwork but no local copy yet, without waiting for
-the ``mirror-discover-artwork`` beat task. Respects the server-wide mirroring
-switch (off => the sweep is a no-op reporting zeroes). ``--limit`` defaults to
-``MIRROR_SWEEP_LIMIT``.
+the ``mirror-discover-artwork`` beat task. Respects the server-wide mirroring +
+discover toggles (either off => the sweep is a no-op reporting zeroes).
+``--limit`` defaults to the admin-configured ``sweep_limit()``.
 """
 
 from __future__ import annotations
 
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from apps.media.services import assets as assets_service
@@ -22,8 +21,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--limit",
             type=int,
-            default=settings.MIRROR_SWEEP_LIMIT,
-            help="Max items to mirror this run (default: MIRROR_SWEEP_LIMIT).",
+            default=None,
+            help="Max items to mirror this run (default: the configured sweep limit).",
         )
 
     def handle(self, *args, **options) -> None:
