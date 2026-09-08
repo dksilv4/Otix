@@ -211,25 +211,37 @@ def mirror_media_artwork(media_item_id: int) -> bool:
 
 
 def sweep_unmirrored_media(limit: int = 50) -> dict:
-    """Mirror artwork for the highest-profile items that lack a local copy.
+    """Mirror artwork for the highest-profile items with an uncovered type.
 
-    Repeatedly drains catalog items that carry any remote primary-type artwork
-    URL but no locally mirrored copy yet, highest-popularity first, mirroring up
-    to ``limit`` items per run. Gated on the mirroring switch (off => no-op).
-    Drives the ``mirror_discover_artwork`` beat task and ``mirror_artwork``
-    operator command, covering discover/feed titles that were never fetched.
+    An item counts as a candidate only when it has a primary type whose artwork
+    is entirely remote — that is, a type it carries a URL for but has no local
+    copy of at all. Items that already mirror their best per type but still hold
+    leftover lower-scored sibling URLs (TMDB ships many backdrops/logos per
+    title) are NOT re-scanned: only the single best per type is ever mirrored,
+    so re-visiting them would burn a sweep slot and download nothing. Highest
+    popularity first, up to ``limit`` items per run. Gated on the mirroring
+    switch (off => no-op). Drives the ``mirror_discover_artwork`` beat task and
+    the ``mirror_artwork`` operator command.
     """
     if not mirroring_enabled():
         return {"scanned": 0, "mirrored": 0, "bytes": 0}
-    candidate_ids = (
-        MediaAsset.objects.filter(
-            asset_type__in=PRIMARY_ASSET_TYPES,
-            local_name__isnull=True,
-        )
-        .exclude(url="")
-        .values_list("media_item_id", flat=True)
-        .distinct()
-    )
+    rows = MediaAsset.objects.filter(
+        asset_type__in=PRIMARY_ASSET_TYPES,
+    ).values_list("media_item_id", "asset_type", "local_name", "url")
+    present: dict[int, set[str]] = {}
+    covered: dict[int, set[str]] = {}
+    for media_item_id, asset_type, local_name, url in rows:
+        present.setdefault(media_item_id, set())
+        covered.setdefault(media_item_id, set())
+        if url:
+            present[media_item_id].add(asset_type)
+        if local_name:
+            covered[media_item_id].add(asset_type)
+    candidate_ids = [
+        item_id
+        for item_id, types in present.items()
+        if types.difference(covered[item_id])
+    ]
     candidates = (
         MediaItem.objects.filter(pk__in=candidate_ids)
         .order_by("-popularity", "id")[:limit]

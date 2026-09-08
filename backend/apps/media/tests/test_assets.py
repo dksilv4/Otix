@@ -573,3 +573,41 @@ class SweepUnmirroredMediaTests(AssetTestCase):
             report = sweep_unmirrored_media(limit=10)
         self.assertEqual(report, {"scanned": 0, "mirrored": 0, "bytes": 0})
         client.assert_not_called()
+
+    def test_skips_item_whose_type_is_covered_despite_remote_siblings(self) -> None:
+        # Regression: TMDB ships several backdrops/logos per title. Once the
+        # best of a type is mirrored, leftover lower-scored sibling URLs must
+        # not keep the item a candidate (it would burn a slot and download 0).
+        item = self._item("Covered", 100)
+        self._poster(item, url="http://img.example/best.png", local_name="best.png")
+        MediaAsset.objects.create(
+            media_item=item,
+            asset_type="poster",
+            url="http://img.example/dup.png",
+            score=50,
+        )
+
+        with mock.patch("httpx.Client") as client:
+            report = sweep_unmirrored_media(limit=10)
+        self.assertEqual(report, {"scanned": 0, "mirrored": 0, "bytes": 0})
+        client.assert_not_called()
+
+    def test_mirrors_only_the_still_uncovered_type(self) -> None:
+        # One type already mirrored (poster), one entirely remote (backdrop):
+        # the item is still a candidate and the sweep fills the backdrop gap.
+        item = self._item("Partial", 90)
+        self._poster(item, url="http://img.example/poster.png", local_name="poster.png")
+        MediaAsset.objects.create(
+            media_item=item,
+            asset_type="backdrop",
+            url="http://img.example/backdrop.png",
+            score=50,
+        )
+
+        with _patch_http(_FakeResponse(PNG)):
+            report = sweep_unmirrored_media(limit=10)
+        self.assertEqual(report["scanned"], 1)
+        self.assertEqual(report["mirrored"], 1)
+        backdrop = MediaAsset.objects.get(media_item=item, asset_type="backdrop")
+        backdrop.refresh_from_db()
+        self.assertTrue(backdrop.local_name)
