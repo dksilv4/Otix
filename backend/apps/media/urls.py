@@ -12,6 +12,7 @@ never shadowed by ``<media_id>``.
 from django.urls import path
 
 from apps.media.views import (
+    ArtworkSelectionView,
     ArtworkSettingsView,
     CertificationListView,
     ClaimView,
@@ -80,6 +81,11 @@ urlpatterns = [
         "admin/media-items/<int:media_id>/download-assets",
         DownloadAssetsView.as_view(),
         name="admin-download-assets",
+    ),
+    path(
+        "admin/media-items/<int:media_id>/assets/<int:asset_id>/select",
+        ArtworkSelectionView.as_view(),
+        name="admin-artwork-select",
     ),
     path("admin/mirroring", MirroringView.as_view(), name="admin-mirroring"),
     path(

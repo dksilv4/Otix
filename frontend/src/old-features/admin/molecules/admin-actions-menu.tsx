@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { useToast } from '@/old-features/ui/molecules/toast'
@@ -6,9 +7,7 @@ import { apiClient } from '@/lib/api/client'
 import { connectTaskSseStream } from '@/lib/api/sse-client'
 import { mediaKeys } from '@media/queries/media-keys'
 import { useMirroring } from '@/features/media/hooks/use-media-admin-settings'
-import { AdminEditModal } from '../organisms/admin-edit-modal'
 import { cn, formatBytes } from '@/lib/utils'
-import { useModal } from '@/lib/modals'
 import { Shield, Pencil, Download, RefreshCw, ChevronDown, X } from 'lucide-react'
 import type { MediaItemDetail } from '@media/queries/media-queries'
 import './admin-actions-menu.scss'
@@ -31,7 +30,7 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
   const { user } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const { openModal } = useModal()
+  const navigate = useNavigate()
   const mirroring = useMirroring(Boolean(user?.isAdmin))
   const [menuOpen, setMenuOpen] = useState(false)
   const [downloadingImages, setDownloadingImages] = useState(false)
@@ -176,13 +175,16 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
               <button
                 type="button"
                 onClick={() => {
-                  const close = openModal(<AdminEditModal mediaId={mediaId} media={media} onClose={() => close()} />)
+                  navigate({
+                    to: '/media/$mediaType/$mediaId/manage',
+                    params: { mediaType: media.mediaType, mediaId },
+                  })
                   setMenuOpen(false)
                 }}
                 className="dk-admin-actions__dropdown-item"
               >
                 <Pencil className="h-4 w-4 text-amber-400" />
-                Edit Media
+                Manage Media
               </button>
               <button
                 type="button"

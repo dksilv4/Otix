@@ -64,6 +64,51 @@ class DownloadAssetsView(APIView):
         return Response(result, status=status.HTTP_200_OK)
 
 
+_PRIMARY_ASSET_TYPES = assets_service.PRIMARY_ASSET_TYPES
+
+
+class ArtworkSelectionView(APIView):
+    """``PUT``/``DELETE /media/admin/media-items/<id>/assets/<id>/select`` (admin).
+
+    PUT pins an asset as the admin-chosen artwork for its type (clearing any
+    sibling selection) and, when mirroring is enabled, mirrors that exact image
+    while dropping the previous type-local copy. DELETE removes the pin so
+    normal scoring picks the artwork again.
+    """
+
+    permission_classes = (IsAuthenticated, IsAdminUser)
+
+    def _resolve(self, media_id: int, asset_id: int) -> MediaAsset:
+        asset = (
+            MediaAsset.objects.select_related("media_item")
+            .filter(pk=asset_id, media_item_id=media_id)
+            .first()
+        )
+        if asset is None:
+            raise NotFound("Asset not found for this media item")
+        if asset.asset_type.lower() not in _PRIMARY_ASSET_TYPES:
+            raise ValidationError(
+                {"asset_id": f"asset_type '{asset.asset_type}' cannot be pinned"}
+            )
+        return asset
+
+    def put(self, request, media_id: int, asset_id: int) -> Response:
+        asset = self._resolve(media_id, asset_id)
+        assets_service.select_asset(asset.media_item, asset)
+        return Response(
+            {
+                "asset_id": asset.id,
+                "is_selected": True,
+                "mirrored": bool(asset.local_name),
+            }
+        )
+
+    def delete(self, request, media_id: int, asset_id: int) -> Response:
+        asset = self._resolve(media_id, asset_id)
+        assets_service.clear_asset_selection(asset)
+        return Response({"asset_id": asset.id, "is_selected": False})
+
+
 class StorageUsageView(APIView):
     """``GET /media/admin/storage`` — downloaded-library usage (admin)."""
 

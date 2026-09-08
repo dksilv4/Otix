@@ -50,6 +50,9 @@ def _best_asset(item: MediaItem, asset_type: str) -> MediaAsset | None:
 
 
 def _asset_outranks(candidate: MediaAsset, current: MediaAsset) -> bool:
+    # An admin-pinned row always wins, whatever its score/mirror state.
+    if bool(candidate.is_selected) != bool(current.is_selected):
+        return bool(candidate.is_selected)
     if (candidate.score or 0) != (current.score or 0):
         return (candidate.score or 0) > (current.score or 0)
     if bool(candidate.local_name) != bool(current.local_name):

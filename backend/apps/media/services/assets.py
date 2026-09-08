@@ -383,6 +383,53 @@ def mirror_local_game_artwork(media_item_id: int) -> bool:
     return _mirror_item(media_item_id, "local game")
 
 
+def current_primary_asset_ids(media_item: MediaItem) -> set[int]:
+    """Pks of the winning asset per primary type (flags what the UI serves)."""
+    return {
+        best.pk
+        for asset_type in PRIMARY_ASSET_TYPES
+        if (best := _best_asset(media_item, asset_type)) is not None
+    }
+
+
+def select_asset(media_item: MediaItem, asset: MediaAsset) -> bool:
+    """Pin ``asset`` as the chosen artwork for its type (admin override).
+
+    Clears any sibling selection of the same type first, then mirrors the choice
+    when the master switch is on. An explicit pick mirrors regardless of the
+    per-type auto toggle (``enabled_asset_types()``) — a manual action always
+    downloads.
+    """
+    MediaAsset.objects.filter(
+        media_item=media_item, asset_type__iexact=asset.asset_type
+    ).exclude(pk=asset.pk).update(is_selected=False)
+    asset.is_selected = True
+    asset.save(update_fields=["is_selected"])
+    if mirroring_enabled():
+        _mirror_selected_asset(media_item, asset)
+    return True
+
+
+def clear_asset_selection(asset: MediaAsset) -> None:
+    """Drop the admin pin so scoring picks the artwork again."""
+    if not asset.is_selected:
+        return
+    asset.is_selected = False
+    asset.save(update_fields=["is_selected"])
+
+
+def _mirror_selected_asset(media_item: MediaItem, asset: MediaAsset) -> int | None:
+    """Mirror the admin-pinned asset, dropping sibling local copies of its type."""
+    stale = MediaAsset.objects.filter(
+        media_item=media_item,
+        asset_type__iexact=asset.asset_type,
+        local_name__isnull=False,
+    ).exclude(pk=asset.pk)
+    for sibling in stale.iterator():
+        _discard_local_copy(sibling)
+    return download_asset(asset)
+
+
 def sweep_unmirrored_media(limit: int | None = None) -> dict:
     """Mirror artwork for the highest-profile items with an uncovered type.
 

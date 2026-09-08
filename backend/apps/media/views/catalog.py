@@ -13,7 +13,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.media.models import MediaAsset, MediaItem
+from apps.media.models import MediaItem
 from apps.media.serializers import (
     CompanyOutSerializer,
     GenreOutSerializer,
@@ -21,6 +21,7 @@ from apps.media.serializers import (
     MediaItemDetailSerializer,
     MediaItemSummarySerializer,
 )
+from apps.media.services import assets as assets_service
 from apps.media.services import catalog as catalog_service
 from core.pagination import DefaultPagination
 
@@ -150,14 +151,21 @@ class MediaAssetsView(APIView):
     def get(self, request, media_type: str, media_id: int) -> Response:
         if not getattr(request.user, "is_staff", False):
             raise PermissionDenied("Admin privileges required")
-        if catalog_service.media_item_or_none(media_id) is None:
-            raise NotFound(MEDIA_ITEM_NOT_FOUND)
-        assets = MediaAsset.objects.filter(media_item_id=media_id).order_by(
-            "asset_type", "lang", "-score"
+        item = (
+            MediaItem.objects.filter(pk=media_id)
+            .prefetch_related("assets")
+            .first()
         )
+        if item is None:
+            raise NotFound(MEDIA_ITEM_NOT_FOUND)
+        assets = item.assets.all().order_by("asset_type", "lang", "-score")
         return Response(
             {
-                "items": MediaAssetOutSerializer(assets, many=True).data,
+                "items": MediaAssetOutSerializer(
+                    assets,
+                    many=True,
+                    context={"current_ids": assets_service.current_primary_asset_ids(item)},
+                ).data,
                 "total": assets.count(),
             }
         )

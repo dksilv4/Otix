@@ -32,6 +32,12 @@ export interface MediaAsset {
   style: string | null
   score: number | null
   provider: string | null
+  /** Admin pinned this asset as the artwork for its type. */
+  isSelected: boolean
+  /** Mirrored file name; non-null means a local copy exists. */
+  localName: string | null
+  /** This asset is what catalog resolution currently serves for its type. */
+  isCurrent: boolean
 }
 
 export interface MediaAssetList {
@@ -75,6 +81,39 @@ export function useMediaAssets(mediaType: string, mediaId: string) {
       return data
     },
     staleTime: 60_000,
+  })
+}
+
+export interface ArtworkSelectionResult {
+  assetId: string
+  isSelected: boolean
+  mirrored: boolean
+}
+
+/** Pin/unpin an asset as the admin-chosen artwork for its type. */
+export function useSetArtworkSelection(_mediaType: string, mediaId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      assetId,
+      selected,
+    }: {
+      assetId: string
+      selected: boolean
+    }): Promise<ArtworkSelectionResult> => {
+      const url = `/media/admin/media-items/${mediaId}/assets/${assetId}/select`
+      if (selected) {
+        const { data } = await apiClient.put<ArtworkSelectionResult>(url)
+        return data
+      }
+      await apiClient.delete(url)
+      return { assetId, isSelected: false, mirrored: false }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminEditKeys.forMedia(mediaId) })
+      queryClient.removeQueries({ queryKey: ['media'] })
+      queryClient.removeQueries({ queryKey: ['discover'] })
+    },
   })
 }
 

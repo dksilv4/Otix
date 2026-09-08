@@ -3,6 +3,7 @@ import { createRoute } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 
 const MediaDetailPage = lazy(() => import('@media/pages/media-detail-page').then(m => ({ default: m.MediaDetailPage })))
+const MediaManagePage = lazy(() => import('@media/pages/media-manage-page').then(m => ({ default: m.MediaManagePage })))
 
 export function createMediaRoutes(rootRoute: AnyRoute) {
   const mediaDetailRoute = createRoute({
@@ -20,5 +21,13 @@ export function createMediaRoutes(rootRoute: AnyRoute) {
     },
   })
 
-  return [mediaDetailRoute]
+  // Admin-only full-page artwork chooser + metadata editor (replaces the old
+  // per-media Edit modal). The page gates itself to admins.
+  const mediaManageRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/media/$mediaType/$mediaId/manage',
+    component: MediaManagePage,
+  })
+
+  return [mediaDetailRoute, mediaManageRoute]
 }

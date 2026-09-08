@@ -31,6 +31,12 @@ class MediaAsset(BaseModel):
     local_size = models.BigIntegerField(null=True, blank=True)
     downloaded_at = models.DateTimeField(null=True, blank=True)
 
+    # Admin-pinned artwork. When set, catalog ``_best_asset`` returns this row
+    # ahead of score/mirror/pk, so serving AND mirroring follow the choice.
+    # One-selected-per-(media_item, asset_type) is enforced by the selection
+    # service (``assets.select_asset``), not a DB constraint.
+    is_selected = models.BooleanField(default=False)
+
     class Meta(BaseModel.Meta):
         db_table = "media_assets"
         constraints = [

@@ -14,7 +14,7 @@ from datetime import date
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
-from apps.media.models import Album, Episode, Game, Movie, Season, Show, Track
+from apps.media.models import Album, Episode, Game, MediaAsset, Movie, Season, Show, Track
 
 
 class GenreOutSerializer(serializers.Serializer):
@@ -85,6 +85,13 @@ class MediaAssetOutSerializer(serializers.Serializer):
     style = serializers.CharField(allow_null=True)
     score = serializers.IntegerField(allow_null=True)
     provider = serializers.CharField(allow_null=True)
+    # Admin-pinned flag + mirror state, surfaced to the artwork chooser.
+    is_selected = serializers.BooleanField()
+    local_name = serializers.CharField(allow_null=True)
+    is_current = serializers.SerializerMethodField()
+
+    def get_is_current(self, obj: MediaAsset) -> bool:
+        return obj.pk in self.context.get("current_ids", ())
 
 
 class EpisodeOutSerializer(serializers.ModelSerializer):

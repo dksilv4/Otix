@@ -28,6 +28,8 @@ from apps.media.services.assets import (
     MIN_FREE_GB_KEY,
     SWEEP_LAST_RUN_KEY,
     asset_dir,
+    clear_asset_selection,
+    current_primary_asset_ids,
     discover_enabled,
     disk_safe,
     download_asset,
@@ -40,6 +42,7 @@ from apps.media.services.assets import (
     mirror_media_artwork,
     mirroring_enabled,
     record_sweep_run,
+    select_asset,
     set_asset_types,
     set_discover_enabled,
     set_fetch_enabled,
@@ -891,4 +894,160 @@ class ArtworkSettingsEndpointTests(AssetTestCase):
         self.assertEqual(self.user_client.get(self._url()).status_code, 403)
         self.assertEqual(
             self.user_client.put(self._url(), {"fetch_enabled": False}).status_code, 403
+        )
+
+
+class ArtworkSelectionServiceTests(AssetTestCase):
+    """Admin-pinning semantics: selection, ranking override, mirroring."""
+
+    def test_select_asset_pins_and_clears_same_type_siblings(self) -> None:
+        set_mirroring_enabled(False)
+        low = self.add_asset(url="http://img.example/a.png", score=50)
+        high = self.add_asset(url="http://img.example/b.png", score=90)
+        backdrop = self.add_asset(
+            asset_type="backdrop", url="http://img.example/bd.png", score=10
+        )
+        select_asset(self.item, low)
+        low.refresh_from_db()
+        high.refresh_from_db()
+        backdrop.refresh_from_db()
+        self.assertTrue(low.is_selected)
+        self.assertFalse(high.is_selected)
+        self.assertFalse(backdrop.is_selected)
+
+    def test_best_asset_prefers_selected_over_higher_score(self) -> None:
+        set_mirroring_enabled(False)
+        high = self.add_asset(url="http://img.example/high.png", score=90)
+        low = self.add_asset(url="http://img.example/low.png", score=50)
+        select_asset(self.item, low)
+        self.assertEqual(_best_asset(self.item, "poster").pk, low.pk)
+        self.assertEqual(_pick_asset(self.item, "poster"), "http://img.example/low.png")
+        # dropping the pin hands the slot back to the higher score
+        clear_asset_selection(low)
+        self.assertEqual(_best_asset(self.item, "poster").pk, high.pk)
+
+    def test_clear_asset_selection_leaves_other_types_alone(self) -> None:
+        set_mirroring_enabled(False)
+        poster = self.add_asset(url="http://img.example/p.png", score=80)
+        backdrop = self.add_asset(
+            asset_type="backdrop", url="http://img.example/bd.png", score=5
+        )
+        select_asset(self.item, backdrop)
+        clear_asset_selection(backdrop)
+        poster.refresh_from_db()
+        self.assertFalse(poster.is_selected)  # never selected, untouched
+
+    def test_current_primary_asset_ids_follows_selection(self) -> None:
+        set_mirroring_enabled(False)
+        best = self.add_asset(url="http://img.example/a.png", score=90)
+        pinned = self.add_asset(url="http://img.example/pinned.png", score=10)
+        backdrop = self.add_asset(
+            asset_type="backdrop", url="http://img.example/bd.png", score=70
+        )
+        select_asset(self.item, pinned)
+        self.assertEqual(current_primary_asset_ids(self.item), {pinned.pk, backdrop.pk})
+        clear_asset_selection(pinned)
+        self.assertEqual(current_primary_asset_ids(self.item), {best.pk, backdrop.pk})
+
+    def test_select_mirrors_choice_and_discards_previous_local(self) -> None:
+        stale_file = "stale-poster.png"
+        (asset_dir() / stale_file).write_bytes(PNG)
+        former = self.add_asset(
+            url="http://img.example/former.png",
+            score=90,
+            local_name=stale_file,
+        )
+        chosen = self.add_asset(url="http://img.example/chosen.png", score=40)
+        with _patch_http(_FakeResponse(PNG)):
+            select_asset(self.item, chosen)
+        former.refresh_from_db()
+        chosen.refresh_from_db()
+        self.assertTrue(chosen.is_selected)
+        self.assertFalse(former.is_selected)
+        self.assertTrue(chosen.local_name)
+        self.assertTrue(chosen.local_name.endswith(".png"))
+        self.assertTrue((asset_dir() / chosen.local_name).is_file())
+        # the previously mirrored sibling was discarded
+        self.assertIsNone(former.local_name)
+        self.assertFalse((asset_dir() / stale_file).exists())
+
+    def test_select_does_not_mirror_when_master_off(self) -> None:
+        set_mirroring_enabled(False)
+        asset = self.add_asset(url="http://img.example/x.png", score=50)
+        select_asset(self.item, asset)
+        asset.refresh_from_db()
+        self.assertTrue(asset.is_selected)
+        self.assertIsNone(asset.local_name)
+
+
+class ArtworkSelectionEndpointTests(AssetTestCase):
+    """``/api/v1/media/admin/media-items/<id>/assets/<id>/select`` PUT/DELETE."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        set_mirroring_enabled(False)  # pin semantics here, downloads tested below
+
+    def _url(self, asset_id: int) -> str:
+        return (
+            f"/api/v1/media/admin/media-items/{self.item.pk}"
+            f"/assets/{asset_id}/select"
+        )
+
+    def test_put_selects_and_delete_clears(self) -> None:
+        asset = self.add_asset(url="http://img.example/p.png", score=50)
+        put = self.staff_client.put(self._url(asset.pk))
+        self.assertEqual(put.status_code, 200)
+        self.assertEqual(put.data["is_selected"], True)
+        asset.refresh_from_db()
+        self.assertTrue(asset.is_selected)
+
+        delete = self.staff_client.delete(self._url(asset.pk))
+        self.assertEqual(delete.status_code, 200)
+        self.assertEqual(delete.data["is_selected"], False)
+        asset.refresh_from_db()
+        self.assertFalse(asset.is_selected)
+
+    def test_selecting_clears_sibling(self) -> None:
+        a = self.add_asset(url="http://img.example/a.png", score=90)
+        b = self.add_asset(url="http://img.example/b.png", score=50)
+        self.staff_client.put(self._url(b.pk))
+        a.refresh_from_db()
+        b.refresh_from_db()
+        self.assertFalse(a.is_selected)
+        self.assertTrue(b.is_selected)
+
+    def test_put_mirrors_when_mirroring_enabled(self) -> None:
+        set_mirroring_enabled(True)
+        asset = self.add_asset(url="http://img.example/p.png", score=50)
+        with _patch_http(_FakeResponse(PNG)):
+            response = self.staff_client.put(self._url(asset.pk))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["mirrored"], True)
+        asset.refresh_from_db()
+        self.assertTrue(asset.local_name)
+
+    def test_gating_and_validation(self) -> None:
+        asset = self.add_asset(url="http://img.example/p.png", score=50)
+        self.assertEqual(self.client.put(self._url(asset.pk)).status_code, 401)
+        self.assertEqual(self.user_client.put(self._url(asset.pk)).status_code, 403)
+
+        # only primary artwork types can be pinned
+        shot = self.add_asset(
+            asset_type="screenshot", url="http://img.example/sh.png", score=5
+        )
+        self.assertEqual(self.staff_client.put(self._url(shot.pk)).status_code, 400)
+
+        # asset must belong to the media item
+        other_item = MediaItem.objects.create(
+            media_type="movie", title="Other", slug="other-assets"
+        )
+        foreign = MediaAsset.objects.create(
+            media_item=other_item,
+            asset_type="poster",
+            url="http://img.example/foreign.png",
+            score=5,
+        )
+        self.assertEqual(self.staff_client.put(self._url(foreign.pk)).status_code, 404)
+        self.assertEqual(
+            self.staff_client.delete(self._url(foreign.pk)).status_code, 404
         )
