@@ -99,37 +99,78 @@ def set_mirroring_enabled(enabled: bool) -> None:
     )
 
 
+def _remove_local_file(asset: MediaAsset) -> int:
+    """Unlink the asset's mirrored file if present; returns bytes removed."""
+    if not asset.local_name:
+        return 0
+    name = Path(asset.local_name).name
+    if name != asset.local_name:
+        return 0
+    path = asset_dir() / name
+    if not path.is_file():
+        return 0
+    size = path.stat().st_size
+    path.unlink()
+    return size
+
+
+def _clear_asset_row(asset: MediaAsset) -> None:
+    asset.local_name = None
+    asset.local_size = None
+    asset.downloaded_at = None
+    asset.save(update_fields=["local_name", "local_size", "downloaded_at"])
+
+
+def _discard_local_copy(asset: MediaAsset) -> int:
+    """Remove an asset's mirrored file and clear its download fields."""
+    freed = _remove_local_file(asset)
+    _clear_asset_row(asset)
+    return freed
+
+
 def purge_downloaded_assets() -> dict:
     """Delete every locally mirrored file and clear its download fields.
 
     Best-effort per file (missing file just clears the row). Returns a summary
-    of how many assets were cleared and how many bytes were freed.
+    of how many files were removed and how many bytes were freed.
     """
-    assets = MediaAsset.objects.filter(local_name__isnull=False)
     freed = 0
     deleted = 0
-    for asset in assets.iterator():
-        name = Path(asset.local_name).name
-        if asset.local_name and name == asset.local_name:
-            path = asset_dir() / name
-            if path.is_file():
-                freed += path.stat().st_size
-                path.unlink()
-                deleted += 1
-        asset.local_name = None
-        asset.local_size = None
-        asset.downloaded_at = None
-        asset.save(update_fields=["local_name", "local_size", "downloaded_at"])
+    for asset in MediaAsset.objects.filter(local_name__isnull=False).iterator():
+        asset_freed = _discard_local_copy(asset)
+        freed += asset_freed
+        if asset_freed > 0:
+            deleted += 1
     return {"deleted": deleted, "bytes_freed": freed}
 
 
 def download_primary_assets(media_item: MediaItem) -> dict:
-    """Mirror the single best asset per primary type for a media item."""
+    """Mirror the single best asset per primary type for a media item.
+
+    Reconciles each type so exactly one row carries the local copy: if an
+    earlier run mirrored a row that is no longer the best (e.g. a duplicate
+    from a score tie), its file is deleted and its download fields cleared
+    before the current best is mirrored. When no asset of the type resolves,
+    any existing local copy is left untouched.
+    """
     downloaded_types: list[str] = []
     count = 0
     total_bytes = 0
     for asset_type in PRIMARY_ASSET_TYPES:
         best = _best_asset(media_item, asset_type)
+        stale = (
+            MediaAsset.objects.filter(
+                media_item=media_item,
+                asset_type__iexact=asset_type,
+                local_name__isnull=False,
+            )
+            if best is not None
+            else MediaAsset.objects.none()
+        )
+        if best is not None:
+            stale = stale.exclude(pk=best.pk)
+        for asset in stale.iterator():
+            _discard_local_copy(asset)
         if best is None:
             continue
         written = download_asset(best)

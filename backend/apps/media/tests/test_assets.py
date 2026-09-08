@@ -364,3 +364,82 @@ class PurgeAssetsTests(AssetTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["deleted"], 0)
         self.assertEqual(response.data["bytes_freed"], 0)
+
+
+class PrimaryReconcileTests(AssetTestCase):
+    """``download_primary_assets`` keeps exactly one mirrored copy per type."""
+
+    def _logo(
+        self,
+        url: str,
+        score: int,
+        *,
+        local_name: str | None = None,
+    ) -> MediaAsset:
+        return MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="logo",
+            url=url,
+            score=score,
+            local_name=local_name,
+            local_size=len(PNG) if local_name else None,
+            downloaded_at=timezone.now() if local_name else None,
+        )
+
+    def test_discards_stale_copy_when_a_higher_scored_asset_becomes_best(self) -> None:
+        stale = self._logo(
+            "http://img.example/old.png", score=80, local_name="old-logo.png"
+        )
+        (asset_dir() / "old-logo.png").write_bytes(PNG)
+        best = self._logo("http://img.example/new.png", score=90)
+
+        with _patch_http(_FakeResponse(PNG)):
+            report = download_primary_assets(self.item)
+
+        self.assertEqual(report["downloaded"], 1)
+        self.assertEqual(report["types"], ["logo"])
+        stale.refresh_from_db()
+        self.assertIsNone(stale.local_name)
+        self.assertFalse((asset_dir() / "old-logo.png").exists())
+        best.refresh_from_db()
+        self.assertTrue(best.local_name)
+        self.assertTrue((asset_dir() / best.local_name).is_file())
+
+    def test_collapses_existing_equal_score_duplicates(self) -> None:
+        first = self._logo(
+            "http://img.example/a.png", score=90, local_name="a.png"
+        )
+        (asset_dir() / "a.png").write_bytes(PNG)
+        second = self._logo(
+            "http://img.example/b.png", score=90, local_name="b.png"
+        )
+        (asset_dir() / "b.png").write_bytes(PNG)
+
+        with _patch_http(_FakeResponse(PNG)):
+            report = download_primary_assets(self.item)
+
+        # tie broken deterministically toward the lower pk / already-mirrored row
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertTrue(first.local_name)
+        self.assertIsNone(second.local_name)
+        self.assertTrue((asset_dir() / "a.png").exists())
+        self.assertFalse((asset_dir() / "b.png").exists())
+        self.assertEqual(report["downloaded"], 1)
+
+    def test_keeps_existing_copy_when_best_is_already_mirrored(self) -> None:
+        # Regression guard: reconcile must not purge a best that is already the
+        # mirrored one (idempotent re-download keeps the file, no HTTP call).
+        best = self._logo(
+            "http://img.example/only.png", score=50, local_name="only.png"
+        )
+        (asset_dir() / "only.png").write_bytes(PNG)
+
+        with mock.patch("httpx.Client") as client:
+            report = download_primary_assets(self.item)
+
+        best.refresh_from_db()
+        self.assertEqual(best.local_name, "only.png")
+        self.assertTrue((asset_dir() / "only.png").exists())
+        client.assert_not_called()
+        self.assertEqual(report["downloaded"], 1)
