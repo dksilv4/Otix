@@ -64,19 +64,22 @@ if TYPE_CHECKING:
 # vocabulary/subtype fields the increment-50 pass maps (game modes carry the
 # multiplayer flag; the official website lands on Game.website). Since increment
 # 55 the set also embeds the screenshot/artwork/video image-ids the asset + video
-# hydrators map; ``age_ratings`` returns as an id list the async driver resolves
-# through a separate IGDB fetch before seeding.
+# hydrators map; the screenshot/artwork dims are included so the backdrop ingest
+# can confirm landscape framing (IGDB artworks mix wide key art with near-square
+# white-bg logo cards). ``age_ratings`` returns as an id list the async driver
+# resolves through a separate IGDB fetch before seeding.
 GAME_HYDRATION_FIELDS = (
     "id,name,slug,cover.image_id,first_release_date,storyline,summary,"
     "status,game_type,franchise.name,parent_game.name,"
     "websites.url,websites.type,"
     "platforms.name,genres.name,game_modes.name,"
-    "screenshots.image_id,artworks.image_id,"
+    "screenshots.image_id,screenshots.width,screenshots.height,"
+    "artworks.image_id,artworks.width,artworks.height,"
     "videos.video_id,videos.name,age_ratings,"
     "involved_companies.developer,involved_companies.publisher,"
     "involved_companies.porting,involved_companies.supporting,"
     "involved_companies.company.name,involved_companies.company.slug,"
-    "aggregated_rating,rating,"
+    "aggregated_rating,aggregated_rating_count,rating,rating_count,"
     "external_games.external_game_source,external_games.uid"
 )
 
@@ -91,6 +94,42 @@ _IGDB_STATUS = {
     7: "rumored",
     8: "delisted",
 }
+
+# IGDB ``game_type`` (renamed from ``category``; same enum) -> human label.
+# Curated game rails keep only ``main_game`` so DLC/expansions don't surface.
+_IGDB_GAME_TYPE = {
+    0: "main_game",
+    1: "dlc_addon",
+    2: "expansion",
+    3: "bundle",
+    4: "standalone_expansion",
+    5: "mod",
+    6: "episode",
+    7: "season",
+    8: "remake",
+    9: "remaster",
+    10: "expanded_game",
+    11: "port",
+    12: "fork",
+    13: "pack",
+    14: "update",
+}
+
+
+def _game_type_label(raw: dict[str, Any]) -> str | None:
+    """Map an IGDB ``game_type``/``category`` value onto its label.
+
+    IGDB returns ``game_type`` as an int (0=main_game, 1=dlc_addon, ...). A
+    string (a defensive fallback for legacy payloads) is stored verbatim;
+    an int we cannot map is left alone rather than mislabeled.
+    """
+    cat_raw = raw.get("game_type", raw.get("category"))
+    if isinstance(cat_raw, str):
+        cat_raw = cat_raw.strip()
+        return cat_raw or None
+    if isinstance(cat_raw, (int, float)) and not isinstance(cat_raw, bool):
+        return _IGDB_GAME_TYPE.get(int(cat_raw))
+    return None
 
 # IGDB game_mode names that imply other players (anything else is single-player).
 _MULTIPLAYER_MODES = {
@@ -116,19 +155,50 @@ _AGE_RATING_ORG_MAP: dict[int, tuple[str, str]] = {
 # IGDB age-rating ``rating_category`` values -> the per-org rating label.
 _AGE_RATING_LABEL_MAP: dict[int, str] = {
     # ESRB (org=1)
-    1: "RP", 2: "EC", 3: "E", 4: "E10+", 5: "T", 6: "M", 7: "AO",
+    1: "RP",
+    2: "EC",
+    3: "E",
+    4: "E10+",
+    5: "T",
+    6: "M",
+    7: "AO",
     # PEGI (org=2)
-    8: "3", 9: "7", 10: "12", 11: "16", 12: "18",
+    8: "3",
+    9: "7",
+    10: "12",
+    11: "16",
+    12: "18",
     # CERO (org=3)
-    13: "A", 14: "B", 15: "C", 16: "D", 17: "Z",
+    13: "A",
+    14: "B",
+    15: "C",
+    16: "D",
+    17: "Z",
     # USK (org=4)
-    18: "0", 19: "6", 20: "12", 21: "16", 22: "18",
+    18: "0",
+    19: "6",
+    20: "12",
+    21: "16",
+    22: "18",
     # GRAC (org=5)
-    23: "ALL", 24: "12+", 25: "15+", 26: "18+",
+    23: "ALL",
+    24: "12+",
+    25: "15+",
+    26: "18+",
     # ClassInd (org=6)
-    27: "ER", 28: "L", 29: "10", 30: "12", 31: "14", 32: "16", 33: "18",
+    27: "ER",
+    28: "L",
+    29: "10",
+    30: "12",
+    31: "14",
+    32: "16",
+    33: "18",
     # ACB (org=7)
-    34: "G", 35: "PG", 36: "M", 37: "MA15+", 38: "R18+",
+    34: "G",
+    35: "PG",
+    36: "M",
+    37: "MA15+",
+    38: "R18+",
 }
 
 _MEDIA_CT: ContentType | None = None
@@ -189,23 +259,55 @@ def _image_url(image_id: Any, size: str) -> str | None:
     return f"https://images.igdb.com/igdb/image/upload/{size}/{image_id}.jpg"
 
 
+# IGDB game "artworks" mix wide scenic key art with near-square, white-background
+# logo cards. Backdrops must be clearly landscape or those logo cards leak into
+# the backdrop set (rendering as "logos in the backdrops"). Screenshots aren't
+# filtered. Stored dims let the chooser reason about framing without refetching.
+_BACKDROP_MIN_ASPECT = 1.4
+
+
 def _upsert_game_image_assets(
-    media: MediaItem, raw_entries: Any, *, asset_type: str, label: str, size: str
+    media: MediaItem,
+    raw_entries: Any,
+    *,
+    asset_type: str,
+    label: str,
+    size: str,
+    min_aspect: float | None = None,
 ) -> None:
-    """Store IGDB screenshots/artworks as MediaAsset rows (add-only)."""
+    """Store IGDB screenshots/artworks as MediaAsset rows (add-only).
+
+    When ``min_aspect`` is set an entry is stored only if it carries numeric
+    width/height proving aspect >= ``min_aspect``; entries without usable dims
+    are dropped because they cannot be shown to fit the requested framing.
+    """
     if not isinstance(raw_entries, list):
         return
     for i, entry in enumerate(raw_entries[:10]):
         if not isinstance(entry, dict):
             continue
+        width = entry.get("width")
+        height = entry.get("height")
+        w = int(width) if isinstance(width, (int, float)) and width > 0 else None
+        h = (
+            int(height)
+            if isinstance(height, (int, float)) and height > 0
+            else None
+        )
+        if min_aspect is not None and (w is None or h is None or w / h < min_aspect):
+            continue
         url = _image_url(entry.get("image_id"), size)
         if not url:
             continue
+        defaults = {"label": label, "provider": "igdb", "score": 90 - i * 5}
+        if w is not None and h is not None:
+            defaults["width"] = w
+            defaults["height"] = h
         MediaAsset.objects.get_or_create(
             media_item=media,
             asset_type=asset_type,
             url=url,
-            defaults={"label": label, "provider": "igdb", "score": 90 - i * 5},
+            defaults=defaults,
         )
 
 
@@ -305,6 +407,7 @@ def seed_game_from_igdb(raw: dict[str, Any], igdb_id: int) -> int:
     game, _ = Game.objects.get_or_create(media_item_id=media.pk)
     _hydrate_game(media, game, raw)
     _top_up_media_popularity(media, raw)
+    top_up_game_ratings(media, raw)
     recompute_completeness(media)
     return media.pk
 
@@ -329,6 +432,36 @@ def _top_up_media_popularity(media: MediaItem, raw: dict[str, Any]) -> None:
         return
     media.popularity = float(proxy)
     media.save(update_fields=("popularity", "updated_at"))
+
+
+def top_up_game_ratings(media: MediaItem, raw: dict[str, Any]) -> None:
+    """Fill a game's ``avg_rating`` / ``rating_count`` from IGDB (fill-once).
+
+    The discover rail's ``top_rated`` and ``now_playing`` lists sort the catalog
+    by ``MediaItem.avg_rating`` and ``MediaItem.rating_count`` respectively; the
+    IGDB seed previously wrote neither, so those game shelves stayed empty. The
+    closest IGDB scalars are ``aggregated_rating`` (+ its count), falling back to
+    the community ``rating`` (+ count). Rows that already carry a value are left
+    alone so a later source (e.g. Steam) can own the field without a re-seed
+    clobbering it.
+    """
+    updates: list[str] = []
+    if media.avg_rating is None:
+        rating = raw.get("aggregated_rating")
+        if rating is None:
+            rating = raw.get("rating")
+        if rating:
+            media.avg_rating = float(rating)
+            updates.append("avg_rating")
+    if not media.rating_count:
+        count = raw.get("aggregated_rating_count")
+        if count is None:
+            count = raw.get("rating_count")
+        if count:
+            media.rating_count = int(count)
+            updates.append("rating_count")
+    if updates:
+        media.save(update_fields=(*updates, "updated_at"))
 
 
 def _steam_app_id(raw: dict[str, Any]) -> int | None:
@@ -384,14 +517,15 @@ def _hydrate_game(media: MediaItem, game: Game, raw: dict[str, Any]) -> None:
         raw.get("screenshots"),
         asset_type="screenshot",
         label="screenshot",
-        size="t_screenshot_big",
+        size="t_original",
     )
     _upsert_game_image_assets(
         media,
         raw.get("artworks"),
         asset_type="backdrop",
         label="clean",
-        size="t_1080p",
+        size="t_original",
+        min_aspect=_BACKDROP_MIN_ASPECT,
     )
     _upsert_game_videos(media, raw.get("videos"))
     _upsert_game_age_ratings(media, raw.get("age_rating_details"))
@@ -402,9 +536,7 @@ def _upsert_game_genres(media: MediaItem, raw_genres: Any) -> None:
     """Link IGDB ``genres`` as genre links (add-only)."""
     if not isinstance(raw_genres, list):
         return
-    existing = set(
-        MediaGenre.objects.filter(media_item=media).values_list("genre_id", flat=True)
-    )
+    existing = set(MediaGenre.objects.filter(media_item=media).values_list("genre_id", flat=True))
     for entry in raw_genres:
         if not isinstance(entry, dict):
             continue
@@ -503,9 +635,9 @@ def _apply_game_growth(game: Game, raw: dict[str, Any]) -> None:
         label = _IGDB_STATUS.get(status)
         if label and game.release_status != label:
             updates["release_status"] = label
-    game_type = raw.get("game_type")
-    if isinstance(game_type, str) and game_type.strip() and game.game_type != game_type.strip():
-        updates["game_type"] = game_type.strip()
+    label = _game_type_label(raw)
+    if label is not None and game.game_type != label:
+        updates["game_type"] = label
     parent = raw.get("parent_game")
     if isinstance(parent, dict):
         parent_title = str(parent.get("name") or "").strip()
@@ -544,9 +676,7 @@ def _official_website(websites: Any) -> str | None:
     return urls[0]
 
 
-async def fetch_and_seed_game(
-    igdb_id: int, *, provider: IGDBProvider | None = None
-) -> int:
+async def fetch_and_seed_game(igdb_id: int, *, provider: IGDBProvider | None = None) -> int:
     """Fetch an IGDB game through the async client, then seed it."""
     if provider is None:
         from core.providers.igdb import IGDBProvider  # local: avoid eager client build

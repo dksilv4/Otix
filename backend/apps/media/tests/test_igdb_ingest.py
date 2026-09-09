@@ -98,7 +98,13 @@ def _enriched_game_raw(**overrides):
     """A full-hydration payload plus the increment-55 image/video/age fields."""
     raw = _full_game_raw(
         screenshots=[{"id": 1, "image_id": "sc01"}, {"id": 2, "image_id": "sc02"}],
-        artworks=[{"id": 1, "image_id": "ar01"}, {"id": 2, "image_id": "ar02"}],
+        # ar01/ar02 are wide key art; ar03 is a near-square white-bg logo card
+        # that must NOT survive the backdrop ingest.
+        artworks=[
+            {"id": 1, "image_id": "ar01", "width": 3840, "height": 2160},
+            {"id": 2, "image_id": "ar02", "width": 1920, "height": 1080},
+            {"id": 3, "image_id": "ar03", "width": 1200, "height": 984},
+        ],
         videos=[{"video_id": "abc123", "name": "Launch Trailer"}],
         age_ratings=[1001, 1002],
         age_rating_details=[
@@ -142,9 +148,7 @@ class SeedGameFromIgdbTests(TestCase):
 
     def test_igdb_id_already_mapped_returns_early(self):
         media_id = seed_game_from_igdb(_game_raw(), IGDB_ID)
-        reseeded = seed_game_from_igdb(
-            _game_raw(summary="A totally different summary"), IGDB_ID
-        )
+        reseeded = seed_game_from_igdb(_game_raw(summary="A totally different summary"), IGDB_ID)
         self.assertEqual(reseeded, media_id)
         self.assertEqual(MediaItem.objects.filter(media_type="game").count(), 1)
         self.assertEqual(Game.objects.count(), 1)
@@ -152,73 +156,92 @@ class SeedGameFromIgdbTests(TestCase):
 
     def test_same_slug_merges_instead_of_duplicating(self):
         first = seed_game_from_igdb(_game_raw(), IGDB_ID)
-        merged = seed_game_from_igdb(
-            _game_raw(id=999999, summary="A sequel refresh"), 999999
-        )
+        merged = seed_game_from_igdb(_game_raw(id=999999, summary="A sequel refresh"), 999999)
         self.assertEqual(merged, first)
         self.assertEqual(MediaItem.objects.filter(media_type="game").count(), 1)
         self.assertEqual(Game.objects.count(), 1)
         # Second igdb id attaches to the same media row (mirrors GameMatcher).
         self.assertEqual(
-            set(
-                ExternalID.objects.filter(provider="igdb").values_list(
-                    "external_id", flat=True
-                )
-            ),
+            set(ExternalID.objects.filter(provider="igdb").values_list("external_id", flat=True)),
             {"119133", "999999"},
         )
 
     def test_missing_cover_and_release_date_stay_empty(self):
-        media_id = seed_game_from_igdb(
-            _game_raw(cover=None, first_release_date=None), IGDB_ID
-        )
+        media_id = seed_game_from_igdb(_game_raw(cover=None, first_release_date=None), IGDB_ID)
         media = MediaItem.objects.get(pk=media_id)
         self.assertIsNone(media.release_date)
-        self.assertFalse(
-            MediaAsset.objects.filter(media_item=media, asset_type="poster").exists()
-        )
+        self.assertFalse(MediaAsset.objects.filter(media_item=media, asset_type="poster").exists())
 
     def test_unknown_name_and_no_slug_fall_back_safely(self):
-        media_id = seed_game_from_igdb(
-            {"id": IGDB_ID, "name": "   ", "cover": None}, IGDB_ID
-        )
+        media_id = seed_game_from_igdb({"id": IGDB_ID, "name": "   ", "cover": None}, IGDB_ID)
         media = MediaItem.objects.get(pk=media_id)
         self.assertEqual(media.title, "Unknown Game")
         self.assertEqual(media.slug, "unknown-game")
         self.assertIsNone(media.overview)
 
     def test_tops_up_popularity_from_aggregated_rating(self):
-        media_id = seed_game_from_igdb(
-            _full_game_raw(aggregated_rating=91.25), IGDB_ID
-        )
+        media_id = seed_game_from_igdb(_full_game_raw(aggregated_rating=91.25), IGDB_ID)
         media = MediaItem.objects.get(pk=media_id)
         self.assertAlmostEqual(media.popularity, 91.25)
 
     def test_reseed_tops_up_a_pre_fix_zero_popularity_row(self):
         # A row seeded before the popularity fold (no rating fetched) stays 0.0;
         # a re-seed with an IGDB rating now fills the gap.
-        media_id = seed_game_from_igdb(
-            _full_game_raw(aggregated_rating=None), IGDB_ID
-        )
+        media_id = seed_game_from_igdb(_full_game_raw(aggregated_rating=None), IGDB_ID)
         self.assertEqual(MediaItem.objects.get(pk=media_id).popularity, 0.0)
-        reseeded = seed_game_from_igdb(
-            _full_game_raw(aggregated_rating=95.0), IGDB_ID
-        )
+        reseeded = seed_game_from_igdb(_full_game_raw(aggregated_rating=95.0), IGDB_ID)
         media = MediaItem.objects.get(pk=reseeded)
         self.assertEqual(reseeded, media_id)
         self.assertAlmostEqual(media.popularity, 95.0)
 
     def test_already_populated_popularity_is_not_clobbered(self):
-        media_id = seed_game_from_igdb(
-            _full_game_raw(aggregated_rating=88.0), IGDB_ID
-        )
+        media_id = seed_game_from_igdb(_full_game_raw(aggregated_rating=88.0), IGDB_ID)
         MediaItem.objects.filter(pk=media_id).update(popularity=4123.5)
+        reseeded = seed_game_from_igdb(_full_game_raw(aggregated_rating=99.0), IGDB_ID)
+        self.assertAlmostEqual(MediaItem.objects.get(pk=reseeded).popularity, 4123.5)
+
+    def test_tops_up_avg_rating_and_count_from_aggregated_rating(self):
+        media_id = seed_game_from_igdb(
+            _full_game_raw(aggregated_rating=91.25, aggregated_rating_count=520),
+            IGDB_ID,
+        )
+        media = MediaItem.objects.get(pk=media_id)
+        self.assertAlmostEqual(media.avg_rating, 91.25)
+        self.assertEqual(media.rating_count, 520)
+
+    def test_rating_fall_back_to_community_rating(self):
+        media_id = seed_game_from_igdb(
+            _full_game_raw(
+                aggregated_rating=None,
+                aggregated_rating_count=None,
+                rating=82.0,
+                rating_count=1400,
+            ),
+            IGDB_ID,
+        )
+        media = MediaItem.objects.get(pk=media_id)
+        self.assertAlmostEqual(media.avg_rating, 82.0)
+        self.assertEqual(media.rating_count, 1400)
+
+    def test_rating_reseed_does_not_clobber_existing_values(self):
+        media_id = seed_game_from_igdb(
+            _full_game_raw(aggregated_rating=90.0, aggregated_rating_count=100),
+            IGDB_ID,
+        )
+        MediaItem.objects.filter(pk=media_id).update(avg_rating=7.5, rating_count=42)
         reseeded = seed_game_from_igdb(
-            _full_game_raw(aggregated_rating=99.0), IGDB_ID
+            _full_game_raw(aggregated_rating=99.0, aggregated_rating_count=999),
+            IGDB_ID,
         )
-        self.assertAlmostEqual(
-            MediaItem.objects.get(pk=reseeded).popularity, 4123.5
-        )
+        media = MediaItem.objects.get(pk=reseeded)
+        self.assertAlmostEqual(media.avg_rating, 7.5)
+        self.assertEqual(media.rating_count, 42)
+
+    def test_missing_rating_fields_leave_columns_empty(self):
+        media_id = seed_game_from_igdb(_full_game_raw(aggregated_rating=None, rating=None), IGDB_ID)
+        media = MediaItem.objects.get(pk=media_id)
+        self.assertIsNone(media.avg_rating)
+        self.assertEqual(media.rating_count, 0)
 
 
 class FetchAndSeedGameTests(TestCase):
@@ -321,9 +344,7 @@ class FetchAndSeedGameTests(TestCase):
         self.assertEqual(result, 9876)
 
     def test_fetch_skips_steamgrid_attach_without_a_key(self):
-        raw = _game_raw(
-            external_games=[{"external_game_source": 1, "uid": "1145360"}]
-        )
+        raw = _game_raw(external_games=[{"external_game_source": 1, "uid": "1145360"}])
         provider = mock.Mock()
         provider.get_game = mock.AsyncMock(return_value=raw)
         with (
@@ -359,12 +380,8 @@ class HydrateGameFromIgdbTests(TestCase):
             MediaGenre.objects.filter(media_item_id=media_id).values_list("genre_id", flat=True)
         )
         self.assertEqual(linked_genres, set(Genre.objects.values_list("pk", flat=True)))
-        self.assertEqual(
-            Platform.objects.get(slug="windows").name, "PC (Microsoft Windows)"
-        )
-        self.assertEqual(
-            Platform.objects.get(slug="nintendo-switch").name, "Nintendo Switch"
-        )
+        self.assertEqual(Platform.objects.get(slug="windows").name, "PC (Microsoft Windows)")
+        self.assertEqual(Platform.objects.get(slug="nintendo-switch").name, "Nintendo Switch")
         self.assertEqual(MediaPlatform.objects.filter(media_item_id=media_id).count(), 2)
         self.assertEqual(MediaGameMode.objects.filter(media_item_id=media_id).count(), 2)
         self.assertTrue(game.has_multiplayer)
@@ -384,6 +401,18 @@ class HydrateGameFromIgdbTests(TestCase):
             media_item_id=media_id, company__name="Private Division"
         )
         self.assertTrue(private.publisher)
+
+    def test_numeric_game_type_maps_to_label(self):
+        main = seed_game_from_igdb(_full_game_raw(game_type=0), IGDB_ID)
+        self.assertEqual(Game.objects.get(media_item_id=main).game_type, "main_game")
+
+        dlc = seed_game_from_igdb(
+            _full_game_raw(
+                name="Hades II DLC", game_type=1, parent_game={"id": 5, "name": "Hades II"}
+            ),
+            9999,
+        )
+        self.assertEqual(Game.objects.get(media_item_id=dlc).game_type, "dlc_addon")
 
     def test_mapped_reseed_grows_a_previously_minimal_row(self):
         first = seed_game_from_igdb(_game_raw(), IGDB_ID)
@@ -435,9 +464,7 @@ class HydrateGameFromIgdbTests(TestCase):
 
         seed_game_from_igdb(_full_game_raw(), IGDB_ID)  # adds developer on re-seed
 
-        row = InvolvedCompany.objects.get(
-            media_item_id=media_id, company__slug="supergiant-games"
-        )
+        row = InvolvedCompany.objects.get(media_item_id=media_id, company__slug="supergiant-games")
         self.assertTrue(row.developer)
         self.assertTrue(row.publisher)
         self.assertFalse(row.porting)
@@ -469,9 +496,7 @@ class HydrateGameFromIgdbTests(TestCase):
         self.assertTrue(flags["has_backdrop"])
 
         asset_types = set(
-            MediaAsset.objects.filter(media_item_id=media_id).values_list(
-                "asset_type", flat=True
-            )
+            MediaAsset.objects.filter(media_item_id=media_id).values_list("asset_type", flat=True)
         )
         self.assertIn("screenshot", asset_types)
         self.assertIn("backdrop", asset_types)
@@ -507,6 +532,46 @@ class HydrateGameFromIgdbTests(TestCase):
         )
         self.assertEqual(
             MediaAsset.objects.filter(media_item_id=media_id, asset_type="backdrop").count(), 2
+        )
+
+    def test_landscape_artwork_only_becomes_a_backdrop_with_dims_stored(self):
+        media_id = seed_game_from_igdb(_enriched_game_raw(), IGDB_ID)
+        backdrops = MediaAsset.objects.filter(media_item_id=media_id, asset_type="backdrop")
+
+        # ar03 is a 1200x984 logo card (aspect 1.22 < 1.4) — excluded.
+        self.assertEqual(backdrops.count(), 2)
+        urls = set(backdrops.values_list("url", flat=True))
+        self.assertFalse(any("ar03" in url for url in urls))
+        # The surviving rows carry the artwork's real dimensions.
+        self.assertEqual(
+            {(b.width, b.height) for b in backdrops}, {(3840, 2160), (1920, 1080)}
+        )
+        self.assertFalse(
+            MediaAsset.objects.filter(
+                media_item_id=media_id, asset_type="backdrop", url__contains="ar03"
+            ).exists()
+        )
+
+    def test_portrait_artwork_is_not_stored_as_a_backdrop(self):
+        media_id = seed_game_from_igdb(
+            _enriched_game_raw(
+                artworks=[{"id": 7, "image_id": "ar07", "width": 1080, "height": 1920}]
+            ),
+            IGDB_ID,
+        )
+        self.assertFalse(
+            MediaAsset.objects.filter(media_item_id=media_id, asset_type="backdrop").exists()
+        )
+
+    def test_artwork_without_usable_dims_is_conservatively_skipped(self):
+        # No width/height in the payload means the aspect can't be proven
+        # landscape, so the entry is dropped rather than risk a logo backdrop.
+        media_id = seed_game_from_igdb(
+            _enriched_game_raw(artworks=[{"id": 9, "image_id": "ar99"}]),
+            IGDB_ID,
+        )
+        self.assertFalse(
+            MediaAsset.objects.filter(media_item_id=media_id, asset_type="backdrop").exists()
         )
 
     def test_minimal_raw_hydrates_nothing(self):
