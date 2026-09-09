@@ -30,6 +30,7 @@ import {
   PluginIncompatibleError,
 } from './errors'
 import { validateConfigValue } from './config-validation'
+import { validateManifestSchema } from './manifest-validation'
 
 const execFileAsync = promisify(execFile)
 
@@ -186,6 +187,20 @@ export class PluginManager {
 
       // Check compatibility
       this.checkCompatibility(pluginId, info.manifest)
+
+      // Structurally validate the manifest's config schema + declared
+      // permissions before booting the worker. Without this, a typo'd field
+      // type or a select with no options slips through value validation and
+      // silently mis-renders the settings UI instead of failing loudly.
+      const schemaErrors = validateManifestSchema(info.manifest).issues.filter(
+        (i) => i.severity === 'error',
+      )
+      if (schemaErrors.length > 0) {
+        const detail = schemaErrors
+          .map((issue) => `  - ${issue.path}: ${issue.message}`)
+          .join('\n')
+        throw new Error(`Plugin "${pluginId}" has an invalid manifest:\n${detail}`)
+      }
 
       const pluginDir = this.getPluginDir(pluginId)
 
@@ -403,9 +418,19 @@ export class PluginManager {
     }
   }
 
-  async reload(pluginId: string): Promise<void> {
-    const info = this.getPlugin(pluginId)
+  async reload(pluginId: string, opts?: { refreshSource?: boolean }): Promise<void> {
+    let info = this.getPlugin(pluginId)
     if (!info) throw new PluginNotFoundError(pluginId)
+
+    // The dev watcher reloads from the source dir, so a manifest.json /
+    // config-schema edit must be pushed into the DB before re-enabling —
+    // otherwise enable() keeps validating against the stale cached manifest
+    // and schema changes never take effect without a manual discover.
+    if (opts?.refreshSource && !this.refreshManifestFromDisk(pluginId)) {
+      return // source invalid or unreadable — keep the running plugin as-is
+    }
+    info = this.getPlugin(pluginId) as PluginInfo
+
     if (info.manifest.system) {
       // System plugins restart the worker in place rather than a full
       // disable()+enable() cycle, avoiding churn in status/events.
@@ -419,6 +444,43 @@ export class PluginManager {
     }
     await this.disableOne(pluginId)
     await this.enable(pluginId)
+  }
+
+  /**
+   * Re-read `<extensionsDir>/<pluginId>/manifest.json`, run the same
+   * structural validation the enable path uses, and persist it back to the DB
+   * manifest row. Returns false (and leaves everything untouched) when the
+   * source is missing, unparseable, incomplete, or fails schema validation.
+   */
+  private refreshManifestFromDisk(pluginId: string): boolean {
+    const pluginDir = this.getPluginDir(pluginId)
+    const manifestPath = path.join(pluginDir, 'manifest.json')
+    let manifest: PluginManifest
+    try {
+      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
+    } catch (err: any) {
+      console.warn(`[plugins] Reload: could not re-read ${manifestPath}: ${err?.message ?? err}`)
+      return false
+    }
+    if (!manifest.name || !manifest.version || !manifest.entry?.main) {
+      console.warn(`[plugins] Reload: ${manifestPath} is incomplete; keeping running plugin`)
+      return false
+    }
+    const schemaErrors = validateManifestSchema(manifest).issues.filter((i) => i.severity === 'error')
+    if (schemaErrors.length > 0) {
+      console.warn(`[plugins] Reload: ${pluginId} manifest has schema errors; keeping running plugin:`)
+      for (const issue of schemaErrors) {
+        console.warn(`  - ${issue.path}: ${issue.message}`)
+      }
+      return false
+    }
+    try {
+      this.pluginsRepo.updateManifest(pluginId, JSON.stringify(manifest), manifest.version)
+    } catch (err: any) {
+      console.warn(`[plugins] Reload: failed to persist ${manifestPath}: ${err?.message ?? err}`)
+      return false
+    }
+    return true
   }
 
   // ── Dev auto-reload ─────────────────────────────────────────────
@@ -472,7 +534,9 @@ export class PluginManager {
         this.pluginReloadTimers.delete(pluginId)
         if (!this.runtimes.has(pluginId)) return // not running — nothing to reload
         console.log(`[plugins] Source changed, reloading "${pluginId}"`)
-        this.reload(pluginId).catch((err: any) => {
+        // Dev reloads re-read the manifest from disk so schema edits land too;
+        // a lone main.js edit just reloads the (unchanged) cached manifest.
+        this.reload(pluginId, { refreshSource: true }).catch((err: any) => {
           console.warn(`[plugins] Reload "${pluginId}" failed:`, err.message)
         })
       }, debounceMs),

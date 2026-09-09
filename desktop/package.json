@@ -7,6 +7,8 @@
     "postinstall": "patch-package && electron-rebuild -f -w better-sqlite3",
     "dev": "concurrently -k -n \"vite,tsc,electron\" -c \"cyan,blue,magenta\" \"cd ../frontend && npx vite --port 5174\" \"tsc --watch\" \"electron-rebuild -f -w better-sqlite3 && wait-on http://127.0.0.1:5174 dist/ipc/scanner.js && cross-env NODE_ENV=development electron . --remote-debugging-port=9222\"",
     "build": "tsc",
+    "plugin:create": "npm run build && node dist/scripts/create-plugin.js",
+    "plugin:validate": "npm run build && node dist/scripts/plugin-validate.js",
     "pack": "npm run build && electron-builder --dir -c electron-builder.json5",
     "dist": "npm run build && electron-builder -c electron-builder.json5",
     "dist:win": "npm run build && electron-builder --win -c electron-builder.json5",

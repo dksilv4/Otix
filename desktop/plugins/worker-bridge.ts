@@ -8,7 +8,7 @@ import * as fs from 'fs/promises'
 import { app, Notification, BrowserWindow } from 'electron'
 import { replaceTableNames } from '../db/plugins-db'
 import { isSafeStatement, extractTableNames } from '../db/sql-validator'
-import { validateConfigValue } from './config-validation'
+import { resolveConfigWrite } from './config-write'
 import {
   getConfig as dlGetConfig,
   getUserDownloads as dlGetUserDownloads,
@@ -266,21 +266,18 @@ async function executeMethod(
     case 'config.set': {
       const key = args[0] as string
       const value = args[1]
-      const field = deps.manifest.config?.[key]
-      if (field) {
-        const result = validateConfigValue(field, value)
-        if (result.ok) {
-          deps.setConfigValue(key, result.value)
-        } else {
-          // Best-effort: log and store raw so a misbehaving plugin never loses
-          // its value mid-flight; the UI-facing setConfig path is strict.
-          console.warn(
-            `[plugin:${deps.pluginId}] config "${key}" rejected (${result.error}); storing raw value`,
-          )
-          deps.setConfigValue(key, value)
-        }
-      } else {
-        deps.setConfigValue(key, value)
+      const outcome = resolveConfigWrite(deps.manifest.config, key, value)
+      switch (outcome.action) {
+        case 'set':
+          deps.setConfigValue(key, outcome.value)
+          break
+        case 'set-raw':
+          console.warn(`[plugin:${deps.pluginId}] ${outcome.reason}; storing raw value`)
+          deps.setConfigValue(key, outcome.value)
+          break
+        case 'ignore':
+          console.warn(`[plugin:${deps.pluginId}] ${outcome.reason}; ignoring`)
+          break
       }
       return undefined
     }
