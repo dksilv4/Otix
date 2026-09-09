@@ -38,3 +38,7 @@ desktop/nul
 
 # Build output
 /desktop/release/
+
+# Regenerated graphify knowledge-graph output (do not version)
+/graphify-out/
+/frontend/graphify-out/
