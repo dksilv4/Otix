@@ -75,7 +75,11 @@ export function ProfileAchievementsSection({ username }: { username: string }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [groupSeries, setGroupSeries] = useState(true)
 
-  const achievements = badgesQuery.data ?? []
+  const achievements = Array.isArray(badgesQuery.data)
+    ? badgesQuery.data
+    : Array.isArray((badgesQuery.data as any)?.results)
+      ? (badgesQuery.data as any).results
+      : []
 
   // Stats computation
   const stats = useMemo(() => {

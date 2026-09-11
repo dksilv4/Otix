@@ -60,6 +60,13 @@ function resolveUrl(data) {
   switch (data.type) {
     case 'release_available':
       return data.metadata.mediaSlug ? `/media/${data.metadata.mediaSlug}` : '/notifications'
+    case 'studio_release': {
+      const mediaType = data.metadata.mediaType
+      const mediaId = data.metadata.mediaId
+      return mediaType && mediaId != null
+        ? `/media/${mediaType}/${mediaId}`
+        : '/notifications'
+    }
     case 'follow':
     case 'follow_request':
       return data.metadata.followerUsername

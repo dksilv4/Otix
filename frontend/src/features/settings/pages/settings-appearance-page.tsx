@@ -3,9 +3,10 @@ import { useTheme } from '@/lib/providers/theme'
 import { useShaderQuality, SHADER_QUALITY_OPTIONS } from '@/lib/providers/shader-quality'
 import { useMotionPreference, MOTION_OPTIONS } from '@/lib/providers/motion-preference'
 import { cn } from '@/lib/utils'
-import { Moon, Sun, Monitor, Plus, PanelLeftClose } from 'lucide-react'
+import { Moon, Sun, Monitor, Plus, PanelLeftClose, Gamepad2 } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
+import { LAUNCHER_THEMES, type LauncherThemeId } from '@/features/launcher/themes/theme-context'
 
 const SETTINGS_SIDEBAR_COLLAPSED_KEY = 'otix-settings-sidebar-collapsed'
 
@@ -357,7 +358,60 @@ export function SettingsAppearancePage() {
           </div>
         </div>
       </SettingsCard>
+
+      {/* Launcher Theme Selector Card */}
+      <SettingsCard>
+        <SectionHeader
+          title="Game Launcher Layout & Theme"
+          description="Choose the default interface theme for the Otix Game Launcher. All 10 themes read your same game library and session data."
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
+          {LAUNCHER_THEMES.map((t) => {
+            const currentStored = typeof window !== 'undefined' ? localStorage.getItem('otix:launcher-theme') || 'modern' : 'modern'
+            const isSelected = currentStored === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('otix:launcher-theme', t.id)
+                  window.dispatchEvent(new Event('storage'))
+                  // Force state refresh
+                  setSidebarCollapsed((prev) => !prev)
+                  setSidebarCollapsed((prev) => !prev)
+                }}
+                className={cn(
+                  'flex flex-col items-start p-3.5 rounded-xl border transition-all text-left cursor-pointer group',
+                  isSelected
+                    ? 'border-primary bg-primary/10 shadow-[0_0_16px_rgba(var(--primary),0.2)]'
+                    : 'border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20'
+                )}
+              >
+                <div className="flex items-center justify-between w-full mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded bg-white/10 text-white/80">
+                      {t.version}
+                    </span>
+                    <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      BETA
+                    </span>
+                  </div>
+                  {isSelected && (
+                    <span className="w-2 h-2 rounded-full bg-primary shadow-sm" />
+                  )}
+                </div>
+                <span className="text-xs font-bold text-white group-hover:text-primary transition-colors">
+                  {t.name}
+                </span>
+                <span className="text-[10px] text-white/50 font-medium mt-0.5">
+                  {t.subtitle}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </SettingsCard>
     </div>
   )
 }
-

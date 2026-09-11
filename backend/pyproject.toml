@@ -21,6 +21,8 @@ dependencies = [
     # ASGI server (config.asgi) — SSE streaming + reload/dev, see ARCHITECTURE §7.
     "uvicorn[standard]>=0.34,<1",
     "httpx>=0.28.1",
+    # Web-push delivery for release notifications (apps.push.services.sender).
+    "pywebpush>=2.0",
 ]
 
 [dependency-groups]

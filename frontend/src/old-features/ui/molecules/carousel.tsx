@@ -18,6 +18,7 @@ interface CarouselProps {
   viewAllSearch?: Record<string, any>
   isLoading?: boolean
   skeleton?: ReactNode
+  trackPaddingInline?: string
 }
 
 export const Carousel = forwardRef(function Carousel(
@@ -34,6 +35,7 @@ export const Carousel = forwardRef(function Carousel(
     viewAllSearch,
     isLoading,
     skeleton,
+    trackPaddingInline,
   }: CarouselProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -150,8 +152,8 @@ export const Carousel = forwardRef(function Carousel(
           )}
           style={{
             gap: `${gap}px`,
-            paddingInline: '16px',
-            scrollPaddingInline: '16px',
+            paddingInline: trackPaddingInline ?? '16px',
+            scrollPaddingInline: trackPaddingInline ?? '16px',
             scrollSnapType: 'x mandatory',
             touchAction: 'pan-x pan-y pinch-zoom',
           }}

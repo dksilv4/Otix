@@ -25,6 +25,7 @@ from rest_framework.test import APIClient
 
 from apps.media.models import MediaAsset, MediaItem, MediaServerSetting
 from apps.media.services.assets import (
+    MATERIALIZED_TEXTLESS_LABEL,
     MIN_FREE_GB_KEY,
     SWEEP_LAST_RUN_KEY,
     asset_dir,
@@ -36,10 +37,13 @@ from apps.media.services.assets import (
     download_primary_assets,
     enabled_asset_types,
     fetch_enabled,
+    keep_asset,
     local_games_enabled,
+    max_gb,
     min_free_gb,
     mirror_local_game_artwork,
     mirror_media_artwork,
+    mirrored_usage,
     mirroring_enabled,
     record_sweep_run,
     select_asset,
@@ -50,12 +54,13 @@ from apps.media.services.assets import (
     set_min_free_gb,
     set_mirroring_enabled,
     set_sweep_interval_minutes,
+    set_textless_pick,
     should_run_sweep,
     sweep_interval_minutes,
     sweep_limit,
     sweep_unmirrored_media,
 )
-from apps.media.services.catalog import _best_asset, _pick_asset
+from apps.media.services.catalog import _best_asset, _pick_asset, _pick_backdrop
 
 User = get_user_model()
 
@@ -145,6 +150,7 @@ class AssetTestCase(TestCase):
         url: str = "http://img.example/dune.png",
         score: int = 50,
         local_name: str | None = None,
+        provider: str | None = None,
     ) -> MediaAsset:
         return MediaAsset.objects.create(
             media_item=self.item,
@@ -152,6 +158,7 @@ class AssetTestCase(TestCase):
             url=url,
             score=score,
             local_name=local_name,
+            provider=provider,
         )
 
 
@@ -262,6 +269,46 @@ class CatalogLocalUrlTests(AssetTestCase):
     def test_unknown_type_is_none(self) -> None:
         self.add_asset()
         self.assertIsNone(_pick_asset(self.item, "backdrop"))
+
+
+class BackdropPickTests(AssetTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        # Designating a textless pick auto-mirrors when the master switch is on;
+        # these resolution tests only exercise the pick, not downloads.
+        set_mirroring_enabled(False)
+
+    def test_textless_backdrop_wins_over_texted_pin_in_every_context(self) -> None:
+        # A high-scoring texted backdrop is pinned as the general backdrop pick…
+        texted = self.add_asset(
+            asset_type="backdrop", url="http://img.example/texted.png", score=90
+        )
+        select_asset(self.item, texted, "general")
+        # …but the admin also designates a *different* backdrop as the textless art.
+        textless_source = self.add_asset(
+            asset_type="backdrop", url="http://img.example/tless.png", score=10
+        )
+        set_textless_pick(self.item, textless_source, True)
+        twin = _best_asset(self.item, "textless_backdrop", "general")
+        self.assertEqual(twin.url, "http://img.example/tless.png")
+        for context in ("general", "dark", "light"):
+            self.assertEqual(_pick_backdrop(self.item, context), "http://img.example/tless.png")
+
+    def test_falls_back_to_backdrop_when_no_textless(self) -> None:
+        self.add_asset(asset_type="backdrop", url="http://img.example/bd.png")
+        self.assertIsNone(_best_asset(self.item, "textless_backdrop", "general"))
+        for context in ("general", "dark", "light"):
+            self.assertEqual(_pick_backdrop(self.item, context), "http://img.example/bd.png")
+
+    def test_local_mirrored_textless_backdrop_serves_local_url(self) -> None:
+        self.add_asset(asset_type="backdrop", url="http://img.example/bd.png")
+        self.add_asset(
+            asset_type="textless_backdrop",
+            url="http://img.example/tless.png",
+            local_name="tless-abc123.png",
+            score=40,
+        )
+        self.assertEqual(_pick_backdrop(self.item, "light"), "/api/v1/assets/tless-abc123.png")
 
 
 class AdminAssetEndpointTests(AssetTestCase):
@@ -898,58 +945,97 @@ class ArtworkSettingsEndpointTests(AssetTestCase):
 
 
 class ArtworkSelectionServiceTests(AssetTestCase):
-    """Admin-pinning semantics: selection, ranking override, mirroring."""
+    """Theme-scoped admin-pinning: context selection, ranking, mirroring."""
 
-    def test_select_asset_pins_and_clears_same_type_siblings(self) -> None:
+    def test_select_general_pins_and_clears_general_siblings(self) -> None:
         set_mirroring_enabled(False)
         low = self.add_asset(url="http://img.example/a.png", score=50)
         high = self.add_asset(url="http://img.example/b.png", score=90)
         backdrop = self.add_asset(
             asset_type="backdrop", url="http://img.example/bd.png", score=10
         )
-        select_asset(self.item, low)
+        select_asset(self.item, low, "general")
         low.refresh_from_db()
         high.refresh_from_db()
         backdrop.refresh_from_db()
-        self.assertTrue(low.is_selected)
-        self.assertFalse(high.is_selected)
-        self.assertFalse(backdrop.is_selected)
+        self.assertEqual(low.selected_context, "general")
+        self.assertIsNone(high.selected_context)
+        self.assertIsNone(backdrop.selected_context)
 
-    def test_best_asset_prefers_selected_over_higher_score(self) -> None:
+    def test_select_dark_clears_only_dark_sibling(self) -> None:
         set_mirroring_enabled(False)
-        high = self.add_asset(url="http://img.example/high.png", score=90)
-        low = self.add_asset(url="http://img.example/low.png", score=50)
-        select_asset(self.item, low)
-        self.assertEqual(_best_asset(self.item, "poster").pk, low.pk)
-        self.assertEqual(_pick_asset(self.item, "poster"), "http://img.example/low.png")
-        # dropping the pin hands the slot back to the higher score
-        clear_asset_selection(low)
-        self.assertEqual(_best_asset(self.item, "poster").pk, high.pk)
+        dark_a = self.add_asset(url="http://img.example/da.png", score=50)
+        dark_b = self.add_asset(url="http://img.example/db.png", score=60)
+        general = self.add_asset(url="http://img.example/g.png", score=90)
+        select_asset(self.item, dark_a, "dark")
+        select_asset(self.item, general, "general")
+        dark_a.refresh_from_db()
+        dark_b.refresh_from_db()
+        general.refresh_from_db()
+        self.assertEqual(dark_a.selected_context, "dark")
+        self.assertIsNone(dark_b.selected_context)
+        # general pin survived the dark pin and vice-versa
+        self.assertEqual(general.selected_context, "general")
 
-    def test_clear_asset_selection_leaves_other_types_alone(self) -> None:
+    def test_best_asset_prefers_exact_context_then_general_then_score(self) -> None:
         set_mirroring_enabled(False)
-        poster = self.add_asset(url="http://img.example/p.png", score=80)
-        backdrop = self.add_asset(
-            asset_type="backdrop", url="http://img.example/bd.png", score=5
-        )
-        select_asset(self.item, backdrop)
-        clear_asset_selection(backdrop)
-        poster.refresh_from_db()
-        self.assertFalse(poster.is_selected)  # never selected, untouched
+        top = self.add_asset(url="http://img.example/top.png", score=90)
+        general = self.add_asset(url="http://img.example/gen.png", score=50)
+        dark = self.add_asset(url="http://img.example/dark.png", score=10)
+        select_asset(self.item, general, "general")
+        # default context resolves to the general pin
+        self.assertEqual(_best_asset(self.item, "poster").pk, general.pk)
+        # dark has no dark pin yet -> general pin wins over the higher score
+        self.assertEqual(_best_asset(self.item, "poster", "dark").pk, general.pk)
+        select_asset(self.item, dark, "dark")
+        self.assertEqual(_best_asset(self.item, "poster", "dark").pk, dark.pk)
+        # general still resolves to the general pin, not the dark one
+        self.assertEqual(_best_asset(self.item, "poster").pk, general.pk)
+        clear_asset_selection(general)
+        # no pins left for general context -> highest score
+        self.assertEqual(_best_asset(self.item, "poster").pk, top.pk)
 
-    def test_current_primary_asset_ids_follows_selection(self) -> None:
+    def test_general_pin_is_fallback_for_light(self) -> None:
+        set_mirroring_enabled(False)
+        self.add_asset(url="http://img.example/a.png", score=80)
+        general = self.add_asset(url="http://img.example/gen.png", score=30)
+        select_asset(self.item, general, "general")
+        self.assertEqual(_best_asset(self.item, "poster", "light").pk, general.pk)
+        self.assertEqual(_pick_asset(self.item, "poster", "light"), "http://img.example/gen.png")
+
+    def test_clear_asset_selection_leaves_other_contexts_alone(self) -> None:
+        set_mirroring_enabled(False)
+        dark = self.add_asset(url="http://img.example/d.png", score=40)
+        general = self.add_asset(url="http://img.example/g.png", score=40)
+        select_asset(self.item, dark, "dark")
+        select_asset(self.item, general, "general")
+        clear_asset_selection(dark)
+        dark.refresh_from_db()
+        general.refresh_from_db()
+        self.assertIsNone(dark.selected_context)
+        self.assertEqual(general.selected_context, "general")
+
+    def test_current_primary_asset_ids_is_context_aware(self) -> None:
         set_mirroring_enabled(False)
         best = self.add_asset(url="http://img.example/a.png", score=90)
-        pinned = self.add_asset(url="http://img.example/pinned.png", score=10)
+        dark = self.add_asset(url="http://img.example/dark.png", score=10)
         backdrop = self.add_asset(
             asset_type="backdrop", url="http://img.example/bd.png", score=70
         )
-        select_asset(self.item, pinned)
-        self.assertEqual(current_primary_asset_ids(self.item), {pinned.pk, backdrop.pk})
-        clear_asset_selection(pinned)
-        self.assertEqual(current_primary_asset_ids(self.item), {best.pk, backdrop.pk})
+        select_asset(self.item, dark, "dark")
+        self.assertEqual(
+            current_primary_asset_ids(self.item, "dark"), {dark.pk, backdrop.pk}
+        )
+        # general context falls back to the score winner
+        self.assertEqual(
+            current_primary_asset_ids(self.item, "general"), {best.pk, backdrop.pk}
+        )
+        clear_asset_selection(dark)
+        self.assertEqual(
+            current_primary_asset_ids(self.item, "dark"), {best.pk, backdrop.pk}
+        )
 
-    def test_select_mirrors_choice_and_discards_previous_local(self) -> None:
+    def test_select_mirrors_choice_and_discards_stale_local(self) -> None:
         stale_file = "stale-poster.png"
         (asset_dir() / stale_file).write_bytes(PNG)
         former = self.add_asset(
@@ -959,25 +1045,177 @@ class ArtworkSelectionServiceTests(AssetTestCase):
         )
         chosen = self.add_asset(url="http://img.example/chosen.png", score=40)
         with _patch_http(_FakeResponse(PNG)):
-            select_asset(self.item, chosen)
+            select_asset(self.item, chosen, "general")
         former.refresh_from_db()
         chosen.refresh_from_db()
-        self.assertTrue(chosen.is_selected)
-        self.assertFalse(former.is_selected)
+        self.assertEqual(chosen.selected_context, "general")
         self.assertTrue(chosen.local_name)
         self.assertTrue(chosen.local_name.endswith(".png"))
         self.assertTrue((asset_dir() / chosen.local_name).is_file())
-        # the previously mirrored sibling was discarded
+        # the previously mirrored sibling is no longer a winner -> discarded
         self.assertIsNone(former.local_name)
         self.assertFalse((asset_dir() / stale_file).exists())
+
+    def test_select_mirrors_distinct_context_winners(self) -> None:
+        set_mirroring_enabled(True)
+        best = self.add_asset(url="http://img.example/best.png", score=90)
+        dark = self.add_asset(url="http://img.example/dark.png", score=10)
+        light = self.add_asset(url="http://img.example/light.png", score=10)
+        with _patch_http(_FakeResponse(PNG)):
+            select_asset(self.item, dark, "dark")
+        with _patch_http(_FakeResponse(PNG)):
+            select_asset(self.item, light, "light")
+        for asset in (best, dark, light):
+            asset.refresh_from_db()
+            self.assertTrue(asset.local_name)
 
     def test_select_does_not_mirror_when_master_off(self) -> None:
         set_mirroring_enabled(False)
         asset = self.add_asset(url="http://img.example/x.png", score=50)
-        select_asset(self.item, asset)
+        select_asset(self.item, asset, "general")
         asset.refresh_from_db()
-        self.assertTrue(asset.is_selected)
+        self.assertEqual(asset.selected_context, "general")
         self.assertIsNone(asset.local_name)
+
+
+class TextlessPickServiceTests(AssetTestCase):
+    """Marking an image as the family's (theme-agnostic) textless art."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        set_mirroring_enabled(False)
+
+    def _image(self, asset_type: str, url: str, **kw) -> MediaAsset:
+        return self.add_asset(
+            asset_type=asset_type,
+            url=url,
+            score=kw.pop("score", 50),
+            provider=kw.pop("provider", "tmdb"),
+            **kw,
+        )
+
+    def test_designate_poster_materializes_a_textless_poster_twin(self) -> None:
+        poster = self._image("poster", "http://img.example/p.png", score=70)
+        result = set_textless_pick(self.item, poster, True)
+
+        self.assertEqual(result["asset_id"], poster.pk)
+        self.assertTrue(result["active"])
+        twin = _best_asset(self.item, "textless_poster", "general")
+        self.assertIsNotNone(twin)
+        self.assertEqual(twin.url, poster.url)
+        self.assertEqual(twin.score, 70)
+        self.assertEqual(twin.provider, "tmdb")
+        self.assertEqual(twin.label, MATERIALIZED_TEXTLESS_LABEL)
+        self.assertEqual(twin.selected_context, "general")
+        # the poster row itself is untouched by the designation
+        poster.refresh_from_db()
+        self.assertIsNone(poster.selected_context)
+
+    def test_designate_backdrop_materializes_a_textless_backdrop(self) -> None:
+        backdrop = self._image("backdrop", "http://img.example/bd.png")
+        set_textless_pick(self.item, backdrop, True)
+        twin = _best_asset(self.item, "textless_backdrop", "general")
+        self.assertEqual(twin.asset_type, "textless_backdrop")
+        self.assertEqual(twin.url, backdrop.url)
+        self.assertEqual(twin.selected_context, "general")
+
+    def test_pick_is_one_theme_agnostic_image(self) -> None:
+        poster = self._image("poster", "http://img.example/p.png")
+        set_textless_pick(self.item, poster, True)
+        for context in ("general", "dark", "light"):
+            self.assertEqual(
+                _best_asset(self.item, "textless_poster", context).url,
+                poster.url,
+            )
+
+    def test_designating_second_image_moves_pick_and_prunes_first(self) -> None:
+        a = self._image("poster", "http://img.example/a.png")
+        b = self._image("poster", "http://img.example/b.png")
+        set_textless_pick(self.item, a, True)
+        first = _best_asset(self.item, "textless_poster", "general")
+        set_textless_pick(self.item, b, True)
+        self.assertFalse(
+            MediaAsset.objects.filter(pk=first.pk, media_item=self.item).exists()
+        )
+        self.assertEqual(
+            _best_asset(self.item, "textless_poster", "general").url, b.url
+        )
+
+    def test_undesignate_clears_and_prunes_materialized_row(self) -> None:
+        poster = self._image("poster", "http://img.example/p.png")
+        set_textless_pick(self.item, poster, True)
+        result = set_textless_pick(self.item, poster, False)
+        self.assertFalse(result["active"])
+        self.assertIsNone(_best_asset(self.item, "textless_poster", "general"))
+        self.assertFalse(
+            MediaAsset.objects.filter(
+                media_item=self.item, asset_type="textless_poster"
+            ).exists()
+        )
+        poster.refresh_from_db()
+        self.assertIsNone(poster.selected_context)
+
+    def test_undesignating_a_non_pick_is_a_noop(self) -> None:
+        # an unrelated provider textless_poster stays untouched
+        provider_twin = MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="textless_poster",
+            url="http://img.example/t.png",
+            score=90,
+            provider="fanart",
+        )
+        poster = self._image("poster", "http://img.example/p.png")
+        result = set_textless_pick(self.item, poster, False)
+        self.assertFalse(result["active"])
+        provider_twin.refresh_from_db()
+        self.assertIsNone(provider_twin.selected_context)
+
+    def test_designate_reuses_a_provider_textless_row_with_same_url(self) -> None:
+        poster = self._image("poster", "http://img.example/p.png")
+        existing = MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="textless_poster",
+            url="http://img.example/p.png",
+            score=30,
+        )
+        set_textless_pick(self.item, poster, True)
+        existing.refresh_from_db()
+        self.assertEqual(existing.selected_context, "general")
+        self.assertIsNone(existing.label)  # provider row, not a materialized twin
+        self.assertEqual(
+            MediaAsset.objects.filter(
+                media_item=self.item, asset_type="textless_poster"
+            ).count(),
+            1,
+        )
+
+    def test_undesignate_provider_row_keeps_the_row(self) -> None:
+        poster = self._image("poster", "http://img.example/p.png")
+        existing = MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="textless_poster",
+            url="http://img.example/p.png",
+            score=30,
+        )
+        set_textless_pick(self.item, poster, True)
+        set_textless_pick(self.item, poster, False)
+        existing.refresh_from_db()
+        self.assertIsNone(existing.selected_context)
+        self.assertTrue(MediaAsset.objects.filter(pk=existing.pk).exists())
+
+    def test_designate_mirrors_when_master_on(self) -> None:
+        set_mirroring_enabled(True)
+        poster = self._image("poster", "http://img.example/p.png")
+        with _patch_http(_FakeResponse(PNG)):
+            result = set_textless_pick(self.item, poster, True)
+        self.assertTrue(result["mirrored"])
+        twin = _best_asset(self.item, "textless_poster", "general")
+        self.assertTrue(twin.local_name)
+
+    def test_logo_has_no_textless_slot(self) -> None:
+        logo = self._image("logo", "http://img.example/l.png")
+        with self.assertRaises(ValueError):
+            set_textless_pick(self.item, logo, True)
 
 
 class ArtworkSelectionEndpointTests(AssetTestCase):
@@ -993,45 +1231,84 @@ class ArtworkSelectionEndpointTests(AssetTestCase):
             f"/assets/{asset_id}/select"
         )
 
-    def test_put_selects_and_delete_clears(self) -> None:
+    def test_put_defaults_to_general_and_delete_clears(self) -> None:
         asset = self.add_asset(url="http://img.example/p.png", score=50)
         put = self.staff_client.put(self._url(asset.pk))
         self.assertEqual(put.status_code, 200)
-        self.assertEqual(put.data["is_selected"], True)
+        self.assertEqual(put.data["selected_context"], "general")
         asset.refresh_from_db()
-        self.assertTrue(asset.is_selected)
+        self.assertEqual(asset.selected_context, "general")
 
         delete = self.staff_client.delete(self._url(asset.pk))
         self.assertEqual(delete.status_code, 200)
-        self.assertEqual(delete.data["is_selected"], False)
+        self.assertEqual(delete.data["selected_context"], None)
         asset.refresh_from_db()
-        self.assertFalse(asset.is_selected)
+        self.assertIsNone(asset.selected_context)
 
-    def test_selecting_clears_sibling(self) -> None:
+    def test_put_dark_selects_dark_context_only(self) -> None:
         a = self.add_asset(url="http://img.example/a.png", score=90)
         b = self.add_asset(url="http://img.example/b.png", score=50)
-        self.staff_client.put(self._url(b.pk))
+        put = self.staff_client.put(self._url(b.pk), {"context": "dark"})
+        self.assertEqual(put.status_code, 200)
+        self.assertEqual(put.data["selected_context"], "dark")
         a.refresh_from_db()
         b.refresh_from_db()
-        self.assertFalse(a.is_selected)
-        self.assertTrue(b.is_selected)
+        self.assertIsNone(a.selected_context)
+        self.assertEqual(b.selected_context, "dark")
+
+    def test_put_light_and_dark_pins_coexist(self) -> None:
+        dark = self.add_asset(url="http://img.example/d.png", score=50)
+        light = self.add_asset(url="http://img.example/l.png", score=50)
+        self.assertEqual(
+            self.staff_client.put(self._url(dark.pk), {"context": "dark"}).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.staff_client.put(self._url(light.pk), {"context": "light"}).status_code,
+            200,
+        )
+        dark.refresh_from_db()
+        light.refresh_from_db()
+        self.assertEqual(dark.selected_context, "dark")
+        self.assertEqual(light.selected_context, "light")
+
+    def test_put_bad_context_returns_400(self) -> None:
+        asset = self.add_asset(url="http://img.example/p.png", score=50)
+        response = self.staff_client.put(self._url(asset.pk), {"context": "sepia"})
+        self.assertEqual(response.status_code, 400)
 
     def test_put_mirrors_when_mirroring_enabled(self) -> None:
         set_mirroring_enabled(True)
         asset = self.add_asset(url="http://img.example/p.png", score=50)
         with _patch_http(_FakeResponse(PNG)):
-            response = self.staff_client.put(self._url(asset.pk))
+            response = self.staff_client.put(
+                self._url(asset.pk), {"context": "general"}
+            )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["mirrored"], True)
         asset.refresh_from_db()
         self.assertTrue(asset.local_name)
+
+    def test_put_pins_registered_optional_slot(self) -> None:
+        # textless_backdrop is a selectable slot even though it is not part of
+        # the auto-mirror default set (no provider populates it yet).
+        tb = self.add_asset(
+            asset_type="textless_backdrop",
+            url="http://img.example/tb.png",
+            score=50,
+        )
+        put = self.staff_client.put(self._url(tb.pk), {"context": "dark"})
+        self.assertEqual(put.status_code, 200)
+        self.assertEqual(put.data["selected_context"], "dark")
+        tb.refresh_from_db()
+        self.assertEqual(tb.selected_context, "dark")
 
     def test_gating_and_validation(self) -> None:
         asset = self.add_asset(url="http://img.example/p.png", score=50)
         self.assertEqual(self.client.put(self._url(asset.pk)).status_code, 401)
         self.assertEqual(self.user_client.put(self._url(asset.pk)).status_code, 403)
 
-        # only primary artwork types can be pinned
+        # only selectable artwork types can be pinned
         shot = self.add_asset(
             asset_type="screenshot", url="http://img.example/sh.png", score=5
         )
@@ -1051,3 +1328,401 @@ class ArtworkSelectionEndpointTests(AssetTestCase):
         self.assertEqual(
             self.staff_client.delete(self._url(foreign.pk)).status_code, 404
         )
+
+
+class TextlessPickEndpointTests(AssetTestCase):
+    """``.../assets/<id>/textless`` PUT designates / DELETE clears the pick."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        set_mirroring_enabled(False)
+
+    def _url(self, asset_id: int) -> str:
+        return (
+            f"/api/v1/media/admin/media-items/{self.item.pk}"
+            f"/assets/{asset_id}/textless"
+        )
+
+    def test_put_designates_a_poster_as_the_family_textless(self) -> None:
+        poster = self.add_asset(
+            asset_type="poster",
+            url="http://img.example/p.png",
+            score=70,
+            provider="tmdb",
+        )
+        put = self.staff_client.put(self._url(poster.pk))
+        self.assertEqual(put.status_code, 200)
+        self.assertEqual(put.data["asset_id"], poster.pk)
+        self.assertIs(put.data["active"], True)
+        twin = _best_asset(self.item, "textless_poster", "general")
+        self.assertEqual(twin.url, poster.url)
+        self.assertEqual(twin.selected_context, "general")
+        poster.refresh_from_db()
+        self.assertIsNone(poster.selected_context)
+
+    def test_put_backdrop_designates_textless_backdrop(self) -> None:
+        backdrop = self.add_asset(
+            asset_type="backdrop", url="http://img.example/bd.png", score=50
+        )
+        put = self.staff_client.put(self._url(backdrop.pk))
+        self.assertEqual(put.status_code, 200)
+        self.assertIs(put.data["active"], True)
+        twin = _best_asset(self.item, "textless_backdrop", "general")
+        self.assertEqual(twin.url, backdrop.url)
+
+    def test_delete_clears_the_designation_and_prunes_the_row(self) -> None:
+        poster = self.add_asset(
+            asset_type="poster", url="http://img.example/p.png", score=50
+        )
+        self.staff_client.put(self._url(poster.pk))
+        delete = self.staff_client.delete(self._url(poster.pk))
+        self.assertEqual(delete.status_code, 200)
+        self.assertIs(delete.data["active"], False)
+        self.assertIsNone(_best_asset(self.item, "textless_poster", "general"))
+        self.assertFalse(
+            MediaAsset.objects.filter(
+                media_item=self.item, asset_type="textless_poster"
+            ).exists()
+        )
+
+    def test_list_hides_the_twin_and_marks_the_source_image(self) -> None:
+        poster = self.add_asset(
+            asset_type="poster", url="http://img.example/p.png", score=50
+        )
+        self.staff_client.put(self._url(poster.pk))
+        got = self.staff_client.get(f"/api/v1/media/movie/{self.item.pk}/assets")
+        self.assertEqual(got.status_code, 200)
+        rows = {row["id"]: row for row in got.data["items"]}
+        self.assertIn(poster.pk, rows)
+        self.assertIs(rows[poster.pk]["is_textless"], True)
+        # the materialized twin is hidden so the grid shows the source card only
+        self.assertTrue(
+            all(row["asset_type"] != "textless_poster" for row in got.data["items"])
+        )
+
+    def test_gating_and_validation(self) -> None:
+        poster = self.add_asset(
+            asset_type="poster", url="http://img.example/p.png", score=50
+        )
+        self.assertEqual(self.client.put(self._url(poster.pk)).status_code, 401)
+        self.assertEqual(self.user_client.put(self._url(poster.pk)).status_code, 403)
+        self.assertEqual(
+            self.user_client.delete(self._url(poster.pk)).status_code, 403
+        )
+
+        # a logo has no textless slot
+        logo = self.add_asset(asset_type="logo", url="http://img.example/l.png", score=50)
+        self.assertEqual(self.staff_client.put(self._url(logo.pk)).status_code, 400)
+
+        other_item = MediaItem.objects.create(
+            media_type="movie", title="Other", slug="other-textless"
+        )
+        foreign = MediaAsset.objects.create(
+            media_item=other_item,
+            asset_type="poster",
+            url="http://img.example/foreign.png",
+            score=5,
+        )
+        self.assertEqual(self.staff_client.put(self._url(foreign.pk)).status_code, 404)
+
+
+class KeepMirrorServiceTests(AssetTestCase):
+    """Admin keep-set: mirror a non-winner variant and keep it through reconciles."""
+
+    def _mirrored_winner_and_variant(self) -> tuple[MediaAsset, MediaAsset]:
+        best = self.add_asset(url="http://img.example/best.png", score=90)
+        kept = self.add_asset(url="http://img.example/kept.png", score=10)
+        with _patch_http(_FakeResponse(PNG)):
+            download_primary_assets(self.item)
+        best.refresh_from_db()
+        kept.refresh_from_db()
+        self.assertTrue(best.local_name)  # winner mirrored, variant not yet
+        self.assertIsNone(kept.local_name)
+        return best, kept
+
+    def test_keep_mirrors_variant_and_survives_reconcile(self) -> None:
+        set_mirroring_enabled(True)
+        best, kept = self._mirrored_winner_and_variant()
+
+        with _patch_http(_FakeResponse(PNG)):
+            keep_asset(self.item, kept, True)
+        kept.refresh_from_db()
+        self.assertTrue(kept.keep_local)
+        self.assertTrue(kept.local_name)
+        self.assertTrue((asset_dir() / kept.local_name).is_file())
+
+        # a re-reconcile must not discard the admin-kept non-winner variant
+        with _patch_http(_FakeResponse(PNG)):
+            download_primary_assets(self.item)
+        best.refresh_from_db()
+        kept.refresh_from_db()
+        self.assertTrue(best.local_name)
+        self.assertTrue(kept.local_name)
+        self.assertTrue((asset_dir() / kept.local_name).is_file())
+
+    def test_unkeep_non_winner_frees_local_copy(self) -> None:
+        set_mirroring_enabled(True)
+        best, kept = self._mirrored_winner_and_variant()
+        with _patch_http(_FakeResponse(PNG)):
+            keep_asset(self.item, kept, True)
+        kept.refresh_from_db()
+        kept_file = kept.local_name
+        self.assertTrue(kept_file)
+
+        result = keep_asset(self.item, kept, False)
+        kept.refresh_from_db()
+        best.refresh_from_db()
+        self.assertEqual(result["kept"], False)
+        self.assertEqual(result["mirrored"], False)
+        self.assertFalse(kept.keep_local)
+        self.assertIsNone(kept.local_name)
+        self.assertFalse((asset_dir() / kept_file).exists())
+        # the winner stays mirrored
+        self.assertTrue(best.local_name)
+
+    def test_unkeep_winner_keeps_mirror_because_still_wanted(self) -> None:
+        set_mirroring_enabled(True)
+        # only asset of the type -> it is the winner for every context, so
+        # un-keeping must not free its local copy.
+        best = self.add_asset(url="http://img.example/best.png", score=90)
+        with _patch_http(_FakeResponse(PNG)):
+            download_primary_assets(self.item)
+        best.refresh_from_db()
+        self.assertTrue(best.local_name)
+
+        keep_asset(self.item, best, True)
+        result = keep_asset(self.item, best, False)
+        best.refresh_from_db()
+        self.assertEqual(result["mirrored"], True)
+        self.assertTrue(best.local_name)
+
+    def test_keep_does_not_download_when_master_off(self) -> None:
+        set_mirroring_enabled(False)
+        asset = self.add_asset(url="http://img.example/x.png", score=50)
+        result = keep_asset(self.item, asset, True)
+        asset.refresh_from_db()
+        self.assertEqual(result["kept"], True)
+        self.assertEqual(result["mirrored"], False)
+        self.assertTrue(asset.keep_local)
+        self.assertIsNone(asset.local_name)
+
+
+class KeepMirrorEndpointTests(AssetTestCase):
+    """``/api/v1/media/admin/media-items/<id>/assets/<id>/mirror`` PUT/DELETE."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        set_mirroring_enabled(True)
+
+    def _url(self, asset_id: int) -> str:
+        return (
+            f"/api/v1/media/admin/media-items/{self.item.pk}"
+            f"/assets/{asset_id}/mirror"
+        )
+
+    def test_put_mirrors_and_keeps(self) -> None:
+        asset = self.add_asset(url="http://img.example/p.png", score=50)
+        with _patch_http(_FakeResponse(PNG)):
+            response = self.staff_client.put(self._url(asset.pk))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["kept"], True)
+        self.assertEqual(response.data["mirrored"], True)
+        asset.refresh_from_db()
+        self.assertTrue(asset.keep_local)
+        self.assertTrue(asset.local_name)
+
+    def test_put_keeps_flag_without_download_when_master_off(self) -> None:
+        set_mirroring_enabled(False)
+        asset = self.add_asset(url="http://img.example/p.png", score=50)
+        with mock.patch("httpx.Client") as client:
+            response = self.staff_client.put(self._url(asset.pk))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["mirrored"], False)
+        client.assert_not_called()
+        asset.refresh_from_db()
+        self.assertTrue(asset.keep_local)
+        self.assertIsNone(asset.local_name)
+
+    def test_delete_unkeeps_and_frees_non_winner_local(self) -> None:
+        kept = self.add_asset(url="http://img.example/kept.png", score=10)
+        winner = self.add_asset(url="http://img.example/winner.png", score=90)
+        # mirror both the winner and the kept variant so both hold local copies
+        with _patch_http(_FakeResponse(PNG)):
+            self.staff_client.put(self._url(kept.pk))
+            self.staff_client.put(self._url(winner.pk))
+        winner.refresh_from_db()
+        kept.refresh_from_db()
+        self.assertTrue(winner.local_name)
+        kept_file = kept.local_name
+        self.assertTrue(kept_file)
+
+        with _patch_http(_FakeResponse(PNG)):
+            response = self.staff_client.delete(self._url(kept.pk))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["kept"], False)
+        self.assertEqual(response.data["mirrored"], False)
+        kept.refresh_from_db()
+        self.assertFalse(kept.keep_local)
+        self.assertIsNone(kept.local_name)
+        self.assertFalse((asset_dir() / kept_file).exists())
+
+    def test_gating_and_validation(self) -> None:
+        asset = self.add_asset(url="http://img.example/p.png", score=50)
+        self.assertEqual(self.client.put(self._url(asset.pk)).status_code, 401)
+        self.assertEqual(self.user_client.put(self._url(asset.pk)).status_code, 403)
+        self.assertEqual(self.client.delete(self._url(asset.pk)).status_code, 401)
+        self.assertEqual(
+            self.user_client.delete(self._url(asset.pk)).status_code, 403
+        )
+
+        other_item = MediaItem.objects.create(
+            media_type="movie", title="Other", slug="other-mirror"
+        )
+        foreign = MediaAsset.objects.create(
+            media_item=other_item,
+            asset_type="poster",
+            url="http://img.example/foreign.png",
+            score=5,
+        )
+        self.assertEqual(self.staff_client.put(self._url(foreign.pk)).status_code, 404)
+        self.assertEqual(
+            self.staff_client.delete(self._url(foreign.pk)).status_code, 404
+        )
+
+
+class ArtworkBudgetTests(AssetTestCase):
+    """``mirror_max_gb`` budget: track served usage, evict least-used on overflow."""
+
+    def _seed_local(
+        self,
+        name: str,
+        size: int,
+        *,
+        usage: int = 0,
+        keep: bool = False,
+        pinned: bool = False,
+    ) -> MediaAsset:
+        (asset_dir() / name).write_bytes(b"\0" * size)
+        return MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="poster",
+            url=f"http://img.example/{name}",
+            score=50,
+            local_name=name,
+            local_size=size,
+            downloaded_at=timezone.now(),
+            usage_count=usage,
+            keep_local=keep,
+            selected_context="general" if pinned else None,
+        )
+
+    def _cap_gb(self, cap_bytes: int) -> mock.patch:
+        # The real cap is whole GiB; expose it at byte granularity so the test
+        # fixtures stay tiny.
+        return mock.patch(
+            "apps.media.services.assets.max_gb", return_value=cap_bytes / 1024**3
+        )
+
+    def test_defaults_to_unlimited(self) -> None:
+        self.assertEqual(max_gb(), 0)
+        summary = mirrored_usage()
+        self.assertEqual(summary["count"], 0)
+        self.assertEqual(summary["bytes"], 0)
+        self.assertEqual(summary["max_gb"], 0)
+        self.assertFalse(summary["over_budget"])
+
+    def test_serving_a_mirrored_file_bumps_usage(self) -> None:
+        asset = self._seed_local("budget-use.png", 16)
+        self.assertEqual(asset.usage_count, 0)
+        self.client.get("/api/v1/assets/budget-use.png")
+        self.client.get("/api/v1/assets/budget-use.png")
+        asset.refresh_from_db()
+        self.assertEqual(asset.usage_count, 2)
+        self.assertIsNotNone(asset.last_used_at)
+
+    def test_overflow_evicts_least_used_and_keeps_protected(self) -> None:
+        keep = self._seed_local("budget-keep.png", 300, usage=5, keep=True)
+        pinned = self._seed_local("budget-pin.png", 300, usage=2, pinned=True)
+        unused = self._seed_local("budget-unused.png", 300, usage=0)
+        used3 = self._seed_local("budget-used3.png", 300, usage=3)
+        target = MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="logo",
+            url="http://img.example/new.png",
+            score=50,
+        )
+        with self._cap_gb(1100), mock.patch(
+            "httpx.Client", return_value=_FakeClient(_FakeResponse(b"x" * 100))
+        ):
+            written = download_asset(target)
+
+        self.assertEqual(written, 100)
+        target.refresh_from_db()
+        self.assertIsNotNone(target.local_name)
+        self.assertTrue((asset_dir() / target.local_name).exists())
+        unused.refresh_from_db()
+        self.assertIsNone(unused.local_name)
+        self.assertFalse((asset_dir() / "budget-unused.png").exists())
+        for protected in (keep, pinned, used3):
+            protected.refresh_from_db()
+            self.assertIsNotNone(protected.local_name)
+
+    def test_overflow_skips_when_only_protected_remain(self) -> None:
+        self._seed_local("budget-prot-a.png", 2000, keep=True)
+        self._seed_local("budget-prot-b.png", 2000, pinned=True)
+        target = MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="poster",
+            url="http://img.example/new2.png",
+            score=50,
+        )
+        with self._cap_gb(1100), mock.patch(
+            "httpx.Client", return_value=_FakeClient(_FakeResponse(b"x" * 100))
+        ):
+            written = download_asset(target)
+
+        self.assertIsNone(written)
+        target.refresh_from_db()
+        self.assertIsNone(target.local_name)
+
+    def test_zero_budget_never_evicts(self) -> None:
+        first = self._seed_local("budget-zero-a.png", 300)
+        second = self._seed_local("budget-zero-b.png", 300)
+        target = MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="poster",
+            url="http://img.example/new3.png",
+            score=50,
+        )
+        with mock.patch(
+            "apps.media.services.assets.max_gb", return_value=0
+        ), mock.patch(
+            "httpx.Client", return_value=_FakeClient(_FakeResponse(b"y" * 200))
+        ):
+            written = download_asset(target)
+
+        self.assertEqual(written, 200)
+        target.refresh_from_db()
+        self.assertIsNotNone(target.local_name)
+        for asset in (first, second):
+            asset.refresh_from_db()
+            self.assertIsNotNone(asset.local_name)
+
+
+class ArtworkBudgetEndpointTests(AssetTestCase):
+    url = "/api/v1/media/admin/artwork-settings"
+
+    def test_get_reports_budget_and_mirror_usage(self) -> None:
+        response = self.staff_client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        mirrored = response.data["mirrored"]
+        self.assertEqual(mirrored["max_gb"], 0)
+        self.assertFalse(mirrored["over_budget"])
+        self.assertIn("bytes", mirrored)
+        self.assertIn("count", mirrored)
+
+    def test_put_sets_max_gb(self) -> None:
+        response = self.staff_client.put(self.url, {"max_gb": 3}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(max_gb(), 3)
+        self.assertEqual(response.data["mirrored"]["max_gb"], 3)

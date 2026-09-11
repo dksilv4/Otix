@@ -123,6 +123,26 @@ FANART_API_KEY = os.environ.get("FANART_API_KEY", "")
 FANART_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("FANART_REQUEST_TIMEOUT_SECONDS", "15.0"))
 FANART_GLOBAL_RPS_LIMIT = float(os.environ.get("FANART_GLOBAL_RPS_LIMIT", "1.0"))
 
+# Wikidata (movie/show distributor companies via P750, since TMDB models
+# production companies only). No key required; the enrich tail is ungated but
+# can be disabled globally. WDQS is a shared service — set this False before a
+# large bulk backfill. Keyless like LRCLIB, so enabled by default.
+WIKIDATA_DISTRIBUTOR_ENRICH = os.environ.get("WIKIDATA_DISTRIBUTOR_ENRICH", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+WIKIDATA_DISTRIBUTOR_REQUEST_TIMEOUT_SECONDS = float(
+    os.environ.get("WIKIDATA_DISTRIBUTOR_REQUEST_TIMEOUT_SECONDS", "20.0")
+)
+
+# Web-push (VAPID). The public key is served to browsers; the private key signs
+# pushes in apps.push.services.sender and is unset by default, which disables
+# sending (a benign no-op). Set both to a matching pair to enable delivery.
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@otix.local")
+
 # Dev-only fallback; production settings require an explicit env SECRET_KEY.
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
 
@@ -328,6 +348,12 @@ CELERY_BEAT_SCHEDULE = {
     "mirror-discover-artwork": {
         "task": "media.mirror_discover_artwork",
         "schedule": crontab(minute="*"),
+    },
+    # Notify followers of followed studios when an announced title's release date
+    # arrives. Runs early morning (after the 03:07 TMDB import lands new dates).
+    "notify-release-transitions": {
+        "task": "social.notify_release_transitions",
+        "schedule": crontab(hour=4, minute=13),
     },
 }
 

@@ -31,12 +31,15 @@ def media_type_or_none(media_id: int) -> str | None:
     return value
 
 
-def _best_asset(item: MediaItem, asset_type: str) -> MediaAsset | None:
-    """Highest-``score`` asset of ``asset_type`` with a usable remote URL.
+def _best_asset(item: MediaItem, asset_type: str, context: str = "general") -> MediaAsset | None:
+    """Best ``asset_type`` for ``context`` with a usable remote URL.
 
-    Ties are broken deterministically so repeated resolution picks the same row:
-    an already-mirrored copy wins over an unmirrored one (keeps downloads
-    stable across runs), otherwise the lower ``pk`` wins.
+    ``context`` decides which admin pin wins: the row pinned for that exact
+    context, else a ``general`` pin (the shared default, and the fallback when a
+    ``dark``/``light`` pin is absent), else the highest score. Ties are broken
+    deterministically so repeated resolution picks the same row: an
+    already-mirrored copy wins over an unmirrored one (keeps downloads stable
+    across runs), otherwise the lower ``pk`` wins.
     """
     best = None
     for asset in item.assets.all():
@@ -44,15 +47,30 @@ def _best_asset(item: MediaItem, asset_type: str) -> MediaAsset | None:
             continue
         if not asset.url:
             continue
-        if best is None or _asset_outranks(asset, best):
+        if best is None or _asset_outranks(asset, best, context):
             best = asset
     return best
 
 
-def _asset_outranks(candidate: MediaAsset, current: MediaAsset) -> bool:
-    # An admin-pinned row always wins, whatever its score/mirror state.
-    if bool(candidate.is_selected) != bool(current.is_selected):
-        return bool(candidate.is_selected)
+SELECTION_CONTEXTS = ("general", "dark", "light")
+
+
+def _selection_rank(asset: MediaAsset, context: str) -> int:
+    """How strongly ``asset`` is pinned for ``context``: theme pin > general > none."""
+    if asset.selected_context == context:
+        return 3
+    if context in ("dark", "light") and asset.selected_context == "general":
+        return 2
+    return 0
+
+
+def _asset_outranks(candidate: MediaAsset, current: MediaAsset, context: str) -> bool:
+    # A row pinned for this context always wins; a general pin is the shared
+    # fallback for the theme contexts. Then score, mirror state, then lower pk.
+    candidate_rank = _selection_rank(candidate, context)
+    current_rank = _selection_rank(current, context)
+    if candidate_rank != current_rank:
+        return candidate_rank > current_rank
     if (candidate.score or 0) != (current.score or 0):
         return (candidate.score or 0) > (current.score or 0)
     if bool(candidate.local_name) != bool(current.local_name):
@@ -67,29 +85,41 @@ def _local_asset_url(asset: MediaAsset | None) -> str | None:
     return None
 
 
-def _pick_asset(item: MediaItem, asset_type: str) -> str | None:
-    best = _best_asset(item, asset_type)
+def _pick_asset(item: MediaItem, asset_type: str, context: str = "general") -> str | None:
+    best = _best_asset(item, asset_type, context)
     if best is None:
         return None
     return _local_asset_url(best) or best.url
 
 
-def _logo_color_guess(item: MediaItem) -> str | None:
-    for asset in item.assets.all():
-        if (asset.asset_type or "").lower() == "logo" and asset.color_guess:
-            return asset.color_guess
-    return None
+def _pick_backdrop(item: MediaItem, context: str = "general") -> str | None:
+    """Resolve the hero backdrop, preferring the designated textless image.
+
+    The family textless art (a pinned ``textless_backdrop`` row) always wins the
+    served background in every theme — it overrides any texted ``backdrop`` pin,
+    so viewers see the clean, title-free art. Falls back to the normal backdrop
+    pick for the requested ``context`` when no textless backdrop is designated.
+    """
+    tless = _best_asset(item, "textless_backdrop", "general")
+    if tless is not None:
+        return _local_asset_url(tless) or tless.url
+    return _pick_asset(item, "backdrop", context)
 
 
-def attach_media_urls(items: list[MediaItem]) -> None:
+def _logo_color_guess(item: MediaItem, context: str = "general") -> str | None:
+    best = _best_asset(item, "logo", context)
+    return best.color_guess if best is not None else None
+
+
+def attach_media_urls(items: list[MediaItem], context: str = "general") -> None:
     """Resolve image URLs from prefetched assets and attach them to instances."""
     for item in items:
-        item.poster_url = _pick_asset(item, "poster")
-        item.backdrop_url = _pick_asset(item, "backdrop")
-        item.logo_url = _pick_asset(item, "logo")
-        item.textless_poster_url = _pick_asset(item, "textless_poster")
-        item.icon_url = _pick_asset(item, "icon")
-        item.logo_color_guess = _logo_color_guess(item)
+        item.poster_url = _pick_asset(item, "poster", context)
+        item.backdrop_url = _pick_backdrop(item, context)
+        item.logo_url = _pick_asset(item, "logo", context)
+        item.textless_poster_url = _pick_asset(item, "textless_poster", context)
+        item.icon_url = _pick_asset(item, "icon", context)
+        item.logo_color_guess = _logo_color_guess(item, context)
 
 
 def external_ids_for(
@@ -109,9 +139,9 @@ def external_ids_for(
     return out
 
 
-def enrich_summaries(items: list[MediaItem], user: _User) -> None:
+def enrich_summaries(items: list[MediaItem], user: _User, context: str = "general") -> None:
     """Attach image urls, tmdb_id and per-user interaction state to items."""
-    attach_media_urls(items)
+    attach_media_urls(items, context)
     ext_map = external_ids_for(items)
     for item in items:
         item.tmdb_id = ext_map.get(item.id, {}).get("tmdb")
@@ -175,6 +205,12 @@ def _attach_summary_derived(item: MediaItem) -> None:
     item.budget = movie.budget if movie is not None else None
 
 
+# A "best"/top-rated game should have been scored by more than a couple of
+# IGDB critic outlets; without this floor the ranking is dominated by
+# single-outlet 100s (indie + retro titles that a lone outlet rated perfectly).
+_MIN_GAME_RATING_VOTES = 4
+
+
 def list_media(
     *,
     media_type: str | None = None,
@@ -182,6 +218,7 @@ def list_media(
     company: str | None = None,
     language: str | None = None,
     is_anime: bool | None = None,
+    platform: str | None = None,
     exclude_adult: bool = False,
     sort_by: str | None = None,
     sort_dir: str = "desc",
@@ -190,6 +227,7 @@ def list_media(
     has_logo: bool = False,
     date_from: date | None = None,
     date_to: date | None = None,
+    main_games_only: bool = False,
 ) -> QuerySet:
     """Paginated catalog browse (legacy ``MediaService.list_media``).
 
@@ -198,8 +236,11 @@ def list_media(
     ``person_id`` filters on credited person. ``has_artwork`` mirrors the
     legacy textless-poster rule (game/music fall back to plain poster);
     ``has_logo``/``date_from``/``date_to`` filter on logo assets and
-    ``release_date``. Embedding-dependent features are not represented
-    (schema defers vectors).
+    ``release_date``. ``main_games_only`` restricts games to their stored
+    ``main_game`` type so DLC/expansions never rank in curated rails. Rating
+    sorts (``rating``/``rating_count``) drop rows that carry no score, since a
+    null score has no business ranking. Embedding-dependent features are not
+    represented (schema defers vectors).
     """
     qs = MediaItem.objects.all()
     if media_type:
@@ -208,6 +249,8 @@ def list_media(
         qs = qs.filter(media_genres__genre__slug=genre)
     if company:
         qs = qs.filter(involved_companies__company_id=company)
+    if platform:
+        qs = qs.filter(platforms__platform__slug=platform)
     if language:
         qs = qs.filter(original_language=language)
     if is_anime is not None:
@@ -233,24 +276,24 @@ def list_media(
                 MediaAsset.objects.filter(media_item_id=OuterRef("pk"), asset_type="poster")
             ),
         ).filter(
-            Q(_has_textless=True)
-            | (Q(media_type__in=["game", "music"]) & Q(_has_poster=True))
+            Q(_has_textless=True) | (Q(media_type__in=["game", "music"]) & Q(_has_poster=True))
         )
     if has_logo:
         qs = qs.filter(
-            Exists(
-                MediaAsset.objects.filter(media_item_id=OuterRef("pk"), asset_type="logo")
-            )
+            Exists(MediaAsset.objects.filter(media_item_id=OuterRef("pk"), asset_type="logo"))
         )
     if date_from is not None:
         qs = qs.filter(release_date__gte=date_from)
     if date_to is not None:
         qs = qs.filter(release_date__lte=date_to)
 
+    if main_games_only:
+        qs = qs.filter(game__game_type="main_game")
     direction = "-" if sort_dir == "desc" else ""
     sort_map = {
         "popularity": "popularity",
         "rating": "avg_rating",
+        "rating_count": "rating_count",
         "release_date": "release_date",
         "title": "title",
         "views": "view_count",
@@ -259,6 +302,12 @@ def list_media(
         "profit": "movie__revenue",
     }
     sort_field = sort_map.get(sort_by or "")
+    if sort_field == "avg_rating":
+        qs = qs.filter(avg_rating__isnull=False).exclude(avg_rating=0)
+        if main_games_only:
+            qs = qs.filter(rating_count__gte=_MIN_GAME_RATING_VOTES)
+    elif sort_field == "rating_count":
+        qs = qs.filter(rating_count__gt=0)
     if sort_field:
         qs = qs.order_by(f"{direction}{sort_field}", "-popularity", "id")
     else:
@@ -346,9 +395,7 @@ def similar_items(media_id: int, media_type: str | None, limit: int) -> list[Med
         source = MediaItem.objects.get(pk=media_id)
     except MediaItem.DoesNotExist:
         return []
-    genre_ids = list(
-        source.media_genres.values_list("genre_id", flat=True)
-    )
+    genre_ids = list(source.media_genres.values_list("genre_id", flat=True))
     qs = MediaItem.objects.exclude(pk=media_id).filter(is_adult=False)
     if media_type:
         qs = qs.filter(media_type=media_type)

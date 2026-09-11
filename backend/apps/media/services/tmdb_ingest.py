@@ -62,6 +62,7 @@ from apps.media.models.genre import Genre, Keyword, MediaGenre, MediaGenreType, 
 from apps.media.services.completeness import recompute_completeness
 from apps.media.services.fanart_ingest import fanart_enrich_images
 from apps.media.services.omdb_ingest import omdb_enrich_ratings
+from apps.media.services.wikidata_distributor import wikidata_enrich_distributors
 from apps.people.models import MediaCredit, Person
 
 if TYPE_CHECKING:
@@ -288,8 +289,7 @@ def _image_entry_asset(media: MediaItem, entry: Any, asset_type: str, score: int
     """Store one ``images`` list entry (``file_path`` + size) as an asset."""
     if not isinstance(entry, dict):
         return
-    size = "w780" if asset_type == "backdrop" else "w500"
-    url = _image_url(entry.get("file_path"), size=size)
+    url = _image_url(entry.get("file_path"), size="original")
     if not url:
         return
     _upsert_asset(media, url, asset_type, score)
@@ -538,8 +538,8 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
 
     title = (raw.get("title") or raw.get("name") or "Unknown Movie").strip() or "Unknown Movie"
     overview = raw.get("overview")
-    poster_url = _image_url(raw.get("poster_path"))
-    backdrop_url = _image_url(raw.get("backdrop_path"), size="w780")
+    poster_url = _image_url(raw.get("poster_path"), size="original")
+    backdrop_url = _image_url(raw.get("backdrop_path"), size="original")
     slug = re.sub(r"[^a-z0-9]+", "-", slugify(title)).strip("-")[:200] or slugify("untitled")
     release_date = _parse_date(raw.get("release_date") or raw.get("first_air_date"))
 
@@ -608,7 +608,7 @@ def _upsert_seasons(show_pk: int, raw: dict[str, Any]) -> None:
             defaults={
                 "name": season_data.get("name"),
                 "overview": season_data.get("overview"),
-                "poster_url": _image_url(season_data.get("poster_path")),
+                "poster_url": _image_url(season_data.get("poster_path"), size="original"),
                 "air_date": _parse_date(season_data.get("air_date")),
             },
         )
@@ -633,8 +633,8 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
 
     title = (raw.get("name") or raw.get("title") or "Unknown Show").strip() or "Unknown Show"
     overview = raw.get("overview")
-    poster_url = _image_url(raw.get("poster_path"))
-    backdrop_url = _image_url(raw.get("backdrop_path"), size="w780")
+    poster_url = _image_url(raw.get("poster_path"), size="original")
+    backdrop_url = _image_url(raw.get("backdrop_path"), size="original")
     slug = re.sub(r"[^a-z0-9]+", "-", slugify(title)).strip("-")[:200] or slugify("untitled")
     first_air_date = _parse_date(raw.get("first_air_date") or raw.get("release_date"))
     last_air_date = _parse_date(raw.get("last_air_date"))
@@ -770,6 +770,22 @@ async def _fanart_enrich_after_seed(media_id: int) -> None:
         pass
 
 
+async def _wikidata_distributor_enrich_after_seed(media_id: int) -> None:
+    """Best-effort Wikidata distributor enrich on a freshly-seeded movie/show row.
+
+    TMDB carries only production companies, so distributors (e.g. A24) are missing
+    from the seed's company list; this attaches them from Wikidata ``P750``. Gated
+    on ``WIKIDATA_DISTRIBUTOR_ENRICH`` and a no-op for a row with no IMDb/TMDB id.
+    Errors are swallowed — enrichment never fails the seed that produced the row.
+    """
+    if not settings.WIKIDATA_DISTRIBUTOR_ENRICH:
+        return
+    try:
+        await wikidata_enrich_distributors(media_id)
+    except Exception:
+        pass
+
+
 async def fetch_and_seed_movie(tmdb_id: int, *, provider: TMDBProvider | None = None) -> int:
     """Fetch TMDB movie detail through a provider client, then seed it."""
     if provider is None:
@@ -782,6 +798,7 @@ async def fetch_and_seed_movie(tmdb_id: int, *, provider: TMDBProvider | None = 
     media_id = await sync_to_async(seed_movie_from_tmdb)(raw)
     await _omdb_enrich_after_seed(media_id)
     await _fanart_enrich_after_seed(media_id)
+    await _wikidata_distributor_enrich_after_seed(media_id)
     return media_id
 
 
@@ -808,4 +825,5 @@ async def fetch_and_seed_show(tmdb_id: int, *, provider: TMDBProvider | None = N
         await sync_to_async(seed_episodes_from_season)(media_id, int(number), season_raw)
     await _omdb_enrich_after_seed(media_id)
     await _fanart_enrich_after_seed(media_id)
+    await _wikidata_distributor_enrich_after_seed(media_id)
     return media_id

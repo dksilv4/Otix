@@ -7,9 +7,13 @@ mutations are idempotent and ``get_company_detail`` returns ``None`` for an
 unknown id so callers can 404.
 """
 
+import logging
+
 from django.db.models import Avg
 
 from apps.company.models import Company, CompanyRating, UserCompanyFollow
+
+logger = logging.getLogger(__name__)
 
 
 def get_company_by_id(company_id: str | int) -> Company | None:
@@ -56,9 +60,25 @@ def get_company_detail(company_id: str | int, user_id: int | None) -> Company | 
     return company
 
 
-def follow_company(user_id: int, company: Company) -> None:
-    """Add a follow; idempotent when the user already follows the company."""
-    UserCompanyFollow.objects.get_or_create(user_id=user_id, company=company)
+def follow_company(user_id: int, company: Company) -> bool:
+    """Add a follow; idempotent when the user already follows the company.
+
+    A *newly created* follow kicks off a full company sync (worker-side, so the
+    TMDB id lookup never blocks this request). The dispatch is best-effort: a
+    broker failure is logged, never raised — a follow must not fail because the
+    queue is down. Returns whether the follow was newly created.
+    """
+    _follow, created = UserCompanyFollow.objects.get_or_create(
+        user_id=user_id, company=company
+    )
+    if created:
+        try:
+            from apps.integrations.tasks import sync_company
+
+            sync_company.delay(company.pk)
+        except Exception:  # noqa: BLE001 - a dispatch failure must not break the follow
+            logger.exception("company sync dispatch failed for company %s", company.pk)
+    return created
 
 
 def unfollow_company(user_id: int, company: Company) -> None:

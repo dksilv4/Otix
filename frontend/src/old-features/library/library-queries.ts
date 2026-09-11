@@ -66,11 +66,23 @@ export function useLibraryTab(tab: LibraryTab, extraParams?: Record<string, stri
     queryFn: async ({ pageParam }: { pageParam: string | null }) => {
       const params: Record<string, string> = { limit: "48", ...extraParams }
       if (pageParam) params.cursor = pageParam
-      const { data } = await apiClient.get<LibraryResponse>("/library/" + tab, { params })
-      return data
+      const { data } = await apiClient.get<any>("/library/" + tab, { params })
+      const items = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data?.results)
+          ? data.results
+          : Array.isArray(data)
+            ? data
+            : []
+      return {
+        ...data,
+        items,
+        nextCursor: data?.nextCursor ?? data?.next_cursor ?? null,
+        hasMore: data?.hasMore ?? !!(data?.nextCursor || data?.next_cursor || data?.next),
+      } as LibraryResponse
     },
     initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
     staleTime: 1000 * 60 * 2,
     meta: { suppressToast: true },
   })

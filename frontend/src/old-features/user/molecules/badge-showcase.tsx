@@ -59,13 +59,15 @@ interface BadgeShowcaseProps {
 }
 
 export function BadgeShowcase({ badges }: BadgeShowcaseProps) {
+  const safeBadges = Array.isArray(badges) ? badges.filter(Boolean) : []
   return (
     <div className="dk-user-badge-showcase__grid">
-      {badges.map((badge) => {
+      {safeBadges.map((badge) => {
         const color = TIER_COLORS[badge.tier] ?? '#6b7280'
+        const key = badge.badge_key || (badge as any).badgeKey || (badge as any).id
         return (
           <div
-            key={badge.badge_key}
+            key={key}
             className="dk-user-badge-showcase__card"
             title={`${badge.label}${badge.earned ? '' : ' — Locked'}\n${badge.description}`}
           >

@@ -34,6 +34,9 @@ const SettingsStoragePage = lazy(() =>
 const SettingsLibraryPage = lazy(() =>
   import('./pages/settings-library-page').then((m) => ({ default: m.SettingsLibraryPage })),
 )
+const SettingsLauncherPage = lazy(() =>
+  import('./pages/settings-launcher-page').then((m) => ({ default: m.SettingsLauncherPage })),
+)
 const SettingsDesktopPage = lazy(() =>
   import('./pages/settings-desktop-page').then((m) => ({ default: m.SettingsDesktopPage })),
 )
@@ -147,12 +150,10 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsStoragePage,
   })
 
-  const settingsLauncherRedirect = createRoute({
+  const settingsLauncherRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/launcher',
-    beforeLoad: () => {
-      throw redirect({ to: '/settings/general' })
-    },
+    component: SettingsLauncherPage,
   })
 
   const pluginRoutes = (pluginTabs || []).map((tab) =>
@@ -186,9 +187,9 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsProposalsRoute,
     settingsLibraryRoute,
     settingsDesktopRoute,
+    settingsLauncherRoute,
     settingsPluginsRoute,
     settingsStorageRoute,
-    settingsLauncherRedirect,
     ...pluginRoutes,
     pluginSettingsTabRoute,
   ]

@@ -106,7 +106,7 @@ export function FreeGamesSection() {
     )
   }
 
-  if (!result?.items?.length) return null
+  if (!Array.isArray(result?.items) || result.items.length === 0) return null
 
   const matchedCount = result.items.filter(i => i.matched).length
   const unmatchedCount = result.items.length - matchedCount

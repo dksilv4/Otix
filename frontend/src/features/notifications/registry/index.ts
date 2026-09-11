@@ -1,6 +1,6 @@
 import {
   Bell, UserPlus, UserCheck, UserX, UserMinus, Heart,
-  MessageSquareText, Users, Star, Tv,
+  MessageSquareText, Users, Star, Tv, Clapperboard,
 } from 'lucide-react'
 import type { TypeConfig, NotificationType } from '../types'
 
@@ -162,6 +162,19 @@ export const NOTIFICATION_TYPES: Record<NotificationType, TypeConfig> = {
     getLink: (n) => {
       const slug = n.metadataJson.mediaSlug as string | undefined
       return slug ? `/media/${slug}` : null
+    },
+    defaultChannels: { toast: true, desktop: true, web_push: true },
+  },
+  studio_release: {
+    type: 'studio_release',
+    icon: Clapperboard,
+    label: 'Studio release',
+    description: 'A studio you follow has a new or upcoming title',
+    color: 'text-violet-400',
+    getLink: (n) => {
+      const mediaType = n.metadataJson.mediaType as string | undefined
+      const mediaId = n.metadataJson.mediaId as string | number | undefined
+      return mediaType && mediaId != null ? `/media/${mediaType}/${mediaId}` : null
     },
     defaultChannels: { toast: true, desktop: true, web_push: true },
   },

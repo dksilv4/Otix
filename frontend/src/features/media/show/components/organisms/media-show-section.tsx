@@ -40,10 +40,10 @@ export function ShowSection({
   const onMarkSeasonWatched = (seasonNumber: number, active: boolean) =>
     markSeasonWatched.mutate({ seasonNumber, active })
  const seasons = useMemo(() => {
- if (!show.seasons || show.seasons.length === 0) return []
+ if (!Array.isArray(show.seasons) || show.seasons.length === 0) return []
  return [...show.seasons]
- .filter((s) => s.seasonNumber !== 0 || (s.episodes && s.episodes.length > 0) || s.episodeCount > 0)
- .sort((a, b) => a.seasonNumber - b.seasonNumber)
+   .filter((s) => s && (s.seasonNumber !== 0 || (Array.isArray(s.episodes) && s.episodes.length > 0) || (s.episodeCount ?? 0) > 0))
+   .sort((a, b) => a.seasonNumber - b.seasonNumber)
  }, [show.seasons])
 
  const [selectedSeasonNum, setSelectedSeasonNum] = useState<number>(() =>
@@ -105,10 +105,10 @@ export function ShowSection({
 
  const getSeasonProgress = useCallback(
  (season: SeasonOut) => {
- const episodes = season.episodes || []
+ const episodes = Array.isArray(season?.episodes) ? season.episodes : []
  let watched = 0
  for (const ep of episodes) {
- if (episodeInteractions?.[ep.id]?.watched) watched++
+ if (ep && episodeInteractions?.[ep.id]?.watched) watched++
  }
  return { watched, total: episodes.length }
  },
@@ -127,7 +127,10 @@ export function ShowSection({
   }
 
   const currentSeason = seasons.find((s) => s.seasonNumber === selectedSeasonNum)
-  const hasEpisodes = !!currentSeason?.episodes && currentSeason.episodes.length > 0
+  const currentEpisodes = Array.isArray(currentSeason?.episodes)
+    ? [...currentSeason.episodes].filter(Boolean).sort((a, b) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0))
+    : []
+  const hasEpisodes = currentEpisodes.length > 0
   const seasonPoster = currentSeason?.posterUrl
   const seasonProgress = currentSeason ? getSeasonProgress(currentSeason) : { watched: 0, total: 0 }
   const currentUnwatched = seasonProgress.total - seasonProgress.watched
@@ -298,9 +301,7 @@ export function ShowSection({
  onScroll={checkEpScroll}
  className="flex gap-4 overflow-x-auto pb-4 pt-2 px-2 scrollbar-none"
  >
- {currentSeason.episodes
- .sort((a, b) => a.episodeNumber - b.episodeNumber)
- .map((episode) => {
+ {currentEpisodes.map((episode) => {
             const isActive = false
             const thumb = episode.stillUrl || seasonPoster
             const runtime = formatRuntime(episode.runtime)

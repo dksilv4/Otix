@@ -154,7 +154,7 @@ export function CollaboratorsModal({ list, onClose, isExiting }: CollaboratorsMo
   const visible = animateIn && !isExiting
 
   const isOwner = user?.id === list.userId
-  const collaborators = list.collaborators ?? []
+  const collaborators = Array.isArray(list.collaborators) ? list.collaborators.filter(Boolean) : []
 
   // Pending invitations for the current user
   const myPending = collaborators.filter((c) => c.userId === user?.id && c.status === 'pending')
@@ -284,8 +284,10 @@ export function CollaboratorsModal({ list, onClose, isExiting }: CollaboratorsMo
 export function RankHistoryTimeline({ listId }: { listId: string }) {
   const { data: history, isLoading } = useRankHistory(listId)
 
+  const historyList = Array.isArray(history) ? history.filter(Boolean) : []
+
   if (isLoading) return <div className="text-sm text-white/50 py-4">Loading history...</div>
-  if (!history || history.length === 0) {
+  if (historyList.length === 0) {
     return (
       <div className="text-sm text-white/50 py-4">
         No ranking changes yet. Reorder items to see history.
@@ -297,7 +299,7 @@ export function RankHistoryTimeline({ listId }: { listId: string }) {
     <div className="space-y-4">
       <h4 className="text-sm font-semibold text-white">Rank Changes</h4>
       <div className="space-y-2 border-l border-white/10 pl-4 ml-2">
-        {history.map((entry) => (
+        {historyList.map((entry) => (
           <div key={entry.id} className="relative flex flex-col gap-0.5 py-1 text-sm">
             <div className="absolute w-2 h-2 rounded-full bg-primary -left-[21px] top-2" />
             <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">

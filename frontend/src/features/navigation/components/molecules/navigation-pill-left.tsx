@@ -17,7 +17,7 @@ export function NavPillLeft() {
     const showBackButton = !isHomePage
 
     return (
-        <NavPill className={"left-3 px-2 py-1.5 " + titleBarOffset + (navLogo ? " pr-4" : '')} data-menu-trigger>
+        <NavPill className={"left-3 px-2 py-1.5 " + titleBarOffset + (navLogo ? " pr-4" : '')} data-menu-trigger data-nav-pill="left">
             {showBackButton && <BackButton/>}
             <MenuToggle/>
             {

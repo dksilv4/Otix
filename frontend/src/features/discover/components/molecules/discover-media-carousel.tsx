@@ -31,7 +31,7 @@ export const MediaCarousel = memo(function MediaCarousel({
       viewAllLink={viewAllLink}
       viewAllSearch={viewAllSearch}
     >
-      {items.map((item) => (
+      {(Array.isArray(items) ? items.filter((item) => item && item.id) : []).map((item) => (
         <DiscoverMediaCard key={item.id} item={item} />
       ))}
     </Carousel>

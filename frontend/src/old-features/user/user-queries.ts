@@ -152,21 +152,34 @@ export interface ReviewStats {
   distribution: { score: number; count: number }[]
 }
 
-export function computeReviewStats(reviews: { score: number | null }[]): ReviewStats {
-  const scored = reviews.filter((r) => r.score != null)
+export function computeReviewStats(rawReviews?: unknown): ReviewStats {
+  const reviews: { score: number | null }[] = Array.isArray(rawReviews)
+    ? rawReviews
+    : Array.isArray((rawReviews as any)?.results)
+      ? (rawReviews as any).results
+      : Array.isArray((rawReviews as any)?.items)
+        ? (rawReviews as any).items
+        : []
+
+  const scored = reviews.filter(
+    (r): r is { score: number } =>
+      r != null && r.score != null && typeof r.score === 'number' && !Number.isNaN(r.score),
+  )
   const distribution = Array.from({ length: 10 }, (_, i) => ({
     score: i + 1,
     count: 0,
   }))
   for (const r of scored) {
-    distribution[(r.score! - 1)].count++
+    const idx = Math.min(Math.max(Math.round(r.score) - 1, 0), 9)
+    distribution[idx].count++
   }
   return {
     totalReviews: reviews.length,
     ratedCount: scored.length,
-    averageRating: scored.length > 0
-      ? scored.reduce((sum, r) => sum + r.score!, 0) / scored.length
-      : null,
+    averageRating:
+      scored.length > 0
+        ? scored.reduce((sum, r) => sum + r.score, 0) / scored.length
+        : null,
     distribution,
   }
 }
@@ -176,10 +189,13 @@ export const userQueries = {
     queryOptions({
       queryKey: ['user', 'search', query, limit],
       queryFn: async () => {
-        const { data } = await apiClient.get<UserSearchListResponse>('/users/search', {
+        const { data } = await apiClient.get<any>('/users/search', {
           params: { q: query, limit },
         })
-        return data
+        return {
+          users: Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : [],
+          total: data?.total ?? (Array.isArray(data?.users) ? data.users.length : 0),
+        } as UserSearchListResponse
       },
       enabled: query.length > 0,
       staleTime: 1000 * 60 * 5,
@@ -199,8 +215,11 @@ export const userQueries = {
     queryOptions({
       queryKey: ['user', username, 'reviews'],
       queryFn: async () => {
-        const { data } = await apiClient.get<ReviewWithUser[]>(`/users/${username}/reviews`)
-        return data
+        const { data } = await apiClient.get<any>(`/users/${username}/reviews`)
+        if (Array.isArray(data)) return data as ReviewWithUser[]
+        if (Array.isArray(data?.results)) return data.results as ReviewWithUser[]
+        if (Array.isArray(data?.items)) return data.items as ReviewWithUser[]
+        return [] as ReviewWithUser[]
       },
       staleTime: 1000 * 60 * 5,
     }),
@@ -219,8 +238,11 @@ export const userQueries = {
     queryOptions({
       queryKey: ['user', username, 'top-rated'],
       queryFn: async () => {
-        const { data } = await apiClient.get<TopRatedItem[]>(`/users/${username}/top-rated`)
-        return data
+        const { data } = await apiClient.get<any>(`/users/${username}/top-rated`)
+        if (Array.isArray(data)) return data as TopRatedItem[]
+        if (Array.isArray(data?.results)) return data.results as TopRatedItem[]
+        if (Array.isArray(data?.items)) return data.items as TopRatedItem[]
+        return [] as TopRatedItem[]
       },
       staleTime: 1000 * 60 * 5,
     }),
@@ -229,8 +251,11 @@ export const userQueries = {
     queryOptions({
       queryKey: ['user', username, 'activity'],
       queryFn: async () => {
-        const { data } = await apiClient.get<ActivityEvent[]>(`/users/${username}/activity`)
-        return data
+        const { data } = await apiClient.get<any>(`/users/${username}/activity`)
+        if (Array.isArray(data)) return data as ActivityEvent[]
+        if (Array.isArray(data?.results)) return data.results as ActivityEvent[]
+        if (Array.isArray(data?.items)) return data.items as ActivityEvent[]
+        return [] as ActivityEvent[]
       },
       staleTime: 1000 * 30,
     }),
@@ -251,8 +276,11 @@ export const userQueries = {
       queryFn: async () => {
         const params: Record<string, string> = {}
         if (mediaType) params.media_type = mediaType
-        const { data } = await apiClient.get<HallOfFameItem[]>(`/users/${username}/hall-of-fame`, { params })
-        return data
+        const { data } = await apiClient.get<any>(`/users/${username}/hall-of-fame`, { params })
+        if (Array.isArray(data)) return data as HallOfFameItem[]
+        if (Array.isArray(data?.results)) return data.results as HallOfFameItem[]
+        if (Array.isArray(data?.items)) return data.items as HallOfFameItem[]
+        return [] as HallOfFameItem[]
       },
       staleTime: 1000 * 60 * 5,
     }),
@@ -271,8 +299,11 @@ export const userQueries = {
     queryOptions({
       queryKey: ['user', 'me', 'continue'],
       queryFn: async () => {
-        const { data } = await apiClient.get<ContinueItem[]>('/users/me/continue')
-        return data
+        const { data } = await apiClient.get<any>('/users/me/continue')
+        if (Array.isArray(data)) return data as ContinueItem[]
+        if (Array.isArray(data?.results)) return data.results as ContinueItem[]
+        if (Array.isArray(data?.items)) return data.items as ContinueItem[]
+        return [] as ContinueItem[]
       },
       staleTime: 1000 * 60,
     }),
@@ -281,8 +312,11 @@ export const userQueries = {
     queryOptions({
       queryKey: ['user', 'me', 'friends', 'activity'],
       queryFn: async () => {
-        const { data } = await apiClient.get<FriendActivityEvent[]>('/users/me/friends/activity')
-        return data
+        const { data } = await apiClient.get<any>('/users/me/friends/activity')
+        if (Array.isArray(data)) return data as FriendActivityEvent[]
+        if (Array.isArray(data?.results)) return data.results as FriendActivityEvent[]
+        if (Array.isArray(data?.items)) return data.items as FriendActivityEvent[]
+        return [] as FriendActivityEvent[]
       },
       staleTime: 1000 * 30,
     }),
@@ -291,8 +325,11 @@ export const userQueries = {
     queryOptions({
       queryKey: ['user', username, 'mood-timeline'],
       queryFn: async () => {
-        const { data } = await apiClient.get<{ checkins: MoodCheckin[] }>(`/users/${username}/mood-timeline`)
-        return data.checkins
+        const { data } = await apiClient.get<any>(`/users/${username}/mood-timeline`)
+        if (Array.isArray(data?.checkins)) return data.checkins as MoodCheckin[]
+        if (Array.isArray(data)) return data as MoodCheckin[]
+        if (Array.isArray(data?.results)) return data.results as MoodCheckin[]
+        return [] as MoodCheckin[]
       },
       staleTime: 1000 * 60 * 5,
     }),
@@ -313,8 +350,11 @@ export const userQueries = {
     queryOptions({
       queryKey: ['user', username, 'badges'],
       queryFn: async () => {
-        const { data } = await apiClient.get<BadgeDef[]>(`/users/${username}/badges`)
-        return data
+        const { data } = await apiClient.get<any>(`/users/${username}/badges`)
+        if (Array.isArray(data)) return data as BadgeDef[]
+        if (Array.isArray(data?.results)) return data.results as BadgeDef[]
+        if (Array.isArray(data?.items)) return data.items as BadgeDef[]
+        return [] as BadgeDef[]
       },
       staleTime: 1000 * 60 * 5,
     }),
@@ -345,8 +385,19 @@ export const userQueries = {
     queryOptions({
       queryKey: ['user', username, 'rating-distribution'],
       queryFn: async () => {
-        const { data } = await apiClient.get<RatingDistribution>(`/users/${username}/rating-distribution`)
-        return data
+        const { data } = await apiClient.get<any>(`/users/${username}/rating-distribution`)
+        return {
+          distribution: Array.isArray(data?.distribution)
+            ? data.distribution.map((d: any) => ({
+                score: d?.score ?? 0,
+                movie: d?.movie ?? 0,
+                show: d?.show ?? 0,
+                game: d?.game ?? 0,
+                music: d?.music ?? 0,
+              }))
+            : [],
+          totalRatings: data?.totalRatings ?? data?.total_ratings ?? 0,
+        } as RatingDistribution
       },
       staleTime: 1000 * 60 * 5,
     }),

@@ -10,7 +10,7 @@ import { SettingsCard } from '../components/molecules/settings-card'
 
 const ITEM_DESCRIPTIONS: Record<string, string> = {
   appearance: 'Customize themes, color accents, and dark/light mode preferences.',
-  general: 'Choose your default landing page, auto-slideshows, and launcher views.',
+  general: 'Choose your default landing page and launcher views.',
   notifications: 'Configure local sound chimes, quiet hours, and social activity alerts.',
   desktop: 'System tray behavior, startup options, and hardware acceleration.',
   library: 'Scan local game folders, manage ISO directories, and view scanned games.',

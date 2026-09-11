@@ -89,3 +89,52 @@ class PluginStore(TimestampedModel):
 
     def __str__(self) -> str:
         return f"{self.plugin.name}:{self.key}"
+
+
+class PluginAccessToken(TimestampedModel):
+    """Operator-issued API token for the public plugin gateway.
+
+    Lets an external tool call a *scoped* set of plugin data methods through
+    the normal call route without a user session. Only the SHA-256 hash is
+    stored; the plaintext is returned once at creation (CLI prints it, admin UI
+    shows it in the create response).
+    """
+
+    name = models.CharField(max_length=120)
+    prefix = models.CharField(max_length=24, editable=False)
+    token_hash = models.CharField(max_length=64, unique=True, editable=False)
+    is_active = models.BooleanField(default=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        "accounts.User", null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class PluginAccessTokenGrant(TimestampedModel):
+    """One scope row: let ``token`` call ``plugin`` methods matching a prefix.
+
+    ``method_prefix`` empty means every method the plugin exposes. Dotted
+    method names match as a prefix (grant ``plex.libraries`` covers exactly
+    ``plex.libraries``; grant ``plex`` covers the whole plugin).
+    """
+
+    token = models.ForeignKey(
+        PluginAccessToken, on_delete=models.CASCADE, related_name="grants"
+    )
+    plugin = models.CharField(max_length=64)  # Plugin.name (no FK: survives unregister)
+    method_prefix = models.CharField(max_length=200, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("token", "plugin", "method_prefix"), name="uniq_token_grant"
+            )
+        ]
+
+    def __str__(self) -> str:
+        scope = f"{self.plugin}:{self.method_prefix}" if self.method_prefix else self.plugin
+        return f"{self.token_id}:{scope}"

@@ -1,5 +1,4 @@
-/* ── OpenFolderButton — reveals game exe in file explorer ── */
-
+import { FolderOpen } from 'lucide-react'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@/old-features/ui/molecules/toast'
 import {useParams} from "@tanstack/react-router";
@@ -27,9 +26,11 @@ export function OpenFolderButton() {
   return (
     <button
       onClick={handleClick}
-      className="px-3.5 py-2.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer backdrop-blur-md active:scale-95 text-white/70"
+      title="Open game directory"
+      aria-label="Open game directory"
+      className="w-10 h-10 bg-white/8 hover:bg-white/15 border border-white/10 hover:border-white/20 rounded-xl text-white/70 hover:text-white transition-all cursor-pointer backdrop-blur-md active:scale-95 flex items-center justify-center shrink-0"
     >
-      Open Folder
+      <FolderOpen size={16} />
     </button>
   )
 }

@@ -87,6 +87,20 @@ def _attach_resolved_assets(items: list[MediaItem]) -> None:
 
     for item in items:
         for asset_type, suffix in _ASSET_SUFFIX.items():
+            if asset_type == "backdrop":
+                # Textless backdrop is the family textless art; when one exists it
+                # wins the served background over any texted backdrop row.
+                best: MediaAsset | None = None
+                for source_type in ("textless_backdrop", "backdrop"):
+                    usable = [a for a in by_item[(item.id, source_type)] if a.url]
+                    if not usable:
+                        continue
+                    best = _pick_best(
+                        usable, _LABEL_PREF.get(source_type, {}), prefer_png=False
+                    )
+                    break
+                item._resolved_backdrop_url = best.url if best is not None else None
+                continue
             assets = by_item[(item.id, asset_type)]
             best = _pick_best(
                 assets, _LABEL_PREF.get(asset_type, {}), prefer_png=asset_type == "icon"

@@ -9,10 +9,22 @@ export const notificationQueries = {
     queryOptions({
       queryKey: ['notifications', 'list', { cursor, limit }],
       queryFn: async (): Promise<NotificationListResponse> => {
-        const { data } = await apiClient.get('/notifications', {
+        const { data } = await apiClient.get<any>('/notifications', {
           params: { limit, ...(cursor ? { cursor } : {}) },
         })
-        return data
+        const items = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data?.results)
+            ? data.results
+            : Array.isArray(data)
+              ? data
+              : []
+        return {
+          ...data,
+          items,
+          nextCursor: data?.nextCursor ?? data?.next_cursor ?? null,
+          hasMore: data?.hasMore ?? !!(data?.nextCursor || data?.next_cursor || data?.next),
+        }
       },
       staleTime: 30_000,
     }),

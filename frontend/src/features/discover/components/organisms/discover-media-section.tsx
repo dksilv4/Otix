@@ -11,6 +11,7 @@ interface MediaSectionProps {
   genre?: string
   language?: string
   isAnime?: boolean
+  platform?: string
 }
 
 export const MediaSection = memo(function MediaSection({
@@ -20,6 +21,7 @@ export const MediaSection = memo(function MediaSection({
   genre,
   language,
   isAnime,
+  platform,
 }: MediaSectionProps) {
   const { ref, items, showSkeleton, isEmpty } = useSectionFetch({
     id: '',
@@ -29,6 +31,7 @@ export const MediaSection = memo(function MediaSection({
     genre: genre ?? null,
     language: language ?? null,
     isAnime: isAnime ?? null,
+    platform: platform ?? null,
     isPersonalized: false,
     reason: null,
   })

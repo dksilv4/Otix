@@ -26,6 +26,7 @@ album ingest, and the bulk catalog-seed driver are the deferred next pieces.
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -34,11 +35,16 @@ from django.contrib.contenttypes.models import ContentType
 from apps.integrations.models import SyncJob
 from apps.integrations.services.sync import register_sync_engine
 from apps.media.models import ExternalID, MediaItem
+from apps.media.services.tmdb_company import (  # noqa: F401 - resolved via globals()
+    fetch_and_seed_company,
+)
 from apps.media.services.tmdb_ingest import (  # noqa: F401 - resolved via globals()
     fetch_and_seed_movie,
     fetch_and_seed_show,
 )
 from core import progress as progress_lib
+
+logger = logging.getLogger(__name__)
 
 # entity_type → the module attribute holding that media kind's async seed driver.
 # Resolved via globals() at call time (not bound at import) so tests can patch
@@ -69,6 +75,69 @@ def _tmdb_mapped(tmdb_id: int, media_type: str) -> bool:
     ).exists()
 
 
+def _notify_followed_studios(media_item_id: int) -> None:
+    """Enqueue release notifications when a followed studio is on a new title.
+
+    Runs inline after a first-time seed (by which point the ingest tails — incl.
+    the Wikidata distributor enrich — have attached every company). The cheap
+    follower-existence check keeps bulk seeding of unfollowed titles from
+    enqueuing anything; the task applies the announced/available split and the
+    recent-release window. Imported locally to keep the social task graph off
+    this module's import path and to stay patchable in tests; a dispatch failure
+    is logged, never raised — it must not fail the seed that produced the row.
+    """
+    from apps.social.services.release_notify import media_has_followed_company
+    from apps.social.tasks import release_notify_task
+
+    try:
+        if media_has_followed_company(media_item_id):
+            release_notify_task.delay(media_item_id)
+    except Exception:
+        logger.exception("release notify dispatch failed for media %s", media_item_id)
+
+
+def _dispatch_child(child_id: int) -> None:
+    """Dispatch a follow-discovered child seed job so it seeds immediately.
+
+    Module-level so tests can patch the dispatch, and imported lazily to keep
+    ``apps.integrations.tasks`` off this module's import path.
+    """
+    from apps.integrations.tasks import run_sync_job
+
+    run_sync_job.delay(child_id)
+
+
+def _sync_tmdb_company(job: SyncJob, emit: Callable[..., None]) -> dict[str, Any]:
+    """Full company sync: refresh the row, discover its titles, enqueue them.
+
+    The discovered child jobs are dispatched here (rather than left pending for
+    the daily drain) so a follow immediately starts seeding the studio's titles;
+    a dispatch failure is logged, never raised — the child rows stay pending and
+    the next drain picks them up.
+    """
+    try:
+        tmdb_id = int(job.external_id)
+    except (TypeError, ValueError):
+        return {"error": f"Invalid TMDB company id in sync job: {job.external_id!r}"}
+
+    emit("fetching_company", tmdb_id=tmdb_id)
+    summary: dict[str, Any] = asyncio.run(
+        globals()["fetch_and_seed_company"](tmdb_id, parent_job=job)
+    )
+    emit(
+        "company_synced",
+        tmdb_id=tmdb_id,
+        company_id=summary.get("company_id"),
+        enqueued=summary.get("enqueued", 0),
+    )
+    for child_id in summary.get("child_job_ids") or []:
+        try:
+            _dispatch_child(child_id)
+        except Exception:
+            logger.exception("failed to dispatch company child job %s", child_id)
+    return summary
+
+
 @register_sync_engine("tmdb")
 def sync_tmdb_media(job: SyncJob) -> dict[str, Any]:
     """Seed a movie/show from its TMDB id; return a summary or a handled error.
@@ -85,6 +154,9 @@ def sync_tmdb_media(job: SyncJob) -> dict[str, Any]:
     def emit(event_type: str, **data: Any) -> None:
         progress.publish(task_id, event_type, **data)
         progress.store_progress(task_id, event_type, **data)
+
+    if job.entity_type == "company":
+        return _sync_tmdb_company(job, emit)
 
     fetch_name = _FETCH_NAMES.get(job.entity_type)
     if fetch_name is None:
@@ -108,6 +180,8 @@ def sync_tmdb_media(job: SyncJob) -> dict[str, Any]:
         tmdb_id=tmdb_id,
         media_item_id=media_item_id,
     )
+    if not matched:
+        _notify_followed_studios(media_item_id)
     return {
         "tmdb_id": tmdb_id,
         "media_item_id": media_item_id,

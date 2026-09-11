@@ -22,15 +22,16 @@ export interface SeasonListResponse {
 }
 
 export const discoverQueries = {
-  list: (mediaType: string, listType: string, genre?: string, language?: string, isAnime?: boolean) =>
+  list: (mediaType: string, listType: string, genre?: string, language?: string, isAnime?: boolean, platform?: string) =>
     infiniteQueryOptions({
-      queryKey: discoverKeys.list(mediaType, listType, genre, language, isAnime),
+      queryKey: discoverKeys.list(mediaType, listType, genre, language, isAnime, platform),
       queryFn: async ({ pageParam }) => {
         const params: Record<string, string | boolean> = { limit: '20' }
         if (pageParam) params.cursor = pageParam as string
         if (genre) params.genre = genre
         if (language) params.language = language
         if (isAnime != null) params.is_anime = isAnime
+        if (platform) params.platform = platform
         const { data } = await apiClient.get<DiscoverListResponse>(
           `/discover/${mediaType}/${listType}`,
           { params },

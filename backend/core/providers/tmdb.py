@@ -316,6 +316,15 @@ class TMDBProvider(BaseProvider):
         )
         return response.json()
 
+    async def search_company(
+        self, query: str, page: int = 1
+    ) -> dict[str, JSONValue]:
+        """Search production companies by name (``/search/company``)."""
+        response = await self._get(
+            "/search/company", params={"query": query, "page": page}
+        )
+        return response.json()
+
     async def find_by_external_id(
         self, external_id: str, external_source: str = "imdb_id", language: str = "en-US"
     ) -> dict[str, JSONValue]:

@@ -39,6 +39,7 @@ class AssetFileView(APIView):
         path = Path(settings.MEDIA_DIR) / "assets" / filename
         if not path.is_file():
             raise Http404
+        assets_service.record_asset_use(filename)
         content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
         response = FileResponse(path.open("rb"), content_type=content_type)
         response["Cache-Control"] = "public, max-age=31536000, immutable"
@@ -64,7 +65,7 @@ class DownloadAssetsView(APIView):
         return Response(result, status=status.HTTP_200_OK)
 
 
-_PRIMARY_ASSET_TYPES = assets_service.PRIMARY_ASSET_TYPES
+_PINNABLE_ASSET_TYPES = assets_service.SELECTABLE_ASSET_TYPES
 
 
 class ArtworkSelectionView(APIView):
@@ -86,7 +87,7 @@ class ArtworkSelectionView(APIView):
         )
         if asset is None:
             raise NotFound("Asset not found for this media item")
-        if asset.asset_type.lower() not in _PRIMARY_ASSET_TYPES:
+        if asset.asset_type.lower() not in _PINNABLE_ASSET_TYPES:
             raise ValidationError(
                 {"asset_id": f"asset_type '{asset.asset_type}' cannot be pinned"}
             )
@@ -94,11 +95,24 @@ class ArtworkSelectionView(APIView):
 
     def put(self, request, media_id: int, asset_id: int) -> Response:
         asset = self._resolve(media_id, asset_id)
-        assets_service.select_asset(asset.media_item, asset)
+        data = request.data if isinstance(request.data, dict) else {}
+        context = data.get("context") or "general"
+        if context not in assets_service.SELECTION_CONTEXTS:
+            raise ValidationError(
+                {
+                    "context": "must be one of "
+                    + ", ".join(assets_service.SELECTION_CONTEXTS)
+                }
+            )
+        assets_service.select_asset(asset.media_item, asset, context)
+        # select_asset reconciles via freshly re-resolved asset rows, so the
+        # pinned row's mirror state must be re-read rather than trusted from the
+        # pre-selection instance.
+        asset.refresh_from_db(fields=["local_name"])
         return Response(
             {
                 "asset_id": asset.id,
-                "is_selected": True,
+                "selected_context": context,
                 "mirrored": bool(asset.local_name),
             }
         )
@@ -106,7 +120,74 @@ class ArtworkSelectionView(APIView):
     def delete(self, request, media_id: int, asset_id: int) -> Response:
         asset = self._resolve(media_id, asset_id)
         assets_service.clear_asset_selection(asset)
-        return Response({"asset_id": asset.id, "is_selected": False})
+        return Response({"asset_id": asset.id, "selected_context": None})
+
+
+class TextlessPickView(APIView):
+    """``PUT``/``DELETE .../assets/<id>/textless`` (admin).
+
+    PUT marks the asset's image as the media item's family textless art — a
+    theme-agnostic pick shared by General/Dark/Light. DELETE clears it. When the
+    image lives in a normal slot (a plain poster/backdrop), the pick is backed
+    by a materialized textless row reusing that image; see
+    ``assets_service.set_textless_pick``.
+    """
+
+    permission_classes = (IsAuthenticated, IsAdminUser)
+
+    def _resolve(self, media_id: int, asset_id: int) -> MediaAsset:
+        asset = (
+            MediaAsset.objects.select_related("media_item")
+            .filter(pk=asset_id, media_item_id=media_id)
+            .first()
+        )
+        if asset is None:
+            raise NotFound("Asset not found for this media item")
+        if (asset.asset_type or "").lower() not in assets_service.FAMILY_TEXTLESS_TYPE:
+            raise ValidationError(
+                {"asset_id": f"asset_type '{asset.asset_type}' has no textless slot"}
+            )
+        return asset
+
+    def put(self, request, media_id: int, asset_id: int) -> Response:
+        asset = self._resolve(media_id, asset_id)
+        if not asset.url:
+            raise ValidationError({"asset_id": "asset has no url to mirror"})
+        return Response(assets_service.set_textless_pick(asset.media_item, asset, True))
+
+    def delete(self, request, media_id: int, asset_id: int) -> Response:
+        asset = self._resolve(media_id, asset_id)
+        return Response(assets_service.set_textless_pick(asset.media_item, asset, False))
+
+
+class AssetMirrorView(APIView):
+    """``PUT``/``DELETE /media/admin/media-items/<id>/assets/<id>/mirror`` (admin).
+
+    PUT adds the asset to the admin mirror-keep set: it is downloaded to local
+    disk and exempted from stale-copy cleanup (used to keep several localized
+    language variants alongside the single served pick). DELETE removes it from
+    the set and, when it isn't a resolution winner, frees its local copy.
+    """
+
+    permission_classes = (IsAuthenticated, IsAdminUser)
+
+    def _resolve(self, media_id: int, asset_id: int) -> MediaAsset:
+        asset = (
+            MediaAsset.objects.select_related("media_item")
+            .filter(pk=asset_id, media_item_id=media_id)
+            .first()
+        )
+        if asset is None:
+            raise NotFound("Asset not found for this media item")
+        return asset
+
+    def put(self, request, media_id: int, asset_id: int) -> Response:
+        asset = self._resolve(media_id, asset_id)
+        return Response(assets_service.keep_asset(asset.media_item, asset, True))
+
+    def delete(self, request, media_id: int, asset_id: int) -> Response:
+        asset = self._resolve(media_id, asset_id)
+        return Response(assets_service.keep_asset(asset.media_item, asset, False))
 
 
 class StorageUsageView(APIView):
@@ -157,7 +238,7 @@ class MirroringView(APIView):
 
 
 _BOOL_FIELDS = ("fetch_enabled", "discover_enabled", "local_games_enabled")
-_INT_FIELDS = ("sweep_limit", "sweep_interval_minutes", "min_free_gb")
+_INT_FIELDS = ("sweep_limit", "sweep_interval_minutes", "min_free_gb", "max_gb")
 
 
 class ArtworkSettingsView(APIView):

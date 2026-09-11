@@ -61,11 +61,14 @@ export const reviewQueries = {
       queryFn: async () => {
         const params: Record<string, string> = { limit: '20' }
         if (cursor) params.cursor = cursor
-        const { data } = await apiClient.get<ReviewWithUserOut[]>(
+        const { data } = await apiClient.get<any>(
           `/media/${mediaType}/${mediaId}/reviews`,
           { params },
         )
-        return data
+        if (Array.isArray(data)) return data as ReviewWithUserOut[]
+        if (Array.isArray(data?.results)) return data.results as ReviewWithUserOut[]
+        if (Array.isArray(data?.items)) return data.items as ReviewWithUserOut[]
+        return [] as ReviewWithUserOut[]
       },
       staleTime: 1000 * 30,
     }),

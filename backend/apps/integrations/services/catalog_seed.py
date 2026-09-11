@@ -85,6 +85,8 @@ def enqueue_seed_jobs(
     entity_type: str,
     external_ids: Iterable[str],
     priority: int = 5,
+    is_bulk: bool = True,
+    parent: SyncJob | None = None,
 ) -> list[SyncJob]:
     """Dedupe *external_ids* and persist one pending ``SyncJob`` per unseen id.
 
@@ -96,6 +98,11 @@ def enqueue_seed_jobs(
     seeded once and is still unmapped (no ``ExternalID`` survived) is
     legitimate to seed again. Returns the newly created rows; a caller decides
     whether to dispatch them (``run_pending_jobs`` or the worker task).
+
+    *is_bulk* and *parent* default to the catalog-source posture (bulk, no
+    parent). Follow-driven fan-outs pass ``is_bulk=False`` so the engine mirrors
+    the seeded title's artwork, and *parent* to tie the child jobs to the
+    triggering job.
     """
     ids = {str(i).strip() for i in external_ids if str(i).strip()}
     if not ids:
@@ -118,7 +125,8 @@ def enqueue_seed_jobs(
             external_id=external_id,
             status="pending",
             phase="core",
-            is_bulk=True,
+            is_bulk=is_bulk,
+            parent=parent,
             priority=priority,
         )
         for external_id in sorted(fresh - live)
@@ -177,9 +185,7 @@ async def enqueue_tmdb_popular(
     """
     fetch_name = _TMDB_POPULAR.get(entity_type)
     if fetch_name is None:
-        raise ValueError(
-            f"TMDB popular seeding does not yet support entity_type '{entity_type}'"
-        )
+        raise ValueError(f"TMDB popular seeding does not yet support entity_type '{entity_type}'")
     if provider is None:
         provider = TMDBProvider()
     fetcher = getattr(provider, fetch_name)
@@ -239,7 +245,25 @@ async def enqueue_igdb_popular(
     if provider is None:
         provider = IGDBProvider()
     results = await provider.get_popular_games(limit=min(limit, _IGDB_QUERY_LIMIT))
+    return await _enqueue_game_ids(_collect_game_ids(results))
 
+
+# IGDB platform ids backing the "best of <platform>" discover lists, keyed by the
+# Otix platform slug used to filter the discover feed (the slug source is the
+# ``_PLATFORM_NORMALIZATION`` table in apps.media.services.igdb).
+_IGDB_BEST_PLATFORMS: dict[str, int] = {
+    "windows": 6,
+    "playstation-5": 167,
+    "xbox-series-x-s": 169,
+    "nintendo-switch": 130,
+}
+
+# Named game discovery lists ``enqueue_igdb_discover`` can fan out over.
+_IGDB_DISCOVER_SOURCES = frozenset(("popular", "recently_released", "upcoming", "platforms"))
+
+
+def _collect_game_ids(results: list[dict[str, Any]]) -> list[str]:
+    """Pull the unique integer ``id`` values out of an IGDB discovery response."""
     ids: list[str] = []
     seen: set[int] = set()
     for game in results:
@@ -248,17 +272,76 @@ async def enqueue_igdb_popular(
             continue
         seen.add(raw_id)
         ids.append(str(raw_id))
+    return ids
 
+
+async def _enqueue_game_ids(external_ids: list[str]) -> dict[str, Any]:
+    """Enqueue *external_ids* as pending igdb game sync jobs; summarize."""
     created = await sync_to_async(enqueue_seed_jobs)(
-        provider="igdb", entity_type="game", external_ids=ids
+        provider="igdb", entity_type="game", external_ids=external_ids
     )
     return {
         "provider": "igdb",
         "entity_type": "game",
-        "discovered": len(ids),
+        "discovered": len(external_ids),
         "enqueued": len(created),
         "external_ids": [job.external_id for job in created],
     }
+
+
+async def enqueue_igdb_discover(
+    *,
+    limit: int = 100,
+    provider: IGDBProvider | None = None,
+    sources: Iterable[str] | None = None,
+) -> dict[str, Any]:
+    """Enqueue unseen ids across a set of IGDB game discovery lists.
+
+    The broad game-kind discovery source: fetches each named *sources* list
+    (default all of them) — the most-rated games, games released in the last 90
+    days, upcoming games, and the top-rated games per major platform — each
+    capped at *limit* ids, then unions the ids (deduped across lists) and
+    enqueues one ``SyncJob`` per id the catalog does not already map. Fanning out
+    this way keeps the catalog stocked with newly released / upcoming /
+    per-platform titles rather than only the all-time most-rated set. Rows
+    without an integer ``id`` are skipped; dedupe and pending-job checks live in
+    ``enqueue_seed_jobs``. *provider* injectable for tests.
+    """
+    if provider is None:
+        provider = IGDBProvider()
+    if sources is None:
+        sources = ("popular", "recently_released", "upcoming", "platforms")
+    unknown = set(sources) - _IGDB_DISCOVER_SOURCES
+    if unknown:
+        raise ValueError(f"Unknown IGDB discovery source(s): {sorted(unknown)}")
+    cap = min(limit, _IGDB_QUERY_LIMIT)
+
+    fetched: list[list[dict[str, Any]]] = []
+    for source in sources:
+        if source == "popular":
+            fetched.append(await provider.get_popular_games(limit=cap, fields="id"))
+        elif source == "recently_released":
+            fetched.append(await provider.get_recently_released_games(limit=cap, fields="id"))
+        elif source == "upcoming":
+            fetched.append(await provider.get_upcoming_games(limit=cap, fields="id"))
+        elif source == "platforms":
+            for platform_id in _IGDB_BEST_PLATFORMS.values():
+                fetched.append(
+                    await provider.get_games_for_platform(
+                        platform_id=platform_id, limit=cap, fields="id"
+                    )
+                )
+
+    ids: list[str] = []
+    seen: set[int] = set()
+    for results in fetched:
+        for game in results:
+            raw_id = game.get("id")
+            if not isinstance(raw_id, int) or raw_id in seen:
+                continue
+            seen.add(raw_id)
+            ids.append(str(raw_id))
+    return await _enqueue_game_ids(ids)
 
 
 # TMDB daily-ID export files (files.tmdb.org) -> the tmdb engine entity_type they
@@ -389,9 +472,7 @@ async def enqueue_tmdb_daily(
         raise ValueError(
             f"TMDB daily-export seeding does not yet support entity_type '{entity_type}'"
         )
-    path = await download_tmdb_export(
-        export_type, client=client, api_key=api_key
-    )
+    path = await download_tmdb_export(export_type, client=client, api_key=api_key)
     if path is None:
         return {
             "provider": "tmdb",
@@ -469,9 +550,7 @@ async def detect_tmdb_deletions(entity_type: str) -> dict[str, Any]:
     """
     export_type = _TMDB_EXPORT_FILE.get(entity_type)
     if export_type is None:
-        raise ValueError(
-            f"deletion scan only covers movie/show; got {entity_type!r}"
-        )
+        raise ValueError(f"deletion scan only covers movie/show; got {entity_type!r}")
 
     rows = await sync_to_async(_mapped_tmdb_rows)(entity_type)
     mapped: dict[int, tuple[int | None, str | None]] = {}
@@ -516,13 +595,12 @@ def _mapped_tmdb_rows(entity_type: str) -> list[tuple[str, int | None, str | Non
     the title is resolved with a second pk lookup rather than an ORM join.
     """
     ext_rows = list(
-        ExternalID.objects.filter(provider="tmdb", media_type=entity_type)
-        .values_list("external_id", "object_id")
+        ExternalID.objects.filter(provider="tmdb", media_type=entity_type).values_list(
+            "external_id", "object_id"
+        )
     )
     pks = {pk for _, pk in ext_rows}
-    titles = dict(
-        MediaItem.objects.filter(pk__in=pks).values_list("pk", "title")
-    )
+    titles = dict(MediaItem.objects.filter(pk__in=pks).values_list("pk", "title"))
     return [(ext_id, pk, titles.get(pk)) for ext_id, pk in ext_rows]
 
 

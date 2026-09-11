@@ -29,7 +29,7 @@ export function PlayGameButton({ game }: Props) {
   return (
     <button
       onClick={handleClick}
-      className="px-5.5 py-2.5 bg-[var(--color-accent)] hover:bg-[var(--color-accent)] text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+      className="h-10 px-6 bg-[var(--color-accent)] hover:brightness-110 text-white rounded-xl text-xs uppercase tracking-wider font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
     >
       <Play size={14} fill="currentColor" /> Play
     </button>

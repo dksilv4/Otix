@@ -5,14 +5,21 @@ import { DiscoverMediaCard } from '@discover/components/molecules/discover-media
 import { mediaQueries } from '@media/queries/media-queries'
 import { useMediaParams } from '@media'
 import { useAuth } from '@/old-features/auth'
+import { cn } from '@/lib/utils'
 
 interface MoreLikeThisSectionProps {
   className?: string
+  headerClassName?: string
+  trackPaddingInline?: string
 }
 
 type Tab = 'similar' | 'forYou'
 
-export function MoreLikeThisSection({ className }: MoreLikeThisSectionProps) {
+export function MoreLikeThisSection({
+  className,
+  headerClassName,
+  trackPaddingInline,
+}: MoreLikeThisSectionProps) {
   const [activeTab, setActiveTab] = useState<Tab>('similar')
   const { isAuthenticated } = useAuth()
 
@@ -27,8 +34,16 @@ export function MoreLikeThisSection({ className }: MoreLikeThisSectionProps) {
       mediaQueries.recommendations(mediaType, mediaId, { limit: 20 }),
     )
 
-  const similarItems = similarData?.items ?? []
-  const forYouItems = recommendationsData?.items ?? []
+  const similarItems = Array.isArray(similarData?.items)
+    ? similarData.items
+    : Array.isArray(similarData)
+      ? similarData
+      : []
+  const forYouItems = Array.isArray(recommendationsData?.items)
+    ? recommendationsData.items
+    : Array.isArray(recommendationsData)
+      ? recommendationsData
+      : []
 
   const hasSimilar = similarLoading || similarItems.length > 0
   const hasForYou =
@@ -51,9 +66,9 @@ export function MoreLikeThisSection({ className }: MoreLikeThisSectionProps) {
   const items = resolvedTab === 'similar' ? similarItems : forYouItems
 
   return (
-    <section className={`space-y-4 ${className || ''}`}>
-      <div className="flex items-center gap-3 px-4 lg:px-8">
-        <h2 className="text-lg font-semibold">More Like This</h2>
+    <section className={cn('w-full space-y-4', className)}>
+      <div className={cn('flex items-center gap-3 px-4 sm:px-6 lg:px-8', headerClassName)}>
+        <h2 className="text-xl font-bold tracking-tight text-white/90">More Like This</h2>
 
         {availableTabs.length > 1 && (
           <div className="flex gap-1.5">
@@ -75,7 +90,7 @@ export function MoreLikeThisSection({ className }: MoreLikeThisSectionProps) {
         )}
       </div>
 
-      <Carousel isLoading={isLoading}>
+      <Carousel isLoading={isLoading} trackPaddingInline={trackPaddingInline}>
         {items.map((item) => (
           <DiscoverMediaCard key={item.id} item={item} />
         ))}

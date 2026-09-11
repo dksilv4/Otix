@@ -37,8 +37,8 @@ export function LauncherScanWidget({ id }: { id?: string }) {
     }
   }, [toast])
 
-  const goToSettings = useCallback(() => navigate({ to: '/settings/scanners' }), [navigate])
-  const goToLibrary = useCallback(() => navigate({ to: '/library' }), [navigate])
+  const goToSettings = useCallback(() => navigate({ to: '/settings/launcher' }), [navigate])
+  const goToLibrary = useCallback(() => navigate({ to: '/launcher/library' }), [navigate])
 
   return (
     <div id={id} className="flex-1 rounded-2xl bg-white/3 p-4 flex flex-col justify-between">

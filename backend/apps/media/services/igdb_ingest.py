@@ -74,7 +74,7 @@ GAME_HYDRATION_FIELDS = (
     "websites.url,websites.type,"
     "platforms.name,genres.name,game_modes.name,"
     "screenshots.image_id,screenshots.width,screenshots.height,"
-    "artworks.image_id,artworks.width,artworks.height,"
+    "artworks.image_id,artworks.width,artworks.height,artworks.image_type,artworks.alpha_channel,artworks.artwork_type,"
     "videos.video_id,videos.name,age_ratings,"
     "involved_companies.developer,involved_companies.publisher,"
     "involved_companies.porting,involved_companies.supporting,"
@@ -259,11 +259,16 @@ def _image_url(image_id: Any, size: str) -> str | None:
     return f"https://images.igdb.com/igdb/image/upload/{size}/{image_id}.jpg"
 
 
-# IGDB game "artworks" mix wide scenic key art with near-square, white-background
-# logo cards. Backdrops must be clearly landscape or those logo cards leak into
-# the backdrop set (rendering as "logos in the backdrops"). Screenshots aren't
-# filtered. Stored dims let the chooser reason about framing without refetching.
+# IGDB game "artworks" mix wide scenic key art with logos, icons, and covers.
+# Backdrops must be clearly landscape (>= 1.4) and non-transparent.
 _BACKDROP_MIN_ASPECT = 1.4
+
+# IGDB image_type / artwork_type classifications
+_LOGO_IMAGE_TYPES = {5, 6, 7, 14}
+_LOGO_ARTWORK_TYPES = {5, 6, 7}
+_ICON_IMAGE_TYPES = {13, 15}
+_ICON_ARTWORK_TYPES = {12, 13}
+_COVER_IMAGE_TYPES = {8, 9, 10, 11}
 
 
 def _upsert_game_image_assets(
@@ -275,7 +280,7 @@ def _upsert_game_image_assets(
     size: str,
     min_aspect: float | None = None,
 ) -> None:
-    """Store IGDB screenshots/artworks as MediaAsset rows (add-only).
+    """Store IGDB screenshots as MediaAsset rows (add-only).
 
     When ``min_aspect`` is set an entry is stored only if it carries numeric
     width/height proving aspect >= ``min_aspect``; entries without usable dims
@@ -306,6 +311,228 @@ def _upsert_game_image_assets(
         MediaAsset.objects.get_or_create(
             media_item=media,
             asset_type=asset_type,
+            url=url,
+            defaults=defaults,
+        )
+
+
+def _upsert_game_artworks(media: MediaItem, raw_artworks: Any) -> None:
+    """Classify and store IGDB artworks into logos, icons, posters, and backdrops.
+
+    IGDB bundles logos (with alpha channel), icons, alternative covers, and scenic
+    key art together under ``artworks``. This routes each entry to its proper
+    MediaAsset type based on IGDB's ``image_type`` / ``artwork_type``,
+    ``alpha_channel``, and dimensions:
+      - Logos (types 5, 6, 7, 14 or alpha cutout with wide/banner aspect) -> asset_type="logo"
+      - Icons (types 13, 15 or alpha cutout ~1:1 square) -> asset_type="icon"
+      - Covers (types 9, 10, 11) -> asset_type="poster"
+      - Backdrops (types 1, 2, 3, 4, 16 or landscape non-alpha) -> asset_type="backdrop"
+        (and type 2 "Key art without logo" also yields asset_type="textless_backdrop")
+    """
+    if not isinstance(raw_artworks, list):
+        return
+
+    logo_idx = icon_idx = poster_idx = backdrop_idx = 0
+    for entry in raw_artworks[:25]:
+        if not isinstance(entry, dict):
+            continue
+        image_id = entry.get("image_id")
+        url = _image_url(image_id, "t_original")
+        if not url:
+            continue
+
+        width = entry.get("width")
+        height = entry.get("height")
+        w = int(width) if isinstance(width, (int, float)) and width > 0 else None
+        h = int(height) if isinstance(height, (int, float)) and height > 0 else None
+        aspect = (w / h) if (w is not None and h is not None and h > 0) else None
+
+        image_type = entry.get("image_type")
+        artwork_type = entry.get("artwork_type")
+        alpha = entry.get("alpha_channel")
+
+        # 1. Logo check: official IGDB logo type, or transparent banner
+        is_logo = (
+            image_type in _LOGO_IMAGE_TYPES
+            or artwork_type in _LOGO_ARTWORK_TYPES
+            or (
+                image_type is None
+                and artwork_type is None
+                and alpha is True
+                and aspect is not None
+                and (aspect >= 1.5 or (h is not None and h <= 300))
+            )
+        )
+        if is_logo:
+            if image_type == 5:
+                label = "white"
+                score = 85
+            elif image_type == 6:
+                label = "black"
+                score = 80
+            elif image_type == 14:
+                label = "historical"
+                score = 75
+            else:
+                label = "official"
+                score = max(50, 90 - logo_idx * 5)
+            logo_idx += 1
+            defaults = {"label": label, "provider": "igdb", "score": score}
+            if w is not None and h is not None:
+                defaults["width"] = w
+                defaults["height"] = h
+            MediaAsset.objects.get_or_create(
+                media_item=media,
+                asset_type="logo",
+                url=url,
+                defaults=defaults,
+            )
+            continue
+
+        # 2. Icon check: official IGDB icon type, or transparent square
+        is_icon = (
+            image_type in _ICON_IMAGE_TYPES
+            or artwork_type in _ICON_ARTWORK_TYPES
+            or (
+                image_type is None
+                and artwork_type is None
+                and alpha is True
+                and aspect is not None
+                and 0.7 <= aspect <= 1.35
+                and (w is None or w <= 512)
+            )
+        )
+        if is_icon:
+            label = "historical" if image_type == 15 else "icon"
+            score = max(50, 90 - icon_idx * 5)
+            icon_idx += 1
+            defaults = {"label": label, "provider": "igdb", "score": score}
+            if w is not None and h is not None:
+                defaults["width"] = w
+                defaults["height"] = h
+            MediaAsset.objects.get_or_create(
+                media_item=media,
+                asset_type="icon",
+                url=url,
+                defaults=defaults,
+            )
+            continue
+
+        # 3. Cover check: alternative/historical/square covers in artworks
+        is_cover = (
+            image_type in _COVER_IMAGE_TYPES
+            or (
+                image_type is None
+                and artwork_type is None
+                and alpha is not True
+                and aspect is not None
+                and aspect < 1.0
+            )
+        )
+        if is_cover:
+            if image_type == 9:
+                label = "historical"
+                score = 70
+            elif image_type == 10:
+                label = "alternative"
+                score = 80
+            elif image_type == 11:
+                label = "square"
+                score = 75
+            else:
+                label = "alternative"
+                score = max(40, 80 - poster_idx * 5)
+            poster_idx += 1
+            defaults = {"label": label, "provider": "igdb", "score": score}
+            if w is not None and h is not None:
+                defaults["width"] = w
+                defaults["height"] = h
+            MediaAsset.objects.get_or_create(
+                media_item=media,
+                asset_type="poster",
+                url=url,
+                defaults=defaults,
+            )
+            continue
+
+        # 4. Backdrop check: scenic wallpapers / key art
+        # Must not have transparency and must have landscape aspect >= 1.4
+        if alpha is True:
+            continue
+        if aspect is None or aspect < _BACKDROP_MIN_ASPECT:
+            continue
+
+        if image_type == 2:
+            label = "textless"
+        elif image_type == 3:
+            label = "artwork"
+        elif image_type == 4:
+            label = "concept_art"
+        else:
+            label = "clean"
+        score = max(40, 90 - backdrop_idx * 5)
+        backdrop_idx += 1
+        defaults = {"label": label, "provider": "igdb", "score": score}
+        if w is not None and h is not None:
+            defaults["width"] = w
+            defaults["height"] = h
+
+        MediaAsset.objects.get_or_create(
+            media_item=media,
+            asset_type="backdrop",
+            url=url,
+            defaults=defaults,
+        )
+        if image_type == 2:
+            MediaAsset.objects.get_or_create(
+                media_item=media,
+                asset_type="textless_backdrop",
+                url=url,
+                defaults={**defaults, "label": "textless"},
+            )
+
+
+def _upsert_game_additional_covers(
+    media: MediaItem, raw_covers: Any, primary_cover_id: Any
+) -> None:
+    """Store alternative/historical covers from IGDB /covers as MediaAsset poster rows."""
+    if not isinstance(raw_covers, list):
+        return
+    idx = 0
+    for entry in raw_covers[:15]:
+        if not isinstance(entry, dict):
+            continue
+        image_id = entry.get("image_id")
+        if not image_id or image_id == primary_cover_id:
+            continue
+        url = _image_url(image_id, "t_original")
+        if not url:
+            continue
+        width = entry.get("width")
+        height = entry.get("height")
+        w = int(width) if isinstance(width, (int, float)) and width > 0 else None
+        h = int(height) if isinstance(height, (int, float)) and height > 0 else None
+        image_type = entry.get("image_type")
+        if image_type == 9:
+            label = "historical"
+            score = 70
+        elif image_type == 10:
+            label = "alternative"
+            score = 80
+        elif image_type == 11:
+            label = "square"
+            score = 75
+        else:
+            label = "alternative"
+            score = max(40, 85 - idx * 2)
+        idx += 1
+        defaults = {"label": label, "provider": "igdb", "score": score}
+        if w is not None and h is not None:
+            defaults["width"] = w
+            defaults["height"] = h
+        MediaAsset.objects.get_or_create(
+            media_item=media,
+            asset_type="poster",
             url=url,
             defaults=defaults,
         )
@@ -519,17 +746,20 @@ def _hydrate_game(media: MediaItem, game: Game, raw: dict[str, Any]) -> None:
         label="screenshot",
         size="t_original",
     )
-    _upsert_game_image_assets(
-        media,
-        raw.get("artworks"),
-        asset_type="backdrop",
-        label="clean",
-        size="t_original",
-        min_aspect=_BACKDROP_MIN_ASPECT,
+    _upsert_game_artworks(media, raw.get("artworks"))
+    primary_cover = raw.get("cover")
+    primary_cover_id = (
+        primary_cover.get("image_id")
+        if isinstance(primary_cover, dict)
+        else None
+    )
+    _upsert_game_additional_covers(
+        media, raw.get("all_covers"), primary_cover_id
     )
     _upsert_game_videos(media, raw.get("videos"))
     _upsert_game_age_ratings(media, raw.get("age_rating_details"))
     _apply_game_growth(game, raw)
+    recompute_completeness(media)
 
 
 def _upsert_game_genres(media: MediaItem, raw_genres: Any) -> None:
@@ -697,6 +927,13 @@ async def fetch_and_seed_game(igdb_id: int, *, provider: IGDBProvider | None = N
                 raw["age_rating_details"] = details
         except Exception:
             pass
+    # Fetch additional covers through the /covers endpoint (best-effort)
+    try:
+        covers = await provider.get_covers(igdb_id)
+        if covers:
+            raw["all_covers"] = covers
+    except Exception:
+        pass
     media_id = await sync_to_async(seed_game_from_igdb)(raw, igdb_id)
     await _steamgrid_enrich_after_seed(media_id, _steam_app_id(raw))
     return media_id

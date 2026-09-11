@@ -24,7 +24,7 @@ export function useMarkAllRead() {
         if (!data) continue
         qc.setQueryData<NotificationListResponse>(key, {
           ...data,
-          items: data.items.map((n) => ({ ...n, isRead: true })),
+          items: (Array.isArray(data.items) ? data.items : []).map((n) => ({ ...n, isRead: true })),
         })
       }
 

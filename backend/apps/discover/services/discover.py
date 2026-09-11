@@ -25,6 +25,7 @@ VALID_LIST_TYPES = {
     "popular",
     "top_rated",
     "upcoming",
+    "newly_released",
     "now_playing",
     "collaborative",
     "semantic",
@@ -40,6 +41,7 @@ _LIST_CONFIG: dict[str, tuple[str, str, str | None]] = {
     "popular": ("popularity", "desc", None),
     "top_rated": ("rating", "desc", None),
     "upcoming": ("release_date", "asc", "future"),
+    "newly_released": ("release_date", "desc", "recent"),
     "now_playing": ("popularity", "desc", "recent"),
     "collaborative": ("popularity", "desc", None),
     "semantic": ("popularity", "desc", None),
@@ -47,13 +49,27 @@ _LIST_CONFIG: dict[str, tuple[str, str, str | None]] = {
     "integration_plex": ("popularity", "desc", None),
 }
 
+# Games express "now playing" as recent + community engagement: IGDB has no real
+# concurrent-player signal, so rating_count (aggregated_rating_count) is the
+# closest "hype" proxy. Other media keep the generic popularity sort.
+# Fresh releases have no critic scores yet, so the game window spans a year —
+# long enough for notable 2025/2026 titles to have accrued reviews — instead of
+# the 90-day movie/show window that would be empty.
+_GAME_SORT_OVERRIDE = {"now_playing": "rating_count"}
+_GAME_WINDOW_OVERRIDE = {"now_playing": "recent_year"}
+
 
 def _date_filter(name: str | None) -> tuple[date | None, date | None]:
     today = date.today()
     if name == "future":
-        return (today, None)
+        # Strictly after today: an item releasing today is out (newly_released),
+        # not "coming soon" — otherwise IGDB's placeholder-today rows (undated
+        # titles IGDB stamps with today) flood the upcoming rail.
+        return (today + timedelta(days=1), None)
     if name == "recent":
-        return (today - timedelta(days=90), None)
+        return (today - timedelta(days=90), today)  # cap so future dates stay in "upcoming"
+    if name == "recent_year":
+        return (today - timedelta(days=365), today)
     if name == "trending_window":
         return (today - timedelta(days=365), today + timedelta(days=180))
     return (None, None)
@@ -69,9 +85,7 @@ def hero_items(*, exclude_adult: bool, limit: int) -> list[MediaItem]:
 
     pool_size = min(limit * 4, 50)
     pool = list(
-        catalog_service.list_media(has_artwork=True, exclude_adult=exclude_adult)[
-            :pool_size
-        ]
+        catalog_service.list_media(has_artwork=True, exclude_adult=exclude_adult)[:pool_size]
     )
     random.shuffle(pool)
     return pool[:limit]
@@ -84,6 +98,7 @@ def list_feed(
     genre: str | None,
     language: str | None,
     is_anime: bool | None,
+    platform: str | None = None,
     exclude_adult: bool,
 ) -> QuerySet:
     """Resolve a discover feed to a catalog QuerySet (paginated by the view).
@@ -91,6 +106,9 @@ def list_feed(
     Raises ``ValueError`` for unknown media/list types. The feed filters on
     ``has_logo`` and (unless genre/language/anime narrowing) ``has_artwork``,
     applies the list type's date window, and orders per ``_LIST_CONFIG``.
+    Game rails don't require a logo (IGDB covers are poster art; new seeds have
+    no SteamGrid logo) and restrict to stored ``main_game`` rows, so DLC and
+    expansions never rank next to full games.
     """
     if media_type not in VALID_MEDIA_TYPES:
         raise ValueError(f"Invalid media_type: {media_type}")
@@ -99,7 +117,11 @@ def list_feed(
     if list_type == "new_season_for_you":
         return MediaItem.objects.none()
 
+    is_game = media_type == "game"
     sort_by, sort_dir, date_filter_name = _LIST_CONFIG[list_type]
+    if is_game:
+        sort_by = _GAME_SORT_OVERRIDE.get(list_type, sort_by)
+        date_filter_name = _GAME_WINDOW_OVERRIDE.get(list_type, date_filter_name)
     date_from, date_to = _date_filter(date_filter_name)
     require_artwork = not (language or is_anime is not None)
     return catalog_service.list_media(
@@ -107,8 +129,10 @@ def list_feed(
         genre=genre,
         language=language,
         is_anime=is_anime,
+        platform=platform,
         has_artwork=require_artwork,
-        has_logo=True,
+        has_logo=not is_game,
+        main_games_only=is_game,
         sort_by=sort_by,
         sort_dir=sort_dir,
         date_from=date_from,
@@ -180,10 +204,12 @@ def default_sections() -> list[dict]:
     """The anonymous discover-page section set (legacy ``default_sections``).
 
     Per-user ``generate_sections``/``compute_profile`` (preference signals) are
-    part of the deferred personalization engine, so every caller gets these four
-    canonical sections. Each is a descriptor for an already-ported list_type
-    feed, so the frontend can resolve each section against the discover list
-    routes. Field set mirrors ``PersonalizedSection`` (nulls included).
+    part of the deferred personalization engine, so every caller gets this static
+    canonical set. Games resolve to the tight-five shelves (new releases, now
+    playing, top rated, upcoming, best per platform); generic movie/show
+    popularity dupes are dropped. Each descriptor resolves against an
+    already-ported list_type feed. Field set mirrors ``PersonalizedSection``
+    (nulls included).
     """
     return [
         {
@@ -194,6 +220,7 @@ def default_sections() -> list[dict]:
             "genre": None,
             "language": None,
             "is_anime": None,
+            "platform": None,
             "is_personalized": False,
             "reason": None,
         },
@@ -205,17 +232,103 @@ def default_sections() -> list[dict]:
             "genre": None,
             "language": None,
             "is_anime": None,
+            "platform": None,
             "is_personalized": False,
             "reason": None,
         },
         {
-            "id": "popular_games",
-            "title": "Popular Games",
+            "id": "newly_released_games",
+            "title": "New Releases",
             "media_type": "game",
-            "list_type": "popular",
+            "list_type": "newly_released",
             "genre": None,
             "language": None,
             "is_anime": None,
+            "platform": None,
+            "is_personalized": False,
+            "reason": None,
+        },
+        {
+            "id": "now_playing_games",
+            "title": "Now Playing Games",
+            "media_type": "game",
+            "list_type": "now_playing",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "platform": None,
+            "is_personalized": False,
+            "reason": None,
+        },
+        {
+            "id": "top_rated_games",
+            "title": "Top Rated Games",
+            "media_type": "game",
+            "list_type": "top_rated",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "platform": None,
+            "is_personalized": False,
+            "reason": None,
+        },
+        {
+            "id": "upcoming_games",
+            "title": "Upcoming Games",
+            "media_type": "game",
+            "list_type": "upcoming",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "platform": None,
+            "is_personalized": False,
+            "reason": None,
+        },
+        {
+            "id": "best_on_windows",
+            "title": "Best on PC",
+            "media_type": "game",
+            "list_type": "top_rated",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "platform": "windows",
+            "is_personalized": False,
+            "reason": None,
+        },
+        {
+            "id": "best_on_playstation_5",
+            "title": "Best on PlayStation 5",
+            "media_type": "game",
+            "list_type": "top_rated",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "platform": "playstation-5",
+            "is_personalized": False,
+            "reason": None,
+        },
+        {
+            "id": "best_on_xbox_series",
+            "title": "Best on Xbox Series",
+            "media_type": "game",
+            "list_type": "top_rated",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "platform": "xbox-series-x-s",
+            "is_personalized": False,
+            "reason": None,
+        },
+        {
+            "id": "best_on_nintendo_switch",
+            "title": "Best on Nintendo Switch",
+            "media_type": "game",
+            "list_type": "top_rated",
+            "genre": None,
+            "language": None,
+            "is_anime": None,
+            "platform": "nintendo-switch",
             "is_personalized": False,
             "reason": None,
         },
@@ -227,6 +340,7 @@ def default_sections() -> list[dict]:
             "genre": None,
             "language": None,
             "is_anime": None,
+            "platform": None,
             "is_personalized": False,
             "reason": None,
         },

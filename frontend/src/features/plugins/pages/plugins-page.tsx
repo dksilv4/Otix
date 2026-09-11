@@ -385,7 +385,7 @@ function InstalledPluginRow({
           <Settings className="h-4 w-4" />
         </button>
 
-        {!isError && <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling} />}
+        {!isError && <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling || isSystem} />}
       </div>
     </div>
   )
@@ -804,7 +804,11 @@ export function SettingsPluginsPage() {
       ) : (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Download className="h-10 w-10 text-white/20 mb-3" />
-          <p className="text-sm text-white/40">No plugins installed</p>
+          <p className="text-sm text-white/40">
+            {(window as { desktopAPI?: unknown }).desktopAPI
+              ? 'No plugins installed'
+              : 'No plugins are running on this Otix server'}
+          </p>
         </div>
       )}
     </div>

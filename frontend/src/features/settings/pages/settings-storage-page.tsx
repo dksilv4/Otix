@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react'
+import { useState, type ComponentType, type ReactNode } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link, useLocation } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
@@ -18,7 +18,6 @@ import {
   Gauge,
   HardDrive,
   Image,
-  Layers,
   Loader2,
   ShieldAlert,
   ShieldCheck,
@@ -44,7 +43,25 @@ interface StorageStats {
   disk: { total: number; used: number; free: number }
 }
 
-function StatCard({
+/** Visible glass surface for a settings section — distinct from the page
+ * background so stacked sections don't blur together (SettingsCard's 0.18
+ * alpha reads as no background). Used on this page only. */
+function Panel({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <section
+      className={cn('rounded-2xl p-5 sm:p-6', className)}
+      style={{
+        backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.42)',
+        boxShadow:
+          'inset 0 1px 0 0 rgba(255,255,255,0.06), 0 12px 32px -18px rgba(0,0,0,0.5)',
+      }}
+    >
+      {children}
+    </section>
+  )
+}
+
+function Metric({
   icon: Icon,
   label,
   value,
@@ -56,16 +73,14 @@ function StatCard({
   hint?: string
 }) {
   return (
-    <div className="rounded-2xl p-5" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs text-white/50">{label}</p>
-          <p className="text-xl font-bold text-white tabular-nums leading-tight">{value}</p>
-          {hint && <p className="text-[11px] text-white/40 mt-0.5">{hint}</p>}
-        </div>
+    <div className="flex items-center gap-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <Icon className="h-4.5 w-4.5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">{label}</p>
+        <p className="text-lg font-bold text-white tabular-nums leading-tight">{value}</p>
+        {hint && <p className="text-[11px] text-white/40 mt-0.5">{hint}</p>}
       </div>
     </div>
   )
@@ -141,9 +156,19 @@ function ToggleRow({
   )
 }
 
+function SubHeading({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="mb-4">
+      <h4 className="text-[11px] font-semibold uppercase tracking-widest text-white/40">{title}</h4>
+      {description && <p className="mt-1 text-xs leading-relaxed text-white/40">{description}</p>}
+    </div>
+  )
+}
+
 /** Auto-mirror sub-settings: fetch/discover/local-game triggers, sweep rate,
- * enabled artwork types, and the disk safety cap. Grayed out while the master
- * mirroring switch (owned by SettingsStoragePage) is off. */
+ * artwork types, and download guardrails (max-storage budget + disk cap).
+ * Grayed out while the master mirroring switch (owned by SettingsStoragePage)
+ * is off. */
 function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
   const { toast } = useToast()
   const { data: settings, isLoading } = useArtworkSettings()
@@ -153,6 +178,7 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
   // to null so the field re-binds to the acknowledged server number.
   const [sweepDraft, setSweepDraft] = useState<string | null>(null)
   const [capDraft, setCapDraft] = useState<string | null>(null)
+  const [budgetDraft, setBudgetDraft] = useState<string | null>(null)
   const off = !masterEnabled || setSettings.isPending
 
   const commit = async (patch: ArtworkSettingsPatch): Promise<boolean> => {
@@ -168,13 +194,15 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
 
   if (isLoading) {
     return (
-      <SettingsCard className="flex items-center justify-center gap-3 py-10 text-white/50">
+      <Panel className="flex items-center justify-center gap-3 py-10 text-white/50">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-xs">Loading artwork settings…</span>
-      </SettingsCard>
+      </Panel>
     )
   }
   if (!settings) return null
+
+  const mirror = settings.mirrored
 
   const toggleType = (value: string, checked: boolean) => {
     const next = checked
@@ -186,6 +214,7 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
 
   const sweepValue = sweepDraft ?? String(settings.sweepLimit)
   const capValue = capDraft ?? String(settings.minFreeGb)
+  const budgetValue = budgetDraft ?? String(mirror.maxGb)
 
   const commitSweep = async (raw: string) => {
     const parsed = Number.parseInt(raw, 10)
@@ -205,11 +234,24 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
     if (await commit({ minFreeGb: parsed })) setCapDraft(null)
   }
 
+  const commitBudget = async (raw: string) => {
+    const parsed = Number.parseInt(raw, 10)
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed === mirror.maxGb) {
+      setBudgetDraft(null)
+      return
+    }
+    if (await commit({ maxGb: parsed })) setBudgetDraft(null)
+  }
+
   const capPaused = settings.disk.tripped
+  const capBytes = mirror.maxGb * 1024 ** 3
+  const budgetPct =
+    mirror.maxGb > 0 ? Math.min(100, (mirror.bytes / capBytes) * 100) : null
+  const overBudget = mirror.maxGb > 0 && mirror.overBudget
 
   return (
     <>
-      <SettingsCard>
+      <Panel>
         <SectionHeader
           icon={Download}
           title="Automatic downloads"
@@ -230,7 +272,14 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
             disabled={off}
             onCheckedChange={(v) => commit({ discoverEnabled: v })}
           />
-          <div className="grid gap-4 py-3 sm:grid-cols-2">
+          <ToggleRow
+            title="Claimed local games"
+            description="When you claim an installed game, download its artwork so the library has it locally."
+            checked={settings.localGamesEnabled}
+            disabled={off}
+            onCheckedChange={(v) => commit({ localGamesEnabled: v })}
+          />
+          <div className="grid gap-4 pt-3 sm:grid-cols-2">
             <DkInput
               label="Sweep limit (per run)"
               type="number"
@@ -257,51 +306,44 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
               ))}
             </DkSelect>
           </div>
-          <ToggleRow
-            title="Claimed local games"
-            description="When you claim an installed game, download its artwork so the library has it locally."
-            checked={settings.localGamesEnabled}
-            disabled={off}
-            onCheckedChange={(v) => commit({ localGamesEnabled: v })}
+        </div>
+
+        <div className="mt-5 border-t border-white/[0.07] pt-5">
+          <SubHeading
+            title="Artwork types"
+            description="Which artwork a downloaded title gets. Already-downloaded files are kept even if a type is unchecked."
           />
+          <div className="flex flex-wrap gap-x-6 gap-y-3">
+            {ASSET_TYPE_OPTIONS.map((option) => (
+              <DkCheckbox
+                key={option.value}
+                label={option.label}
+                checked={settings.assetTypes.includes(option.value)}
+                disabled={off}
+                onCheckedChange={(checked) => toggleType(option.value, Boolean(checked))}
+              />
+            ))}
+          </div>
         </div>
-      </SettingsCard>
+      </Panel>
 
-      <SettingsCard>
-        <SectionHeader
-          icon={Layers}
-          title="Artwork types"
-          description="Which artwork a downloaded title gets. Already-downloaded files are kept even if a type is unchecked."
-        />
-        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
-          {ASSET_TYPE_OPTIONS.map((option) => (
-            <DkCheckbox
-              key={option.value}
-              label={option.label}
-              checked={settings.assetTypes.includes(option.value)}
-              disabled={off}
-              onCheckedChange={(checked) => toggleType(option.value, Boolean(checked))}
-            />
-          ))}
-        </div>
-      </SettingsCard>
-
-      <SettingsCard>
+      <Panel>
         <SectionHeader
           icon={Gauge}
-          title="Disk safety cap"
-          description="Pause all artwork downloads when free disk drops below this threshold, so images never fill the drive."
+          title="Download guardrails"
+          description="Bounds on how much artwork is stored and how full the disk may get. Over the storage budget the least-used images are replaced to make room for new media."
         />
-        {capPaused && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-200">
-            <ShieldAlert className="h-4 w-4 shrink-0" />
-            <span>
-              Downloads are paused — only {formatBytes(settings.disk.free)} free, below your{' '}
-              {settings.minFreeGb} GB cap. Free up space or raise the cap to resume.
-            </span>
-          </div>
-        )}
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <DkInput
+            label="Maximum artwork storage (GB)"
+            type="number"
+            min={0}
+            disabled={off}
+            value={budgetValue}
+            onChange={(e) => setBudgetDraft(e.target.value)}
+            onBlur={(e) => commitBudget(e.target.value)}
+            hint="0 stores every download. Above the budget, images served least often are removed first to make room — admin-kept and pinned picks are never removed."
+          />
           <DkInput
             label="Minimum free space (GB)"
             type="number"
@@ -312,11 +354,58 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
             onBlur={(e) => commitCap(e.target.value)}
             hint="0 disables the cap."
           />
-          <div className="flex items-end pb-1 text-xs text-white/40">
-            {formatBytes(settings.disk.free)} free of {formatBytes(settings.disk.total)}
-          </div>
         </div>
-      </SettingsCard>
+
+        {budgetPct !== null && (
+          <div className="mt-4 rounded-xl bg-white/[0.03] p-4 ring-1 ring-inset ring-white/[0.05]">
+            <div className="mb-2 flex items-center justify-between text-[11px]">
+              <span className="font-semibold uppercase tracking-widest text-white/50">
+                Artwork budget
+              </span>
+              <span className="text-white/50 tabular-nums">
+                {formatBytes(mirror.bytes)} of {formatBytes(capBytes)}
+              </span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${budgetPct}%`,
+                  backgroundColor:
+                    overBudget || budgetPct > 95
+                      ? 'var(--dk-danger, #ef4444)'
+                      : 'var(--primary)',
+                }}
+              />
+            </div>
+            <p className="mt-1.5 text-[11px] text-white/40 tabular-nums">
+              {formatBytes(mirror.bytes)} stored · {mirror.count} image
+              {mirror.count === 1 ? '' : 's'} downloaded
+            </p>
+          </div>
+        )}
+
+        {overBudget && (
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-300/90">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Stored artwork is over its {mirror.maxGb} GB budget. New auto-downloads replace the
+              least-used images to get back under — raise the cap or remove admin-kept artwork if
+              you'd rather not.
+            </p>
+          </div>
+        )}
+
+        {capPaused && (
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-300/90">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Downloads are paused — only {formatBytes(settings.disk.free)} free, below your{' '}
+              {settings.minFreeGb} GB cap. Free up space or raise the cap to resume.
+            </p>
+          </div>
+        )}
+      </Panel>
     </>
   )
 }
@@ -389,22 +478,23 @@ export function SettingsStoragePage() {
       />
 
       {isLoading && (
-        <SettingsCard className="flex items-center justify-center gap-3 py-14 text-white/50">
+        <Panel className="flex items-center justify-center gap-3 py-14 text-white/50">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span className="text-sm">Loading storage usage…</span>
-        </SettingsCard>
+        </Panel>
       )}
 
       {error && (
-        <SettingsCard className="text-sm text-red-400/90 bg-red-400/5 py-6 text-center">
+        <Panel className="text-sm text-red-400/90 bg-red-400/5 py-6 text-center">
           Could not load storage usage. The media admin API may be unreachable.
-        </SettingsCard>
+        </Panel>
       )}
 
       {data && !isLoading && (
         <>
-          <SettingsCard className="space-y-4">
+          <Panel>
             <SectionHeader
+              icon={Download}
               title="Download artwork to this server"
               description="Store a local copy of posters, backdrops, logos and icons so the catalog serves them from this backend instead of provider URLs."
               action={
@@ -423,63 +513,61 @@ export function SettingsStoragePage() {
               }
             />
             {mirroring.isSuccess && !mirroringEnabled && (
-              <div className="flex items-start gap-2.5 rounded-xl bg-amber-400/10 px-3.5 py-3 text-xs text-amber-300/90 leading-relaxed">
+              <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-300/90">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>
-                  Mirroring is paused. The <span className="font-semibold text-amber-200">Download Images</span> action
-                  on media is blocked until you turn this back on. Artwork already downloaded keeps being served from
-                  this server.
+                  Mirroring is paused. The{' '}
+                  <span className="font-semibold text-amber-200">Download Images</span> action on
+                  media is blocked until you turn this back on. Artwork already downloaded keeps
+                  being served from this server.
                 </p>
               </div>
             )}
-          </SettingsCard>
 
-          <AutoMirrorControls masterEnabled={mirroringEnabled} />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <StatCard
-              icon={Image}
-              label="Downloaded artwork"
-              value={`${data.downloadedCount} image${data.downloadedCount === 1 ? '' : 's'}`}
-              hint={`${formatBytes(data.downloadedBytes)} on disk`}
-            />
-            <StatCard
-              icon={HardDrive}
-              label="Filesystem"
-              value={formatBytes(disk?.total ?? 0)}
-              hint={`${formatBytes(disk?.free ?? 0)} free of ${formatBytes(disk?.total ?? 0)}`}
-            />
-          </div>
-
-          <SettingsCard>
-            <SectionHeader
-              title="Filesystem usage"
-              description={`${formatBytes(disk?.used ?? 0)} used · ${formatBytes(disk?.free ?? 0)} free`}
-            />
-            <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${usedPct}%`,
-                  backgroundColor: usedPct > 85 ? 'var(--dk-danger, #ef4444)' : 'var(--primary)',
-                }}
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Metric
+                icon={Image}
+                label="Downloaded artwork"
+                value={`${data.downloadedCount} image${data.downloadedCount === 1 ? '' : 's'}`}
+                hint={`${formatBytes(data.downloadedBytes)} on disk`}
+              />
+              <Metric
+                icon={HardDrive}
+                label="Filesystem"
+                value={formatBytes(disk?.total ?? 0)}
+                hint={`${formatBytes(disk?.free ?? 0)} free of ${formatBytes(disk?.total ?? 0)}`}
               />
             </div>
-            <p className="mt-2 text-[11px] text-white/40 tabular-nums">{usedPct.toFixed(1)}% of the volume is in use</p>
-          </SettingsCard>
 
-          <SettingsCard>
-            <div className="flex items-center gap-3 text-white/60">
+            <div className="mt-5 border-t border-white/[0.07] pt-5">
+              <div className="mb-2 flex items-center justify-between text-[11px] text-white/50">
+                <span className="font-semibold uppercase tracking-widest">Volume usage</span>
+                <span className="tabular-nums">
+                  {formatBytes(disk?.used ?? 0)} used · {formatBytes(disk?.free ?? 0)} free
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${usedPct}%`,
+                    backgroundColor: usedPct > 85 ? 'var(--dk-danger, #ef4444)' : 'var(--primary)',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center gap-2.5 text-white/60">
               <FolderOpen className="h-4 w-4 shrink-0" />
               <p className="text-xs">
                 Downloaded files live at{' '}
-                <code className="rounded bg-white/[0.06] px-1.5 py-0.5 text-white/80">{data.mediaDir}</code>
+                <code className="rounded bg-white/[0.06] px-1.5 py-0.5 text-white/80">
+                  {data.mediaDir}
+                </code>
               </p>
             </div>
-          </SettingsCard>
 
-          <SettingsCard>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="mt-5 flex flex-col gap-4 rounded-xl bg-red-500/[0.06] px-4 py-3.5 ring-1 ring-inset ring-red-500/20 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-400/10 text-red-400">
                   <Trash2 className="h-5 w-5" />
@@ -497,13 +585,15 @@ export function SettingsStoragePage() {
                 type="button"
                 disabled={purge.isPending || data.downloadedCount === 0}
                 onClick={() => setConfirmOpen(true)}
-                className="inline-flex items-center justify-center gap-2 self-start sm:self-auto rounded-xl bg-red-500/15 px-4 py-2 text-xs font-semibold text-red-300 ring-1 ring-inset ring-red-500/30 hover:bg-red-500/25 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-red-500/15 px-4 py-2 text-xs font-semibold text-red-300 ring-1 ring-inset ring-red-500/30 transition-all hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-40 sm:self-auto"
               >
                 <Trash2 className="h-4 w-4" />
                 {purge.isPending ? 'Deleting…' : 'Delete all'}
               </button>
             </div>
-          </SettingsCard>
+          </Panel>
+
+          <AutoMirrorControls masterEnabled={mirroringEnabled} />
 
           <DkDialog
             open={confirmOpen}
@@ -516,7 +606,7 @@ export function SettingsStoragePage() {
                 type="button"
                 onClick={() => setConfirmOpen(false)}
                 disabled={purge.isPending}
-                className="rounded-xl px-4 py-2 text-xs font-semibold text-white/70 hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50"
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-white/70 transition-all hover:bg-white/10 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -524,7 +614,7 @@ export function SettingsStoragePage() {
                 type="button"
                 onClick={deleteAllDownloaded}
                 disabled={purge.isPending}
-                className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-xs font-semibold text-white hover:bg-red-600 transition-all cursor-pointer disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-red-600 disabled:opacity-60"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {purge.isPending ? 'Deleting…' : 'Delete'}

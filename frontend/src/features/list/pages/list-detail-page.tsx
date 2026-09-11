@@ -64,7 +64,8 @@ export function ListDetailPage() {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
 
-  const itemIds = new Set(list?.items.map((i) => i.id) ?? [])
+  const listItems = Array.isArray(list?.items) ? list.items : []
+  const itemIds = new Set(listItems.map((i) => i.id))
 
   const {
     data: searchData,
@@ -92,15 +93,15 @@ export function ListDetailPage() {
   }, [])
 
   const handleDragEnd = useCallback(() => {
-    if (dragIndex != null && dropIndex != null && dragIndex !== dropIndex && list) {
-      const newItems = [...list.items]
+    if (dragIndex != null && dropIndex != null && dragIndex !== dropIndex && listItems.length > 0) {
+      const newItems = [...listItems]
       const [removed] = newItems.splice(dragIndex, 1)
       newItems.splice(dropIndex, 0, removed)
       reorderList.mutate(newItems.map((i) => i.id))
     }
     setDragIndex(null)
     setDropIndex(null)
-  }, [dragIndex, dropIndex, list, reorderList])
+  }, [dragIndex, dropIndex, listItems, reorderList])
 
   const handleDragLeave = useCallback(() => {
     setDropIndex(null)
@@ -140,7 +141,7 @@ export function ListDetailPage() {
   }
 
   const isOwner = user?.id === list.userId
-  const searchItems = searchData?.items ?? []
+  const searchItems = Array.isArray(searchData?.items) ? searchData.items : (Array.isArray((searchData as any)?.results) ? (searchData as any).results : [])
 
   async function handleDelete() {
     if (!confirm("Delete this list?")) return
@@ -354,7 +355,7 @@ export function ListDetailPage() {
         )} 
         style={{ '--section-delay': '140ms' } as React.CSSProperties}
       >
-        {isOwner && list.items.length > 1 && (
+        {isOwner && listItems.length > 1 && (
           <div className="flex justify-end px-2">
             <p className="text-xs font-medium text-white/30 hidden sm:block uppercase tracking-wider">
               Drag to reorder
@@ -362,7 +363,7 @@ export function ListDetailPage() {
           </div>
         )}
         
-        {list.items.length === 0 ? (
+        {listItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-lg font-semibold text-white/90">
               This list is empty
@@ -382,7 +383,7 @@ export function ListDetailPage() {
           </div>
         ) : (
           <MediaGrid>
-            {list.items.map((item, index) => (
+            {listItems.map((item, index) => (
               <div
                 key={item.id}
                 className={cn(

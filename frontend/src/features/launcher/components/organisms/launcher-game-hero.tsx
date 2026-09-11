@@ -4,10 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { heroImage } from '@/features/launcher/utils'
 import { LauncherGameStats } from '@/features/launcher/components/molecules/launcher-game-stats'
+import { LauncherGameHeroMeta } from '@/features/launcher/components/molecules/launcher-game-hero-meta'
 import { LauncherGameDetailInfo } from '@/features/launcher/components/molecules/launcher-game-detail-info'
 import { LauncherGameButtons } from '@/features/launcher/components/organisms/launcher-game-buttons'
 import { LauncherScreenshotGallery } from '@/features/launcher/components/molecules/launcher-screenshot-gallery'
-import { useInactiveSlideshow } from '@/features/launcher/hooks/use-inactive-slideshow'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 
 function useRandomParallax() {
@@ -64,7 +64,7 @@ export function LauncherGameHero() {
   const drift = useRandomParallax()
   const [activeBackdrop, setActiveBackdropRaw] = useState<string | null>(null)
   const setActiveBackdrop = useCallback((url: string | null) => {
-    if (!url || settings.backgroundTransitions) setActiveBackdropRaw(url)
+    if (url === null || settings.backgroundTransitions) setActiveBackdropRaw(url)
   }, [settings.backgroundTransitions])
 
   // Reset hovered screenshot backdrop when changing games
@@ -76,13 +76,6 @@ export function LauncherGameHero() {
     if (!detail?.screenshots?.length) return []
     return detail.screenshots.map((s) => ({ ...s, url: heroImage(s.url) }))
   }, [detail])
-
-  const { isPlaying: galleryAutoPlay } = useInactiveSlideshow({
-    totalItems: screenshots.length,
-    slideInterval: 6000,
-    inactivityTimeout: 8000,
-    enabled: settings.slideshowWhenInactive,
-  })
 
   const backdropUrl = useMemo(() => {
     if (!detail) return ''
@@ -156,16 +149,20 @@ export function LauncherGameHero() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
       </div>
 
+      {/* Bottom gradient mask transitioning hero smoothly into shelf */}
+      <div className="absolute bottom-0 inset-x-0 h-36 bg-gradient-to-t from-[#08080a] via-[#08080a]/70 to-transparent pointer-events-none z-[4]" />
+
       {/* Bottom info dock */}
       <div
-        className="absolute z-10 bottom-8 pointer-events-auto flex flex-col gap-5"
+        className="absolute z-10 bottom-6 md:bottom-8 pointer-events-auto flex flex-col gap-3.5 md:gap-4 max-w-full lg:max-w-[calc(100%-26rem)] xl:max-w-[calc(100%-30rem)]"
         style={{ left: 'calc(76px + 1.5rem)', right: '2rem' }}
       >
         <div
-          className="flex items-start gap-3 transition-opacity duration-500"
+          className="flex items-center flex-wrap gap-3 transition-opacity duration-300 ease-out"
           style={{ opacity: isHoveringScreenshot ? 0.15 : 1 }}
         >
           <LauncherGameStats />
+          <LauncherGameHeroMeta />
         </div>
 
         {/* Screenshot gallery */}
@@ -173,7 +170,7 @@ export function LauncherGameHero() {
           <LauncherScreenshotGallery
             screenshots={screenshots}
             onHoverScreenshot={setActiveBackdrop}
-            autoPlay={galleryAutoPlay}
+            autoPlay={false}
           />
         )}
       </div>
@@ -181,26 +178,30 @@ export function LauncherGameHero() {
       <div className="absolute inset-0 z-10 pointer-events-none">
         {/* Logo/content with 3D parallax */}
         <motion.div
-          className="absolute right-8 top-1/2 flex flex-col items-end text-right max-w-sm pointer-events-auto"
+          className="absolute right-6 md:right-10 xl:right-14 top-[40%] md:top-[44%] xl:top-1/2 flex flex-col items-end text-right max-w-sm md:max-w-md xl:max-w-lg pointer-events-auto"
           style={{
-            transform: `translateY(-35%) translateX(${lgX}px) translateY(${lgY}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`,
+            transform: `translateY(-38%) translateX(${lgX}px) translateY(${lgY}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`,
             transformStyle: 'preserve-3d',
-            transition: 'transform 2.5s linear, opacity 0.5s ease-in-out',
-            opacity: isHoveringScreenshot ? 0.1 : 1,
+            transition: 'transform 2.5s linear',
           }}
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={gameId}
-              initial={{ opacity: 0, x: 40 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-            >
-              <LauncherGameDetailInfo />
-              <LauncherGameButtons />
-            </motion.div>
-          </AnimatePresence>
+          <div
+            className="transition-opacity duration-300 ease-out flex flex-col items-end w-full"
+            style={{ opacity: isHoveringScreenshot ? 0.15 : 1 }}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={gameId}
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              >
+                <LauncherGameDetailInfo />
+                <LauncherGameButtons />
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </motion.div>
       </div>
     </section>

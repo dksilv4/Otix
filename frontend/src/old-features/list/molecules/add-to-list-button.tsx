@@ -10,9 +10,10 @@ import { useModal } from '@/lib/modals'
 interface AddToListButtonProps {
   mediaItemId: string
   className?: string
+  variant?: 'default' | 'pill' | 'icon'
 }
 
-export function AddToListButton({ mediaItemId, className }: AddToListButtonProps) {
+export function AddToListButton({ mediaItemId, className, variant = 'default' }: AddToListButtonProps) {
   const { isAuthenticated } = useAuth()
   const { data: lists } = useUserLists()
   const addToList = useAddToList()
@@ -35,29 +36,51 @@ export function AddToListButton({ mediaItemId, className }: AddToListButtonProps
     }
   }, [open])
 
-  if (!isAuthenticated || !lists) return null
+  const userLists = Array.isArray(lists) ? lists.filter(Boolean) : []
+  if (!isAuthenticated || (!lists && !userLists.length)) return null
 
   return (
     <div ref={ref} className={cn('relative', className)}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="dk-interaction__btn glass-inset flex flex-col items-center gap-1.5"
-      >
-        <ListIcon className="relative h-5 w-5 text-muted-foreground transition-all duration-200" />
-        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          List
-        </span>
-      </button>
+      {variant === 'icon' ? (
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-110 active:scale-95"
+          title="Add to list"
+          aria-label="Add to list"
+        >
+          <ListIcon className="h-4 w-4 text-white/75 hover:text-white transition-colors" />
+        </button>
+      ) : variant === 'pill' ? (
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <ListIcon className="h-4 w-4 text-muted-foreground" />
+          <span>List</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="dk-interaction__btn glass-inset flex flex-col items-center gap-1.5"
+        >
+          <ListIcon className="relative h-5 w-5 text-muted-foreground transition-all duration-200" />
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            List
+          </span>
+        </button>
+      )}
 
       {open && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-56 rounded-xl bg-card border border-border/40 shadow-xl p-1.5 space-y-0.5">
-          {lists.length === 0 ? (
+          {userLists.length === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-muted-foreground">
               No lists yet. Create one first.
             </div>
           ) : (
-            lists.map((list) => {
+            userLists.map((list) => {
               const added = justAdded === list.id
               return (
                 <button

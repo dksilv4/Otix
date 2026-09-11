@@ -10,7 +10,6 @@ import { hasDesktopAPI } from '@/lib/desktop/api'
 import { toDisplayGame, heroImage, isApplicationGame } from '@/features/launcher/utils'
 import { useOffline } from '@/lib/offline'
 import { OfflineNotice } from '@/lib/offline-notice'
-import { useInactiveSlideshow } from '@/features/launcher/hooks/use-inactive-slideshow'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import { PLATFORM_LABELS } from '@/constants/games'
 import { MediaLogo } from '@/lib/media/media-logo'
@@ -103,19 +102,12 @@ export function LauncherLibraryPage() {
     return result
   }, [rawGames, searchQuery, selectedPlatform, sortBy])
 
-  // ── Featured hero with inactivity auto-slideshow ──
+  // ── Featured hero (static, first game) ──
   const featuredGames = useMemo(() => filteredGames.slice(0, 5), [filteredGames])
-  const {
-    activeIndex: featuredIdx,
-    setActiveIndex: setFeaturedIdx,
-  } = useInactiveSlideshow({
-    totalItems: featuredGames.length,
-    slideInterval: 5000,
-    enabled: settings.slideshowWhenInactive,
-  })
+  const [featuredIdx, setFeaturedIdx] = useState(0)
   const featured = featuredGames[featuredIdx] ?? null
 
-  useEffect(() => { setFeaturedIdx(0, true) }, [searchQuery, selectedPlatform, sortBy, setFeaturedIdx])
+  useEffect(() => { setFeaturedIdx(0) }, [searchQuery, selectedPlatform, sortBy])
 
   // Featured
 

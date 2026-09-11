@@ -17,10 +17,20 @@ export const peopleQueries = {
     queryOptions({
       queryKey: ['person', 'search', query, limit],
       queryFn: async () => {
-        const { data } = await apiClient.get<PersonListResponse>('/person/search', {
+        const { data } = await apiClient.get<any>('/person/search', {
           params: { q: query, limit },
         })
-        return data
+        const items = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data?.results)
+            ? data.results
+            : Array.isArray(data)
+              ? data
+              : []
+        return {
+          ...data,
+          items,
+        } as PersonListResponse
       },
       enabled: query.length > 0,
       staleTime: 1000 * 60 * 5,
@@ -31,6 +41,9 @@ export const peopleQueries = {
       queryKey: ['person', id],
       queryFn: async () => {
         const { data } = await apiClient.get<PersonDetail>(`/person/${id}`)
+        if (data && !Array.isArray(data.credits)) {
+          data.credits = []
+        }
         return data
       },
       staleTime: 1000 * 60 * 10,

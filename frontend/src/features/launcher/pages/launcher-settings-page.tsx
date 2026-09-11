@@ -196,13 +196,6 @@ export function LauncherSettingsPage() {
           <SectionTitle title="Display & Interface" />
 
           <Toggle
-            checked={settings.slideshowWhenInactive}
-            onChange={v => update('slideshowWhenInactive', v)}
-            label="Auto-slideshow when inactive"
-            description="Automatically cycle through featured games and screenshots after a period of inactivity"
-          />
-
-          <Toggle
             checked={settings.backgroundTransitions}
             onChange={v => update('backgroundTransitions', v)}
             label="Dynamic background transitions"

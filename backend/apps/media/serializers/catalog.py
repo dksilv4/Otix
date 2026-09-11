@@ -75,6 +75,16 @@ class MediaVideoOutSerializer(serializers.Serializer):
     provider_id = serializers.CharField(allow_null=True)
 
 
+# Normal slot → the textless slot it fills (mirrors assets_service
+# FAMILY_TEXTLESS_TYPE; kept local to avoid a service import in the serializer).
+_FAMILY_TEXTLESS_TYPE = {
+    "poster": "textless_poster",
+    "textless_poster": "textless_poster",
+    "backdrop": "textless_backdrop",
+    "textless_backdrop": "textless_backdrop",
+}
+
+
 class MediaAssetOutSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     asset_type = serializers.CharField()
@@ -85,13 +95,27 @@ class MediaAssetOutSerializer(serializers.Serializer):
     style = serializers.CharField(allow_null=True)
     score = serializers.IntegerField(allow_null=True)
     provider = serializers.CharField(allow_null=True)
-    # Admin-pinned flag + mirror state, surfaced to the artwork chooser.
-    is_selected = serializers.BooleanField()
+    # Admin-pinned context (general/dark/light), mirror state, and which
+    # contexts this asset currently resolves for — surfaced to the chooser.
+    selected_context = serializers.CharField(allow_null=True)
     local_name = serializers.CharField(allow_null=True)
-    is_current = serializers.SerializerMethodField()
+    keep_local = serializers.BooleanField()
+    current_contexts = serializers.SerializerMethodField()
+    # True when this image is the family's (theme-agnostic) textless art: its
+    # url is the current general winner of the family's textless slot. The slot
+    # may be backed by a hidden materialized row sharing this url.
+    is_textless = serializers.SerializerMethodField()
 
-    def get_is_current(self, obj: MediaAsset) -> bool:
-        return obj.pk in self.context.get("current_ids", ())
+    def get_current_contexts(self, obj: MediaAsset) -> list[str]:
+        current_ids = self.context.get("current_ids", {})
+        return [ctx for ctx, pks in current_ids.items() if obj.pk in pks]
+
+    def get_is_textless(self, obj: MediaAsset) -> bool:
+        target = _FAMILY_TEXTLESS_TYPE.get(obj.asset_type)
+        if target is None:
+            return False
+        winner_url = self.context.get("textless_urls", {}).get(target)
+        return bool(winner_url) and obj.url == winner_url
 
 
 class EpisodeOutSerializer(serializers.ModelSerializer):
@@ -128,7 +152,7 @@ class SeasonOutSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def _episodes(self, obj: Season) -> list[Episode]:
-        return sorted(obj.episodes.all(), key=lambda e: e.episode_number)
+        return sorted(obj.episodes.all(), key=lambda e: e.episode_number or 0)
 
     def get_episode_count(self, obj: Season) -> int:
         return len(self._episodes(obj))
@@ -142,12 +166,17 @@ class SeasonSummarySerializer(serializers.Serializer):
 
     id = serializers.IntegerField()
     show_id = serializers.IntegerField()
-    show_title = serializers.CharField(source="show.media_item.title")
+    show_title = serializers.SerializerMethodField()
     season_number = serializers.IntegerField()
     name = serializers.CharField(allow_null=True)
     overview = serializers.CharField(allow_null=True)
     poster_url = serializers.CharField(allow_null=True)
     air_date = serializers.DateField(allow_null=True)
+
+    def get_show_title(self, obj: Season):
+        show = getattr(obj, "show", None)
+        media_item = getattr(show, "media_item", None)
+        return getattr(media_item, "title", None)
 
 
 class CollectionMovieOutSerializer(serializers.Serializer):
@@ -167,7 +196,8 @@ class CollectionOutSerializer(serializers.Serializer):
     movies = serializers.SerializerMethodField()
 
     def get_movies(self, obj):
-        movies = sorted(obj.movies.all(), key=lambda m: m.media_item.release_date or date.min)
+        movies = [m for m in obj.movies.all() if m.media_item_id is not None]
+        movies.sort(key=lambda m: m.media_item.release_date or date.min)
         out = []
         for movie in movies:
             item = movie.media_item
@@ -205,7 +235,7 @@ class ShowDetailSerializer(serializers.Serializer):
     seasons = serializers.SerializerMethodField()
 
     def get_seasons(self, obj: Show):
-        seasons = sorted(obj.seasons.all(), key=lambda s: s.season_number)
+        seasons = sorted(obj.seasons.all(), key=lambda s: s.season_number or 0)
         return SeasonOutSerializer(seasons, many=True).data
 
 
@@ -267,7 +297,7 @@ class AlbumDetailSerializer(serializers.Serializer):
     tracks = serializers.SerializerMethodField()
 
     def get_tracks(self, obj: Album):
-        tracks = sorted(obj.tracks.all(), key=lambda t: (t.disc_number, t.track_number))
+        tracks = sorted(obj.tracks.all(), key=lambda t: (t.disc_number or 0, t.track_number or 0))
         return TrackOutSerializer(tracks, many=True).data
 
 
@@ -297,9 +327,11 @@ class CompanyOutSerializer(serializers.Serializer):
     user_rating = serializers.IntegerField(allow_null=True)
 
 
-def company_out(company) -> dict:
+def company_out(company) -> dict | None:
     """Shape a Company row like the legacy ``CompanyOut`` (defaults when the
     follow/rating aggregates were not computed for a nested embed)."""
+    if company is None:
+        return None
     return {
         "id": company.id,
         "name": company.name,
@@ -321,6 +353,7 @@ class InvolvedCompanyOutSerializer(serializers.Serializer):
     porting = serializers.BooleanField()
     supporting = serializers.BooleanField()
     production = serializers.BooleanField()
+    distributor = serializers.BooleanField()
 
     def get_company(self, obj):
         return company_out(obj.company)
@@ -455,26 +488,31 @@ class MediaItemDetailSerializer(serializers.Serializer):
         return _user_interactions(getattr(obj, "user_interactions", None))
 
     def get_genres(self, obj):
-        return GenreOutSerializer([mg.genre for mg in obj.media_genres.all()], many=True).data
+        genres = [mg.genre for mg in obj.media_genres.all() if mg.genre_id is not None]
+        return GenreOutSerializer(genres, many=True).data
 
     def get_credits(self, obj):
         credits = [c for c in obj.credits.all() if c.person_id is not None]
         return MediaCreditOutSerializer(credits, many=True).data
 
     def get_involved_companies(self, obj):
-        return InvolvedCompanyOutSerializer(obj.involved_companies.all(), many=True).data
+        companies = [ic for ic in obj.involved_companies.all() if ic.company_id is not None]
+        return InvolvedCompanyOutSerializer(companies, many=True).data
 
     def get_releases(self, obj):
         return MediaReleaseOutSerializer(obj.releases.all(), many=True).data
 
     def get_platforms(self, obj):
-        return MediaPlatformOutSerializer(obj.platforms.all(), many=True).data
+        platforms = [mp for mp in obj.platforms.all() if mp.platform_id is not None]
+        return MediaPlatformOutSerializer(platforms, many=True).data
 
     def get_game_modes(self, obj):
-        return MediaGameModeOutSerializer(obj.game_modes.all(), many=True).data
+        game_modes = [gm for gm in obj.game_modes.all() if gm.game_mode_id is not None]
+        return MediaGameModeOutSerializer(game_modes, many=True).data
 
     def get_watch_providers(self, obj):
-        return MediaWatchProviderOutSerializer(obj.watch_providers.all(), many=True).data
+        providers = [wp for wp in obj.watch_providers.all() if wp.watch_provider_id is not None]
+        return MediaWatchProviderOutSerializer(providers, many=True).data
 
     def get_screenshots(self, obj):
         shots = [a for a in obj.assets.all() if (a.asset_type or "").lower() == "screenshot"]

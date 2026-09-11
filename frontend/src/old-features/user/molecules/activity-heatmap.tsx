@@ -23,7 +23,8 @@ function buildWeeks(data: ActivityHeatmapResponse | undefined, weeks: number): {
   weeks: WeekData[]
   max: number
 } {
-  if (!data?.dates?.length) return { weeks: [], max: 1 }
+  const dates = Array.isArray(data?.dates) ? data.dates : []
+  if (dates.length === 0) return { weeks: [], max: 1 }
 
   // Group days into ISO weeks
   const weekMap = new Map<string, WeekData>()
@@ -37,7 +38,8 @@ function buildWeeks(data: ActivityHeatmapResponse | undefined, weeks: number): {
     return monday.toISOString().slice(0, 10)
   }
 
-  for (const entry of data.dates) {
+  for (const entry of dates) {
+    if (!entry || !entry.date) continue
     const weekStart = getWeekStart(entry.date)
     if (!weekMap.has(weekStart)) {
       weekMap.set(weekStart, {
@@ -48,11 +50,15 @@ function buildWeeks(data: ActivityHeatmapResponse | undefined, weeks: number): {
       })
     }
     const w = weekMap.get(weekStart)!
-    w.counts.workout += entry.workout
-    w.counts.movie += entry.movie
-    w.counts.show += entry.show
-    w.counts.music += entry.music
-    w.total += entry.workout + entry.movie + entry.show + entry.music
+    const workout = entry.workout || 0
+    const movie = entry.movie || 0
+    const show = entry.show || 0
+    const music = entry.music || 0
+    w.counts.workout += workout
+    w.counts.movie += movie
+    w.counts.show += show
+    w.counts.music += music
+    w.total += workout + movie + show + music
   }
 
   const weekArray = Array.from(weekMap.values()).sort(

@@ -18,7 +18,9 @@ import type { PluginSettingsTab } from '@/features/_config/slots'
 
 export type NavGroup = 'preferences' | 'account'
 
-export const DESKTOP_SECTIONS = new Set(['library', 'desktop', 'plugins'])
+// Plugins are excluded: they now run server-side (backend /api/v1/plugins) so
+// the management UI is reachable from the browser, not just the Electron app.
+export const DESKTOP_SECTIONS = new Set(['library', 'desktop'])
 
 export interface NavItem {
   id: string
@@ -44,7 +46,8 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'preferences',
   },
   { id: 'desktop', label: 'Desktop', icon: Monitor, desktop: true, requiresAuth: false, group: 'preferences' },
-  { id: 'library', label: 'Library', icon: Gamepad2, desktop: true, requiresAuth: false, group: 'preferences' },
+  { id: 'launcher', label: 'Launcher', icon: Gamepad2, desktop: false, requiresAuth: false, group: 'preferences' },
+  { id: 'library', label: 'Library', icon: HardDrive, desktop: true, requiresAuth: false, group: 'preferences' },
   { id: 'integrations', label: 'Integrations', icon: Link2, desktop: false, requiresAuth: false, group: 'preferences' },
   { id: 'plugins', label: 'Plugins', icon: Puzzle, desktop: true, requiresAuth: false, group: 'preferences' },
 

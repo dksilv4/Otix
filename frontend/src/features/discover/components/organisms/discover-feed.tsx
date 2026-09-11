@@ -39,11 +39,6 @@ export function DiscoverFeed() {
           />
           <TrendingSeasonsSection />
           <MediaSection
-            title="Trending Games"
-            mediaType="game"
-            listType="trending"
-          />
-          <MediaSection
             title="Trending Music"
             mediaType="music"
             listType="trending"
@@ -59,9 +54,14 @@ export function DiscoverFeed() {
             listType="popular"
           />
           <MediaSection
-            title="Popular Games"
+            title="New Releases"
             mediaType="game"
-            listType="popular"
+            listType="newly_released"
+          />
+          <MediaSection
+            title="Now Playing Games"
+            mediaType="game"
+            listType="now_playing"
           />
           <MediaSection
             title="Popular Music"
@@ -77,6 +77,30 @@ export function DiscoverFeed() {
             title="Upcoming Games"
             mediaType="game"
             listType="upcoming"
+          />
+          <MediaSection
+            title="Best on PC"
+            mediaType="game"
+            listType="top_rated"
+            platform="windows"
+          />
+          <MediaSection
+            title="Best on PlayStation 5"
+            mediaType="game"
+            listType="top_rated"
+            platform="playstation-5"
+          />
+          <MediaSection
+            title="Best on Xbox Series"
+            mediaType="game"
+            listType="top_rated"
+            platform="xbox-series-x-s"
+          />
+          <MediaSection
+            title="Best on Nintendo Switch"
+            mediaType="game"
+            listType="top_rated"
+            platform="nintendo-switch"
           />
           <FreeGamesSection />
         </>

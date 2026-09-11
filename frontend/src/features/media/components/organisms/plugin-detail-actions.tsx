@@ -153,10 +153,12 @@ function RequestButton({
   widget,
   requesting,
   onRequest,
+  variant = 'default',
 }: {
   widget: RequestWidget
   requesting: string | null
   onRequest: (pluginId: string, instanceId: string) => Promise<void> | void
+  variant?: 'default' | 'pill'
 }) {
   const { label, glow, icon } = getButtonState(widget)
   const requestable = (widget.props.instances || []).filter(i => REQUESTABLE.has(i.status))
@@ -209,7 +211,7 @@ function RequestButton({
 
   const handleClick = () => {
     if (requestable.length === 1) {
-      onRequest(widget.pluginId, requestable[0].id)
+      onRequest(widget.pluginId, requestable[0]?.id)
     } else if (requestable.length > 1) {
       setOpen(o => !o)
     }
@@ -223,15 +225,21 @@ function RequestButton({
         disabled={requestable.length === 0 || requesting != null}
         onClick={handleClick}
         className={cn(
-          'dk-interaction__btn glass-inset',
-          requesting && 'dk-interaction__btn--pending',
+          variant === 'pill'
+            ? 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:scale-100'
+            : cn(
+                'dk-interaction__btn glass-inset',
+                requesting && 'dk-interaction__btn--pending',
+              ),
         )}
       >
-        {glow && <div className={cn('dk-interaction__glow', glow)} />}
+        {glow && variant !== 'pill' && <div className={cn('dk-interaction__glow', glow)} />}
         {requesting ? (
-          <Loader2 className="relative h-5 w-5 animate-spin text-primary" />
-        ) : icon}
-        <span className="dk-interaction__label">
+          <Loader2 className={cn('animate-spin text-primary', variant === 'pill' ? 'h-4 w-4' : 'relative h-5 w-5')} />
+        ) : (
+          icon
+        )}
+        <span className={variant === 'pill' ? '' : 'dk-interaction__label'}>
           {requesting ? 'Requesting...' : label}
         </span>
       </button>
@@ -277,9 +285,11 @@ function RequestButton({
 function PlayOnPlexButton({
   widget,
   onPlay,
+  variant = 'default',
 }: {
   widget: PlayWidget
   onPlay: (pluginId: string, instance: PlayInstance) => Promise<void>
+  variant?: 'default' | 'pill'
 }) {
   const instances = widget.props.instances || []
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null)
@@ -303,13 +313,17 @@ function PlayOnPlexButton({
         onClick={() => run(single)}
         disabled={busy != null}
         className={cn(
-          'dk-interaction__btn glass-inset',
-          'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold',
-          'text-white hover:text-white/90 transition-all cursor-pointer disabled:opacity-50',
+          variant === 'pill'
+            ? 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4'
+            : cn(
+                'dk-interaction__btn glass-inset',
+                'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold',
+                'text-white hover:text-white/90 transition-all cursor-pointer disabled:opacity-50',
+              ),
         )}
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}
-        Play on {single.name}
+        <span>Play on {single.name}</span>
       </button>
     )
   }
@@ -323,14 +337,18 @@ function PlayOnPlexButton({
           setCoords({ top: rect.bottom + 6, left: rect.left, width: rect.width })
         }}
         className={cn(
-          'dk-interaction__btn glass-inset',
-          'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold',
-          'text-white hover:text-white/90 transition-all cursor-pointer',
+          variant === 'pill'
+            ? 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] [&_svg]:h-4 [&_svg]:w-4'
+            : cn(
+                'dk-interaction__btn glass-inset',
+                'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold',
+                'text-white hover:text-white/90 transition-all cursor-pointer',
+              ),
         )}
       >
         <Play className="h-4 w-4 fill-current" />
-        Play on Plex
-        <ChevronDown className="h-3.5 w-3.5 text-white/50" />
+        <span>Play on Plex</span>
+        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
       </button>
       {coords &&
         createPortal(
@@ -375,21 +393,23 @@ export function MediaDetailPluginButtons({
   requesting,
   onRequest,
   onPlay,
+  variant = 'default',
 }: {
   widgets: RequestWidget[]
   playWidgets: PlayWidget[]
   requesting: string | null
   onRequest: (pluginId: string, instanceId: string) => Promise<void> | void
   onPlay: (pluginId: string, instance: PlayInstance) => Promise<void>
+  variant?: 'default' | 'pill'
 }) {
   if (widgets.length === 0 && playWidgets.length === 0) return null
   return (
     <>
       {playWidgets.map((widget) => (
-        <PlayOnPlexButton key={widget.pluginId} widget={widget} onPlay={onPlay} />
+        <PlayOnPlexButton key={widget.pluginId} widget={widget} onPlay={onPlay} variant={variant} />
       ))}
       {widgets.map((widget) => (
-        <RequestButton key={widget.pluginId} widget={widget} requesting={requesting} onRequest={onRequest} />
+        <RequestButton key={widget.pluginId} widget={widget} requesting={requesting} onRequest={onRequest} variant={variant} />
       ))}
     </>
   )

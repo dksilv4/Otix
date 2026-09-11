@@ -526,3 +526,6 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
     </DkDialog>
   )
 }
+
+export { MatchGameModal as LauncherMatchGameModal }
+export default MatchGameModal

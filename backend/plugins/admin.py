@@ -7,7 +7,7 @@ enabled, error (to clear), the granted permission set and config/instances.
 
 from django.contrib import admin
 
-from plugins.models import Plugin
+from plugins.models import Plugin, PluginAccessToken, PluginAccessTokenGrant
 
 
 @admin.register(Plugin)
@@ -60,3 +60,27 @@ class PluginAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return False  # uninstall goes through the registry service (system-guarded)
+
+
+class PluginAccessTokenGrantInline(admin.TabularInline):
+    model = PluginAccessTokenGrant
+    extra = 0
+
+
+@admin.register(PluginAccessToken)
+class PluginAccessTokenAdmin(admin.ModelAdmin):
+    list_display = ("name", "prefix", "is_active", "expires_at", "last_used_at", "created_at")
+    list_filter = ("is_active",)
+    search_fields = ("name", "prefix")
+    readonly_fields = ("prefix", "token_hash", "last_used_at", "created_by", "created_at")
+    inlines = (PluginAccessTokenGrantInline,)
+    fieldsets = (
+        (None, {"fields": ("name", "is_active", "expires_at")}),
+        ("Secret", {"fields": ("prefix", "token_hash")}),
+        ("Audit", {"fields": ("created_by", "last_used_at", "created_at")}),
+    )
+
+    def save_model(self, request, obj, form, change) -> None:
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

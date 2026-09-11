@@ -39,6 +39,26 @@ def run_sync_job(sync_job_pk: int) -> dict:
     return execute_sync_job(sync_job_pk)
 
 
+@shared_task(name="integrations.sync_company")
+def sync_company(company_pk: int) -> dict:
+    """Full-sync a followed company: resolve its TMDB id and enqueue its titles.
+
+    Runs worker-side so the TMDB id lookup (which may hit ``/search/company``)
+    never blocks the follow request. Resolved via the service module attribute
+    at call time so tests patch the body.
+    """
+    from apps.company.models import Company
+    from apps.media.services.tmdb_company import enqueue_company_sync
+
+    company = Company.objects.filter(pk=company_pk).first()
+    if company is None:
+        return {"status": "missing", "company_id": company_pk}
+    job = enqueue_company_sync(company)
+    if job is None:
+        return {"status": "skipped", "company_id": company_pk}
+    return {"status": "enqueued", "company_id": company_pk, "sync_job_id": job.pk}
+
+
 @shared_task(name="integrations.catalog_daily_tmdb")
 def catalog_daily_tmdb() -> dict:
     """Daily catalog refresh — enqueue the unseen movie/show ids from the TMDB

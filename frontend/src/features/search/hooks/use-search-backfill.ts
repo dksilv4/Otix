@@ -26,7 +26,7 @@ export function useSearchBackfill(
   })
 
   useEffect(() => {
-    if (!pollData?.items?.length) return
+    if (!Array.isArray(pollData?.items) || pollData.items.length === 0) return
     const newItems = pollData.items.filter((item) => !polledIdsRef.current.has(item.id))
     if (newItems.length === 0) return
     newItems.forEach((item) => polledIdsRef.current.add(item.id))
@@ -40,9 +40,10 @@ export function useSearchBackfill(
       (prev) => {
         if (!prev) return prev
         const firstPage = prev.pages[0]
+        const existingItems = Array.isArray(firstPage?.items) ? firstPage.items : []
         return {
           ...prev,
-          pages: [{ ...firstPage, items: [...newItems, ...firstPage.items] }, ...prev.pages.slice(1)],
+          pages: [{ ...firstPage, items: [...newItems, ...existingItems] }, ...prev.pages.slice(1)],
         }
       },
     )

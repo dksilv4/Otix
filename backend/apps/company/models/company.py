@@ -13,6 +13,8 @@ class Company(BaseModel):
     slug = models.CharField(max_length=500, unique=True)
     logo_url = models.CharField(max_length=2000, null=True, blank=True)
     origin_country = models.CharField(max_length=10, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    homepage = models.URLField(max_length=500, null=True, blank=True)
 
     external_ids = GenericRelation(
         "media.ExternalID",

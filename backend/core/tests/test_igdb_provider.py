@@ -289,7 +289,8 @@ class IGDBProviderTests(SimpleTestCase):
             self.assertEqual(
                 calls[0].content,
                 b"fields *; sort aggregated_rating desc; "
-                b"where aggregated_rating != null & rating_count > 10; limit 10;",
+                b"where aggregated_rating != null & rating_count > 10"
+                b" & version_parent = null; limit 10;",
             )
 
         _run(run())

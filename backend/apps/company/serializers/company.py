@@ -31,12 +31,22 @@ class CompanyDetailSerializer(serializers.ModelSerializer):
             "slug",
             "logo_url",
             "origin_country",
+            "description",
+            "homepage",
             "follower_count",
             "is_followed",
             "avg_rating",
             "user_rating",
         )
-        read_only_fields = ("id", "name", "slug", "logo_url", "origin_country")
+        read_only_fields = (
+            "id",
+            "name",
+            "slug",
+            "logo_url",
+            "origin_country",
+            "description",
+            "homepage",
+        )
 
 
 class CompanyRatingSerializer(serializers.Serializer):

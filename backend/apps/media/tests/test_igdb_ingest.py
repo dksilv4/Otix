@@ -585,3 +585,145 @@ class HydrateGameFromIgdbTests(TestCase):
         self.assertIsNone(game.release_status)
         self.assertIsNone(game.website)
         self.assertIsNone(game.franchise)
+
+    def test_artwork_with_logo_image_type_routes_to_logo_asset(self):
+        # ar_roadcraft is 500x91 transparent logo with image_type: 7
+        raw = _enriched_game_raw(
+            artworks=[
+                {
+                    "id": 101,
+                    "image_id": "ar_roadcraft",
+                    "width": 500,
+                    "height": 91,
+                    "image_type": 7,
+                    "alpha_channel": True,
+                },
+                {
+                    "id": 102,
+                    "image_id": "ar_white_logo",
+                    "width": 800,
+                    "height": 200,
+                    "image_type": 5,
+                    "alpha_channel": True,
+                },
+            ]
+        )
+        media_id = seed_game_from_igdb(raw, IGDB_ID)
+
+        # Must be in logos, NOT backdrops
+        logos = MediaAsset.objects.filter(media_item_id=media_id, asset_type="logo")
+        self.assertEqual(logos.count(), 2)
+
+        roadcraft_logo = logos.get(url__contains="ar_roadcraft")
+        self.assertEqual(roadcraft_logo.label, "official")
+        self.assertEqual((roadcraft_logo.width, roadcraft_logo.height), (500, 91))
+
+        white_logo = logos.get(url__contains="ar_white_logo")
+        self.assertEqual(white_logo.label, "white")
+
+        # Confirm neither was stored as a backdrop
+        self.assertFalse(
+            MediaAsset.objects.filter(
+                media_item_id=media_id,
+                asset_type="backdrop",
+                url__in=[roadcraft_logo.url, white_logo.url],
+            ).exists()
+        )
+
+    def test_artwork_with_icon_image_type_routes_to_icon_asset(self):
+        raw = _enriched_game_raw(
+            artworks=[
+                {
+                    "id": 201,
+                    "image_id": "ar_icon_square",
+                    "width": 128,
+                    "height": 128,
+                    "image_type": 13,
+                    "alpha_channel": False,
+                }
+            ]
+        )
+        media_id = seed_game_from_igdb(raw, IGDB_ID)
+
+        icons = MediaAsset.objects.filter(media_item_id=media_id, asset_type="icon")
+        self.assertEqual(icons.count(), 1)
+        icon = icons.first()
+        self.assertIn("ar_icon_square", icon.url)
+        self.assertEqual(icon.label, "icon")
+        self.assertEqual((icon.width, icon.height), (128, 128))
+
+        # Must not be stored as a backdrop
+        self.assertFalse(
+            MediaAsset.objects.filter(
+                media_item_id=media_id, asset_type="backdrop", url__contains="ar_icon_square"
+            ).exists()
+        )
+
+    def test_artwork_with_cover_image_type_routes_to_poster_asset(self):
+        raw = _enriched_game_raw(
+            artworks=[
+                {
+                    "id": 301,
+                    "image_id": "ar_alt_cover",
+                    "width": 600,
+                    "height": 800,
+                    "image_type": 10,
+                }
+            ]
+        )
+        media_id = seed_game_from_igdb(raw, IGDB_ID)
+
+        posters = MediaAsset.objects.filter(media_item_id=media_id, asset_type="poster")
+        # 1 primary cover + 1 alternative cover from artworks
+        self.assertEqual(posters.count(), 2)
+        alt_poster = posters.get(url__contains="ar_alt_cover")
+        self.assertEqual(alt_poster.label, "alternative")
+
+    def test_key_art_without_logo_yields_textless_backdrop(self):
+        raw = _enriched_game_raw(
+            artworks=[
+                {
+                    "id": 401,
+                    "image_id": "ar_textless",
+                    "width": 3840,
+                    "height": 2160,
+                    "image_type": 2,
+                    "alpha_channel": False,
+                }
+            ]
+        )
+        media_id = seed_game_from_igdb(raw, IGDB_ID)
+
+        backdrops = MediaAsset.objects.filter(
+            media_item_id=media_id, asset_type="backdrop", url__contains="ar_textless"
+        )
+        self.assertEqual(backdrops.count(), 1)
+        self.assertEqual(backdrops.first().label, "textless")
+
+        textless = MediaAsset.objects.filter(
+            media_item_id=media_id, asset_type="textless_backdrop", url__contains="ar_textless"
+        )
+        self.assertEqual(textless.count(), 1)
+        self.assertEqual(textless.first().label, "textless")
+
+    def test_transparent_artwork_is_never_stored_as_backdrop(self):
+        # Even if aspect ratio >= 1.4, an image with alpha_channel: True must never be a backdrop
+        raw = _enriched_game_raw(
+            artworks=[
+                {
+                    "id": 501,
+                    "image_id": "ar_transparent_something",
+                    "width": 1920,
+                    "height": 1080,
+                    "alpha_channel": True,
+                }
+            ]
+        )
+        media_id = seed_game_from_igdb(raw, IGDB_ID)
+        self.assertFalse(
+            MediaAsset.objects.filter(
+                media_item_id=media_id,
+                asset_type="backdrop",
+                url__contains="ar_transparent_something",
+            ).exists()
+        )

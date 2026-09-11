@@ -71,10 +71,10 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
 	// Artist name from first music-relevant credit, or fallback to empty
 	const artistName = data?.credits?.find(c => ['artist', 'musician', 'composer', 'main'].includes(c.role))?.person?.name ?? null
 
-	const tracks = album.tracks ?? EMPTY_TRACKS
+	const tracks = Array.isArray(album.tracks) ? album.tracks : EMPTY_TRACKS
 	const { playPlexAlbum, error } = usePlayer()
 	const { data: plexData } = usePlexAlbumTracks(mediaItemId)
- const plexTracks = plexData?.tracks
+	const plexTracks = Array.isArray(plexData?.tracks) ? plexData.tracks : []
 
  // Merge Plex-only tracks into the display list so the player queue doesn't
  // include tracks the user can't see. Without this, "Play on Plex" queues all
@@ -262,7 +262,7 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  }
  }
 
- return allTracks.map((t) => {
+ return (Array.isArray(allTracks) ? allTracks : []).map((t) => {
  const plexMatch = plexByTrack.get(`${t.discNumber}:${t.trackNumber}`)
 
  return (

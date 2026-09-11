@@ -102,9 +102,10 @@ export function SteamFreeGamesSection() {
   }
 
   // No free games
-  if (!result?.freeGames?.length) return null
+  const freeGames = Array.isArray(result?.freeGames) ? result.freeGames.filter((g) => g && g.id) : []
+  if (freeGames.length === 0) return null
 
-  const { freeGames, isAuthenticated, alreadyOwned } = result
+  const { isAuthenticated, alreadyOwned } = result!
   const unclaimed = isAuthenticated ? freeGames.length - (alreadyOwned ?? 0) : freeGames.length
   const isClaimable = unclaimed > 0
 

@@ -192,7 +192,7 @@ class IGDBProvider:
 
 
 def cover_url(cover) -> str | None:
-    """Build the t_1080p IGDB cover URL from a cover dict or bare image_id."""
+    """Build the t_original IGDB cover URL from a cover dict or bare image_id."""
     if isinstance(cover, dict):
         image_id = cover.get("image_id")
     elif isinstance(cover, str):
@@ -201,7 +201,7 @@ def cover_url(cover) -> str | None:
         return None
     if not image_id:
         return None
-    return f"https://images.igdb.com/igdb/image/upload/t_1080p/{image_id}.jpg"
+    return f"https://images.igdb.com/igdb/image/upload/t_original/{image_id}.jpg"
 
 
 _PLATFORM_NORMALIZATION = {

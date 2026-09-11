@@ -35,10 +35,12 @@ from apps.media.views.local_assets import (
     ArtworkSelectionView,
     ArtworkSettingsView,
     AssetFileView,
+    AssetMirrorView,
     DownloadAssetsView,
     MirroringView,
     PurgeAssetsView,
     StorageUsageView,
+    TextlessPickView,
 )
 from apps.media.views.proposals import (
     EditProposalListCreateView,
@@ -58,6 +60,7 @@ __all__ = [
     "ArtworkSelectionView",
     "ArtworkSettingsView",
     "AssetFileView",
+    "AssetMirrorView",
     "CertificationListView",
     "ClaimView",
     "CompanyLookupView",
@@ -96,4 +99,5 @@ __all__ = [
     "SimilarMediaView",
     "StorageUsageView",
     "SyncLocalGamesView",
+    "TextlessPickView",
 ]

@@ -4,6 +4,7 @@ import {Menu, ArrowLeft} from 'lucide-react'
 import {DkButton} from '@ui/atoms/button'
 import {DkLogo} from '@ui/atoms/logo'
 import {NavigationProvider, MenuDropdown, useNavigation, NavSearch} from '@navigation'
+import {useNavPillsVisibility} from '@/features/navigation/hooks/use-nav-pills-visibility'
 import {usePageMeta} from '@/lib/providers/page-context'
 import {UserMenu} from '@auth'
 import {NotificationBell} from '@/old-features/notifications/molecules/notification-bell'
@@ -135,6 +136,7 @@ function AppShell({children}: { children: ReactNode }) {
     }, [])
 
     useNotificationToasts()
+    const {showLeft, showRight} = useNavPillsVisibility()
 
     const floatingPillClasses = 'fixed z-[9999] flex items-center rounded-[2rem] gap-1 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px]'
 
@@ -142,8 +144,8 @@ function AppShell({children}: { children: ReactNode }) {
         <div className="min-h-screen w-full max-w-[100vw] bg-[var(--background)]">
             <TitleBar/>
 
-            {/* Left floating pill — hidden in launcher (it has its own picker) */}
-            {!location.pathname.startsWith('/game') && !location.pathname.startsWith('/launcher') && (
+            {/* Left floating pill */}
+            {showLeft && (
                 <div
                     id={'menu-nav-left'}
                     className={cn(
@@ -171,30 +173,32 @@ function AppShell({children}: { children: ReactNode }) {
                 </div>
             )}
 
-            <MenuDropdown/>
-            <div
-                id={'menu-nav-right'}
-                className={cn(
-                    floatingPillClasses,
-                    'right-4 px-2 py-1.5',
-                    titleBarOffset,
-                )}
-                style={{
-                    transition: 'all 300ms var(--dk-ease-out)',
-                    background: 'oklch(from var(--dk-surface-raised) r g b / 0.25)',
-                    backgroundImage: 'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
-                }}
-            >
-                <NowPlayingButton
-                    bare
-                    isPinned={isPinned}
-                    isSidebarOpen={isSidebarOpen}
-                    onToggleSidebar={handleToggleSidebar}
-                />
-                <NavSearch/>
-                <NotificationBell bare/>
-                <UserMenu bare/>
-            </div>
+            {showLeft && <MenuDropdown/>}
+            {showRight && (
+                <div
+                    id={'menu-nav-right'}
+                    className={cn(
+                        floatingPillClasses,
+                        'right-4 px-2 py-1.5',
+                        titleBarOffset,
+                    )}
+                    style={{
+                        transition: 'all 300ms var(--dk-ease-out)',
+                        background: 'oklch(from var(--dk-surface-raised) r g b / 0.25)',
+                        backgroundImage: 'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
+                    }}
+                >
+                    <NowPlayingButton
+                        bare
+                        isPinned={isPinned}
+                        isSidebarOpen={isSidebarOpen}
+                        onToggleSidebar={handleToggleSidebar}
+                    />
+                    <NavSearch/>
+                    <NotificationBell bare/>
+                    <UserMenu bare/>
+                </div>
+            )}
 
             <main className="flex w-full">
                 {children}

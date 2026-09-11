@@ -26,6 +26,7 @@ class Notification(BaseModel):
     metadata_json = models.JSONField(default=dict, blank=True)
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True, default=None)
+    dedupe_key = models.CharField(max_length=255, null=True, blank=True, unique=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta(BaseModel.Meta):

@@ -6,24 +6,27 @@ export function ArtistAlbumsSection({ className }: { className?: string } = {}) 
   const { mediaType, mediaId } = useMediaParams()
 
   const { data: detailData } = useQuery(mediaQueries.detail(mediaType, mediaId))
-  if (!detailData || detailData.mediaType !== 'music') return null
+  const primaryArtist = detailData?.credits?.find((c) => c.role === 'primary' && c.person)
+  const artistPersonId = primaryArtist?.person?.id
+  const currentMediaId = detailData?.id
 
-  const primaryArtist = detailData.credits?.find((c) => c.role === 'primary')
-  if (!primaryArtist) return null
-
-  const artistPersonId = primaryArtist.person.id
-  const artistName = primaryArtist.person.name
-  const currentMediaId = detailData.id
-
-  const { data, isLoading } = useQuery(
-    mediaQueries.list({
+  // Kept above the early returns so hooks run unconditionally; the list only
+  // fetches once the detail resolves an artist with a primary credit.
+  const { data, isLoading } = useQuery({
+    ...mediaQueries.list({
       type: 'music',
-      personId: artistPersonId,
+      personId: artistPersonId ?? '',
       sortBy: 'release_date',
       sortDir: 'desc',
       limit: 30,
     }),
-  )
+    enabled: !!artistPersonId,
+  })
+
+  if (!detailData || detailData.mediaType !== 'music') return null
+  if (!primaryArtist) return null
+
+  const artistName = primaryArtist.person.name
 
   const albums = (data?.items ?? [])
     .filter((item) => item.id !== currentMediaId)

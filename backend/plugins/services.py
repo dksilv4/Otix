@@ -16,6 +16,7 @@ from typing import Any
 from django.conf import settings
 
 from plugins.discovery import scan
+from plugins.gateway import deactivate_plugin_tokens, ensure_plugin_token
 from plugins.manifest import PluginManifest
 from plugins.models import Plugin
 
@@ -78,6 +79,10 @@ def register_plugin(
             **_manifest_defaults(manifest),
         )
         plugin.save()
+        if plugin.enabled:
+            # Auto-enabled (system) plugins come up with their token live, so the
+            # registry and the gateway never disagree about enabled == has token.
+            ensure_plugin_token(plugin=plugin.name)
         return plugin, True
     for key, value in _manifest_defaults(manifest).items():
         setattr(existing, key, value)
@@ -115,6 +120,9 @@ def enable_plugin(name: str) -> Plugin:
     plugin.enabled = True
     plugin.error = ""
     plugin.save(update_fields=("enabled", "error", "updated_at"))
+    # An enabled plugin owns an active scoped token; mint it when missing so the
+    # registry and gateway agree (existing shared secrets are kept on re-enable).
+    ensure_plugin_token(plugin=plugin.name)
     return plugin
 
 
@@ -124,6 +132,9 @@ def disable_plugin(name: str) -> Plugin:
         raise PluginStateError(f"plugin '{name}' is a system plugin and cannot be disabled")
     plugin.enabled = False
     plugin.save(update_fields=("enabled", "updated_at"))
+    # Disabling cuts third-party access: deactivate the plugin's tokens so any
+    # previously-shared secret stops resolving immediately.
+    deactivate_plugin_tokens(plugin.name)
     return plugin
 
 
@@ -190,6 +201,7 @@ def scan_bundled() -> list[dict]:
         if plugin.system and not plugin.enabled:
             plugin.enabled = True
             plugin.save(update_fields=("enabled", "updated_at"))
+            ensure_plugin_token(plugin=plugin.name)
         report.append(
             {
                 "id": plugin.name,

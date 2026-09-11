@@ -12,10 +12,13 @@ default (JWT/Token, IsAuthenticated).
 from __future__ import annotations
 
 from django.http import Http404
+from rest_framework.authentication import TokenAuthentication
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.authentication import JWTAuthentication
 from plugins import hostclient
+from plugins.gateway import PluginGatewayPermission, PluginTokenAuthentication
 from plugins.hostclient import HostUnreachableError
 from plugins.manifest import (
     CONFIG_FIELD_TYPES,
@@ -116,6 +119,13 @@ class PluginCapabilitiesView(APIView):
 class PluginDetailView(APIView):
     """GET one plugin's full shape (incl. config schema + host describe)."""
 
+    # A scoped gateway token may describe a plugin but never uninstall it (the
+    # permission blocks non-GET/ token requests); user sessions keep full access.
+    # PluginTokenAuthentication must run before JWT: JWT rejects any Bearer that
+    # isn't a valid JWT, which would swallow otxp_ gateway tokens.
+    authentication_classes = (PluginTokenAuthentication, JWTAuthentication, TokenAuthentication)
+    permission_classes = (PluginGatewayPermission,)
+
     def get(self, request, plugin_id: str) -> Response:
         row = _get_row_or_404(plugin_id)
         describe = None
@@ -188,6 +198,9 @@ class PluginConfigView(APIView):
 
 class PluginCallView(APIView):
     """POST {method, payload} — dispatch a data method on the running plugin."""
+
+    authentication_classes = (PluginTokenAuthentication, JWTAuthentication, TokenAuthentication)
+    permission_classes = (PluginGatewayPermission,)
 
     def post(self, request, plugin_id: str) -> Response:
         _get_row_or_404(plugin_id)

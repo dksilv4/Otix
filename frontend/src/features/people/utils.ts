@@ -59,12 +59,14 @@ export function formatRole(role: string): string {
 // ── Stats ─────────────────────────────────────────
 
 export function getCreditsStats(credits: PersonDetail['credits']) {
-  const valid = credits.filter((c) => c.mediaItem != null)
+  const safeCredits = Array.isArray(credits) ? credits : []
+  const valid = safeCredits.filter((c) => c && c.mediaItem != null)
   const total = valid.length
   const years = valid
-    .map((c) => c.mediaItem!.releaseDate)
-    .filter(Boolean)
-    .map((d) => new Date(d!).getFullYear())
+    .map((c) => c.mediaItem?.releaseDate)
+    .filter((d): d is string => Boolean(d))
+    .map((d) => new Date(d).getFullYear())
+    .filter((yr) => !isNaN(yr))
     .sort((a, b) => a - b)
 
   const yearsActive = years.length > 0
@@ -103,13 +105,14 @@ export interface TimelineGroup {
 
 export function expandCredits(credits: PersonCredit[]): GroupedCredit[] {
   const result: GroupedCredit[] = []
+  const safeCredits = Array.isArray(credits) ? credits : []
 
-  for (const c of credits) {
-    if (!c.mediaItem) continue
-    const seasons = c.mediaItem.seasons
-    if (c.mediaItem.mediaType === 'show' && seasons && seasons.length > 0) {
+  for (const c of safeCredits) {
+    if (!c || !c.mediaItem) continue
+    const seasons = Array.isArray(c.mediaItem.seasons) ? c.mediaItem.seasons : []
+    if (c.mediaItem.mediaType === 'show' && seasons.length > 0) {
       for (const season of seasons) {
-        const episodes = season.episodes ?? []
+        const episodes = Array.isArray(season?.episodes) ? season.episodes : []
         const byYear = new Map<number, EpisodeInfo[]>()
         for (const ep of episodes) {
           if (!ep.airDate) continue

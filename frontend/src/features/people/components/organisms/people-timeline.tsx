@@ -37,7 +37,7 @@ export function PeopleTimeline({ credits, mediaTypeFilter, roleFilter }: PeopleT
       <div className="absolute left-[23px] top-4 bottom-4 w-px bg-border" aria-hidden="true" />
 
       <div className="space-y-10">
-        {groups.map((group) => (
+        {(Array.isArray(groups) ? groups.filter(Boolean) : []).map((group) => (
           <div key={group.year}>
             {/* Year marker — sticky */}
             <div className="sticky top-0 z-20 -mt-4 pt-4 pb-2 mb-3 bg-background/80 backdrop-blur-sm">
@@ -59,7 +59,7 @@ export function PeopleTimeline({ credits, mediaTypeFilter, roleFilter }: PeopleT
 
             {/* Media nodes */}
             <div className="space-y-3 pl-[69px]">
-              {group.credits.map((credit) => {
+              {(Array.isArray(group.credits) ? group.credits.filter(Boolean) : []).map((credit) => {
                 const isSeason = credit.seasonNumber != null
                 const displayTitle = isSeason
                   ? `${credit.title} — S${credit.seasonNumber}${credit.seasonName ? `: ${credit.seasonName}` : ''}`
@@ -139,7 +139,7 @@ export function PeopleTimeline({ credits, mediaTypeFilter, roleFilter }: PeopleT
                           )}
 
                           <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                            {credit.roles.map((r, i) => (
+                            {(Array.isArray(credit.roles) ? credit.roles.filter(Boolean) : []).map((r, i) => (
                               <span key={i} className="inline-flex items-center gap-1">
                                 {i > 0 && <span className="text-muted-foreground/40">·</span>}
                                 <span className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-white/5 text-white/60">
@@ -163,7 +163,7 @@ export function PeopleTimeline({ credits, mediaTypeFilter, roleFilter }: PeopleT
                         <div className="absolute left-[10px] -top-1 bottom-0 w-px bg-border/40" aria-hidden="true" />
 
                         <div className="space-y-0">
-                          {credit.episodes.map((ep) => (
+                          {(Array.isArray(credit.episodes) ? credit.episodes.filter(Boolean) : []).map((ep) => (
                             <div key={ep.episodeNumber} className="relative flex items-center gap-1.5 pl-6 py-0.5">
                               <svg
                                 className="absolute left-[10px] top-1/2 pointer-events-none -translate-y-1/2"

@@ -102,7 +102,9 @@ class MediaDetailView(APIView):
         item = catalog_service.media_detail_queryset(media_id)
         if item is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
-        catalog_service.enrich_summaries([item], request.user)
+        theme = request.query_params.get("theme")
+        context = theme if theme in ("dark", "light") else "general"
+        catalog_service.enrich_summaries([item], request.user, context)
         return Response(MediaItemDetailSerializer(item).data)
 
 
@@ -158,13 +160,26 @@ class MediaAssetsView(APIView):
         )
         if item is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
-        assets = item.assets.all().order_by("asset_type", "lang", "-score")
+        # Materialized textless twins exist only to back a textless pick; the
+        # source image (poster/backdrop) is shown instead, flagged via is_textless.
+        assets = (
+            item.assets.all()
+            .exclude(label=assets_service.MATERIALIZED_TEXTLESS_LABEL)
+            .order_by("asset_type", "lang", "-score")
+        )
+        current_ids = {
+            ctx: assets_service.current_primary_asset_ids(item, ctx)
+            for ctx in assets_service.SELECTION_CONTEXTS
+        }
         return Response(
             {
                 "items": MediaAssetOutSerializer(
                     assets,
                     many=True,
-                    context={"current_ids": assets_service.current_primary_asset_ids(item)},
+                    context={
+                        "current_ids": current_ids,
+                        "textless_urls": assets_service.textless_winner_urls(item),
+                    },
                 ).data,
                 "total": assets.count(),
             }

@@ -19,7 +19,7 @@ export function WishlistTabContent() {
     useSteamWishlist()
 
   const items = useMemo(
-    () => data?.pages.flatMap((page) => page.items) ?? [],
+    () => data?.pages?.flatMap((page) => (Array.isArray(page?.items) ? page.items.filter(Boolean) : [])) ?? [],
     [data]
   )
 
@@ -74,7 +74,7 @@ export function WishlistTabContent() {
         </button>
       </div>
       <MediaGrid>
-        {items.map((item) => (
+        {(Array.isArray(items) ? items.filter((item) => item && item.id) : []).map((item) => (
           <div key={item.id} className="relative">
             <MediaCard
               id={item.id}

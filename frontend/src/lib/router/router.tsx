@@ -14,6 +14,7 @@ import { createSettingsRoutes } from '@settings/router'
 import { createListRoutes } from '@/features/list/router'
 import { createUserRoutes } from '@user/router'
 import { createPeopleRoutes } from '@people/router'
+import { createCompanyRoutes } from '@company/router'
 import { createNotificationRoutes } from '@/features/notifications/router'
 
 const rootRoute = createRootRoute({
@@ -33,6 +34,7 @@ const routeTree = rootRoute.addChildren([
   ...createListRoutes(rootRoute),
   ...createUserRoutes(rootRoute),
   ...createPeopleRoutes(rootRoute),
+  ...createCompanyRoutes(rootRoute),
   ...createNotificationRoutes(rootRoute),
 ])
 

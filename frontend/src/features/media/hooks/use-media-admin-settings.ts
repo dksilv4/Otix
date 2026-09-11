@@ -18,6 +18,15 @@ export interface DiskState {
   tripped: boolean
 }
 
+/** Locally mirrored artwork usage + max-storage budget (mirror_max_gb). */
+export interface MirrorUsage {
+  count: number
+  bytes: number
+  /** Total-artwork budget in GB; 0 means unlimited. */
+  maxGb: number
+  overBudget: boolean
+}
+
 export interface ArtworkSettings {
   fetchEnabled: boolean
   discoverEnabled: boolean
@@ -28,6 +37,7 @@ export interface ArtworkSettings {
   assetTypes: string[]
   /** Disk safety cap in GB; <=0 disables the check. */
   minFreeGb: number
+  mirrored: MirrorUsage
   disk: DiskState
 }
 
@@ -97,7 +107,7 @@ export type ArtworkSettingsPatch = Partial<
     | 'assetTypes'
     | 'minFreeGb'
   >
->
+> & { maxGb?: number }
 
 /** Update a subset of the auto-mirror sub-settings (PUT /media/admin/artwork-settings). */
 export function useSetArtworkSettings() {

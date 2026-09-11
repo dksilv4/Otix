@@ -40,14 +40,15 @@ export function NotificationList() {
 
   if (isLoading) return <NotificationSkeleton />
 
-  if (allItems.length === 0) return <NotificationEmpty />
+  const notifications = Array.isArray(allItems) ? allItems.filter((n) => n && n.id) : []
+  if (notifications.length === 0) return <NotificationEmpty />
 
   return (
     <div id="notification-list" className="flex flex-col">
-      {allItems.map((n, i) => (
+      {notifications.map((n, i) => (
         <div
           key={n.id}
-          ref={i === allItems.length - 1 ? lastItemRef : undefined}
+          ref={i === notifications.length - 1 ? lastItemRef : undefined}
         >
           <NotificationCard
             notification={n}

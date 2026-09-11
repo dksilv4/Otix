@@ -19,6 +19,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from apps.media.models import (
+    Game,
     Genre,
     MediaAsset,
     MediaGenre,
@@ -59,6 +60,8 @@ def _item(
     original_language: str | None = None,
     assets: tuple[str, ...] = ("logo", "textless_poster", "poster"),
     anime: bool | None = None,
+    game_type: str = "main_game",
+    rating_count: int = 0,
 ) -> MediaItem:
     item = MediaItem.objects.create(
         media_type=media_type,
@@ -67,6 +70,7 @@ def _item(
         release_date=release_date,
         popularity=popularity,
         avg_rating=avg_rating,
+        rating_count=rating_count,
         is_adult=is_adult,
         original_language=original_language,
     )
@@ -76,6 +80,10 @@ def _item(
         )
     if anime is not None:
         Movie.objects.create(media_item=item, is_anime=anime, runtime=100)
+    if media_type == "game":
+        # Curated game rails join the subtype to keep DLC/expansions out, so
+        # game fixtures need a Game row (default main_game).
+        Game.objects.create(media_item=item, game_type=game_type)
     return item
 
 
@@ -100,9 +108,7 @@ class DiscoverApiTests(TestCase):
         _item("Gamma", popularity=70)
         response = self.client.get("/api/v1/discover/hero", {"limit": 2})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            set(response.data.keys()), {"items", "has_more", "next_cursor"}
-        )
+        self.assertEqual(set(response.data.keys()), {"items", "has_more", "next_cursor"})
         self.assertEqual(response.data["has_more"], False)
         self.assertIsNone(response.data["next_cursor"])
         self.assertEqual(len(response.data["items"]), 2)
@@ -138,16 +144,12 @@ class DiscoverApiTests(TestCase):
     def test_list_type_validates_media_type(self) -> None:
         response = self.client.get(_list_url("album", "popular"))
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.data["detail"], "Invalid media_type: album"
-        )
+        self.assertEqual(response.data["detail"], "Invalid media_type: album")
 
     def test_list_type_validates_list_type(self) -> None:
         response = self.client.get(_list_url("movie", "sideways"))
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.data["detail"], "Invalid list_type: sideways"
-        )
+        self.assertEqual(response.data["detail"], "Invalid list_type: sideways")
 
     # ── generic catalog feeds ────────────────────────────────────────
     def test_popular_paginated_and_logo_filtered(self) -> None:
@@ -155,9 +157,7 @@ class DiscoverApiTests(TestCase):
         _item("Logo-Less", popularity=95, assets=("textless_poster",))
         response = self.client.get(_list_url("movie", "popular"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            set(response.data.keys()), {"items", "has_more", "next_cursor"}
-        )
+        self.assertEqual(set(response.data.keys()), {"items", "has_more", "next_cursor"})
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["has_more"], False)
         self.assertIsNone(response.data["next_cursor"])
@@ -195,6 +195,85 @@ class DiscoverApiTests(TestCase):
         titles = [item["title"] for item in response.data["items"]]
         self.assertEqual(titles, ["Fresh"])
 
+    def test_upcoming_excludes_today_release(self) -> None:
+        # A game whose IGDB release_date is today is out (newly_released), not
+        # "coming soon" — IGDB stamps undated titles with today, which would
+        # otherwise flood the upcoming rail with just-released rows.
+        _item("Today", media_type="game", release_date=_days(0))
+        _item("Soon", media_type="game", release_date=_days(3))
+        response = self.client.get(_list_url("game", "upcoming"))
+        titles = [item["title"] for item in response.data["items"]]
+        self.assertEqual(titles, ["Soon"])
+
+    def test_game_newly_released_recent_window_newest_first(self) -> None:
+        _item("DayOld", media_type="game", release_date=_days(-1))
+        _item("WeekOld", media_type="game", release_date=_days(-7))
+        _item("Ancient", media_type="game", popularity=900, release_date=_days(-200))
+        response = self.client.get(_list_url("game", "newly_released"))
+        titles = [item["title"] for item in response.data["items"]]
+        self.assertEqual(titles, ["DayOld", "WeekOld"])
+
+    def test_game_now_playing_orders_by_rating_count_within_recent_window(self) -> None:
+        # Game "now playing" spans a year (fresh releases carry no critic scores
+        # yet), sorted by rating_count desc.
+        _item("Hyped", media_type="game", release_date=_days(-10), rating_count=200)
+        _item("Fresh", media_type="game", release_date=_days(-1), rating_count=50)
+        _item("Ancient-Hyped", media_type="game", release_date=_days(-200), rating_count=999)
+        response = self.client.get(_list_url("game", "now_playing"))
+        titles = [item["title"] for item in response.data["items"]]
+        self.assertEqual(titles, ["Ancient-Hyped", "Hyped", "Fresh"])
+
+    def test_game_top_rated_filtered_by_platform(self) -> None:
+        from apps.media.models import MediaPlatform, Platform
+
+        windows = Platform.objects.create(name="PC", slug="windows")
+        switch = Platform.objects.create(name="Nintendo Switch", slug="nintendo-switch")
+        w_best = _item("PC-Best", media_type="game", avg_rating=9.5, rating_count=10)
+        w_mid = _item("PC-Mid", media_type="game", avg_rating=8.0, rating_count=6)
+        s_best = _item("Switch-Best", media_type="game", avg_rating=9.9, rating_count=8)
+        MediaPlatform.objects.create(media_item=w_best, platform=windows)
+        MediaPlatform.objects.create(media_item=w_mid, platform=windows)
+        MediaPlatform.objects.create(media_item=s_best, platform=switch)
+
+        response = self.client.get(_list_url("game", "top_rated"), {"platform": "windows"})
+        titles = [item["title"] for item in response.data["items"]]
+        self.assertEqual(titles, ["PC-Best", "PC-Mid"])
+
+    def test_game_popular_ignores_platform_filter_when_absent(self) -> None:
+        from apps.media.models import MediaPlatform, Platform
+
+        windows = Platform.objects.create(name="PC", slug="windows")
+        pc = _item("PC", media_type="game", popularity=10)
+        _item("Console", media_type="game", popularity=90)
+        MediaPlatform.objects.create(media_item=pc, platform=windows)
+        response = self.client.get(_list_url("game", "popular"))
+        titles = [item["title"] for item in response.data["items"]]
+        self.assertEqual(titles, ["Console", "PC"])
+
+    def test_game_rails_exclude_dlc_expansions_and_unrated_rows(self) -> None:
+        # A stored main game ranks; DLC/expansion rows (whatever their rating)
+        # and unrated rows never surface on the top_rated rail.
+        _item("Real-Game", media_type="game", avg_rating=9.0, rating_count=7)
+        _item("Expansion", media_type="game", game_type="dlc_addon", avg_rating=9.9, rating_count=7)
+        _item("Unrated", media_type="game")
+        response = self.client.get(_list_url("game", "top_rated"))
+        titles = [item["title"] for item in response.data["items"]]
+        self.assertEqual(titles, ["Real-Game"])
+
+    def test_game_best_on_platform_excludes_dlc(self) -> None:
+        from apps.media.models import MediaPlatform, Platform
+
+        windows = Platform.objects.create(name="PC", slug="windows")
+        main = _item("Main-PC", media_type="game", avg_rating=8.5, rating_count=7)
+        _item("PC-DLC", media_type="game", game_type="expansion", avg_rating=9.9, rating_count=7)
+        MediaPlatform.objects.create(media_item=main, platform=windows)
+        MediaPlatform.objects.create(
+            media_item=MediaItem.objects.get(title="PC-DLC"), platform=windows
+        )
+        response = self.client.get(_list_url("game", "top_rated"), {"platform": "windows"})
+        titles = [item["title"] for item in response.data["items"]]
+        self.assertEqual(titles, ["Main-PC"])
+
     def test_new_season_for_you_is_empty(self) -> None:
         _item("A-Show", media_type="show", popularity=90)
         response = self.client.get(_list_url("show", "new_season_for_you"))
@@ -213,24 +292,16 @@ class DiscoverApiTests(TestCase):
 
     # ── narrowing + adult policy ─────────────────────────────────────
     def test_artwork_requirement_drops_under_language_filter(self) -> None:
-        logo_only = _item(
-            "En-Only", popularity=90, original_language="en", assets=("logo",)
-        )
+        logo_only = _item("En-Only", popularity=90, original_language="en", assets=("logo",))
         narrowed = self.client.get(_list_url("movie", "popular"), {"language": "en-US"})
         plain = self.client.get(_list_url("movie", "popular"))
-        self.assertEqual(
-            [item["id"] for item in narrowed.data["items"]], [logo_only.pk]
-        )
-        self.assertNotIn(
-            "En-Only", [item["title"] for item in plain.data["items"]]
-        )
+        self.assertEqual([item["id"] for item in narrowed.data["items"]], [logo_only.pk])
+        self.assertNotIn("En-Only", [item["title"] for item in plain.data["items"]])
 
     def test_is_anime_filter(self) -> None:
         _item("Shonen", popularity=90, original_language="ja", anime=True)
         _item("Live", popularity=80, original_language="en", anime=False)
-        response = self.client.get(
-            _list_url("movie", "popular"), {"is_anime": "true"}
-        )
+        response = self.client.get(_list_url("movie", "popular"), {"is_anime": "true"})
         titles = [item["title"] for item in response.data["items"]]
         self.assertEqual(titles, ["Shonen"])
 
@@ -264,24 +335,39 @@ class DiscoverApiTests(TestCase):
         "genre",
         "language",
         "is_anime",
+        "platform",
         "is_personalized",
         "reason",
     }
+
+    _CANONICAL_SECTION_IDS = [
+        "trending_movies",
+        "trending_shows",
+        "newly_released_games",
+        "now_playing_games",
+        "top_rated_games",
+        "upcoming_games",
+        "best_on_windows",
+        "best_on_playstation_5",
+        "best_on_xbox_series",
+        "best_on_nintendo_switch",
+        "new_music",
+    ]
 
     def test_sections_public_and_canonical(self) -> None:
         response = self.client.get("/api/v1/discover/sections")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(response.data.keys()), {"sections"})
         sections = response.data["sections"]
-        self.assertEqual(len(sections), 4)
-        self.assertEqual(
-            {s["id"] for s in sections},
-            {"trending_movies", "trending_shows", "popular_games", "new_music"},
-        )
+        self.assertEqual(len(sections), len(self._CANONICAL_SECTION_IDS))
+        self.assertEqual({s["id"] for s in sections}, set(self._CANONICAL_SECTION_IDS))
         for section in sections:
             self.assertLessEqual(self.SECTION_KEYS, set(section.keys()))
             self.assertIn(section["media_type"], {"movie", "show", "game", "music"})
-            self.assertIn(section["list_type"], {"trending", "popular"})
+            self.assertIn(
+                section["list_type"],
+                {"trending", "popular", "top_rated", "upcoming", "now_playing", "newly_released"},
+            )
             self.assertIs(section["is_personalized"], False)
 
     def test_sections_default_for_authed_user_too(self) -> None:
@@ -291,7 +377,7 @@ class DiscoverApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             [s["id"] for s in response.data["sections"]],
-            ["trending_movies", "trending_shows", "popular_games", "new_music"],
+            self._CANONICAL_SECTION_IDS,
         )
 
 
@@ -341,9 +427,7 @@ def _make_show(
             air_date=air_date,
             name=f"{title} S{number}",
             overview=f"{title} season {number}",
-            poster_url=f"http://img/season/{show.pk}-{number}.png"
-            if season_poster
-            else None,
+            poster_url=f"http://img/season/{show.pk}-{number}.png" if season_poster else None,
         )
     if genre:
         g, _ = Genre.objects.get_or_create(name=genre.title(), slug=genre)

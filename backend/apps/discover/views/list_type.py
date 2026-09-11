@@ -32,6 +32,7 @@ class DiscoverListView(APIView):
             request.user.is_authenticated and getattr(request.user, "is_staff", False)
         )
         genre = request.query_params.get("genre") or None
+        platform = request.query_params.get("platform") or None
         is_anime = _bool_or_none(request.query_params.get("is_anime"))
 
         if media_type == "season" and list_type == "trending":
@@ -53,6 +54,7 @@ class DiscoverListView(APIView):
                     genre=genre,
                     language=language,
                     is_anime=is_anime,
+                    platform=platform,
                     exclude_adult=exclude_adult,
                 )
             except ValueError as exc:
@@ -75,9 +77,7 @@ class DiscoverListView(APIView):
             {
                 "items": serializer.data,
                 "has_more": has_more,
-                "next_cursor": str(paginator.page.next_page_number())
-                if has_more
-                else None,
+                "next_cursor": str(paginator.page.next_page_number()) if has_more else None,
             }
         )
 

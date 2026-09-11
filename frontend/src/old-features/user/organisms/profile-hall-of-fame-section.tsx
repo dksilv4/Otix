@@ -37,7 +37,11 @@ export function HallOfFameSection({ username, mediaType }: { username: string; m
 
   if (hallQuery.isLoading) return <HallOfFameSkeleton />
 
-  const items = hallQuery.data ?? []
+  const items = Array.isArray(hallQuery.data)
+    ? hallQuery.data
+    : Array.isArray((hallQuery.data as any)?.results)
+      ? (hallQuery.data as any).results
+      : []
   const hasItems = items.length > 0
 
   if (!hasItems && !isOwner) return null
@@ -127,7 +131,7 @@ export function HallOfFameSection({ username, mediaType }: { username: string; m
                 {isOwner && (
                   <button
                     onClick={() => {
-                      const newIds = items.filter((_, idx) => idx !== i).map((it) => it.id)
+                      const newIds = (Array.isArray(items) ? items : []).filter((it, idx) => idx !== i && it && it.id).map((it) => it.id)
                       updateHall.mutate({ mediaType, mediaIds: newIds, current: currentHofDict })
                     }}
                     className="dk-user-hall-of-fame__card-remove-btn"
@@ -144,7 +148,7 @@ export function HallOfFameSection({ username, mediaType }: { username: string; m
       {pickerOpen && (
         <HallOfFamePicker
           mediaType={mediaType}
-          currentIds={items.map((i) => i.id)}
+          currentIds={(Array.isArray(items) ? items : []).filter((it) => it && it.id).map((i) => i.id)}
           onSave={(ids) => {
             updateHall.mutate({ mediaType, mediaIds: ids, current: currentHofDict })
             setPickerOpen(false)
@@ -261,11 +265,11 @@ function HallOfFamePicker({
           )}
           {!searching &&
             query.length >= 2 &&
-            results.length === 0 && (
+            (Array.isArray(results) ? results.filter(Boolean) : []).length === 0 && (
               <p className="dk-user-hall-of-fame__picker-info">No results</p>
             )}
           {!searching &&
-            results.map((item) => {
+            (Array.isArray(results) ? results.filter(Boolean) : []).map((item) => {
               const isSel = selected.includes(item.id)
               return (
                 <button

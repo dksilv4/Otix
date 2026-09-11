@@ -46,8 +46,8 @@ GAME_FIELDS = (
     "hypes,url,slug,status,"
     "game_type,parent_game.name,"
     "cover.image_id,"
-    "screenshots.image_id,"
-    "artworks.image_id,"
+    "screenshots.image_id,screenshots.width,screenshots.height,"
+    "artworks.image_id,artworks.width,artworks.height,artworks.image_type,artworks.alpha_channel,artworks.artwork_type,"
     "genres.name,themes.name,"
     "platforms.name,platforms.platform_logo.image_id,"
     "game_modes.name,"
@@ -200,10 +200,17 @@ class IGDBProvider(BaseProvider):
     async def get_popular_games(
         self, limit: int = 50, fields: str | None = None
     ) -> list[dict[str, JSONValue]]:
-        """Popular games ordered by rating (aggregated_rating)."""
+        """Popular main games ordered by rating (aggregated_rating).
+
+        ``version_parent = null`` keeps DLC/expansions (which hang off a parent
+        game) out of the all-time greats list. IGDB no longer supports filtering
+        by ``category``/``game_type`` in the where clause, so this is the closest
+        server-side "main game" gate; remasters/ports still qualify.
+        """
         body = (
             f"fields {fields or '*'}; sort aggregated_rating desc; "
-            f"where aggregated_rating != null & rating_count > 10; limit {limit};"
+            f"where aggregated_rating != null & rating_count > 10"
+            f" & version_parent = null; limit {limit};"
         )
         response = await self._post("/games", content=body)
         if response.status_code == 200:
@@ -211,15 +218,22 @@ class IGDBProvider(BaseProvider):
         raise IGDBError(f"IGDB popular game query failed: {response.status_code}")
 
     async def get_recently_released_games(
-        self, limit: int = 100, fields: str | None = None
+        self, limit: int = 100, fields: str | None = None, days: int = 365
     ) -> list[dict[str, JSONValue]]:
-        """Recently released games in the last 90 days."""
+        """Main games released in the last ``days`` (default: a year).
+
+        The discover rails decide their own display window; the seed pulls a
+        year so shelves that need reviewed recent titles (now playing, best on
+        platform) have real candidates rather than day-zero releases with no
+        critic scores yet.
+        """
         now = int(time.time())
-        ninety_days_ago = now - 90 * 86400
+        window_ago = now - days * 86400
         body = (
             f"fields {fields or '*'}; "
             f"sort first_release_date desc; "
-            f"where first_release_date >= {ninety_days_ago} & first_release_date <= {now}; "
+            f"where first_release_date >= {window_ago} & first_release_date <= {now}"
+            f" & version_parent = null; "
             f"limit {limit};"
         )
         response = await self._post("/games", content=body)
@@ -230,12 +244,12 @@ class IGDBProvider(BaseProvider):
     async def get_upcoming_games(
         self, limit: int = 100, fields: str | None = None
     ) -> list[dict[str, JSONValue]]:
-        """Upcoming/unreleased games."""
+        """Upcoming/unreleased main games (no DLC/expansions)."""
         now = int(time.time())
         body = (
             f"fields {fields or '*'}; "
             f"sort first_release_date asc; "
-            f"where first_release_date > {now} & hypes > 5; "
+            f"where first_release_date > {now} & hypes > 5 & version_parent = null; "
             f"limit {limit};"
         )
         response = await self._post("/games", content=body)
@@ -289,6 +303,23 @@ class IGDBProvider(BaseProvider):
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB offset query failed: {response.status_code}")
+
+    async def get_games_for_platform(
+        self,
+        platform_id: int,
+        limit: int = 50,
+        fields: str | None = None,
+    ) -> list[dict[str, JSONValue]]:
+        """Top-rated main games on one platform (best-of-<platform> list)."""
+        body = (
+            f"fields {fields or '*'}; sort aggregated_rating desc; "
+            f"where platforms = ({platform_id}) & version_parent = null "
+            f"& aggregated_rating != null & rating_count > 10; limit {limit};"
+        )
+        response = await self._post("/games", content=body)
+        if response.status_code == 200:
+            return response.json()
+        raise IGDBError(f"IGDB platform game query failed: {response.status_code}")
 
     # ── Search ────────────────────────────────────────────────────────
 
@@ -368,6 +399,16 @@ class IGDBProvider(BaseProvider):
             results = response.json()
             return results[0] if results else None
         raise IGDBError(f"IGDB cover query failed: {response.status_code}")
+
+    async def get_covers(self, game_id: int, limit: int = 20) -> list[dict[str, JSONValue]]:
+        body = (
+            f"fields image_id,url,width,height,image_type,alpha_channel; "
+            f"where game = {game_id}; limit {limit};"
+        )
+        response = await self._post("/covers", content=body)
+        if response.status_code == 200:
+            return response.json()
+        raise IGDBError(f"IGDB covers query failed: {response.status_code}")
 
     async def get_screenshots(self, game_id: int, limit: int = 10) -> list[dict[str, JSONValue]]:
         body = f"fields image_id,url; where game = {game_id}; limit {limit};"

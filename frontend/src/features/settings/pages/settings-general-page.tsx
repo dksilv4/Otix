@@ -47,20 +47,6 @@ export function SettingsGeneralPage() {
         />
       </SettingsCard>
 
-      {/* Auto Slideshow */}
-      <SettingsCard>
-        <SectionHeader
-          title="Auto-slideshow when inactive"
-          description="Automatically cycle through featured games and screenshots after a period of inactivity."
-          action={
-            <DkSwitch
-              checked={settings.slideshowWhenInactive}
-              onCheckedChange={v => update('slideshowWhenInactive', v)}
-            />
-          }
-        />
-      </SettingsCard>
-
       {/* Background Transitions */}
       <SettingsCard>
         <SectionHeader

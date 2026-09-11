@@ -15,7 +15,7 @@ RUN adduser --system --no-create-home appuser && chown -R appuser /app && chown 
 USER appuser
 
 ENV PYTHONPATH=/app \
-    BOT_API_BASE_URL=http://api:8000/api \
+    BOT_API_BASE_URL=http://api:8000/api/v1 \
     BOT_COUNT=1000 \
     BOT_DELAY_MIN=3 \
     BOT_DELAY_MAX=15 \

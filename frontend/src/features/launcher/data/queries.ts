@@ -24,10 +24,14 @@ export const popularGamesOptions = () =>
   queryOptions({
     queryKey: gameKeys.popular(),
     queryFn: async (): Promise<CatalogGame[]> => {
-      const { data } = await apiClient.get<{ items: MediaItemSummary[] }>("/media/", {
-        params: { media_type: "game", sort_by: "popularity", sort_dir: "desc", limit: 24 },
-      })
-      return (data.items ?? [])
+      try {
+        const { data } = await apiClient.get<{ items: MediaItemSummary[] }>("/media/", {
+          params: { media_type: "game", sort_by: "popularity", sort_dir: "desc", limit: 24 },
+        })
+        return (data.items ?? []) as unknown as CatalogGame[]
+      } catch {
+        return []
+      }
     },
     staleTime: 1000 * 60 * 2,
   })

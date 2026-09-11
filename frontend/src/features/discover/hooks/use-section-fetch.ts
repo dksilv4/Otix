@@ -9,7 +9,7 @@ export function useSectionFetch(section: PersonalizedSection) {
   const isInView = useInView(ref, { once: true, margin: '0px 0px 200px 0px' })
 
   const query = useInfiniteQuery({
-    ...discoverQueries.list(section.mediaType ?? 'movie', section.listType, section.genre ?? undefined, section.language ?? undefined, section.isAnime ?? undefined),
+    ...discoverQueries.list(section.mediaType ?? 'movie', section.listType, section.genre ?? undefined, section.language ?? undefined, section.isAnime ?? undefined, section.platform ?? undefined),
     enabled: isInView,
   })
 

@@ -50,7 +50,7 @@ function OfflineWatchlistTab({ items }: { items: OfflineWatchlistItem[] }) {
         </button>
       </div>
       <MediaGrid>
-        {items.map((item) => (
+        {(Array.isArray(items) ? items.filter((item) => item && item.mediaId) : []).map((item) => (
           <MediaCard
             key={`${item.mediaType}-${item.mediaId}`}
             id={item.mediaId}
@@ -85,7 +85,7 @@ export function MediaTabContent({ tab }: { tab: LibraryTab }) {
     useLibraryTab(tab)
 
   const items = useMemo(
-    () => data?.pages.flatMap((page) => page.items) ?? [],
+    () => data?.pages?.flatMap((page) => (Array.isArray(page?.items) ? page.items.filter(Boolean) : [])) ?? [],
     [data]
   )
 
@@ -188,7 +188,7 @@ export function MediaTabContent({ tab }: { tab: LibraryTab }) {
         </div>
       )}
       <MediaGrid>
-        {items.map((item) => (
+        {(Array.isArray(items) ? items.filter((item) => item && item.id) : []).map((item) => (
           <MediaCard
             key={item.id}
             id={item.id}

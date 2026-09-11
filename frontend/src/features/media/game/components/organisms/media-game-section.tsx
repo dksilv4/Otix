@@ -14,14 +14,14 @@ export function GameSection({ className }: GameSectionProps = {}) {
   if (!data || !data.game) return null
 
   const game = data.game
-  const platforms = data.platforms
-  const gameModes = data.gameModes
+  const platforms = Array.isArray(data.platforms) ? data.platforms.filter((p) => p && p.platform) : []
+  const gameModes = Array.isArray(data.gameModes) ? data.gameModes.filter((m) => m && m.gameMode) : []
   const steamPlaytimeForever = data.steamPlaytimeForever
   const steamPlaytime2weeks = data.steamPlaytime2weeks
   const steamRtimeLastPlayed = data.steamRtimeLastPlayed
 
-  const hasModes = gameModes && gameModes.length > 0
-  const hasPlatforms = platforms && platforms.length > 0
+  const hasModes = gameModes.length > 0
+  const hasPlatforms = platforms.length > 0
   const hasSteamStats =
     game.currentPlayers != null ||
     game.recommendations != null ||
@@ -40,7 +40,7 @@ export function GameSection({ className }: GameSectionProps = {}) {
             Platforms
           </h3>
           <div className="flex flex-wrap gap-2">
-            {platforms!.map((p) => (
+            {platforms.map((p) => (
               <div
                 key={p.id}
                 className="glass-inset flex items-center gap-2 rounded-xl px-3 py-2"
@@ -62,7 +62,7 @@ export function GameSection({ className }: GameSectionProps = {}) {
             Game Modes
           </h3>
           <div className="flex flex-wrap gap-1.5">
-            {gameModes!.map((m) => (
+            {gameModes.map((m) => (
               <Badge key={m.id} variant="outline">
                 {m.gameMode.name}
               </Badge>

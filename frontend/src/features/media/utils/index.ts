@@ -27,9 +27,10 @@ export function mediaTypeFromParam(param: string): 'movie' | 'show' | 'game' | '
 
 // ── General Formatters ──
 
-export function formatMusicCreditsLine(credits: MediaItemDetail['credits']): string | null {
-  const primary = credits.filter((c) => c.role === 'primary').map((c) => c.person.name)
-  const featured = credits.filter((c) => c.role === 'featured').map((c) => c.person.name)
+export function formatMusicCreditsLine(credits?: MediaItemDetail['credits'] | null): string | null {
+  const all = Array.isArray(credits) ? credits : []
+  const primary = all.filter((c) => c && c.role === 'primary' && c.person?.name).map((c) => c.person!.name)
+  const featured = all.filter((c) => c && c.role === 'featured' && c.person?.name).map((c) => c.person!.name)
   if (primary.length === 0 && featured.length === 0) return null
   const head = primary.join(', ')
   const tail = featured.length ? `feat. ${featured.join(', ')}` : ''
@@ -160,23 +161,24 @@ interface CreditItem {
   sortOrder: number
 }
 
-export function groupByRole(credits: CreditItem[]) {
-  const valid = credits.filter((c) => c.person != null)
+export function groupByRole(credits?: CreditItem[] | null) {
+  const list = Array.isArray(credits) ? credits : []
+  const valid = list.filter((c) => c != null && c.person != null)
   const cast = valid.filter((c) => c.role === 'cast')
   const directors = valid.filter((c) => c.role === 'director')
-  const writers = credits.filter((c) => c.role === 'writer')
-  const producers = credits.filter((c) => c.role === 'producer')
-  const composers = credits.filter((c) => c.role === 'composer')
-  const crew = credits.filter(
+  const writers = valid.filter((c) => c.role === 'writer')
+  const producers = valid.filter((c) => c.role === 'producer')
+  const composers = valid.filter((c) => c.role === 'composer')
+  const crew = valid.filter(
     (c) => !['cast', 'director', 'writer', 'producer', 'composer'].includes(c.role),
   )
   return { cast, directors, writers, producers, composers, crew }
 }
 
 
-export function getPreferredSeason(seasons: SeasonOut[]): number {
-  if (seasons.length === 0) return 0
-  return seasons[seasons.length - 1].seasonNumber
+export function getPreferredSeason(seasons?: SeasonOut[] | null): number {
+  if (!Array.isArray(seasons) || seasons.length === 0) return 0
+  return seasons[seasons.length - 1]?.seasonNumber ?? 0
 }
 
 // ── Trailers / Videos ──

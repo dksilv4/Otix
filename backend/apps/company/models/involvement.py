@@ -20,6 +20,7 @@ class InvolvedCompany(BaseModel):
     porting = models.BooleanField(default=False)
     supporting = models.BooleanField(default=False)
     production = models.BooleanField(default=False)
+    distributor = models.BooleanField(default=False)
 
     class Meta(BaseModel.Meta):
         db_table = "involved_companies"

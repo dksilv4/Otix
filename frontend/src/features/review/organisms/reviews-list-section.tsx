@@ -105,7 +105,13 @@ function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectio
  )
  }
 
- const reviewList = reviews ?? []
+  const reviewList = Array.isArray(reviews)
+    ? reviews
+    : Array.isArray((reviews as any)?.results)
+      ? (reviews as any).results
+      : Array.isArray((reviews as any)?.items)
+        ? (reviews as any).items
+        : []
 
  return (
  <section className={cn("dk-review", className)}>

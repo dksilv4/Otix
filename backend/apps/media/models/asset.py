@@ -27,15 +27,30 @@ class MediaAsset(BaseModel):
     # unguessable filename under ``MEDIA_DIR/assets``; when set, catalog
     # ``_pick_asset`` returns the local ``/api/v1/assets/<name>`` URL instead of
     # the provider's remote ``url``. Null until downloaded.
-    local_name = models.CharField(max_length=64, null=True, blank=True)
+    local_name = models.CharField(
+        max_length=64, null=True, blank=True, db_index=True
+    )
     local_size = models.BigIntegerField(null=True, blank=True)
     downloaded_at = models.DateTimeField(null=True, blank=True)
 
-    # Admin-pinned artwork. When set, catalog ``_best_asset`` returns this row
-    # ahead of score/mirror/pk, so serving AND mirroring follow the choice.
-    # One-selected-per-(media_item, asset_type) is enforced by the selection
-    # service (``assets.select_asset``), not a DB constraint.
-    is_selected = models.BooleanField(default=False)
+    # Serve-count for max-storage-budget eviction (least-used discarded first).
+    usage_count = models.PositiveIntegerField(default=0)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    # Admin-pinned artwork. A null/blank pin means the automatic scoring pick is
+    # used; ``general`` is an explicit default served to every viewer (and the
+    # fallback when no ``dark``/``light`` pin exists). Catalog ``_best_asset``
+    # ranks the pinned row ahead of score/mirror/pk, so serving AND mirroring
+    # follow the choice. One-pin-per-(media_item, asset_type, context) is
+    # enforced by the selection service (``assets.select_asset``), not a DB
+    # constraint.
+    selected_context = models.CharField(max_length=10, null=True, blank=True)
+
+    # Admin "keep" set: mirrors this variant even though it isn't the resolution
+    # winner for its type, and exempts it from the mirror reconcile's stale-copy
+    # discard. Used to keep several localized language variants (posters with an
+    # ``en``/``fr``/... lang) downloaded alongside the single served pick.
+    keep_local = models.BooleanField(default=False)
 
     class Meta(BaseModel.Meta):
         db_table = "media_assets"

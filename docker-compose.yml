@@ -63,6 +63,11 @@ services:
       # Override .env's asyncpg FastAPI URL — Django's parser only accepts
       # plain postgresql:// (see config/settings/base.py parse_database_url).
       DATABASE_URL: postgresql://otix:password@db:5432/otix_dev
+      # Request-path dispatches (e.g. a follow enqueuing a company sync, or
+      # POST /api/v1/sync/...) publish through the broker; the settings default
+      # is 127.0.0.1, which is unreachable inside the container.
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
       ENABLE_RELOAD: "true"
     command: bash entrypoints/start-api.sh
     depends_on:

@@ -45,7 +45,9 @@ export function ListsTabContent() {
     )
   }
 
-  if (!lists || lists.length === 0) {
+  const listItems = Array.isArray(lists) ? lists.filter(Boolean) : []
+
+  if (!lists || listItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <p className="text-lg font-semibold text-foreground">No lists yet</p>
@@ -68,7 +70,7 @@ export function ListsTabContent() {
 
   return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {lists.map((list) => (
+        {listItems.map((list) => (
           <ListCard key={list.id} list={list} />
         ))}
       </div>

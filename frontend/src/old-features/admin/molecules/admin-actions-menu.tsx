@@ -24,9 +24,10 @@ interface DownloadAssetsResult {
 interface Props {
   mediaId: string
   media: MediaItemDetail
+  variant?: 'default' | 'pill' | 'icon'
 }
 
-export function AdminActionsMenu({ mediaId, media }: Props) {
+export function AdminActionsMenu({ mediaId, media, variant = 'default' }: Props) {
   const { user } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -57,6 +58,9 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
   }, [])
 
   if (!user?.isAdmin) return null
+
+  const isPill = variant === 'pill'
+  const isIcon = variant === 'icon'
 
   const refreshMedia = () => {
     queryClient.invalidateQueries({ queryKey: mediaKeys.detail(media.mediaType, mediaId) })
@@ -156,22 +160,44 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
 
   return (
     <>
-      <div className="dk-admin-actions">
-        <div ref={menuRef} className="dk-admin-actions__menu">
-          <button
-            type="button"
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="dk-admin-actions__trigger glass-inset"
-          >
-            <Shield className="relative h-5 w-5 text-amber-400" />
-            <span className="dk-admin-actions__label">
-              Admin
-              <ChevronDown className={cn('h-3 w-3 transition-transform', menuOpen && 'rotate-180')} />
-            </span>
-          </button>
+      <div className={isPill || isIcon ? 'relative' : 'dk-admin-actions'}>
+        <div ref={menuRef} className={isPill || isIcon ? 'relative' : 'dk-admin-actions__menu'}>
+          {isIcon ? (
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-amber-400 hover:bg-amber-400/15 transition-all hover:scale-110 active:scale-95"
+              title="Admin actions"
+              aria-label="Admin actions"
+            >
+              <Shield className="h-4 w-4" />
+            </button>
+          ) : isPill ? (
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Shield className="h-4 w-4 text-amber-400" />
+              <span className="text-amber-300">Admin</span>
+              <ChevronDown className={cn('h-3 w-3 text-amber-300/70 transition-transform', menuOpen && 'rotate-180')} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="dk-admin-actions__trigger glass-inset"
+            >
+              <Shield className="relative h-5 w-5 text-amber-400" />
+              <span className="dk-admin-actions__label">
+                Admin
+                <ChevronDown className={cn('h-3 w-3 transition-transform', menuOpen && 'rotate-180')} />
+              </span>
+            </button>
+          )}
 
           {menuOpen && (
-            <div className="dk-admin-actions__dropdown">
+            <div className={variant === 'pill' ? 'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 rounded-xl p-1.5 bg-card border border-border/40 shadow-xl z-50 space-y-0.5' : 'dk-admin-actions__dropdown'}>
               <button
                 type="button"
                 onClick={() => {

@@ -14,6 +14,7 @@ from django.urls import path
 from apps.media.views import (
     ArtworkSelectionView,
     ArtworkSettingsView,
+    AssetMirrorView,
     CertificationListView,
     ClaimView,
     CompanyLookupView,
@@ -52,6 +53,7 @@ from apps.media.views import (
     SimilarMediaView,
     StorageUsageView,
     SyncLocalGamesView,
+    TextlessPickView,
 )
 
 app_name = "media"
@@ -86,6 +88,16 @@ urlpatterns = [
         "admin/media-items/<int:media_id>/assets/<int:asset_id>/select",
         ArtworkSelectionView.as_view(),
         name="admin-artwork-select",
+    ),
+    path(
+        "admin/media-items/<int:media_id>/assets/<int:asset_id>/textless",
+        TextlessPickView.as_view(),
+        name="admin-artwork-textless",
+    ),
+    path(
+        "admin/media-items/<int:media_id>/assets/<int:asset_id>/mirror",
+        AssetMirrorView.as_view(),
+        name="admin-artwork-mirror",
     ),
     path("admin/mirroring", MirroringView.as_view(), name="admin-mirroring"),
     path(

@@ -5,7 +5,7 @@ export type NotificationType =
   | 'follow' | 'follow_request' | 'follow_request_accepted'
   | 'list_invitation' | 'list_invitation_accepted' | 'list_invitation_declined'
   | 'user_rating' | 'like' | 'comment' | 'release_available'
-  | 'new_season'
+  | 'new_season' | 'studio_release'
 
 export interface Notification {
   id: string
@@ -88,6 +88,7 @@ export interface NotificationPreferences {
   comment?: boolean
   release_available?: boolean
   new_season?: boolean
+  studio_release?: boolean
   _desktop_enabled?: boolean
   _web_enabled?: boolean
   _pwa_enabled?: boolean

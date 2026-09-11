@@ -20,15 +20,17 @@ const SEARCH_DEBOUNCE_MS = 150
 const RESULT_LIMIT = 50
 
 async function searchAllProviders(query: string): Promise<CommandGroup[]> {
-  const providers: CommandProvider[] = getHubProviders()
+  const rawProviders = getHubProviders()
+  const providers: CommandProvider[] = Array.isArray(rawProviders) ? rawProviders : []
   const groups = await Promise.all(
     providers.map(async (p) => {
-      const commands = await Promise.resolve(p.search(query)).catch(() => [] as Command[])
+      const rawCommands = await Promise.resolve(p.search(query)).catch(() => [] as Command[])
+      const commands = Array.isArray(rawCommands) ? rawCommands : []
       return { providerId: p.id, label: p.label, commands }
     }),
   )
-  return groups
-    .map((g) => ({ ...g, commands: g.commands.slice(0, RESULT_LIMIT) }))
+  return (Array.isArray(groups) ? groups : [])
+    .map((g) => ({ ...g, commands: (Array.isArray(g.commands) ? g.commands : []).slice(0, RESULT_LIMIT) }))
     .filter((g) => g.commands.length > 0)
 }
 
@@ -161,7 +163,7 @@ function CommandPalettePanel({ onClose }: { onClose: () => void }) {
             {query.trim() ? `No results for “${query.trim()}”` : 'Type to search'}
           </p>
         ) : (
-          groups.map((group) => {
+          (Array.isArray(groups) ? groups : []).map((group) => {
             const start = offset
             offset += group.commands.length
             return (
@@ -169,7 +171,7 @@ function CommandPalettePanel({ onClose }: { onClose: () => void }) {
                 <div className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-white/40">
                   {group.label}
                 </div>
-                {group.commands.map((command, i) => {
+                {(Array.isArray(group.commands) ? group.commands : []).map((command, i) => {
                   const flatIndex = start + i
                   return (
                     <CommandItem

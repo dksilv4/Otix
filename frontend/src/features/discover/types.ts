@@ -6,6 +6,7 @@ export interface PersonalizedSection {
   genre: string | null
   language: string | null
   isAnime: boolean | null
+  platform: string | null
   isPersonalized: boolean
   reason: string | null
 }

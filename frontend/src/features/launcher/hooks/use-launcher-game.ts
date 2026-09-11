@@ -1,9 +1,14 @@
 import { useLocalGame } from '@/features/launcher/data/game-queries'
 import { useGameDetail } from '@/features/launcher/data/queries'
 import { hasDesktopAPI } from '@/lib/desktop/api'
+import { OTIX_DEFAULT_GAME, OTIX_DEFAULT_GAME_ID } from '@/features/launcher/data/otix-default-game'
 import type { LocalGame, Game } from '@/features/launcher/types'
 
 export function useLauncherGame(gameId: string | undefined) {
+  if (gameId === OTIX_DEFAULT_GAME_ID) {
+    return { game: OTIX_DEFAULT_GAME, isLoading: false }
+  }
+
   const isDesktop = hasDesktopAPI()
   const { data: localGame, isLoading: isLocalLoading } = useLocalGame(gameId)
   // For desktop matched games, use the otix ID for catalog detail fetch.

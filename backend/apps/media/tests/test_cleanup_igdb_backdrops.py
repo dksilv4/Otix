@@ -112,6 +112,33 @@ class CleanupIgdbBackdropsTests(TestCase):
             MediaAsset.objects.filter(media_item_id=media_id, asset_type="backdrop").count(), 1
         )
 
+    def test_reclassifies_wide_logo_banners_to_logo(self):
+        media_id = self._seed()
+        logo = _backdrop(media_id, "logo_banner", width=500, height=91)
+        call_command("cleanup_igdb_backdrops")
+        logo.refresh_from_db()
+        self.assertEqual(logo.asset_type, "logo")
+        self.assertEqual(logo.label, "official")
+
+    def test_reclassifies_alpha_images_to_logo_and_icon(self):
+        media_id = self._seed()
+        logo = _backdrop(media_id, "alpha_logo", width=1920, height=800)
+        icon = _backdrop(media_id, "alpha_icon", width=128, height=128)
+
+        def mock_alpha(url: str) -> bool:
+            return "alpha_" in url
+
+        with mock.patch(
+            "apps.media.management.commands.cleanup_igdb_backdrops._image_alpha",
+            side_effect=mock_alpha,
+        ):
+            call_command("cleanup_igdb_backdrops")
+
+        logo.refresh_from_db()
+        icon.refresh_from_db()
+        self.assertEqual(logo.asset_type, "logo")
+        self.assertEqual(icon.asset_type, "icon")
+
 
 class ImageDimsParsingTests(TestCase):
     """Header-parser unit tests (no network)."""
@@ -157,3 +184,14 @@ class ImageDimsParsingTests(TestCase):
     def test_short_buffer_returns_none(self):
         self.assertIsNone(_probe_dims(b"\x89PNG\r\n\x1a\n"))  # dims not yet present
         self.assertIsNone(_probe_dims(b""))
+
+    def test_probe_alpha_png(self):
+        from apps.media.management.commands.cleanup_igdb_backdrops import _probe_alpha
+
+        # PNG color_type 6 = RGBA
+        rgba_png = bytearray(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x01\x00\x00\x00\x01\x00\x08\x06\x00\x00\x00")
+        self.assertTrue(_probe_alpha(bytes(rgba_png)))
+
+        # PNG color_type 2 = RGB (no alpha)
+        rgb_png = bytearray(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x01\x00\x00\x00\x01\x00\x08\x02\x00\x00\x00")
+        self.assertFalse(_probe_alpha(bytes(rgb_png)))

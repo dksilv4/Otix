@@ -2,6 +2,7 @@
 // presentational helpers (permission labels, icons, categories) used by the
 // management page and the detail panel.
 
+import { createServerPluginAPI } from '@/features/plugins/server-api'
 import type { PluginInfo, PluginSettingsTab } from '@/features/plugins/types/plugins'
 import {
   BookOpen, Clapperboard, Cloud, Download, Film, Folder, Gamepad2, Gauge, Heart,
@@ -32,8 +33,10 @@ export interface PluginAPI {
 
 export function getPluginAPI(): PluginAPI | null {
   const api = (window as any).desktopAPI?.plugin
-  if (!api) return null
-  return api as PluginAPI
+  if (api) return api as PluginAPI
+  // Browser / self-hosted server: plugins live on the server (backend
+  // /api/v1/plugins/*), not behind an Electron preload.
+  return createServerPluginAPI()
 }
 
 // ── Presentational helpers ───────────────────────────────────────────────────

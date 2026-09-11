@@ -146,6 +146,7 @@ export interface MovieDetail {
   lossRank?: number
   tagline?: string
   isAnime: boolean
+  imdbId?: string | null
 }
 
 export interface EpisodeOut {
@@ -310,11 +311,13 @@ export interface StructuredSearchResponse {
 }
 
 export const mediaQueries = {
-  detail: (mediaType: string, id: string) =>
+  detail: (mediaType: string, id: string, theme?: 'dark' | 'light') =>
     queryOptions({
-      queryKey: mediaKeys.detail(mediaType, id),
+      queryKey: mediaKeys.detail(mediaType, id, theme),
       queryFn: async () => {
-        const { data } = await apiClient.get<MediaItemDetail>(`/media/${mediaType}/${id}`)
+        const { data } = await apiClient.get<MediaItemDetail>(`/media/${mediaType}/${id}`, {
+          params: theme ? { theme } : undefined,
+        })
         return data
       },
       enabled: !!id,

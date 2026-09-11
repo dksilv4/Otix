@@ -20,8 +20,9 @@ from __future__ import annotations
 import httpx
 from django.core.management.base import BaseCommand
 
-from apps.media.models import MediaAsset
+from apps.media.models import MediaAsset, MediaItem
 from apps.media.services import assets as assets_service
+from apps.media.services.completeness import recompute_completeness
 from apps.media.services.igdb_ingest import _BACKDROP_MIN_ASPECT
 
 _TIMEOUT = httpx.Timeout(20.0)
@@ -52,6 +53,38 @@ def _image_dims(url: str) -> tuple[int, int] | None:
                 return _probe_dims(bytes(buf))
     except httpx.HTTPError:
         return None
+
+
+def _probe_alpha(buf: bytes) -> bool:
+    if buf.startswith(b"\x89PNG\r\n\x1a\n"):
+        if len(buf) >= 26 and buf[25] in (4, 6):
+            return True
+        if b"tRNS" in buf:
+            return True
+    if len(buf) >= 21 and buf[0:4] == b"RIFF" and buf[8:12] == b"WEBP":
+        fourcc = buf[12:16]
+        if fourcc == b"VP8X" and len(buf) >= 21:
+            return bool(buf[20] & 0x10)
+    return False
+
+
+def _image_alpha(url: str) -> bool:
+    """Best-effort probe for alpha channel in image header."""
+    try:
+        with httpx.Client(timeout=_TIMEOUT, follow_redirects=True) as client:
+            with client.stream("GET", url) as response:
+                if response.status_code != 200:
+                    return False
+                buf = bytearray()
+                for chunk in response.iter_bytes(chunk_size=4096):
+                    buf += chunk
+                    if _probe_dims(bytes(buf)) is not None:
+                        return _probe_alpha(bytes(buf))
+                    if len(buf) >= 65536:
+                        return False
+                return _probe_alpha(bytes(buf))
+    except (httpx.HTTPError, Exception):
+        return False
 
 
 def _probe_dims(buf: bytes) -> tuple[int, int] | None:
@@ -164,7 +197,8 @@ class Command(BaseCommand):
             .order_by("id")
             .iterator(chunk_size=1000)
         )
-        scanned = kept = deleted = unknown = freed = 0
+        scanned = kept = deleted = reclassified_logos = reclassified_icons = unknown = freed = 0
+        recomputed_items: set[int] = set()
         for asset in qs:
             if limit is not None and scanned >= limit:
                 break
@@ -179,7 +213,48 @@ class Command(BaseCommand):
                 w, h = dims
             scanned += 1
 
-            if w / h >= _BACKDROP_MIN_ASPECT:
+            has_alpha = False
+            is_logo = (w / h >= 3.0) or (h <= 250 and w >= 350)
+            is_icon = False
+            if not is_logo:
+                has_alpha = _image_alpha(asset.url)
+                if has_alpha:
+                    if 0.7 <= w / h <= 1.35 and w <= 512:
+                        is_icon = True
+                    elif w / h >= 1.5 or (h <= 300 and w >= 400):
+                        is_logo = True
+
+            if is_logo:
+                reclassified_logos += 1
+                if not dry_run:
+                    asset.asset_type = "logo"
+                    asset.label = "official"
+                    asset.width = w
+                    asset.height = h
+                    asset.save(update_fields=["asset_type", "label", "width", "height"])
+                    recomputed_items.add(asset.media_item_id)
+                if dry_run and reclassified_logos <= 10:
+                    self.stdout.write(
+                        f"[dry-run] reclassify asset {asset.pk} to logo (media {asset.media_item_id}): {w}x{h} {asset.url}"
+                    )
+                continue
+
+            if is_icon:
+                reclassified_icons += 1
+                if not dry_run:
+                    asset.asset_type = "icon"
+                    asset.label = "icon"
+                    asset.width = w
+                    asset.height = h
+                    asset.save(update_fields=["asset_type", "label", "width", "height"])
+                    recomputed_items.add(asset.media_item_id)
+                if dry_run and reclassified_icons <= 10:
+                    self.stdout.write(
+                        f"[dry-run] reclassify asset {asset.pk} to icon (media {asset.media_item_id}): {w}x{h} {asset.url}"
+                    )
+                continue
+
+            if not has_alpha and w / h >= _BACKDROP_MIN_ASPECT:
                 kept += 1
                 if not asset.width or not asset.height:
                     asset.width = w
@@ -195,8 +270,16 @@ class Command(BaseCommand):
                 self.stdout.write(f"[dry-run] delete asset {asset.pk} media {asset.media_item_id}")
                 self.stdout.write(f"    {asset.url} ({w}x{h})")
 
+        if not dry_run and recomputed_items:
+            for mid in recomputed_items:
+                try:
+                    recompute_completeness(MediaItem.objects.get(pk=mid))
+                except Exception:
+                    pass
+
         action = "would delete" if dry_run else "deleted"
         self.stdout.write(
-            f"scanned={scanned} kept={kept} {action}={deleted} "
+            f"scanned={scanned} kept={kept} reclassified_logos={reclassified_logos} "
+            f"reclassified_icons={reclassified_icons} {action}={deleted} "
             f"unknown={unknown} bytes_freed={freed}"
         )

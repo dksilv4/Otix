@@ -146,6 +146,21 @@ class EnqueueSeedJobsTests(TestCase):
         self.assertEqual(jobs, [])
         self.assertEqual(SyncJob.objects.count(), 0)
 
+    def test_is_bulk_and_parent_are_passed_through(self):
+        parent = SyncJob.objects.create(
+            provider="tmdb", entity_type="company", external_id="61", status="running"
+        )
+        jobs = enqueue_seed_jobs(
+            provider="tmdb",
+            entity_type="movie",
+            external_ids=["550"],
+            is_bulk=False,
+            parent=parent,
+        )
+        self.assertEqual(len(jobs), 1)
+        self.assertFalse(jobs[0].is_bulk)
+        self.assertEqual(jobs[0].parent_id, parent.pk)
+
 
 class RunPendingJobsTests(TestCase):
     def test_drains_oldest_pending_jobs_up_to_limit(self):

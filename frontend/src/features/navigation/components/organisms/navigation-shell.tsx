@@ -5,6 +5,8 @@ import { NavPillLeft } from "../molecules/navigation-pill-left"
 import { NavPillRight } from "../molecules/navigation-pill-right"
 import { MenuDropdown } from "./navigation-sidebar"
 
+import { useNavPillsVisibility } from "../../hooks/use-nav-pills-visibility"
+
 interface NavShellProps {
   children: ReactNode
   isPinned: boolean
@@ -13,13 +15,15 @@ interface NavShellProps {
 }
 
 function NavShellInner({ children, isPinned, isSidebarOpen, onToggleSidebar }: NavShellProps) {
-  const location = useLocation()
+  const { showLeft, showRight } = useNavPillsVisibility()
 
   return (
     <>
-      {!location.pathname.startsWith("/game") && <NavPillLeft />}
-      <MenuDropdown />
-      <NavPillRight isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar} />
+      {showLeft && <NavPillLeft />}
+      {showLeft && <MenuDropdown />}
+      {showRight && (
+        <NavPillRight isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar} />
+      )}
       {children}
     </>
   )

@@ -31,8 +31,11 @@ export function CalendarGrid({ events, year, month }: CalendarGridProps) {
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>()
-    for (const event of events) {
+    const safeEvents = Array.isArray(events) ? events : []
+    for (const event of safeEvents) {
+      if (!event || !event.releaseDate) continue
       const d = new Date(event.releaseDate)
+      if (isNaN(d.getTime())) continue
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(event)
@@ -77,7 +80,7 @@ export function CalendarGrid({ events, year, month }: CalendarGridProps) {
               isSelected={isSelected}
               isCurrentMonth
               eventCount={dayEvents?.length ?? 0}
-              eventTypes={[...new Set(dayEvents?.map((e) => e.eventType) ?? [])]}
+              eventTypes={[...new Set((Array.isArray(dayEvents) ? dayEvents : []).map((e) => e?.eventType).filter(Boolean))]}
               onSelect={() => handleSelect(key)}
             />
           )
@@ -95,7 +98,7 @@ export function CalendarGrid({ events, year, month }: CalendarGridProps) {
             ).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </h3>
           <div className="space-y-1">
-            {selectedEvents.map((event) => (
+            {(Array.isArray(selectedEvents) ? selectedEvents.filter(Boolean) : []).map((event) => (
               <CalendarEventRow key={event.id} event={event} />
             ))}
           </div>

@@ -7,10 +7,11 @@ export function LocalGamesOverviewSection() {
   const navigate = useNavigate()
   const { data: games = [] } = useLocalGames({ sortBy: 'last_played_at', sortDir: 'desc' })
 
+  const gamesList = Array.isArray(games) ? games : []
   const isElectron = isDesktop()
-  if (!isElectron || games.length === 0) return null
+  if (!isElectron || gamesList.length === 0) return null
 
-  const preview = games.filter(g => g.platform !== 'iso' && !g.sources?.includes('iso')).slice(0, 5)
+  const preview = gamesList.filter(g => g && g.platform !== 'iso' && !g.sources?.includes('iso')).slice(0, 5)
 
   return (
     <div className="space-y-4">
@@ -31,7 +32,7 @@ export function LocalGamesOverviewSection() {
         {preview.map((game, i) => (
           <GameCard key={game.id} game={game} index={i} />
         ))}
-        {games.length > 5 && (
+        {gamesList.length > 5 && (
           <button
             type="button"
             onClick={() =>
@@ -40,7 +41,7 @@ export function LocalGamesOverviewSection() {
             className="flex aspect-[16/10] items-center justify-center rounded-2xl border border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)]/50 hover:bg-[var(--dk-surface-elevated)] transition-all duration-200"
           >
             <span className="text-sm text-muted-foreground">
-              +{games.length - 5} more
+              +{gamesList.length - 5} more
             </span>
           </button>
         )}

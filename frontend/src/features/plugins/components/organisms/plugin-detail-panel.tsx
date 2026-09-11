@@ -1,13 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Activity, ChevronRight, ExternalLink, Gamepad2, Layers, Loader2, LogOut,
-  Network, Puzzle, RefreshCw, Settings, ShieldCheck, X,
+  Activity,
+  ChevronRight,
+  ExternalLink,
+  Gamepad2,
+  Layers,
+  Loader2,
+  LogOut,
+  Network,
+  Puzzle,
+  RefreshCw,
+  Settings,
+  ShieldCheck,
+  X,
 } from 'lucide-react'
 import { SlidePanel } from '@/lib/modals'
 import { openExternal } from '@/lib/utils/open-external'
 import { batchMatchAndSave } from '@/features/plugins/utils/matching'
 import { getPluginIcon, getPermissionLabel, type PluginAPI } from '@/features/plugins/api'
 import { PluginForm } from '@/features/plugins/components/PluginForm'
+import { PluginAccessTokenCard } from '@/features/plugins/components/organisms/plugin-access-token-card'
 import { Alert, Badge, Button } from '@/features/plugins/ui'
 import { cn } from '@/lib/utils'
 import type { PluginInfo, PluginStatus } from '@/features/plugins/types/plugins'
@@ -46,10 +58,17 @@ function PluginConnectionSection({ plugin, api }: { plugin: PluginInfo; api: Plu
 
   useEffect(() => {
     let cancelled = false
-    api.callData(plugin.id, 'auth.getLoginUrl')
-      .then((r) => { if (!cancelled) setSupportsAuth(!!(r as { url?: string } | null)?.url) })
-      .catch(() => { if (!cancelled) setSupportsAuth(false) })
-    return () => { cancelled = true }
+    api
+      .callData(plugin.id, 'auth.getLoginUrl')
+      .then((r) => {
+        if (!cancelled) setSupportsAuth(!!(r as { url?: string } | null)?.url)
+      })
+      .catch(() => {
+        if (!cancelled) setSupportsAuth(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [plugin.id, api])
 
   const checkStatus = async () => {
@@ -117,7 +136,9 @@ function PluginConnectionSection({ plugin, api }: { plugin: PluginInfo; api: Plu
           if (prog?.phase && prog.phase !== 'idle') {
             setScanProgress({ phase: prog.phase, current: prog.current || 0, total: prog.total || 0 })
           }
-        } catch { /* polling race */ }
+        } catch {
+          /* polling race */
+        }
       }, 1000)
 
       const result = (await scanPromise) as any
@@ -149,8 +170,11 @@ function PluginConnectionSection({ plugin, api }: { plugin: PluginInfo; api: Plu
     try {
       await api.callData(plugin.id, 'auth.logout')
       setState({ loading: false, connected: false })
-    } catch { /* ignore */ }
-    finally { setActionLoading(null) }
+    } catch {
+      /* ignore */
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   if (supportsAuth === null || !supportsAuth) return null
@@ -165,10 +189,14 @@ function PluginConnectionSection({ plugin, api }: { plugin: PluginInfo; api: Plu
   }
 
   const phaseLabel = (phase: string) =>
-    phase === 'library' ? 'Fetching library...'
-      : phase === 'enriching' ? `Enriching (${scanProgress?.current ?? 0}/${scanProgress?.total ?? 0})`
-        : phase === 'local-scan' ? 'Scanning local installs...'
-          : phase === 'merging' ? 'Merging results...'
+    phase === 'library'
+      ? 'Fetching library...'
+      : phase === 'enriching'
+        ? `Enriching (${scanProgress?.current ?? 0}/${scanProgress?.total ?? 0})`
+        : phase === 'local-scan'
+          ? 'Scanning local installs...'
+          : phase === 'merging'
+            ? 'Merging results...'
             : 'Scanning...'
 
   return (
@@ -194,7 +222,9 @@ function PluginConnectionSection({ plugin, api }: { plugin: PluginInfo; api: Plu
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-white">{state.displayName || 'Connected'}</p>
-                <Badge tone="success" dot>Connected</Badge>
+                <Badge tone="success" dot>
+                  Connected
+                </Badge>
               </div>
               {state.scanTotal != null && (
                 <p className="mt-0.5 text-xs text-white/40">
@@ -248,9 +278,7 @@ function OverviewContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
 
   return (
     <div className="space-y-4">
-      {plugin.description && (
-        <p className="text-sm leading-relaxed text-white/70">{plugin.description}</p>
-      )}
+      {plugin.description && <p className="text-sm leading-relaxed text-white/70">{plugin.description}</p>}
 
       {hasSlots && <PluginConnectionSection plugin={plugin} api={api} />}
 
@@ -336,9 +364,7 @@ function ConfigureContent({
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const hasTestable = Object.values(configFields).some(
-    (f) => f.type === 'secret' || f.type === 'string',
-  )
+  const hasTestable = Object.values(configFields).some((f) => f.type === 'secret' || f.type === 'string')
 
   useEffect(() => {
     let cancelled = false
@@ -347,7 +373,9 @@ function ConfigureContent({
       setValues(cfg || {})
       setLoaded(true)
     })
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [plugin.id, api])
 
   const handleSave = async () => {
@@ -400,7 +428,9 @@ function ConfigureContent({
   return (
     <div className="space-y-4">
       {saveError && (
-        <Alert tone="error" title="Failed to save">{saveError}</Alert>
+        <Alert tone="error" title="Failed to save">
+          {saveError}
+        </Alert>
       )}
       <PluginForm
         fields={configFields}
@@ -422,21 +452,34 @@ function ConfigureContent({
 
 function PermissionsContent({ plugin }: { plugin: PluginInfo }) {
   const perms = plugin.manifest.permissions || []
-  if (perms.length === 0) {
-    return <p className="text-sm text-white/40">This plugin requests no permissions.</p>
-  }
+  // API access follows the plugin's DB-enabled state; an errored host is still
+  // enabled in the registry, so only disabled/installed count as off.
+  const apiEnabled = plugin.status !== 'disabled' && plugin.status !== 'installed'
   return (
-    <div className="space-y-2">
-      {perms.map((perm) => (
-        <div key={perm} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">
-          <ShieldCheck className="h-4 w-4 shrink-0 text-white/30" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm text-white/80">{getPermissionLabel(perm)}</p>
-            <p className="font-mono text-[11px] text-white/25">{perm}</p>
-          </div>
-          <Badge tone="success" dot>Granted</Badge>
-        </div>
-      ))}
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-white/40">Declared permissions</p>
+        {perms.length === 0 ? (
+          <p className="text-sm text-white/40">This plugin requests no permissions.</p>
+        ) : (
+          perms.map((perm) => (
+            <div
+              key={perm}
+              className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5"
+            >
+              <ShieldCheck className="h-4 w-4 shrink-0 text-white/30" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-white/80">{getPermissionLabel(perm)}</p>
+                <p className="font-mono text-[11px] text-white/25">{perm}</p>
+              </div>
+              <Badge tone="success" dot>
+                Granted
+              </Badge>
+            </div>
+          ))
+        )}
+      </div>
+      <PluginAccessTokenCard pluginId={plugin.id} pluginName={plugin.name} enabled={apiEnabled} />
     </div>
   )
 }
@@ -490,9 +533,7 @@ function ActivityContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
           <p className="mt-1.5 text-sm text-white/80">
             {lastSync.title} ({lastSync.direction || 'sync'})
           </p>
-          <p className="text-xs text-white/40 mt-0.5">
-            {new Date(lastSync.synced_at ?? Date.now()).toLocaleString()}
-          </p>
+          <p className="text-xs text-white/40 mt-0.5">{new Date(lastSync.synced_at ?? Date.now()).toLocaleString()}</p>
         </div>
       )}
 
@@ -533,7 +574,11 @@ type DepEntry = {
   status?: PluginStatus
 }
 
-function DepRow({ dep, clickable, onOpenPlugin }: {
+function DepRow({
+  dep,
+  clickable,
+  onOpenPlugin,
+}: {
   dep: DepEntry
   clickable: boolean
   onOpenPlugin?: (id: string) => void
@@ -565,7 +610,11 @@ function DepRow({ dep, clickable, onOpenPlugin }: {
   )
 }
 
-function DependenciesContent({ plugin, allPlugins, onOpenPlugin }: {
+function DependenciesContent({
+  plugin,
+  allPlugins,
+  onOpenPlugin,
+}: {
   plugin: PluginInfo
   allPlugins: PluginInfo[]
   onOpenPlugin?: (id: string) => void
@@ -650,7 +699,9 @@ export function PluginDetailPanel({
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-base font-semibold text-white">{plugin.name}</h2>
-          <p className="text-[11px] text-white/40">{plugin.author} &middot; v{plugin.version}</p>
+          <p className="text-[11px] text-white/40">
+            {plugin.author} &middot; v{plugin.version}
+          </p>
         </div>
         <button
           onClick={onClose}

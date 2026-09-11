@@ -6,6 +6,8 @@ follow/rating mutations, mirroring legacy status codes (200 detail, 204 writes,
 404 with the legacy ``detail`` string).
 """
 
+from unittest import mock
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.authtoken.models import Token
@@ -21,6 +23,8 @@ COMPANY_DETAIL_KEYS = {
     "slug",
     "logo_url",
     "origin_country",
+    "description",
+    "homepage",
     "follower_count",
     "is_followed",
     "avg_rating",
@@ -40,6 +44,13 @@ class CompanyApiTests(TestCase):
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
         self.public = APIClient()
+
+        # A first follow dispatches the full company sync; stub the task so the
+        # endpoint tests never touch the broker (eager mode would run it inline
+        # and hit the TMDB network).
+        sync_patcher = mock.patch("apps.integrations.tasks.sync_company")
+        self.sync_mock = sync_patcher.start()
+        self.addCleanup(sync_patcher.stop)
 
     def test_anonymous_detail_returns_public_shape(self) -> None:
         response = self.public.get(f"/api/v1/company/{self.company.id}")
@@ -95,6 +106,25 @@ class CompanyApiTests(TestCase):
 
         self.assertEqual(
             UserCompanyFollow.objects.filter(user=self.user, company=self.company).count(), 1
+        )
+
+    def test_first_follow_dispatches_company_sync(self) -> None:
+        self.client.post(f"/api/v1/company/{self.company.id}/follow")
+        self.sync_mock.delay.assert_called_once_with(self.company.id)
+
+    def test_repeat_follow_does_not_redispatch(self) -> None:
+        url = f"/api/v1/company/{self.company.id}/follow"
+        self.client.post(url)
+        self.client.post(url)
+        self.sync_mock.delay.assert_called_once_with(self.company.id)
+
+    def test_follow_survives_dispatch_failure(self) -> None:
+        self.sync_mock.delay.side_effect = RuntimeError("broker down")
+        response = self.client.post(f"/api/v1/company/{self.company.id}/follow")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertTrue(
+            UserCompanyFollow.objects.filter(user=self.user, company=self.company).exists()
         )
 
     def test_unfollow_returns_204_and_removes_row(self) -> None:

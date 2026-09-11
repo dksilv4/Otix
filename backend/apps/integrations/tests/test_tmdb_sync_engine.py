@@ -179,3 +179,58 @@ class TmdbSyncEngineTests(TestCase):
         )
         self.assertEqual(last_frame["type"], "error")
         self.assertEqual(last_frame["message"], "Sync failed unexpectedly")
+
+    def test_company_job_seeds_and_dispatches_children(self):
+        job = self.job(entity_type="company", external_id="61")
+        summary = {
+            "company_id": 7,
+            "tmdb_id": 61,
+            "name": "A24",
+            "discovered": {"movie": 1, "show": 1},
+            "enqueued": 2,
+            "child_job_ids": [101, 102],
+        }
+        with mock.patch(
+            "apps.integrations.services.tmdb_sync.fetch_and_seed_company",
+            new=mock.AsyncMock(return_value=summary),
+        ) as fetch, mock.patch(
+            "apps.integrations.services.tmdb_sync._dispatch_child"
+        ) as dispatch:
+            outcome = run_sync_job.delay(job.pk).get()
+
+        fetch.assert_awaited_once_with(61, parent_job=job)
+        dispatched = [call.args[0] for call in dispatch.call_args_list]
+        self.assertEqual(dispatched, [101, 102])
+        job.refresh_from_db()
+        self.assertEqual(outcome["status"], "success")
+        self.assertEqual(outcome["company_id"], 7)
+        self.assertEqual(outcome["enqueued"], 2)
+        channel = f"tmdb:sync:{job.pk}:events"
+        types = [json.loads(msg)["type"] for msg in self.fake.published_on(channel)]
+        self.assertEqual(
+            types,
+            ["sync_started", "fetching_company", "company_synced", "sync_complete"],
+        )
+
+    def test_company_child_dispatch_failure_does_not_fail_the_job(self):
+        job = self.job(entity_type="company", external_id="61")
+        summary = {"company_id": 7, "tmdb_id": 61, "child_job_ids": [101]}
+        with mock.patch(
+            "apps.integrations.services.tmdb_sync.fetch_and_seed_company",
+            new=mock.AsyncMock(return_value=summary),
+        ), mock.patch(
+            "apps.integrations.services.tmdb_sync._dispatch_child",
+            side_effect=RuntimeError("broker down"),
+        ):
+            outcome = run_sync_job.delay(job.pk).get()
+
+        job.refresh_from_db()
+        self.assertEqual(outcome["status"], "success")
+        self.assertEqual(job.status, "completed")
+
+    def test_company_non_numeric_id_aborts_to_error(self):
+        job = self.job(entity_type="company", external_id="nope")
+        outcome = run_sync_job.delay(job.pk).get()
+
+        self.assertEqual(outcome["status"], "failed")
+        self.assertIn("Invalid TMDB company id", outcome["error"])
