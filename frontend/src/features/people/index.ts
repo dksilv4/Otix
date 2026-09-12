@@ -1,6 +1,6 @@
 // ── People feature barrel ─────────────────────────
 
-export { createPeopleRoutes } from './people.router'
+export { createPeopleRoutes } from './router'
 export { PeopleDetailPage } from './pages/people-detail-page'
 export { PeopleCard } from './components/molecules/people-card'
 export { PeopleTimeline } from './components/organisms/people-timeline'
@@ -13,7 +13,6 @@ export type {
   PersonSummary,
   PersonCredit,
   PersonListResponse,
-  RelatedArtist,
   EpisodeInfo,
   SeasonInfo,
   PeopleCardProps,

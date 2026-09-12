@@ -138,7 +138,7 @@ export class FreeGamesAggregator {
     let matched: FreeGameResult[] = []
     if (allRefs.length > 0) {
       try {
-        const url = `${this.apiBaseUrl}/discover/free-games/match`
+        const url = `${this.apiBaseUrl}/v1/discover/free-games/match`
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
         }

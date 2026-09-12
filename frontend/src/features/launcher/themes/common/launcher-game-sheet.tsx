@@ -1,0 +1,235 @@
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { X, Calendar, Clock, Star, HardDrive, Layers, ExternalLink, Image as ImageIcon, BookOpen, Sparkles } from "lucide-react"
+import { MediaLogo } from "@/lib/media/media-logo"
+import { LauncherActionButtons } from "./launcher-action-buttons"
+import { MatchGameModal } from "@/features/launcher/components/molecules/launcher-match-game-modal"
+import { LauncherGameChangelog } from "@/features/launcher/components/molecules/launcher-game-changelog"
+import { useModal } from "@/lib/modals"
+import { PLATFORM_LABELS } from "@/constants/games"
+import type { LocalGame, DisplayGame } from "@/features/launcher/types"
+
+interface LauncherGameSheetProps {
+  game: LocalGame | DisplayGame | null
+  onClose: () => void
+}
+
+export function LauncherGameSheet({ game, onClose }: LauncherGameSheetProps) {
+  const { openModal } = useModal()
+  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'overview' | 'updates'>('overview')
+
+  if (!game) return null
+
+  const raw = ("rawGame" in game && game.rawGame ? game.rawGame : game) as LocalGame
+  const detail = raw.data
+  const title = detail?.title || raw.title
+  const overview = detail?.overview || raw.description || "No overview available for this title."
+  const backdropUrl = raw.otixBackdropUrl || detail?.backdropUrl || raw.posterUrl
+  const logoUrl = raw.otixLogoUrl || detail?.logoUrl || raw.logoUrl
+  const screenshots = detail?.screenshots || []
+
+  const handleOpenMatchModal = () => {
+    const close = openModal(
+      <MatchGameModal game={raw} onClose={() => close()} />
+    )
+  }
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex justify-end">
+        {/* Backdrop overlay */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/75 backdrop-blur-md cursor-pointer"
+        />
+
+        {/* Slide-over panel */}
+        <motion.div
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="relative z-10 w-full max-w-2xl h-full bg-neutral-950 border-l border-white/10 shadow-2xl flex flex-col overflow-hidden"
+        >
+          {/* Header image banner */}
+          <div className="relative h-64 w-full shrink-0 overflow-hidden bg-neutral-900">
+            {backdropUrl && (
+              <img
+                src={backdropUrl}
+                alt={title}
+                className="w-full h-full object-cover brightness-60"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent" />
+
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-black/60 hover:bg-black/90 text-white/80 hover:text-white flex items-center justify-center border border-white/15 transition-all cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Logo or Title */}
+            <div className="absolute bottom-6 left-6 right-6 z-10">
+              {logoUrl ? (
+                <MediaLogo
+                  src={logoUrl}
+                  alt={title}
+                  className="h-20 max-w-[280px] object-contain object-left mb-2 drop-shadow-xl"
+                  background="dark"
+                />
+              ) : (
+                <h1 className="text-3xl font-black text-white tracking-tight uppercase drop-shadow-lg mb-2">
+                  {title}
+                </h1>
+              )}
+
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="px-2 py-0.5 rounded-md bg-white/10 text-white font-bold uppercase tracking-wider text-[10px] border border-white/10">
+                  {PLATFORM_LABELS[raw.platform] || raw.platform}
+                </span>
+                {detail?.releaseDate && (
+                  <span className="flex items-center gap-1 text-white/60">
+                    <Calendar size={12} />
+                    {detail.releaseDate.slice(0, 4)}
+                  </span>
+                )}
+                {detail?.avgRating && detail.avgRating > 0 && (
+                  <span className="flex items-center gap-1 text-amber-400 font-bold">
+                    <Star size={12} fill="currentColor" />
+                    {(detail.avgRating / 10).toFixed(1)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Bar */}
+          <div className="px-6 py-4 border-b border-white/[0.08] bg-neutral-900/40 flex items-center justify-between gap-4">
+            <LauncherActionButtons game={raw} size="md" />
+            <button
+              onClick={handleOpenMatchModal}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-semibold text-white/70 hover:text-white border border-white/10 transition-colors cursor-pointer"
+            >
+              <Layers size={13} />
+              <span>{raw.data?.id ? "Edit Match" : "Match Game"}</span>
+            </button>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="px-6 border-b border-white/[0.06] bg-neutral-900/20 flex gap-6 flex-none">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "overview"
+                  ? "border-[var(--color-accent)] text-white"
+                  : "border-transparent text-white/40 hover:text-white/80"
+              }`}
+            >
+              <BookOpen size={13} /> Overview
+            </button>
+
+            <button
+              onClick={() => setActiveTab("updates")}
+              className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "updates"
+                  ? "border-[var(--color-accent)] text-white"
+                  : "border-transparent text-white/40 hover:text-white/80"
+              }`}
+            >
+              <Sparkles size={13} /> Updates & Changelog
+              {raw.updateFiles && raw.updateFiles.length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              )}
+            </button>
+          </div>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-none">
+            {activeTab === "updates" ? (
+              <LauncherGameChangelog game={game} />
+            ) : (
+              <>
+                {/* Overview */}
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 mb-2">Overview</h3>
+                  <p className="text-sm text-white/80 leading-relaxed font-normal">{overview}</p>
+                </div>
+
+                {/* Technical File Info */}
+                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-2.5">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-3 flex items-center gap-1.5">
+                    <HardDrive size={13} /> File & Launch Properties
+                  </h3>
+                  {raw.exePath && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[10px] text-white/40 uppercase font-semibold">Executable</span>
+                      <span className="text-xs text-white/90 font-mono bg-black/40 px-2.5 py-1.5 rounded-lg break-all border border-white/5">
+                        {raw.exePath}
+                      </span>
+                    </div>
+                  )}
+                  {raw.installDir && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[10px] text-white/40 uppercase font-semibold">Install Directory</span>
+                      <span className="text-xs text-white/90 font-mono bg-black/40 px-2.5 py-1.5 rounded-lg break-all border border-white/5">
+                        {raw.installDir}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Genres & Details */}
+                {detail?.genres && detail.genres.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 mb-2">Genres</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {detail.genres.map((g) => (
+                        <span
+                          key={g.id}
+                          className="px-2.5 py-1 rounded-lg bg-white/[0.05] text-white/70 text-xs font-medium border border-white/5"
+                        >
+                          {g.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Screenshots Gallery */}
+                {screenshots.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 mb-3 flex items-center gap-1.5">
+                      <ImageIcon size={13} /> Screenshots ({screenshots.length})
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {screenshots.map((s, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setSelectedScreenshot(s.url)}
+                          className="relative aspect-video rounded-xl overflow-hidden cursor-pointer group border border-white/10 hover:border-white/30 transition-all"
+                        >
+                          <img
+                            src={s.url}
+                            alt={`Screenshot ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  )
+}

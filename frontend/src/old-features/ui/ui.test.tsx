@@ -138,7 +138,7 @@ describe('dk-ui molecules', () => {
 
   it('closes dialogs from escape, overlay, and close button', async () => {
     const onOpenChange = vi.fn()
-    const { rerender, container } = render(
+    const { rerender } = render(
       <DkDialog open onOpenChange={onOpenChange} title="Settings" description="Some Description">
         Content
       </DkDialog>,

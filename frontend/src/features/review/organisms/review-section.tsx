@@ -1,11 +1,11 @@
 // TODO: Review this file
-import { useState } from "react"
 import "./review-section.scss"
 import { useQuery } from "@tanstack/react-query"
 import { Star, Pencil } from "lucide-react"
 import { useAuth } from "@/old-features/auth"
 import { DkButton } from "@/old-features/ui/atoms/button"
 import { DkDialog } from "@/old-features/ui/molecules/dialog"
+import { useModal } from "@/lib/modals"
 import { ReviewComposer } from "../molecules/review-composer"
 import { reviewQueries, type ReviewOut } from "../review-queries"
 import { ratingQueries, type MediaRatingOut } from "../rating-queries"
@@ -51,7 +51,7 @@ function StarRow({ count, filled, size = "md" }: { count: number; filled: number
 
 function ReviewSection({ mediaId, mediaType, className }: ReviewSectionProps) {
  const { isAuthenticated } = useAuth()
- const [composerOpen, setComposerOpen] = useState(false)
+ const { openModal } = useModal()
 
  const myReviewQuery = useQuery({
    ...reviewQueries.myReview(mediaType, mediaId),
@@ -98,6 +98,24 @@ function ReviewSection({ mediaId, mediaType, className }: ReviewSectionProps) {
  const review = (myReviewQuery.data ?? null) as ReviewOut | null
  const rating = (myRatingQuery.data ?? null) as MediaRatingOut | null
  const hasRatingOrReview = !!rating || !!review
+
+ const handleOpenComposer = () => {
+   const close = openModal(
+     <DkDialog
+       open={true}
+       onOpenChange={() => close()}
+       title={hasRatingOrReview ? "Edit Your Rating" : "Rate & Review"}
+     >
+       <ReviewComposer
+         mediaType={mediaType}
+         mediaId={mediaId}
+         existingReview={review}
+         existingRating={rating}
+         onClose={() => close()}
+       />
+     </DkDialog>
+   )
+ }
 
  return (
    <section className={cn("dk-review-section", className)}>
@@ -174,7 +192,7 @@ function ReviewSection({ mediaId, mediaType, className }: ReviewSectionProps) {
                <DkButton
                  variant="outline"
                  size="sm"
-                 onClick={() => setComposerOpen(true)}
+                 onClick={handleOpenComposer}
                  className="dk-review-section__action"
                >
                  <Pencil className="w-3.5 h-3.5" />
@@ -198,7 +216,7 @@ function ReviewSection({ mediaId, mediaType, className }: ReviewSectionProps) {
            <DkButton
              variant="primary"
              size="md"
-             onClick={() => setComposerOpen(true)}
+             onClick={handleOpenComposer}
            >
              <Star className="w-4 h-4" />
              Rate &amp; Review
@@ -206,21 +224,6 @@ function ReviewSection({ mediaId, mediaType, className }: ReviewSectionProps) {
          </div>
        </div>
      )}
-
-     <DkDialog
-       open={composerOpen}
-       onOpenChange={setComposerOpen}
-       title={hasRatingOrReview ? "Edit Your Rating" : "Rate & Review"}
-     >
-       <ReviewComposer
-         mediaType={mediaType}
-         mediaId={mediaId}
-         mediaType={mediaType}
-         existingReview={review}
-         existingRating={rating}
-         onClose={() => setComposerOpen(false)}
-       />
-     </DkDialog>
    </section>
  )
 }

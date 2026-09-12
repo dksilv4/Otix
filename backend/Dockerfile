@@ -1,57 +1,37 @@
-# ── Build stage ──
-FROM python:3.12-slim AS builder
-
-WORKDIR /app
-
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install deps and build the local package (only invalidated when deps or source change)
-COPY pyproject.toml ./
-COPY otix/ ./otix/
-RUN pip install --no-cache-dir . \
-    && pip cache purge
-
-# Copy remaining files (tests, alembic, configs, scripts)
-COPY . ./
-
-# ── Runtime stage ──
+# Otix backend (Django) — single image for dev (bind-mounted source) and
+# future prod. Dependencies are installed into the global interpreter so a
+# bind-mount of ./backend over /app still resolves imports at runtime.
 FROM python:3.12-slim
 
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_LINK_MODE=copy \
+    # uv has no `sync --system`; point the project env at the base prefix so
+    # deps land in the global site-packages (a bind-mount of ./backend
+    # over /app still resolves imports — the legacy pip image behaved the same).
+    UV_PROJECT_ENVIRONMENT=/usr/local
+
+# Install uv (lockfile-authoritative dependency manager for this project).
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev curl \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-COPY --from=builder /app /app
+# Install only the locked runtime deps (no dev group, no project build). Source
+# ships via bind mount in dev and via the COPY below for image-only (prod) runs.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project && uv cache clean
 
-# Pre-download the ONNX embedding model so it doesn't fail at runtime.
-# If this fails (e.g. no HF_TOKEN or network issues), the model will be
-# downloaded lazily when embeddings are first used.
-ARG HF_TOKEN
-ENV HF_TOKEN=${HF_TOKEN}
-ENV FASTEMBED_CACHE_PATH=/app/.fastembed_cache
-RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-large-en-v1.5')" || echo "Model download skipped — will download at runtime"
-
-# TODO GPU: Set OTIX_EMBEDDING_API_URL to a GPU embedding server (Ollama/TEI)
-# to use Qwen3-Embedding-8B instead of the CPU ONNX model.
-# Example: OTIX_EMBEDDING_API_URL=http://ollama:11434/api/embed
-
-RUN adduser --system --no-create-home appuser && chown -R appuser /app
-USER appuser
+# Bake the Django app source for image-only runs (prod compose, standalone
+# deploys). Dev still bind-mounts ./backend over /app, which hides these layers
+# so the running source stays the host checkout. `entrypoints/start-api.sh` is
+# the default command (migrate + uvicorn config.asgi); worker/beat services
+# override it with their own `celery -A config` commands.
+COPY . /app
 
 EXPOSE 8000
 
-# Run migrations then start uvicorn — prevents schema-drift issues when
-# the lifespan handler's async migration call is suppressed or fails.
 CMD ["bash", "entrypoints/start-api.sh"]

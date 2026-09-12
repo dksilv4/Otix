@@ -1,6 +1,6 @@
-/* â”€â”€ MatchGameButton â€” opens match modal for unmatched game â”€â”€ */
+/* ── MatchGameButton — opens match modal for unmatched game ── */
 
-import { useState } from 'react'
+import { useModal } from '@/lib/modals'
 import { MatchGameModal } from '@/features/launcher/components/molecules/launcher-match-game-modal'
 import type { LocalGame } from '@/features/launcher/types'
 
@@ -9,21 +9,23 @@ interface Props {
 }
 
 export function MatchGameButton({ game }: Props) {
-  const [open, setOpen] = useState(false)
+  const { openModal } = useModal()
 
-  return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="px-5.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
-      >
-        Match to Play
-      </button>
+  const handleOpenMatchModal = () => {
+    const close = openModal(
       <MatchGameModal
         game={game}
-        open={open}
-        onOpenChange={setOpen}
+        onClose={() => close()}
       />
-    </>
+    )
+  }
+
+  return (
+    <button
+      onClick={handleOpenMatchModal}
+      className="px-5.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+    >
+      Match to Play
+    </button>
   )
 }

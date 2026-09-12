@@ -1,9 +1,11 @@
 import { useRef, useMemo, useEffect } from "react"
 import { useInView } from "framer-motion"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, WifiOff } from "lucide-react"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
 import { cn } from "@/lib/utils"
+import { useOffline } from "@/lib/offline"
+import { OfflineNotice } from "@/lib/offline-notice"
 import { useSteamWishlist, useSteamWishlistScan } from "../library-queries"
 import { SkeletonGrid } from "./skeleton-grid"
 import { WishlistEmptyState } from "./wishlist-empty-state"
@@ -11,12 +13,13 @@ import { WishlistEmptyState } from "./wishlist-empty-state"
 export function WishlistTabContent() {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(loadMoreRef, { margin: "0px 0px 800px 0px" })
+  const offline = useOffline()
 
   const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useSteamWishlist()
 
   const items = useMemo(
-    () => data?.pages.flatMap((page) => page.items) ?? [],
+    () => data?.pages?.flatMap((page) => (Array.isArray(page?.items) ? page.items.filter(Boolean) : [])) ?? [],
     [data]
   )
 
@@ -30,6 +33,19 @@ export function WishlistTabContent() {
 
   if (isLoading) return <SkeletonGrid />
   if (isError) {
+    if (offline) {
+      return (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--dk-surface-glass)] text-muted-foreground">
+            <WifiOff className="h-6 w-6" />
+          </div>
+          <p className="text-lg font-semibold text-foreground">You're offline</p>
+          <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+            No saved wishlist data is available yet. Connect to the internet to load it.
+          </p>
+        </div>
+      )
+    }
     return (
       <div className="flex items-center justify-center py-24">
         <p className="text-muted-foreground">Failed to load. Please try again.</p>
@@ -40,6 +56,7 @@ export function WishlistTabContent() {
 
   return (
     <>
+      {offline && <OfflineNotice className="mb-4" />}
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs text-muted-foreground">
           {items.length} wishlisted games in Otix
@@ -57,7 +74,7 @@ export function WishlistTabContent() {
         </button>
       </div>
       <MediaGrid>
-        {items.map((item) => (
+        {(Array.isArray(items) ? items.filter((item) => item && item.id) : []).map((item) => (
           <div key={item.id} className="relative">
             <MediaCard
               id={item.id}

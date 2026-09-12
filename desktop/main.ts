@@ -15,6 +15,7 @@ protocol.registerSchemesAsPrivileged([
     },
   },
 ]);
+import { getApiBaseUrl } from './config';
 import { GameDetector } from './game/detector';
 import { registerDownloadsIPC, setPluginCaller } from './ipc/downloads';
 import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPluginManager } from './ipc/scanner';
@@ -25,7 +26,7 @@ import { registerWindowIPC, notifyMaximizedChange } from './ipc/window';
 import { registerDesktopSettingsIPC } from './ipc/settings';
 import { loadDesktopSettings, applyDesktopSettings, getSettings } from './desktop-settings';
 import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
-import { initAllDatabases, closeAllConnections, PluginsRepository } from './db';
+import { initDatabase, closeDb, PluginsRepository } from './db';
 import { setNotifyTarget, getAllGames } from './game/storage';
 import type { LocalGame } from './preload-api';
 import { purgeOldDeletedDownloads } from './downloads';
@@ -35,14 +36,23 @@ import { populateKnownLocations } from './saves/export';
 import { PermissionManager } from './plugins/permissions';
 import { PluginManager } from './plugins/manager';
 import { eventBus } from './plugins/event-bus';
-import { registerPluginIPC, wireOrchestratorEvents } from './ipc/plugins';
-import { GameScanOrchestrator } from './game/orchestrator';
+import { registerPluginIPC, setPluginMainWebContents } from './plugins/ipc';
+import { wireOrchestratorEvents } from './ipc/plugins';
+import { GameScanOrchestrator } from './game/orchestrator'; import { FetchWorkerBridge } from './fetch/bridge';
 import { registerNotificationIPC } from './ipc/notifications';
+import { registerUpdaterIPC, checkForUpdatesOnStartup } from './ipc/updater';
+import { setDefaultAutoSelectFamily } from 'node:net';
+
+// Node 24's happy-eyeballs (autoSelectFamily) intermittently ETIMEDOUTs
+// dual-stack hostnames when the machine has no working IPv6. Disable it so
+// undici fetches (plugins, image cache) reliably connect first try.
+setDefaultAutoSelectFamily(false);
 
 let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
 let pluginManager: PluginManager | null = null;
 let permissionManager: PermissionManager | null = null;
+let fetchBridge: FetchWorkerBridge | null = null;
 let pendingDeepLink: string | null = null;
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -121,6 +131,75 @@ function ensureVisible(saved: WindowState): Electron.Rectangle {
   }
 }
 
+// Wires browser-style history navigation into a window's webContents so the
+// user can go back/forward naturally: Cmd+[/] (macOS), Alt+Left/Right
+// (Windows/Linux), with Ctrl+[/] and the browser mouse back/forward buttons
+// as fallbacks.
+function enableHistoryNavigation(win: BrowserWindow): void {
+  const wc = win.webContents
+  const isMac = process.platform === 'darwin'
+
+  const go = (dir: -1 | 1) => {
+    const nav = wc.navigationHistory
+    if (dir === -1) {
+      if (nav.canGoBack()) nav.goBack()
+    } else if (nav.canGoForward()) {
+      nav.goForward()
+    }
+  }
+
+  wc.on('before-input-event', (event, input) => {
+    let back: boolean
+    let forward: boolean
+    if (isMac) {
+      back = input.meta && input.key === '['
+      forward = input.meta && input.key === ']'
+    } else {
+      back = input.alt && input.key === 'ArrowLeft'
+      forward = input.alt && input.key === 'ArrowRight'
+    }
+    const button = (input as unknown as { button?: number }).button
+    back = back || (input.control && input.key === '[') || (input.type === 'mouseDown' && button === 3)
+    forward = forward || (input.control && input.key === ']') || (input.type === 'mouseDown' && button === 4)
+    if (back || forward) {
+      event.preventDefault()
+      go(back ? -1 : 1)
+    }
+  })
+}
+
+// Opens a URL in a standalone app window on the DEFAULT session — the same
+// session plugin OAuth windows use, so the window carries the user's logged-in
+// web session (e.g. Epic Games Store after Epic OAuth). It behaves like a small
+// in-app browser: back/forward navigation is supported and target=_blank links
+// navigate in place so history stays intact.
+function openStandaloneWindow(url: string): void {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return
+
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 850,
+    autoHideMenuBar: true,
+    backgroundColor: '#09090b',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  })
+  enableHistoryNavigation(win)
+  win.webContents.setWindowOpenHandler(({ url: target }) => {
+    if (/^https?:\/\//i.test(target)) void win.webContents.loadURL(target)
+    return { action: 'deny' }
+  })
+  void win.loadURL(url)
+}
+
 function createWindow() {
   // If a deep link was received before the window was created, forward it
   if (pendingDeepLink) {
@@ -155,6 +234,14 @@ function createWindow() {
 
   // Wire game-storage-service change notifications to this window
   setNotifyTarget(mainWindow);
+  setPluginMainWebContents(mainWindow.webContents);
+
+  // Route renderer window.open() calls (e.g. Epic claim links) into a
+  // nav-enabled standalone window so the user can go back naturally.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) openStandaloneWindow(url);
+    return { action: 'deny' };
+  });
 
   if (saved?.maximized) {
     mainWindow.maximize()
@@ -205,7 +292,13 @@ function createWindow() {
     mainWindow.loadURL('http://127.0.0.1:5174/');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadURL(`file://${path.join(__dirname, '../dist/index.html')}`);
+    const candidatePaths = [
+      path.join(process.resourcesPath, 'frontend', 'index.html'),
+      path.join(__dirname, '../../frontend/dist/index.html'),
+      path.join(__dirname, '../dist/index.html'),
+    ];
+    const htmlPath = candidatePaths.find((p) => fs.existsSync(p)) || candidatePaths[0];
+    mainWindow.loadFile(htmlPath);
   }
 
   // Ensure window is visible
@@ -219,8 +312,9 @@ function createWindow() {
     mainWindow = null;
   });
 
-  // ── Register window IPC ──
+  // ── Register window & updater IPC ──
   registerWindowIPC(mainWindow);
+  registerUpdaterIPC(mainWindow);
 }
 
 // ── Custom protocol (otix://) for OAuth deep links ───────────────
@@ -425,6 +519,15 @@ app.on('ready', async () => {
     await shell.openExternal(url);
   });
 
+  // Opens a URL in a standalone app window on the DEFAULT session — the same
+  // session plugin OAuth windows use, so the window carries the user's
+  // logged-in web session (e.g. Epic Games Store after Epic OAuth). It behaves
+  // like a small in-app browser: back/forward navigation is supported and
+  // target=_blank links navigate in place so history stays intact.
+  ipcMain.handle('shell:open-session-window', (_event, url: string) => {
+    openStandaloneWindow(url);
+  });
+
   ipcMain.handle('shell:open-path', async (_event, filePath: string) => {
     return shell.openPath(filePath);
   });
@@ -489,18 +592,11 @@ app.on('ready', async () => {
   // Init all databases before any IPC handler or window.
   // Failure is non-fatal — app opens with degraded DB functionality.
   let dbReady = false;
-  await initAllDatabases().then(() => { dbReady = true }).catch((err) => {
+  await initDatabase().then(() => { dbReady = true }).catch((err) => {
     console.error('[main] DB init failed (app will run with reduced functionality):', err.message);
   });
 
-  // Seed the default plugin repo if none exist (first run)
   const pluginsRepo = new PluginsRepository();
-  if (dbReady) {
-    const existingRepos = pluginsRepo.getRepos();
-    if (existingRepos.length === 0) {
-      pluginsRepo.addRepo('https://raw.githubusercontent.com/dksilv4/otix-plugins/main/registry.json', 'Otix Default');
-    }
-  }
 
   // Rehydrate any installs that were running before Electron last closed
   if (dbReady) { try { rehydrateActiveInstalls() } catch (err) { console.error('[main] rehydrateActiveInstalls failed:', err) } }
@@ -546,14 +642,18 @@ app.on('ready', async () => {
 
   // ── Initialize plugin system ──
   if (dbReady) {
+    const packagedPluginsDir = path.join(process.resourcesPath, 'plugins');
     const extensionsDir = isDev
-      ? path.resolve(__dirname, '..', '..', 'extensions', 'otix-plugins', 'plugins')
-      : path.join(app.getPath('userData'), 'extensions');
+      ? path.resolve(__dirname, '..', '..', 'extensions', 'plugins')
+      : (fs.existsSync(packagedPluginsDir)
+          ? packagedPluginsDir
+          : path.join(app.getPath('userData'), 'extensions'));
     const devExtensionsDir = isDev
       ? path.join(app.getPath('userData'), 'extensions')
       : undefined;
     permissionManager = new PermissionManager();
     pluginManager = new PluginManager(extensionsDir, pluginsRepo, app.getPath('userData'), devExtensionsDir);
+    pluginManager.setPermissionManager(permissionManager);
     setPluginCaller((pluginId, method, args) => pluginManager!.callPluginData(pluginId, method, args));
     permissionManager.setWebContents(mainWindow!.webContents);
     registerPluginIPC(pluginManager, mainWindow!, permissionManager);
@@ -561,15 +661,27 @@ app.on('ready', async () => {
 
     // ── Initialize GameScanOrchestrator ──
     const orchestrator = new GameScanOrchestrator(pluginManager);
-    orchestrator.setApiBaseUrl(pluginManager.getApiBaseUrl());
+    orchestrator.setApiBaseUrl(getApiBaseUrl());
+
+    // ── Proxy-fetch worker (Phase 2.2b) ──
+    // Answers provider fetches for a connected Otix server that lacks the
+    // provider key (desktop/fetch bridge): registers this device, holds the
+    // user's fetch_request SSE stream, and mirrors with the user's local keys.
+    fetchBridge = new FetchWorkerBridge({
+      filePath: path.join(app.getPath('userData'), 'fetch-client.json'),
+    });
+
     // Wire auth token changes
     const origSetAuth = pluginManager.setAuthToken.bind(pluginManager);
     pluginManager.setAuthToken = (token: string) => {
       origSetAuth(token);
       orchestrator.setAuthToken(token);
+      fetchBridge?.setCredentials(getApiBaseUrl(), token);
     };
     setScanOrchestrator(orchestrator);
     setPluginManager(pluginManager);
+    // Dev-only: reload plugins when their source files change on disk
+    pluginManager.watchPluginSources();
     registerPluginScanIPC();
     wireOrchestratorEvents(orchestrator, mainWindow!);
 
@@ -583,7 +695,7 @@ app.on('ready', async () => {
       console.log(`[plugins] Discovery complete, ${all.length} plugin(s) in DB:`, all.map(p => `${p.id} (${p.status})`).join(', '));
 
       // Auto-enable default plugins (always enabled, no user action needed)
-      const DEFAULT_PLUGINS = ['fps-capture', 'battlenet'];
+      const DEFAULT_PLUGINS = ['fps-capture'];
       for (const id of DEFAULT_PLUGINS) {
         const p = pluginManager!.getPlugin(id);
         if (p && p.status !== 'enabled') {
@@ -617,6 +729,33 @@ app.on('ready', async () => {
           }
         }
       }
+      // Mirror the IGDB source-plugin credentials into the proxy-fetch bridge so
+      // a desktop whose launcher already fetches IGDB can serve that provider to
+      // a connected Otix server. Refresh on later config edits (setConfig emits
+      // plugin:config-changed). Only igdb auto-seeds here; tmdb + others await a
+      // dedicated key store/UI (2.2c).
+      const igdbPluginKeys = (): { client_id: string; client_secret: string } | null => {
+        if (!fetchBridge) return null;
+        const cfg = pluginManager!.getConfig('igdb-source');
+        const clientId = cfg?.igdb_client_id;
+        const clientSecret = cfg?.igdb_client_secret;
+        if (typeof clientId === 'string' && clientId && typeof clientSecret === 'string' && clientSecret) {
+          return { client_id: clientId, client_secret: clientSecret };
+        }
+        return null;
+      };
+      // Startup: seed the bridge only when the plugin already has IGDB keys and
+      // the bridge store does not (a future dedicated key store may set igdb
+      // independently, so never wipe on launch).
+      const seededIgdb = igdbPluginKeys();
+      if (seededIgdb && !fetchBridge!.configured.includes('igdb')) {
+        fetchBridge!.setProvider('igdb', seededIgdb);
+      }
+      // Later plugin config edits mirror exactly (adding or removing igdb).
+      eventBus.on('plugin:config-changed', ({ pluginId }) => {
+        if (pluginId !== 'igdb-source') return;
+        fetchBridge!.setProvider('igdb', igdbPluginKeys() ?? undefined);
+      }, 'main');
     }).catch(err => {
       console.error('[plugins] Discovery failed:', err);
     });
@@ -649,6 +788,9 @@ app.on('ready', async () => {
     }
   }
 
+  // Check for auto-updates in the background (packaged release only)
+  checkForUpdatesOnStartup();
+
   // Signal renderer that all IPC handlers are registered.
   // The renderer's loadFromDatabase() waits for this before calling IPC.
   mainWindow?.webContents.on('did-finish-load', () => {
@@ -660,7 +802,8 @@ app.on('ready', async () => {
     console.log('[main] before-quit fired');
     mainWindow?.webContents.send('app:clean-quit');
     pluginManager?.shutdown().catch(() => {});
-    try { closeAllConnections() } catch (err) {
+    fetchBridge?.stop();
+    try { closeDb() } catch (err) {
       console.error('[main] Failed to close database connections:', err);
     }
   });
@@ -685,7 +828,8 @@ app.on('window-all-closed', () => {
   console.log('[main] window-all-closed fired');
   gameDetector?.stopAll();
   pluginManager?.shutdown().catch(() => {});
-  try { closeAllConnections() } catch (err) {
+  fetchBridge?.stop();
+  try { closeDb() } catch (err) {
     console.error('[main] Failed to close database connections:', err);
   }
   // Kill any running game install

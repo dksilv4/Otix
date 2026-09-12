@@ -115,7 +115,7 @@ function createMockDb() {
 const mockDb = createMockDb();
 
 vi.mock('../../db', () => ({
-  getConnection: () => mockDb,
+  getDb: () => mockDb,
 }));
 
 import {

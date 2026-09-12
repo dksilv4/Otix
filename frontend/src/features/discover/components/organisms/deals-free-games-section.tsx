@@ -99,7 +99,10 @@ export function DealsFreeGamesSection() {
     )
   }
 
-  if (!result?.deals?.length) return null
+  const deals = Array.isArray(result?.deals) ? result.deals.filter((d) => d && d.id) : []
+  if (deals.length === 0) return null
+
+  const storeCount = new Set(deals.map((d) => d.storeName).filter(Boolean)).size
 
   return (
     <motion.section
@@ -112,13 +115,13 @@ export function DealsFreeGamesSection() {
         title="🎮 Free Game Deals"
         subtitle={
           <span className="text-xs text-white/40">
-            {result.deals.length} free deal{result.deals.length > 1 ? 's' : ''} across {new Set(result.deals.map(d => d.storeName)).size} store{new Set(result.deals.map(d => d.storeName)).size > 1 ? 's' : ''}
+            {deals.length} free deal{deals.length > 1 ? 's' : ''} across {storeCount} store{storeCount > 1 ? 's' : ''}
           </span>
         }
         minItemWidth={185}
         gap={12}
       >
-        {result.deals.map((deal) => (
+        {deals.map((deal) => (
           <DealGameCard key={deal.id} deal={deal} />
         ))}
       </Carousel>

@@ -9,9 +9,9 @@ __pycache__
 .ruff_cache
 .mypy_cache
 .fastembed_cache
-backend/uploads
-backend/.venv
-backend/.fastembed_cache
+old-backend/uploads
+old-backend/.venv
+old-backend/.fastembed_cache
 backend/celerybeat-schedule
 backend/.coverage
 *.md

@@ -28,11 +28,15 @@ export function ProfileRatingDistributionSection({ username }: { username: strin
   if (distQuery.isLoading) return <RatingDistributionSkeleton />
   if (distQuery.isError || !distQuery.data) return null
 
-  const { distribution, totalRatings } = distQuery.data
-  if (totalRatings === 0) return null
+  const distribution = Array.isArray(distQuery.data?.distribution) ? distQuery.data.distribution : []
+  const totalRatings = distQuery.data?.totalRatings ?? 0
+  if (totalRatings === 0 || distribution.length === 0) return null
 
   // Calculate max total across any score (for bar scaling)
-  const maxBarTotal = Math.max(...distribution.map((d) => d.movie + d.show + d.game + d.music), 1)
+  const maxBarTotal = Math.max(
+    ...distribution.map((d) => (d.movie || 0) + (d.show || 0) + (d.game || 0) + (d.music || 0)),
+    1,
+  )
 
   return (
     <section className="dk-user-rating-distribution">
@@ -55,7 +59,7 @@ export function ProfileRatingDistributionSection({ username }: { username: strin
         {/* Bars */}
         <div className="dk-user-rating-distribution__bars">
           {distribution.map((item) => {
-            const total = item.movie + item.show + item.game + item.music
+            const total = (item.movie || 0) + (item.show || 0) + (item.game || 0) + (item.music || 0)
             if (total === 0) {
               return (
                 <div key={item.score} className="dk-user-rating-distribution__bar-group">
@@ -71,8 +75,8 @@ export function ProfileRatingDistributionSection({ username }: { username: strin
             // Ordered segments: movie at bottom, then show, game, music on top
             const segments = MEDIA_TYPES.map((type) => ({
               type,
-              count: item[type],
-              pctOfBar: item[type] / total,
+              count: item[type] || 0,
+              pctOfBar: total > 0 ? (item[type] || 0) / total : 0,
             }))
 
             return (

@@ -3,13 +3,11 @@ import { useState, useEffect, useCallback } from 'react'
 const STORAGE_KEY = 'otix:launcher-settings'
 
 export interface LauncherSettings {
-  slideshowWhenInactive: boolean
   backgroundTransitions: boolean
   defaultPage: 'library' | 'slide-picker'
 }
 
 const DEFAULTS: LauncherSettings = {
-  slideshowWhenInactive: true,
   backgroundTransitions: true,
   defaultPage: 'library',
 }

@@ -7,7 +7,7 @@ export interface ContextMenuItemDef {
   shortcut?: string
   disabled?: boolean
   destructive?: boolean
-  onClick: () => void
+  onClick?: () => void
   subItems?: ContextMenuItemDef[]
 }
 
@@ -26,8 +26,15 @@ export interface ContextMenuState {
   data: Record<string, unknown> | null
 }
 
+export interface ContextMenuOpenEvent {
+  preventDefault: () => void
+  clientX: number
+  clientY: number
+  touches?: { clientX: number; clientY: number }[]
+}
+
 export interface ContextMenuActions {
-  open: (e: MouseEvent | TouchEvent, items: ContextMenuItemDef[], options?: {
+  open: (e: ContextMenuOpenEvent, items: ContextMenuItemDef[], options?: {
     mediaType?: ContextMenuMediaType
     data?: Record<string, unknown>
   }) => void

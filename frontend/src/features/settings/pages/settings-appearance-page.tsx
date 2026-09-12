@@ -3,8 +3,17 @@ import { useTheme } from '@/lib/providers/theme'
 import { useShaderQuality, SHADER_QUALITY_OPTIONS } from '@/lib/providers/shader-quality'
 import { useMotionPreference, MOTION_OPTIONS } from '@/lib/providers/motion-preference'
 import { cn } from '@/lib/utils'
-import { Moon, Sun, Monitor, Plus, Check } from 'lucide-react'
+import { Moon, Sun, Monitor, Plus, PanelLeftClose, Gamepad2 } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
+import { SettingsCard } from '../components/molecules/settings-card'
+import { LAUNCHER_THEMES, type LauncherThemeId } from '@/features/launcher/themes/theme-context'
+
+const SETTINGS_SIDEBAR_COLLAPSED_KEY = 'otix-settings-sidebar-collapsed'
+
+function getInitialSidebarCollapsed(): boolean {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(SETTINGS_SIDEBAR_COLLAPSED_KEY) === 'true'
+}
 
 const ACCENTS = [
   { id: 'orange', primary: 'oklch(0.705 0.213 47.604)' },
@@ -60,6 +69,22 @@ export function SettingsAppearancePage() {
   const { motionPreference, setMotionPreference } = useMotionPreference()
   const [accent, setAccent] = useState<string>(getInitialAccent)
   const [customAccents, setCustomAccents] = useState<string[]>(getCustomAccents)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(getInitialSidebarCollapsed)
+
+  useEffect(() => {
+    const handleCollapseChange = () => {
+      setSidebarCollapsed(getInitialSidebarCollapsed())
+    }
+    window.addEventListener('settings-sidebar-collapse-changed', handleCollapseChange)
+    return () => window.removeEventListener('settings-sidebar-collapse-changed', handleCollapseChange)
+  }, [])
+
+  const updateSidebarCollapsed = (collapsed: boolean) => {
+    setSidebarCollapsed(collapsed)
+    localStorage.setItem(SETTINGS_SIDEBAR_COLLAPSED_KEY, String(collapsed))
+    window.dispatchEvent(new Event('settings-sidebar-collapse-changed'))
+  }
+
   useEffect(() => {
     applyAccentColor(accent)
   }, [accent])
@@ -78,42 +103,42 @@ export function SettingsAppearancePage() {
   const isActive = (color: string) => accent === color
 
   return (
-    <div id="settings-appearance-section" className="space-y-6">
+    <div id="settings-appearance-section" className="space-y-5">
       {/* Theme card */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <SettingsCard>
         <SectionHeader title="Theme" description="Choose how Otix looks on your device." />
 
         <div
-          className="flex items-center justify-between rounded-xl px-4 py-4"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl p-4 sm:p-5"
           style={{ backgroundColor: 'var(--dk-surface-raised)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-primary"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}
             >
-              {theme === 'dark' ? <Moon className="h-5 w-5" /> : theme === 'light' ? <Sun className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
+              {theme === 'dark' ? <Moon className="h-5.5 w-5.5" /> : theme === 'light' ? <Sun className="h-5.5 w-5.5" /> : <Monitor className="h-5.5 w-5.5" />}
             </div>
             <div>
-              <p className="text-sm font-medium">
+              <p className="text-sm font-semibold text-white">
                 {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'} mode
               </p>
-              <p className="text-xs text-white/60">
+              <p className="text-xs text-white/60 mt-0.5">
                 {theme === 'dark' ? 'Easier on the eyes at night' : theme === 'light' ? 'Bright and crisp for daytime' : 'Follows your device settings'}
               </p>
             </div>
           </div>
 
-          <div className="flex rounded-lg p-1 gap-0.5 bg-white/[0.03]">
+          <div className="grid grid-cols-3 w-full sm:w-auto rounded-xl p-1 gap-1 bg-white/[0.04]">
             {(['system', 'light', 'dark'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTheme(t)}
                 className={cn(
-                  'rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150',
+                  'rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150 text-center',
                   theme === t
-                    ? 'bg-white/10 text-white shadow-sm'
+                    ? 'bg-white/10 text-white shadow-sm font-semibold'
                     : 'text-white/60 hover:text-white',
                 )}
               >
@@ -122,19 +147,19 @@ export function SettingsAppearancePage() {
             ))}
           </div>
         </div>
-      </div>
+      </SettingsCard>
 
       {/* Accent color card */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <SettingsCard>
         <SectionHeader title="Accent" description="Pick a color accent for the interface." />
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2.5 sm:gap-3">
           {ACCENTS.map((a) => (
             <button
               key={a.id}
               type="button"
               onClick={() => setAccent(a.primary)}
-              className="relative h-7 w-7 rounded-full hover:scale-110 active:scale-95 transition-transform"
+              className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full hover:scale-110 active:scale-95 transition-transform"
               style={{ backgroundColor: a.primary }}
             >
               {isActive(a.primary) && (
@@ -151,7 +176,7 @@ export function SettingsAppearancePage() {
         </div>
 
         <div
-          className="flex flex-wrap gap-3 pt-4 mt-4"
+          className="flex flex-wrap gap-2.5 sm:gap-3 pt-4 mt-5"
           style={{ boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--border) 30%, transparent)' }}
         >
           {Array.from({ length: 16 }).map((_, i) => {
@@ -162,7 +187,7 @@ export function SettingsAppearancePage() {
               <label
                 key={i}
                 className={cn(
-                  'relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full hover:scale-110 active:scale-95 transition-transform',
+                  'relative flex h-9 w-9 sm:h-10 sm:w-10 cursor-pointer items-center justify-center rounded-full hover:scale-110 active:scale-95 transition-transform',
                 )}
                 style={hasColor ? { backgroundColor: color } : { backgroundColor: 'var(--dk-surface-raised)' }}
                 onClick={(e) => {
@@ -172,7 +197,7 @@ export function SettingsAppearancePage() {
                   }
                 }}
               >
-                {!hasColor && <Plus className="h-3.5 w-3.5 text-white/30 pointer-events-none" />}
+                {!hasColor && <Plus className="h-4 w-4 text-white/30 pointer-events-none" />}
                 {active && (
                   <span
                     className="absolute inset-0 rounded-full pointer-events-none"
@@ -193,12 +218,12 @@ export function SettingsAppearancePage() {
             )
           })}
         </div>
-      </div>
+      </SettingsCard>
 
 
 
       {/* Motion card */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <SettingsCard>
         <SectionHeader
           title="Motion"
           description="Control animations and transitions across the app."
@@ -235,10 +260,10 @@ export function SettingsAppearancePage() {
             })}
           </div>
         </div>
-      </div>
+      </SettingsCard>
 
       {/* Home Background Quality card */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <SettingsCard>
         <SectionHeader
           title="Home Background Quality"
           description="Control the animated shader quality on the homepage, or let Otix choose automatically."
@@ -275,7 +300,118 @@ export function SettingsAppearancePage() {
             })}
           </div>
         </div>
-      </div>
+      </SettingsCard>
+
+      {/* Settings Sidebar Layout card */}
+      <SettingsCard>
+        <SectionHeader
+          title="Settings Sidebar"
+          description="Choose whether the settings menu sidebar is expanded or collapsed to icons only."
+        />
+
+        <div
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl p-4 sm:p-5"
+          style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+        >
+          <div className="flex items-center gap-3.5">
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}
+            >
+              <PanelLeftClose className="h-5.5 w-5.5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">
+                Settings Menu Mode
+              </p>
+              <p className="text-xs text-white/60 mt-0.5">
+                {sidebarCollapsed ? 'Collapsed (Icons only)' : 'Expanded (Full labels & icons)'}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 w-full sm:w-auto rounded-xl p-1 gap-1 bg-white/[0.04]">
+            <button
+              type="button"
+              onClick={() => updateSidebarCollapsed(false)}
+              className={cn(
+                'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-150 text-center',
+                !sidebarCollapsed
+                  ? 'bg-white/10 text-white shadow-sm font-semibold'
+                  : 'text-white/60 hover:text-white',
+              )}
+            >
+              Expanded
+            </button>
+            <button
+              type="button"
+              onClick={() => updateSidebarCollapsed(true)}
+              className={cn(
+                'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-150 text-center',
+                sidebarCollapsed
+                  ? 'bg-white/10 text-white shadow-sm font-semibold'
+                  : 'text-white/60 hover:text-white',
+              )}
+            >
+              Icons Only
+            </button>
+          </div>
+        </div>
+      </SettingsCard>
+
+      {/* Launcher Theme Selector Card */}
+      <SettingsCard>
+        <SectionHeader
+          title="Game Launcher Layout & Theme"
+          description="Choose the default interface theme for the Otix Game Launcher. All 10 themes read your same game library and session data."
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
+          {LAUNCHER_THEMES.map((t) => {
+            const currentStored = typeof window !== 'undefined' ? localStorage.getItem('otix:launcher-theme') || 'modern' : 'modern'
+            const isSelected = currentStored === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('otix:launcher-theme', t.id)
+                  window.dispatchEvent(new Event('storage'))
+                  // Force state refresh
+                  setSidebarCollapsed((prev) => !prev)
+                  setSidebarCollapsed((prev) => !prev)
+                }}
+                className={cn(
+                  'flex flex-col items-start p-3.5 rounded-xl border transition-all text-left cursor-pointer group',
+                  isSelected
+                    ? 'border-primary bg-primary/10 shadow-[0_0_16px_rgba(var(--primary),0.2)]'
+                    : 'border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20'
+                )}
+              >
+                <div className="flex items-center justify-between w-full mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded bg-white/10 text-white/80">
+                      {t.version}
+                    </span>
+                    <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      BETA
+                    </span>
+                  </div>
+                  {isSelected && (
+                    <span className="w-2 h-2 rounded-full bg-primary shadow-sm" />
+                  )}
+                </div>
+                <span className="text-xs font-bold text-white group-hover:text-primary transition-colors">
+                  {t.name}
+                </span>
+                <span className="text-[10px] text-white/50 font-medium mt-0.5">
+                  {t.subtitle}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </SettingsCard>
     </div>
   )
 }

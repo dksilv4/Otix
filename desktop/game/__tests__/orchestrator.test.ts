@@ -12,7 +12,7 @@ const dbState: {
 };
 
 vi.mock('../../db', () => ({
-  getConnection: () => {
+  getDb: () => {
     let autoIncrementId = 1;
     return {
       exec: (sql: string) => {

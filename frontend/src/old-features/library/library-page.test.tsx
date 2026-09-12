@@ -47,7 +47,6 @@ vi.mock("@/features/auth/auth-provider", () => ({
       twoFactorEnabled: false,
       steamId: "steam-123",
       plexId: "plex-123",
-      spotifyId: "spotify-123",
     },
     isLoading: false,
     isAuthenticated: true,
@@ -85,17 +84,6 @@ vi.mock("./library-queries", () => ({
   useSteamWishlistScan: vi.fn(() => ({ mutate: vi.fn(), isPending: false, data: null, error: null })),
   usePlexLibraryScan: vi.fn(() => ({ mutate: vi.fn(), isPending: false, data: null, error: null })),
   usePlexStatus: vi.fn(() => ({ data: { itemCount: 0, lastScannedAt: null } })),
-  useSpotifyLibraryScan: vi.fn(() => ({ mutate: vi.fn(), isPending: false, data: null, error: null })),
-  useSpotifyStatus: vi.fn(() => ({ data: { trackCount: 0, lastScannedAt: null } })),
-  useSpotifyLikedTracks: vi.fn(() => ({
-    data: { pages: [{ tracks: [], total: 0, nextOffset: null, hasMore: false }] },
-    isLoading: false,
-    isError: false,
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-  })),
-  useSaveSpotifyTrack: vi.fn(() => ({ mutate: vi.fn() })),
   TAB_LABELS: {
     overview: "Overview",
     watchlist: "Watchlist",
@@ -103,13 +91,12 @@ vi.mock("./library-queries", () => ({
     watched: "Watched",
     played: "Played",
     listened: "Listened",
-    spotify: "Spotify",
     steam: "Steam",
     plex: "Plex",
     wishlist: "Wishlist",
     lists: "Lists",
   },
-  LIBRARY_TABS: ["overview", "watchlist", "like", "watched", "played", "listened", "spotify", "steam", "plex", "wishlist", "lists"],
+  LIBRARY_TABS: ["overview", "watchlist", "like", "watched", "played", "listened", "steam", "plex", "wishlist", "lists"],
 }))
 
 vi.mock("@/old-features/list/list-queries", () => ({
@@ -119,13 +106,24 @@ vi.mock("@/old-features/list/list-queries", () => ({
 
 vi.mock("@/lib/player/use-player", () => ({
   usePlayer: vi.fn(() => ({
-    source: 'spotify',
-    playSpotifyQueue: vi.fn(),
-    setSpotifyQueueMetadata: vi.fn(),
+    source: null,
     currentTrack: null,
     isPlaying: false,
-    spotifyIsReady: true,
+    position: 0,
+    duration: 0,
+    volume: 1,
+    error: null,
     togglePlay: vi.fn(),
+    skipNext: vi.fn(),
+    skipPrevious: vi.fn(),
+    seek: vi.fn(),
+    setVolume: vi.fn(),
+    stop: vi.fn(),
+    playPlexTrack: vi.fn(),
+    playPlexAlbum: vi.fn(),
+    skipPlexToIndex: vi.fn(),
+    plexQueue: [],
+    plexPreviousTracks: [],
   })),
 }))
 

@@ -12,13 +12,15 @@ export function registerGameDetectorIPC(
   // Launch game — accepts full LocalGame for tracking
   ipcMain.handle('launcher:launch-game', async (_, game: LocalGame) => {
     try {
-      if (game.exePath.startsWith('steam://')) {
+      if (game.exePath.includes('://')) {
         await shell.openExternal(game.exePath);
-        gameDetector?.startTracking(game); // no PID for Steam, scan will confirm
+        gameDetector?.startTracking(game); // no PID for protocol launches, scan will confirm
         return true;
       } else {
-        const gameDir = path.dirname(game.exePath);
-        const child = spawn(game.exePath, [], {
+        const gameDir = (game as any).workingDirectory || path.dirname(game.exePath);
+        const rawArgs = (game as any).launchArguments;
+        const args = typeof rawArgs === 'string' && rawArgs.trim().length > 0 ? rawArgs.trim().split(/\s+/) : [];
+        const child = spawn(game.exePath, args, {
           cwd: gameDir,
           detached: true,
           stdio: 'ignore',

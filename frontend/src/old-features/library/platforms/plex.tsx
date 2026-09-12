@@ -281,7 +281,7 @@ export function PlexTabContent() {
       )}
 
       <MediaGrid>
-        {items.map((item) => (
+        {(Array.isArray(items) ? items.filter((item) => item && item.id) : []).map((item) => (
           <div key={item.id} className="dk-library-plex__media-item">
             <MediaCard
               id={item.id}
@@ -455,7 +455,7 @@ function PlexOverviewModule({ expanded, onToggle }: { expanded?: boolean; onTogg
             </button>
           </div>
           <div className="dk-library-plex__carousel-track">
-            {recentlyViewed.map((item) => (
+            {(Array.isArray(recentlyViewed) ? recentlyViewed.filter((item) => item && item.id) : []).map((item) => (
               <div key={item.id} className="dk-library-plex__carousel-card">
                 <div className="dk-library-plex__carousel-art">
                   {item.posterUrl ? (

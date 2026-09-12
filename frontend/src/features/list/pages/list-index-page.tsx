@@ -1,24 +1,23 @@
 import { Helmet } from 'react-helmet-async'
-import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@auth/hooks/use-auth'
 import { useUserLists, useCreateList } from '@list/list-queries'
 import { ListCard } from '@list/molecules/list-card'
 import { ListComposer } from '@list/organisms/list-composer'
 import { PlusIcon, LibraryIcon } from 'lucide-react'
-import { useState } from 'react'
 import type { UserListCreate } from '@list/list-queries'
+import { useModal } from '@/lib/modals'
 
 export function ListIndexPage() {
   const { user } = useAuth()
   const { data: lists, isLoading } = useUserLists()
   const createList = useCreateList()
-  const navigate = useNavigate()
-  const [composerOpen, setComposerOpen] = useState(false)
+  const { openModal } = useModal()
 
   const handleCreate = async (data: UserListCreate) => {
     await createList.mutateAsync(data)
-    setComposerOpen(false)
   }
+
+  const openComposer = () => openModal(<ListComposer onSave={handleCreate} />)
 
   return (
     <div id="list-index-page" className="mx-auto w-full max-w-6xl px-6 py-8">
@@ -33,7 +32,7 @@ export function ListIndexPage() {
         </div>
         {user && (
           <button
-            onClick={() => setComposerOpen(true)}
+            onClick={openComposer}
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             <PlusIcon className="h-4 w-4" />
@@ -70,7 +69,7 @@ export function ListIndexPage() {
             Create your first list to start organizing
           </p>
           <button
-            onClick={() => setComposerOpen(true)}
+            onClick={openComposer}
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             <PlusIcon className="h-4 w-4" />
@@ -79,12 +78,6 @@ export function ListIndexPage() {
         </div>
       )}
 
-      <ListComposer
-        open={composerOpen}
-        onClose={() => setComposerOpen(false)}
-        onSave={handleCreate}
-        isSaving={createList.isPending}
-      />
     </div>
   )
 }

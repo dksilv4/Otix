@@ -3,12 +3,12 @@ import { openSync, readSync, closeSync, statSync } from 'fs';
 import * as fs from 'fs/promises';
 import * as https from 'https';
 import * as path from 'path';
-import { getConnection } from '../db';
+import { getDb } from '../db';
 import type Database from 'better-sqlite3';
 
 let __installDb: Database.Database | null = null;
 function installDb(): Database.Database {
-  if (!__installDb) __installDb = getConnection('downloads');
+  if (!__installDb) __installDb = getDb();
   return __installDb;
 }
 import { tmpdir } from 'os';

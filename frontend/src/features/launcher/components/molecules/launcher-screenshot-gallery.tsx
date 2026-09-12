@@ -108,19 +108,31 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, auto
   const pausedRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  if (screenshots.length === 0) return null
+  // Filter out any icon or poster images that might be included in screenshots
+  const validScreenshots = screenshots.filter((s) => {
+    if (!s?.url) return false
+    const lower = s.url.toLowerCase()
+    return (
+      !lower.includes('icon') &&
+      !lower.includes('poster') &&
+      !lower.includes('cover') &&
+      !lower.includes('logo')
+    )
+  })
+
+  if (validScreenshots.length === 0) return null
 
   // Auto-cycle screenshots
   useEffect(() => {
-    if (screenshots.length <= 1 || !autoPlay) return
+    if (validScreenshots.length <= 1 || !autoPlay) return
 
     const startTimer = () => {
       if (timerRef.current) clearInterval(timerRef.current)
       timerRef.current = setInterval(() => {
         if (pausedRef.current) return
         setActiveIdx((prev) => {
-          const next = (prev + 1) % screenshots.length
-          onHoverScreenshot?.(screenshots[next].url)
+          const next = (prev + 1) % validScreenshots.length
+          onHoverScreenshot?.(validScreenshots[next].url)
           return next
         })
       }, 5000)
@@ -128,13 +140,13 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, auto
 
     startTimer()
     // Fire the first one immediately
-    onHoverScreenshot?.(screenshots[0].url)
+    onHoverScreenshot?.(validScreenshots[0].url)
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screenshots.length, autoPlay])
+  }, [validScreenshots.length, autoPlay])
 
   // Scroll active thumbnail into view
   useEffect(() => {
@@ -160,7 +172,7 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, auto
   const handleOpenLightbox = (index: number) => {
     const close = openModal(
       <ScreenshotLightboxModal
-        screenshots={screenshots}
+        screenshots={validScreenshots}
         initialIndex={index}
         onClose={() => close()}
       />
@@ -170,17 +182,18 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, auto
   const handleThumbEnter = (idx: number) => {
     pausedRef.current = true
     setActiveIdx(idx)
-    onHoverScreenshot?.(screenshots[idx].url)
+    onHoverScreenshot?.(validScreenshots[idx]?.url)
   }
 
   const handleThumbLeave = () => {
     pausedRef.current = false
+    onHoverScreenshot?.(null)
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full" onMouseLeave={handleThumbLeave}>
       <div className="flex items-center gap-3">
-        {screenshots.length > 5 && (
+        {validScreenshots.length > 5 && (
           <button
             onClick={() => handleScroll('left')}
             className="shrink-0 w-9 h-[72px] rounded-xl bg-black/40 hover:bg-black/60 active:bg-black/80 backdrop-blur-md border border-white/[0.08] hover:border-white/[0.15] flex items-center justify-center transition-all cursor-pointer shadow-lg"
@@ -193,7 +206,7 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, auto
           ref={scrollRef}
           className="flex-1 flex gap-3 overflow-x-auto scrollbar-none scroll-smooth py-1 snap-x snap-mandatory"
         >
-          {screenshots.map((shot, idx) => (
+          {validScreenshots.map((shot, idx) => (
             <button
               key={`${shot.url}-${idx}`}
               onClick={() => handleOpenLightbox(idx)}
@@ -218,7 +231,7 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, auto
           ))}
         </div>
 
-        {screenshots.length > 5 && (
+        {validScreenshots.length > 5 && (
           <button
             onClick={() => handleScroll('right')}
             className="shrink-0 w-9 h-[72px] rounded-xl bg-black/40 hover:bg-black/60 active:bg-black/80 backdrop-blur-md border border-white/[0.08] hover:border-white/[0.15] flex items-center justify-center transition-all cursor-pointer shadow-lg"

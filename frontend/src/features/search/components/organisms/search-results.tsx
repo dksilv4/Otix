@@ -151,7 +151,6 @@ function renderBestResultItem(item: any) {
       <SearchMusicCardWrapper posterUrl={item.albumPosterUrl}>
         <MediaCard
           id={item.albumId}
-          slug={item.albumSlug}
           mediaType="music"
           title={item.title}
           posterUrl={item.albumPosterUrl}
@@ -167,13 +166,10 @@ function renderBestResultItem(item: any) {
       <SearchMusicCardWrapper posterUrl={item.posterUrl}>
         <MediaCard
           id={item.id}
-          slug={item.slug}
           mediaType="music"
           title={item.title}
           posterUrl={item.posterUrl}
           artistName={item.albumArtistName}
-          subtitle={item.subtitle}
-          year={item.year}
         />
       </SearchMusicCardWrapper>
     )
@@ -200,13 +196,14 @@ function CuratedSectionCarousel({ section }: { section: CuratedSectionConfig }) 
     staleTime: 5 * 60 * 1000,
   })
 
+  const sectionItems = Array.isArray(data?.items) ? data.items.filter(Boolean) : []
   if (isLoading) return null
-  if (!data?.items?.length) return null
+  if (sectionItems.length === 0) return null
 
   return (
     <section className="mb-10">
       <Carousel title={section.title} minItemWidth={250} gap={12} showArrows>
-        {data.items.map((item, i) => (
+        {sectionItems.map((item, i) => (
           <motion.div
             key={item.id}
             initial={{ opacity: 0, y: 12 }}
@@ -222,6 +219,9 @@ function CuratedSectionCarousel({ section }: { section: CuratedSectionConfig }) 
 }
 
 export function SearchResults({ query, type, sort }: SearchResultsProps) {
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const isSentinelInView = useInView(sentinelRef, { margin: '0px 0px 600px 0px' })
+
   const isAllTypes = type === 'all'
   const isPeopleOnly = type === 'person'
   const isUsersOnly = type === 'user'
@@ -237,11 +237,6 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
   })
 
   // ── Infinite search (specific media types) ────────────────────────
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const isSentinelInView = useInView(sentinelRef, {
-    margin: '0px 0px 200px 0px',
-  })
-
   const searchType = isPeopleOnly || isUsersOnly ? undefined : type
 
   const {
@@ -260,17 +255,17 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
     enabled: query.length > 0 && !isAllTypes && !isPeopleOnly && !isUsersOnly,
   })
 
-  // ── People-only search ────────────────────────────────────────────
+  // ── People-only query ─────────────────────────────────────────────
   const {
     data: peopleData,
     isLoading: isPeopleLoading,
     isError: isPeopleError,
   } = useQuery({
-    ...peopleQueries.search(query, 10),
+    ...peopleQueries.search(query, 40),
     enabled: query.length > 0 && isPeopleOnly,
   })
 
-  // ── Users-only search ─────────────────────────────────────────────
+  // ── Users-only query ──────────────────────────────────────────────
   const {
     data: userData,
     isLoading: isUsersLoading,
@@ -281,14 +276,16 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
   })
 
   // ── Derived state (flat infinite mode) ────────────────────────────
-  const items = data?.pages.flatMap((page) => page.items) ?? []
-  const tracks = data?.pages[0]?.tracks ?? []
-  const people = peopleData?.items ?? []
-  const users = userData?.items ?? []
-  const total = data?.pages[0]?.total ?? undefined
+  const items = useMemo(
+    () => data?.pages?.flatMap((page) => (Array.isArray(page?.items) ? page.items.filter(Boolean) : [])) ?? [],
+    [data]
+  )
+  const people = useMemo(() => (Array.isArray(peopleData?.items) ? peopleData.items.filter(Boolean) : []), [peopleData])
+  const users = useMemo(() => (Array.isArray(userData?.items) ? userData.items.filter(Boolean) : []), [userData])
+  const total = data?.pages?.[0]?.total ?? undefined
 
   // Backfill polling for newly discovered media items (infinite mode only)
-  const knownIds = useMemo(() => new Set(items.map((i) => i.id)), [items])
+  const knownIds = useMemo(() => new Set(items.map((i) => i?.id).filter(Boolean)), [items])
   useSearchBackfill(query, type, sort, knownIds, hasNextPage)
 
   // Auto-fetch next page when the sentinel enters the viewport
@@ -311,14 +308,23 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
 
     if (isGroupedError) return <SearchError />
 
+    const bestResults = Array.isArray(g?.bestResults) ? g.bestResults.filter(Boolean) : []
+    const gUsers = Array.isArray(g?.users) ? g.users.filter(Boolean) : []
+    const gPeople = Array.isArray(g?.people) ? g.people.filter(Boolean) : []
+    const gTracks = Array.isArray(g?.tracks) ? g.tracks.filter(Boolean) : []
+    const gMovies = Array.isArray(g?.movies) ? g.movies.filter(Boolean) : []
+    const gShows = Array.isArray(g?.shows) ? g.shows.filter(Boolean) : []
+    const gGames = Array.isArray(g?.games) ? g.games.filter(Boolean) : []
+    const gMusic = Array.isArray(g?.music) ? g.music.filter(Boolean) : []
+
     const hasResults = !!(
-      g?.users?.length ||
-      g?.people?.length ||
-      g?.tracks?.length ||
-      g?.movies?.length ||
-      g?.shows?.length ||
-      g?.games?.length ||
-      g?.music?.length
+      gUsers.length ||
+      gPeople.length ||
+      gTracks.length ||
+      gMovies.length ||
+      gShows.length ||
+      gGames.length ||
+      gMusic.length
     )
 
     if (!hasResults) return <SearchEmpty query={query} type={type} />
@@ -342,7 +348,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         )}
 
         {/* Best Results */}
-        {g?.bestResults && g.bestResults.length > 0 && (
+        {bestResults.length > 0 && (
           <section className="mb-10">
             <Carousel
               title="Best Results"
@@ -350,7 +356,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
               gap={12}
               showArrows
             >
-              {g.bestResults.map((item, i) => (
+              {bestResults.map((item, i) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -365,18 +371,18 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         )}
 
         {/* Users */}
-        {g?.users && g.users.length > 0 && (
+        {gUsers.length > 0 && (
           <section className="mb-10">
             <Carousel
               title="Users"
-              subtitle={`· ${g.usersCount.toLocaleString()} result${g.usersCount !== 1 ? 's' : ''}`}
+              subtitle={`· ${(g?.usersCount ?? gUsers.length).toLocaleString()} result${(g?.usersCount ?? gUsers.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'user', sort }}
               minItemWidth={160}
               gap={12}
               showArrows
             >
-              {g.users.map((user, i) => (
+              {gUsers.map((user, i) => (
                 <motion.div
                   key={user.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -420,18 +426,18 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         )}
 
         {/* People / Artists */}
-        {g?.people && g.people.length > 0 && (
+        {gPeople.length > 0 && (
           <section className="mb-10">
             <Carousel
               title="Artists"
-              subtitle={`· ${g.peopleCount.toLocaleString()} result${g.peopleCount !== 1 ? 's' : ''}`}
+              subtitle={`· ${(g?.peopleCount ?? gPeople.length).toLocaleString()} result${(g?.peopleCount ?? gPeople.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'person', sort }}
               minItemWidth={140}
               gap={12}
               showArrows
             >
-              {g.people.map((person, i) => (
+              {gPeople.map((person, i) => (
                 <motion.div
                   key={person.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -452,18 +458,18 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         )}
 
         {/* Tracks */}
-        {g?.tracks && g.tracks.length > 0 && (
+        {gTracks.length > 0 && (
           <section className="mb-10">
             <Carousel
               title="Tracks"
-              subtitle={`· ${g.tracksCount.toLocaleString()} result${g.tracksCount !== 1 ? 's' : ''}`}
+              subtitle={`· ${(g?.tracksCount ?? gTracks.length).toLocaleString()} result${(g?.tracksCount ?? gTracks.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, sort }}
               minItemWidth={250}
               gap={12}
               showArrows
             >
-              {g.tracks.map((track, i) => (
+              {gTracks.map((track, i) => (
                 <motion.div
                   key={track.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -473,7 +479,6 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
                   <SearchMusicCardWrapper posterUrl={track.albumPosterUrl}>
                     <MediaCard
                       id={track.albumId}
-                      slug={track.albumSlug}
                       mediaType="music"
                       title={track.title}
                       posterUrl={track.albumPosterUrl}
@@ -488,18 +493,18 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         )}
 
         {/* Movies */}
-        {g?.movies && g.movies.length > 0 && (
+        {gMovies.length > 0 && (
           <section className="mb-10">
             <Carousel
               title="Movies"
-              subtitle={`· ${g.moviesCount.toLocaleString()} result${g.moviesCount !== 1 ? 's' : ''}`}
+              subtitle={`· ${(g?.moviesCount ?? gMovies.length).toLocaleString()} result${(g?.moviesCount ?? gMovies.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'movie', sort }}
               minItemWidth={250}
               gap={12}
               showArrows
             >
-              {g.movies.map((item, i) => (
+              {gMovies.map((item, i) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -514,18 +519,18 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         )}
 
         {/* Shows */}
-        {g?.shows && g.shows.length > 0 && (
+        {gShows.length > 0 && (
           <section className="mb-10">
             <Carousel
               title="Shows"
-              subtitle={`· ${g.showsCount.toLocaleString()} result${g.showsCount !== 1 ? 's' : ''}`}
+              subtitle={`· ${(g?.showsCount ?? gShows.length).toLocaleString()} result${(g?.showsCount ?? gShows.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'show', sort }}
               minItemWidth={250}
               gap={12}
               showArrows
             >
-              {g.shows.map((item, i) => (
+              {gShows.map((item, i) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -540,18 +545,18 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         )}
 
         {/* Games */}
-        {g?.games && g.games.length > 0 && (
+        {gGames.length > 0 && (
           <section className="mb-10">
             <Carousel
               title="Games"
-              subtitle={`· ${g.gamesCount.toLocaleString()} result${g.gamesCount !== 1 ? 's' : ''}`}
+              subtitle={`· ${(g?.gamesCount ?? gGames.length).toLocaleString()} result${(g?.gamesCount ?? gGames.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'game', sort }}
               minItemWidth={250}
               gap={12}
               showArrows
             >
-              {g.games.map((item, i) => (
+              {gGames.map((item, i) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -566,18 +571,18 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         )}
 
         {/* Music */}
-        {g?.music && g.music.length > 0 && (
+        {gMusic.length > 0 && (
           <section className="mb-10">
             <Carousel
               title="Music"
-              subtitle={`· ${g.musicCount.toLocaleString()} result${g.musicCount !== 1 ? 's' : ''}`}
+              subtitle={`· ${(g?.musicCount ?? gMusic.length).toLocaleString()} result${(g?.musicCount ?? gMusic.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'music', sort }}
               minItemWidth={250}
               gap={12}
               showArrows
             >
-              {g.music.map((item, i) => (
+              {gMusic.map((item, i) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 12 }}
@@ -587,13 +592,10 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
                   <SearchMusicCardWrapper posterUrl={item.posterUrl}>
                     <MediaCard
                       id={item.id}
-                      slug={item.slug}
                       mediaType="music"
                       title={item.title}
                       posterUrl={item.posterUrl}
                       artistName={item.albumArtistName}
-                      subtitle={item.subtitle}
-                      year={item.year}
                     />
                   </SearchMusicCardWrapper>
                 </motion.div>
@@ -617,7 +619,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
           {people.length.toLocaleString()} result{people.length !== 1 ? 's' : ''}
         </p>
         <MediaGrid>
-          {people.map((person) => (
+          {people.filter((person) => person && person.id).map((person) => (
             <PeopleCard
               key={person.id}
               id={person.id}
@@ -643,7 +645,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
           {users.length.toLocaleString()} result{users.length !== 1 ? 's' : ''}
         </p>
         <MediaGrid>
-          {users.map((user) => (
+          {users.filter((user) => user && user.id).map((user) => (
             <Link
               key={user.id}
               to="/u/$username"
@@ -702,7 +704,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
       {/* Media items grid */}
       {items.length > 0 && (
         <MediaGrid className="px-4 lg:px-8">
-          {items.map((item, i) => (
+          {items.filter((item) => item && item.id).map((item, i) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, y: 12 }}
@@ -713,13 +715,10 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
                 <SearchMusicCardWrapper posterUrl={item.posterUrl}>
                   <MediaCard
                     id={item.id}
-                    slug={item.slug}
                     mediaType="music"
                     title={item.title}
                     posterUrl={item.posterUrl}
                     artistName={item.albumArtistName}
-                    subtitle={item.subtitle}
-                    year={item.year}
                   />
                 </SearchMusicCardWrapper>
               ) : <DiscoverMediaCard item={item} />}

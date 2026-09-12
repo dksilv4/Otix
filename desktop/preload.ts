@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   openPath: (filePath: string) => ipcRenderer.invoke('shell:open-path', filePath),
   ping: () => ipcRenderer.invoke('ping'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  openSessionWindow: (url: string) => ipcRenderer.invoke('shell:open-session-window', url),
   selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
 
   // ── Deep link (OAuth return) ──
@@ -226,6 +227,18 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   saveResolvePathPatterns: (patterns: string[]) =>
     ipcRenderer.invoke('save:resolve-path-patterns', patterns),
 
+  // ── Auto Updater ──
+  updater: {
+    checkForUpdates: () => ipcRenderer.invoke('updater:check-for-updates'),
+    installUpdate: () => ipcRenderer.invoke('updater:install-update'),
+    getVersion: () => ipcRenderer.invoke('updater:get-version'),
+    onStatusChanged: (callback: (state: any) => void) => {
+      const handler = (_event: any, state: any) => callback(state);
+      ipcRenderer.on('updater:status-changed', handler);
+      return () => ipcRenderer.removeListener('updater:status-changed', handler);
+    },
+  },
+
   // ── Storage ──
   getDiskSpace: () => ipcRenderer.invoke('get-disk-space'),
 
@@ -245,9 +258,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   plugin: {
     list: () => ipcRenderer.invoke('plugin:list'),
     get: (id: string) => ipcRenderer.invoke('plugin:get', id),
-    install: (repoUrl: string, pluginPath?: string) => ipcRenderer.invoke('plugin:install', repoUrl, pluginPath),
     uninstall: (id: string) => ipcRenderer.invoke('plugin:uninstall', id),
-    update: (id: string) => ipcRenderer.invoke('plugin:update', id),
     enable: (id: string) => ipcRenderer.invoke('plugin:enable', id),
     disable: (id: string) => ipcRenderer.invoke('plugin:disable', id),
     reload: (id: string) => ipcRenderer.invoke('plugin:reload', id),
@@ -261,6 +272,21 @@ contextBridge.exposeInMainWorld('desktopAPI', {
       ipcRenderer.on('plugin:permission-request', handler);
       return () => ipcRenderer.removeListener('plugin:permission-request', handler);
     },
+    onConfigChanged: (callback: (payload: { pluginId: string; key?: string; config: Record<string, unknown> }) => void) => {
+      const handler = (_event: any, payload: any) => callback(payload);
+      ipcRenderer.on('plugin:config-changed', handler);
+      return () => ipcRenderer.removeListener('plugin:config-changed', handler);
+    },
+    onStatusChanged: (callback: (payload: { pluginId: string; status: Record<string, unknown> }) => void) => {
+      const handler = (_event: any, payload: any) => callback(payload);
+      ipcRenderer.on('plugin:status-changed', handler);
+      return () => ipcRenderer.removeListener('plugin:status-changed', handler);
+    },
+    onSlotsChanged: (callback: (payload: { pluginId?: string }) => void) => {
+      const handler = (_event: any, payload: any) => callback(payload);
+      ipcRenderer.on('plugin:slots-changed', handler);
+      return () => ipcRenderer.removeListener('plugin:slots-changed', handler);
+    },
     setAuthToken: (token: string) => ipcRenderer.invoke('plugin:set-auth-token', token),
     getApiBaseUrl: () => ipcRenderer.invoke('plugin:get-api-base-url'),
     setApiBaseUrl: (url: string) => ipcRenderer.invoke('plugin:set-api-base-url', url),
@@ -269,14 +295,11 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     callData: (pluginId: string, method: string, ...args: unknown[]) =>
       ipcRenderer.invoke('plugin:call-data', pluginId, method, ...args),
     getStatus: (pluginId: string) => ipcRenderer.invoke('plugin:get-status', pluginId),
-    fetchMarketplace: (registryUrl?: string) => ipcRenderer.invoke('plugin:fetch-marketplace', registryUrl),
-    getRepos: () => ipcRenderer.invoke('plugin:get-repos'),
-    addRepo: (url: string, label?: string) => ipcRenderer.invoke('plugin:add-repo', url, label),
-    removeRepo: (url: string) => ipcRenderer.invoke('plugin:remove-repo', url),
     openOAuthWindow: (url: string, redirectPattern: string, options?: { tokenExtraction?: { type: string; key?: string } }) => ipcRenderer.invoke('plugin:open-oauth-window', url, redirectPattern, options),
     getSlotData: (location: string, context?: Record<string, unknown>) => ipcRenderer.invoke('plugin:get-slot-data', location, context),
     getPageSlotData: (pageId: string) => ipcRenderer.invoke('plugin:get-page-slot-data', pageId),
     getPluginTabs: () => ipcRenderer.invoke('plugin:get-plugin-tabs'),
+    getActivity: () => ipcRenderer.invoke('plugin:get-activity'),
     getFreeGames: () => ipcRenderer.invoke('free-games:get-all'),
     refreshFreeGames: () => ipcRenderer.invoke('free-games:refresh'),
   },

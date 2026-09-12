@@ -21,7 +21,7 @@ export function TabBar({ tabs, activeTab, onTabClick }: TabBarProps) {
   return (
     <div
       ref={containerRef}
-      className="relative flex gap-1.5 overflow-x-auto w-full pb-1 mb-6 px-5 scrollbar-none snap-x snap-mandatory scroll-smooth"
+      className="relative flex gap-1.5 overflow-x-auto w-full pb-1 mb-6 px-0 scrollbar-none snap-x snap-mandatory scroll-smooth"
     >
       {tabs.map((tab) => (
         <button

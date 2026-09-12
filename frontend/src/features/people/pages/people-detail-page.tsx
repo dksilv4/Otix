@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router'
+import { useParams, useSearch, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { UserRoundPlus, UserRoundCheck, Star } from 'lucide-react'
 import { Image } from '@ui/atoms/image'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { useAuth } from '@auth/hooks/use-auth'
-import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { peopleQueries, useFollowPerson, useUnfollowPerson, useRatePerson, useUnratePerson } from '@people/queries/people-queries'
 import { formatDate, getCreditsStats } from '@people/utils'
 import { PeopleTimeline } from '@people/components/organisms/people-timeline'
@@ -77,12 +76,10 @@ export function PeopleDetailPage() {
   const navigate = useNavigate()
   const personId = params.personId || ''
   const { isAuthenticated } = useAuth()
-  const { isDesktop } = useDesktopPlatform()
 
-  const ptClass = isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'
+  const ptClass = 'pt-4 sm:pt-6'
 
   const { data: person, isLoading, isError } = useQuery(peopleQueries.detail(personId))
-  const { data: relatedArtists } = useQuery(peopleQueries.related(personId))
   const follow = useFollowPerson(personId)
   const unfollow = useUnfollowPerson(personId)
   const rate = useRatePerson(personId)
@@ -358,61 +355,6 @@ export function PeopleDetailPage() {
         </div>
       </section>
 
-      {/* ── Related artists ── */}
-      {relatedArtists && relatedArtists.length > 0 && (
-        <section>
-          <h2 className="mb-4 text-xl font-extrabold text-white tracking-tight">Fans Also Like</h2>
-          <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x scroll-smooth">
-            {relatedArtists.map((artist) => (
-              <div key={artist.spotify_artist_id || artist.name} className="w-28 sm:w-32 shrink-0 text-center snap-start">
-                {artist.id ? (
-                  <Link
-                    to="/person/$personId"
-                    params={{ personId: artist.id }}
-                    className="group/artist block cursor-pointer"
-                  >
-                    <div className="aspect-square w-full overflow-hidden rounded-full ring-2 ring-white/10 group-hover/artist:ring-primary/45 shadow-md group-hover/artist:shadow-primary/10 transition-all duration-300">
-                      {artist.image_url ? (
-                        <img
-                          src={artist.image_url}
-                          alt={artist.name}
-                          className="h-full w-full object-cover group-hover/artist:scale-110 transition-transform duration-500"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-2xl font-black bg-white/5 text-white/30 group-hover/artist:bg-white/10 transition-colors">
-                          {artist.name[0]}
-                        </div>
-                      )}
-                    </div>
-                    <p className="mt-2.5 truncate text-xs font-semibold text-white/70 group-hover/artist:text-primary transition-colors">
-                      {artist.name}
-                    </p>
-                  </Link>
-                ) : (
-                  <div className="group/artist block opacity-75">
-                    <div className="aspect-square w-full overflow-hidden rounded-full ring-2 ring-white/5 shadow-md">
-                      {artist.image_url ? (
-                        <img
-                          src={artist.image_url}
-                          alt={artist.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-2xl font-black bg-white/5 text-white/30">
-                          {artist.name[0]}
-                        </div>
-                      )}
-                    </div>
-                    <p className="mt-2.5 truncate text-xs font-medium text-white/50">
-                      {artist.name}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   )
 }

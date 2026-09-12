@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { Search, Upload, Loader2, AlertCircle, Heart, Download } from 'lucide-react'
 import { BlueprintCard } from '../molecules/media-game-blueprint-card'
 
+interface BlueprintPluginAPI {
+  callData: (pluginId: string, method: string, payload?: Record<string, unknown>) => Promise<any>
+}
+
 interface CommunityBlueprint {
   id: string
   author_name: string
@@ -31,7 +35,7 @@ export function BlueprintCommunity({ pluginId, onViewDetail }: Props) {
   const [showUpload, setShowUpload] = useState(false)
   const [vaultBlueprints, setVaultBlueprints] = useState<any[]>([])
 
-  const desktopAPI = (window as unknown as Record<string, unknown>).desktopAPI as Record<string, unknown> | undefined
+  const desktopAPI = (window as unknown as { desktopAPI?: { plugin?: BlueprintPluginAPI } }).desktopAPI
 
   const loadCommunity = useCallback(async () => {
     if (!desktopAPI?.plugin?.callData) return

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 import type { ContextMenuItemDef, ContextMenuPosition, ContextMenuMediaType, ContextMenuState, ContextMenuActions } from './types'
 
 interface ContextMenuContextValue extends ContextMenuState, ContextMenuActions {}
@@ -14,7 +14,7 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
 
   const open = useCallback<ContextMenuActions['open']>((e, items, options) => {
     e.preventDefault()
-    const point = 'touches' in e
+    const point = e.touches?.length
       ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
       : { x: e.clientX, y: e.clientY }
     setPosition(point)

@@ -1,4 +1,4 @@
-import type { Channel, NotificationEvent } from '../types'
+import type { Channel } from '../types'
 
 export function createPushChannel(): Channel {
   return {

@@ -1,0 +1,53 @@
+# Local test database — pgvector for running tests without hitting Supabase
+# Usage: docker compose -f docker-compose.test.yml up -d
+#        DATABASE_URL=postgresql+asyncpg://otix:password@localhost:5433/otix_test pytest
+
+services:
+  db_test:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: otix
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: otix_test
+    command: >
+      postgres
+      -c shared_preload_libraries=vector
+      -c max_connections=50
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=5242kB
+      -c huge_pages=off
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otix -d otix_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Local Redis for test Celery (optional — tests can use Upstash too)
+  redis_test:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_test:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+volumes:
+  pgdata_test:
+  redis_test:

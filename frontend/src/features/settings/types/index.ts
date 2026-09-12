@@ -10,4 +10,4 @@ export type {
   SlotContribution,
   SlotRenderResult,
   SlotWidget,
-} from './plugins'
+} from '@/features/plugins/types'

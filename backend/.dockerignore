@@ -1,8 +1,27 @@
-__pycache__
-*.pyc
-.venv
+# Keep the build context lean. Deps install from uv.lock; source is baked via
+# `COPY . /app` for image-only (prod) runs and hidden by the dev bind mount.
+# Everything below is dev/runtime-local state that must never reach an image.
+.venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+staticfiles/
+/media/
+/uploads/
+/celerybeat-schedule/
+*.sqlite3
+*.db
 .env
-.git
-.pytest_cache
-.ruff_cache
-.mypy_cache
+/Dockerfile
+/.dockerignore
+/README.md
+/ARCHITECTURE.md
+/.gitignore
+/plugin-root/
+/deploy/
+/bundled_plugins/

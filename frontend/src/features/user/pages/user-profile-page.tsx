@@ -28,7 +28,6 @@ import { StreakDisplay } from '@/old-features/user/molecules/streak-display'
 import { computeGamification, getLevelTier, pickGradient, formatMemberSince } from '@user/utils'
 import { XPProgressRing } from '@user/components/atoms/user-xp-progress-ring'
 import { UserProfileSkeleton } from '@user/components/organisms/user-profile-skeleton'
-import { useDesktopPlatform } from '@/lib/desktop/platform'
 
 // ── Page ──
 
@@ -36,7 +35,6 @@ export function UserProfilePage() {
   const { username } = useParams({ from: '/u/$username' })
   const { user: currentUser } = useAuth()
   const queryClient = useQueryClient()
-  const { isDesktop } = useDesktopPlatform()
 
   const profileQuery = useQuery(userQueries.profile(username))
   const reviewsQuery = useQuery(userQueries.reviews(username))
@@ -64,7 +62,7 @@ export function UserProfilePage() {
   // Loading state
   if (profileQuery.isLoading) {
     return (
-      <div className={`w-full h-screen overflow-hidden flex flex-col ${isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'}`}>
+      <div className="w-full flex flex-col">
         <div className="mx-4">
           <UserProfileSkeleton />
         </div>
@@ -75,7 +73,7 @@ export function UserProfilePage() {
   // Error / missing
   if (profileQuery.isError || !profile) {
     return (
-      <div className={`w-full h-screen overflow-hidden flex flex-col ${isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'}`}>
+      <div className="w-full flex flex-col">
         <div className="flex items-center justify-center min-h-[60vh] px-4">
           <div className="text-center max-w-md">
             <h1 className="text-2xl font-bold mb-2">User not found</h1>
@@ -105,7 +103,7 @@ export function UserProfilePage() {
   ].join(', ')
 
   return (
-    <div id="user-profile-page" className={`w-full h-screen overflow-y-auto flex flex-col ${isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'}`}>
+    <div id="user-profile-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12 w-full flex flex-col">
       <Helmet>
         <title>{`${profile.username} - Otix`}</title>
         <meta
@@ -120,7 +118,7 @@ export function UserProfilePage() {
 
       {/* ── Hero ── */}
       <div
-        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mx-4 min-h-[380px] transition-shadow duration-300 hover:shadow-[var(--hero-shadow-hover)]"
+        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mx-0 min-h-[380px] transition-shadow duration-300 hover:shadow-[var(--hero-shadow-hover)]"
         style={{
           boxShadow: heroShadow,
           ['--hero-shadow-hover' as string]: heroShadowHover,

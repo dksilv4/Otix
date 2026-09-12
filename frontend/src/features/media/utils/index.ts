@@ -1,4 +1,4 @@
-import type { MediaItemDetail, SeasonOut } from './queries/media-queries'
+import type { MediaItemDetail, SeasonOut } from '../queries/media-queries'
 
 // ── Type guards ──
 
@@ -27,9 +27,10 @@ export function mediaTypeFromParam(param: string): 'movie' | 'show' | 'game' | '
 
 // ── General Formatters ──
 
-export function formatMusicCreditsLine(credits: MediaItemDetail['credits']): string | null {
-  const primary = credits.filter((c) => c.role === 'primary').map((c) => c.person.name)
-  const featured = credits.filter((c) => c.role === 'featured').map((c) => c.person.name)
+export function formatMusicCreditsLine(credits?: MediaItemDetail['credits'] | null): string | null {
+  const all = Array.isArray(credits) ? credits : []
+  const primary = all.filter((c) => c && c.role === 'primary' && c.person?.name).map((c) => c.person!.name)
+  const featured = all.filter((c) => c && c.role === 'featured' && c.person?.name).map((c) => c.person!.name)
   if (primary.length === 0 && featured.length === 0) return null
   const head = primary.join(', ')
   const tail = featured.length ? `feat. ${featured.join(', ')}` : ''
@@ -160,23 +161,65 @@ interface CreditItem {
   sortOrder: number
 }
 
-export function groupByRole(credits: CreditItem[]) {
-  const valid = credits.filter((c) => c.person != null)
+export function groupByRole(credits?: CreditItem[] | null) {
+  const list = Array.isArray(credits) ? credits : []
+  const valid = list.filter((c) => c != null && c.person != null)
   const cast = valid.filter((c) => c.role === 'cast')
   const directors = valid.filter((c) => c.role === 'director')
-  const writers = credits.filter((c) => c.role === 'writer')
-  const producers = credits.filter((c) => c.role === 'producer')
-  const composers = credits.filter((c) => c.role === 'composer')
-  const crew = credits.filter(
+  const writers = valid.filter((c) => c.role === 'writer')
+  const producers = valid.filter((c) => c.role === 'producer')
+  const composers = valid.filter((c) => c.role === 'composer')
+  const crew = valid.filter(
     (c) => !['cast', 'director', 'writer', 'producer', 'composer'].includes(c.role),
   )
   return { cast, directors, writers, producers, composers, crew }
 }
 
 
-export function getPreferredSeason(seasons: SeasonOut[]): number {
-  if (seasons.length === 0) return 0
-  return seasons[seasons.length - 1].seasonNumber
+export function getPreferredSeason(seasons?: SeasonOut[] | null): number {
+  if (!Array.isArray(seasons) || seasons.length === 0) return 0
+  return seasons[seasons.length - 1]?.seasonNumber ?? 0
+}
+
+// ── Trailers / Videos ──
+
+export interface MediaVideoLike {
+  videoType?: string | null
+  url: string
+  providerId?: string | null
+}
+
+const TRAILER_PRIORITY = ['Trailer', 'Teaser']
+
+export function youtubeIdFromUrl(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
+      if (u.pathname === '/watch') return u.searchParams.get('v')
+      const id = u.pathname.split('/').filter(Boolean).pop()
+      return id || null
+    }
+  } catch {
+    /* ignore malformed urls */
+  }
+  return null
+}
+
+export function trailerVideos(detail: { videos?: MediaVideoLike[] }) {
+  return (detail.videos || [])
+    .map((v) => ({ ...v, youtubeId: youtubeIdFromUrl(v.url) }))
+    .filter((v): v is MediaVideoLike & { youtubeId: string } =>
+      v.youtubeId != null && TRAILER_PRIORITY.includes(v.videoType || ''),
+    )
+    .sort((a, b) => {
+      const ra = TRAILER_PRIORITY.indexOf(a.videoType || '')
+      const rb = TRAILER_PRIORITY.indexOf(b.videoType || '')
+      return ra - rb
+    })
+}
+
+export function primaryTrailer(detail: { videos?: MediaVideoLike[] }) {
+  return trailerVideos(detail)[0] ?? null
 }
 
 export function scoreToColor(score: number, maxScore: number = 10): string {

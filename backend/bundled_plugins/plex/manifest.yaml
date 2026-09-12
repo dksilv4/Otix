@@ -1,0 +1,21 @@
+name: plex
+version: 1.0.0
+description: "Reference Plex data-source plugin: reads a server's libraries through the Plex HTTP API."
+author: Otix
+icon: plex
+stage: stable
+permissions:
+  - network:external
+entry:
+  main: plugin.py
+config:
+  serverUrl:
+    type: serverUrl
+    label: Plex server
+    placeholder: "http://192.168.1.10:32400"
+    required: true
+    help: Base URL of your Plex Media Server (no trailing slash).
+  token:
+    type: secret
+    label: Plex token
+    help: Optional X-Plex-Token; most libraries require it. Leave blank for servers with LAN auth disabled.

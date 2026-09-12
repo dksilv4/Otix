@@ -31,7 +31,7 @@ export function ActivityModuleNotifications({ onClose }: { onClose: () => void }
     refetchInterval: 30000,
   })
 
-  const notifications = listData?.items ?? []
+  const notifications: Notification[] = Array.isArray(listData?.items) ? listData.items.filter((n) => n && n.id) : []
   const unreadCount = unreadData?.count ?? 0
 
   const handleNotifAction = async (notification: Notification, action: 'accept' | 'reject') => {

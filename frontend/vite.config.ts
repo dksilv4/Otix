@@ -15,6 +15,7 @@ export default defineConfig({
       '@auth': path.resolve(__dirname, 'src/features/auth'),
       '@activity': path.resolve(__dirname, 'src/features/activity'),
       '@media': path.resolve(__dirname, 'src/features/media'),
+      '@calendar': path.resolve(__dirname, 'src/features/calendar'),
       '@discover': path.resolve(__dirname, 'src/features/discover'),
       '@launcher': path.resolve(__dirname, 'src/features/launcher'),
       '@navigation': path.resolve(__dirname, 'src/features/navigation'),
@@ -24,6 +25,7 @@ export default defineConfig({
       '@library': path.resolve(__dirname, 'src/features/library'),
       '@list': path.resolve(__dirname, 'src/old-features/list'),
       '@people': path.resolve(__dirname, 'src/features/people'),
+      '@company': path.resolve(__dirname, 'src/features/company'),
       '@user': path.resolve(__dirname, 'src/features/user'),
       '@desktop': path.resolve(__dirname, '../desktop'),
     },
@@ -39,6 +41,12 @@ export default defineConfig({
       '/media': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
+        bypass: (req) => {
+          // Browser navigations send Accept: text/html — serve index.html so the SPA handles routing
+          if (req.headers.accept?.includes('text/html')) {
+            return '/index.html'
+          }
+        },
       },
     },
   },
@@ -58,5 +66,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test-setup.ts',
     css: true,
+    exclude: ['node_modules/**', 'e2e/**', 'dist/**'],
   },
 })

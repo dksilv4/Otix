@@ -6,8 +6,7 @@ import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { steamPlatform } from "./steam"
 import { plexPlatform } from "./plex"
-import { spotifyPlatform } from "./spotify"
-import { useLibraryTab, useSteamLibraryScan, useSteamStatus, useUnmatchedSteamGames, usePlexStatus, useSpotifyStatus, useSpotifyLibraryScan, useSpotifyLikedTracks, streamPlexSync } from "../library-queries"
+import { useLibraryTab, useSteamLibraryScan, useSteamStatus, useUnmatchedSteamGames, usePlexStatus, streamPlexSync } from "../library-queries"
 
 
 // Setup query client
@@ -52,25 +51,30 @@ vi.mock("../library-queries", () => ({
   usePlexStatus: vi.fn(),
   usePlexLibraryScan: vi.fn(),
   streamPlexSync: vi.fn().mockResolvedValue({ total: 0, matched: 0, seeded: 0 }),
-  useSpotifyStatus: vi.fn(),
-  useSpotifyLibraryScan: vi.fn(),
-  useSpotifyLikedTracks: vi.fn(),
-  useSaveSpotifyTrack: vi.fn(() => ({ mutate: vi.fn() })),
 }))
 
-// Mock Spotify Player Provider
-const mockPlayWithQueue = vi.fn()
-const mockSetQueueMetadata = vi.fn()
+// Mock Player Provider
 const mockTogglePlay = vi.fn()
 vi.mock("@/lib/player/use-player", () => ({
   usePlayer: vi.fn(() => ({
-    source: 'spotify',
-	    playSpotifyQueue: mockPlayWithQueue,
-    setSpotifyQueueMetadata: mockSetQueueMetadata,
+    source: null,
     currentTrack: null,
     isPlaying: false,
-		    spotifyIsReady: true,
+    position: 0,
+    duration: 0,
+    volume: 1,
+    error: null,
     togglePlay: mockTogglePlay,
+    skipNext: vi.fn(),
+    skipPrevious: vi.fn(),
+    seek: vi.fn(),
+    setVolume: vi.fn(),
+    stop: vi.fn(),
+    playPlexTrack: vi.fn(),
+    playPlexAlbum: vi.fn(),
+    skipPlexToIndex: vi.fn(),
+    plexQueue: [],
+    plexPreviousTracks: [],
   })),
 }))
 
@@ -221,87 +225,6 @@ describe("Platforms Component Suite", () => {
       const resyncBtn = screen.getByRole("button", { name: /resync/i })
       await userEvent.click(resyncBtn)
       expect(streamPlexSync).toHaveBeenCalled()
-    })
-  })
-
-  describe("Spotify Platform", () => {
-    it("renders spotify platform definition basics", () => {
-      expect(spotifyPlatform.id).toBe("spotify")
-      expect(spotifyPlatform.label).toBe("Spotify")
-      expect(spotifyPlatform.requiresConnection({ spotifyId: "yes" } as any)).toBe(true)
-    })
-
-    it("renders OverviewModule correctly", () => {
-      vi.mocked(useLibraryTab).mockReturnValue({
-        data: { pages: [{ items: [{ id: "album-1", title: "Discovery", mediaType: "music", posterUrl: "abc" }] }] },
-        isLoading: false,
-      } as any)
-      vi.mocked(useSpotifyStatus).mockReturnValue({
-        data: { trackCount: 10, lastScannedAt: null },
-      } as any)
-      vi.mocked(useSpotifyLikedTracks).mockReturnValue({
-        data: { pages: [{ tracks: [], total: 42, nextOffset: null, hasMore: false }] },
-      } as any)
-
-      const Dashboard = spotifyPlatform.OverviewModule
-      render(<Dashboard expanded={true} />)
-      expect(screen.getByText("Liked Songs")).toBeInTheDocument()
-      expect(screen.getByText("42 tracks")).toBeInTheDocument()
-    })
-
-    it("renders Content in overview mode correctly", () => {
-      vi.mocked(useLibraryTab).mockReturnValue({
-        data: { pages: [{ items: [{ id: "album-1", title: "Discovery", mediaType: "music", posterUrl: "abc" }] }] },
-        isLoading: false,
-      } as any)
-      vi.mocked(useSpotifyLikedTracks).mockReturnValue({
-        data: { pages: [{ tracks: [], total: 10, nextOffset: null, hasMore: false }] },
-      } as any)
-      vi.mocked(useSpotifyStatus).mockReturnValue({
-        data: { trackCount: 10 },
-      } as any)
-      vi.mocked(useSpotifyLibraryScan).mockReturnValue({
-        mutate: vi.fn(),
-        isPending: false,
-      } as any)
-
-      const Content = spotifyPlatform.Content
-      render(<Content />)
-
-      expect(screen.getByText("Discovery")).toBeInTheDocument()
-      expect(screen.getAllByText("Liked Songs")[0]).toBeInTheDocument()
-      expect(screen.getByText("10 tracks")).toBeInTheDocument()
-    })
-
-    it("renders Content in liked mode correctly and triggers play", async () => {
-      mockSearch.mockReturnValue({ view: "liked" })
-
-      vi.mocked(useSpotifyLikedTracks).mockReturnValue({
-        data: { pages: [{ tracks: [{ id: "track-1", name: "One More Time", artist: "Daft Punk", durationMs: 320000, uri: "spotify:track:1" }], total: 1 }], isLoading: false },
-        isLoading: false,
-        isError: false,
-        hasNextPage: false,
-        isFetchingNextPage: false,
-      } as any)
-
-      vi.mocked(useSpotifyStatus).mockReturnValue({
-        data: { trackCount: 1 },
-      } as any)
-      vi.mocked(useSpotifyLibraryScan).mockReturnValue({
-        mutate: vi.fn(),
-        isPending: false,
-      } as any)
-
-      const Content = spotifyPlatform.Content
-      render(<Content />)
-
-      expect(screen.getByText("One More Time")).toBeInTheDocument()
-      expect(screen.getByText("Daft Punk")).toBeInTheDocument()
-
-      const trackRow = screen.getByRole("button", { name: /1 One More Time/i })
-      await userEvent.click(trackRow)
-      expect(mockSetQueueMetadata).toHaveBeenCalled()
-      expect(mockPlayWithQueue).toHaveBeenCalledWith(["spotify:track:1"])
     })
   })
 })

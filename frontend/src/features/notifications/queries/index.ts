@@ -1,18 +1,30 @@
 import { queryOptions } from '@tanstack/react-query'
-import { cam } from '@/lib/api/camel-client'
+import { apiClient } from '@/lib/api/client'
+import type { NotificationListResponse, UnreadCount } from '@/features/notifications/types'
 
-// ponytail: cam.GET infers response type from the URL AND converts snake_case → camelCase.
-// No manual type params needed. Properties like next_cursor become nextCursor automatically.
+// apiClient handles 401 → token refresh and snake_case → camelCase conversion.
 
 export const notificationQueries = {
   list: (cursor?: string, limit = 20) =>
     queryOptions({
       queryKey: ['notifications', 'list', { cursor, limit }],
-      queryFn: async () => {
-        const { data } = await cam.GET('/api/notifications', {
-          params: { query: { limit: limit.toString(), ...(cursor ? { cursor } : {}) } },
+      queryFn: async (): Promise<NotificationListResponse> => {
+        const { data } = await apiClient.get<any>('/notifications', {
+          params: { limit, ...(cursor ? { cursor } : {}) },
         })
-        return data
+        const items = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data?.results)
+            ? data.results
+            : Array.isArray(data)
+              ? data
+              : []
+        return {
+          ...data,
+          items,
+          nextCursor: data?.nextCursor ?? data?.next_cursor ?? null,
+          hasMore: data?.hasMore ?? !!(data?.nextCursor || data?.next_cursor || data?.next),
+        }
       },
       staleTime: 30_000,
     }),
@@ -20,8 +32,8 @@ export const notificationQueries = {
   unreadCount: () =>
     queryOptions({
       queryKey: ['notifications', 'unread-count'],
-      queryFn: async () => {
-        const { data } = await cam.GET('/api/notifications/unread-count')
+      queryFn: async (): Promise<UnreadCount> => {
+        const { data } = await apiClient.get('/notifications/unread-count')
         return data
       },
       staleTime: 30_000,

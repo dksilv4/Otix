@@ -5,6 +5,7 @@
 import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
+import { getDb, getDbPath } from './connection'
 
 export interface TableDecl {
   columns: Record<string, string>
@@ -16,32 +17,20 @@ export interface DbConfig {
 }
 
 // ── Singleton ────────────────────────────────────────────────────────
+// Plugin data lives in the app's single DB (otix.db). Table names are still
+// prefixed per plugin ("<pluginId>_<table>") to avoid collisions, just in the
+// same file as everything else.
 
-let _db: Database.Database | null = null
-let _dbPath: string = ''
-
-export function initPluginsDb(userDataPath: string): Database.Database {
-  if (_db) return _db
-
-  const pluginsDir = path.join(userDataPath, 'plugins')
-  if (!fs.existsSync(pluginsDir)) {
-    fs.mkdirSync(pluginsDir, { recursive: true })
-  }
-
-  _dbPath = path.join(pluginsDir, 'plugins.db')
-  _db = new Database(_dbPath)
-  _db.pragma('journal_mode = WAL')
-
-  return _db
+export function initPluginsDb(_userDataPath: string): Database.Database {
+  return getDb()
 }
 
 export function getPluginsDb(): Database.Database {
-  if (!_db) throw new Error('Plugins DB not initialized — call initPluginsDb first')
-  return _db
+  return getDb()
 }
 
 export function getPluginsDbPath(): string {
-  return _dbPath
+  return getDbPath()
 }
 
 // ── Schema auto-migration ────────────────────────────────────────────

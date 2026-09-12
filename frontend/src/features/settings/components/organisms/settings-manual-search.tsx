@@ -22,7 +22,7 @@ export function ManualSearch({ onSelect, defaultQuery, gameContext }: ManualSear
   const [backfill, setBackfill] = useState(false)
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (defaultQuery && !query) setQuery(defaultQuery)
@@ -103,9 +103,9 @@ export function ManualSearch({ onSelect, defaultQuery, gameContext }: ManualSear
       )}
 
       {/* Results */}
-      {!loading && results.length > 0 && (
+      {!loading && (Array.isArray(results) ? results.filter(Boolean) : []).length > 0 && (
         <div className="mt-3 grid grid-cols-3 gap-2 max-h-72 overflow-y-auto">
-          {results.map((r) => {
+          {(Array.isArray(results) ? results.filter(Boolean) : []).map((r) => {
             const providerLabel =
               r.provider === 'otix' ? 'Otix' :
               r.provider === 'igdb' ? 'IGDB' :

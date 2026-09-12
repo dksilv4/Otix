@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import { Search, Plus, Upload, Loader2, AlertCircle } from 'lucide-react'
 import { BlueprintCard } from '../molecules/media-game-blueprint-card'
 
+interface BlueprintPluginAPI {
+  callData: (pluginId: string, method: string, payload?: Record<string, unknown>) => Promise<any>
+}
+
 export interface ParsedBlueprint {
   type: string
   label: string
@@ -36,7 +40,7 @@ export function BlueprintVault({ pluginId, onViewDetail }: Props) {
   const [importError, setImportError] = useState<string | null>(null)
   const [refreshCounter, setRefreshCounter] = useState(0)
 
-  const desktopAPI = (window as Record<string, unknown>).desktopAPI as Record<string, unknown> | undefined
+  const desktopAPI = (window as unknown as { desktopAPI?: { plugin?: BlueprintPluginAPI } }).desktopAPI
 
   useEffect(() => {
     let cancelled = false

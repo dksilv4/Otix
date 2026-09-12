@@ -1,0 +1,114 @@
+{
+  "name": "Plex",
+  "icon": "play",
+  "stage": "alpha",
+  "version": "0.1.0",
+  "description": "Connect your Plex account, sync your movie and show libraries into the Otix catalog, and play titles on Plex straight from a detail page. Plex uses its own PIN sign-in — your Plex credentials never touch Otix servers.",
+  "author": "Otix",
+  "repository": "",
+  "system": false,
+  "min_app_version": "0.1.0",
+  "timeout": 600000,
+  "permissions": [
+    "network:external",
+    "events:subscribe",
+    "storage:local",
+    "notifications",
+    "ui:settings",
+    "api:proxy"
+  ],
+  "slots": [
+    { "location": "media/detail/actions", "label": "Plex" },
+    { "location": "media/card/badges", "label": "Plex" }
+  ],
+  "db": {
+    "tables": {
+      "plex_library": {
+        "columns": {
+          "tmdb_id": "TEXT NOT NULL",
+          "media_type": "TEXT NOT NULL",
+          "rating_key": "TEXT NOT NULL",
+          "server_id": "TEXT NOT NULL",
+          "server_name": "TEXT",
+          "title": "TEXT",
+          "year": "INTEGER",
+          "guid": "TEXT",
+          "added_at": "INTEGER NOT NULL"
+        },
+        "indexes": [
+          "CREATE UNIQUE INDEX IF NOT EXISTS idx_plex_library_rating_server ON plex_library (rating_key, server_id)",
+          "CREATE INDEX IF NOT EXISTS idx_plex_library_tmdb_media ON plex_library (tmdb_id, media_type)",
+          "CREATE INDEX IF NOT EXISTS idx_plex_library_server ON plex_library (server_id)"
+        ]
+      },
+      "plex_servers": {
+        "columns": {
+          "machine_id": "TEXT PRIMARY KEY",
+          "name": "TEXT",
+          "address": "TEXT",
+          "port": "INTEGER",
+          "use_https": "INTEGER NOT NULL DEFAULT 0",
+          "token": "TEXT",
+          "local": "INTEGER NOT NULL DEFAULT 0",
+          "last_seen": "INTEGER",
+          "is_reachable": "INTEGER NOT NULL DEFAULT 0",
+          "connections": "TEXT"
+        }
+      },
+      "plex_sync_log": {
+        "columns": {
+          "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+          "started_at": "INTEGER NOT NULL",
+          "finished_at": "INTEGER",
+          "success": "INTEGER NOT NULL DEFAULT 0",
+          "sections": "INTEGER NOT NULL DEFAULT 0",
+          "found": "INTEGER NOT NULL DEFAULT 0",
+          "matched": "INTEGER NOT NULL DEFAULT 0",
+          "failed": "INTEGER NOT NULL DEFAULT 0",
+          "errors": "TEXT",
+          "message": "TEXT"
+        },
+        "indexes": [
+          "CREATE INDEX IF NOT EXISTS idx_plex_sync_log_started ON plex_sync_log (started_at)"
+        ]
+      }
+    }
+  },
+  "config": {
+    "syncMovieLibraries": {
+      "type": "boolean",
+      "label": "Sync movie libraries",
+      "description": "Import movies from your Plex movie libraries into the local catalog.",
+      "default": true
+    },
+    "syncShowLibraries": {
+      "type": "boolean",
+      "label": "Sync TV show libraries",
+      "description": "Import TV shows from your Plex show libraries into the local catalog.",
+      "default": true
+    },
+    "pollIntervalMinutes": {
+      "type": "number",
+      "label": "Auto-sync interval (minutes)",
+      "description": "How often to re-sync your Plex libraries. 0 disables automatic syncing.",
+      "default": 0
+    }
+  },
+  "settings": {
+    "tabs": [
+      {
+        "id": "plex",
+        "label": "Plex",
+        "icon": "play",
+        "path": "/settings/plex",
+        "sections": [
+          { "id": "config", "label": "Settings", "config": true },
+          { "id": "sync", "label": "Sync to Otix", "sync": true },
+          { "id": "library", "label": "Library", "movies": true },
+          { "id": "syncHistory", "label": "Sync history", "syncHistory": true }
+        ]
+      }
+    ]
+  },
+  "entry": { "main": "main.js" }
+}

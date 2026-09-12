@@ -7,7 +7,6 @@ export const REGISTRY: Record<FeatureName, FeatureDefinition> = {
     'auth:oauth': {label: 'OAuth login providers', enabled: true, dependsOn: ['auth']},
     'auth:oauth:steam': {label: 'Steam login', enabled: true, dependsOn: ['auth', 'auth:oauth']},
     'auth:oauth:google': {label: 'Google login', enabled: true, dependsOn: ['auth', 'auth:oauth']},
-    'auth:oauth:spotify': {label: 'Spotify login', enabled: true, dependsOn: ['auth', 'auth:oauth']},
     'auth:oauth:plex': {label: 'Plex login', enabled: true, dependsOn: ['auth', 'auth:oauth']},
     'auth:oauth:tmdb': {label: 'TMDb login', enabled: true, dependsOn: ['auth', 'auth:oauth']},
     'auth:two-factor': {label: 'Two-factor authentication', enabled: true, dependsOn: ['auth']},
@@ -17,6 +16,7 @@ export const REGISTRY: Record<FeatureName, FeatureDefinition> = {
     'admin': {label: 'Admin panel', enabled: true, dependsOn: ['auth']},
 
     'browse': {label: 'Browse media', enabled: true, dependsOn: ['auth', 'ui']},
+    'calendar': {label: 'Release calendar', enabled: true, dependsOn: ['auth', 'ui']},
     'company': {label: 'Company detail pages', enabled: true, dependsOn: ['auth', 'ui']},
     'dashboard': {label: 'Home dashboard', enabled: true, dependsOn: ['auth', 'ui']},
     'discover': {label: 'Discover / home feed', enabled: true, dependsOn: ['auth', 'ui']},
@@ -43,7 +43,6 @@ export const REGISTRY: Record<FeatureName, FeatureDefinition> = {
     'library:lists': {label: 'Library lists tab', enabled: true, dependsOn: ['library']},
     'library:steam': {label: 'Library Steam integration section', enabled: true, dependsOn: ['library']},
     'library:plex': {label: 'Library Plex integration section', enabled: true, dependsOn: ['library']},
-    'library:spotify': {label: 'Library Spotify integration section', enabled: true, dependsOn: ['library']},
     'list': {label: 'User lists', enabled: true, dependsOn: ['auth', 'ui']},
     'media': {label: 'Media detail pages', enabled: true, dependsOn: ['auth', 'ui']},
     'navigation': {label: 'Navigation / sidebar', enabled: true, dependsOn: ['auth', 'ui']},
@@ -57,9 +56,6 @@ export const REGISTRY: Record<FeatureName, FeatureDefinition> = {
     'settings:notifications': {label: 'Notification settings tab', enabled: true, dependsOn: ['settings']},
     'settings:downloads': {label: 'Download settings tab', enabled: true, dependsOn: ['settings']},
     'settings:organizer': {label: 'Media organizer settings tab', enabled: true, dependsOn: ['settings']},
-    'spotify': {label: 'Spotify integration', enabled: true, dependsOn: ['auth']},
-    'spotify:now-playing': {label: 'Spotify now-playing bar', enabled: true, dependsOn: ['spotify']},
-    'spotify:playlists': {label: 'Spotify playlists', enabled: true, dependsOn: ['spotify']},
     'title-bar': {label: 'Desktop title bar', enabled: true, dependsOn: ['ui']},
     'user': {label: 'User profiles', enabled: true, dependsOn: ['auth', 'ui']},
     'workout': {label: 'Workout tracking', enabled: true, dependsOn: ['auth', 'ui']},
@@ -70,4 +66,7 @@ export const REGISTRY: Record<FeatureName, FeatureDefinition> = {
     'context-menu:tv': {label: 'TV context menu', enabled: true, dependsOn: ['ui']},
     'context-menu:music': {label: 'Music context menu', enabled: true, dependsOn: ['ui']},
     'context-menu:generic': {label: 'Generic context menu', enabled: true, dependsOn: ['ui']},
+
+    // HUB (command palette)
+    'hub': {label: 'Command hub / global palette', enabled: true, dependsOn: ['ui']},
 }

@@ -213,7 +213,7 @@ export function UserProfilePage() {
         return computeReviewStats(reviewsQuery.data)
     }, [reviewsQuery.data])
 
-    const xpProgress = profileQuery.data ? computeGamification(profileQuery.data.totalXp).xpProgress : 0
+    const xpProgress = profileQuery.data ? computeGamification(profileQuery.data.totalXp ?? 0).xpProgress : 0
 
     const [barProgress, setBarProgress] = useState(0)
     useEffect(() => {

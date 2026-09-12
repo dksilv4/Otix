@@ -1,0 +1,33 @@
+# Otix plugin host — systemd unit (self-host / bare-metal install).
+#
+# Supervise ONLY the plugin host here. Plugin code runs in-process with the
+# host, so a buggy plugin (or even a native crash) at worst takes this one
+# service down; systemd restarts it and the Django API / DB are untouched.
+# The host is stateless — on every boot it re-reads enabled Plugin rows from
+# the DB and loads the matching folders — so a restart is always safe.
+#
+# Install:
+#   sudo cp plugin-host.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now plugin-host
+[Unit]
+Description=Otix plugin host (runs plugin code, separate from the Django API)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/otix/backend
+ExecStart=/opt/otix/backend/.venv/bin/python manage.py plugin_host
+Restart=always
+RestartSec=3
+# Emit plugin.loaded / unloaded / error lifecycle events (best-effort; empty
+# disables). Point at the same Redis the API uses for its event stream.
+Environment=DJANGO_SETTINGS_MODULE=config.settings.prod
+Environment=PLUGIN_EVENTS_URL=redis://127.0.0.1:6379/0
+Environment=PLUGIN_HOST_SECRET=change-me
+# SIGTERM is routed to a clean serve_forever exit (see plugins/plugin_host).
+KillMode=mixed
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

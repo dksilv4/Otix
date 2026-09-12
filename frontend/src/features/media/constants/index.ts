@@ -1,4 +1,4 @@
-import type { TrackOut } from './queries/media-queries'
+import type { TrackOut } from '../queries/media-queries'
 import { Clock, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 

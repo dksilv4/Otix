@@ -1,6 +1,7 @@
 // TODO: Review this file
 import { Component, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { showErrorToast } from '@/old-features/ui/molecules/toast'
 import './query-error-boundary.scss'
 
 interface Props {
@@ -23,6 +24,10 @@ export class QueryErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error): void {
+    showErrorToast(error, 'Query Error')
   }
 
   handleRetry = () => {

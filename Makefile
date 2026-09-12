@@ -1,104 +1,95 @@
-.PHONY: up down build logs shell test lint migrate sync
+# Otix — local dev Makefile (Django backend in ./backend, legacy FastAPI tree
+# is retired at ./old-backend and has no targets here).
+#
+# Compose targets talk to the dev stack in docker-compose.yml (db on :5433,
+# redis on :6380, api on :8000). Code checks (lint/test/parity) run on the host
+# venv because the api image installs runtime deps only (no ruff): `make deps`
+# creates backend/.venv from uv.lock if it does not exist yet.
+#
+# Variables:  make seed provider=igdb kind=game limit=10    make makemigrations app=media
 
-N ?= 50
+.PHONY: help up down build logs logs-all logs-worker shell worker-shell \
+	db-shell redis-shell deps migrate makemigrations seed lint drift parity \
+	test check celery-status celery-queues celery-stats
 
-up:
+.DEFAULT_GOAL := help
+
+help: ## List targets
+	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-16s %s\n", $$1, $$2}'
+
+# ── Dev compose lifecycle ────────────────────────────────────────────────
+up: ## Start the dev stack (api/worker/beat/db/redis)
 	docker compose up -d
-	@echo "API:        http://localhost:8000/api/health"
-	@echo "Metrics:    http://localhost:8000/api/metric"
+	@echo "API health: http://localhost:8000/api/v1/health"
 
-down:
+down: ## Stop the dev stack
 	docker compose down
 
-build:
+build: ## Rebuild the api/worker/beat images
 	docker compose build
 
-logs:
+logs: ## Tail api logs
 	docker compose logs -f api
 
-logs-worker:
-	docker compose logs -f worker-fast worker-provider worker-user worker-control
+logs-worker: ## Tail worker logs
+	docker compose logs -f worker
 
-logs-worker-fast:
-	docker compose logs -f worker-fast
-
-logs-worker-provider:
-	docker compose logs -f worker-provider
-
-logs-worker-user:
-	docker compose logs -f worker-user
-
-logs-worker-control:
-	docker compose logs -f worker-control
-
-logs-all:
+logs-all: ## Tail logs for every service
 	docker compose logs -f
 
-shell:
+shell: ## Open a shell in the api container
 	docker compose exec api bash
 
-worker-shell:
-	docker compose exec worker-fast bash
+worker-shell: ## Open a shell in the celery worker container
+	docker compose exec worker bash
 
-db-shell:
+db-shell: ## psql into the dev database
 	docker compose exec db psql -U otix -d otix_dev
 
-redis-shell:
+redis-shell: ## redis-cli into the dev redis
 	docker compose exec redis redis-cli
 
-test:
-	docker compose exec api pytest tests/ -v
+# ── Django maintenance (against the compose DB, via the api container) ───
+migrate: ## Apply migrations to the dev database
+	docker compose exec api python manage.py migrate
 
-lint:
-	docker compose exec api ruff check otix/
+makemigrations: ## Autogenerate a migration: make makemigrations app=<label>
+	docker compose exec api python manage.py makemigrations $(app)
 
-migrate:
-	docker compose exec api alembic upgrade head
+seed: ## Bulk-seed the catalog: make seed provider=igdb kind=game limit=10
+	docker compose exec api python manage.py catalog_seed \
+		--provider $(provider) --kind $(kind) --source $(source) --limit $(limit)
+# seed variables
+provider = tmdb
+kind = movie
+source = popular
+limit = 25
 
-migration:
-	docker compose exec api alembic revision --autogenerate -m "$(name)"
+# ── Host code checks (mirror the CI Django job; run from backend/) ───────
+deps: ## Install locked deps (runtime + dev/ruff) into backend/.venv
+	cd backend && uv sync --frozen
 
-rollback:
-	docker compose exec api alembic downgrade -1
+lint: ## ruff check (backend)
+	cd backend && .venv/bin/ruff check .
 
-# ── Sync (trigger from API container) ────────────────────────────
+drift: ## No-migration-drift gate
+	cd backend && DJANGO_SETTINGS_MODULE=config.settings.test .venv/bin/python manage.py makemigrations --check --dry-run
 
-sync-popular-movies:
-	docker compose exec api python -c "from otix.tasks.sync import sync_tmdb_popular_movies_task; print(sync_tmdb_popular_movies_task.delay(3).id)"
+parity: ## Frozen route-contract parity gate (263/263, 0 gaps)
+	cd backend && DJANGO_SETTINGS_MODULE=config.settings.test .venv/bin/python scripts/parity_report.py | tee /tmp/otix-parity.txt && grep -qE "method-gaps: 0; remaining: 0" /tmp/otix-parity.txt
 
-sync-popular-shows:
-	docker compose exec api python -c "from otix.tasks.sync import sync_tmdb_popular_shows_task; print(sync_tmdb_popular_shows_task.delay(3).id)"
+test: ## Full Django suite (config.settings.test; in-memory sqlite, ~4 min)
+	cd backend && DJANGO_SETTINGS_MODULE=config.settings.test .venv/bin/python manage.py test
 
-sync-movie:
-	docker compose exec api python -c "from otix.tasks.sync import sync_tmdb_movie_task; import sys; print(sync_tmdb_movie_task.delay(int(sys.argv[1])).id)" $(id)
+check: ## Full battery: lint + drift + parity + test
+	$(MAKE) lint drift parity test
 
-sync-show:
-	docker compose exec api python -c "from otix.tasks.sync import sync_tmdb_show_task; import sys; print(sync_tmdb_show_task.delay(int(sys.argv[1])).id)" $(id)
+# ── Celery introspection (single worker on the `celery` queue) ───────────
+celery-status: ## Active tasks
+	docker compose exec worker celery -A config inspect active
 
-# ── Manual hydration (enrich artwork for discover page) ───────────
+celery-queues: ## Queues each worker consumes
+	docker compose exec worker celery -A config inspect active_queues
 
-# Enqueue Fanart enrichment for the top N movies missing artwork.
-# Usage: make hydrate-movies [N=50]
-hydrate-movies:
-	docker compose exec api python -m otix.tasks.manual_hydrate movies $(N)
-
-# Enqueue Fanart enrichment for the top N shows missing artwork.
-# Usage: make hydrate-shows [N=50]
-hydrate-shows:
-	docker compose exec api python -m otix.tasks.manual_hydrate shows $(N)
-
-# Enqueue Fanart enrichment for a single movie by Otix media_item_id.
-# Usage: make hydrate-movie oid=oti_abc123
-hydrate-movie:
-	docker compose exec api python -m otix.tasks.manual_hydrate movie $(oid)
-
-# ── Celery introspection ─────────────────────────────────────────
-
-celery-status:
-	docker compose exec worker-fast celery -A otix.infrastructure.celery.app inspect active
-
-celery-queues:
-	docker compose exec worker-fast celery -A otix.infrastructure.celery.app inspect active_queues
-
-celery-stats:
-	docker compose exec worker-fast celery -A otix.infrastructure.celery.app inspect stats
+celery-stats: ## Worker stats
+	docker compose exec worker celery -A config inspect stats

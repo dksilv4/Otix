@@ -1,0 +1,31 @@
+{
+  "plugins": [
+    {
+      "id": "otix-epic",
+      "name": "Epic Games",
+      "version": "0.1.0",
+      "description": "Sync your Epic Games Store library to Otix. Auto-import owned games, track playtime, and get notified about free weekly games.",
+      "author": "Diogo da Silva",
+      "repository": "https://github.com/dksilv4/otix-plugins",
+      "path": "plugins/otix-epic",
+      "icon": "gamepad-2",
+      "category": "media",
+      "tags": ["epic", "games", "library", "legendary"],
+      "permissions": ["api:proxy", "network:external", "events:subscribe", "storage:local", "notifications", "ui:settings"]
+    },
+    {
+      "id": "otix-syncplay",
+      "name": "SyncPlay",
+      "version": "0.1.0",
+      "description": "One-way Spotify → YouTube Music playlist sync. Connect Spotify and Google, map your Spotify playlists to YouTube Music playlists, and keep them in sync automatically.",
+      "author": "Otix",
+      "repository": "https://github.com/dksilv4/otix-plugins",
+      "path": "plugins/otix-syncplay",
+      "icon": "music",
+      "category": "media",
+      "tags": ["spotify", "youtube", "youtube-music", "playlists", "sync", "music"],
+      "permissions": ["network:external", "storage:local", "ui:settings", "notifications", "events:subscribe"]
+    }
+  ],
+  "updated_at": "2026-08-25T00:00:00Z"
+}

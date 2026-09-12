@@ -1,6 +1,7 @@
-import type { LocalGame, GamesFilter } from './types';
+import type { LocalGame, GamesFilter } from '../types';
 import { getDesktopAPI, hasDesktopAPI as checkDesktopAPI } from '@/lib/desktop/api';
 import { mergeDuplicateGames } from './storage-utils';
+import { OTIX_DEFAULT_GAME, OTIX_DEFAULT_GAME_ID } from './otix-default-game';
 
 // ── In-memory cache (hot reads, invalidated on DB change) ─────────
 
@@ -43,23 +44,47 @@ function preserveInstallStatus(games: LocalGame[]): LocalGame[] {
 // ── Async IPC fetchers (single source of truth: SQLite) ──────────
 
 export async function fetchGames(filter?: GamesFilter): Promise<LocalGame[]> {
-  if (!hasDesktopAPI()) return [];
-  const api = getDesktopAPI()!;
-  const games = await api.getLocalGames(filter);
-  cache.games = games;
-  return games;
+  if (hasDesktopAPI()) {
+    try {
+      const api = getDesktopAPI()!;
+      const games = await api.getLocalGames(filter);
+      const deduped = mergeDuplicateGames(games);
+      cache.games = deduped;
+      cache.loaded = true;
+      return deduped;
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 export async function fetchGameById(id: string): Promise<LocalGame | null> {
-  if (!hasDesktopAPI()) return null;
-  const api = getDesktopAPI()!;
-  return api.getGameById(id);
+  if (id === OTIX_DEFAULT_GAME_ID) {
+    return OTIX_DEFAULT_GAME;
+  }
+  if (hasDesktopAPI()) {
+    try {
+      const api = getDesktopAPI()!;
+      const game = await api.getGameById(id);
+      if (game) return game;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 export async function fetchGameCount(filter?: GamesFilter): Promise<number> {
-  if (!hasDesktopAPI()) return 0;
-  const api = getDesktopAPI()!;
-  return api.getGameCount(filter ?? {});
+  if (hasDesktopAPI()) {
+    try {
+      const api = getDesktopAPI()!;
+      return await api.getGameCount(filter ?? {});
+    } catch {
+      return 0;
+    }
+  }
+  return 0;
 }
 
 export async function fetchScanPaths(): Promise<{ game: string[]; iso: string[] }> {

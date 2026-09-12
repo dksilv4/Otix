@@ -66,17 +66,12 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
 
   if (!isAuthenticated) {
     return (
-      <div className={bare ? 'flex h-8 w-8 items-center justify-center' : ''}>
+      <div className="flex items-center">
         <Link
           to="/auth/login"
-          className={
-            bare
-              ? 'flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.06] transition-all hover:bg-white/[0.1]'
-              : pillClasses
-          }
-          style={pillStyle}
+          className="flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-semibold text-white/90 bg-white/10 hover:bg-white/20 hover:text-white transition-all border border-white/10 shadow-sm"
         >
-          <DkAvatar icon={<User className="h-4 w-4" />} name="" size="sm" />
+          Sign In
         </Link>
       </div>
     )

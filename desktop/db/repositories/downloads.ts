@@ -1,6 +1,6 @@
 // desktop/db/repositories/downloads.ts
 import Database from 'better-sqlite3'
-import { getConnection } from '../connection'
+import { getDb } from '../connection'
 
 export interface DownloadRow {
   id: string
@@ -35,7 +35,7 @@ export class DownloadsRepository {
   private db: Database.Database
 
   constructor() {
-    this.db = getConnection('downloads')
+    this.db = getDb()
   }
 
   getByUserId(userId: string): DownloadRow[] {

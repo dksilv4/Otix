@@ -3,10 +3,16 @@ import { Heart, Bookmark, CheckCircle2, Gamepad2, Play } from 'lucide-react'
 import './interaction-buttons.scss'
 import { type ReactNode, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/old-features/auth'
 import { cn } from '@/lib/utils'
 import { showXPToast } from '@/old-features/ui/atoms/xp-toast'
+import { showToast } from '@/old-features/ui/molecules/toast'
 import { DkDialog } from '@ui/molecules/dialog'
+import { useModal } from '@/lib/modals'
+import { mediaKeys } from '@media/queries/media-keys'
+import type { MediaItemDetail } from '@media/queries/media-queries'
+import { useIsOfflineWatchlisted, toggleOfflineWatchlist } from '../offline-watchlist'
 import {
  useToggleInteraction,
  useUserInteractions,
@@ -201,49 +207,130 @@ interface InteractionSectionProps {
 }
 
 function InteractionSection({
- mediaId,
- mediaType,
- className,
- userInteractions,
- children,
- onShowWatchedToggle,
- showEpisodeInfo,
+  mediaId,
+  mediaType,
+  className,
+  userInteractions,
+  children,
+  onShowWatchedToggle,
+  showEpisodeInfo,
 }: InteractionSectionProps) {
- const { isAuthenticated } = useAuth()
- const location = useLocation()
- const [confirmOpen, setConfirmOpen] = useState(false)
- const [confirmAction, setConfirmAction] = useState<boolean>(false)
+  const { isAuthenticated } = useAuth()
+  const location = useLocation()
+  const { openModal } = useModal()
 
  const { data: fetchedInteractions } = useUserInteractions(mediaType, mediaId, {
  enabled: isAuthenticated && userInteractions == null,
  })
 
  const interactions = userInteractions ?? fetchedInteractions ?? null
+  const qc = useQueryClient()
+  const offlineWatchlisted = useIsOfflineWatchlisted(mediaType, mediaId)
 
- if (!isAuthenticated) {
- const listLabel = mediaType === 'game' || mediaType === 'music' ? 'wishlist' : 'watchlist'
- return (
- <section className={cn('dk-interaction', className)}>
- <div className="dk-interaction__unauthed-card glass-inset">
- <p className="dk-interaction__unauthed-text">
- <Link to="/auth/login" search={{ redirect: location.href }} className="dk-interaction__unauthed-link">
- Sign in
- </Link>{' '}
- to like, {listLabel}, and track this title.
- </p>
- </div>
- </section>
- )
- }
+  const handleOfflineWatchlistToggle = () => {
+    // Enrich the stored item from the detail cache so the offline library
+    // tab shows proper artwork even before any server round-trip.
+    const detail = qc.getQueryData<MediaItemDetail>(mediaKeys.detail(mediaType, mediaId))
+    const added = toggleOfflineWatchlist({
+      mediaType,
+      mediaId,
+      title: detail?.title,
+      posterUrl: detail?.posterUrl,
+      textlessPosterUrl: detail?.textlessPosterUrl,
+      backdropUrl: detail?.backdropUrl,
+      logoUrl: detail?.logoUrl,
+      releaseDate: detail?.releaseDate,
+    })
+    if (added) {
+      showToast({
+        title: 'Saved to watchlist',
+        description: 'This device is offline — it will sync when you sign in.',
+        variant: 'success',
+      })
+    }
+  }
 
- const visibleButtons = BUTTONS.filter((b) => {
- if (b.showFor === 'all') return true
- if (b.showFor === 'movie_show') return mediaType === 'movie' || mediaType === 'show'
- if (b.showFor === 'game') return mediaType === 'game'
- return mediaType === 'music'
- })
+  const handleGuestAction = (actionLabel: string) => {
+    const close = openModal(
+      <DkDialog
+        open={true}
+        onOpenChange={() => close()}
+        title={`Sign in to ${actionLabel.toLowerCase()} titles`}
+        description="Create an account to track your watch history, sync your game library, and share ratings with friends."
+      >
+        <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 mt-4">
+          <button
+            onClick={() => close()}
+            className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-white/60 hover:text-white transition-colors"
+          >
+            Continue Browsing
+          </button>
+          <Link
+            to="/auth/login"
+            search={{ redirect: location.href }}
+            onClick={() => close()}
+            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10"
+          >
+            Sign In
+          </Link>
+          <Link
+            to="/auth/register"
+            onClick={() => close()}
+            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md"
+          >
+            Create Account
+          </Link>
+        </div>
+      </DkDialog>
+    )
+  }
 
- return (
+  const visibleButtons = BUTTONS.filter((b) => {
+    if (b.showFor === 'all') return true
+    if (b.showFor === 'movie_show') return mediaType === 'movie' || mediaType === 'show'
+    if (b.showFor === 'game') return mediaType === 'game'
+    return mediaType === 'music'
+  })
+
+  const handleConfirmShowWatched = (action: boolean) => {
+    const close = openModal(
+      <DkDialog
+        open={true}
+        onOpenChange={() => close()}
+        title={action ? "Mark show as watched?" : "Mark show as unwatched?"}
+        description={
+          action
+            ? showEpisodeInfo
+              ? `This will mark all ${showEpisodeInfo.total - showEpisodeInfo.watched} remaining episodes as watched.`
+              : "This will mark all episodes in this show as watched."
+            : "This will mark all episodes in this show as unwatched."
+        }
+      >
+        <div className="dk-interaction__dialog-actions">
+          <button
+            onClick={() => close()}
+            className="dk-interaction__dialog-btn dk-interaction__dialog-btn--cancel"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onShowWatchedToggle?.(action)
+              close()
+            }}
+            className={cn(
+              "dk-interaction__dialog-btn",
+              action ? "dk-interaction__dialog-btn--positive" : "dk-interaction__dialog-btn--negative",
+            )}
+          >
+            {action ? "Mark All Watched" : "Mark All Unwatched"}
+          </button>
+        </div>
+      </DkDialog>
+    )
+  }
+
+  return (
  <section className={cn('dk-interaction', className)}>
  <div className="dk-interaction__btns">
  {visibleButtons.map((btn) => {
@@ -257,58 +344,28 @@ function InteractionSection({
       ? 'Rewatch'
       : btn.label
   }
-  active={interactions?.[btn.type] ?? false}
+  active={
+    btn.type === 'watchlisted' && !isAuthenticated
+      ? offlineWatchlisted
+      : (interactions?.[btn.type] ?? false)
+  }
  mediaId={mediaId}
  mediaType={mediaType}
- onClick={
- isWatchedBtn
- ? () => {
- setConfirmAction(!(interactions?.watched ?? false))
- setConfirmOpen(true)
- }
- : undefined
- }
- />
- )
- })}
- {children}
- </div>
-
- {/* Show-level watch confirmation dialog */}
- <DkDialog
- open={confirmOpen}
- onOpenChange={(open) => { if (!open) setConfirmOpen(false) }}
- title={confirmAction ? "Mark show as watched?" : "Mark show as unwatched?"}
- description={
- confirmAction
- ? showEpisodeInfo
- ? `This will mark all ${showEpisodeInfo.total - showEpisodeInfo.watched} remaining episodes as watched.`
- : "This will mark all episodes in this show as watched."
- : "This will mark all episodes in this show as unwatched."
- }
- >
- <div className="dk-interaction__dialog-actions">
- <button
- onClick={() => setConfirmOpen(false)}
- className="dk-interaction__dialog-btn dk-interaction__dialog-btn--cancel"
- >
- Cancel
- </button>
- <button
- onClick={() => {
- onShowWatchedToggle?.(confirmAction)
- setConfirmOpen(false)
- }}
- className={cn(
- "dk-interaction__dialog-btn",
- confirmAction ? "dk-interaction__dialog-btn--positive" : "dk-interaction__dialog-btn--negative",
- )}
- >
- {confirmAction ? "Mark All Watched" : "Mark All Unwatched"}
- </button>
- </div>
- </DkDialog>
- </section>
+            onClick={
+              !isAuthenticated
+                ? btn.type === 'watchlisted'
+                  ? handleOfflineWatchlistToggle
+                  : () => handleGuestAction(btn.label)
+                : isWatchedBtn
+                ? () => handleConfirmShowWatched(!(interactions?.watched ?? false))
+                : undefined
+            }
+          />
+        )
+      })}
+      {children}
+    </div>
+  </section>
  )
 }
 

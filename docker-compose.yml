@@ -1,133 +1,80 @@
+# Otix — local development compose
+# All services read DATABASE_URL, REDIS_URL, etc. from .env
+
 services:
   db:
     image: pgvector/pgvector:pg16
-    shm_size: 512mb
-    environment:
-      POSTGRES_DB: otix_dev
-      POSTGRES_USER: otix
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
       - "5433:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: otix
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: otix_dev
     command: >
       postgres
-      -c shared_buffers=512MB
+      -c shared_preload_libraries=vector
+      -c max_connections=50
+      -c shared_buffers=256MB
       -c effective_cache_size=1GB
-      -c work_mem=16MB
-      -c default_statistics_target=500
-      -c maintenance_work_mem=256MB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
       -c wal_buffers=16MB
+      -c default_statistics_target=100
       -c random_page_cost=1.1
       -c effective_io_concurrency=200
-      -c idle_in_transaction_session_timeout=120000
-      -c idle_session_timeout=600000
-      -c max_wal_size=1GB
-      -c min_wal_size=256MB
-      -c checkpoint_completion_target=0.9
-      -c shared_preload_libraries=pg_stat_statements
-      -c pg_stat_statements.track=all
-      -c jit=off
-      -c autovacuum_vacuum_scale_factor=0.05
-      -c autovacuum_analyze_scale_factor=0.025
-      -c autovacuum_vacuum_cost_limit=2000
-      -c autovacuum_max_workers=3
-      -c autovacuum_naptime=30s
+      -c work_mem=5242kB
+      -c huge_pages=off
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+    volumes:
+      # Fresh volume for the Django cutover; the legacy alembic `otix_pgdata`
+      # volume is intentionally left orphaned (never mounted) so the FastAPI
+      # schema + data stay intact until a real data migration.
+      - pgdata_django:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U otix -d otix_dev"]
-      interval: 2s
-      retries: 10
-      start_period: 3s
-    deploy:
-      resources:
-        limits:
-          cpus: "3"
-          memory: 4G
-        reservations:
-          cpus: "1"
-          memory: 1G
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     ports:
       - "6380:6379"
-    # maxmemory must be below the Docker memory limit so Redis uses its own
-    # eviction policy (allkeys-lru) instead of being OOM-killed by the kernel.
-    # The RDB snapshot is ~485MB; 768mb gives enough headroom for live data.
-    command: redis-server --maxmemory 768mb --maxmemory-policy allkeys-lru --save 3600 1
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 2s
-      retries: 10
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1G
-        reservations:
-          cpus: "0.25"
-          memory: 256M
-
-  pgbouncer:
-    image: edoburu/pgbouncer:1.23.1
-    ports:
-      - "6432:6432"
-    environment:
-      DB_HOST: db
-      DB_PORT: "5432"
-      DB_USER: otix
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      DB_NAME: otix_dev
-      LISTEN_ADDR: "0.0.0.0"
-      LISTEN_PORT: "6432"
-      POOL_MODE: transaction
-      DEFAULT_POOL_SIZE: "25"
-      MAX_CLIENT_CONN: "150"
-      MIN_POOL_SIZE: "5"
-      RESERVE_POOL_SIZE: "5"
-      AUTH_TYPE: scram-sha-256
-      SERVER_IDLE_TIMEOUT: "300"
-      CLIENT_IDLE_TIMEOUT: "600"
-      QUERY_TIMEOUT: "300"
-    depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U otix -d otix_dev"]
-      interval: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 64M
-        reservations:
-          memory: 32M
+      interval: 5s
+      retries: 5
 
   api:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
     env_file: ./.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      REDIS_URL: redis://redis:6379/1
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      # Override .env's asyncpg FastAPI URL — Django's parser only accepts
+      # plain postgresql:// (see config/settings/base.py parse_database_url).
+      DATABASE_URL: postgresql://otix:password@db:5432/otix_dev
+      # Request-path dispatches (e.g. a follow enqueuing a company sync, or
+      # POST /api/v1/sync/...) publish through the broker; the settings default
+      # is 127.0.0.1, which is unreachable inside the container.
       CELERY_BROKER_URL: redis://redis:6379/0
-      DB_POOL_SIZE: "20"
-      DB_MAX_OVERFLOW: "10"
-      FASTEMBED_CACHE_PATH: /app/.fastembed_cache
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      ENABLE_RELOAD: "true"
+    command: bash entrypoints/start-api.sh
     depends_on:
       db:
         condition: service_healthy
-      pgbouncer:
-        condition: service_started
       redis:
         condition: service_healthy
-    command: bash entrypoints/start-api.sh
     deploy:
       resources:
         limits:
@@ -137,182 +84,64 @@ services:
           cpus: "0.5"
           memory: 1G
 
-  # ── Purpose-based workers (per-provider queue isolation, consolidated by purpose) ──
+  # ── Celery worker + beat ──
+  # The Django task surface is small so far (run_sync_job on the default
+  # queue); the worker consumes `celery` only. As task-#6 machinery (ingest/
+  # enrich/embedding queues) lands, grow -Q here to match. Beat runs the
+  # catalog daily-import / backlog-drain / discover-artwork sweep (see
+  # CELERY_BEAT_SCHEDULE in config/settings/base.py).
+  #
+  # Both worker and beat must point their result backend at the real Redis:
+  # beat's schedule sends call the result backend (apply_async -> on_task_call),
+  # and the settings default is 127.0.0.1, which is unreachable inside either
+  # container. Omit it here and every scheduled task dies with "Retry limit
+  # exceeded while trying to reconnect to the Celery result store".
 
-  worker-ingest:
+  worker:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     volumes:
       - ./backend:/app
     env_file: ./.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      REDIS_URL: redis://redis:6379/1
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgresql://otix:password@db:5432/otix_dev
       CELERY_BROKER_URL: redis://redis:6379/0
-      DB_POOL_SIZE: "16"
-      DB_MAX_OVERFLOW: "8"
-      OTIX_WORKER_TYPE: ingest
-      CELERY_WORKER_PREFETCH_MULTIPLIER: "4"
-      APP_ENV: development
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    command: celery -A config worker -Q celery -c 2 -n otix-worker@%h --loglevel INFO
     depends_on:
       db:
         condition: service_healthy
-      pgbouncer:
-        condition: service_started
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q ingest-tmdb,ingest-steam,ingest-igdb,ingest-musicbrainz,ingest-deezer -c 10 -n otix-ingest@%h --loglevel WARNING --pool=threads
     deploy:
       resources:
         limits:
-          memory: 512M
+          cpus: "4"
+          memory: 4G
         reservations:
-          memory: 256M
-
-  worker-enrich:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./backend:/app
-    env_file: ./.env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/0
-      DB_POOL_SIZE: "10"
-      DB_MAX_OVERFLOW: "6"
-      OTIX_WORKER_TYPE: enrich
-      CELERY_WORKER_PREFETCH_MULTIPLIER: "4"
-    depends_on:
-      db:
-        condition: service_healthy
-      pgbouncer:
-        condition: service_started
-      redis:
-        condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q enrich-fanart,enrich-omdb,enrich-steamgrid,enrich-lastfm,enrich-theaudiodb,enrich-lrclib -c 6 -n otix-enrich@%h --loglevel WARNING --pool=threads
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-        reservations:
-          memory: 128M
-
-  worker-reactive:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./backend:/app
-    env_file: ./.env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/0
-      DB_POOL_SIZE: "8"
-      DB_MAX_OVERFLOW: "4"
-      OTIX_WORKER_TYPE: reactive
-    depends_on:
-      db:
-        condition: service_healthy
-      pgbouncer:
-        condition: service_started
-      redis:
-        condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q reactive-fast,reactive-user -c 4 -n otix-reactive@%h --loglevel WARNING --pool=threads
-    deploy:
-      resources:
-        limits:
-          memory: 384M
-        reservations:
-          memory: 192M
-
-  worker-maintain:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./backend:/app
-    env_file: ./.env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/0
-      DB_POOL_SIZE: "6"
-      DB_MAX_OVERFLOW: "4"
-      OTIX_WORKER_TYPE: maintain
-    depends_on:
-      db:
-        condition: service_healthy
-      pgbouncer:
-        condition: service_started
-      redis:
-        condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q maintain -c 3 -n otix-maintain@%h --loglevel WARNING --pool=threads
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-        reservations:
-          memory: 128M
-
-  worker-embedding:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./backend:/app
-    env_file: ./.env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/0
-      DB_POOL_SIZE: "8"
-      DB_MAX_OVERFLOW: "4"
-      OTIX_WORKER_TYPE: embedding
-      OTIX_EMBEDDING_MODEL: BAAI/bge-small-en-v1.5
-    depends_on:
-      db:
-        condition: service_healthy
-      pgbouncer:
-        condition: service_started
-      redis:
-        condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q embedding -c 1 -n otix-embedding@%h --loglevel WARNING
-    deploy:
-      resources:
-        limits:
+          cpus: "1"
           memory: 1G
-        reservations:
-          memory: 512M
+
   beat:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     volumes:
       - ./backend:/app
     env_file: ./.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
-      REDIS_URL: redis://redis:6379/1
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgresql://otix:password@db:5432/otix_dev
       CELERY_BROKER_URL: redis://redis:6379/0
-      APP_ENV: development
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    command: celery -A config beat --loglevel INFO
     depends_on:
       db:
         condition: service_healthy
-      pgbouncer:
-        condition: service_started
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery beat --loglevel INFO --scheduler celery.beat.Scheduler --max-interval 30
     deploy:
       resources:
         limits:
@@ -327,7 +156,7 @@ services:
       context: .
       dockerfile: bots/Dockerfile
     environment:
-      BOT_API_BASE_URL: http://api:8000/api
+      BOT_API_BASE_URL: http://api:8000/api/v1
       BOT_COUNT: "0"
       BOT_ACTIVE_POOL: "30"
       BOT_ACTION_BURST: "3"
@@ -343,14 +172,9 @@ services:
     volumes:
       - bot_logs:/app/logs
     depends_on:
-      api:
-        condition: service_started
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 1G
+      - api
 
 volumes:
-  pgdata:
+  pgdata_django:
+  redis_data:
   bot_logs:

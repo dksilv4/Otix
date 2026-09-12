@@ -41,7 +41,7 @@ function StarRow({ count, filled }: { count: number; filled: number }) {
   )
 }
 
-function RatingsSection({ overallRating, overallRatingSource, avgRating, ratingCount, className }: RatingsSectionProps) {
+function RatingsSection({ overallRating, overallRatingSource, ratingCount, className }: RatingsSectionProps) {
   const hasRating = overallRating != null
   const rating = overallRating ?? 0
   const colors = hasRating

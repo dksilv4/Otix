@@ -5,8 +5,22 @@ import { Star } from 'lucide-react'
 import { DkImage } from '@ui/atoms/image'
 import { mediaQueries } from '@media'
 import { cn } from '@/lib/utils'
+import { MediaLogo } from '@/lib/media/media-logo'
 import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
+import { MediaCardBadges } from '@/features/plugins/components/media-card-badges'
 import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/utils/image-position'
+
+function formatSeasonBadgeText(releaseDate?: string | null): string {
+  if (!releaseDate) return 'New Season'
+  const date = new Date(releaseDate)
+  const now = new Date()
+  const days = Math.floor((date.getTime() - now.getTime()) / 86400000)
+  const month = date.toLocaleString('en-US', { month: 'short' })
+  const year = date.getFullYear()
+  if (days > 0) return `New Season · ${month} ${year}`
+  if (days >= -14) return 'New Season · Just Landed'
+  return `New Season · ${month} ${year}`
+}
 
 interface DkMediaCardProps {
   id: string
@@ -14,18 +28,25 @@ interface DkMediaCardProps {
   title: string
   posterUrl?: string | null
   textlessPosterUrl?: string | null
+  backdropUrl?: string | null
   logoUrl?: string | null
+  logoColorGuess?: string | null
   releaseDate?: string | null
   avgRating?: number | null
   ratingCount?: number
   showTypeBadge?: boolean
   isAdult?: boolean
   newSeasonReleased?: boolean
+  newSeasonReleaseDate?: string | null
+  /** TMDB external id (movie/show) — passed to the plugin card-badge slot. */
+  tmdbId?: string | null
   zoomed?: boolean
   className?: string
   subtitle?: string | null
   subtitleColor?: string
   artistName?: string | null
+  /** Render as a plain card (no detail link / prefetch) — for items without a backend detail page. */
+  interactive?: boolean
 }
 
 const DkMediaCard = memo(function DkMediaCard({
@@ -34,18 +55,23 @@ const DkMediaCard = memo(function DkMediaCard({
   title,
   posterUrl,
   textlessPosterUrl,
+  backdropUrl,
   logoUrl,
+  logoColorGuess,
   releaseDate,
   avgRating,
   ratingCount: _ratingCount,
   showTypeBadge = true,
   isAdult,
   newSeasonReleased,
+  newSeasonReleaseDate,
+  tmdbId,
   zoomed = true,
   className,
   subtitle,
   subtitleColor,
   artistName,
+  interactive = true,
 }: DkMediaCardProps) {
   const year = releaseDate?.slice(0, 4)
   const params = useMemo(() => ({ mediaType, mediaId: id }), [mediaType, id])
@@ -54,7 +80,10 @@ const DkMediaCard = memo(function DkMediaCard({
     queryClient.prefetchQuery(mediaQueries.detail(mediaType, id))
   }, [queryClient, mediaType, id])
 
-  const imageUrl = textlessPosterUrl || posterUrl || undefined
+  // Card art is textless poster → clean backdrop. Never fall back to a
+  // logo-bearing poster, except for music where the album cover is the art.
+  const imageUrl =
+    textlessPosterUrl || backdropUrl || (mediaType === 'music' ? posterUrl : undefined) || undefined
   const position = imageUrl ? parsePositionFromUrl(imageUrl) : null
   const cleanSrc = imageUrl ? stripPositionFromUrl(imageUrl) : undefined
   const TypeIcon = MEDIA_TYPE_ICON[mediaType]
@@ -64,10 +93,11 @@ const DkMediaCard = memo(function DkMediaCard({
     params,
   }), [params])
 
+  const Root = interactive ? Link : 'div'
+
   return (
-    <Link
-      {...(linkProps as any)}
-      onMouseEnter={handlePrefetch}
+    <Root
+      {...(interactive ? { ...(linkProps as any), onMouseEnter: handlePrefetch } : {})}
       className={cn(
         'group relative block overflow-hidden rounded-lg',
         mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]',
@@ -129,7 +159,7 @@ const DkMediaCard = memo(function DkMediaCard({
       {mediaType === 'show' && newSeasonReleased && (
         <div className="absolute top-3 right-3 z-10">
           <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[9px] font-bold text-emerald-400 bg-emerald-950/75 border border-emerald-500/30 backdrop-blur-md shadow-lg uppercase tracking-wider">
-            New Season
+            {formatSeasonBadgeText(newSeasonReleaseDate)}
           </span>
         </div>
       )}
@@ -142,6 +172,9 @@ const DkMediaCard = memo(function DkMediaCard({
           </span>
         </div>
       )}
+
+      {/* Plugin card badges (e.g. "On Plex") */}
+      <MediaCardBadges mediaId={id} mediaType={mediaType} tmdbId={tmdbId} />
 
       {/* Rating */}
       {avgRating != null && avgRating > 0 && (
@@ -159,17 +192,32 @@ const DkMediaCard = memo(function DkMediaCard({
         </div>
       )}
 
+      {/* Background dark scrim layer for cards with logos to improve contrast */}
+      {logoUrl && (
+        <div className="absolute inset-0 pointer-events-none bg-black/30 group-hover:bg-black/20 transition-colors duration-500" />
+      )}
+
       {/* Logo */}
       {logoUrl && (
         <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
-          <img
+          {/* Dedicated radial dark scrim behind logo */}
+          <div
+            className="absolute inset-0 opacity-80 group-hover:opacity-95 transition-opacity duration-500"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0) 80%)',
+            }}
+          />
+          <MediaLogo
             src={logoUrl}
             alt={title}
-            className="max-w-[80%] max-h-[55%] object-contain [--dk-logo-scale:0.85] group-hover:[--dk-logo-scale:1.15]"
+            className="relative z-10 max-w-[80%] max-h-[55%] object-contain [--dk-logo-scale:0.85] group-hover:[--dk-logo-scale:1.15]"
+            colorGuess={logoColorGuess ?? null}
+            background="dark"
+            shadow="drop-shadow(0 2px 4px rgba(0,0,0,0.95)) drop-shadow(0 6px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
             style={{
               transform: 'scale(var(--dk-logo-scale))',
               transition: 'transform 700ms var(--dk-ease-out)',
-              filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8))',
             }}
           />
         </div>
@@ -221,7 +269,7 @@ const DkMediaCard = memo(function DkMediaCard({
           <p className="text-[11px] text-center mt-0.5 text-white/50">{year}</p>
         )}
       </div>
-    </Link>
+    </Root>
   )
 })
 

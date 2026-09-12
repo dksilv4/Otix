@@ -75,17 +75,6 @@ describe("Platform registry", () => {
     expect(connected.map((p) => p.id)).toEqual(["always-true"])
   })
 
-  it("getPlatformTabs returns tab entries for connected platforms", () => {
-    registerPlatform(makePlatform("spotify", (u) => !!u?.spotifyId))
-
-    const user = makeUser({ spotifyId: "spotify-123" })
-    const tabs = getPlatformTabs(user)
-
-    expect(tabs).toHaveLength(1)
-    expect(tabs[0].id).toBe("spotify")
-    expect(tabs[0].label).toBe("SPOTIFY")
-  })
-
   it("getPlatformTabs returns empty when no platforms are connected", () => {
     registerPlatform(makePlatform("needs-steam", (u) => !!u?.steamId))
     const tabs = getPlatformTabs(makeUser())

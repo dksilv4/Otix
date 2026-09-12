@@ -12,13 +12,11 @@ export interface User {
   tmdbUsername?: string | null
   tmdbAvatarUrl?: string | null
   tmdbRatingSyncDirection?: string | null
-  spotifyId?: string | null
-  spotifyUsername?: string | null
-  spotifyAvatarUrl?: string | null
   googleId?: string | null
   googleName?: string | null
   googleEmail?: string | null
   googleAvatarUrl?: string | null
+  driveConnected?: boolean
   avatarUrl?: string | null
   bio?: string | null
   backgroundUrl?: string | null
@@ -71,7 +69,7 @@ export type ForgotPasswordPageState = 'idle' | 'sending' | 'sent' | 'error'
 export type ResetPasswordPageState = 'idle' | 'submitting' | 'success' | 'error'
 export type VerifyEmailPageState = 'verifying' | 'success' | 'error' | 'sending'
 
-export type CallbackService = 'google' | 'google-login' | 'plex' | 'plex-login' | 'spotify' | 'spotify-login' | 'tmdb' | 'tmdb-login' | 'steam' | 'steam-connect'
+export type CallbackService = 'google' | 'google-login' | 'plex' | 'plex-login' | 'tmdb' | 'tmdb-login' | 'steam' | 'steam-connect'
 
 export interface StandardServiceConfig {
   endpoint: string

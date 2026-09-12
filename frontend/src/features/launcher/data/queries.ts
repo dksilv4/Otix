@@ -1,8 +1,8 @@
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api/client"
-import type { CamelCaseKeys } from "@/lib/api/camel-client"
+import type { CamelCaseKeys } from "@/lib/api/client"
 import type { components } from "@/lib/api/openapi"
-import type { CatalogGame, CatalogGameDetail } from "./types"
+import type { CatalogGame, CatalogGameDetail } from "../types"
 
 // ponytail: use generated API types — the axios interceptor converts snake_case → camelCase
 type MediaItemSummary = CamelCaseKeys<components["schemas"]["MediaItemSummary"]>
@@ -24,10 +24,14 @@ export const popularGamesOptions = () =>
   queryOptions({
     queryKey: gameKeys.popular(),
     queryFn: async (): Promise<CatalogGame[]> => {
-      const { data } = await apiClient.get<{ items: MediaItemSummary[] }>("/media/", {
-        params: { media_type: "game", sort_by: "popularity", sort_dir: "desc", limit: 24 },
-      })
-      return (data.items ?? [])
+      try {
+        const { data } = await apiClient.get<{ items: MediaItemSummary[] }>("/media/", {
+          params: { media_type: "game", sort_by: "popularity", sort_dir: "desc", limit: 24 },
+        })
+        return (data.items ?? []) as unknown as CatalogGame[]
+      } catch {
+        return []
+      }
     },
     staleTime: 1000 * 60 * 2,
   })
@@ -38,7 +42,11 @@ export const gameDetailOptions = (id: string) =>
     queryFn: async (): Promise<CatalogGameDetail | null> => {
       try {
         const { data } = await apiClient.get<MediaItemDetail>(`/media/game/${id}`)
-        return data
+        return {
+          ...data,
+          isFree: data.game?.isFree ?? false,
+          hasMultiplayer: data.game?.hasMultiplayer ?? false,
+        } as CatalogGameDetail
       } catch {
         return null
       }
@@ -75,8 +83,8 @@ export const gameGenresOptions = () =>
 
 // ── React Query hooks ──────────────────────────────────────────────
 
-export function usePopularGames() {
-  return useQuery(popularGamesOptions())
+export function usePopularGames(opts?: { enabled?: boolean }) {
+  return useQuery({ ...popularGamesOptions(), enabled: opts?.enabled ?? true })
 }
 
 export function useGameDetail(id: string | undefined | null) {

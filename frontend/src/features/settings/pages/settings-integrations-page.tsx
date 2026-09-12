@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { connectTaskSseStream, type SseEvent } from '@/lib/api/sse-client'
@@ -8,14 +8,13 @@ import { DkDropdown } from '@/old-features/ui/atoms/dropdown'
 import { DkSwitch } from '@/old-features/ui/atoms/switch'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
-import SpotifyIcon from '@/assets/provider-logos/spotify.svg?react'
 import GoogleIcon from '@/assets/provider-logos/google.svg?react'
 import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
 import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
 import { openExternal } from '@/lib/utils/open-external'
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
-import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, ListMusic, Film, Tv, Music } from 'lucide-react'
+import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, Film, Tv, Music, FolderOpen } from 'lucide-react'
 import { usePlexLibraries, streamPlexLibrarySync } from '@/old-features/library/library-queries'
 import type { PlexLibraryInfo } from '@/old-features/library/library-queries'
 
@@ -53,11 +52,6 @@ type PlexLibraryProgress = {
   itemsProcessed: number
   itemsTotal: number
   phase: 'pending' | 'syncing' | 'complete' | 'failed'
-}
-
-type SpotifyProgressState = {
-  phase: string
-  detail?: string
 }
 
 type YouTubeProgressState = {
@@ -112,7 +106,6 @@ function formatDaysAgo(unixTimestamp: number): string {
 const BRAND_COLORS: Record<string, string> = {
   steam: '#1a6bcc',
   plex: '#e5a00d',
-  spotify: '#1db954',
   tmdb: '#01b4e4',
   google: '#4285F4',
 }
@@ -120,7 +113,6 @@ const BRAND_COLORS: Record<string, string> = {
 const BRAND_BG: Record<string, string> = {
   steam: 'bg-[#1a6bcc]/10',
   plex: 'bg-[#e5a00d]/10',
-  spotify: 'bg-[#1db954]/10',
   tmdb: 'bg-[#01b4e4]/10',
   google: 'bg-[#4285F4]/10',
 }
@@ -320,12 +312,11 @@ function IntegrationStats({ items }: { items: { label: string; value: string | n
 export function SettingsIntegrationsPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const location = useLocation()
-  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [scanning, setScanning] = useState(false)
-  const [scanResult, setScanResult] = useState<{ totalInSteam: number; matchedInOtix: number } | null>(null)
+  const [scanResult, setScanResult] = useState<{ totalInSteam: number; matchedInOtix: number; resolved: number; synced: number; failed: number } | null>(null)
   const [wishlistScanning, setWishlistScanning] = useState(false)
   const [wishlistScanResult, setWishlistScanResult] = useState<{ total: number; matched: number; private?: boolean } | null>(null)
   const [resolving, setResolving] = useState(false)
@@ -397,21 +388,6 @@ export function SettingsIntegrationsPage() {
   const [tmdbDisconnecting, setTmdbDisconnecting] = useState(false)
   const [tmdbMessage, setTmdbMessage] = useState('')
   const [tmdbError, setTmdbError] = useState('')
-  const [spotifyConnected, setSpotifyConnected] = useState(Boolean(user?.spotifyId))
-  const [spotifyUsername, setSpotifyUsername] = useState<string | null>(user?.spotifyUsername ?? null)
-  const [spotifyAvatarUrl, setSpotifyAvatarUrl] = useState<string | null>(user?.spotifyAvatarUrl ?? null)
-  const [spotifyStats, setSpotifyStats] = useState<Record<string, unknown> | null>(null)
-  const [spotifyConnecting, setSpotifyConnecting] = useState(false)
-  const [spotifyDisconnecting, setSpotifyDisconnecting] = useState(false)
-  const [spotifyMessage, setSpotifyMessage] = useState('')
-  const [spotifyError, setSpotifyError] = useState('')
-  const [spotifySyncing, setSpotifySyncing] = useState(false)
-  const [spotifySyncResult, setSpotifySyncResult] = useState<{ likedTotal: number; likedMatched: number; likedSeeded: number } | null>(null)
-  const [spotifyProgress, setSpotifyProgress] = useState<SpotifyProgressState | null>(null)
-  const [spotifyRecentlyPlayedSyncing, setSpotifyRecentlyPlayedSyncing] = useState(false)
-  const [spotifyRecentlyPlayedResult, setSpotifyRecentlyPlayedResult] = useState<{ total: number; matched: number; seeded: number } | null>(null)
-  const [spotifyRecentlyPlayedMessage, setSpotifyRecentlyPlayedMessage] = useState('')
-  const isSpotifyConnected = spotifyConnected
   const [googleConnected, setGoogleConnected] = useState(Boolean(user?.googleId))
   const [googleName, setGoogleName] = useState<string | null>(user?.googleName ?? null)
   const [googleEmail, setGoogleEmail] = useState<string | null>(user?.googleEmail ?? null)
@@ -420,6 +396,11 @@ export function SettingsIntegrationsPage() {
   const [googleDisconnecting, setGoogleDisconnecting] = useState(false)
   const [googleMessage, setGoogleMessage] = useState('')
   const [googleError, setGoogleError] = useState('')
+  const [driveConnected, setDriveConnected] = useState(Boolean(user?.driveConnected))
+  const [driveConnecting, setDriveConnecting] = useState(false)
+  const [driveDisconnecting, setDriveDisconnecting] = useState(false)
+  const [driveMessage, setDriveMessage] = useState('')
+  const [driveError, setDriveError] = useState('')
   const [youtubeSyncing, setYoutubeSyncing] = useState(false)
   const [youtubeSyncResult, setYoutubeSyncResult] = useState<{ total: number; musicVideos: number; matched: number; channelLinks: number } | null>(null)
   const [youtubeProgress, setYoutubeProgress] = useState<YouTubeProgressState | null>(null)
@@ -470,19 +451,6 @@ export function SettingsIntegrationsPage() {
         setTmdbStats(tmdbProvider.tmdbStats ?? null)
         setTmdbSyncDirection(tmdbProvider.tmdbRatingSyncDirection ?? 'disabled')
       }
-      const spotifyProvider = (data.providers as Array<{
-        name: string
-        connected: boolean
-        spotifyUsername: string | null
-        spotifyAvatarUrl: string | null
-        spotifyStats: Record<string, unknown> | null
-      }>).find((p) => p.name === 'spotify')
-      if (spotifyProvider) {
-        setSpotifyConnected(spotifyProvider.connected)
-        setSpotifyUsername(spotifyProvider.spotifyUsername ?? null)
-        setSpotifyAvatarUrl(spotifyProvider.spotifyAvatarUrl ?? null)
-        setSpotifyStats(spotifyProvider.spotifyStats ?? null)
-      }
       const googleProvider = (data.providers as Array<{
         name: string
         connected: boolean
@@ -495,6 +463,13 @@ export function SettingsIntegrationsPage() {
         setGoogleName(googleProvider.googleName ?? null)
         setGoogleEmail(googleProvider.googleEmail ?? null)
         setGoogleAvatarUrl(googleProvider.googleAvatarUrl ?? null)
+      }
+      const googleDriveProvider = (data.providers as Array<{
+        name: string
+        connected: boolean
+      }>).find((p) => p.name === 'google_drive')
+      if (googleDriveProvider) {
+        setDriveConnected(googleDriveProvider.connected)
       }
     } catch (err) {
       setSteamError(extractIntegrationMessage(err))
@@ -599,35 +574,6 @@ export function SettingsIntegrationsPage() {
     }
   }
 
-  const handleSpotifyConnect = async () => {
-    setSpotifyConnecting(true)
-    setSpotifyError('')
-    try {
-      const { data } = await apiClient.post('/auth/oauth/spotify')
-      openExternal(data.authUrl)
-    } catch (err) {
-      setSpotifyConnecting(false)
-      setSpotifyError(extractIntegrationMessage(err))
-    }
-  }
-
-  const handleSpotifyDisconnect = async () => {
-    setSpotifyDisconnecting(true)
-    setSpotifyError('')
-    setSpotifyMessage('')
-    try {
-      await apiClient.delete('/auth/oauth/spotify/disconnect')
-      setSpotifyConnected(false)
-      setSpotifyUsername(null)
-      setSpotifyAvatarUrl(null)
-      setSpotifyMessage('Spotify account unlinked.')
-    } catch (err) {
-      setSpotifyError(extractIntegrationMessage(err))
-    } finally {
-      setSpotifyDisconnecting(false)
-    }
-  }
-
   const handleGoogleConnect = async () => {
     setGoogleConnecting(true)
     setGoogleError('')
@@ -655,6 +601,33 @@ export function SettingsIntegrationsPage() {
       setGoogleError(extractIntegrationMessage(err))
     } finally {
       setGoogleDisconnecting(false)
+    }
+  }
+
+  const handleDriveConnect = async () => {
+    setDriveConnecting(true)
+    setDriveError('')
+    try {
+      const { data } = await apiClient.post('/auth/oauth/google-drive')
+      openExternal(data.authUrl)
+    } catch (err) {
+      setDriveConnecting(false)
+      setDriveError(extractIntegrationMessage(err))
+    }
+  }
+
+  const handleDriveDisconnect = async () => {
+    setDriveDisconnecting(true)
+    setDriveError('')
+    setDriveMessage('')
+    try {
+      await apiClient.delete('/auth/oauth/google-drive/disconnect')
+      setDriveConnected(false)
+      setDriveMessage('Google Drive unlinked.')
+    } catch (err) {
+      setDriveError(extractIntegrationMessage(err))
+    } finally {
+      setDriveDisconnecting(false)
     }
   }
 
@@ -727,118 +700,6 @@ export function SettingsIntegrationsPage() {
       setYoutubeProgress(null)
     } finally {
       setYoutubeSyncing(false)
-    }
-  }
-
-  const handleSpotifySync = async () => {
-    abortRef.current?.abort()
-    const abortController = new AbortController()
-    abortRef.current = abortController
-
-    setSpotifySyncing(true)
-    setSpotifyError('')
-    setSpotifySyncResult(null)
-    setSpotifyMessage('')
-    setSpotifyProgress({ phase: 'Starting sync...' })
-
-    try {
-      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
-      await connectTaskSseStream(
-        {
-          createEndpoint: '/integrations/spotify/sync',
-          streamEndpoint: (taskId: string) => `/integrations/spotify/sync/${taskId}/stream`,
-          terminalEvents: ['sync_complete', 'error'],
-          token,
-          signal: abortController.signal,
-        },
-        (event: SseEvent) => {
-          switch (event.type) {
-            case 'sync_started':
-              setSpotifyProgress({ phase: 'Connected to Spotify...' })
-              break
-            case 'fetching_tracks':
-              setSpotifyProgress({ phase: 'Fetching liked tracks from Spotify...' })
-              break
-            case 'tracks_fetched':
-              setSpotifyProgress({ phase: `Fetched ${event.count} liked tracks` })
-              break
-            case 'matching_tracks':
-              setSpotifyProgress({ phase: `Matching ${event.count} tracks against catalog...` })
-              break
-            case 'tracks_matched':
-              setSpotifyProgress({ phase: `Matched ${event.matched} of ${event.total} tracks`, detail: `${event.matched} interactions created` })
-              break
-            case 'seeding_albums':
-              setSpotifyProgress({ phase: `Seeding ${event.count} missing albums...` })
-              break
-            case 'albums_seeded':
-              setSpotifyProgress({ phase: `Seeded ${event.count} new albums` })
-              break
-            case 'sync_complete':
-              setSpotifySyncResult({ likedTotal: event.likedTotal as number, likedMatched: event.likedMatched as number, likedSeeded: event.likedSeeded as number })
-              setSpotifyMessage(
-                `Synced ${event.likedTotal} liked tracks: ${event.likedMatched} matched in catalog, ${event.likedSeeded} new albums seeded.`,
-              )
-              setSpotifyProgress(null)
-              break
-            case 'error':
-              setSpotifyError(event.message as string)
-              setSpotifyProgress(null)
-              break
-          }
-        },
-      )
-    } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
-      setSpotifyError(extractIntegrationMessage(err))
-      setSpotifyProgress(null)
-    } finally {
-      setSpotifySyncing(false)
-    }
-  }
-
-  const handleSpotifyRecentlyPlayedSync = async () => {
-    abortRef.current?.abort()
-    const abortController = new AbortController()
-    abortRef.current = abortController
-
-    setSpotifyRecentlyPlayedSyncing(true)
-    setSpotifyRecentlyPlayedResult(null)
-    setSpotifyRecentlyPlayedMessage('')
-
-    try {
-      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
-      const terminal = await connectTaskSseStream(
-        {
-          createEndpoint: '/integrations/spotify/recently-played/sync',
-          streamEndpoint: (taskId: string) => `/integrations/spotify/recently-played/sync/${taskId}/stream`,
-          terminalEvents: ['sync_complete', 'error'],
-          token,
-          signal: abortController.signal,
-        },
-        (_event: SseEvent) => {
-          // Progress events — not displayed inline for this sync
-        },
-      )
-
-      if (terminal.type === 'sync_complete') {
-        setSpotifyRecentlyPlayedResult({
-          total: terminal.total as number,
-          matched: terminal.matched as number,
-          seeded: terminal.seeded as number,
-        })
-        setSpotifyRecentlyPlayedMessage(
-          `Synced ${terminal.total} recently played tracks: ${terminal.matched} matched, ${terminal.seeded} seeded.`,
-        )
-      } else if (terminal.type === 'error') {
-        setSpotifyRecentlyPlayedMessage('')
-        setSpotifyError(terminal.message as string ?? 'Recently played sync failed')
-      }
-    } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
-      setSpotifyError(extractIntegrationMessage(err))
-    } finally {
-      setSpotifyRecentlyPlayedSyncing(false)
     }
   }
 
@@ -1167,11 +1028,24 @@ export function SettingsIntegrationsPage() {
     setSteamError('')
     setScanResult(null)
     try {
-      const { data } = await apiClient.post<{ totalInSteam: number; matchedInOtix: number }>(
+      // First scan hydrates the Otix catalog (runs the matcher for unmatched
+      // games), which can take a while on a fresh account — allow up to 5 min.
+      const { data } = await apiClient.post<{
+        totalInSteam: number
+        matchedInOtix: number
+        resolved: number
+        synced: number
+        failed: number
+      }>(
         '/integrations/steam/scan',
+        undefined,
+        { timeout: 300_000 },
       )
       setScanResult(data)
-      setSteamMessage(`Found ${data.matchedInOtix} matches out of ${data.totalInSteam} Steam games.`)
+      let msg = `Found ${data.matchedInOtix} matches out of ${data.totalInSteam} Steam games.`
+      if (data.synced > 0) msg += ` Seeded ${data.synced} new Otix entries.`
+      if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
+      setSteamMessage(msg)
     } catch (err) {
       setSteamError(extractIntegrationMessage(err))
     } finally {
@@ -1281,20 +1155,6 @@ export function SettingsIntegrationsPage() {
       disconnecting: plexDisconnecting,
     },
     {
-      id: 'spotify',
-      name: 'Spotify',
-      keywords: 'spotify music liked songs albums library sync',
-      description: isSpotifyConnected && spotifyUsername ? `Linked as ${spotifyUsername}` : 'Link your Spotify account to sync your liked songs and saved albums.',
-      isConnected: isSpotifyConnected,
-      brandColor: BRAND_COLORS.spotify,
-      brandBg: BRAND_BG.spotify,
-      icon: SpotifyIcon,
-      onConnect: handleSpotifyConnect,
-      connecting: spotifyConnecting,
-      onDisconnect: handleSpotifyDisconnect,
-      disconnecting: spotifyDisconnecting,
-    },
-    {
       id: 'google',
       name: 'Google',
       keywords: 'google youtube music liked videos sync',
@@ -1307,6 +1167,20 @@ export function SettingsIntegrationsPage() {
       connecting: googleConnecting,
       onDisconnect: handleGoogleDisconnect,
       disconnecting: googleDisconnecting,
+    },
+    {
+      id: 'google_drive',
+      name: 'Google Drive',
+      keywords: 'google drive cloud backup saves game',
+      description: driveConnected ? 'Linked for game save cloud backup' : 'Link Google Drive to back up your game saves to the cloud.',
+      isConnected: driveConnected,
+      brandColor: BRAND_COLORS.google,
+      brandBg: BRAND_BG.google,
+      icon: GoogleIcon,
+      onConnect: handleDriveConnect,
+      connecting: driveConnecting,
+      onDisconnect: handleDriveDisconnect,
+      disconnecting: driveDisconnecting,
     },
     {
       id: 'tmdb',
@@ -1401,9 +1275,18 @@ export function SettingsIntegrationsPage() {
                         ...(steamProfile.personastate !== null && steamProfile.personastate !== undefined ? [{ label: 'status', value: personaStateLabel(steamProfile.personastate) }] : []),
                       ]} />
                     )}
-                    <IntegrationAction label="Library Sync" description="Steam Library" result={scanResult ? `${scanResult.matchedInOtix} matches out of ${scanResult.totalInSteam} games` : null} buttonLabel={scanning ? 'Scanning...' : scanResult ? 'Re-scan' : 'Scan Library'} buttonIcon={RefreshCw} onPress={handleScan} loading={scanning} />
-                    <IntegrationAction label="Wishlist Sync" description="Steam Wishlist" result={wishlistScanResult ? `${wishlistScanResult.matched} matches out of ${wishlistScanResult.total} wishlist items` : null} buttonLabel={wishlistScanning ? 'Scanning...' : wishlistScanResult ? 'Re-scan' : 'Scan Wishlist'} buttonIcon={RefreshCw} onPress={handleWishlistScan} loading={wishlistScanning} muted />
-                    <IntegrationAction label="Game Matching" description="Match unmapped games to IGDB" result={resolveResult ? `${resolveResult.resolved} linked${resolveResult.synced > 0 ? `, ${resolveResult.synced} synced` : ''}${resolveResult.failed > 0 ? `, ${resolveResult.failed} failed` : ''} out of ${resolveResult.total}` : null} buttonLabel={resolving ? 'Resolving...' : resolveResult ? 'Resolve Again' : 'Resolve Unmatched'} buttonIcon={Link2} onPress={handleResolveUnmatched} loading={resolving} />
+                    <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 text-xs text-white/70">
+                        <FolderOpen className="h-4 w-4 text-sky-400 shrink-0" />
+                        <span>Game scanning, wishlist syncing, and auto-matching are managed under <strong>Library Settings</strong> as a Provider.</span>
+                      </div>
+                      <Link
+                        to="/settings/library"
+                        className="px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+                      >
+                        Go to Library Settings &rarr;
+                      </Link>
+                    </div>
                     {steamMessage && <p className="px-5 py-2 text-xs text-green-400">{steamMessage}</p>}
                     {steamError && <p className="px-5 py-2 text-xs text-red-400">{steamError}</p>}
                   </>
@@ -1530,31 +1413,25 @@ export function SettingsIntegrationsPage() {
                   </>
                 )}
 
-                {/* Spotify content */}
-                {i.id === 'spotify' && (
+                {/* Google Drive content */}
+                {i.id === 'google_drive' && (
                   <>
                     <IntegrationProfile
-                      avatarUrl={spotifyAvatarUrl}
-                      avatarAlt={spotifyUsername ?? 'Spotify avatar'}
-                      name={spotifyUsername ?? 'Spotify User'}
-                      detail="Spotify account linked"
-                      brandBg={BRAND_BG.spotify}
-                      icon={SpotifyIcon}
-                      brandColor={BRAND_COLORS.spotify}
+                      avatarUrl={googleAvatarUrl}
+                      avatarAlt="Google Drive"
+                      name={driveConnected ? 'Google Drive linked' : 'Google Drive'}
+                      detail="Game save cloud backup"
+                      brandBg={BRAND_BG.google}
+                      icon={GoogleIcon}
+                      brandColor={BRAND_COLORS.google}
                     />
-                    {spotifyStats && (
-                      <IntegrationStats items={[
-                        ...(spotifyStats.product ? [{ label: 'plan', value: String(spotifyStats.product) }] : []),
-                        ...(spotifyStats.followers ? [{ label: 'followers', value: String(spotifyStats.followers) }] : []),
-                        ...(spotifyStats.country ? [{ label: 'country', value: String(spotifyStats.country) }] : []),
-                      ]} />
-                    )}
-                    <IntegrationAction label="Library Sync" description="Spotify Library" result={spotifySyncResult ? `${spotifySyncResult.likedMatched} matched out of ${spotifySyncResult.likedTotal} liked songs` : null} buttonLabel={spotifySyncing ? 'Syncing...' : spotifySyncResult ? 'Re-sync' : 'Sync Library'} buttonIcon={RefreshCw} onPress={handleSpotifySync} loading={spotifySyncing} disabled={spotifySyncing} progress={spotifyProgress && <span className="text-xs text-primary">{spotifyProgress.phase}{spotifyProgress.detail ? ` (${spotifyProgress.detail})` : ''}</span>} />
-                    <IntegrationAction label="Recently Played Sync" description="Spotify Recently Played" result={spotifyRecentlyPlayedResult ? `${spotifyRecentlyPlayedResult.matched} matched out of ${spotifyRecentlyPlayedResult.total} tracks` : null} buttonLabel={spotifyRecentlyPlayedSyncing ? 'Syncing...' : spotifyRecentlyPlayedResult ? 'Re-sync' : 'Sync Recently Played'} buttonIcon={RefreshCw} onPress={handleSpotifyRecentlyPlayedSync} loading={spotifyRecentlyPlayedSyncing} disabled={spotifyRecentlyPlayedSyncing} muted />
-                    <IntegrationAction label="Playlists" description="Spotify Playlists" buttonLabel="Browse" buttonIcon={ListMusic} onPress={() => navigate({ to: '/library/spotify/playlists' })} muted />
-                    {spotifyMessage && <p className="px-5 py-2 text-xs text-green-400">{spotifyMessage}</p>}
-                    {spotifyRecentlyPlayedMessage && <p className="px-5 py-2 text-xs text-green-400">{spotifyRecentlyPlayedMessage}</p>}
-                    {spotifyError && <p className="px-5 py-2 text-xs text-red-400">{spotifyError}</p>}
+                    <div className="px-5 py-3">
+                      <p className="text-xs text-white/60">
+                        Backs up your game saves to a folder in your Google Drive.
+                      </p>
+                    </div>
+                    {driveMessage && <p className="px-5 py-2 text-xs text-green-400">{driveMessage}</p>}
+                    {driveError && <p className="px-5 py-2 text-xs text-red-400">{driveError}</p>}
                   </>
                 )}
 

@@ -1,9 +1,11 @@
 // TODO: Review this file
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query'
 import type { Persister, PersistedClient } from '@tanstack/react-query-persist-client'
 import { getDesktopAPI } from '../desktop/api'
+import { showErrorToast } from '@/old-features/ui/molecules/toast'
+import { reportNetworkFailure, reportOnline } from '@/lib/offline'
 
-const CACHE_BUSTER = 'v2'
+const CACHE_BUSTER = 'v3'
 const STORAGE_KEY = `otix_query_cache_${CACHE_BUSTER}`
 
 function createElectronPersister(): Persister {
@@ -70,6 +72,21 @@ function createLocalStoragePersister(): Persister {
 }
 
 export const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      reportNetworkFailure(error)
+      if (query.meta?.suppressToast) return
+      showErrorToast(error, 'Query Error')
+    },
+    onSuccess: () => reportOnline(),
+  }),
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      reportNetworkFailure(error)
+      if (mutation.meta?.suppressToast) return
+      showErrorToast(error, 'Operation Failed')
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes

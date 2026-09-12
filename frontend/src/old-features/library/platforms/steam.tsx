@@ -89,7 +89,7 @@ function UnmatchedGrid({ items, hasMore, onLoadMore, loading }: { items: Unmatch
   return (
     <>
       <div className="dk-library-steam__unmatched-grid">
-        {items.map((game) => {
+        {(Array.isArray(items) ? items.filter((game) => game && game.id) : []).map((game) => {
           const iconUrl = game.steamImgIconUrl
             ? `https://media.steampowered.com/steamcommunity/public/images/apps/${game.steamAppId}/${game.steamImgIconUrl}.jpg`
             : null
@@ -224,7 +224,7 @@ function SteamTabContent() {
       )}
 
       <MediaGrid>
-        {items.map((item) => (
+        {(Array.isArray(items) ? items.filter((item) => item && item.id) : []).map((item) => (
           <div key={item.id} className="dk-library-steam__media-item">
             <MediaCard
               id={item.id}
@@ -425,7 +425,7 @@ function SteamOverviewModule({ expanded, onToggle }: { expanded?: boolean; onTog
             </button>
           </div>
           <div className="dk-library-steam__carousel-track">
-            {recentlyPlayed.map((item) => (
+            {(Array.isArray(recentlyPlayed) ? recentlyPlayed.filter((item) => item && item.id) : []).map((item) => (
               <div key={item.id} className="dk-library-steam__carousel-card">
                 <div className="dk-library-steam__carousel-art">
                   {item.posterUrl ? (

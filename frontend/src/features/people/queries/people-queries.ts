@@ -1,6 +1,6 @@
 import { queryOptions, useQueryClient, useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
-import type { PersonDetail, PersonSummary, PersonListResponse, RelatedArtist } from '@people/types'
+import type { PersonDetail, PersonListResponse } from '@people/types'
 
 // ── Query key factory ─────────────────────────────
 
@@ -8,7 +8,6 @@ export const peopleKeys = {
   all: ['person'] as const,
   search: (query: string, limit = 8) => ['person', 'search', query, limit] as const,
   detail: (id: string) => ['person', id] as const,
-  related: (id: string) => ['person', id, 'related'] as const,
 }
 
 // ── Query options ─────────────────────────────────
@@ -18,10 +17,20 @@ export const peopleQueries = {
     queryOptions({
       queryKey: ['person', 'search', query, limit],
       queryFn: async () => {
-        const { data } = await apiClient.get<PersonListResponse>('/person/search', {
+        const { data } = await apiClient.get<any>('/person/search', {
           params: { q: query, limit },
         })
-        return data
+        const items = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data?.results)
+            ? data.results
+            : Array.isArray(data)
+              ? data
+              : []
+        return {
+          ...data,
+          items,
+        } as PersonListResponse
       },
       enabled: query.length > 0,
       staleTime: 1000 * 60 * 5,
@@ -32,19 +41,12 @@ export const peopleQueries = {
       queryKey: ['person', id],
       queryFn: async () => {
         const { data } = await apiClient.get<PersonDetail>(`/person/${id}`)
+        if (data && !Array.isArray(data.credits)) {
+          data.credits = []
+        }
         return data
       },
       staleTime: 1000 * 60 * 10,
-    }),
-
-  related: (id: string) =>
-    queryOptions({
-      queryKey: ['person', id, 'related'],
-      queryFn: async () => {
-        const { data } = await apiClient.get<{ artists: RelatedArtist[] }>(`/person/${id}/related`)
-        return data.artists
-      },
-      staleTime: 1000 * 60 * 30,
     }),
 }
 

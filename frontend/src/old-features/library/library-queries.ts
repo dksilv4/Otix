@@ -41,7 +41,7 @@ export interface LibraryResponse {
   hasMore: boolean
 }
 
-export const LIBRARY_TABS = ["overview", "games", "watchlist", "like", "watched", "played", "listened", "owned", "spotify", "steam", "plex", "youtube", "wishlist", "lists"] as const
+export const LIBRARY_TABS = ["overview", "games", "watchlist", "like", "watched", "played", "listened", "owned", "steam", "plex", "youtube", "wishlist", "lists"] as const
 export type LibraryTab = (typeof LIBRARY_TABS)[number]
 
 export const TAB_LABELS: Record<LibraryTab, string> = {
@@ -52,7 +52,6 @@ export const TAB_LABELS: Record<LibraryTab, string> = {
   played: "Played",
   listened: "Listened",
   owned: "Owned",
-  spotify: "Spotify",
   steam: "Steam",
   plex: "Plex",
   youtube: "YouTube",
@@ -67,12 +66,25 @@ export function useLibraryTab(tab: LibraryTab, extraParams?: Record<string, stri
     queryFn: async ({ pageParam }: { pageParam: string | null }) => {
       const params: Record<string, string> = { limit: "48", ...extraParams }
       if (pageParam) params.cursor = pageParam
-      const { data } = await apiClient.get<LibraryResponse>("/library/" + tab, { params })
-      return data
+      const { data } = await apiClient.get<any>("/library/" + tab, { params })
+      const items = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data?.results)
+          ? data.results
+          : Array.isArray(data)
+            ? data
+            : []
+      return {
+        ...data,
+        items,
+        nextCursor: data?.nextCursor ?? data?.next_cursor ?? null,
+        hasMore: data?.hasMore ?? !!(data?.nextCursor || data?.next_cursor || data?.next),
+      } as LibraryResponse
     },
     initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
     staleTime: 1000 * 60 * 2,
+    meta: { suppressToast: true },
   })
 }
 
@@ -307,104 +319,7 @@ export function useSteamWishlist() {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: 1000 * 60 * 2,
-  })
-}
-
-export function useSpotifyLibraryScan() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async () => {
-      const { data } = await apiClient.post<{ taskId: string }>(
-        "/integrations/spotify/sync",
-      )
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: libraryKeys.tab("spotify") })
-      queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("spotify"), "status"] })
-    },
-  })
-}
-
-export function useSpotifyStatus({ enabled = true }: { enabled?: boolean } = {}) {
-  return useQuery({
-    queryKey: [...libraryKeys.tab("spotify"), "status"],
-    queryFn: async () => {
-      const { data } = await apiClient.get<{ trackCount: number; lastScannedAt: string | null }>(
-        "/library/spotify/status",
-      )
-      return data
-    },
-    staleTime: 1000 * 60 * 2,
-    enabled,
-  })
-}
-
-export interface SpotifyTrack {
-  id: string
-  name: string
-  artist: string
-  artistId?: string | null
-  albumName: string
-  albumId?: string | null
-  albumArt: string | null
-  durationMs: number | null
-  uri: string
-  previewUrl: string | null
-  spotifyLiked?: boolean
-  otixTrackId?: string | null
-  otixAlbumId?: string | null
-  otixArtistId?: string | null
-  avgRating?: number | null
-  ratingCount?: number
-}
-
-export interface SpotifyLikedTracks {
-  tracks: SpotifyTrack[]
-  total: number
-  nextOffset: number | null
-  hasMore: boolean
-}
-
-export function getSpotifyLikedTracksNextPageParam(lastPage: SpotifyLikedTracks) {
-  return lastPage.nextOffset ?? undefined
-}
-
-export function useSpotifyLikedTracks() {
-  return useInfiniteQuery({
-    queryKey: [...libraryKeys.tab("spotify"), "liked-tracks"],
-    queryFn: async ({ pageParam }: { pageParam: number }) => {
-      const params: Record<string, string> = {
-        limit: "50",
-        offset: String(pageParam),
-      }
-      const { data } = await apiClient.get<SpotifyLikedTracks>(
-        "/library/spotify/tracks",
-        { params },
-      )
-      return data
-    },
-    initialPageParam: 0,
-    getNextPageParam: getSpotifyLikedTracksNextPageParam,
-    staleTime: 1000 * 60 * 5,
-  })
-}
-
-export function useSaveSpotifyTrack() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (trackId: string) => {
-      const { data } = await apiClient.put<{ id: string; spotifyLiked: boolean }>(
-        `/library/spotify/tracks/${trackId}/liked`,
-      )
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("spotify"), "liked-tracks"] })
-      queryClient.invalidateQueries({ queryKey: libraryKeys.tab("spotify") })
-    },
+    meta: { suppressToast: true },
   })
 }
 
@@ -444,7 +359,7 @@ export function useClaimGame() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ mediaType, mediaId }: { mediaType: string; mediaId: string }) => {
+    mutationFn: async ({ mediaId }: { mediaId: string }) => {
       const { data } = await apiClient.post<{ status: string }>(`/media/${mediaId}/claim`)
       return data
     },
@@ -463,7 +378,7 @@ export function useUnclaimGame() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ mediaType, mediaId }: { mediaType: string; mediaId: string }) => {
+    mutationFn: async ({ mediaId }: { mediaId: string }) => {
       await apiClient.delete(`/media/${mediaId}/claim`)
     },
     onSuccess: (_data, { mediaId }) => {

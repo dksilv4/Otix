@@ -14,11 +14,10 @@ export function NavPillLeft() {
 
     const titleBarOffset = isDesktop ? "top-12" : "top-4"
     const isHomePage = location.pathname === "/"
-    const canGoBack = typeof window !== "undefined" && window.history.length > 1
-    const showBackButton = !isHomePage && canGoBack
+    const showBackButton = !isHomePage
 
     return (
-        <NavPill className={"left-3 px-2 py-1.5 " + titleBarOffset + (navLogo ? " pr-4" : '')} data-menu-trigger>
+        <NavPill className={"left-3 px-2 py-1.5 " + titleBarOffset + (navLogo ? " pr-4" : '')} data-menu-trigger data-nav-pill="left">
             {showBackButton && <BackButton/>}
             <MenuToggle/>
             {

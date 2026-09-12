@@ -1,0 +1,36 @@
+{
+  "name": "Steam Source",
+  "icon": "cloud",
+  "version": "0.1.0",
+  "description": "Live catalog data source: resolves scanned Steam games to canonical title + artwork via the keyless Steam Store API (appdetails), cached locally",
+  "author": "Otix",
+  "repository": "builtin",
+  "system": true,
+  "min_app_version": "0.3.0",
+  "permissions": [
+    "network:external",
+    "storage:local"
+  ],
+  "services": [
+    { "type": "catalog-source", "protocol": "steam" }
+  ],
+  "db": {
+    "tables": {
+      "steam_cache": {
+        "columns": {
+          "appid": "TEXT PRIMARY KEY",
+          "title": "TEXT NOT NULL",
+          "type": "TEXT",
+          "poster_url": "TEXT",
+          "logo_url": "TEXT",
+          "backdrop_url": "TEXT",
+          "fetched_at": "INTEGER NOT NULL"
+        },
+        "indexes": [
+          "CREATE INDEX IF NOT EXISTS idx_steam_cache_title ON steam_cache (title)"
+        ]
+      }
+    }
+  },
+  "entry": { "main": "main.js" }
+}

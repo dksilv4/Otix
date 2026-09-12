@@ -22,6 +22,8 @@ export interface ImageOverrideItem {
   url: string
 }
 
+export type ArtworkContext = 'general' | 'dark' | 'light'
+
 export interface MediaAsset {
   id: string
   assetType: string
@@ -32,6 +34,16 @@ export interface MediaAsset {
   style: string | null
   score: number | null
   provider: string | null
+  /** Admin pinned this asset as the artwork for a presentation context. */
+  selectedContext: ArtworkContext | null
+  /** Mirrored file name; non-null means a local copy exists. */
+  localName: string | null
+  /** Admin kept this variant in the mirror set (localized extras kept on disk). */
+  keepLocal: boolean
+  /** Contexts this asset is currently resolved/served for. */
+  currentContexts: ArtworkContext[]
+  /** This image is the family's (theme-agnostic) textless art. */
+  isTextless: boolean
 }
 
 export interface MediaAssetList {
@@ -75,6 +87,108 @@ export function useMediaAssets(mediaType: string, mediaId: string) {
       return data
     },
     staleTime: 60_000,
+  })
+}
+
+export interface ArtworkSelectionResult {
+  assetId: string
+  selectedContext: ArtworkContext | null
+  mirrored: boolean
+}
+
+/** Pin/unpin an asset as the admin-chosen artwork for a presentation context. */
+export function useSetArtworkSelection(_mediaType: string, mediaId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      assetId,
+      context,
+    }: {
+      assetId: string
+      context: ArtworkContext | null
+    }): Promise<ArtworkSelectionResult> => {
+      const url = `/media/admin/media-items/${mediaId}/assets/${assetId}/select`
+      if (context) {
+        const { data } = await apiClient.put<ArtworkSelectionResult>(url, { context })
+        return data
+      }
+      await apiClient.delete(url)
+      return { assetId, selectedContext: null, mirrored: false }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminEditKeys.forMedia(mediaId) })
+      queryClient.removeQueries({ queryKey: ['media'] })
+      queryClient.removeQueries({ queryKey: ['discover'] })
+    },
+  })
+}
+
+export interface TextlessPickResult {
+  assetId: string
+  active: boolean
+  mirrored: boolean
+}
+
+/**
+ * Designate/clear this image as the media item's family textless art — a
+ * single, theme-agnostic pick (General/Dark/Light all fall back to it). PUT
+ * designates (a plain poster/backdrop is backed by a hidden textless row reusing
+ * its image), DELETE clears it.
+ */
+export function useSetTextlessPick(_mediaType: string, mediaId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      assetId,
+      active,
+    }: {
+      assetId: string
+      active: boolean
+    }): Promise<TextlessPickResult> => {
+      const url = `/media/admin/media-items/${mediaId}/assets/${assetId}/textless`
+      if (active) {
+        const { data } = await apiClient.put<TextlessPickResult>(url)
+        return data
+      }
+      const { data } = await apiClient.delete<TextlessPickResult>(url)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminEditKeys.forMedia(mediaId) })
+      queryClient.removeQueries({ queryKey: ['media'] })
+      queryClient.removeQueries({ queryKey: ['discover'] })
+    },
+  })
+}
+
+export interface ArtworkMirrorResult {
+  assetId: string
+  kept: boolean
+  mirrored: boolean
+}
+
+/** Keep/release an asset in the admin mirror set (PUT mirrors + DELETE unkeeps). */
+export function useSetAssetMirrorKeep(_mediaType: string, mediaId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      assetId,
+      keep,
+    }: {
+      assetId: string
+      keep: boolean
+    }): Promise<ArtworkMirrorResult> => {
+      const url = `/media/admin/media-items/${mediaId}/assets/${assetId}/mirror`
+      if (keep) {
+        const { data } = await apiClient.put<ArtworkMirrorResult>(url)
+        return data
+      }
+      const { data } = await apiClient.delete<ArtworkMirrorResult>(url)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminEditKeys.forMedia(mediaId) })
+    },
   })
 }
 

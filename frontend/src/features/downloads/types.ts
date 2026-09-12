@@ -46,6 +46,8 @@ export interface Download {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Who created this row — e.g. 'radarr' for catalog-synced movies, null for game/usenet. */
+  source: string | null;
 }
 
 export interface WishlistTrackingEntry {

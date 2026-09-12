@@ -33,7 +33,8 @@ export function LibraryBreakdownSection({ username }: { username: string }) {
   if (statsQuery.isError || !statsQuery.data) return null
 
   const s = statsQuery.data
-  const hasData = s.totalItems > 0
+  const totalItems = s.totalItems ?? 0
+  const hasData = totalItems > 0
 
   return (
     <section>
@@ -51,15 +52,15 @@ export function LibraryBreakdownSection({ username }: { username: string }) {
             <BarChart3 className="h-3.5 w-3.5" style={{ color: CARD_ACCENTS.items.color }} />
             <p className="dk-user-library__card-label">Items</p>
           </div>
-          <p className="dk-user-library__card-value dk-user-library__card-value--3xl">{s.totalItems.toLocaleString()}</p>
+          <p className="dk-user-library__card-value dk-user-library__card-value--3xl">{totalItems.toLocaleString()}</p>
 
           {/* Bar chart */}
           {hasData && (
             <div className="dk-user-library__bar">
               {Object.entries(MEDIA_TYPE_LABELS).map(([type, label]) => {
-                const count = s.byMediaType[type] || 0
+                const count = s.byMediaType?.[type] || 0
                 if (count === 0) return null
-                const pct = (count / s.totalItems) * 100
+                const pct = (count / totalItems) * 100
                 return (
                   <div
                     key={type}
@@ -74,7 +75,7 @@ export function LibraryBreakdownSection({ username }: { username: string }) {
           {hasData && (
             <div className="dk-user-library__legend">
               {Object.entries(MEDIA_TYPE_LABELS).map(([type, label]) => {
-                const count = s.byMediaType[type] || 0
+                const count = s.byMediaType?.[type] || 0
                 if (count === 0) return null
                 return (
                   <span key={type} className="dk-user-library__legend-item">

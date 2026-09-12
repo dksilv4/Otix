@@ -1,10 +1,10 @@
 import { ipcMain } from 'electron';
-import { getConnection } from '../db';
+import { getDb } from '../db';
 import {
   getConfig, saveConfig, getDownload, getUserDownloads, deleteDownload,
   getWishlistTracking, skipWishlistItem,
   getPathMappings, addPathMapping, removePathMapping,
-} from '../downloads';
+} from '../framework/downloads';
 import { previewNamingTemplate, validateNamingTemplate } from '../downloads/organizer';
 
 // ── Plugin call router ───────────────────────────────────────────────────
@@ -161,9 +161,8 @@ export function registerDownloadsIPC(): void {
     return getDownload(id);
   });
 
-  ipcMain.handle('downloads:get-user-downloads', async () => {
-    if (!_callPlugin) throw new Error('Plugin system not initialized');
-    return _callPlugin('downloads', 'get-downloads');
+  ipcMain.handle('downloads:get-user-downloads', () => {
+    return getUserDownloads();
   });
 
   ipcMain.handle('downloads:delete', (_, id: string) => {
@@ -226,7 +225,7 @@ export function registerDownloadsIPC(): void {
   // ── Game tracking (direct DB query) ────────────────────────────────────
 
   ipcMain.handle('downloads:get-tracked-game', async () => {
-    const db = getConnection('downloads');
+    const db = getDb();
     const rows = db.prepare('SELECT * FROM game_update_tracking ORDER BY media_item_title').all() as any[];
     return rows.map(row => ({
       mediaItemId: row.media_item_id,

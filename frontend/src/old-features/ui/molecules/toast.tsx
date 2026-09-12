@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 type ToastVariant = 'default' | 'success' | 'error' | 'warning' | 'info'
 
-interface Toast {
+export interface Toast {
   id: string
   title: string
   description?: string
@@ -18,6 +18,47 @@ interface ToastContextValue {
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
+
+const listeners: Set<(t: Omit<Toast, 'id'>) => void> = new Set()
+
+/**
+ * Dispatch a toast from anywhere (React or non-React code).
+ */
+export function showToast(t: Omit<Toast, 'id'>) {
+  for (const listener of listeners) {
+    listener(t)
+  }
+}
+
+/**
+ * Dispatch an error toast for any Error, AppError, PluginError, or string.
+ */
+export function showErrorToast(errorOrMessage: unknown, fallbackTitle = 'An error occurred') {
+  let title = fallbackTitle
+  let description: string | undefined
+
+  if (typeof errorOrMessage === 'string') {
+    description = errorOrMessage
+  } else if (errorOrMessage instanceof Error) {
+    title = errorOrMessage.name && errorOrMessage.name !== 'Error'
+      ? errorOrMessage.name.replace(/([A-Z])/g, ' $1').trim()
+      : fallbackTitle
+    description = errorOrMessage.message
+  } else if (typeof errorOrMessage === 'object' && errorOrMessage !== null) {
+    const errObj = errorOrMessage as { message?: string; name?: string; code?: string }
+    title = errObj.name || errObj.code || fallbackTitle
+    description = errObj.message || String(errorOrMessage)
+  } else {
+    description = String(errorOrMessage)
+  }
+
+  showToast({
+    title,
+    description,
+    variant: 'error',
+    duration: 5000,
+  })
+}
 
 export function useToast() {
   const ctx = useContext(ToastContext)
@@ -50,6 +91,13 @@ function DkToastProvider({ children }: { children: ReactNode }) {
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
+
+  useEffect(() => {
+    listeners.add(addToast)
+    return () => {
+      listeners.delete(addToast)
+    }
+  }, [addToast])
 
   return (
     <ToastContext.Provider value={{ toast: addToast }}>

@@ -6,7 +6,6 @@ interface ScannedGameModalProps {
 }
 
 export function ScannedGameModal({ game, onClose }: ScannedGameModalProps) {
-  const posterUrl = game.otixPosterUrl || game.posterUrl
   const isMatched = !!game.otixMediaId
   const confidence = game.otixConfidence
 

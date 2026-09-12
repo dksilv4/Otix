@@ -19,8 +19,13 @@ export function useHeroCarousel() {
   const touchStartYRef = useRef(0)
   const failedDetailIdsRef = useRef<Set<string>>(new Set())
 
-  const { data: heroData, fetchNextPage, hasNextPage } = useInfiniteQuery(discoverQueries.hero())
-  const items = useMemo(() => heroData?.pages.flatMap((p) => p.items) ?? [], [heroData])
+  const { data: heroData, fetchNextPage, hasNextPage, isLoading, isError, refetch } = useInfiniteQuery(discoverQueries.hero())
+  const items = useMemo(() => {
+    const pages = heroData?.pages ?? []
+    // Guard against a page payload lacking an array `items` (e.g. a DRF
+    // `results` envelope) which would otherwise inject an [undefined] item.
+    return pages.flatMap((p) => (Array.isArray(p?.items) ? p.items : []))
+  }, [heroData])
   const totalItems = items.length
 
   // Fetch detail for active item
@@ -137,5 +142,6 @@ export function useHeroCarousel() {
     detailData, cardOffset, visibleSlides, isPaused, isTransitioning,
     setIsPaused, tick, tickBack, navigateTo,
     handleTouchStart, handleTouchEnd, handleCardClick,
+    isLoading, isError, refetch,
   }
 }

@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { describe, expect, it, vi } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, fireEvent } from "@testing-library/react"
 
 import { TrackInlineActions } from "./media-track-inline-actions"
 
@@ -27,22 +27,5 @@ describe("TrackInlineActions", () => {
     fireEvent.pointerUp(rightHits[0])
 
     expect(mockRate).toHaveBeenCalledWith("t1", 2)
-  })
-
-  it("renders spotify save button and handles click", () => {
-    const mockSave = vi.fn()
-    render(<TrackInlineActions spotifyId="s1" onSaveSpotify={mockSave} />)
-
-    const saveBtn = screen.getByRole("button", { name: /add to spotify liked songs/i })
-    expect(saveBtn).toBeInTheDocument()
-    fireEvent.click(saveBtn)
-    expect(mockSave).toHaveBeenCalledWith("s1")
-  })
-
-  it("shows disabled/liked state for spotify", () => {
-    render(<TrackInlineActions spotifyId="s1" spotifyLiked={true} onSaveSpotify={vi.fn()} />)
-    const saveBtn = screen.getByRole("button", { name: /saved to spotify liked songs/i })
-    expect(saveBtn).toBeInTheDocument()
-    expect(saveBtn).toBeDisabled()
   })
 })

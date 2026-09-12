@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import {
-  RefreshCw, Circle, Gamepad2, Download, Info, AlertTriangle, XCircle, CheckCircle2,
+  RefreshCw, Download, Info, AlertTriangle, XCircle, CheckCircle2,
 } from 'lucide-react'
 import { ActivityModuleSection } from './activity-module-section'
 
@@ -31,6 +31,12 @@ interface ActivitySlotEntry {
   label: string
 }
 
+interface ActivityStoreEntry {
+  pluginId: string
+  label: string
+  activities: PluginActivityItem[]
+}
+
 // ── Poll interval ──────────────────────────────────────────────────────
 
 const SLOW_POLL = 15_000  // idle: 15 seconds
@@ -58,7 +64,6 @@ const STATUS_COLOR: Record<string, string> = {
 // ── Component ──────────────────────────────────────────────────────────
 
 export function ActivityModulePlugins() {
-  const [slots, setSlots] = useState<ActivitySlotEntry[]>([])
   const [activities, setActivities] = useState<Record<string, PluginActivityItem[]>>({})
   const [labels, setLabels] = useState<Record<string, string>>({})
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -68,33 +73,41 @@ export function ActivityModulePlugins() {
   const poll = useCallback(async () => {
     if (!api?.plugin?.callData) return
 
+    const nextActivities: Record<string, PluginActivityItem[]> = {}
+    const nextLabels: Record<string, string> = {}
+
+    // Framework store — plugins publishing via ctx.activity. Authoritative.
+    try {
+      const storeEntries: ActivityStoreEntry[] = (await api.plugin.getActivity?.()) || []
+      for (const entry of storeEntries) {
+        if (!entry?.activities?.length) continue
+        nextActivities[entry.pluginId] = entry.activities
+        nextLabels[entry.pluginId] = entry.label || entry.pluginId
+      }
+    } catch {
+      // Framework store unavailable — fall through to activity.poll polling
+    }
+
+    // Legacy activity.poll polling for slot plugins not publishing to the store.
+    const storeIds = new Set(Object.keys(nextActivities))
     const currentSlots: ActivitySlotEntry[] =
       await api.plugin.getSlotData?.('activity:panel') || []
-
-    setSlots(prev => {
-      if (prev.length !== currentSlots.length ||
-          prev.some((s, i) => s.pluginId !== currentSlots[i]?.pluginId)) {
-        return currentSlots
-      }
-      return prev
-    })
-
     for (const slot of currentSlots) {
+      if (storeIds.has(slot.pluginId)) continue
       try {
         const result: ActivityPollResult | null =
           await api.plugin.callData(slot.pluginId, 'activity.poll')
         if (result) {
-          setActivities(prev => ({ ...prev, [slot.pluginId]: result.activities || [] }))
-          if (result.label) {
-            setLabels(prev => ({ ...prev, [slot.pluginId]: result.label }))
-          } else {
-            setLabels(prev => ({ ...prev, [slot.pluginId]: slot.label }))
-          }
+          nextActivities[slot.pluginId] = result.activities || []
+          nextLabels[slot.pluginId] = result.label || slot.label
         }
       } catch {
         // Plugin may not implement activity.poll yet — skip silently
       }
     }
+
+    setActivities(nextActivities)
+    setLabels(nextLabels)
   }, [api])
 
   // Dynamic polling: fast during active scans, slow when idle

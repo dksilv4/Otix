@@ -8,3 +8,5 @@ export { BackButton } from './components/atoms/navigation-back-button'
 export { NavPillLeft } from './components/molecules/navigation-pill-left'
 export { NavPillRight } from './components/molecules/navigation-pill-right'
 export { NavShell } from './components/organisms/navigation-shell'
+export { useNavPillsVisibility, type NavPillsConfig } from './hooks/use-nav-pills-visibility'
+

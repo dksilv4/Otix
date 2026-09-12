@@ -13,12 +13,12 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { cleanGameTitle, extractGroup, parseVersion, type ParsedRelease, type FileInfo } from '../game/parser';
 import { executeOrganization, OrganizationPreviewItem } from '../installer';
-import { getConnection } from '../db';
+import { getDb } from '../db';
 import type Database from 'better-sqlite3';
 
 let __db: Database.Database | null = null;
 function db(): Database.Database {
-  if (!__db) __db = getConnection('downloads');
+  if (!__db) __db = getDb();
   return __db;
 }
 

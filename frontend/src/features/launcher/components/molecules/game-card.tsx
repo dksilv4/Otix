@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { DkBadge } from "@/old-features/ui/atoms/badge";
 import type { LocalGame } from "@/features/launcher/types";
+import { MediaLogo } from "@/lib/media/media-logo";
 import { hasDesktopAPI } from "@/features/launcher/data/storage";
 
 const PLATFORM_BADGES: Record<
@@ -40,9 +41,8 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
   const badge = hasMultipleSources
     ? { variant: "default" as const, label: game.sources!.map((s) => PLATFORM_BADGES[s]?.label ?? s).join(" + ") }
     : primaryBadge;
-  // Prefer textless poster so the floating logo pops clean.
-  // Fall back to SGDB grid (posterUrl from scanner) for unmatched game.
-  const backgroundUrl = game.data?.posterUrl || game.data?.posterUrl || game.posterUrl;
+  // Prefer textless poster, then background art (backdrop), then standard poster so the floating 4D logo pops clean.
+  const backgroundUrl = (game.data as any)?.textlessPosterUrl || (game.data as any)?.backdropUrl || game.data?.posterUrl || game.posterUrl;
   const hasBackground = backgroundUrl && !posterError;
   const hasLogo = game.data?.logoUrl && !logoError;
   const isMatched = !!game.data?.id;
@@ -83,7 +83,7 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
             onError={() => setPosterError(true)}
           />
           {/* Dark overlay for contrast against logo */}
-          <div className="absolute inset-0 bg-black/35 transition-all duration-300 group-hover:bg-black/25" />
+          <div className="absolute inset-0 bg-black/45 transition-all duration-300 group-hover:bg-black/30" />
         </>
       ) : (
         /* Unmatched — title-hash colour gradient + icon */
@@ -149,11 +149,21 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
 
       {/* Logo — decorative, top portion */}
       {hasLogo && (
-        <div className="absolute top-[8%] left-0 right-0 z-10 flex items-center justify-center px-6">
-          <img
+        <div className="absolute top-[8%] left-0 right-0 z-10 flex items-center justify-center px-6 pointer-events-none">
+          <div
+            className="absolute inset-0 opacity-80 group-hover:opacity-95 transition-opacity duration-300 pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0) 80%)',
+            }}
+          />
+          <MediaLogo
             src={game.data?.logoUrl!}
             alt={game.title}
-            className="max-h-[55%] max-w-[80%] object-contain drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] transition-all duration-500 ease-out scale-100 group-hover:scale-105"
+            className="relative z-10 max-h-[55%] max-w-[80%] object-contain transition-all duration-500 ease-out scale-100 group-hover:scale-105"
+            colorGuess={game.data?.logoColorGuess ?? null}
+            background="dark"
+            shadow="drop-shadow(0 2px 4px rgba(0,0,0,0.95)) drop-shadow(0 6px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
             onError={() => setLogoError(true)}
           />
         </div>

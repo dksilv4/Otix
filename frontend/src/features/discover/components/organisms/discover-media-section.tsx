@@ -1,7 +1,5 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from '@tanstack/react-router'
-import { ArrowRight } from 'lucide-react'
 import { useSectionFetch } from '@discover/hooks/use-section-fetch'
 import { MediaCarousel } from '../molecules/discover-media-carousel'
 import { MediaSectionSkeleton } from '../molecules/discover-media-section-skeleton'
@@ -13,6 +11,7 @@ interface MediaSectionProps {
   genre?: string
   language?: string
   isAnime?: boolean
+  platform?: string
 }
 
 export const MediaSection = memo(function MediaSection({
@@ -22,6 +21,7 @@ export const MediaSection = memo(function MediaSection({
   genre,
   language,
   isAnime,
+  platform,
 }: MediaSectionProps) {
   const { ref, items, showSkeleton, isEmpty } = useSectionFetch({
     id: '',
@@ -31,6 +31,7 @@ export const MediaSection = memo(function MediaSection({
     genre: genre ?? null,
     language: language ?? null,
     isAnime: isAnime ?? null,
+    platform: platform ?? null,
     isPersonalized: false,
     reason: null,
   })
@@ -41,7 +42,7 @@ export const MediaSection = memo(function MediaSection({
     <motion.section
       id={`discover-section-${mediaType}-${listType}`}
       ref={ref}
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 1, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-100px' }}
       transition={{ duration: 0.5 }}

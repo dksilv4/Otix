@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async'
-import { Bell, CheckCheck } from 'lucide-react'
+import { CheckCheck } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { notificationQueries } from '../queries'
@@ -17,7 +17,7 @@ export function NotificationsPage() {
   const unreadCount = unreadData?.count ?? 0
 
   return (
-    <div id="notifications-page" className="max-w-2xl mx-auto px-4 py-8">
+    <div id="notifications-page" className="max-w-2xl mx-auto px-4 pt-4 sm:pt-6 pb-12">
       <Helmet>
         <title>Notifications - Otix</title>
         <meta name="description" content="Your notifications on Otix." />

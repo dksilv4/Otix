@@ -22,7 +22,7 @@ export function NavPillRight({ isPinned, isSidebarOpen, onToggleSidebar }: NavPi
   const showCloseButton = modals.length > 0
 
   return (
-    <NavPill className={`right-4 px-2 py-1.5 ${titleBarOffset}`}>
+    <NavPill className={`right-4 px-2 py-1.5 ${titleBarOffset}`} data-nav-pill="right">
       {showCloseButton && (
         <DkButton
           variant="ghost"

@@ -1,9 +1,9 @@
-import { getConnection } from '../db';
+import { getDb } from '../db';
 import type Database from 'better-sqlite3';
 
 let __db: Database.Database | null = null;
 function db(): Database.Database {
-  if (!__db) __db = getConnection('downloads');
+  if (!__db) __db = getDb();
   return __db;
 }
 
@@ -27,6 +27,12 @@ export interface GameRow {
   iconUrl?: string;
   posterUrl?: string;
   sources?: (string | Record<string, unknown>)[];
+  isDlc?: boolean;
+  dlcOf?: string;
+  isBeta?: boolean;
+  betaOf?: string;
+  isApp?: boolean;
+  gameType?: string;
   data?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; backdropUrl?: string; logoUrl?: string; textlessPosterUrl?: string };
   matchSuggestion?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; _candidates?: any[] };
   otixMatchSuggestion?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; _candidates?: any[] };
@@ -61,6 +67,32 @@ function rowToGame(row: DbRow): GameRow {
     ? JSON.parse(row.otix_match_suggestion as string)
     : undefined;
 
+  let sources: any[] | undefined = undefined;
+  let isDlc = false;
+  let dlcOf: string | undefined = undefined;
+  let isBeta = false;
+  let betaOf: string | undefined = undefined;
+  let isApp = false;
+  let gameType: string | undefined = undefined;
+
+  if (row.sources) {
+    try {
+      sources = JSON.parse(row.sources as string);
+      if (Array.isArray(sources)) {
+        for (const s of sources) {
+          if (typeof s === 'object' && s !== null) {
+            if (s.isDlc) isDlc = true;
+            if (s.dlcOf) dlcOf = String(s.dlcOf);
+            if (s.isBeta) isBeta = true;
+            if (s.betaOf) betaOf = String(s.betaOf);
+            if (s.isApp) isApp = true;
+            if (s.gameType) gameType = String(s.gameType);
+          }
+        }
+      }
+    } catch {}
+  }
+
   return {
     id: row.id as string,
     title: row.title as string,
@@ -71,7 +103,13 @@ function rowToGame(row: DbRow): GameRow {
     localIconUrl: (row.local_icon_url as string) || undefined,
     iconUrl: (row.icon_url as string) || undefined,
     posterUrl: (row.poster_url as string) || undefined,
-    sources: row.sources ? JSON.parse(row.sources as string) : undefined,
+    sources,
+    isDlc,
+    dlcOf,
+    isBeta,
+    betaOf,
+    isApp,
+    gameType,
     updateFiles: row.update_files ? JSON.parse(row.update_files as string) : undefined,
     lastPlayedAt: (row.last_played_at as string) || undefined,
     data: row.otix_media_id
@@ -154,7 +192,8 @@ export function getAllGames(filter: GameFilter = {}): GameRow[] {
   const offset = filter.offset ? `OFFSET ${filter.offset}` : '';
 
   const sql = `SELECT * FROM scanned_games ${where} ${orderClause} ${limit} ${offset}`;
-  return __all(sql, ...params).map(rowToGame);
+  // Applications (non-game software) are stored but hidden from the library UI for now
+  return __all(sql, ...params).map(rowToGame).filter((g) => !g.isApp);
 }
 
 export function getGameById(id: string): GameRow | null {
@@ -195,6 +234,21 @@ export function upsertGames(games: GameRow[]): void {
     const otixMediaTitle = g.data?.title || (existing as any)?.otix_media_title || null
     const matchSuggestion = g.matchSuggestion ? JSON.stringify(g.matchSuggestion) : (existing as any)?.otix_match_suggestion || null
     // ponytail: only update otix columns if we have data — preserve existing match on re-scan
+    // Merge top-level isDlc/dlcOf into source entries so DLC flags survive scans that
+    // provide flags at the game level rather than inside each source object.
+    let sourcesPayload: string;
+    if (g.sources && g.sources.length > 0) {
+      sourcesPayload = JSON.stringify(g.sources.map((s: any) => {
+        if (s && s.isDlc === undefined && s.isBeta === undefined && s.isApp === undefined &&
+            (g.isDlc !== undefined || g.isBeta !== undefined || g.isApp !== undefined)) {
+          return { ...s, isDlc: !!g.isDlc, dlcOf: g.dlcOf || null, isBeta: !!g.isBeta, betaOf: g.betaOf || null, isApp: !!g.isApp, gameType: g.gameType || null };
+        }
+        return s;
+      }));
+    } else {
+      sourcesPayload = JSON.stringify([{ source: g.platform, id: g.id, isDlc: !!g.isDlc, dlcOf: g.dlcOf || null, isBeta: !!g.isBeta, betaOf: g.betaOf || null, isApp: !!g.isApp, gameType: g.gameType || null }]);
+    }
+
     db().prepare(
       `INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform,
@@ -212,7 +266,7 @@ export function upsertGames(games: GameRow[]): void {
       g.localIconUrl || null,
       g.iconUrl || null,
       g.posterUrl || null,
-      g.sources ? JSON.stringify(g.sources) : null,
+      sourcesPayload,
       g.updateFiles ? JSON.stringify(g.updateFiles) : null,
       otixMediaId,
       otixMediaTitle,
@@ -247,6 +301,10 @@ export function upsertGamesForPlatform(games: GameRow[], platform: string): void
 
   for (const g of games) {
     const seeded = existingSeeded.get(g.id) ?? 0;
+    const sourcesPayload = g.sources
+      ? JSON.stringify(g.sources)
+      : JSON.stringify([{ source: g.platform, id: g.id, isDlc: !!g.isDlc, dlcOf: g.dlcOf || null, isBeta: !!g.isBeta, betaOf: g.betaOf || null, isApp: !!g.isApp, gameType: g.gameType || null }]);
+
     db().prepare(
       `INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform,
@@ -263,7 +321,7 @@ export function upsertGamesForPlatform(games: GameRow[], platform: string): void
       g.localIconUrl || null,
       g.iconUrl || null,
       g.posterUrl || null,
-      g.sources ? JSON.stringify(g.sources) : null,
+      sourcesPayload,
       g.updateFiles ? JSON.stringify(g.updateFiles) : null,
       g.data?.id || null,
       g.data?.title || null,
@@ -293,18 +351,41 @@ export function hydrateGame(
   fullData: Record<string, unknown> | null,
   confidence?: number | null,
   mediaId?: string | null,
+  backdropUrl?: string | null,
+  textlessPosterUrl?: string | null,
+  logoUrl?: string | null,
 ): void {
+  const backdrop = backdropUrl || (fullData?.backdropUrl as string) || (fullData?.backdrop_url as string) || (fullData?.otixBackdropUrl as string) || null
+  const textless = textlessPosterUrl || (fullData?.textlessPosterUrl as string) || (fullData?.textless_poster_url as string) || (fullData?.otixTextlessPosterUrl as string) || null
+  const logo = logoUrl || (fullData?.logoUrl as string) || (fullData?.logo_url as string) || (fullData?.otixLogoUrl as string) || null
+  const icon = iconUrl || (fullData?.iconUrl as string) || (fullData?.icon_url as string) || (fullData?.otixIconUrl as string) || null
+  const poster = posterUrl || (fullData?.posterUrl as string) || (fullData?.poster_url as string) || (fullData?.otixPosterUrl as string) || null
+
   db().prepare(
     `UPDATE scanned_games SET
       otix_media_id = COALESCE(?, otix_media_id),
       otix_media_title = ?,
-      otix_icon_url = ?,
-      otix_poster_url = ?,
+      otix_icon_url = COALESCE(?, otix_icon_url),
+      otix_poster_url = COALESCE(?, otix_poster_url),
+      otix_backdrop_url = COALESCE(?, otix_backdrop_url),
+      otix_textless_poster_url = COALESCE(?, otix_textless_poster_url),
+      otix_logo_url = COALESCE(?, otix_logo_url),
       otix_data = ?,
       otix_confidence = ?,
       updated_at = datetime('now')
     WHERE id = ?`
-  ).run(mediaId ?? null, title, iconUrl, posterUrl, fullData ? JSON.stringify(fullData) : null, confidence ?? null, id);
+  ).run(
+    mediaId ?? null,
+    title,
+    icon,
+    poster,
+    backdrop,
+    textless,
+    logo,
+    fullData ? JSON.stringify(fullData) : null,
+    confidence ?? null,
+    id,
+  );
 }
 
 export function getMatchedGames(): { id: string; otix_media_id: string; title: string }[] {

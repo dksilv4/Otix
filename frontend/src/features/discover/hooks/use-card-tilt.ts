@@ -7,7 +7,6 @@ export function useCardTilt(isActive: boolean = false) {
   const tiltZ = useMotionValue(0)
   const rotateX = useSpring(y, { stiffness: 200, damping: 20 })
   const rotateY = useSpring(x, { stiffness: 200, damping: 20 })
-  const springTiltZ = useSpring(tiltZ, { stiffness: 200, damping: 20 })
   const isTouchingRef = useRef(false)
   const isHoveringRef = useRef(false)
   const animationXRef = useRef<any>(null)

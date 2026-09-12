@@ -93,7 +93,7 @@ function parseSql(sql: string) {
 const mockDb = createMockDb()
 
 vi.mock('../../db', () => ({
-  getConnection: () => mockDb.db,
+  getDb: () => mockDb.db,
 }))
 
 import { upsertGames, getAllGames, hydrateGame } from '../storage'

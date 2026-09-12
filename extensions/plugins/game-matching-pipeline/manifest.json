@@ -1,0 +1,17 @@
+{
+  "name": "Game Matching Pipeline",
+  "icon": "search",
+  "version": "0.1.0",
+  "description": "Offline game matching pipeline: resolves every scanned game to a stable identity by automatically discovering compatible data sources (catalog-source plugins), then collapsing cross-store copies and self-matching the rest",
+  "author": "Otix",
+  "repository": "builtin",
+  "system": true,
+  "min_app_version": "0.3.0",
+  "permissions": [
+    "events:subscribe"
+  ],
+  "slots": [
+    { "location": "matching:pipeline", "label": "Game Matching Pipeline" }
+  ],
+  "entry": { "main": "main.js" }
+}

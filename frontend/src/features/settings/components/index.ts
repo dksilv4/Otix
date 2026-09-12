@@ -1,2 +1,1 @@
-export { PluginPermissionModal } from './PluginPermissionModal'
-export { PluginSettings } from './PluginSettings'
+export { PluginPermissionModal } from '@/features/plugins'

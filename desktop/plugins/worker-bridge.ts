@@ -5,9 +5,23 @@ import type { IsolatedEventBus } from './event-bus'
 import Database from 'better-sqlite3'
 import { PluginTimeoutError } from './errors'
 import * as fs from 'fs/promises'
-import { app } from 'electron'
-import { getConnection } from '../db'
+import { app, Notification, BrowserWindow } from 'electron'
 import { replaceTableNames } from '../db/plugins-db'
+import { isSafeStatement, extractTableNames } from '../db/sql-validator'
+import { resolveConfigWrite } from './config-write'
+import {
+  getConfig as dlGetConfig,
+  getUserDownloads as dlGetUserDownloads,
+  getDownload as dlGetDownload,
+  createDownload as dlCreateDownload,
+  updateDownloadStatus as dlUpdateDownloadStatus,
+  updateDownloadIsoPath as dlUpdateDownloadIsoPath,
+  deleteDownload as dlDeleteDownload,
+  getPathMappings as dlGetPathMappings,
+  getWishlistTracking as dlGetWishlistTracking,
+} from '../framework/downloads'
+import { publishActivity, removeActivity, clearActivity } from './activity'
+import type { PluginActivityItem } from './types'
 
 const GATED_METHODS: Record<string, PluginPermission> = {
   'events.on': 'events:subscribe',
@@ -28,8 +42,17 @@ const GATED_METHODS: Record<string, PluginPermission> = {
   'app.getFileIcon': 'worker:filesystem',
   'plugins.call': 'events:subscribe' as PluginPermission,
   'plugins.discover': 'events:subscribe' as PluginPermission,
-  'downloadsDb.all': 'storage:local' as PluginPermission,
-  'downloadsDb.get': 'storage:local' as PluginPermission,
+  // Centralized downloads data layer — gated by table:downloads (SYSTEM_TABLE_GRANTS
+  // covers the downloads plugin; any other plugin prompts the user).
+  'downloads.getHistory': 'table:downloads',
+  'downloads.getDownload': 'table:downloads',
+  'downloads.getConfig': 'table:downloads',
+  'downloads.queueItem': 'table:downloads',
+  'downloads.updateStatus': 'table:downloads',
+  'downloads.updateIsoPath': 'table:downloads',
+  'downloads.delete': 'table:downloads',
+  'downloads.getPathMappings': 'table:downloads',
+  'downloads.getWishlistTracking': 'table:downloads',
 }
 
 export interface BridgeDependencies {
@@ -107,46 +130,13 @@ export function createWorkerBridge(deps: BridgeDependencies) {
         } satisfies MainToWorkerMessage)
       }
     }
-
-    // Route plugin-call results back to the caller worker
-    if (msg.type === 'plugin-call-result') {
-      const pending = (globalThis as any).__pendingPluginCalls as Map<string, (result: any) => void> | undefined
-      if (pending) {
-        const resolve = pending.get(msg.id)
-        if (resolve) {
-          pending.delete(msg.id)
-          resolve(msg.result)
-        }
-      }
-      return
-    }
-
-    if (msg.type === 'plugin-call-error') {
-      const pending = (globalThis as any).__pendingPluginCalls as Map<string, (err: any) => void> | undefined
-      if (pending) {
-        const reject = pending.get(msg.id)
-        if (reject) {
-          pending.delete(msg.id)
-          reject(msg.error)
-        }
-      }
-      return
-    }
-
-    if (msg.type === 'slot-render') {
-      // Reserved for PluginRuntime.slotRender() — see Task 3.3
-    }
-
-    if (msg.type === 'handle-action') {
-      // Reserved for PluginRuntime.handleAction() — see Task 3.3
-    }
   })
 
   async function start(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new PluginTimeoutError(pluginId, 'startup'))
-      }, (manifest as any).timeout || 30000)
+      }, manifest.timeout || 30000)
 
       const onReady = (msg: WorkerToMainMessage) => {
         if (msg.type === 'ready') {
@@ -165,7 +155,7 @@ export function createWorkerBridge(deps: BridgeDependencies) {
       const timeout = setTimeout(() => {
         worker.off('message', handler)
         reject(new PluginTimeoutError(pluginId, method))
-      }, 60000)
+      }, manifest.timeout || 60000)
 
       const handler = (msg: WorkerToMainMessage) => {
         // The worker responds with { type: 'rpc-result', id, result }
@@ -202,7 +192,60 @@ export function createWorkerBridge(deps: BridgeDependencies) {
     await worker.terminate()
   }
 
-  return { start, callMethod, stop }
+  /** Push an updated config snapshot to the worker (main→worker push). */
+  function pushConfig(config: Record<string, unknown>): void {
+    if (!active) return
+    worker.postMessage({ type: 'config-changed', config } satisfies MainToWorkerMessage)
+  }
+
+  return { start, callMethod, stop, pushConfig }
+}
+
+/**
+ * Validate and prepare SQL for a plugin DB call. Enforces the table-scoping
+ * boundary:
+ *   1. Rejects unsafe statements (PRAGMA, ATTACH, DROP, ALTER, multi-statement).
+ *   2. The db.* path requires the plugin to declare a db.tables schema.
+ *   3. Extracts every referenced table.
+ *   4. Auto-allows tables the plugin declares in its db.tables and tables that
+ *      already carry the plugin's namespace prefix.
+ *   5. Every other table needs an explicit `table:<name>` permission — routed
+ *      through the permission modal (SYSTEM_TABLE_GRANTS short-circuit in the
+ *      manager).
+ *   6. Applies namespace prefixing when `prefix` is true (db.* path).
+ */
+export async function validateAndPrepareSql(
+  sql: string,
+  params: unknown[],
+  deps: BridgeDependencies,
+  prefix: boolean,
+): Promise<{ sql: string; params: unknown[] }> {
+  if (!isSafeStatement(sql)) {
+    throw new Error('SQL statement rejected: contains unsafe operations')
+  }
+
+  if (prefix && !deps.dbConfig) {
+    throw new Error(
+      'Plugin is not configured with a db.tables schema — database access unavailable',
+    )
+  }
+
+  for (const table of extractTableNames(sql)) {
+    if (deps.dbConfig?.tables?.[table]) continue // declared own table
+    if (table.startsWith(`${deps.pluginId}_`)) continue // already namespaced
+    const permission: PluginPermission = `table:${table}`
+    if (deps.hasPermission(permission)) continue
+    const granted = await deps.requestPermission(permission)
+    if (!granted) {
+      throw new Error(`Permission denied: access to table "${table}"`)
+    }
+  }
+
+  const finalSql = prefix
+    ? replaceTableNames(sql, deps.pluginId, deps.dbConfig!)
+    : sql
+
+  return { sql: finalSql, params }
 }
 
 async function executeMethod(
@@ -220,32 +263,69 @@ async function executeMethod(
       return deps.getConfig()
     case 'config.get':
       return deps.getConfigValue(args[0] as string)
-    case 'config.set':
-      deps.setConfigValue(args[0] as string, args[1])
+    case 'config.set': {
+      const key = args[0] as string
+      const value = args[1]
+      const outcome = resolveConfigWrite(deps.manifest.config, key, value)
+      switch (outcome.action) {
+        case 'set':
+          deps.setConfigValue(key, outcome.value)
+          break
+        case 'set-raw':
+          console.warn(`[plugin:${deps.pluginId}] ${outcome.reason}; storing raw value`)
+          deps.setConfigValue(key, outcome.value)
+          break
+        case 'ignore':
+          console.warn(`[plugin:${deps.pluginId}] ${outcome.reason}; ignoring`)
+          break
+      }
       return undefined
+    }
     case 'db.run': {
-      const dbConfig = deps.dbConfig || null
-      const sql = deps.dbConfig ? replaceTableNames(args[0] as string, deps.pluginId, deps.dbConfig) : (args[0] as string)
-      return pluginDb.prepare(sql).run(...(args[1] as any[] || []))
+      const { sql, params } = await validateAndPrepareSql(
+        args[0] as string, (args[1] as any[]) || [], deps, true,
+      )
+      return pluginDb.prepare(sql).run(...params)
     }
     case 'db.get': {
-      const dbConfig = deps.dbConfig || null
-      const sql = deps.dbConfig ? replaceTableNames(args[0] as string, deps.pluginId, deps.dbConfig) : (args[0] as string)
-      return pluginDb.prepare(sql).get(...(args[1] as any[] || [])) || null
+      const { sql, params } = await validateAndPrepareSql(
+        args[0] as string, (args[1] as any[]) || [], deps, true,
+      )
+      return pluginDb.prepare(sql).get(...params) || null
     }
     case 'db.all': {
-      const dbConfig = deps.dbConfig || null
-      const sql = deps.dbConfig ? replaceTableNames(args[0] as string, deps.pluginId, deps.dbConfig) : (args[0] as string)
-      return pluginDb.prepare(sql).all(...(args[1] as any[] || []))
+      const { sql, params } = await validateAndPrepareSql(
+        args[0] as string, (args[1] as any[]) || [], deps, true,
+      )
+      return pluginDb.prepare(sql).all(...params)
     }
-    case 'downloadsDb.all': {
-      const dlDb = getConnection('downloads')
-      return dlDb.prepare(args[0] as string).all(...(args[1] as any[] || []))
+    // ── Centralized downloads data layer ──────────────────────────────
+    case 'downloads.getHistory':
+      return dlGetUserDownloads()
+    case 'downloads.getDownload':
+      return dlGetDownload(args[0] as string)
+    case 'downloads.getConfig':
+      return dlGetConfig()
+    case 'downloads.queueItem': {
+      const d = (args[0] || {}) as any
+      return dlCreateDownload(
+        d.userId ?? '', d.mediaItemId ?? null, d.mediaItemTitle ?? null,
+        d.nzbTitle ?? '', d.nzbSize ?? 0, d.nzbUrl ?? '', d.sabnzbdNzoId ?? null,
+        d.source ?? null,
+      )
     }
-    case 'downloadsDb.get': {
-      const dlDb = getConnection('downloads')
-      return dlDb.prepare(args[0] as string).get(...(args[1] as any[] || [])) || null
-    }
+    case 'downloads.updateStatus':
+      return dlUpdateDownloadStatus(
+        args[0] as string, args[1] as string, args[2] as string | undefined, args[3] as number | undefined,
+      )
+    case 'downloads.updateIsoPath':
+      return dlUpdateDownloadIsoPath(args[0] as string, args[1] as string)
+    case 'downloads.delete':
+      return dlDeleteDownload(args[0] as string)
+    case 'downloads.getPathMappings':
+      return dlGetPathMappings(args[0] as string)
+    case 'downloads.getWishlistTracking':
+      return dlGetWishlistTracking(args[0] as string)
     case 'events.on': {
       const eventName = args[0] as string
       const subId = `ev_${++subIdCounter}`
@@ -271,12 +351,30 @@ async function executeMethod(
       return undefined
     }
     case 'fetch': {
-      const response = await fetch(args[0] as string, args[1] as RequestInit)
-      return {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        body: await response.text(),
+      const [url, init] = args as [string, RequestInit | undefined]
+      const withTimeout: RequestInit = {
+        ...init,
+        signal: init?.signal ?? AbortSignal.timeout(60000),
+      }
+      try {
+        const response = await fetch(url, withTimeout)
+        return {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          body: await response.text(),
+        }
+      } catch (error: any) {
+        if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+          throw new Error('request timed out after 60s')
+        }
+        // undici hides the real reason behind "fetch failed"; bake the cause in
+        // so plugins can surface it (the cause is dropped across the RPC).
+        const cause = error?.cause ?? error
+        const detail = cause?.code
+          ? `${cause.code}${cause?.message && cause.message !== cause.code ? `: ${cause.message}` : ''}`
+          : cause?.message || error?.message || 'fetch failed'
+        throw new Error(detail)
       }
     }
     case 'api.get':
@@ -298,9 +396,21 @@ async function executeMethod(
       const text = await res.text()
       try { return JSON.parse(text) } catch { return text }
     }
-    case 'notifications.send':
-      // Notification dispatch handled by main process
+    case 'notifications.send': {
+      const [title, body] = args as [string, string | undefined]
+      if (!Notification.isSupported()) return undefined
+      const notification = new Notification({ title, body })
+      notification.on('click', () => {
+        const win = BrowserWindow.getAllWindows()[0]
+        if (win && !win.isDestroyed()) {
+          if (win.isMinimized()) win.restore()
+          win.show()
+          win.focus()
+        }
+      })
+      notification.show()
       return undefined
+    }
     case 'filesystem.readdir': {
       const [dirPath, options] = args as [string, { withFileTypes?: boolean } | undefined]
       const entries = await fs.readdir(dirPath, { withFileTypes: true })
@@ -344,6 +454,19 @@ async function executeMethod(
       deps.eventBus.emit(event as any, data)
       return undefined
     }
+    // ── Activity manager framework ──
+    case 'activity.publish': {
+      const item = (args[0] || {}) as PluginActivityItem
+      if (!item?.id) throw new Error('activity.publish requires an item with an id')
+      publishActivity(pluginId, item)
+      return undefined
+    }
+    case 'activity.remove':
+      removeActivity(pluginId, args[0] as string)
+      return undefined
+    case 'activity.clear':
+      clearActivity(pluginId)
+      return undefined
     case 'plugins.call': {
       const [targetId, method, callArgs] = args as [string, string, Record<string, any>]
       return deps.callPlugin(targetId, method, callArgs)

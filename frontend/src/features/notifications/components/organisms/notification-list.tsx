@@ -1,8 +1,6 @@
 import { useAuth } from '@/lib/providers/auth'
 import { useNotifications } from '../../hooks/use-notifications'
 import { useMarkRead } from '../../hooks/use-mark-read'
-import { useQuery } from '@tanstack/react-query'
-import { notificationQueries } from '../../queries'
 import { NotificationCard } from '../molecules/notification-card'
 import { NotificationSkeleton } from './notification-skeleton'
 import { NotificationEmpty } from './notification-empty'
@@ -11,16 +9,11 @@ import type { ActionCallbacks } from '../../types'
 import { apiClient } from '@/lib/api/client'
 import { useQueryClient } from '@tanstack/react-query'
 
-export function NotificationList({ onClose }: { onClose?: () => void }) {
+export function NotificationList() {
   const { isAuthenticated } = useAuth()
   const markRead = useMarkRead()
-  const { allItems, isLoading, isFetchingNextPage, hasNextPage, lastItemRef } = useNotifications()
+  const { allItems, isLoading, isFetchingNextPage, lastItemRef } = useNotifications()
   const queryClient = useQueryClient()
-
-  const { data: unreadData } = useQuery({
-    ...notificationQueries.unreadCount(),
-    enabled: isAuthenticated,
-  })
 
   const actionCallbacks: ActionCallbacks = {
     acceptFriendRequest: async (requestId) => {
@@ -47,14 +40,15 @@ export function NotificationList({ onClose }: { onClose?: () => void }) {
 
   if (isLoading) return <NotificationSkeleton />
 
-  if (allItems.length === 0) return <NotificationEmpty />
+  const notifications = Array.isArray(allItems) ? allItems.filter((n) => n && n.id) : []
+  if (notifications.length === 0) return <NotificationEmpty />
 
   return (
     <div id="notification-list" className="flex flex-col">
-      {allItems.map((n, i) => (
+      {notifications.map((n, i) => (
         <div
           key={n.id}
-          ref={i === allItems.length - 1 ? lastItemRef : undefined}
+          ref={i === notifications.length - 1 ? lastItemRef : undefined}
         >
           <NotificationCard
             notification={n}

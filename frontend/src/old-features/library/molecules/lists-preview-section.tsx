@@ -6,9 +6,11 @@ export function ListsPreviewSection() {
   const navigate = useNavigate()
   const { data: lists, isLoading } = useUserLists()
 
-  if (isLoading || !lists || lists.length === 0) return null
+  const listItems = Array.isArray(lists) ? lists.filter(Boolean) : []
 
-  const preview = lists.slice(0, 3)
+  if (isLoading || listItems.length === 0) return null
+
+  const preview = listItems.slice(0, 3)
 
   return (
     <div className="space-y-4">
@@ -27,14 +29,14 @@ export function ListsPreviewSection() {
         {preview.map((list) => (
           <ListCard key={list.id} list={list} />
         ))}
-        {lists.length > 3 && (
+        {listItems.length > 3 && (
           <button
             type="button"
             onClick={() => navigate({ to: "/library/lists" })}
             className="flex items-center justify-center rounded-3xl border border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)]/50 hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 p-6"
           >
             <span className="text-sm text-muted-foreground">
-              +{lists.length - 3} more lists
+              +{listItems.length - 3} more lists
             </span>
           </button>
         )}

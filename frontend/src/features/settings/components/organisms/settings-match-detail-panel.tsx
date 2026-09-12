@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, X, Gamepad2, Folder, Loader2, Check, Star, Import, ExternalLink } from 'lucide-react'
+import { X, Gamepad2, Folder, Loader2, Check, Import } from 'lucide-react'
 import type { LocalGame } from '@/features/launcher/types'
 import { ManualSearch } from './settings-manual-search'
 import { getDesktopAPI } from '@/lib/desktop/api'
@@ -266,7 +266,7 @@ export function MatchDetailPanel({
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-white truncate">{c.title}</p>
                       {c.needs_import && (
-                        <Import className="h-3 w-3 text-amber-400 shrink-0" title="Needs import from IGDB" />
+                        <Import className="h-3 w-3 text-amber-400 shrink-0" aria-label="Needs import from IGDB" />
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">

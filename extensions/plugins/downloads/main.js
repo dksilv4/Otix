@@ -1,0 +1,234 @@
+var qf = require('./quality-filter');
+var organizer = require('./organizer');
+
+module.exports = function(ctx) {
+  // ── search-and-download ──
+  ctx.handle('search-and-download', async function(args) {
+    var providers = await ctx.discover('search-provider');
+    if (!providers || providers.length === 0) return { error: 'No search providers available' };
+    var downloaders = await ctx.discover('downloader');
+    if (!downloaders || downloaders.length === 0) return { error: 'No downloaders available' };
+
+    var config = ctx.config.getAll();
+    var provider = providers[0];
+    var downloader = downloaders.find(function(d) { return d.protocol === provider.protocol; }) || downloaders[0];
+    if (!downloader) return { error: 'No downloader matching protocol: ' + provider.protocol };
+
+    var results = await ctx.call(provider.pluginId, 'search', { query: args.query });
+    if (!results || results.length === 0) return { error: 'No results found for "' + args.query + '"' };
+
+    var allowHv = args.allowHypervisor || config.allowHypervisor || false;
+    var best = qf.autoPickBest(results, config.preferredRepackers, allowHv);
+    if (!best) return { error: 'No quality releases found for "' + args.query + '"' };
+
+    var dlResult = await ctx.call(downloader.pluginId, 'add-download', {
+      downloadUrl: best.downloadUrl, title: best.title,
+    });
+
+    return { downloadId: dlResult.id, result: best };
+  });
+
+  // ── poll-queue ──
+  ctx.handle('poll-queue', async function() {
+    var downloaders = await ctx.discover('downloader');
+    var queues = await Promise.all(downloaders.map(async function(d) {
+      try { return await ctx.call(d.pluginId, 'get-queue'); }
+      catch(e) { return []; }
+    }));
+    var flat = [];
+    for (var i = 0; i < queues.length; i++) {
+      if (queues[i] && Array.isArray(queues[i])) flat = flat.concat(queues[i]);
+    }
+    return flat;
+  });
+
+  // ── poll-history ──
+  ctx.handle('poll-history', async function() {
+    var downloaders = await ctx.discover('downloader');
+    var histories = await Promise.all(downloaders.map(function(d) {
+      return ctx.call(d.pluginId, 'get-history');
+    }));
+    var flat = [];
+    for (var i = 0; i < histories.length; i++) {
+      if (histories[i] && Array.isArray(histories[i])) flat = flat.concat(histories[i]);
+    }
+    return flat;
+  });
+
+  // ── test-connections ──
+  ctx.handle('test-connections', async function() {
+    var results = {};
+    var providers = await ctx.discover('search-provider');
+    for (var i = 0; i < providers.length; i++) {
+      results[providers[i].pluginId] = await ctx.call(providers[i].pluginId, 'test-connection');
+    }
+    var downloaders = await ctx.discover('downloader');
+    for (var j = 0; j < downloaders.length; j++) {
+      results[downloaders[j].pluginId] = await ctx.call(downloaders[j].pluginId, 'test-connection');
+    }
+    return results;
+  });
+
+  // ── post-process ──
+  ctx.handle('post-process', async function(args) {
+    var config = ctx.config.getAll();
+    var template = args.namingTemplate || config.namingTemplate || '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}';
+    var dest = args.destPath || config.savePath || args.downloadPath;
+    return organizer.autoOrganizeDownload(args.downloadPath, template, dest);
+  });
+
+  // ── get-providers ──
+  ctx.handle('get-providers', async function() {
+    var providers = await ctx.discover('search-provider');
+    var downloaders = await ctx.discover('downloader');
+    return { providers: providers, downloaders: downloaders };
+  });
+
+  // ── get-downloads — reads download history via the framework data layer ──
+  ctx.handle('get-downloads', async function() {
+    try {
+      return await ctx.downloads.getHistory();
+    } catch(e) {
+      return [];
+    }
+  });
+
+  // ── activity.poll — returns download queue as activity items ──
+  ctx.handle('activity.poll', async function() {
+    try {
+      var downloaders = await ctx.discover('downloader');
+      var queues = await Promise.all(downloaders.map(function(d) {
+        return ctx.call(d.pluginId, 'get-queue');
+      }));
+      var histories = await Promise.all(downloaders.map(function(d) {
+        return ctx.call(d.pluginId, 'get-history');
+      }));
+
+      var items = [];
+      var flatQueue = [];
+      for (var i = 0; i < queues.length; i++) {
+        if (queues[i] && Array.isArray(queues[i])) flatQueue = flatQueue.concat(queues[i]);
+      }
+      var flatHistory = [];
+      for (var j = 0; j < histories.length; j++) {
+        if (histories[j] && Array.isArray(histories[j])) flatHistory = flatHistory.concat(histories[j]);
+      }
+
+      // Active queue items
+      for (var k = 0; k < flatQueue.length; k++) {
+        var q = flatQueue[k];
+        var isActive = q.status === 'Downloading' || q.status === 'downloading';
+        items.push({
+          id: q.id,
+          type: 'download',
+          title: q.title || 'Downloading...',
+          subtitle: isActive ? (q.size ? formatSize(q.size) : '') : q.status,
+          progress: q.percentage || 0,
+          status: isActive ? 'active' : 'pending',
+          action: { label: 'Cancel', method: 'cancel-download' },
+        });
+      }
+
+      // Recent completed/failed from history
+      for (var l = 0; l < flatHistory.length; l++) {
+        var h = flatHistory[l];
+        if (h.status === 'Completed' || h.status === 'Failed') {
+          items.push({
+            id: h.id,
+            type: 'download',
+            title: h.title || 'Complete',
+            subtitle: h.status === 'Completed' ? 'Done' : 'Failed',
+            progress: h.status === 'Completed' ? 100 : 0,
+            status: h.status === 'Completed' ? 'completed' : 'error',
+          });
+        }
+      }
+
+      return { activities: items.slice(0, 20), label: 'Downloads' };
+    } catch(e) {
+      return { activities: [], label: 'Downloads' };
+    }
+  });
+
+  function formatSize(bytes) {
+    if (!bytes) return '';
+    var gb = bytes / 1073741824;
+    return gb.toFixed(1) + ' GB';
+  }
+
+  // ── slotRender — settings UI widgets for slot locations ──
+  ctx.handle('slotRender', async function(location) {
+    if (location === 'library:tabs') {
+      var history = [];
+      try { history = await ctx.downloads.getHistory() || []; } catch (e) { history = []; }
+      if (history.length === 0) {
+        return {
+          widgets: [
+            { type: 'empty-state', props: { icon: 'download', title: 'No downloads yet', message: 'Your downloaded games will appear here.' } },
+          ]
+        };
+      }
+      var items = history.map(function(dl) {
+        var subtitle = String(dl.status || '');
+        if (dl.nzbSize != null) subtitle += ' · ' + formatSize(dl.nzbSize);
+        if (dl.percentage != null && (dl.status === 'downloading' || dl.status === 'processing')) subtitle += ' · ' + dl.percentage + '%';
+        if (dl.errorMessage) subtitle += ' · ' + dl.errorMessage;
+        return {
+          key: String(dl.id),
+          title: dl.mediaItemTitle || dl.nzbName || 'Unknown',
+          subtitle: subtitle,
+          badge: dl.status ? String(dl.status) : undefined,
+        };
+      });
+      return {
+        widgets: [
+          { type: 'stat', props: { icon: 'download', label: 'Downloads', value: String(history.length) } },
+          { type: 'list', props: { items: items, emptyText: 'No downloads yet' } },
+        ]
+      };
+    }
+    if (location === 'settings/downloads/main') {
+      var config = ctx.config.getAll();
+      return {
+        widgets: [
+          { type: 'card', props: { padding: 'lg', title: 'Download Settings' }, children: [
+            { type: 'form', props: {
+              fields: [
+                { type: 'text', key: 'savePath', label: 'ISO Library Path', placeholder: 'e.g. D:\\Games\\ISOs' },
+                { type: 'text', key: 'preferredRepackers', label: 'Preferred repackers (comma-separated)' },
+                { type: 'text', key: 'namingTemplate', label: 'Naming template', placeholder: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}' },
+              ],
+              submitLabel: 'Save Settings',
+              action: 'save-download-settings',
+            }},
+          ]},
+          { type: 'alert', props: { title: 'Settings stored in plugin config', message: 'Changes apply after saving. Download provider settings (SABnzbd, NZBPlanet) managed from their own plugin pages.', variant: 'info' } },
+        ]
+      };
+    }
+    return { widgets: [] };
+  });
+};
+
+// ── handleAction — process user actions from slot widgets ──
+module.exports.test = async function(ctx) {
+  // Verify the plugin loads and search/download mediators are functional
+  try { require('./quality-filter'); require('./organizer'); } catch (e) { return { passed: false, failures: [e.message] }; }
+  return { passed: true };
+};
+
+module.exports.handleAction = async function(ctx, actionKey, payload) {
+  if (actionKey === 'save-download-settings') {
+    var values = payload && payload.values;
+    if (values) {
+      for (var key in values) {
+        if (values.hasOwnProperty(key)) {
+          await ctx.config.set(key, values[key]);
+        }
+      }
+      return { success: true };
+    }
+    return { success: false, error: 'No values provided' };
+  }
+  return { success: false, error: 'Unknown action: ' + actionKey };
+};

@@ -122,16 +122,19 @@ class OtixClient:
             "date_of_birth": dob,
         })
         if r.status_code == 201:
-            data = r.json()
-            self._bot_tokens[bot_name] = data["access_token"]
-            return data["access_token"]
+            # Django register returns the minimal identity (id/username/email,
+            # no auto-login token) — sign the bot in to obtain a session token.
+            return await self.login(bot_name, username, password)
         return None
 
     async def login(self, bot_name: str, identity: str, password: str) -> str | None:
         r = await self._request(bot_name, "POST", "/auth/login", json={
             "identity": identity, "password": password,
         })
-        data = r.json()
+        try:
+            data = r.json()
+        except Exception:
+            return None
         if "access_token" in data and data["access_token"]:
             self._bot_tokens[bot_name] = data["access_token"]
             return data["access_token"]

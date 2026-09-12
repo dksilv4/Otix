@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Pencil, Star } from 'lucide-react'
 import { useAuth } from '@/old-features/auth'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
+import { useModal } from '@/lib/modals'
 import { cn } from '@/lib/utils'
 import { ReviewComposer } from './review-composer'
 import { reviewQueries, type ReviewOut } from '../review-queries'
@@ -17,7 +17,7 @@ interface ReviewActionButtonProps {
 
 export function ReviewActionButton({ mediaType, mediaId, className }: ReviewActionButtonProps) {
   const { isAuthenticated } = useAuth()
-  const [composerOpen, setComposerOpen] = useState(false)
+  const { openModal } = useModal()
 
   const myReviewQuery = useQuery({
     ...reviewQueries.myReview(mediaType, mediaId),
@@ -36,30 +36,11 @@ export function ReviewActionButton({ mediaType, mediaId, className }: ReviewActi
   const hasReview = !!(review?.title || review?.content)
   const Icon = hasRating || hasReview ? Pencil : Star
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setComposerOpen(true)}
-        className={cn('dk-review-action-button glass-inset', className)}
-      >
-        {(hasRating || hasReview) && (
-          <div className="dk-review-action-button__glow" />
-        )}
-        <Icon
-          className={cn(
-            'dk-review-action-button__icon',
-            (hasRating || hasReview) ? 'dk-review-action-button__icon--active' : 'dk-review-action-button__icon--muted',
-          )}
-        />
-        <span className="dk-review-action-button__label">
-          {hasRating || hasReview ? 'Review' : 'Rate'}
-        </span>
-      </button>
-
+  const handleOpenComposer = () => {
+    const close = openModal(
       <DkDialog
-        open={composerOpen}
-        onOpenChange={setComposerOpen}
+        open={true}
+        onOpenChange={() => close()}
         title={(hasRating || hasReview) ? 'Edit Your Rating' : 'Rate & Review'}
       >
         <ReviewComposer
@@ -67,10 +48,31 @@ export function ReviewActionButton({ mediaType, mediaId, className }: ReviewActi
           mediaType={mediaType}
           existingReview={review}
           existingRating={rating}
-          onClose={() => setComposerOpen(false)}
+          onClose={() => close()}
           onSaved={() => { myReviewQuery.refetch(); myRatingQuery.refetch() }}
         />
       </DkDialog>
-    </>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleOpenComposer}
+      className={cn('dk-review-action-button glass-inset', className)}
+    >
+      {(hasRating || hasReview) && (
+        <div className="dk-review-action-button__glow" />
+      )}
+      <Icon
+        className={cn(
+          'dk-review-action-button__icon',
+          (hasRating || hasReview) ? 'dk-review-action-button__icon--active' : 'dk-review-action-button__icon--muted',
+        )}
+      />
+      <span className="dk-review-action-button__label">
+        {hasRating || hasReview ? 'Review' : 'Rate'}
+      </span>
+    </button>
   )
 }

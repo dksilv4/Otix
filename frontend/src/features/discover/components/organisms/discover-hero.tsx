@@ -5,8 +5,22 @@ import { Badge } from '@ui/atoms/badge'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { MEDIA_TYPE_LABEL, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { useHeroCarousel } from '@discover/hooks/use-hero-carousel'
+import { DiscoverEmptyFeed } from '@discover/components/organisms/discover-empty-feed'
 import { HeroCard } from '@discover/components/molecules/discover-hero-card'
 import { HeroIndicator } from '@discover/components/molecules/discover-hero-indicator'
+import { MediaLogo } from '@/lib/media/media-logo'
+
+function formatSeasonBadgeText(releaseDate?: string | null): string {
+  if (!releaseDate) return 'New Season'
+  const date = new Date(releaseDate)
+  const now = new Date()
+  const days = Math.floor((date.getTime() - now.getTime()) / 86400000)
+  const month = date.toLocaleString('en-US', { month: 'short' })
+  const year = date.getFullYear()
+  if (days > 0) return `New Season · ${month} ${year}`
+  if (days >= -14) return 'New Season · Just Landed'
+  return `New Season · ${month} ${year}`
+}
 
 const CONTENT_FADE = {
   initial: { opacity: 0, y: 16 },
@@ -80,6 +94,9 @@ export function DiscoverHero({ className }: { className?: string }) {
     navigateTo,
     handleTouchStart,
     handleTouchEnd,
+    isLoading,
+    isError,
+    refetch,
   } = useHeroCarousel()
 
   const navigate = useNavigate()
@@ -108,9 +125,9 @@ export function DiscoverHero({ className }: { className?: string }) {
     urls.forEach((url) => { const img = new Image(); img.src = url })
   }, [activeIndex, items, totalItems])
 
-  // ── Loading state ────────────────────────────────────────────
+  // ── Loading / error / empty states ───────────────────────────
 
-  const isLoading = items.length === 0
+  const isActuallyLoading = isLoading && items.length === 0
 
   // ── Card click handler ───────────────────────────────────────
 
@@ -143,7 +160,26 @@ export function DiscoverHero({ className }: { className?: string }) {
 
   // ── Empty state ──────────────────────────────────────────────
 
-  if (!isLoading && items.length === 0) return null
+  if (isError && items.length === 0) {
+    return (
+      <div className="relative w-full flex flex-col items-center justify-center pb-12">
+        <div className="flex flex-col items-center justify-center gap-4 h-[300px] sm:h-[425px] md:h-[515px] text-white/70">
+          <p className="text-sm">Failed to load hero content.</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isActuallyLoading && items.length === 0) {
+    return <DiscoverEmptyFeed onRefresh={async () => { await refetch() }} />
+  }
 
   // ── Render ───────────────────────────────────────────────────
 
@@ -156,14 +192,14 @@ export function DiscoverHero({ className }: { className?: string }) {
       {/* ═══ Slide stack ═══ */}
       <div
         id="discover-hero-slides"
-        className="relative w-full h-[300px] sm:h-[425px] md:h-[515px] z-10 overflow-visible px-4 md:px-8 mt-16 sm:mt-20 md:mt-24"
+        className="relative w-full h-[300px] sm:h-[425px] md:h-[515px] z-10 overflow-visible px-4 md:px-8 mt-4 sm:mt-6 md:mt-8"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         {/* ── Loading skeleton ── */}
-        {isLoading && (
+        {isActuallyLoading && (
           <div
             className={
               'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ' +
@@ -212,13 +248,24 @@ export function DiscoverHero({ className }: { className?: string }) {
                   transition={{ duration: 0.45, delay: 0.15, ease: [0.34, 1.3, 0.64, 1] }}
                 >
                   {item.logoUrl ? (
-                    <img
-                      src={item.logoUrl}
-                      alt={item.title}
-                      className="h-20 sm:h-24 md:h-28 w-auto object-contain"
-                      style={{ transform: 'translateZ(15px)' }}
-                      draggable={false}
-                    />
+                    <div className="relative flex items-center justify-center">
+                      <div
+                        className="absolute inset-0 pointer-events-none opacity-80"
+                        style={{
+                          background:
+                            'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.3) 55%, rgba(0, 0, 0, 0) 80%)',
+                        }}
+                      />
+                      <MediaLogo
+                        src={item.logoUrl}
+                        alt={item.title}
+                        className="relative z-10 h-20 sm:h-24 md:h-28 w-auto max-w-[280px] sm:max-w-[360px] md:max-w-[440px] object-contain"
+                        colorGuess={item.logoColorGuess ?? null}
+                        background="dark"
+                        shadow="drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 8px 32px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
+                        style={{ transform: 'translateZ(15px)' }}
+                      />
+                    </div>
                   ) : (
                     <span
                       className="text-white font-bold text-center px-4"
@@ -270,7 +317,7 @@ export function DiscoverHero({ className }: { className?: string }) {
                             variant="success"
                             className="font-bold text-[10px] border border-green-500/20 shadow-md uppercase tracking-wider px-2 py-0.5"
                           >
-                            New Season
+                            {formatSeasonBadgeText(heroDetail.newSeasonReleaseDate)}
                           </Badge>
                         )}
 
@@ -334,7 +381,7 @@ export function DiscoverHero({ className }: { className?: string }) {
                             variant="success"
                             className="font-bold text-[10px] border border-green-500/20 shadow-md uppercase tracking-wider px-2 py-0.5"
                           >
-                            New Season
+                            {formatSeasonBadgeText(activeItem.newSeasonReleaseDate)}
                           </Badge>
                         )}
                       </div>

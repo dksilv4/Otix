@@ -2,6 +2,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { isDesktop } from '@/lib/desktop'
 import { ACCESS_TOKEN_KEY } from '@/lib/config/config'
+import { refreshAccessToken } from './session-refresh'
 
 // ponytail: client needs different fallback logic than lib/config (desktop vs web)
 export const CLIENT_API_BASE_URL = isDesktop()
@@ -56,26 +57,19 @@ function getContentType(headers: Record<string, unknown>): string {
   return typeof ct === 'string' ? ct : ''
 }
 
-// ── Refresh token flow (must be declared before the interceptor) ─────
+// Type-level counterpart of convertKeysToCamelCase — maps a snake_case API
+// schema type to its camelCase runtime shape.
+type CamelCase<S extends string> = S extends `${infer P1}_${infer P2}${infer P3}`
+  ? `${Lowercase<P1>}${Uppercase<P2>}${CamelCase<P3>}`
+  : Lowercase<S>
 
-let isRefreshing = false
-let refreshFailed = false // cooldown flag — prevent retry storm after failed refresh
-let refreshQueue: Array<{
-  resolve: (token: string) => void
-  reject: (err: unknown) => void
-}> = []
+export type CamelCaseKeys<T> =
+  T extends unknown[] ? { [K in keyof T]: CamelCaseKeys<T[K]> }
+  : T extends object ? { [K in keyof T as CamelCase<string & K>]: CamelCaseKeys<T[K]> }
+  : T
 
-async function refreshAccessToken(): Promise<string> {
-  const authClient = axios.create({
-    baseURL: BASE_URL,
-    withCredentials: true,
-    headers: { 'Content-Type': 'application/json' },
-  })
-  const response = await authClient.post('/auth/refresh', {})
-  const token = response.data.access_token ?? response.data.accessToken
-  localStorage.setItem(ACCESS_TOKEN_KEY, token)
-  return token
-}
+// Refresh logic (single-flighted, shared across the app) lives in
+// ./session-refresh.ts.
 
 // ── Axios instance ────────────────────────────────────────────────────
 
@@ -88,11 +82,22 @@ export const apiClient = axios.create({
 
 // ── Request interceptor — camelCase → snake_case + auth token ─────────
 
+// Viewer's resolved UI theme so the backend can pick logos that contrast with it.
+function getResolvedTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'dark'
+  const stored = localStorage.getItem('otix-theme')
+  if (stored === 'light' || stored === 'dark') return stored
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   // Attach Bearer token
   const token = localStorage.getItem(ACCESS_TOKEN_KEY)
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+  if (config.headers) {
+    config.headers['X-Otix-Theme'] = getResolvedTheme()
   }
 
   // Convert outgoing data and params to snake_case
@@ -153,43 +158,17 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // Cooldown: if a refresh already failed, don't retry — prevents 401/429 storms
-    if (refreshFailed) {
-      return Promise.reject(error)
-    }
-
-    if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        refreshQueue.push({ resolve, reject })
-      }).then((token) => {
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${token}`
-        }
-        return apiClient(originalRequest)
-      })
-    }
-
-    originalRequest._retry = true
-    isRefreshing = true
-
+    // refreshAccessToken() single-flights concurrent callers and signs the user
+    // out (auth:sessionExpired) only when the refresh itself fails.
     try {
       const token = await refreshAccessToken()
-      refreshFailed = false // clear cooldown on success
-      refreshQueue.forEach(({ resolve }) => resolve(token))
-      refreshQueue = []
       if (originalRequest.headers) {
         originalRequest.headers.Authorization = `Bearer ${token}`
       }
+      originalRequest._retry = true
       return apiClient(originalRequest)
     } catch (refreshError) {
-      refreshFailed = true // block further refresh attempts until next login
-      refreshQueue.forEach(({ reject }) => reject(refreshError))
-      refreshQueue = []
-      localStorage.removeItem(ACCESS_TOKEN_KEY)
-      window.dispatchEvent(new CustomEvent('auth:sessionExpired'))
       return Promise.reject(refreshError)
-    } finally {
-      isRefreshing = false
     }
   },
 )

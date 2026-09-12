@@ -8,6 +8,8 @@ import { DkSwitch } from '@/old-features/ui/atoms/switch'
 import { cn } from '@/lib/utils'
 import { Check, Shield, ShieldAlert, Loader2, Monitor } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
+import { SettingsCard } from '../components/molecules/settings-card'
+import { useSettingsSaveBar } from '../context/settings-save-context'
 
 interface SessionInfo {
   sessionKey: string
@@ -107,7 +109,7 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
 
   if (twoFactorEnabled) {
     return (
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <SettingsCard>
         <SectionHeader
           title="Two-Factor Authentication"
           description="Your account is protected with an authenticator app."
@@ -162,12 +164,12 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
         {error && (
           <p className="text-xs text-red-400 mt-3">{error}</p>
         )}
-      </div>
+      </SettingsCard>
     )
   }
 
   return (
-    <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+    <SettingsCard>
       <SectionHeader
         title="Two-Factor Authentication"
         description="Add an extra layer of security to your account."
@@ -241,7 +243,7 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
           </DkButton>
         </div>
       )}
-    </div>
+    </SettingsCard>
   )
 }
 
@@ -255,7 +257,7 @@ function VerificationCard({
   onSend: () => void
 }) {
   return (
-    <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+    <SettingsCard>
       <SectionHeader
         title="Email Verification"
         description={
@@ -307,7 +309,7 @@ function VerificationCard({
           Verification email sent. Check your inbox and follow the link to verify your account.
         </p>
       )}
-    </div>
+    </SettingsCard>
   )
 }
 
@@ -405,7 +407,7 @@ function SessionsCard() {
   const paginatedSessions = sessions.slice(safePage * SESSIONS_PER_PAGE, (safePage + 1) * SESSIONS_PER_PAGE)
 
   return (
-    <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+    <SettingsCard>
       <SectionHeader
         title="Active Sessions"
         description="Devices where your account is currently signed in."
@@ -536,7 +538,7 @@ function SessionsCard() {
           </DkButton>
         </div>
       )}
-    </div>
+    </SettingsCard>
   )
 }
 
@@ -556,25 +558,6 @@ export function SettingsAccountPage() {
     setUsername(user.username)
     setDailyMoodCheckinsEnabled(user.dailyMoodCheckinsEnabled ?? true)
   }, [user])
-
-  if (!isAuthenticated) {
-    return (
-      <div className="rounded-2xl p-12 text-center space-y-4 bg-white/5 backdrop-blur-xl">
-        <Shield className="h-8 w-8 mx-auto text-white/40" />
-        <div>
-          <p className="text-sm font-medium">Sign in required</p>
-          <p className="text-xs text-white/60 mt-1">Sign in to manage your account settings.</p>
-        </div>
-        <Link
-          to="/auth/login"
-          search={{ redirect: location.href }}
-          className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium rounded-xl px-5 py-2.5 text-sm bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40"
-        >
-          Sign In
-        </Link>
-      </div>
-    )
-  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -596,14 +579,64 @@ export function SettingsAccountPage() {
     }
   }
 
-  const hasChanges =
-    email !== (user?.email ?? '') ||
-    username !== (user?.username ?? '') ||
-    dailyMoodCheckinsEnabled !== (user?.dailyMoodCheckinsEnabled ?? true)
+  const hasChanges = Boolean(
+    user && (
+      email.trim() !== (user.email ?? '').trim() ||
+      username.trim() !== (user.username ?? '').trim() ||
+      dailyMoodCheckinsEnabled !== (user.dailyMoodCheckinsEnabled ?? true)
+    )
+  )
+
+  const handleDiscard = () => {
+    if (!user) return
+    setEmail(user.email)
+    setUsername(user.username)
+    setDailyMoodCheckinsEnabled(user.dailyMoodCheckinsEnabled ?? true)
+  }
+
+  useSettingsSaveBar({
+    hasChanges,
+    onSave: handleSave,
+    onDiscard: handleDiscard,
+    saving,
+    saved,
+    label: 'Save Account',
+  })
+
+  if (!isAuthenticated) {
+    return (
+      <div className="rounded-3xl p-10 text-center space-y-5 bg-white/5 backdrop-blur-xl shadow-2xl max-w-xl mx-auto my-8">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Shield className="h-7 w-7" />
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="text-lg font-bold text-white tracking-tight">Otix Account & Security</h3>
+          <p className="text-xs text-white/60 leading-relaxed max-w-md mx-auto">
+            Sign in to manage account security, email preferences, two-factor authentication, and connected devices.
+          </p>
+        </div>
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            to="/auth/register"
+            className="w-full sm:w-auto inline-flex items-center justify-center font-semibold rounded-xl px-6 py-2.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md active:scale-[0.98]"
+          >
+            Create Free Account
+          </Link>
+          <Link
+            to="/auth/login"
+            search={{ redirect: location.href }}
+            className="w-full sm:w-auto inline-flex items-center justify-center font-medium rounded-xl px-5 py-2.5 text-sm bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+          >
+            Sign In
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div id="settings-account-section" className="space-y-6">
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+    <div id="settings-account-section" className="space-y-5">
+      <SettingsCard>
         <SectionHeader title="Identity" description="Your core account details." />
 
         <div className="space-y-5">
@@ -628,7 +661,7 @@ export function SettingsAccountPage() {
           />
         </div>
 
-        <div className="h-px bg-white/10 my-6" />
+        <div className="my-6" />
 
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
@@ -642,16 +675,7 @@ export function SettingsAccountPage() {
             onCheckedChange={setDailyMoodCheckinsEnabled}
           />
         </div>
-
-        <div className="h-px bg-white/10 mt-6 mb-5" />
-
-        <div className="flex items-center gap-3">
-          <DkButton variant="primary" onClick={handleSave} loading={saving} disabled={!hasChanges}>
-            Save Changes
-          </DkButton>
-          {saved && <span className="text-xs text-green-500">Saved</span>}
-        </div>
-      </div>
+      </SettingsCard>
 
       <VerificationCard
         isVerified={user?.isVerified ?? false}
@@ -671,12 +695,12 @@ export function SettingsAccountPage() {
 
       <SessionsCard />
 
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <SettingsCard>
         <SectionHeader title="Danger Zone" description="Account lifecycle operations." />
         <p className="text-sm text-white/60">
           Account deactivation and deletion are not yet available. Coming soon.
         </p>
-      </div>
+      </SettingsCard>
     </div>
   )
 }

@@ -7,18 +7,15 @@ import { useLocalGames, localGameKeys } from '@/features/launcher/data/game-quer
 import { usePopularGames, gameDetailOptions } from '@/features/launcher/data/queries'
 import { fetchGameById } from '@/features/launcher/data/storage'
 import { hasDesktopAPI } from '@/lib/desktop/api'
-import { toDisplayGame, heroImage } from '@/features/launcher/utils'
-import { useInactiveSlideshow } from '@/features/launcher/hooks/use-inactive-slideshow'
+import { toDisplayGame, heroImage, isApplicationGame } from '@/features/launcher/utils'
+import { useOffline } from '@/lib/offline'
+import { OfflineNotice } from '@/lib/offline-notice'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
+import { PLATFORM_LABELS } from '@/constants/games'
+import { MediaLogo } from '@/lib/media/media-logo'
 import type { DisplayGame, LauncherPlatform } from '@/features/launcher/types'
 
 type SortMode = 'recent' | 'title' | 'platform'
-
-const PLATFORM_LABELS: Record<string, string> = {
-  steam: 'Steam', epic: 'Epic', gog: 'GOG', battlenet: 'Battle.net',
-  ubisoft: 'Ubisoft', origin: 'Origin', ea: 'EA', riot: 'Riot',
-  xbox: 'Xbox', itch: 'Itch', pc: 'PC', iso: 'ISO', unknown: 'Other',
-}
 
 export function LauncherLibraryPage() {
   const navigate = useNavigate()
@@ -27,18 +24,21 @@ export function LauncherLibraryPage() {
 
   // ── Data ──
   const { data: localGames = [] } = useLocalGames(
-    isDesktop ? { installed: true, sortBy: 'last_played_at', sortDir: 'desc' } : undefined,
+    isDesktop ? { sortBy: 'last_played_at', sortDir: 'desc' } : undefined,
   )
-  const { data: popularGames = [] } = usePopularGames()
+  const { data: popularGames = [] } = usePopularGames({ enabled: !isDesktop })
 
   const rawGames: DisplayGame[] = useMemo(() => {
-    if (isDesktop) return localGames.map(toDisplayGame).filter((g) => g.isInstalled)
+    if (isDesktop) return localGames
+      .filter((g) => !isApplicationGame(g)) // applications hidden for now
+      .map(toDisplayGame)
     return popularGames.map((g) => ({
       id: g.id, title: g.title,
       posterUrl: (g as any).textlessPosterUrl ?? g.posterUrl ?? null,
       iconUrl: g.posterUrl ?? g.iconUrl ?? undefined,
       backdropUrl: g.backdropUrl ?? undefined,
       logoUrl: g.logoUrl ?? undefined,
+      logoColorGuess: g.logoColorGuess ?? undefined,
       playtime: '', achievements: '', isDefault: false,
       isInstalled: false, platform: 'unknown' as LauncherPlatform,
     }))
@@ -50,6 +50,8 @@ export function LauncherLibraryPage() {
   const [sortBy, setSortBy] = useState<SortMode>('recent')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set())
+  const [posterErrors, setPosterErrors] = useState<Set<string>>(new Set())
+  const offline = useOffline()
   const { settings } = useLauncherSettings()
 
   const handlePrefetch = useCallback((game: DisplayGame) => {
@@ -68,6 +70,10 @@ export function LauncherLibraryPage() {
 
   const handleLogoError = useCallback((gameId: string) => {
     setLogoErrors((prev) => new Set(prev).add(gameId))
+  }, [])
+
+  const handlePosterError = useCallback((gameId: string) => {
+    setPosterErrors((prev) => new Set(prev).add(gameId))
   }, [])
 
   // ── Derived data ──
@@ -96,19 +102,12 @@ export function LauncherLibraryPage() {
     return result
   }, [rawGames, searchQuery, selectedPlatform, sortBy])
 
-  // ── Featured hero with inactivity auto-slideshow ──
+  // ── Featured hero (static, first game) ──
   const featuredGames = useMemo(() => filteredGames.slice(0, 5), [filteredGames])
-  const {
-    activeIndex: featuredIdx,
-    setActiveIndex: setFeaturedIdx,
-  } = useInactiveSlideshow({
-    totalItems: featuredGames.length,
-    slideInterval: 5000,
-    enabled: settings.slideshowWhenInactive,
-  })
+  const [featuredIdx, setFeaturedIdx] = useState(0)
   const featured = featuredGames[featuredIdx] ?? null
 
-  useEffect(() => { setFeaturedIdx(0, true) }, [searchQuery, selectedPlatform, sortBy, setFeaturedIdx])
+  useEffect(() => { setFeaturedIdx(0) }, [searchQuery, selectedPlatform, sortBy])
 
   // Featured
 
@@ -134,6 +133,12 @@ export function LauncherLibraryPage() {
 
   return (
     <div className="w-full h-screen bg-neutral-950 bg-grid-pattern text-white select-none overflow-hidden relative">
+
+      {offline && (
+        <div className="absolute top-14 right-6 z-40">
+          <OfflineNotice />
+        </div>
+      )}
 
       {/* ═══════════ Ambient background ═══════════ */}
       <div className="absolute inset-0 z-0 overflow-hidden">
@@ -206,12 +211,24 @@ export function LauncherLibraryPage() {
                   <div className="flex-1 min-w-0">
                     {/* Featured hero logo */}
                     {featured.logoUrl && !logoErrors.has(featured.id) ? (
-                      <img
-                        src={featured.logoUrl}
-                        alt={featured.title}
-                        className="h-24 max-w-[320px] object-contain object-left mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)]"
-                        onError={() => handleLogoError(featured.id)}
-                      />
+                      <div className="relative inline-block mb-4 pointer-events-none">
+                        <div
+                          className="absolute -inset-6 pointer-events-none opacity-80"
+                          style={{
+                            background:
+                              'radial-gradient(ellipse at left center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0) 80%)',
+                          }}
+                        />
+                        <MediaLogo
+                          src={featured.logoUrl!}
+                          alt={featured.title}
+                          className="relative z-10 h-24 max-w-[320px] object-contain object-left"
+                          colorGuess={featured.logoColorGuess ?? null}
+                          background="dark"
+                          shadow="drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 8px 32px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
+                          onError={() => handleLogoError(featured.id)}
+                        />
+                      </div>
                     ) : (
                       <h2 className="text-3xl font-black text-white tracking-tight mb-2 drop-shadow-lg line-clamp-1">
                         {featured.title}
@@ -333,6 +350,7 @@ export function LauncherLibraryPage() {
                 const hasLogo = !!game.logoUrl && !logoErrors.has(game.id)
                 // Prefer textless poster so the logo hover pops cleanly
                 const cardPoster = game.rawGame?.otixTextlessPosterUrl || game.rawGame?.textlessPosterUrl || game.rawGame?.data?.textlessPosterUrl || game.posterUrl
+                const posterFailed = posterErrors.has(game.id)
 
                 return (
                   <motion.div
@@ -353,13 +371,14 @@ export function LauncherLibraryPage() {
                     }}
                   >
                     {/* Poster — prefer textless so logo hover doesn't double up */}
-                    {cardPoster ? (
+                    {cardPoster && !posterFailed ? (
                       <img
                         src={cardPoster}
                         alt={game.title}
                         className="w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-700 ease-out"
                         loading="lazy"
                         draggable={false}
+                        onError={() => handlePosterError(game.id)}
                       />
                     ) : (
                       <div className="w-full h-full bg-[var(--dk-surface-ghost)] flex flex-col items-center justify-center gap-3 text-white/15">
@@ -380,13 +399,25 @@ export function LauncherLibraryPage() {
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
                         {/* Game logo — fades up on hover */}
                         {hasLogo && (
-                          <img
-                            src={game.logoUrl!}
-                            alt={game.title}
-                            className="max-h-[35%] max-w-[70%] object-contain drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)] translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out"
-                            style={{ transitionDelay: '50ms' }}
-                            onError={() => handleLogoError(game.id)}
-                          />
+                          <div className="relative w-full flex items-center justify-center pointer-events-none">
+                            <div
+                              className="absolute inset-0 pointer-events-none opacity-85"
+                              style={{
+                                background:
+                                  'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0) 80%)',
+                              }}
+                            />
+                            <MediaLogo
+                              src={game.logoUrl!}
+                              alt={game.title}
+                              className="relative z-10 max-h-[35%] max-w-[70%] object-contain translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out"
+                              colorGuess={game.logoColorGuess ?? null}
+                              background="dark"
+                              shadow="drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 6px 24px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
+                              style={{ transitionDelay: '50ms' }}
+                              onError={() => handleLogoError(game.id)}
+                            />
+                          </div>
                         )}
 
                         {/* Play circle — scales up beneath the logo */}
@@ -439,12 +470,36 @@ export function LauncherLibraryPage() {
               })}
             </motion.div>
           ) : (
-            <div className="glass-card flex flex-col items-center justify-center py-24 text-white/20 gap-4">
+            <div className="glass-card flex flex-col items-center justify-center py-24 text-white/30 gap-4">
               <Gamepad2 size={44} className="animate-pulse" style={{ animationDuration: '3s' }} />
-              <h3 className="text-xs font-bold uppercase tracking-wider">No Games Found</h3>
-              <p className="text-[10px] text-white/35">
-                {searchQuery ? 'Try a different search term.' : 'No games match the selected filters.'}
+              <h3 className="text-xs font-bold uppercase tracking-wider">
+                {rawGames.length === 0 ? 'No Games Yet' : 'No Games Found'}
+              </h3>
+              <p className="text-[10px] text-white/35 max-w-sm text-center leading-relaxed">
+                {rawGames.length === 0
+                  ? isDesktop
+                    ? 'Connect a platform like Epic or Steam in Integrations, or scan a game folder, and your library will appear here.'
+                    : 'Connect a platform launcher to populate your library.'
+                  : searchQuery
+                    ? `No games match “${searchQuery}”. Try a different search.`
+                    : 'No games match the selected platform. Try a different filter.'}
               </p>
+              {rawGames.length === 0 ? (
+                <button
+                  onClick={() => navigate({ to: '/settings/integrations' })}
+                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition-all active:scale-95 bg-white/[0.08] hover:bg-white/[0.14] border border-white/10"
+                >
+                  <Settings size={12} />
+                  Open Integrations
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setSearchQuery(''); setSelectedPlatform('all') }}
+                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition-all active:scale-95 bg-white/[0.08] hover:bg-white/[0.14] border border-white/10"
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           )}
 

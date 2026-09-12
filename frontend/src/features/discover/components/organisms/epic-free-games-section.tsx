@@ -112,7 +112,7 @@ export function EpicFreeGamesSection() {
     )
   }
 
-  if (!result?.matched?.length) return null
+  if (!Array.isArray(result?.matched) || result.matched.length === 0) return null
 
   const { matched, isAuthenticated, alreadyOwned } = result
   const unclaimed = matched.length - (alreadyOwned ?? 0)

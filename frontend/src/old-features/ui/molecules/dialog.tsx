@@ -35,7 +35,7 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
       {/* Overlay */}
       <div
         ref={overlayRef}
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-black/75 backdrop-blur-md transition-opacity"
         onClick={() => onOpenChange(false)}
       />
 
@@ -45,21 +45,31 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'relative w-full max-w-md rounded-3xl p-8 bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-dialog)]',
+          'relative w-full max-w-lg rounded-3xl p-6 sm:p-7 backdrop-blur-3xl text-white transition-all overflow-hidden',
           className,
         )}
-        style={{ animation: 'authFormFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)' }}
+        style={{
+          backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.78)',
+          boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 30px 60px -12px rgba(0, 0, 0, 0.85)',
+          animation: 'authFormFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
       >
+        {/* Layered Glass Ambient Glows */}
+        <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-primary/15 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-black/[0.2]" />
+
+        <div className="relative z-10">
         {title && (
           <div className="mb-5 flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold">{title}</h2>
-              {description && <p className="text-sm text-[var(--muted-foreground)]">{description}</p>}
+              <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
+              {description && <p className="text-xs text-white/60 leading-relaxed">{description}</p>}
             </div>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="shrink-0 rounded-xl p-1.5 transition-all text-[var(--muted-foreground)] hover:bg-[var(--dk-surface-ghost-hover)] hover:text-[var(--foreground)]"
+              className="shrink-0 rounded-xl p-2 transition-all text-white/40 hover:bg-white/10 hover:text-white cursor-pointer"
               aria-label="Close dialog"
             >
               <X className="h-4 w-4" />
@@ -71,7 +81,7 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="absolute top-4 right-4 rounded-xl p-1.5 transition-all text-[var(--muted-foreground)] hover:bg-[var(--dk-surface-ghost-hover)] hover:text-[var(--foreground)]"
+            className="absolute top-4 right-4 rounded-xl p-2 transition-all text-white/40 hover:bg-white/10 hover:text-white cursor-pointer"
             aria-label="Close dialog"
           >
             <X className="h-4 w-4" />
@@ -79,6 +89,7 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
         )}
 
         {children}
+        </div>
       </div>
     </div>,
     document.body,

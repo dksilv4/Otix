@@ -12,6 +12,9 @@ import {
   saveMatchSuggestion,
   notifyGamesChanged,
 } from './storage';
+import { LocalMatcher } from './local-matcher';
+import { buildCatalogRequests, normalizeCatalogResponse } from './catalog-match';
+import type { CatalogMatchCandidate } from './catalog-match';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -27,7 +30,12 @@ export interface ScannedGame {
   exePath?: string | null
   posterUrl?: string | null
   logoUrl?: string | null
+  isDlc?: boolean
   dlcOf?: string | null
+  isBeta?: boolean
+  betaOf?: string | null
+  isApp?: boolean
+  gameType?: string | null
   rawMetadata?: Record<string, unknown>
   // Plugin fields (may be present on raw scan results)
   appName?: string
@@ -228,22 +236,38 @@ export class GameScanOrchestrator extends EventEmitter {
     }
 
     // ── Phase 2: Save to local DB ──
-    const scanPlatform = scanned[0].platform;
-    upsertGamesForPlatform(scanned.map(g => ({
-      id: g.platform + '_' + g.id,
-      title: g.title,
-      exePath: g.exePath || '',
-      installDir: g.installPath || '',
-      platform: g.platform as any,
-      posterUrl: g.posterUrl || undefined,
-      iconUrl: g.logoUrl || g.posterUrl || undefined,
-      sources: [{ source: g.platform, id: g.id, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null }],
-    })), scanPlatform);
+    const scanPlatform = scanned[0]?.platform || pluginId;
+    upsertGamesForPlatform(scanned.map(g => {
+      const plat = g.platform || scanPlatform || pluginId;
+      const gameId = g.id || g.appName || Math.random().toString(36).substring(2, 9);
+      const isDlc = !!g.isDlc;
+      const isBeta = !!g.isBeta;
+      const isApp = !!g.isApp;
+      const gameType = g.gameType || (isApp ? 'application' : isBeta ? 'beta' : isDlc ? 'dlc_addon' : 'main_game');
+      return {
+        id: plat + '_' + gameId,
+        title: g.title,
+        exePath: g.exePath || '',
+        installDir: g.installPath || '',
+        platform: plat as any,
+        posterUrl: g.posterUrl || undefined,
+        iconUrl: g.logoUrl || g.posterUrl || undefined,
+        isDlc,
+        dlcOf: g.dlcOf || undefined,
+        isBeta,
+        betaOf: g.betaOf || undefined,
+        isApp,
+        gameType,
+        sources: [{ source: plat, id: gameId, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null, isDlc, betaOf: g.betaOf || null, isBeta, isApp, gameType }],
+      };
+    }), scanPlatform);
 
     // ── Phase 3: Split matched vs needs-match ──
     const matched: ScannedGame[] = [];
     const needsMatch: ScannedGame[] = [];
     for (const game of scanned) {
+      // Applications (non-game software) are stored but never matched against games
+      if (game.isApp) continue;
       let found = false;
       for (const eid of (game.externalIds || [])) {
         const existing = getGameMatch(eid.source, eid.id);
@@ -293,9 +317,30 @@ export class GameScanOrchestrator extends EventEmitter {
     };
   }
 
-  // ── SSE stream ──────────────────────────────────────────────────────
+  // ── Match stream ────────────────────────────────────────────────────
 
+  /**
+   * Match a batch of games. Tries the Otix SSE pipeline first; on any network
+   * or backend failure, falls back to offline self-match so the launcher keeps
+   * working without the Otix API.
+   */
   private async streamMatches(
+    games: ScannedGame[],
+    pluginId: string,
+    mediaType: string,
+    signal: AbortSignal,
+  ): Promise<void> {
+    try {
+      await this.streamMatchesRemote(games, pluginId, mediaType, signal);
+    } catch (err) {
+      if (signal.aborted) return;
+      console.warn(`[Orchestrator] Backend match unavailable (${(err as Error).message}), using offline self-match`);
+      await this.streamMatchesLocal(games, pluginId);
+    }
+  }
+
+  /** Otix SSE match pipeline. */
+  private async streamMatchesRemote(
     games: ScannedGame[],
     pluginId: string,
     mediaType: string,
@@ -308,6 +353,11 @@ export class GameScanOrchestrator extends EventEmitter {
       publisher: g.publisher || null,
       release_year: g.releaseYear || null,
       poster_url: g.posterUrl || null,
+      is_dlc: g.isDlc || false,
+      dlc_of: g.dlcOf || null,
+      is_beta: g.isBeta || false,
+      beta_of: g.betaOf || null,
+      game_type: g.gameType || (g.isBeta ? 'beta' : g.isDlc ? 'dlc_addon' : 'main_game'),
       external_ids: (g.externalIds && g.externalIds.length > 0)
         ? g.externalIds : [{ source: g.platform, id: g.id }],
       media_type: mediaType,
@@ -321,7 +371,7 @@ export class GameScanOrchestrator extends EventEmitter {
       this.queryIdToGames.set(qid, existing);
     }
 
-    const url = new URL(`/api/media/match/scan?hydrate=true&seed_missing=true`, this.apiBaseUrl);
+    const url = new URL(`/api/v1/media/match/scan?hydrate=true&seed_missing=true`, this.apiBaseUrl);
     const body = JSON.stringify({ games: requests });
 
     return new Promise<void>((resolve, reject) => {
@@ -365,6 +415,71 @@ export class GameScanOrchestrator extends EventEmitter {
       req.write(body);
       req.end();
     });
+  }
+
+  /**
+   * Offline fallback matcher. First asks `matching:pipeline` slot plugins for
+   * match candidates, then applies them (self-matching the remainder) and
+   * persists locally, emitting the same match:progress / match:complete events
+   * the SSE path would.
+   */
+  private async streamMatchesLocal(games: ScannedGame[], pluginId: string): Promise<void> {
+    const candidates = await this.queryMatchCandidates(games);
+    const results = new LocalMatcher().matchBatch(games, candidates);
+    let matched = 0;
+    for (const r of results) {
+      if (r.status === 'matched') matched++;
+      const event: GameProgressEvent = {
+        pluginId,
+        queryId: r.queryId,
+        totalGames: games.length,
+        status: r.status,
+        queryTitle: r.queryTitle,
+        match: r.mediaId ? {
+          media_item_id: r.mediaId,
+          title: r.otixTitle || r.queryTitle,
+          confidence: r.otixConfidence ?? 0.95,
+          poster_url: r.otixPosterUrl || undefined,
+          backdrop_url: r.otixBackdropUrl || undefined,
+        } : undefined,
+      };
+      this.emit('match:progress', event);
+    }
+    this.emit('match:complete', {
+      pluginId,
+      total: games.length,
+      matched,
+      unmatched: games.length - matched,
+      offline: true,
+    });
+    notifyGamesChanged();
+  }
+
+  /**
+   * Ask every plugin registered in the `matching:pipeline` slot for match
+   * candidates. Plugins that error are skipped — a broken pipeline must not
+   * break the offline scan. Earlier-registered plugins win on conflicts.
+   */
+  private async queryMatchCandidates(games: ScannedGame[]): Promise<Map<string, CatalogMatchCandidate>> {
+    const plugins = this.pluginManager.getPluginsForSlot('matching:pipeline');
+    if (plugins.length === 0) return new Map();
+
+    const requests = buildCatalogRequests(games);
+    const merged = new Map<string, CatalogMatchCandidate>();
+    for (const { pluginId: pipelinePluginId } of plugins) {
+      try {
+        const response = await this.pluginManager.callPluginData(pipelinePluginId, 'catalogMatch', requests);
+        for (const [queryId, candidate] of normalizeCatalogResponse(response, requests, pipelinePluginId)) {
+          if (!merged.has(queryId)) merged.set(queryId, candidate);
+        }
+      } catch (err: any) {
+        console.warn(`[Orchestrator] matching:pipeline plugin "${pipelinePluginId}" failed: ${err.message}`);
+      }
+    }
+    if (merged.size > 0) {
+      console.log(`[Orchestrator] matching:pipeline produced ${merged.size} candidate(s) from ${plugins.length} plugin(s)`);
+    }
+    return merged;
   }
 
   // ── SSE parser ──────────────────────────────────────────────────────
@@ -469,7 +584,7 @@ export class GameScanOrchestrator extends EventEmitter {
     } catch { return; }
     if (!this.authToken) return;
 
-    const url = new URL(`/api/media/${mediaItemId}/claim`, this.apiBaseUrl);
+    const url = new URL(`/api/v1/media/${mediaItemId}/claim`, this.apiBaseUrl);
     const req = http.request(url, { method: 'POST', headers: { 'Authorization': `Bearer ${this.authToken}` }, timeout: 10_000 });
     req.on('error', (err) => console.warn(`[Orchestrator] Claim failed for ${mediaItemId}:`, err.message));
     req.end();

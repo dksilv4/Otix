@@ -28,7 +28,7 @@ export function ActivityModulePlexCard({ s }: ActivityModulePlexCardProps) {
     : null
   const device = formatDevice(s)
   const streamBadge = transcodeLabel(s.video_decision, s.audio_decision, s.throttled)
-  const isCurrentUser = currentUser?.username === s.user_name || currentUser?.displayName === s.user_name
+  const isCurrentUser = currentUser?.username === s.user_name
   const totalDuration = formatTotalDuration(s.duration)
   const summary = truncate(s.summary, 110)
   const audioQuality = s.audio_codec && s.audio_channels

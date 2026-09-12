@@ -6,13 +6,15 @@ import { promisify } from 'util'
 import { app } from 'electron'
 import { PluginRuntime } from './runtime'
 import { eventBus } from './event-bus'
-import { getApiUrl } from '../config'
+import { getApiV1Url } from '../config'
 import { ServiceRegistry } from './service-registry'
 import { PluginsRepository } from '../db/repositories/plugins'
 import { initPluginsDb } from '../db/plugins-db'
+import type { PermissionManager } from './permissions'
 
-import { fetchAllRegistries } from './marketplace'
 import { SlotRegistry } from './slots'
+import { getAllActivity } from './activity'
+import type { PluginActivityItem } from './types'
 import { FreeGamesAggregator } from '../free-games/aggregator'
 import type {
   PluginManifest,
@@ -27,8 +29,25 @@ import {
   PluginNotRunningError,
   PluginIncompatibleError,
 } from './errors'
+import { validateConfigValue } from './config-validation'
+import { validateManifestSchema } from './manifest-validation'
 
 const execFileAsync = promisify(execFile)
+
+// System plugins auto-get access to well-known tables they own — no prompt.
+// This is a transitional safety net: as plugins migrate to framework data
+// layers (e.g. the downloads plugin using the framework downloads API), they
+// stop needing raw SQL access entirely.
+const SYSTEM_TABLE_GRANTS: Record<string, string[]> = {
+  downloads: ['downloads'],
+  // Radarr/Sonarr mirror their libraries into the shared local media catalog
+  // (bare `media` table — must stay out of the plugin's db.tables or it would
+  // be namespace-prefixed). See migrations/010_media.ts. They also mirror
+  // their active-download queue into the framework `downloads` table via the
+  // ctx.downloads.* API (worker-bridge gates it behind table:downloads).
+  radarr: ['media', 'downloads'],
+  sonarr: ['media', 'downloads'],
+}
 
 const PAGE_SLOT_MAP: Record<string, string[]> = {
   'settings/library': ['settings/library/extensions'],
@@ -41,7 +60,7 @@ const PAGE_SLOT_MAP: Record<string, string[]> = {
     'media/game/detail/tabs',
   ],
   'activity': ['activity:panel'],
-  'library/downloads': ['library:downloads'],
+  'library': ['library:tabs'],
   'settings/downloads': ['settings/downloads/main'],
 }
 
@@ -50,13 +69,16 @@ export class PluginManager {
   private locks: Map<string, Promise<void>> = new Map()
   private lockResolvers: Map<string, () => void> = new Map()
   private pluginsRepo: PluginsRepository
+  private permissionManager: PermissionManager | null = null
   private extensionsDir: string
   private devExtensionsDir: string | undefined
-  private apiBaseUrl = getApiUrl('')
+  private apiBaseUrl = getApiV1Url('')
   private authToken = ''
   private slotRegistry: SlotRegistry = new SlotRegistry()
   public readonly serviceRegistry: ServiceRegistry = new ServiceRegistry()
   public readonly freeGames: FreeGamesAggregator
+  private pluginWatcher: fs.FSWatcher | null = null
+  private pluginReloadTimers: Map<string, NodeJS.Timeout> = new Map()
 
   constructor(
     extensionsDir: string,
@@ -69,6 +91,10 @@ export class PluginManager {
     this.pluginsRepo = pluginsRepo
     this.freeGames = new FreeGamesAggregator(this)
     initPluginsDb(_userDataPath)
+  }
+
+  setPermissionManager(pm: PermissionManager): void {
+    this.permissionManager = pm
   }
 
   // ── Per-plugin mutex ─────────────────────────────────────────────
@@ -162,6 +188,20 @@ export class PluginManager {
       // Check compatibility
       this.checkCompatibility(pluginId, info.manifest)
 
+      // Structurally validate the manifest's config schema + declared
+      // permissions before booting the worker. Without this, a typo'd field
+      // type or a select with no options slips through value validation and
+      // silently mis-renders the settings UI instead of failing loudly.
+      const schemaErrors = validateManifestSchema(info.manifest).issues.filter(
+        (i) => i.severity === 'error',
+      )
+      if (schemaErrors.length > 0) {
+        const detail = schemaErrors
+          .map((issue) => `  - ${issue.path}: ${issue.message}`)
+          .join('\n')
+        throw new Error(`Plugin "${pluginId}" has an invalid manifest:\n${detail}`)
+      }
+
       const pluginDir = this.getPluginDir(pluginId)
 
       // Build config store from DB
@@ -189,7 +229,20 @@ export class PluginManager {
           }
         },
         set: (key: string, value: unknown) => {
-          this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(value))
+          const field = info.manifest.config?.[key]
+          if (field) {
+            const result = validateConfigValue(field, value)
+            if (result.ok) {
+              this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(result.value))
+            } else {
+              console.warn(
+                `[plugin:${pluginId}] config "${key}" rejected (${result.error}); storing raw value`,
+              )
+              this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(value))
+            }
+          } else {
+            this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(value))
+          }
         },
       }
 
@@ -203,8 +256,22 @@ export class PluginManager {
             .getPermissions(pluginId)
             .some((p) => p.permission === perm),
         async (perm: PluginPermission) => {
-          // Request permission — the bridge will handle the IPC prompt
-          // For now, auto-grant if the manifest declared it
+          // table:* access is always a runtime decision — show the permission
+          // modal, unless the plugin is a system plugin accessing its own
+          // well-known tables (SYSTEM_TABLE_GRANTS).
+          if (perm.startsWith('table:')) {
+            const tableName = perm.slice('table:'.length)
+            if (SYSTEM_TABLE_GRANTS[pluginId]?.includes(tableName)) {
+              this.pluginsRepo.grantPermission(pluginId, perm, 'always')
+              return true
+            }
+            if (!this.permissionManager) return false
+            return this.permissionManager.requestTableAccess(
+              pluginId, info.name, tableName,
+            )
+          }
+          // Non-table permissions: auto-grant only if the manifest declared
+          // them (the user consented at install time).
           if (info.manifest.permissions.includes(perm)) {
             this.pluginsRepo.grantPermission(pluginId, perm, 'always')
             return true
@@ -266,9 +333,18 @@ export class PluginManager {
       const tabs = info.manifest.settings?.tabs || []
       if (tabs.length > 0) {
         this.slotRegistry.register(pluginId, 'settings/tabs', info.name)
+        // Register each tab section slot so plugin settings pages can render
+        // content (the frontend calls slotRender with the section slot location).
+        for (const tab of tabs) {
+          for (const section of tab.sections || []) {
+            this.slotRegistry.register(pluginId, section.slot, section.label)
+          }
+        }
       }
 
       this.pluginsRepo.setEnabled(pluginId)
+      eventBus.emit('plugin:enabled', { pluginId })
+      eventBus.emit('plugin:slots-changed', { pluginId })
       console.log(`[PluginManager] Enabled plugin: ${pluginId}`)
     } catch (err: any) {
       this.pluginsRepo.updateStatus(pluginId, 'error', err.message)
@@ -278,7 +354,49 @@ export class PluginManager {
     }
   }
 
-  async disable(pluginId: string): Promise<void> {
+  /**
+   * Plugins that declare this plugin in their manifest's `depends_on`,
+   * transitively. Used to warn before disabling a plugin others rely on and to
+   * cascade the disable through them.
+   */
+  getDependents(pluginId: string): string[] {
+    const dependentsOf = new Map<string, string[]>()
+    for (const p of this.getAllPlugins()) {
+      for (const dep of p.manifest.depends_on ?? []) {
+        const list = dependentsOf.get(dep) ?? []
+        list.push(p.id)
+        dependentsOf.set(dep, list)
+      }
+    }
+    const result: string[] = []
+    const seen = new Set<string>([pluginId])
+    const queue = [pluginId]
+    while (queue.length) {
+      const current = queue.shift()!
+      for (const dependent of dependentsOf.get(current) ?? []) {
+        if (seen.has(dependent)) continue
+        seen.add(dependent)
+        result.push(dependent)
+        queue.push(dependent)
+      }
+    }
+    return result
+  }
+
+  /**
+   * Disable a plugin and every plugin that depends on it (transitively).
+   * Dependents are stopped before the plugin they rely on. Returns the full
+   * list of plugin ids disabled, including `pluginId` itself.
+   */
+  async disable(pluginId: string): Promise<string[]> {
+    const affected = [pluginId, ...this.getDependents(pluginId)]
+    for (const id of [...affected].reverse()) {
+      await this.disableOne(id)
+    }
+    return affected
+  }
+
+  private async disableOne(pluginId: string): Promise<void> {
     await this.acquireLock(pluginId)
     try {
       const runtime = this.runtimes.get(pluginId)
@@ -292,205 +410,144 @@ export class PluginManager {
       this.slotRegistry.unregisterAll(pluginId)
 
       this.pluginsRepo.setDisabled(pluginId)
+      eventBus.emit('plugin:disabled', { pluginId })
+      eventBus.emit('plugin:slots-changed', { pluginId })
       console.log(`[PluginManager] Disabled plugin: ${pluginId}`)
     } finally {
       this.releaseLock(pluginId)
     }
   }
 
-  // ── Install from Git ────────────────────────────────────────────
+  async reload(pluginId: string, opts?: { refreshSource?: boolean }): Promise<void> {
+    let info = this.getPlugin(pluginId)
+    if (!info) throw new PluginNotFoundError(pluginId)
 
-  async installFromGit(
-    repoUrl: string,
-    pluginPath?: string,
-  ): Promise<PluginInfo> {
-    // Validate URL
-    const parsed = new URL(repoUrl)
-    if (!['https:', 'http:'].includes(parsed.protocol)) {
-      throw new Error('Only HTTP(S) repository URLs are supported')
+    // The dev watcher reloads from the source dir, so a manifest.json /
+    // config-schema edit must be pushed into the DB before re-enabling —
+    // otherwise enable() keeps validating against the stale cached manifest
+    // and schema changes never take effect without a manual discover.
+    if (opts?.refreshSource && !this.refreshManifestFromDisk(pluginId)) {
+      return // source invalid or unreadable — keep the running plugin as-is
     }
+    info = this.getPlugin(pluginId) as PluginInfo
 
-    const repoName = repoUrl.replace(/\.git$/, '').split('/').pop()
-    if (!repoName) throw new Error(`Invalid repo URL: ${repoUrl}`)
-
-    const pluginId = pluginPath ? path.basename(pluginPath) : repoName
-    const targetDir = path.join(this.extensionsDir, pluginId)
-
-    if (fs.existsSync(targetDir)) {
-      throw new Error(`Plugin directory already exists: ${targetDir}`)
-    }
-
-    // Determine clone dir — for monorepo (pluginPath given), clone to temp first
-    const cloneDir = pluginPath
-      ? path.join(
-          os.tmpdir(),
-          `otix-plugin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        )
-      : targetDir
-
-    // Use execFile to avoid shell injection
-    try {
-      await execFileAsync('git', ['clone', '--depth', '1', repoUrl, cloneDir], {
-        timeout: 120_000,
-      })
-    } catch (err) {
-      if (fs.existsSync(cloneDir)) {
-        fs.rmSync(cloneDir, { recursive: true, force: true })
+    if (info.manifest.system) {
+      // System plugins restart the worker in place rather than a full
+      // disable()+enable() cycle, avoiding churn in status/events.
+      const runtime = this.runtimes.get(pluginId)
+      if (runtime) {
+        await runtime.stop()
+        this.runtimes.delete(pluginId)
       }
-      throw new Error(
-        `Git clone failed for ${repoUrl}: ${err instanceof Error ? err.message : String(err)}`,
-      )
+      await this.enable(pluginId)
+      return
     }
-
-    // Read manifest
-    const manifestDir = pluginPath ? path.join(cloneDir, pluginPath) : cloneDir
-    const manifestPath = path.join(manifestDir, 'manifest.json')
-
-    if (!fs.existsSync(manifestPath)) {
-      fs.rmSync(cloneDir, { recursive: true, force: true })
-      throw new Error(
-        pluginPath
-          ? `Plugin at path "${pluginPath}" is missing manifest.json`
-          : `manifest.json not found — not a valid plugin`,
-      )
-    }
-
-    let manifest: PluginManifest
-    try {
-      const raw = fs.readFileSync(manifestPath, 'utf-8')
-      manifest = JSON.parse(raw)
-    } catch (err) {
-      fs.rmSync(cloneDir, { recursive: true, force: true })
-      throw new Error(
-        `Plugin ${repoName} has invalid manifest.json: ${err instanceof Error ? err.message : String(err)}`,
-      )
-    }
-
-    if (!manifest.name || !manifest.version || !manifest.entry?.main) {
-      fs.rmSync(cloneDir, { recursive: true, force: true })
-      throw new Error(
-        'Plugin has incomplete manifest.json (name, version, and entry.main are required)',
-      )
-    }
-
-    // Check compatibility
-    this.checkCompatibility(pluginId, manifest)
-
-    // For monorepo: copy the plugin subdirectory to the extensions dir, then remove temp clone
-    if (pluginPath) {
-      try {
-        fs.cpSync(manifestDir, targetDir, { recursive: true })
-      } catch (err) {
-        fs.rmSync(cloneDir, { recursive: true, force: true })
-        throw new Error(
-          `Failed to copy plugin: ${err instanceof Error ? err.message : String(err)}`,
-        )
-      }
-      fs.rmSync(cloneDir, { recursive: true, force: true })
-    }
-
-    this.pluginsRepo.insert({
-      id: pluginId,
-      name: manifest.name,
-      version: manifest.version,
-      description: manifest.description || '',
-      author: manifest.author || '',
-      repository: manifest.repository || repoUrl,
-      source_path: pluginPath || null,
-      status: 'installed',
-      manifest_json: JSON.stringify(manifest),
-      enabled_at: null,
-    })
-
-    return this.getPlugin(pluginId)!
+    await this.disableOne(pluginId)
+    await this.enable(pluginId)
   }
 
-  // ── Update ──────────────────────────────────────────────────────
-
-  async updatePlugin(pluginId: string): Promise<PluginInfo> {
-    const row = this.pluginsRepo.getById(pluginId)
-    if (!row) throw new PluginNotFoundError(pluginId)
-    const info = this.pluginRowToInfo(row)
-
-    const wasEnabled = info.status === 'enabled'
-
-    // Disable first if enabled
-    if (wasEnabled) {
-      await this.disable(pluginId)
-    }
-
+  /**
+   * Re-read `<extensionsDir>/<pluginId>/manifest.json`, run the same
+   * structural validation the enable path uses, and persist it back to the DB
+   * manifest row. Returns false (and leaves everything untouched) when the
+   * source is missing, unparseable, incomplete, or fails schema validation.
+   */
+  private refreshManifestFromDisk(pluginId: string): boolean {
+    const pluginDir = this.getPluginDir(pluginId)
+    const manifestPath = path.join(pluginDir, 'manifest.json')
+    let manifest: PluginManifest
     try {
-      // Clone fresh copy to temp dir
-      const tempDir = path.join(
-        os.tmpdir(),
-        `otix-update-${pluginId}-${Date.now()}`,
-      )
-      const repoUrl = info.repository
-
-      await execFileAsync('git', ['clone', repoUrl, tempDir], {
-        timeout: 120_000,
-      })
-
-      const sourceDir = info.sourcePath
-        ? path.join(tempDir, info.sourcePath)
-        : tempDir
-      const targetDir = this.getPluginDir(pluginId)
-
-      // Read new manifest to get new version
-      const manifestPath = path.join(sourceDir, 'manifest.json')
-      let newManifest: PluginManifest
-      let newVersion = info.version
-      if (fs.existsSync(manifestPath)) {
-        const raw = fs.readFileSync(manifestPath, 'utf-8')
-        newManifest = JSON.parse(raw)
-        newVersion = newManifest.version || info.version
-      } else {
-        fs.rmSync(tempDir, { recursive: true, force: true })
-        throw new Error('Updated plugin is missing manifest.json')
-      }
-
-      // Remove old files except hidden files and data dirs, then copy new
-      const entries = fs.readdirSync(targetDir)
-      for (const entry of entries) {
-        if (entry.startsWith('.') || entry === 'data') continue
-        const fullPath = path.join(targetDir, entry)
-        fs.rmSync(fullPath, { recursive: true, force: true })
-      }
-
-      // Copy new files
-      const newEntries = fs.readdirSync(sourceDir)
-      for (const entry of newEntries) {
-        if (entry.startsWith('.')) continue
-        const src = path.join(sourceDir, entry)
-        const dest = path.join(targetDir, entry)
-        fs.cpSync(src, dest, { recursive: true })
-      }
-
-      // Update version and manifest in DB
-      this.pluginsRepo.updateManifest(pluginId, JSON.stringify(newManifest), newVersion)
-
-      // Clean up temp
-      fs.rmSync(tempDir, { recursive: true, force: true })
-
-      // Re-enable if was enabled
-      if (wasEnabled) {
-        await this.enable(pluginId)
-      }
-
-      const updatedRow = this.pluginsRepo.getById(pluginId)
-      if (!updatedRow) throw new Error('Plugin vanished after update')
-      return this.pluginRowToInfo(updatedRow)
-    } catch (err) {
-      // Try to re-enable if update failed
-      if (wasEnabled) {
-        try {
-          await this.enable(pluginId)
-        } catch {
-          // swallow re-enable error
-        }
-      }
-      throw err
+      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
+    } catch (err: any) {
+      console.warn(`[plugins] Reload: could not re-read ${manifestPath}: ${err?.message ?? err}`)
+      return false
     }
+    if (!manifest.name || !manifest.version || !manifest.entry?.main) {
+      console.warn(`[plugins] Reload: ${manifestPath} is incomplete; keeping running plugin`)
+      return false
+    }
+    const schemaErrors = validateManifestSchema(manifest).issues.filter((i) => i.severity === 'error')
+    if (schemaErrors.length > 0) {
+      console.warn(`[plugins] Reload: ${pluginId} manifest has schema errors; keeping running plugin:`)
+      for (const issue of schemaErrors) {
+        console.warn(`  - ${issue.path}: ${issue.message}`)
+      }
+      return false
+    }
+    try {
+      this.pluginsRepo.updateManifest(pluginId, JSON.stringify(manifest), manifest.version)
+    } catch (err: any) {
+      console.warn(`[plugins] Reload: failed to persist ${manifestPath}: ${err?.message ?? err}`)
+      return false
+    }
+    return true
+  }
+
+  // ── Dev auto-reload ─────────────────────────────────────────────
+  // In dev, plugins load straight from the repo (extensionsDir) and a
+  // running worker never re-requires its module, so editing main.js has
+  // no effect until the worker is respawned. Watch plugin sources and
+  // reload the affected plugin on change so dev iteration doesn't need a
+  // manual toggle or app restart. Gated on devExtensionsDir being set,
+  // which only happens in dev (main.ts passes it only when isDev).
+  watchPluginSources(debounceMs = 250, warmupMs = 2000): void {
+    if (!this.devExtensionsDir) return // dev-only
+    if (this.pluginWatcher) return
+    // macOS FSEvents fires an initial burst of events for every existing file
+    // when the watch starts. Ignore that window so plugins don't get reloaded
+    // immediately after being loaded at startup.
+    const startedAt = Date.now()
+    let watcher: fs.FSWatcher
+    try {
+      watcher = fs.watch(this.extensionsDir, { recursive: true }, (_eventType, filename) => {
+        if (!filename) return
+        if (Date.now() - startedAt < warmupMs) return
+        const rel = String(filename)
+        if (!this.shouldWatchPluginFile(rel)) return
+        const pluginId = rel.split(/[/\\]/)[0]
+        if (!pluginId) return
+        this.schedulePluginReload(pluginId, debounceMs)
+      })
+    } catch (err: any) {
+      console.warn('[plugins] Dev auto-reload watcher failed to start:', err.message)
+      return
+    }
+    watcher.on('error', (err) => {
+      console.warn('[plugins] Dev auto-reload watcher error:', err.message)
+    })
+    this.pluginWatcher = watcher
+    console.log(`[plugins] Dev auto-reload: watching ${this.extensionsDir}`)
+  }
+
+  private shouldWatchPluginFile(rel: string): boolean {
+    const parts = rel.split(/[/\\]/)
+    if (parts.some((s) => ['node_modules', '.git', 'dist', 'build', '.vite'].includes(s))) return false
+    return /\.(?:js|mjs|cjs|json)$/.test(rel)
+  }
+
+  private schedulePluginReload(pluginId: string, debounceMs: number): void {
+    const existing = this.pluginReloadTimers.get(pluginId)
+    if (existing) clearTimeout(existing)
+    this.pluginReloadTimers.set(
+      pluginId,
+      setTimeout(() => {
+        this.pluginReloadTimers.delete(pluginId)
+        if (!this.runtimes.has(pluginId)) return // not running — nothing to reload
+        console.log(`[plugins] Source changed, reloading "${pluginId}"`)
+        // Dev reloads re-read the manifest from disk so schema edits land too;
+        // a lone main.js edit just reloads the (unchanged) cached manifest.
+        this.reload(pluginId, { refreshSource: true }).catch((err: any) => {
+          console.warn(`[plugins] Reload "${pluginId}" failed:`, err.message)
+        })
+      }, debounceMs),
+    )
+  }
+
+  stopWatching(): void {
+    for (const t of this.pluginReloadTimers.values()) clearTimeout(t)
+    this.pluginReloadTimers.clear()
+    this.pluginWatcher?.close()
+    this.pluginWatcher = null
   }
 
   // ── Uninstall ───────────────────────────────────────────────────
@@ -523,6 +580,7 @@ export class PluginManager {
     for (const { pluginId, label } of plugins) {
       const runtime = this.runtimes.get(pluginId)
       if (!runtime) continue
+      if (this.slotRegistry.isSuspended(pluginId, location)) continue
 
       try {
         const data = await Promise.race([
@@ -560,7 +618,37 @@ export class PluginManager {
     for (const location of locations) {
       results[location] = await this.getSlotData(location)
     }
+
+    // Dynamic plugin settings tabs: settings/<tabId> resolves to that tab's
+    // section slots (registered at enable time from manifest.settings.tabs).
+    if (pageId.startsWith('settings/')) {
+      const tabId = pageId.slice('settings/'.length)
+      for (const [pluginId] of this.runtimes) {
+        const info = this.getPlugin(pluginId)
+        if (!info) continue
+        const tab = (info.manifest.settings?.tabs || []).find((t) => t.id === tabId)
+        if (!tab) continue
+        for (const section of tab.sections || []) {
+          const contributions = await this.getSlotData(section.slot)
+          if (contributions.length > 0) {
+            results[section.slot] = (results[section.slot] || []).concat(contributions)
+          }
+        }
+      }
+    }
+
     return results
+  }
+
+  getActivity(): Array<{ pluginId: string; label: string; activities: PluginActivityItem[] }> {
+    const slotLabels = new Map(
+      this.slotRegistry.getPluginsForSlot('activity:panel').map((s) => [s.pluginId, s.label]),
+    )
+    return getAllActivity().map(({ pluginId, activities }) => ({
+      pluginId,
+      label: slotLabels.get(pluginId) || this.getPlugin(pluginId)?.name || pluginId,
+      activities,
+    }))
   }
 
   getPluginTabs(): PluginSettingsTab[] {
@@ -569,7 +657,7 @@ export class PluginManager {
       const info = this.getPlugin(pluginId)
       if (!info) continue
       const pluginTabs = info.manifest.settings?.tabs || []
-      tabs.push(...pluginTabs)
+      tabs.push(...pluginTabs.map((tab) => ({ ...tab, pluginId })))
     }
     return tabs
   }
@@ -662,9 +750,9 @@ export class PluginManager {
           author: manifest.author || '',
           repository: manifest.repository || '',
           source_path: isAdditional ? pluginDir : null,
-          status: 'installed',
+          status: manifest.system ? 'enabled' : 'installed',
           manifest_json: JSON.stringify(manifest),
-          enabled_at: null,
+          enabled_at: manifest.system ? now : null,
         })
         discovered.push(
           this.getPlugin(entry.name) as PluginInfo,
@@ -688,6 +776,10 @@ export class PluginManager {
 
   async loadEnabledPlugins(): Promise<void> {
     const allRows = this.pluginsRepo.getAll()
+    // Respect stored status for every plugin, including system ones — a user
+    // can disable a system plugin and have it stay disabled across restarts.
+    // Plugins that errored previously are still retried in case the failure
+    // was transient.
     const enabled = allRows.filter((r) => r.status === 'enabled')
     const errored = allRows.filter((r) => r.status === 'error')
 
@@ -715,18 +807,27 @@ export class PluginManager {
   }
 
   async shutdown(): Promise<void> {
+    this.stopWatching()
     const pluginIds = Array.from(this.runtimes.keys())
 
     for (const pluginId of pluginIds) {
-      try {
-        await this.disable(pluginId)
-        console.log(`[PluginManager] Shut down plugin: ${pluginId}`)
-      } catch (err) {
-        console.error(
-          `[PluginManager] Error shutting down plugin ${pluginId}:`,
-          err,
-        )
+      const runtime = this.runtimes.get(pluginId)
+      if (runtime) {
+        try {
+          await runtime.stop()
+        } catch (err) {
+          console.error(
+            `[PluginManager] Error stopping plugin ${pluginId}:`,
+            err,
+          )
+        }
+        this.runtimes.delete(pluginId)
       }
+      // Stop the runtime but do NOT persist 'disabled' — the app is exiting,
+      // not the user disabling the plugin. Persisting here un-enables every
+      // plugin in the DB on each quit, so they stop auto-loading on boot.
+      this.serviceRegistry.unregister(pluginId)
+      this.slotRegistry.unregisterAll(pluginId)
     }
   }
 
@@ -763,9 +864,15 @@ export class PluginManager {
 
     try {
       const result = await runtime.callMethod('status')
-      return (result as Record<string, unknown>) || null
+      const status = (result as Record<string, unknown>) || null
+      if (status) {
+        eventBus.emit('plugin:status-changed', { pluginId, status })
+      }
+      return status
     } catch (err: any) {
-      return { error: err.message }
+      const status = { error: err.message }
+      eventBus.emit('plugin:status-changed', { pluginId, status })
+      return status
     }
   }
 
@@ -785,7 +892,22 @@ export class PluginManager {
   }
 
   setConfig(pluginId: string, key: string, value: unknown): void {
-    this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(value))
+    const info = this.getPlugin(pluginId)
+    const field = info?.manifest.config?.[key]
+    let stored = value
+    if (field) {
+      const result = validateConfigValue(field, value)
+      if (!result.ok) {
+        throw new Error(result.error)
+      }
+      stored = result.value
+    }
+    this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(stored))
+
+    // Notify the renderer and the running worker so config-caching plugins react.
+    const config = this.getConfig(pluginId)
+    eventBus.emit('plugin:config-changed', { pluginId, key, config })
+    this.runtimes.get(pluginId)?.pushConfig(config)
   }
 
   // ── Auth / API config ───────────────────────────────────────────
@@ -793,54 +915,17 @@ export class PluginManager {
   setAuthToken(token: string): void {
     this.authToken = token
     this.freeGames.setAuthToken(token)
+    for (const runtime of this.runtimes.values()) runtime.setAuthToken(token)
   }
 
   setApiBaseUrl(url: string): void {
     this.apiBaseUrl = url
     this.freeGames.setApiBaseUrl(url)
+    for (const runtime of this.runtimes.values()) runtime.setApiBaseUrl(url)
   }
 
   getApiBaseUrl(): string {
     return this.apiBaseUrl
-  }
-
-  // ── Marketplace ─────────────────────────────────────────────────
-
-  async fetchMarketplace(): Promise<{
-    success: boolean
-    plugins?: unknown[]
-    errors?: string[]
-  }> {
-    try {
-      const result = await fetchAllRegistries()
-      return {
-        success: true,
-        plugins: result.entries,
-        errors: result.errors.length > 0 ? result.errors : undefined,
-      }
-    } catch (err: any) {
-      return { success: false, errors: [err.message] }
-    }
-  }
-
-  // ── Repo management ─────────────────────────────────────────────
-
-  getRepos(): { url: string; label?: string; added_at?: string }[] {
-    return this.pluginsRepo.getRepos().map((r) => ({
-      url: r.url,
-      label: r.label || undefined,
-      added_at: r.added_at,
-    }))
-  }
-
-  async addRepo(url: string, label?: string): Promise<{ url: string; label: string | null; added_at: string }[]> {
-    this.pluginsRepo.addRepo(url, label)
-    return this.pluginsRepo.getRepos()
-  }
-
-  async removeRepo(url: string): Promise<{ url: string; label: string | null; added_at: string }[]> {
-    this.pluginsRepo.removeRepo(url)
-    return this.pluginsRepo.getRepos()
   }
 
   // ── Connection testing ──────────────────────────────────────────

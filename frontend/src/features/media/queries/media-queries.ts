@@ -8,10 +8,13 @@ export interface MediaItemSummary {
   mediaType: string
   title: string
   slug: string
+  /** TMDB external id (movie/show) — lets desktop plugins address the item. */
+  tmdbId?: string | null
   posterUrl: string | null
   textlessPosterUrl: string | null
   backdropUrl: string | null
   logoUrl: string | null
+  logoColorGuess: string | null
   releaseDate: string | null
   popularity: number
   avgRating?: number | null
@@ -25,6 +28,7 @@ export interface MediaItemSummary {
   viewCount: number
   isAdult?: boolean
   newSeasonReleased?: boolean
+  newSeasonReleaseDate?: string | null
   userInteractions?: UserInteractionState | null
   revenue?: number | null
   budget?: number | null
@@ -58,6 +62,7 @@ export interface MediaItemDetail {
   textlessPosterUrl: string | null
   backdropUrl: string | null
   logoUrl: string | null
+  logoColorGuess: string | null
   releaseDate: string | null
   popularity: number
   originalLanguage: string | null
@@ -66,6 +71,7 @@ export interface MediaItemDetail {
   ratingCount: number
   overallRating?: number | null
   overallRatingSource?: string | null
+  tmdbId?: string | null
   likeCount: number
   watchlistCount: number
   watchedCount: number
@@ -75,11 +81,13 @@ export interface MediaItemDetail {
   viewCount: number
   isAdult?: boolean
   newSeasonReleased?: boolean
+  newSeasonReleaseDate?: string | null
   userInteractions?: UserInteractionState | null
   steamPlaytimeForever?: number | null
   steamPlaytime2weeks?: number | null
   steamRtimeLastPlayed?: number | null
   youtubeVideoId?: string | null
+  videos: Array<{ videoType?: string | null; url: string; provider?: string | null; providerId?: string | null }>
   createdAt: string
   updatedAt: string
   genres: Array<{ id: string; name: string; slug: string }>
@@ -119,6 +127,7 @@ export interface MediaItemDetail {
       posterUrl: string | null
       releaseDate: string | null
       slug: string
+      isAdult: boolean
     }>
   } | null
   movie?: MovieDetail
@@ -137,6 +146,7 @@ export interface MovieDetail {
   lossRank?: number
   tagline?: string
   isAnime: boolean
+  imdbId?: string | null
 }
 
 export interface EpisodeOut {
@@ -157,6 +167,18 @@ export interface SeasonOut {
   posterUrl?: string | null
   episodeCount: number
   episodes: EpisodeOut[]
+}
+
+/** Discover feed item shape for Trending Shows — a show's latest Season. */
+export interface SeasonSummary {
+  id: string
+  showId: string
+  showTitle: string
+  seasonNumber: number
+  name: string | null
+  overview: string | null
+  posterUrl: string | null
+  airDate: string | null
 }
 
 export interface ShowDetail {
@@ -194,7 +216,6 @@ export interface TrackOut {
   title: string
   durationMs?: number | null
   previewUrl?: string | null
-  spotifyId?: string | null
   musicbrainzRecordingId?: string | null
   audioFeatures?: Record<string, unknown> | null
   avgRating?: number | null
@@ -219,11 +240,8 @@ export interface AlbumDetail {
   trackCount: number
   discCount: number
   durationMs?: number | null
-  spotifyId?: string | null
   musicbrainzId?: string | null
   musicbrainzReleaseGroupId?: string | null
-  spotifyUrl?: string | null
-  spotifyPopularity?: number | null
   previewUrl?: string | null
   audioFeatures?: Record<string, unknown> | null
   tracks: TrackOut[]
@@ -236,7 +254,6 @@ export interface TrackSearchResult {
   discNumber: number
   durationMs: number | null
   previewUrl: string | null
-  spotifyId: string | null
   avgRating: number | null
   ratingCount: number
   albumId: string
@@ -294,11 +311,13 @@ export interface StructuredSearchResponse {
 }
 
 export const mediaQueries = {
-  detail: (mediaType: string, id: string) =>
+  detail: (mediaType: string, id: string, theme?: 'dark' | 'light') =>
     queryOptions({
-      queryKey: mediaKeys.detail(mediaType, id),
+      queryKey: mediaKeys.detail(mediaType, id, theme),
       queryFn: async () => {
-        const { data } = await apiClient.get<MediaItemDetail>(`/media/${mediaType}/${id}`)
+        const { data } = await apiClient.get<MediaItemDetail>(`/media/${mediaType}/${id}`, {
+          params: theme ? { theme } : undefined,
+        })
         return data
       },
       enabled: !!id,
@@ -395,7 +414,7 @@ export const mediaQueries = {
         }
         if (params.type) searchParams.media_type = params.type
         if (params.sortBy) searchParams.sort_by = params.sortBy
-        const { data } = await apiClient.get<MediaListResponse>('/media/search', { params: searchParams })
+        const { data } = await apiClient.get<MediaListResponse>('/search', { params: searchParams })
         return data
       },
       getNextPageParam: (lastPage, allPages) => (lastPage.hasMore ? allPages.length + 1 : undefined),
@@ -408,7 +427,7 @@ export const mediaQueries = {
     queryOptions({
       queryKey: ['media', 'search', 'structured', query],
       queryFn: async () => {
-        const { data } = await apiClient.get<StructuredSearchResponse>('/media/search/grouped', {
+        const { data } = await apiClient.get<StructuredSearchResponse>('/search/grouped', {
           params: { q: query, media_type_limit: 10, best_results_limit: 10 },
         })
         return data
@@ -427,7 +446,7 @@ export const mediaQueries = {
         }
         if (params.type) searchParams.media_type = params.type
         if (params.knownIds) searchParams.known_ids = params.knownIds
-        const { data } = await apiClient.get<MediaListResponse>('/media/search/poll', { params: searchParams })
+        const { data } = await apiClient.get<MediaListResponse>('/search/poll', { params: searchParams })
         return data
       },
       staleTime: 2000,

@@ -1,6 +1,6 @@
 // desktop/db/repositories/plugins.ts
 import type Database from 'better-sqlite3'
-import { getConnection } from '../connection'
+import { getDb } from '../connection'
 
 export interface PluginRegistryRow {
   id: string
@@ -21,7 +21,7 @@ export class PluginsRepository {
   private db: Database.Database
 
   constructor() {
-    this.db = getConnection('plugins')
+    this.db = getDb()
   }
 
   getAll(): PluginRegistryRow[] {
@@ -60,9 +60,30 @@ export class PluginsRepository {
   }
 
   updateManifest(id: string, manifestJson: string, version: string): void {
+    // Keep the denormalized display columns in sync with the on-disk manifest
+    // (discover() refreshes manifest_json on change but the card/panel reads
+    // these columns, so they'd otherwise go stale after an edit).
+    let description: string | null = null
+    let name: string | null = null
+    let author: string | null = null
+    let repository: string | null = null
+    try {
+      const m = JSON.parse(manifestJson)
+      description = m.description ?? null
+      name = m.name ?? null
+      author = m.author ?? null
+      repository = m.repository ?? null
+    } catch {}
     this.db.prepare(`
-      UPDATE plugin_registry SET manifest_json = ?, version = ?, updated_at = datetime('now') WHERE id = ?
-    `).run(manifestJson, version, id)
+      UPDATE plugin_registry SET
+        manifest_json = ?, version = ?,
+        description = COALESCE(?, description),
+        name = COALESCE(?, name),
+        author = COALESCE(?, author),
+        repository = COALESCE(?, repository),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).run(manifestJson, version, description, name, author, repository, id)
   }
 
   delete(id: string): void {
@@ -113,20 +134,5 @@ export class PluginsRepository {
 
   deleteAllConfig(pluginId: string): void {
     this.db.prepare('DELETE FROM plugin_config WHERE plugin_id = ?').run(pluginId)
-  }
-
-  // ── Repos ──
-  getRepos(): { url: string; label: string | null; added_at: string }[] {
-    return this.db.prepare('SELECT * FROM plugin_repos ORDER BY added_at').all() as { url: string; label: string | null; added_at: string }[]
-  }
-
-  addRepo(url: string, label?: string): void {
-    this.db.prepare(
-      'INSERT OR REPLACE INTO plugin_repos (url, label, added_at) VALUES (?, ?, datetime(\'now\'))'
-    ).run(url, label || null)
-  }
-
-  removeRepo(url: string): void {
-    this.db.prepare('DELETE FROM plugin_repos WHERE url = ?').run(url)
   }
 }

@@ -10,3 +10,5 @@ export { queryClient, persistOptions } from './query'
 export { router } from './router'
 export type { RouterContext } from './router'
 export { cn, formatDuration, formatBytes, formatTimeAgo, formatTime, encodePositionInUrl, parsePositionFromUrl, stripPositionFromUrl, openExternal } from './utils'
+export { AppError, PluginError, PluginNotFoundError, SlotError, PermissionError, isAppError, toAppError } from './errors'
+

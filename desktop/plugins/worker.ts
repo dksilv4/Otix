@@ -34,6 +34,28 @@ parentPort!.on('message', async (msg: MainToWorkerMessage) => {
     return
   }
 
+  // Config updated in the main process — notify plugins that cache config.
+  if (msg.type === 'config-changed') {
+    const handlers = eventHandlers.get('otix:config:changed')
+    if (handlers) {
+      for (const handler of handlers) {
+        try {
+          handler(msg.config)
+        } catch (err: any) {
+          sendMessage({ type: 'log', level: 'error', msg: `config-changed handler failed: ${err.message}` })
+        }
+      }
+    }
+    if (typeof pluginModule?.onConfigChanged === 'function') {
+      try {
+        pluginModule.onConfigChanged(msg.config)
+      } catch (err: any) {
+        sendMessage({ type: 'log', level: 'error', msg: `onConfigChanged failed: ${err.message}` })
+      }
+    }
+    return
+  }
+
   // Handle events pushed from the main process
   if (msg.type === 'event') {
     const handlers = eventHandlers.get(msg.event)
@@ -179,9 +201,17 @@ const ctx = {
     get: <T>(sql: string, params?: unknown[]) => rpc('db.get', sql, params) as Promise<T | null>,
     all: <T>(sql: string, params?: unknown[]) => rpc('db.all', sql, params) as Promise<T[]>,
   },
-  downloadsDb: {
-    all: <T>(sql: string, params?: unknown[]) => rpc('downloadsDb.all', sql, params) as Promise<T[]>,
-    get: <T>(sql: string, params?: unknown[]) => rpc('downloadsDb.get', sql, params) as Promise<T | null>,
+  downloads: {
+    getHistory: () => rpc('downloads.getHistory') as Promise<any[]>,
+    getDownload: (id: string) => rpc('downloads.getDownload', id) as Promise<any | null>,
+    getConfig: () => rpc('downloads.getConfig') as Promise<any | null>,
+    queueItem: (data: any) => rpc('downloads.queueItem', data),
+    updateStatus: (id: string, status: string, errorMessage?: string, percentage?: number) =>
+      rpc('downloads.updateStatus', id, status, errorMessage, percentage),
+    updateIsoPath: (id: string, isoPath: string) => rpc('downloads.updateIsoPath', id, isoPath),
+    delete: (id: string) => rpc('downloads.delete', id),
+    getPathMappings: (configId: string) => rpc('downloads.getPathMappings', configId),
+    getWishlistTracking: (userId: string) => rpc('downloads.getWishlistTracking', userId),
   },
   notifications: {
     send: (titleOrOpts: string | { title: string; body: string; type?: string }, body?: string) => {
@@ -224,6 +254,17 @@ const ctx = {
   host: {
     emit: (event: string, data: unknown) => {
       rpc('host.emit', event, data).catch(() => {})
+    },
+  },
+  activity: {
+    publish: (item: import('./types').PluginActivityItem) => {
+      rpc('activity.publish', item).catch(() => {})
+    },
+    remove: (id: string) => {
+      rpc('activity.remove', id).catch(() => {})
+    },
+    clear: () => {
+      rpc('activity.clear').catch(() => {})
     },
   },
 

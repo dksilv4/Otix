@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, useNavigate } from '@tanstack/react-router'
+import { FolderOpen } from 'lucide-react'
 import { osName } from '@/lib/utils'
 import { useLocalGame } from '@/features/launcher/data/game-queries'
 import { useInstallProgress } from '@/features/launcher/data/install-store'
@@ -10,16 +11,32 @@ import { IsoInstallButton } from '@/features/launcher/components/atoms/launcher-
 import { MatchedPlayButton } from '@/features/launcher/components/atoms/launcher-matched-play-button'
 import { MatchGameButton } from '@/features/launcher/components/atoms/launcher-match-game-button'
 import { RejectSuggestionButton } from '@/features/launcher/components/atoms/launcher-reject-suggestion-button'
+import { OTIX_DEFAULT_GAME_ID } from '@/features/launcher/data/otix-default-game'
 
 interface LauncherPlayButtonProps {
   onOpenInstaller: () => void
 }
 
 export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps) {
+  const navigate = useNavigate()
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { data: g } = useLocalGame(gameId)
   const { activeInstalls, cancelInstall } = useInstallProgress()
+
+  if (!g) return null
+
+  // Special Otix filler game action: prompt user to scan library
+  if (g.id === OTIX_DEFAULT_GAME_ID) {
+    return (
+      <button
+        onClick={() => navigate({ to: '/settings/launcher' })}
+        className="h-10 px-6 bg-cyan-400 hover:bg-cyan-300 text-neutral-950 font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:shadow-[0_0_30px_rgba(34,211,238,0.55)] active:scale-95 shrink-0"
+      >
+        <FolderOpen size={16} className="stroke-[2.5]" /> Scan Library
+      </button>
+    )
+  }
 
   const isInstalled = !!g?.exePath && g?.platform !== 'iso' && !!g.data?.id
   const isIncompatible = g?.platform === 'iso' && osName !== 'Windows'

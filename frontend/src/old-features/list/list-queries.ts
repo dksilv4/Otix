@@ -6,13 +6,8 @@ import {
   useInfiniteQuery,
 } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api/client"
+import { emitOtixEvent } from "@/lib/plugin-events"
 import { listKeys } from "./list-keys"
-
-function emit(event: string, payload: unknown) {
-  try {
-    ;(window as any).desktopAPI?.plugin?.emitEvent(event, payload)
-  } catch {}
-}
 
 // ── Types ──────────────────────────────────────────────
 
@@ -64,6 +59,7 @@ export interface UserListDetailOut extends UserListOut {
     } | null
     isAdult?: boolean
     albumArtistName?: string | null
+    tmdbId?: string | null
   }>
   collaborators: CollaboratorOut[]
 }
@@ -106,10 +102,11 @@ export function useUserLists() {
   return useQuery({
     queryKey: listKeys.mine(),
     queryFn: async () => {
-      const { data } = await apiClient.get<UserListOut[]>("/list/mine")
-      return data
+      const { data } = await apiClient.get<any>("/list/mine")
+      return Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : [])
     },
     staleTime: 1000 * 60 * 2,
+    meta: { suppressToast: true },
   })
 }
 
@@ -119,8 +116,9 @@ export function usePublicLists() {
     queryFn: async ({ pageParam }: { pageParam: string | null }) => {
       const params: Record<string, string> = { limit: "24" }
       if (pageParam) params.cursor = pageParam
-      const { data } = await apiClient.get<UserListOut[]>("/list", { params })
-      return { items: data, nextCursor: null as string | null, hasMore: false }
+      const { data } = await apiClient.get<any>("/list", { params })
+      const items = Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : [])
+      return { items, nextCursor: null as string | null, hasMore: false }
     },
     initialPageParam: null as string | null,
     getNextPageParam: () => undefined,
@@ -133,6 +131,9 @@ export function useListDetail(listId: string) {
     queryKey: listKeys.detail(listId),
     queryFn: async () => {
       const { data } = await apiClient.get<UserListDetailOut>("/list/" + listId)
+      if (data && !Array.isArray(data.items)) {
+        data.items = []
+      }
       return data
     },
     enabled: !!listId,
@@ -149,7 +150,10 @@ export function useCreateList() {
       const { data } = await apiClient.post<UserListOut>("/list", body)
       return data
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      emitOtixEvent("otix:list:created", {
+        list: { id: data.id, name: data.name, isPublic: data.isPublic },
+      })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
       qc.invalidateQueries({ queryKey: listKeys.public() })
     },
@@ -170,6 +174,10 @@ export function useUpdateList() {
       return data
     },
     onSuccess: (_data, vars) => {
+      emitOtixEvent("otix:list:updated", {
+        listId: vars.listId,
+        list: { name: vars.name, isPublic: vars.isPublic },
+      })
       qc.invalidateQueries({ queryKey: listKeys.detail(vars.listId) })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
     },
@@ -182,7 +190,8 @@ export function useDeleteList() {
     mutationFn: async (listId: string) => {
       await apiClient.delete("/list/" + listId)
     },
-    onSuccess: () => {
+    onSuccess: (_data, listId) => {
+      emitOtixEvent("otix:list:deleted", { listId })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
       qc.invalidateQueries({ queryKey: listKeys.public() })
     },
@@ -195,7 +204,6 @@ export function useAddToList() {
     mutationFn: async ({
       listId,
       mediaItemId,
-      mediaType,
     }: {
       listId: string
       mediaItemId: string
@@ -210,7 +218,7 @@ export function useAddToList() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: listKeys.detail(vars.listId) })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
-      emit("otix:list:item_added", {
+      emitOtixEvent("otix:list:item_added", {
         listId: vars.listId,
         item: { mediaItemId: vars.mediaItemId, mediaType: vars.mediaType },
       })
@@ -224,7 +232,6 @@ export function useRemoveFromList() {
     mutationFn: async ({
       listId,
       mediaItemId,
-      mediaType,
     }: {
       listId: string
       mediaItemId: string
@@ -235,7 +242,7 @@ export function useRemoveFromList() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: listKeys.detail(vars.listId) })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
-      emit("otix:list:item_removed", {
+      emitOtixEvent("otix:list:item_removed", {
         listId: vars.listId,
         item: { mediaItemId: vars.mediaItemId, mediaType: vars.mediaType },
       })
@@ -255,9 +262,10 @@ export function useReorderList(listId: string) {
         listKeys.detail(listId)
       )
       if (previous) {
+        const prevItems = Array.isArray(previous.items) ? previous.items : []
         const ordered = mediaItemIds
-          .map((id) => previous.items.find((i) => i.id === id))
-          .filter(Boolean) as UserListDetailOut["items"]
+          .map((id) => prevItems.find((i) => i && i.id === id))
+          .filter((item): item is NonNullable<typeof item> => Boolean(item))
         qc.setQueryData<UserListDetailOut>(listKeys.detail(listId), {
           ...previous,
           items: ordered,
@@ -286,6 +294,7 @@ export function useLikeList(listId: string) {
       return data
     },
     onSuccess: () => {
+      emitOtixEvent("otix:list:liked", { listId })
       qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
       qc.invalidateQueries({ queryKey: listKeys.public() })
     },
@@ -300,6 +309,7 @@ export function useUnlikeList(listId: string) {
       return data
     },
     onSuccess: () => {
+      emitOtixEvent("otix:list:unliked", { listId })
       qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
       qc.invalidateQueries({ queryKey: listKeys.public() })
     },
@@ -368,10 +378,10 @@ export function useRankHistory(listId: string) {
   return useQuery({
     queryKey: [...listKeys.detail(listId), "history"],
     queryFn: async () => {
-      const { data } = await apiClient.get<RankHistoryOut[]>(
+      const { data } = await apiClient.get<any>(
         "/list/" + listId + "/history",
       )
-      return data
+      return Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : [])
     },
     enabled: !!listId,
   })

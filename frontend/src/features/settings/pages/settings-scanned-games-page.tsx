@@ -87,7 +87,8 @@ export function SettingsScannedGamesPage() {
 
   // Client-side filter + search
   const filteredGames = useMemo(() => {
-    let result = games
+    // Applications (non-game software) are stored but hidden from the UI for now
+    let result = games.filter((g: any) => !(g?.isApp === true || g?.gameType === 'application' || g?.contentType === 'application'))
     // Platform filter
     if (platformFilter) {
       result = result.filter((g: any) => g.platform === platformFilter)

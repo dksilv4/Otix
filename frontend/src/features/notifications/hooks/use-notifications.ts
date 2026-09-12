@@ -18,18 +18,30 @@ export function useNotifications() {
     queryKey: ['notifications', 'list'],
     queryFn: async ({ pageParam }) => {
       const params = pageParam as string | undefined
-      const result = await apiClient.get<NotificationListResponse>('/notifications', {
+      const { data } = await apiClient.get<any>('/notifications', {
         params: { limit: 20, ...(params ? { cursor: params } : {}) },
-      }).then(({ data }) => data)
-      return result
+      })
+      const items = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data?.results)
+          ? data.results
+          : Array.isArray(data)
+            ? data
+            : []
+      return {
+        ...data,
+        items,
+        nextCursor: data?.nextCursor ?? data?.next_cursor ?? null,
+        hasMore: data?.hasMore ?? !!(data?.nextCursor || data?.next_cursor || data?.next),
+      } as NotificationListResponse
     },
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextCursor : undefined,
+    getNextPageParam: (lastPage) => lastPage?.hasMore ? lastPage.nextCursor : undefined,
     staleTime: 30_000,
     enabled: isAuthenticated,
   })
 
-  const allItems = query.data?.pages.flatMap((p) => p.items) ?? []
+  const allItems = query.data?.pages?.flatMap((p) => (Array.isArray(p?.items) ? p.items.filter(Boolean) : [])) ?? []
 
   const lastItemRef = useCallback(
     (node: HTMLElement | null) => {

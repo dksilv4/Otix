@@ -5,11 +5,11 @@ export type FeatureName =
   | 'auth:oauth'
   | 'auth:oauth:steam'
   | 'auth:oauth:google'
-  | 'auth:oauth:spotify'
   | 'auth:oauth:plex'
   | 'auth:oauth:tmdb'
   | 'auth:two-factor'
   | 'browse'
+  | 'calendar'
   | 'company'
   | 'dashboard'
   | 'discover'
@@ -36,7 +36,6 @@ export type FeatureName =
   | 'library:lists'
   | 'library:steam'
   | 'library:plex'
-  | 'library:spotify'
   | 'list'
   | 'media'
   | 'navigation'
@@ -50,9 +49,6 @@ export type FeatureName =
   | 'settings:notifications'
   | 'settings:downloads'
   | 'settings:organizer'
-  | 'spotify'
-  | 'spotify:now-playing'
-  | 'spotify:playlists'
   | 'title-bar'
   | 'user'
   | 'workout'
@@ -61,6 +57,7 @@ export type FeatureName =
   | 'context-menu:tv'
   | 'context-menu:music'
   | 'context-menu:generic'
+  | 'hub'
 
 export type FeatureOverrides = Partial<Record<FeatureName, boolean>>
 

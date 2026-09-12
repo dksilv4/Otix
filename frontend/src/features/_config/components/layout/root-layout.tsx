@@ -4,14 +4,15 @@ import { NavShell } from "@navigation"
 import { TitleBar } from "@/old-features/title-bar/organisms/title-bar"
 import { XPToastContainer } from "@/old-features/ui/atoms/xp-toast"
 import { ContextMenuProvider, ContextMenuPortal } from "@/features/_config/context-menu"
+import { CommandPaletteMount } from "@/features/hub"
 import { ActivityModule } from "@activity/components/organisms/activity-panel"
 import { PanelProvider } from "@activity/providers/panel-context"
 import { NotificationsProvider } from "@/features/notifications/providers/notifications-provider"
-import { usePluginPermissions } from "@settings/hooks/use-plugin-permissions"
-import { PluginPermissionModal } from "@settings/components/organisms/settings-plugin-permission-modal"
+import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permissions"
+import { PluginPermissionModal } from "@/features/plugins/components/organisms/plugin-permission-modal"
 import { useModal } from "@/lib/modals"
 
-const PIN_KEY = "otix_spotify_player_pinned"
+const PIN_KEY = "otix_player_pinned"
 
 function loadPinState(): boolean {
   try {
@@ -59,7 +60,7 @@ export function RootLayout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRequest])
 
-  const isFullScreenPage = location.pathname.startsWith('/launcher') || location.pathname.startsWith('/game') || location.pathname.startsWith('/settings')
+  const isFullScreenPage = location.pathname.startsWith('/launcher') || location.pathname.startsWith('/game') || location.pathname.startsWith('/settings') || location.pathname.startsWith('/auth')
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] bg-[var(--background)]">
@@ -79,6 +80,7 @@ export function RootLayout() {
           </NotificationsProvider>
         </PanelProvider>
         <ContextMenuPortal />
+        <CommandPaletteMount />
       </ContextMenuProvider>
     </div>
   )

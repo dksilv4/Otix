@@ -1,0 +1,119 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.otix.launcher",
+  "productName": "Otix",
+  "copyright": "Copyright © 2026 Otix",
+  "directories": {
+    "output": "release",
+    "buildResources": "assets"
+  },
+  "files": [
+    "dist/**/*",
+    "package.json",
+    "node_modules/better-sqlite3/**/*"
+  ],
+  "asarUnpack": [
+    "**/node_modules/better-sqlite3/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "bin",
+      "to": "bin",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "assets",
+      "to": "assets",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "../extensions/otix-plugins/plugins",
+      "to": "plugins",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "../frontend/dist",
+      "to": "frontend",
+      "filter": ["**/*"]
+    }
+  ],
+  "protocols": [
+    {
+      "name": "Otix Protocol",
+      "schemes": ["otix"]
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "assets/icon.ico",
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "Otix",
+    "uninstallDisplayName": "Otix Launcher"
+  },
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "icon": "assets/icon.icns",
+    "category": "public.app-category.games",
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
+  },
+  "dmg": {
+    "contents": [
+      {
+        "x": 130,
+        "y": 220
+      },
+      {
+        "x": 410,
+        "y": 220,
+        "type": "link",
+        "path": "/Applications"
+      }
+    ]
+  },
+  "linux": {
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": ["x64"]
+      },
+      {
+        "target": "deb",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "assets/icon.png",
+    "category": "Game",
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "Otix",
+    "repo": "Otix"
+  }
+}

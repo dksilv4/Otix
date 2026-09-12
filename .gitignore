@@ -3,23 +3,42 @@
 .env.*
 **/.env
 **/.env.*
-/backend/.venv
-/backend/otix.egg-info
+# Legacy FastAPI tree (renamed backend/ -> old-backend/ in the Django cutover).
+/old-backend/.venv
+/old-backend/otix.egg-info
 
 .DS_Store
 .idea/
 
-/backend/data/
+/old-backend/data/
 celerybeat-schedule
 /package-lock.json
 /.claude
 /.agents
-/backend/.fastembed_cache/
+/old-backend/.fastembed_cache/
+/old-backend/.api_cache/
 /node_modules
-/backend/graphify-out
+# Generated graph snapshots of the legacy tree — the ~779 files already tracked
+# under backend/graphify-out/ stay tracked after the rename (force-staged below);
+# this rule only keeps the untracked generated output out of future commits.
+/old-backend/graphify-out
 desktop/frontend/
 desktop/nul
-/extensions
 /graphify-out
+
+# Plugin runtime data — never commit sqlite/db artifacts from the plugins dir.
+/extensions/**/data/
+/extensions/**/data.db
+/extensions/**/*.db-shm
+/extensions/**/*.db-wal
+/frontend/graphify-out
+/desktop/graphify-out
 /frontend/.superpowers
 .claude/settings.local.json
+
+# Build output
+/desktop/release/
+
+# Regenerated graphify knowledge-graph output (do not version)
+/graphify-out/
+/frontend/graphify-out/

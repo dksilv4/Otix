@@ -1,4 +1,4 @@
-export { createSearchRoutes } from './search.router'
+export { createSearchRoutes } from './router'
 export { SearchPage } from './pages/search-page'
 export { SearchResults } from './components/organisms/search-results'
 export { SearchSortBar, SORT_OPTIONS, TYPE_OPTIONS } from './components/molecules/search-sort-bar'

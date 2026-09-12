@@ -77,12 +77,15 @@ export function ActivityModuleDownloads() {
                     <p className="text-sm font-semibold truncate text-white/90" title={d.mediaItemTitle ?? d.nzbName ?? 'Unknown'}>
                       {d.mediaItemTitle ?? d.nzbName ?? 'Unknown'}
                     </p>
-                    {d.nzbSize ? (
-                      <p className="text-[10px] mt-0.5 font-medium text-white/35">{formatBytes(d.nzbSize)}</p>
-                    ) : null}
+                    <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-white/35">
+                      {d.source === 'radarr' && (
+                        <span className="uppercase tracking-wider text-[9px] font-bold text-blue-300/70">Radarr</span>
+                      )}
+                      {d.nzbSize ? formatBytes(d.nzbSize) : null}
+                    </p>
                   </div>
 
-                  {isActive && (
+                  {isActive && d.source !== 'radarr' && (
                     <div className="shrink-0 flex items-center">
                       <button
                         type="button"
