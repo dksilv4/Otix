@@ -62,3 +62,48 @@ export interface HypervisorConfirmResponse {
   gameName: string;
   error: string;
 }
+
+// ── Remote Game Server & Client Downloads ("Plex for Games") ──────────────
+
+export interface GameServer {
+  id: number;
+  name: string;
+  localUrl?: string | null;
+  remoteUrl?: string | null;
+  primaryUrl: string;
+  authToken?: string | null;
+  isOnline: boolean;
+  lastSeenAt?: string | null;
+  totalFiles: number;
+  storageFreeBytes: number;
+  storageTotalBytes: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ServerGameFile {
+  serverId: number;
+  serverName: string;
+  serverUrl: string;
+  fileId: string;
+  filename: string;
+  filesize: number;
+  extension: string;
+  formatCategory: 'iso' | 'installer' | 'archive' | 'rom';
+  gameTitle: string;
+  libraryName: string;
+  modifiedAt?: string | null;
+  downloadUrl: string;
+  catalogItem?: {
+    id: string;
+    title: string;
+    slug: string;
+  } | null;
+}
+
+export interface ServerGamesResponse {
+  servers: GameServer[];
+  files: ServerGameFile[];
+  errors?: { serverId: number; error: string }[] | null;
+}

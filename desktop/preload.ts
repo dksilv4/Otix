@@ -186,6 +186,23 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   downloadsValidateNamingTemplate: (template: string) =>
     ipcRenderer.invoke('downloads:validate-naming-template', template),
 
+  // Remote Server Downloads (Plex-for-Games)
+  downloadsRemoteStart: (options: any) => ipcRenderer.invoke('downloads:remote:start', options),
+  downloadsRemotePause: (downloadId: string) => ipcRenderer.invoke('downloads:remote:pause', downloadId),
+  downloadsRemoteResume: (downloadId: string) => ipcRenderer.invoke('downloads:remote:resume', downloadId),
+  downloadsRemoteCancel: (downloadId: string) => ipcRenderer.invoke('downloads:remote:cancel', downloadId),
+  downloadsRemoteGetActive: () => ipcRenderer.invoke('downloads:remote:get-active'),
+  onRemoteDownloadProgress: (callback: (progress: any) => void) => {
+    const handler = (_event: any, progress: any) => callback(progress);
+    ipcRenderer.on('downloads:remote:progress', handler);
+    return () => ipcRenderer.removeListener('downloads:remote:progress', handler);
+  },
+  onRemoteDownloadCompleted: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('downloads:remote:completed', handler);
+    return () => ipcRenderer.removeListener('downloads:remote:completed', handler);
+  },
+
   // ── Save Management ──
   saveGetKnownLocations: () => ipcRenderer.invoke('save:get-known-locations'),
   saveDiscoverForGame: (gameId: string, gameTitle: string) =>

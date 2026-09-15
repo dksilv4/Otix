@@ -5,6 +5,8 @@ from apps.library.serializers.library import (
     MediaItemSummarySerializer,
     SteamUnmatchedGameSerializer,
     SteamWishlistItemSerializer,
+    UserGameServerCreateSerializer,
+    UserGameServerSerializer,
     YoutubeLikedVideoSerializer,
 )
 
@@ -13,5 +15,7 @@ __all__ = [
     "MediaItemSummarySerializer",
     "SteamUnmatchedGameSerializer",
     "SteamWishlistItemSerializer",
+    "UserGameServerCreateSerializer",
+    "UserGameServerSerializer",
     "YoutubeLikedVideoSerializer",
 ]

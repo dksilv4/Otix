@@ -1,46 +1,25 @@
-from __future__ import annotations
-
+from datetime import datetime, timezone
 import hashlib
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
-from pydantic import BaseModel
+from typing import Dict, List
 
+from .types import HostedFile
+from .utils import (
+    clean_title_from_filename,
+    compute_head_hash,
+    determine_format_category,
+)
 
-class HostedFile(BaseModel):
-    id: str
-    filename: str
-    filepath: str
-    filesize: int
-    sha256_head: str
-    extension: str
-    library_name: str
-    game_title: str
-    matched_igdb_id: Optional[str] = None
-
-
-CHUNK_SIZE = 1024 * 1024  # 1MB chunk for head hash
-
-
-def compute_head_hash(filepath: str) -> str:
-    """Compute SHA-256 hash of the first 1MB of a file for fast identification."""
-    h = hashlib.sha256()
-    try:
-        with open(filepath, "rb") as f:
-            chunk = f.read(CHUNK_SIZE)
-            h.update(chunk)
-        return h.hexdigest()
-    except Exception:
-        return "00000000000000000000000000000000"
-
-
-def clean_title_from_filename(filename: str) -> str:
-    """Extract clean title from filename."""
-    name = Path(filename).stem
-    for tag in ["repack", "fitgirl", "dodi", "gog", "iso", "codex", "skidrow", "setup", "v1.0", "v1.1"]:
-        name = name.replace(tag, "").replace(tag.upper(), "")
-    name = name.replace(".", " ").replace("_", " ").strip()
-    return name.title() if name else Path(filename).stem
+# Re-export for backwards compatibility
+__all__ = [
+    "HostedFile",
+    "compute_head_hash",
+    "determine_format_category",
+    "clean_title_from_filename",
+    "StorageIndexer",
+    "GameLibraryIndexer",
+]
 
 
 class StorageIndexer:
@@ -68,9 +47,11 @@ class StorageIndexer:
                     try:
                         stat = os.stat(full_path)
                         size = stat.st_size
+                        mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
                         head_hash = compute_head_hash(full_path)
                         file_id = f"file_{hashlib.md5(full_path.encode()).hexdigest()[:12]}"
                         title = clean_title_from_filename(file)
+                        category = determine_format_category(ext)
 
                         hf = HostedFile(
                             id=file_id,
@@ -79,8 +60,10 @@ class StorageIndexer:
                             filesize=size,
                             sha256_head=head_hash,
                             extension=ext,
+                            format_category=category,
                             library_name=lib_name,
                             game_title=title,
+                            modified_at=mtime,
                         )
                         indexed.append(hf)
                         self.files_by_id[file_id] = hf
@@ -88,3 +71,6 @@ class StorageIndexer:
                         print(f"[Indexer] Failed to index {full_path}: {err}")
 
         return indexed
+
+
+GameLibraryIndexer = StorageIndexer

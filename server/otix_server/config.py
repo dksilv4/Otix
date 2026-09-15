@@ -15,6 +15,7 @@ class ServerSettings(BaseModel):
     registry_url: str = "https://api.otix.io"
     enable_upnp: bool = True
     enable_heartbeat: bool = True
+    downloads_path: str = "./storage/downloads"
 
 
 class LibraryConfig(BaseModel):
@@ -29,10 +30,15 @@ class SavesConfig(BaseModel):
     auto_backup_on_exit: bool = True
 
 
+from otix_server.usenet_types import UsenetConfig
+
+
 class AppConfig(BaseModel):
     server: ServerSettings = Field(default_factory=ServerSettings)
     game_libraries: List[LibraryConfig] = Field(default_factory=list)
     saves: SavesConfig = Field(default_factory=SavesConfig)
+    usenet: UsenetConfig = Field(default_factory=UsenetConfig)
+
 
 
 def load_config(config_path: str | None = None) -> AppConfig:
@@ -52,3 +58,19 @@ def load_config(config_path: str | None = None) -> AppConfig:
     except Exception as err:
         print(f"[Warning] Failed to load config from {p}: {err}. Using default settings.")
         return AppConfig()
+
+
+def save_config(config: AppConfig, config_path: str | None = None) -> bool:
+    """Save updated application configuration to YAML file."""
+    path = config_path or os.getenv("CONFIG_PATH", "config.yaml")
+    p = Path(path)
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        dump_data = config.model_dump()
+        with open(p, "w", encoding="utf-8") as f:
+            yaml.safe_dump(dump_data, f, default_flow_style=False, sort_keys=False)
+        return True
+    except Exception as err:
+        print(f"[Error] Failed to save config to {p}: {err}")
+        return False
+

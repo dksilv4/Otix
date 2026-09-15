@@ -47,12 +47,20 @@
       "section": "General",
       "order": 3
     },
+    "urlBase": {
+      "type": "string",
+      "label": "URL Base / Subpath",
+      "default": "",
+      "description": "Optional subpath for reverse proxies (e.g. /sabnzbd)",
+      "section": "General",
+      "order": 4
+    },
     "category": {
       "type": "string",
       "label": "Default Category",
       "default": "games",
       "section": "General",
-      "order": 4
+      "order": 5
     }
   },
   "entry": {

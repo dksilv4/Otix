@@ -1,5 +1,28 @@
 """Library API views, re-exported for convenient imports."""
 
+from apps.library.views.game_servers import (
+    GameServerDetailView,
+    GameServerDownloadsAddView,
+    GameServerDownloadsQueueView,
+    GameServerDownloadsSearchView,
+    GameServerExplorerBrowseView,
+    GameServerExplorerCreateFolderView,
+    GameServerExplorerSetPathView,
+    GameServerFilesView,
+    GameServerListCreateView,
+    GameServerPingView,
+    GameServerProvidersView,
+    GameServerProviderTestView,
+    GameServerUsenetConfigView,
+    GameServerUsenetDownloadView,
+    GameServerUsenetQueueView,
+    GameServerUsenetSearchView,
+    GameServerUsenetTestProwlarrView,
+    GameServerUsenetTestSabnzbdView,
+    GameServerProwlarrIndexersView,
+    GameServerProwlarrSyncView,
+    GameServerSabnzbdQueueControlView,
+)
 from apps.library.views.library import (
     InstalledGamesView,
     LibraryTabView,
@@ -14,7 +37,30 @@ from apps.library.views.library import (
 )
 
 __all__ = [
+    "GameServerDetailView",
+    "GameServerDownloadsAddView",
+    "GameServerDownloadsQueueView",
+    "GameServerDownloadsSearchView",
+    "GameServerExplorerBrowseView",
+    "GameServerExplorerCreateFolderView",
+    "GameServerExplorerSetPathView",
+    "GameServerFilesView",
+    "GameServerListCreateView",
+    "GameServerPingView",
+    "GameServerProvidersView",
+    "GameServerProviderTestView",
+    "GameServerUsenetConfigView",
+    "GameServerUsenetDownloadView",
+    "GameServerUsenetQueueView",
+    "GameServerUsenetSearchView",
+    "GameServerUsenetTestProwlarrView",
+    "GameServerUsenetTestSabnzbdView",
+    "GameServerProwlarrIndexersView",
+    "GameServerProwlarrSyncView",
+    "GameServerSabnzbdQueueControlView",
     "InstalledGamesView",
+
+
     "LibraryTabView",
     "PlexLibraryView",
     "PlexStatusView",

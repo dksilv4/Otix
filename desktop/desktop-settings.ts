@@ -8,6 +8,7 @@ export interface DesktopSettings {
   closeToTray: boolean;
   alwaysOnTop: boolean;
   startMinimized: boolean;
+  gamesDownloadPath?: string;
 }
 
 const DEFAULT_SETTINGS: DesktopSettings = {
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   closeToTray: false,
   alwaysOnTop: false,
   startMinimized: false,
+  gamesDownloadPath: '',
 };
 
 let cachedSettings: DesktopSettings | null = null;

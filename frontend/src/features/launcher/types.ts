@@ -85,7 +85,7 @@ export interface LocalGame {
 
 export const LAUNCHER_PLATFORMS = [
   'steam', 'pc', 'iso', 'epic', 'gog', 'battlenet',
-  'ubisoft', 'origin', 'ea', 'riot', 'xbox', 'itch', 'unknown',
+  'ubisoft', 'origin', 'ea', 'riot', 'xbox', 'itch', 'server', 'unknown',
 ] as const
 
 export type LauncherPlatform = typeof LAUNCHER_PLATFORMS[number]

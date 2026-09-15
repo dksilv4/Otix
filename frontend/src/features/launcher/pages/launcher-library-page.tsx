@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Gamepad2, Play, Clock, ChevronRight, Settings } from 'lucide-react'
 import { useLocalGames, localGameKeys } from '@/features/launcher/data/game-queries'
 import { usePopularGames, gameDetailOptions } from '@/features/launcher/data/queries'
+import { useServerGames } from '@/features/downloads/use-server-downloads'
+import { isTitleMatch } from '@media'
 import { fetchGameById } from '@/features/launcher/data/storage'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 import { toDisplayGame, heroImage, isApplicationGame } from '@/features/launcher/utils'
@@ -13,7 +15,7 @@ import { OfflineNotice } from '@/lib/offline-notice'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import { PLATFORM_LABELS } from '@/constants/games'
 import { MediaLogo } from '@/lib/media/media-logo'
-import type { DisplayGame, LauncherPlatform } from '@/features/launcher/types'
+import type { DisplayGame, LauncherPlatform, LocalGame } from '@/features/launcher/types'
 
 type SortMode = 'recent' | 'title' | 'platform'
 
@@ -27,12 +29,55 @@ export function LauncherLibraryPage() {
     isDesktop ? { sortBy: 'last_played_at', sortDir: 'desc' } : undefined,
   )
   const { data: popularGames = [] } = usePopularGames({ enabled: !isDesktop })
+  const { data: serverGamesData } = useServerGames()
 
   const rawGames: DisplayGame[] = useMemo(() => {
-    if (isDesktop) return localGames
-      .filter((g) => !isApplicationGame(g)) // applications hidden for now
-      .map(toDisplayGame)
-    return popularGames.map((g) => ({
+    const serverFiles = serverGamesData?.files || []
+    const serverGames: DisplayGame[] = serverFiles
+      .filter((f) => !localGames.some((g) =>
+        (f.catalogItem?.id && (g.otixMediaId === f.catalogItem.id || g.data?.id === f.catalogItem.id)) ||
+        (g.title && isTitleMatch(g.title, f.gameTitle))
+      ))
+      .map((f) => {
+        const id = f.catalogItem?.id ? f.catalogItem.id : `server-${f.fileId}`
+        return {
+          id,
+          title: f.catalogItem?.title || f.gameTitle,
+          posterUrl: null,
+          backdropUrl: undefined,
+          iconUrl: undefined,
+          logoUrl: undefined,
+          logoColorGuess: undefined,
+          badge: `SERVER · ${f.serverName}`,
+          playtime: '—',
+          achievements: 'On Server',
+          isDefault: false,
+          platform: 'server' as LauncherPlatform,
+          exePath: '',
+          installDir: '',
+          isInstalled: false,
+          otixMediaId: f.catalogItem?.id,
+          rawGame: {
+            id,
+            title: f.catalogItem?.title || f.gameTitle,
+            platform: 'server' as LauncherPlatform,
+            exePath: '',
+            installDir: '',
+            otixMediaId: f.catalogItem?.id,
+            otixMediaTitle: f.catalogItem?.title,
+          } as LocalGame,
+        }
+      })
+
+    if (isDesktop) {
+      const local = localGames
+        .filter((g) => !isApplicationGame(g)) // applications hidden for now
+        .map(toDisplayGame)
+
+      return [...local, ...serverGames]
+    }
+
+    const popular = popularGames.map((g) => ({
       id: g.id, title: g.title,
       posterUrl: (g as any).textlessPosterUrl ?? g.posterUrl ?? null,
       iconUrl: g.posterUrl ?? g.iconUrl ?? undefined,
@@ -42,7 +87,9 @@ export function LauncherLibraryPage() {
       playtime: '', achievements: '', isDefault: false,
       isInstalled: false, platform: 'unknown' as LauncherPlatform,
     }))
-  }, [isDesktop, localGames, popularGames])
+
+    return [...serverGames, ...popular]
+  }, [isDesktop, localGames, popularGames, serverGamesData?.files])
 
   // ── State ──
   const [searchQuery, setSearchQuery] = useState('')
@@ -56,12 +103,14 @@ export function LauncherLibraryPage() {
 
   const handlePrefetch = useCallback((game: DisplayGame) => {
     if (isDesktop) {
-      queryClient.prefetchQuery({
-        queryKey: localGameKeys.detail(game.id),
-        queryFn: () => fetchGameById(game.id),
-        staleTime: 30000,
-      })
-      const catalogId = game.otixMediaId || (game as any).rawGame?.otixMediaId || (game as any).rawGame?.data?.id
+      if (!game.id.startsWith('server-')) {
+        queryClient.prefetchQuery({
+          queryKey: localGameKeys.detail(game.id),
+          queryFn: () => fetchGameById(game.id),
+          staleTime: 30000,
+        })
+      }
+      const catalogId = game.otixMediaId || (game as any).rawGame?.otixMediaId || (game as any).rawGame?.data?.id || (!game.id.startsWith('server-') ? game.id : undefined)
       if (catalogId) queryClient.prefetchQuery(gameDetailOptions(catalogId))
     } else {
       queryClient.prefetchQuery(gameDetailOptions(game.id))

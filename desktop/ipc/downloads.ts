@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import { getDb } from '../db';
 import {
   getConfig, saveConfig, getDownload, getUserDownloads, deleteDownload,
@@ -6,6 +6,7 @@ import {
   getPathMappings, addPathMapping, removePathMapping,
 } from '../framework/downloads';
 import { previewNamingTemplate, validateNamingTemplate } from '../downloads/organizer';
+import { getRemoteDownloadManager, type RemoteDownloadOptions } from '../downloads/remote-downloader';
 
 // ── Plugin call router ───────────────────────────────────────────────────
 // Set after PluginManager is initialized in main.ts
@@ -255,5 +256,46 @@ export function registerDownloadsIPC(): void {
 
   ipcMain.handle('downloads:validate-naming-template', (_, template: string) => {
     return validateNamingTemplate(template);
+  });
+
+  // ── Remote Server Downloads (HTTP Range chunked streaming) ─────────────
+
+  const remoteManager = getRemoteDownloadManager();
+
+  remoteManager.on('progress', (progress) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('downloads:remote:progress', progress);
+      }
+    }
+  });
+
+  remoteManager.on('completed', (data) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('downloads:remote:completed', data);
+        win.webContents.send('scanner:game-updated');
+      }
+    }
+  });
+
+  ipcMain.handle('downloads:remote:start', async (_, options: RemoteDownloadOptions) => {
+    return await remoteManager.startDownload(options);
+  });
+
+  ipcMain.handle('downloads:remote:pause', async (_, downloadId: string) => {
+    return remoteManager.pauseDownload(downloadId);
+  });
+
+  ipcMain.handle('downloads:remote:resume', async (_, downloadId: string) => {
+    return remoteManager.resumeDownload(downloadId);
+  });
+
+  ipcMain.handle('downloads:remote:cancel', async (_, downloadId: string) => {
+    return remoteManager.cancelDownload(downloadId);
+  });
+
+  ipcMain.handle('downloads:remote:get-active', () => {
+    return remoteManager.getActiveTransfers();
   });
 }

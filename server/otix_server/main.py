@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
+from pathlib import Path
 import sys
+
 import uvicorn
-from otix_server.config import load_config
+
 from otix_server.api import app
+from otix_server.config import load_config
 from otix_server.heartbeat import announce_heartbeat
 
 
@@ -14,6 +18,8 @@ def cli():
     parser.add_argument("action", nargs="?", default="start", choices=["start", "scan", "help"])
     parser.add_argument("--config", "-c", default="config.yaml", help="Path to config.yaml file")
     args = parser.parse_args()
+
+    os.environ["CONFIG_PATH"] = str(Path(args.config).resolve())
 
     config = load_config(args.config)
 

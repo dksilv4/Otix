@@ -11,11 +11,17 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 
-from plugins.services import bundled_root, plugin_root, scan_bundled, scan_root
+from plugins.services import (
+    bundled_root,
+    plugin_root,
+    scan_bundled,
+    scan_extensions,
+    scan_root,
+)
 
 
 class Command(BaseCommand):
-    help = "Register plugin folders: bundled (system) + operator PLUGINS_ROOT."
+    help = "Register plugin folders: bundled (system) + operator PLUGINS_ROOT + extensions."
 
     def add_arguments(self, parser) -> None:
         parser.add_argument(
@@ -30,6 +36,7 @@ class Command(BaseCommand):
             return
         self._scan_root(scan_bundled(), bundled_root())
         self._scan_root(scan_root(plugin_root()), plugin_root())
+        self._scan_root(scan_extensions(), "extensions")
 
     def _scan_root(self, report: list[dict], root) -> None:
         if not report:

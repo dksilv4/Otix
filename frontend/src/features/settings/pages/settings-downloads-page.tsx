@@ -3,8 +3,14 @@ import { useAuth } from '@/lib/providers/auth'
 import { DkButton } from '@/old-features/ui/atoms/button'
 import { DkSwitch } from '@/old-features/ui/atoms/switch'
 import { useDownloadConfig, useDownloads } from '@/features/downloads/use-downloads'
-import { Loader2, CheckCircle2, XCircle, Plus, Trash2, Clock, ArchiveX } from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle, Plus, Trash2, Clock, ArchiveX, DownloadCloud, Search, Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
+import { useGameServers } from '@/features/downloads/use-server-downloads'
+import { useServerUsenetConfig } from '@/features/downloads/use-server-usenet'
+import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
+import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/server-prowlarr-settings-modal'
+import { ServerUsenetSettingsModal } from '@/features/downloads/molecules/server-usenet-settings-modal'
 
 const NAMING_PRESETS = [
   { id: 'standard', label: 'Standard', template: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}' },
@@ -38,6 +44,20 @@ export function SettingsDownloadsPage() {
   const [autoOrganizeEnabled, setAutoOrganizeEnabled] = useState(false)
   const [namingTemplate, setNamingTemplate] = useState(NAMING_PRESETS[0].template)
   const [presetId, setPresetId] = useState('standard')
+  const [isUsenetModalOpen, setIsUsenetModalOpen] = useState(false)
+  const [isSabnzbdModalOpen, setIsSabnzbdModalOpen] = useState(false)
+  const [isProwlarrModalOpen, setIsProwlarrModalOpen] = useState(false)
+  const { data: gameServers = [] } = useGameServers()
+  const activeServer = gameServers[0]
+  const { data: usenetConfig } = useServerUsenetConfig(activeServer?.id)
+  const isSabnzbdConfigured = Boolean(
+    (usenetConfig?.sabnzbd?.host && Boolean(usenetConfig?.sabnzbd?.api_key || usenetConfig?.sabnzbd?.configured)) ||
+    (dlConfig?.sabnzbdHost && Boolean(dlConfig?.sabnzbdApiKey))
+  )
+  const isProwlarrConfigured = Boolean(
+    usenetConfig?.prowlarr?.host &&
+    Boolean(usenetConfig?.prowlarr?.api_key || usenetConfig?.prowlarr?.configured)
+  )
 
   useEffect(() => {
     if (dlConfig) {
@@ -112,7 +132,19 @@ export function SettingsDownloadsPage() {
     } as any)
   }
 
-  if (!desktop) return null
+  if (!desktop && !activeServer) {
+    return (
+      <div className="max-w-xl mx-auto py-16 px-6 text-center space-y-4">
+        <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-muted-foreground">
+          <DownloadCloud className="h-7 w-7 text-primary" />
+        </div>
+        <h2 className="text-lg font-bold text-foreground">Downloads & Usenet Configuration</h2>
+        <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+          Connect a self-hosted Otix Server node under Settings &gt; Game Servers to configure SABnzbd, Prowlarr, and remote library storage from your browser.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div id="settings-downloads-section" className="space-y-6">
@@ -123,16 +155,73 @@ export function SettingsDownloadsPage() {
         </p>
       </div>
 
-      {/* Info banner */}
+      {/* Usenet Banner */}
       <div
-        className="rounded-2xl p-4 text-sm"
+        className="rounded-2xl p-5 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-white/10"
         style={{ backgroundColor: 'var(--dk-surface-glass)' }}
       >
-        <p className="text-white/70">
-          Download provider settings moved to{' '}
-          <span className="font-semibold text-white/90">Plugins &rarr; SABnzbd</span> and{' '}
-          <span className="font-semibold text-white/90">Plugins &rarr; NZBPlanet</span>.
-        </p>
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-white">Usenet & Downloader Clients (SABnzbd & Prowlarr)</p>
+            {activeServer?.isOnline && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Connected
+              </span>
+            )}
+          </div>
+          <p className="text-white/60 text-xs mt-1">
+            {activeServer
+              ? `Managed directly via Otix Server: ${activeServer.name} (${activeServer.primaryUrl})`
+              : 'Configure SABnzbd and Prowlarr to automate game search and background downloading.'}
+          </p>
+        </div>
+        {activeServer && (
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+            <DkButton
+              size="sm"
+              variant={isSabnzbdConfigured ? 'ghost' : 'primary'}
+              onClick={() => setIsSabnzbdModalOpen(true)}
+              className={cn(
+                isSabnzbdConfigured &&
+                  'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/15'
+              )}
+            >
+              {isSabnzbdConfigured ? (
+                <Check className="h-3.5 w-3.5 mr-1.5 text-emerald-400" />
+              ) : (
+                <DownloadCloud className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              SABnzbd
+              {isSabnzbdConfigured && (
+                <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold">
+                  Connected
+                </span>
+              )}
+            </DkButton>
+            <DkButton
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsProwlarrModalOpen(true)}
+              className={cn(
+                isProwlarrConfigured
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/15'
+                  : 'bg-white/10 text-white hover:bg-white/15'
+              )}
+            >
+              {isProwlarrConfigured ? (
+                <Check className="h-3.5 w-3.5 mr-1.5 text-emerald-400" />
+              ) : (
+                <Search className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              Prowlarr
+              {isProwlarrConfigured && (
+                <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold">
+                  Connected
+                </span>
+              )}
+            </DkButton>
+          </div>
+        )}
       </div>
 
       {/* Default Directory Mapping */}
@@ -375,6 +464,29 @@ export function SettingsDownloadsPage() {
           </div>
         </div>
       </div>
+
+      {activeServer && (
+        <>
+          <ServerSabnzbdSettingsModal
+            serverId={activeServer.id}
+            serverName={activeServer.name}
+            isOpen={isSabnzbdModalOpen}
+            onClose={() => setIsSabnzbdModalOpen(false)}
+          />
+          <ServerProwlarrSettingsModal
+            serverId={activeServer.id}
+            serverName={activeServer.name}
+            isOpen={isProwlarrModalOpen}
+            onClose={() => setIsProwlarrModalOpen(false)}
+          />
+          <ServerUsenetSettingsModal
+            serverId={activeServer.id}
+            serverName={activeServer.name}
+            isOpen={isUsenetModalOpen}
+            onClose={() => setIsUsenetModalOpen(false)}
+          />
+        </>
+      )}
     </div>
   )
 }

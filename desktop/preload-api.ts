@@ -217,6 +217,35 @@ export interface Download {
   updatedAt: string;
 }
 
+export interface RemoteDownloadOptions {
+  id?: string;
+  userId?: string;
+  serverUrl: string;
+  fileId: string;
+  filename: string;
+  filesize: number;
+  gameTitle: string;
+  mediaItemId?: string | null;
+  authToken?: string | null;
+  destDir?: string | null;
+}
+
+export interface RemoteDownloadProgress {
+  id: string;
+  status: 'queued' | 'downloading' | 'paused' | 'completed' | 'failed' | 'cancelled';
+  gameTitle: string;
+  filename: string;
+  bytesDownloaded: number;
+  totalBytes: number;
+  percentage: number;
+  speedBytesPerSec: number;
+  etaSeconds: number;
+  isoPath?: string | null;
+  error?: string | null;
+  serverUrl: string;
+  fileId: string;
+}
+
 export interface SabQueueItem {
   nzoId: string;
   name: string;
@@ -332,6 +361,7 @@ export interface DesktopSettings {
   closeToTray: boolean;
   alwaysOnTop: boolean;
   startMinimized: boolean;
+  gamesDownloadPath?: string;
 }
 
 export interface IDesktopAPI {
@@ -451,6 +481,15 @@ export interface IDesktopAPI {
   // Organizer
   downloadsPreviewNamingTemplate: (template: string, sampleName: string) => Promise<{ valid: boolean; result?: string; error?: string }>;
   downloadsValidateNamingTemplate: (template: string) => Promise<{ valid: boolean; error?: string }>;
+
+  // Remote Server Downloads (Plex-for-Games)
+  downloadsRemoteStart: (options: RemoteDownloadOptions) => Promise<string>;
+  downloadsRemotePause: (downloadId: string) => Promise<boolean>;
+  downloadsRemoteResume: (downloadId: string) => Promise<boolean>;
+  downloadsRemoteCancel: (downloadId: string) => Promise<boolean>;
+  downloadsRemoteGetActive: () => Promise<RemoteDownloadProgress[]>;
+  onRemoteDownloadProgress: (callback: (progress: RemoteDownloadProgress) => void) => () => void;
+  onRemoteDownloadCompleted: (callback: (data: { downloadId: string; finalPath: string; gameTitle: string }) => void) => () => void;
 
   // ── Save Management ──
   saveGetKnownLocations: () => Promise<any[]>;

@@ -12,7 +12,7 @@ from datetime import date, datetime
 from rest_framework import serializers
 
 from apps.integrations.models import UserSteamGame, UserYoutubeLikedVideo
-from apps.library.models import UserLocalGame
+from apps.library.models import UserGameServer, UserLocalGame
 from apps.library.services.summaries import build_media_item_summary
 from apps.media.models import MediaItem
 
@@ -116,3 +116,52 @@ class MediaItemSummarySerializer(serializers.Serializer):
 
     def to_representation(self, item: MediaItem) -> dict:
         return build_media_item_summary(item)
+
+
+class UserGameServerSerializer(serializers.ModelSerializer):
+    """Connected self-hosted game installer server node."""
+
+    primary_url = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = UserGameServer
+        fields = [
+            "id",
+            "name",
+            "local_url",
+            "remote_url",
+            "primary_url",
+            "auth_token",
+            "is_online",
+            "last_seen_at",
+            "total_files",
+            "storage_free_bytes",
+            "storage_total_bytes",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "is_online",
+            "last_seen_at",
+            "total_files",
+            "storage_free_bytes",
+            "storage_total_bytes",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class UserGameServerCreateSerializer(serializers.ModelSerializer):
+    """Payload to register or update a self-hosted game server."""
+
+    class Meta:
+        model = UserGameServer
+        fields = [
+            "name",
+            "local_url",
+            "remote_url",
+            "auth_token",
+            "is_active",
+        ]

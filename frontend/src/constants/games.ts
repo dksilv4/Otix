@@ -17,5 +17,6 @@ export const PLATFORM_LABELS: Record<string, string> = {
   riot: 'Riot',
   xbox: 'Xbox',
   itch: 'itch.io',
+  server: 'Server',
   unknown: 'Other',
 }

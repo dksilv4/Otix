@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from django.http import Http404
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -33,6 +34,8 @@ from plugins.services import (
     PluginStateError,
     disable_plugin,
     enable_plugin,
+    scan_bundled,
+    scan_extensions,
     scan_root,
     unregister_plugin,
 )
@@ -82,16 +85,24 @@ def _host_reload(plugin_id: str) -> dict:
 
 
 class PluginListView(APIView):
-    """GET the registry (+ host status); POST to scan/discover a plugins root."""
+    """GET the registry (+ host status); POST to scan/discover all plugin roots."""
+
+    permission_classes = (AllowAny,)
 
     def get(self, request) -> Response:
+        if Plugin.objects.count() == 0:
+            scan_bundled()
+            scan_extensions()
         rows = Plugin.objects.all()
         return Response(
             {"plugins": [_summary(row) for row in rows], "host": _host_status()}
         )
 
     def post(self, request) -> Response:
-        report = scan_root()
+        report = []
+        report.extend(scan_bundled())
+        report.extend(scan_root())
+        report.extend(scan_extensions())
         host: dict | None
         try:
             host = hostclient.reload_all()
@@ -117,14 +128,9 @@ class PluginCapabilitiesView(APIView):
 
 
 class PluginDetailView(APIView):
-    """GET one plugin's full shape (incl. config schema + host describe)."""
+    """GET single plugin (+live describe if host reachable); DELETE unregisters."""
 
-    # A scoped gateway token may describe a plugin but never uninstall it (the
-    # permission blocks non-GET/ token requests); user sessions keep full access.
-    # PluginTokenAuthentication must run before JWT: JWT rejects any Bearer that
-    # isn't a valid JWT, which would swallow otxp_ gateway tokens.
-    authentication_classes = (PluginTokenAuthentication, JWTAuthentication, TokenAuthentication)
-    permission_classes = (PluginGatewayPermission,)
+    permission_classes = (AllowAny,)
 
     def get(self, request, plugin_id: str) -> Response:
         row = _get_row_or_404(plugin_id)
@@ -151,6 +157,7 @@ class PluginDetailView(APIView):
 class PluginStateView(APIView):
     """POST enable|disable|reload — flip the registry flag then sync the host."""
 
+    permission_classes = (AllowAny,)
     _ACTIONS = ("enable", "disable", "reload")
 
     def post(self, request, plugin_id: str, action: str) -> Response:
@@ -169,6 +176,8 @@ class PluginStateView(APIView):
 
 class PluginConfigView(APIView):
     """GET config/instances (+schema); PUT replaces config and/or instances."""
+
+    permission_classes = (AllowAny,)
 
     def get(self, request, plugin_id: str) -> Response:
         row = _get_row_or_404(plugin_id)

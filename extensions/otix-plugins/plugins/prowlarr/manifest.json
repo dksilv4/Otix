@@ -1,0 +1,22 @@
+{
+  "name": "Prowlarr",
+  "stage": "stable",
+  "version": "1.0.0",
+  "description": "Prowlarr indexer aggregator for Usenet & Torrent game searches",
+  "author": "Otix",
+  "repository": "https://github.com/dksilv4/Otix",
+  "min_app_version": "0.1.0",
+  "permissions": ["network:external", "ui:settings"],
+  "services": [
+    { "type": "search-provider", "protocol": "usenet" }
+  ],
+  "config": {
+    "host": { "type": "string", "label": "Host", "default": "localhost" },
+    "port": { "type": "number", "label": "Port", "default": 9696 },
+    "apiKey": { "type": "secret", "label": "API Key" },
+    "useSsl": { "type": "boolean", "label": "Use SSL", "default": false },
+    "urlBase": { "type": "string", "label": "URL Base / Subpath", "default": "", "description": "Optional subpath for reverse proxies (e.g. /prowlarr)" },
+    "categories": { "type": "string", "label": "Category IDs (comma-separated)", "default": "1000,4000" }
+  },
+  "entry": { "main": "main.js" }
+}

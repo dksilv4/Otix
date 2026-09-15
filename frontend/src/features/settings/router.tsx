@@ -49,6 +49,9 @@ const SettingsScannedGamesPage = lazy(() =>
 const ProposalsPage = lazy(() =>
   import('@/features/proposals/pages/proposals-page').then((m) => ({ default: m.ProposalsPage })),
 )
+const SettingsDownloadsPage = lazy(() =>
+  import('./pages/settings-downloads-page').then((m) => ({ default: m.SettingsDownloadsPage })),
+)
 
 export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSettingsTab[]) {
   const settingsRoute = createRoute({
@@ -156,6 +159,12 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsLauncherPage,
   })
 
+  const settingsDownloadsRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/downloads',
+    component: SettingsDownloadsPage,
+  })
+
   const pluginRoutes = (pluginTabs || []).map((tab) =>
     createRoute({
       getParentRoute: () => settingsRoute,
@@ -188,6 +197,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsLibraryRoute,
     settingsDesktopRoute,
     settingsLauncherRoute,
+    settingsDownloadsRoute,
     settingsPluginsRoute,
     settingsStorageRoute,
     ...pluginRoutes,

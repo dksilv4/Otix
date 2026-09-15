@@ -5,6 +5,7 @@ import {Calendar, Clock, Languages, Film, Tv, Gamepad2, Music, Sparkles} from 'l
 import {useQuery} from '@tanstack/react-query'
 import {useAuth} from '@/old-features/auth'
 import {backdropSrc, formatAlbumDuration, formatMusicCreditsLine, formatRuntime, formatYear, isMusic, languageName, mediaQueries, GLASS_PILL, useMediaParams} from '@media'
+import { DownloadGameButton } from '@/features/media/game/components/organisms/media-download-game-button'
 
 interface MediaHeroProps {
     className?: string
@@ -182,6 +183,8 @@ export function MediaHero({
                                 Anime
                             </Badge>
                         </div>
+
+                        {mediaType === 'game' && <DownloadGameButton />}
 
                     </div>
                 </div>

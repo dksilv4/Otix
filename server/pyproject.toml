@@ -22,3 +22,6 @@ dependencies = [
 
 [project.scripts]
 otix-server = "otix_server.main:cli"
+
+[tool.setuptools.packages.find]
+include = ["otix_server*"]

@@ -14,9 +14,21 @@ import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
 import { openExternal } from '@/lib/utils/open-external'
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
-import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, Film, Tv, Music, FolderOpen } from 'lucide-react'
+import { Loader2, Plus, Unlink, RefreshCw, Download, DownloadCloud, ChevronDown, Link2, Film, Tv, Music, FolderOpen, Search, Pause, Play, Check } from 'lucide-react'
 import { usePlexLibraries, streamPlexLibrarySync } from '@/old-features/library/library-queries'
 import type { PlexLibraryInfo } from '@/old-features/library/library-queries'
+import { useGameServers } from '@/features/downloads/use-server-downloads'
+import { useDownloadConfig } from '@/features/downloads/use-downloads'
+import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
+import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/server-prowlarr-settings-modal'
+import {
+  useServerUsenetConfig,
+  useServerUsenetQueue,
+  usePauseSabnzbdQueue,
+  useResumeSabnzbdQueue,
+  useProwlarrIndexers,
+  useSyncProwlarrIndexers,
+} from '@/features/downloads/use-server-usenet'
 
 type SteamProfile = {
   personaname: string | null
@@ -108,6 +120,9 @@ const BRAND_COLORS: Record<string, string> = {
   plex: '#e5a00d',
   tmdb: '#01b4e4',
   google: '#4285F4',
+  sabnzbd: '#f59e0b',
+  prowlarr: '#e05338',
+  usenet: '#06b6d4',
 }
 
 const BRAND_BG: Record<string, string> = {
@@ -115,6 +130,9 @@ const BRAND_BG: Record<string, string> = {
   plex: 'bg-[#e5a00d]/10',
   tmdb: 'bg-[#01b4e4]/10',
   google: 'bg-[#4285F4]/10',
+  sabnzbd: 'bg-[#f59e0b]/10',
+  prowlarr: 'bg-[#e05338]/10',
+  usenet: 'bg-[#06b6d4]/10',
 }
 
 // ── Integration card (iOS-style expandable) ──
@@ -170,7 +188,13 @@ function IntegrationCard({
           <p className="text-xs text-white/60 mt-0.5 truncate">{description}</p>
         </div>
         {isConnected ? (
-          <ChevronDown className={cn('h-4 w-4 shrink-0 text-white/40 transition-transform duration-150', expanded && 'rotate-180')} />
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm">
+              <Check className="h-3.5 w-3.5" />
+              Connected
+            </span>
+            <ChevronDown className={cn('h-4 w-4 text-white/40 transition-transform duration-150', expanded && 'rotate-180')} />
+          </div>
         ) : (
           <DkButton size="sm" variant="primary" onClick={onConnect} loading={connecting} className="shrink-0 shadow-none">
             <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -413,7 +437,65 @@ export function SettingsIntegrationsPage() {
   const isTmdbConnected = tmdbConnected
   const { data: plexLibraries, isLoading: plexLibrariesLoading, refetch: refetchLibraries } = usePlexLibraries({ enabled: isPlexConnected })
 
-  // ── SABnzbd + NZBPlanet moved to Downloads section ──
+  // ── SABnzbd + Prowlarr managed via Otix Server node ──
+  const [isSabnzbdModalOpen, setIsSabnzbdModalOpen] = useState(false)
+  const [isProwlarrModalOpen, setIsProwlarrModalOpen] = useState(false)
+  const { data: gameServers = [] } = useGameServers()
+  const activeServer = gameServers[0]
+
+  const { config: dlConfig } = useDownloadConfig(user?.id)
+  const { data: usenetConfig } = useServerUsenetConfig(activeServer?.id)
+  const isSabnzbdConfigured = Boolean(
+    (activeServer && usenetConfig?.sabnzbd?.host && Boolean(usenetConfig?.sabnzbd?.api_key || usenetConfig?.sabnzbd?.configured)) ||
+    (dlConfig?.sabnzbdHost && Boolean(dlConfig?.sabnzbdApiKey))
+  )
+  const isProwlarrConfigured = Boolean(
+    activeServer &&
+    usenetConfig?.prowlarr?.host &&
+    Boolean(usenetConfig?.prowlarr?.api_key || usenetConfig?.prowlarr?.configured)
+  )
+
+  // SABnzbd queue controls
+  const { data: sabnzbdQueue, refetch: refetchQueue } = useServerUsenetQueue(
+    activeServer?.id,
+    3000
+  )
+  const pauseSabnzbdMutation = usePauseSabnzbdQueue(activeServer?.id)
+  const resumeSabnzbdMutation = useResumeSabnzbdQueue(activeServer?.id)
+  const isQueuePaused = Boolean(sabnzbdQueue?.status?.toLowerCase().includes('paused'))
+
+  const handleToggleQueuePause = async () => {
+    try {
+      if (isQueuePaused) {
+        await resumeSabnzbdMutation.mutateAsync()
+      } else {
+        await pauseSabnzbdMutation.mutateAsync()
+      }
+      refetchQueue()
+    } catch (err) {
+      console.error('Failed to toggle queue pause:', err)
+    }
+  }
+
+  // Prowlarr indexer sync
+  const [prowlarrSyncProtocol, setProwlarrSyncProtocol] = useState<'all' | 'torrent' | 'usenet'>('all')
+  const { data: prowlarrIndexers = [], refetch: refetchProwlarrIndexers } = useProwlarrIndexers(
+    activeServer?.id,
+    prowlarrSyncProtocol
+  )
+  const syncProwlarrMutation = useSyncProwlarrIndexers(activeServer?.id)
+  const [prowlarrSyncMessage, setProwlarrSyncMessage] = useState<string | null>(null)
+
+  const handleProwlarrSync = async (protocol: 'all' | 'torrent' | 'usenet') => {
+    try {
+      setProwlarrSyncProtocol(protocol)
+      const res = await syncProwlarrMutation.mutateAsync(protocol)
+      setProwlarrSyncMessage(res.message)
+      await refetchProwlarrIndexers()
+    } catch (err: any) {
+      setProwlarrSyncMessage(`Sync failed: ${err.message || err}`)
+    }
+  }
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -1196,6 +1278,42 @@ export function SettingsIntegrationsPage() {
       onDisconnect: handleTmdbDisconnect,
       disconnecting: tmdbDisconnecting,
     },
+    {
+      id: 'sabnzbd',
+      name: 'SABnzbd',
+      keywords: 'sabnzbd usenet nzb download downloader queue client otix server',
+      description: isSabnzbdConfigured
+        ? activeServer
+          ? `Configured via Otix Server: ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
+          : 'Configured locally for desktop downloads'
+        : 'Connect SABnzbd to automate Usenet game downloads to your Otix Server.',
+      isConnected: isSabnzbdConfigured,
+      brandColor: BRAND_COLORS.sabnzbd,
+      brandBg: BRAND_BG.sabnzbd,
+      icon: DownloadCloud,
+      onConnect: () => setIsSabnzbdModalOpen(true),
+      connecting: false,
+      onDisconnect: undefined,
+      disconnecting: false,
+    },
+    {
+      id: 'prowlarr',
+      name: 'Prowlarr',
+      keywords: 'prowlarr indexer search usenet torrent sync tracker otix server',
+      description: isProwlarrConfigured
+        ? activeServer
+          ? `Configured via Otix Server: ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
+          : 'Configured via Otix Server'
+        : 'Connect Prowlarr to search and index game releases across Usenet and Torrent trackers.',
+      isConnected: isProwlarrConfigured,
+      brandColor: BRAND_COLORS.prowlarr,
+      brandBg: BRAND_BG.prowlarr,
+      icon: Search,
+      onConnect: () => setIsProwlarrModalOpen(true),
+      connecting: false,
+      onDisconnect: undefined,
+      disconnecting: false,
+    },
   ]
 
   const filteredIntegrations = (query
@@ -1485,11 +1603,204 @@ export function SettingsIntegrationsPage() {
                     {tmdbError && <p className="px-5 py-2 text-xs text-red-400">{tmdbError}</p>}
                   </>
                 )}
+
+                {/* SABnzbd content */}
+                {i.id === 'sabnzbd' && (
+                  <>
+                    <IntegrationProfile
+                      avatarAlt="SABnzbd"
+                      name="SABnzbd Downloader"
+                      detail={activeServer ? `Managed by ${activeServer.name} (${activeServer.primaryUrl})` : 'Connect a server to enable'}
+                      brandBg={BRAND_BG.sabnzbd}
+                      icon={DownloadCloud}
+                      brandColor={BRAND_COLORS.sabnzbd}
+                      meta={
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <Check className="h-3 w-3" />
+                            Connected
+                          </span>
+                          <Link
+                            to="/downloads"
+                            className="text-xs text-white/40 hover:text-amber-400 transition-colors duration-150 shrink-0"
+                          >
+                            View Downloads Queue &rarr;
+                          </Link>
+                        </div>
+                      }
+                    />
+                    {sabnzbdQueue && (
+                      <IntegrationStats items={[
+                        { label: 'queue status', value: sabnzbdQueue.status || 'Idle' },
+                        { label: 'download speed', value: sabnzbdQueue.speed || '0 B/s' },
+                        { label: 'queued items', value: String(sabnzbdQueue.items?.length ?? 0) },
+                        ...(sabnzbdQueue.time_left ? [{ label: 'time left', value: sabnzbdQueue.time_left }] : []),
+                      ]} />
+                    )}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 border-t border-white/5">
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Queue Controls</p>
+                        <p className="text-xs text-white/70 mt-0.5">
+                          {isQueuePaused ? 'Download queue is paused.' : 'Download queue is currently active.'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DkButton
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleToggleQueuePause}
+                          loading={pauseSabnzbdMutation.isPending || resumeSabnzbdMutation.isPending}
+                          className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                        >
+                          {isQueuePaused ? (
+                            <>
+                              <Play className="h-3.5 w-3.5 mr-1.5" />
+                              Resume Queue
+                            </>
+                          ) : (
+                            <>
+                              <Pause className="h-3.5 w-3.5 mr-1.5" />
+                              Pause Queue
+                            </>
+                          )}
+                        </DkButton>
+                      </div>
+                    </div>
+                    <IntegrationAction
+                      label="SABnzbd Settings"
+                      description="Configure host, port, API key, and download category"
+                      buttonLabel="Configure SABnzbd"
+                      buttonIcon={DownloadCloud}
+                      onPress={() => setIsSabnzbdModalOpen(true)}
+                    />
+                  </>
+                )}
+
+                {/* Prowlarr content */}
+                {i.id === 'prowlarr' && (
+                  <>
+                    <IntegrationProfile
+                      avatarAlt="Prowlarr"
+                      name="Prowlarr Indexer Manager"
+                      detail={activeServer ? `Managed by ${activeServer.name} (${activeServer.primaryUrl})` : 'Connect a server to enable'}
+                      brandBg={BRAND_BG.prowlarr}
+                      icon={Search}
+                      brandColor={BRAND_COLORS.prowlarr}
+                      meta={
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                          <Check className="h-3 w-3" />
+                          Connected
+                        </span>
+                      }
+                    />
+
+                    {/* Indexer Sync Card Section */}
+                    <div className="px-5 py-4 space-y-3 border-t border-white/5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Indexer Sync</p>
+                          <p className="text-xs text-white/70 mt-0.5">
+                            Sync indexers across all, torrent, or usenet protocols.
+                          </p>
+                        </div>
+                        {/* Protocol Selector Tabs */}
+                        <div className="flex items-center gap-1 p-1 bg-white/5 rounded-xl border border-white/10 self-start sm:self-auto">
+                          {(['all', 'torrent', 'usenet'] as const).map((proto) => (
+                            <button
+                              key={proto}
+                              type="button"
+                              onClick={() => {
+                                setProwlarrSyncProtocol(proto)
+                                handleProwlarrSync(proto)
+                              }}
+                              className={cn(
+                                'px-2.5 py-1 rounded-lg text-xs font-medium transition-all capitalize cursor-pointer',
+                                prowlarrSyncProtocol === proto
+                                  ? 'bg-rose-500 text-white shadow-sm'
+                                  : 'text-white/60 hover:text-white'
+                              )}
+                            >
+                              {proto}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-xs text-white/50">
+                          {prowlarrIndexers.length > 0
+                            ? `${prowlarrIndexers.length} ${prowlarrSyncProtocol} indexer${prowlarrIndexers.length === 1 ? '' : 's'} active`
+                            : 'No indexers loaded'}
+                        </span>
+                        <DkButton
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleProwlarrSync(prowlarrSyncProtocol)}
+                          loading={syncProwlarrMutation.isPending}
+                          className="bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                          {syncProwlarrMutation.isPending ? 'Syncing...' : `Sync ${prowlarrSyncProtocol.toUpperCase()}`}
+                        </DkButton>
+                      </div>
+
+                      {prowlarrSyncMessage && (
+                        <p className="text-xs text-rose-400/90 pt-1">{prowlarrSyncMessage}</p>
+                      )}
+
+                      {prowlarrIndexers.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1 max-h-32 overflow-y-auto">
+                          {prowlarrIndexers.map((idx) => (
+                            <span
+                              key={idx.id}
+                              className={cn(
+                                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border',
+                                idx.protocol === 'torrent'
+                                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                                  : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20'
+                              )}
+                            >
+                              <span>{idx.name}</span>
+                              <span className="text-[9px] uppercase font-bold opacity-60">
+                                {idx.protocol}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <IntegrationAction
+                      label="Prowlarr Settings"
+                      description="Configure host, port, API key, and search categories"
+                      buttonLabel="Configure Prowlarr"
+                      buttonIcon={Search}
+                      onPress={() => setIsProwlarrModalOpen(true)}
+                    />
+                  </>
+                )}
               </IntegrationCard>
             ))}
           </div>
         )}
       </div>
+
+      {activeServer && (
+        <>
+          <ServerSabnzbdSettingsModal
+            serverId={activeServer.id}
+            serverName={activeServer.name}
+            isOpen={isSabnzbdModalOpen}
+            onClose={() => setIsSabnzbdModalOpen(false)}
+          />
+          <ServerProwlarrSettingsModal
+            serverId={activeServer.id}
+            serverName={activeServer.name}
+            isOpen={isProwlarrModalOpen}
+            onClose={() => setIsProwlarrModalOpen(false)}
+          />
+        </>
+      )}
     </div>
   )
 }

@@ -15,6 +15,7 @@ export interface DesktopSettingsData {
   aiAddonEnabled: boolean;
   aiModelStatus: AiModelStatus;
   aiSystemPrompt: string;
+  gamesDownloadPath?: string;
 }
 
 export interface DiskInfo {
@@ -117,6 +118,35 @@ export interface SaveOverrideResult {
   userPath?: string | null
 }
 
+export interface RemoteDownloadProgress {
+  id: string
+  status: 'queued' | 'downloading' | 'paused' | 'completed' | 'failed' | 'cancelled'
+  gameTitle: string
+  filename: string
+  bytesDownloaded: number
+  totalBytes: number
+  percentage: number
+  speedBytesPerSec: number
+  etaSeconds: number
+  isoPath?: string | null
+  error?: string | null
+  serverUrl: string
+  fileId: string
+}
+
+export interface RemoteDownloadOptions {
+  id?: string
+  userId?: string
+  serverUrl: string
+  fileId: string
+  filename: string
+  filesize: number
+  gameTitle: string
+  mediaItemId?: string | null
+  authToken?: string | null
+  destDir?: string | null
+}
+
 // ── Desktop API interface ────────────────────────────────────────────
 
 export interface DesktopAPI {
@@ -214,6 +244,15 @@ export interface DesktopAPI {
   downloadsAddPathMapping(configId: string, sourcePath: string, destPath: string): Promise<Record<string, unknown>>
   downloadsRemovePathMapping(id: string): Promise<void>
   downloadsPreviewNamingTemplate(template: string, title: string): Promise<{ valid: boolean; result?: string }>
+
+  // Remote Server Downloads (Plex-for-games)
+  downloadsRemoteStart(options: RemoteDownloadOptions): Promise<string>
+  downloadsRemotePause(downloadId: string): Promise<boolean>
+  downloadsRemoteResume(downloadId: string): Promise<boolean>
+  downloadsRemoteCancel(downloadId: string): Promise<boolean>
+  downloadsRemoteGetActive(): Promise<RemoteDownloadProgress[]>
+  onRemoteDownloadProgress(cb: (progress: RemoteDownloadProgress) => void): () => void
+  onRemoteDownloadCompleted(cb: (data: { downloadId: string; finalPath: string; gameTitle: string }) => void): () => void
 
   // ISO install (legacy)
   installGame(isoPath: string, targetDir: string, gameTitle: string): Promise<Record<string, unknown>>

@@ -64,6 +64,32 @@
       "category": "developer",
       "tags": ["test", "demo", "development"],
       "permissions": ["api:proxy", "events:subscribe", "storage:local", "notifications", "ui:settings"]
+    },
+    {
+      "id": "sabnzbd",
+      "name": "SABnzbd",
+      "version": "1.0.0",
+      "description": "SABnzbd Usenet download client for fast, automated binary downloading and extraction.",
+      "author": "Otix",
+      "repository": "https://github.com/dksilv4/Otix",
+      "path": "plugins/sabnzbd",
+      "icon": "download",
+      "category": "media",
+      "tags": ["sabnzbd", "usenet", "downloader", "nzb"],
+      "permissions": ["network:external", "ui:settings"]
+    },
+    {
+      "id": "prowlarr",
+      "name": "Prowlarr",
+      "version": "1.0.0",
+      "description": "Prowlarr indexer aggregator for Usenet & Torrent game searches.",
+      "author": "Otix",
+      "repository": "https://github.com/dksilv4/Otix",
+      "path": "plugins/prowlarr",
+      "icon": "search",
+      "category": "media",
+      "tags": ["prowlarr", "indexer", "search", "usenet", "torrents"],
+      "permissions": ["network:external", "ui:settings"]
     }
   ],
   "updated_at": "2026-06-18T00:00:00Z"

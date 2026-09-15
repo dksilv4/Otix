@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
 import { IsoInstallerModal } from '@/features/launcher/components/organisms/iso-installer-modal'
-import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc } from 'lucide-react'
+import { ServerGameSearchModal } from '@/features/downloads/molecules/server-game-search-modal'
+import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc, Server, Pause, X } from 'lucide-react'
+import { formatBytes, cn } from '@/lib/utils'
 import { DOWNLOAD_STATUS_LABELS } from '../../../constants'
 import { useDownloadGame } from '../../hooks/use-download-game'
 import { useModal } from '@/lib/modals'
@@ -63,14 +65,76 @@ export function DownloadGameButton() {
       <div className="flex items-center gap-3">
         <button
           onClick={state.handlePlay}
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all duration-200 hover:bg-emerald-400 active:scale-95"
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all duration-200 hover:bg-emerald-400 active:scale-95 cursor-pointer"
         >
           <Play className="h-4 w-4 fill-current" />
           Play
         </button>
         <p className="text-xs text-muted-foreground">
           {state.matchingScannedGame.platform === 'steam' ? 'Launch via Steam' : 'Installed locally'}
+          {state.serverFile && (
+            <span className="ml-1 text-cyan-400/80">· Available on {state.serverFile.serverName}</span>
+          )}
         </p>
+      </div>
+    )
+  }
+
+  // ── Remote Server Transfer in progress ──
+  if (state.activeRemoteTransfer) {
+    const t = state.activeRemoteTransfer
+    const isDownloading = t.status === 'downloading'
+    const isPaused = t.status === 'paused'
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-xs font-medium text-cyan-400">
+          <Server className={cn('h-4 w-4', isDownloading && 'animate-pulse')} />
+          <span>{isDownloading ? `Streaming from ${state.serverFile?.serverName || 'server'}` : isPaused ? 'Download paused' : 'Download complete'}</span>
+          {t.filename && (
+            <span className="max-w-[200px] truncate text-muted-foreground">
+              — {t.filename}
+            </span>
+          )}
+          <span className="tabular-nums ml-1 font-mono font-bold">{t.percentage}%</span>
+          {isDownloading && t.speedMBps > 0 && (
+            <span className="text-[11px] text-neutral-400 font-mono">
+              ({t.speedMBps.toFixed(1)} MB/s)
+            </span>
+          )}
+        </div>
+        <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-[var(--dk-surface-raised)]">
+          <div
+            className={cn('h-full rounded-full transition-[width] duration-300', isPaused ? 'bg-amber-500' : 'bg-cyan-400')}
+            style={{ width: `${Math.min(100, Math.max(0, t.percentage))}%` }}
+          />
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-neutral-400">
+            {formatBytes(t.downloadedBytes)} / {formatBytes(t.totalBytes)}
+          </span>
+          {isDownloading ? (
+            <button
+              onClick={state.handleRemotePause}
+              className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+            >
+              <Pause className="h-3 w-3" /> Pause
+            </button>
+          ) : isPaused ? (
+            <button
+              onClick={state.handleRemoteResume}
+              className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+            >
+              <Play className="h-3 w-3 fill-current" /> Resume
+            </button>
+          ) : null}
+          <button
+            onClick={state.handleRemoteCancel}
+            className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+          >
+            <X className="h-3 w-3" /> Cancel
+          </button>
+        </div>
       </div>
     )
   }
@@ -238,22 +302,56 @@ export function DownloadGameButton() {
     )
   }
 
-  // ── Downloads enabled but idle → download button ──
-  if (state.downloadsEnabled) {
+  // ── Available on Remote Game Server and/or Usenet Download ──
+  if (state.serverFile || state.hasGameServer || state.canLocalDownload) {
     return (
-      <div className="flex items-center gap-3">
-        <button
-          onClick={state.handleDownload}
-          disabled={state.searching}
-          className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 hover:bg-blue-400 active:scale-95 disabled:opacity-50"
-        >
-          {state.searching ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
+      <div className="flex flex-wrap items-center gap-3">
+        {state.serverFile && (
+          <button
+            onClick={state.handleRemoteDownload}
+            className="inline-flex items-center gap-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-neutral-950 shadow-lg shadow-cyan-500/25 transition-all duration-200 active:scale-95 cursor-pointer"
+          >
+            <Server className="h-4 w-4" />
+            <span>Download from {state.serverFile.serverName} ({formatBytes(state.serverFile.filesize)})</span>
+          </button>
+        )}
+
+        {state.hasGameServer && state.activeServer && (
+          <button
+            onClick={() => {
+              const server = state.activeServer
+              if (!server) return
+              const close = openModal(
+                <ServerGameSearchModal
+                  onClose={() => close()}
+                  serverId={server.id}
+                  serverName={server.name}
+                  initialQuery={state.mediaTitle}
+                />,
+              )
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-95 cursor-pointer"
+          >
             <Download className="h-4 w-4" />
-          )}
-          {state.searching ? 'Searching...' : 'Download ISO'}
-        </button>
+            <span>Download</span>
+          </button>
+        )}
+
+        {state.canLocalDownload && (
+          <button
+            onClick={state.handleDownload}
+            disabled={state.searching}
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--dk-surface-raised)] px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-[var(--dk-surface-glass)] active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            {state.searching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {state.searching ? 'Searching...' : 'Download ISO locally'}
+          </button>
+        )}
+
         {state.errorMsg && (
           <p className="text-xs text-red-400">{state.errorMsg}</p>
         )}

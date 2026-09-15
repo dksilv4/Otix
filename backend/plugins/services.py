@@ -9,6 +9,7 @@ commands and the future config/PluginAPI endpoints share it.
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -211,4 +212,147 @@ def scan_bundled() -> list[dict]:
                 "version": plugin.version,
             }
         )
+    return report
+
+
+def scan_extensions() -> list[dict]:
+    """Scan extension plugin folders (extensions/otix-plugins and extensions/plugins)
+    and register all available plugins into the database.
+    """
+    repo_root = Path(settings.BASE_DIR).parent
+    extension_roots = [
+        repo_root / "extensions" / "otix-plugins" / "plugins",
+        repo_root / "extensions" / "plugins",
+    ]
+    report: list[dict] = []
+    seen_ids: set[str] = set()
+
+    for root_dir in extension_roots:
+        if not root_dir.is_dir():
+            continue
+        for folder in sorted(root_dir.iterdir()):
+            if not folder.is_dir() or folder.name.startswith(("_", ".")):
+                continue
+            manifest_file = folder / "manifest.json"
+            if not manifest_file.is_file():
+                continue
+
+            plugin_id = folder.name
+            if plugin_id in seen_ids:
+                continue
+            seen_ids.add(plugin_id)
+
+            try:
+                manifest_data = json.loads(manifest_file.read_text("utf-8"))
+            except Exception as exc:
+                report.append({"id": plugin_id, "ok": False, "error": str(exc)})
+                continue
+
+            display_name = manifest_data.get("name") or plugin_id
+            version = str(manifest_data.get("version") or "1.0.0")
+            description = str(manifest_data.get("description") or "")
+            author = str(manifest_data.get("author") or "Otix")
+            repository = str(manifest_data.get("repository") or "")
+            icon = str(manifest_data.get("icon") or "")
+            stage = str(manifest_data.get("stage") or "stable")
+            min_app_version = str(manifest_data.get("min_app_version") or "")
+            permissions = list(manifest_data.get("permissions") or [])
+            config_schema = manifest_data.get("config") or {}
+            defaults = {
+                k: v.get("default")
+                for k, v in config_schema.items()
+                if isinstance(v, dict) and "default" in v
+            }
+
+            manifest_data["name"] = display_name
+
+            existing = Plugin.objects.filter(name=plugin_id).first()
+            if existing is None:
+                is_default_enabled = plugin_id in {"sabnzbd", "prowlarr", "fps-capture", "local-files"}
+                plugin = Plugin.objects.create(
+                    name=plugin_id,
+                    version=version,
+                    description=description,
+                    author=author,
+                    repository=repository,
+                    icon=icon,
+                    stage=stage,
+                    min_app_version=min_app_version,
+                    system=False,
+                    enabled=is_default_enabled,
+                    error="",
+                    manifest=manifest_data,
+                    permissions_declared=permissions,
+                    permissions_granted=permissions,
+                    config=defaults,
+                    instances=[],
+                )
+                report.append(
+                    {
+                        "id": plugin.name,
+                        "ok": True,
+                        "created": True,
+                        "enabled": plugin.enabled,
+                        "version": plugin.version,
+                    }
+                )
+            else:
+                existing.version = version
+                existing.description = description
+                existing.author = author
+                existing.repository = repository or existing.repository
+                existing.icon = icon or existing.icon
+                existing.stage = stage
+                existing.manifest = manifest_data
+                existing.permissions_declared = permissions
+                existing.permissions_granted = _dedupe(
+                    list(existing.permissions_granted or []) + permissions
+                )
+                existing.save()
+                report.append(
+                    {
+                        "id": existing.name,
+                        "ok": True,
+                        "created": False,
+                        "enabled": existing.enabled,
+                        "version": existing.version,
+                    }
+                )
+
+    registry_file = repo_root / "extensions" / "otix-plugins" / "registry.json"
+    if registry_file.is_file():
+        try:
+            reg_data = json.loads(registry_file.read_text("utf-8"))
+            for item in reg_data.get("plugins", []):
+                p_id = item.get("id")
+                if not p_id or p_id in seen_ids:
+                    continue
+                seen_ids.add(p_id)
+                manifest_data = {
+                    "name": item.get("name") or p_id,
+                    "version": item.get("version") or "0.1.0",
+                    "description": item.get("description") or "",
+                    "author": item.get("author") or "Otix",
+                    "repository": item.get("repository") or "",
+                    "icon": item.get("icon") or "",
+                    "permissions": item.get("permissions") or [],
+                }
+                if not Plugin.objects.filter(name=p_id).exists():
+                    p = Plugin.objects.create(
+                        name=p_id,
+                        version=manifest_data["version"],
+                        description=manifest_data["description"],
+                        author=manifest_data["author"],
+                        repository=manifest_data["repository"],
+                        icon=manifest_data["icon"],
+                        manifest=manifest_data,
+                        permissions_declared=manifest_data["permissions"],
+                        permissions_granted=manifest_data["permissions"],
+                        config={},
+                        instances=[],
+                    )
+                    report.append({"id": p.name, "ok": True, "created": True, "enabled": p.enabled, "version": p.version})
+        except Exception:
+            pass
+
     return report

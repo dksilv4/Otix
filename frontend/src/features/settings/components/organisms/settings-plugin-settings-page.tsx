@@ -1,5 +1,6 @@
-// frontend/src/features/settings/components/PluginSettingsPage.tsx
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import { DownloadCloud, Download, Server } from 'lucide-react'
 import { SlotRenderer, useSlotData, type PluginSettingsTab } from '@/features/_config/slots'
 
 interface PluginSettingsPageProps {
@@ -7,7 +8,37 @@ interface PluginSettingsPageProps {
 }
 
 export function PluginSettingsPage({ tab }: PluginSettingsPageProps) {
-  if (!tab) return <div className="p-6 text-center text-muted-foreground text-sm">No plugin settings available</div>
+  if (!tab) {
+    return (
+      <div className="max-w-xl mx-auto py-16 px-6 text-center space-y-6">
+        <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-primary shadow-lg">
+          <DownloadCloud className="h-8 w-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-white">Looking for Usenet or Downloader Settings?</h2>
+          <p className="text-sm text-white/60 leading-relaxed">
+            No plugin settings available here. SABnzbd and Prowlarr are configured on your self-hosted Otix Server node.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <Link
+            to="/downloads"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-black font-semibold text-sm hover:opacity-90 transition-opacity"
+          >
+            <Download className="h-4 w-4" />
+            Go to Downloads & Usenet
+          </Link>
+          <Link
+            to="/settings/launcher"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 text-white/80 font-medium text-sm hover:bg-white/10 transition-colors"
+          >
+            <Server className="h-4 w-4" />
+            Game Servers
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const [activeSection, setActiveSection] = useState(tab.sections[0]?.id)
   const section = tab.sections.find(s => s.id === activeSection)

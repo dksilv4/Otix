@@ -3,6 +3,8 @@ import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/old-features/auth'
 import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downloads'
+import { useServerGames, useRemoteDownloads, type ServerGameFile, useGameServers, type GameServer } from '@/features/downloads/use-server-downloads'
+import type { RemoteDownloadProgress } from '@/lib/desktop/api'
 import type { HypervisorConfirmResponse, Download, DownloadConfig } from '@/features/downloads/types'
 import { useFeature } from '@/features/_config'
 import { useLocalGames } from '@/features/launcher/data/game-queries'
@@ -23,6 +25,7 @@ export interface DownloadGameState {
   justInstalled: boolean
   isFailed: boolean
   downloadsEnabled: boolean
+  canLocalDownload: boolean
   // Display data
   mediaTitle: string
   matchingScannedGame: LocalGame | null
@@ -35,6 +38,15 @@ export interface DownloadGameState {
   searching: boolean
   isInstallerOpen: boolean
   scannedGames: LocalGame[]
+  // Remote server game & transfer
+  serverFile: ServerGameFile | null
+  activeRemoteTransfer: RemoteDownloadProgress | null
+  isRemoteDownloading: boolean
+  isRemotePaused: boolean
+  // Game servers
+  activeServer: GameServer | null
+  gameServers: GameServer[]
+  hasGameServer: boolean
   // Download progress
   downloadStatus: string
   downloadPercentage: number
@@ -46,6 +58,10 @@ export interface DownloadGameState {
   // Actions
   handlePlay: () => Promise<void>
   handleDownload: () => Promise<void>
+  handleRemoteDownload: () => Promise<void>
+  handleRemotePause: () => Promise<boolean | undefined>
+  handleRemoteResume: () => Promise<boolean | undefined>
+  handleRemoteCancel: () => Promise<boolean | undefined>
   handleHvConfirm: () => Promise<void>
   handleHvDismiss: () => void
   handleCancelDownload: () => void
@@ -62,7 +78,19 @@ export function useDownloadGame(): DownloadGameState {
   const { user } = useAuth()
   const downloadsEnabled = useFeature('downloads')
   const { downloads, searchAndDownload, cancelDownload, pollQueue } = useDownloads(user?.id)
+  const { data: serverGamesData } = useServerGames()
+  const {
+    activeTransfers,
+    startDownload: startRemoteDownload,
+    pauseDownload: pauseRemoteDownload,
+    resumeDownload: resumeRemoteDownload,
+    cancelDownload: cancelRemoteDownload,
+  } = useRemoteDownloads()
   const { config: dlConfig } = useDownloadConfig(user?.id)
+  const { data: gameServers = [] } = useGameServers()
+  const activeServer = gameServers.find((s) => s.is_active) || gameServers[0] || null
+  const hasGameServer = !!activeServer
+
   const [searching, setSearching] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [postProcessing, setPostProcessing] = useState(false)
@@ -75,6 +103,24 @@ export function useDownloadGame(): DownloadGameState {
   const { installs: allInstalls } = useInstallProgress()
 
   const mediaTitle = data?.title || ''
+
+  // ── Remote Server Games & Active Transfer Matching ──
+  const serverFile = (serverGamesData?.files || []).find(
+    (f) =>
+      (mediaId && f.catalogItem?.id === mediaId) ||
+      (mediaTitle && f.catalogItem?.title && isTitleMatch(f.catalogItem.title, mediaTitle)) ||
+      (mediaTitle && isTitleMatch(f.gameTitle, mediaTitle))
+  ) || null
+
+  const activeRemoteTransfer = activeTransfers.find(
+    (t) =>
+      (mediaId && t.mediaItemId === mediaId) ||
+      (serverFile && t.fileId === serverFile.fileId) ||
+      (mediaTitle && isTitleMatch(t.gameTitle, mediaTitle))
+  ) || null
+
+  const isRemoteDownloading = activeRemoteTransfer?.status === 'downloading'
+  const isRemotePaused = activeRemoteTransfer?.status === 'paused'
 
   // ── Effect: match local game ──
 
@@ -116,7 +162,8 @@ export function useDownloadGame(): DownloadGameState {
 
   // ── Derived / computed state ──
 
-  const isDesktopMissingOrNotAdmin = !window.desktopAPI || !user?.isAdmin
+  const isDesktop = !!window.desktopAPI
+  const canLocalDownload = isDesktop && !!user?.isAdmin && downloadsEnabled
   const dataMissing = !data
 
   const matchingScannedGame = scannedGames.find(g => g.data?.id === mediaId) || localGame
@@ -144,8 +191,7 @@ export function useDownloadGame(): DownloadGameState {
   // ── Hidden guard ──
   const hidden =
     dataMissing ||
-    isDesktopMissingOrNotAdmin ||
-    (!downloadsEnabled && !matchingScannedGame)
+    (!canLocalDownload && !matchingScannedGame && !serverFile && !activeRemoteTransfer && !hasGameServer)
 
   // ── Handlers ──
 
@@ -203,6 +249,35 @@ export function useDownloadGame(): DownloadGameState {
     }
   }
 
+  const handleRemoteDownload = async () => {
+    if (!serverFile) return
+    setErrorMsg('')
+    try {
+      await startRemoteDownload(serverFile, mediaId)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setErrorMsg(msg)
+    }
+  }
+
+  const handleRemotePause = async () => {
+    if (activeRemoteTransfer) {
+      return await pauseRemoteDownload(activeRemoteTransfer.id)
+    }
+  }
+
+  const handleRemoteResume = async () => {
+    if (activeRemoteTransfer) {
+      return await resumeRemoteDownload(activeRemoteTransfer.id)
+    }
+  }
+
+  const handleRemoteCancel = async () => {
+    if (activeRemoteTransfer) {
+      return await cancelRemoteDownload(activeRemoteTransfer.id)
+    }
+  }
+
   const handleCancelDownload = () => {
     if (existingDownload) {
       cancelDownload(existingDownload.id)
@@ -251,6 +326,14 @@ export function useDownloadGame(): DownloadGameState {
     searching,
     isInstallerOpen,
     scannedGames,
+    canLocalDownload,
+    activeServer,
+    gameServers,
+    hasGameServer,
+    serverFile,
+    activeRemoteTransfer,
+    isRemoteDownloading,
+    isRemotePaused,
     downloadStatus,
     downloadPercentage,
     downloadNzbName,
@@ -259,6 +342,10 @@ export function useDownloadGame(): DownloadGameState {
     hvPendingGameName,
     handlePlay,
     handleDownload,
+    handleRemoteDownload,
+    handleRemotePause,
+    handleRemoteResume,
+    handleRemoteCancel,
     handleHvConfirm,
     handleHvDismiss,
     handleCancelDownload,

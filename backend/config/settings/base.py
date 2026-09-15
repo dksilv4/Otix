@@ -48,7 +48,18 @@ def parse_database_url(url: str) -> dict:
     """
     parsed = urlparse(url)
     if parsed.scheme in {"sqlite", "sqlite3"}:
-        name = parsed.path.lstrip("/") or ":memory:"
+        path_part = url.split("://", 1)[1] if "://" in url else parsed.path
+        path_part = path_part.split("?", 1)[0]
+        if not path_part or path_part in (":memory:", "/:memory:"):
+            name = ":memory:"
+        elif path_part.startswith("//"):
+            name = path_part[1:]
+        elif path_part.startswith("/./"):
+            name = str((BASE_DIR / path_part[3:]).resolve())
+        elif Path(path_part).is_absolute() and Path(path_part).exists():
+            name = path_part
+        else:
+            name = str((BASE_DIR / path_part.lstrip("/")).resolve())
         return {"ENGINE": "django.db.backends.sqlite3", "NAME": name}
     if parsed.scheme not in {"postgres", "postgresql"}:
         raise ValueError(f"Unsupported DATABASE_URL scheme: {parsed.scheme!r}")
