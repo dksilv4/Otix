@@ -22,7 +22,7 @@ export function MediaSpecsCard({ detail, className = '' }: MediaSpecsCardProps) 
 
   return (
     <div className={`glass-card p-5 sm:p-6 space-y-5 ${className}`}>
-      <h3 className="text-sm font-semibold tracking-tight">Information &amp; Specs</h3>
+      {/* <h3 className="text-sm font-semibold tracking-tight">Information &amp; Specs</h3> */}
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs">
         {/* Original Language */}

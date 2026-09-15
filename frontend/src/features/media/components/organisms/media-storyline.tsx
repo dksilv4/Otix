@@ -4,13 +4,15 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { MediaItemDetail } from '@media'
 import { groupByRole } from '@media'
 
-interface MediaStorylineV4Props {
+interface MediaStorylineProps {
   detail: MediaItemDetail
   mediaType: string
   className?: string
 }
 
-export function MediaStorylineV4({ detail, mediaType, className = '' }: MediaStorylineV4Props) {
+export type MediaStorylineV4Props = MediaStorylineProps
+
+export function MediaStoryline({ detail, mediaType, className = '' }: MediaStorylineProps) {
   const [expanded, setExpanded] = useState(false)
   const overview = detail.overview || ''
   const isLong = overview.length > 280
@@ -138,3 +140,5 @@ export function MediaStorylineV4({ detail, mediaType, className = '' }: MediaSto
     </div>
   )
 }
+
+export { MediaStoryline as MediaStorylineV4 }

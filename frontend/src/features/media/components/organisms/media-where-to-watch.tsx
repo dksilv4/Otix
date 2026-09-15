@@ -5,10 +5,12 @@ import { API_BASE_URL } from '@/lib/config'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { cn } from '@/lib/utils'
 
-interface WhereToWatchV4Props {
+interface WhereToWatchProps {
   watchProviders?: MediaWatchProvider[]
   className?: string
 }
+
+export type WhereToWatchV4Props = WhereToWatchProps
 
 type CommercialCategory = 'stream' | 'rent' | 'buy'
 
@@ -42,7 +44,7 @@ function resolveProviderUrl(url?: string | null): string | null {
   return url
 }
 
-export function WhereToWatchV4({ watchProviders = [], className = '' }: WhereToWatchV4Props) {
+export function WhereToWatch({ watchProviders = [], className = '' }: WhereToWatchProps) {
   const validProviders = watchProviders.filter((p) => Boolean(p.watchProvider))
 
   // 1. Separate Personal Library providers (Plex / self-hosted)
@@ -200,3 +202,5 @@ export function WhereToWatchV4({ watchProviders = [], className = '' }: WhereToW
     </div>
   )
 }
+
+export { WhereToWatch as WhereToWatchV4 }

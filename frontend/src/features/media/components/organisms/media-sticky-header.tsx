@@ -13,15 +13,17 @@ import { MediaDetailPluginButtons } from './plugin-detail-actions'
 import { useNavPillsVisibility } from '@/features/navigation'
 import { cn } from '@/lib/utils'
 
-interface MediaStickyHeaderV4Props {
+interface MediaStickyHeaderProps {
   detail: MediaItemDetail
   mediaType: string
 }
 
+export type MediaStickyHeaderV4Props = MediaStickyHeaderProps
+
 const MIN_BETWEEN_WIDTH = 460
 const PILL_GAP = 12
 
-export function MediaStickyHeaderV4({ detail, mediaType }: MediaStickyHeaderV4Props) {
+export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps) {
   const [visible, setVisible] = useState(false)
   const [placement, setPlacement] = useState<'between' | 'below'>('between')
   const [bounds, setBounds] = useState<{ center: number; maxWidth: number } | null>(null)
@@ -294,3 +296,5 @@ export function MediaStickyHeaderV4({ detail, mediaType }: MediaStickyHeaderV4Pr
     </div>
   )
 }
+
+export { MediaStickyHeader as MediaStickyHeaderV4 }

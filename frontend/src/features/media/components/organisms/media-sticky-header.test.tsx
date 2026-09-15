@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
-import { MediaStickyHeaderV4 } from './media-sticky-header-v4'
+import { MediaStickyHeaderV4 } from './media-sticky-header'
 import type { MediaItemDetail } from '@media'
 
 // Mocks

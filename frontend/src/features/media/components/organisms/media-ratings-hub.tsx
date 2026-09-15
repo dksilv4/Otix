@@ -10,7 +10,7 @@ import { ratingQueries, useUpsertRating, type MediaRatingOut } from '@/features/
 import { showXPToast } from '@/old-features/ui/atoms/xp-toast'
 import { cn } from '@/lib/utils'
 
-interface RatingsHubV4Props {
+interface RatingsHubProps {
   mediaId: string
   mediaType: string
   overallRating?: number | null
@@ -21,6 +21,7 @@ interface RatingsHubV4Props {
   imdbId?: string | null
   className?: string
 }
+
 
 function scoreColor(score: number) {
   if (score >= 80) return { text: 'text-emerald-400', bg: 'bg-emerald-400/10', ring: 'ring-emerald-400/30', glow: 'shadow-[0_0_24px_rgba(52,211,153,0.18)]' }
@@ -42,7 +43,7 @@ const SCORE_LABELS: Record<number, string> = {
   10: '5.0 ★ Masterpiece',
 }
 
-export function RatingsHubV4({
+export function RatingsHub({
   mediaId,
   mediaType,
   overallRating,
@@ -52,7 +53,7 @@ export function RatingsHubV4({
   tmdbId,
   imdbId,
   className = '',
-}: RatingsHubV4Props) {
+}: RatingsHubProps) {
   const { isAuthenticated } = useAuth()
   const { openModal } = useModal()
   const [hoverRating, setHoverRating] = useState<number | null>(null)
@@ -365,3 +366,5 @@ export function RatingsHubV4({
     </div>
   )
 }
+
+export default RatingsHub;

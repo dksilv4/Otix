@@ -14,14 +14,16 @@ export interface CreditItem {
   sortOrder: number
 }
 
-interface CastCrewV4Props {
+interface CastCrewProps {
   credits?: CreditItem[]
   className?: string
 }
 
+export type CastCrewV4Props = CastCrewProps
+
 type CreditCategory = 'cast' | 'directing' | 'crew'
 
-export function CastCrewV4({ credits = [], className = '' }: CastCrewV4Props) {
+export function CastCrew({ credits = [], className = '' }: CastCrewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -198,3 +200,5 @@ export function CastCrewV4({ credits = [], className = '' }: CastCrewV4Props) {
     </div>
   )
 }
+
+export { CastCrew as CastCrewV4 }
