@@ -10,9 +10,11 @@ interface DkDialogProps {
   description?: string
   children: ReactNode
   className?: string
+  /** Soft color orbs behind the panel. Default true. */
+  showAmbient?: boolean
 }
 
-function DkDialog({ open, onOpenChange, title, description, children, className }: DkDialogProps) {
+function DkDialog({ open, onOpenChange, title, description, children, className, showAmbient = true }: DkDialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -54,9 +56,12 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
           animation: 'authFormFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        {/* Layered Glass Ambient Glows */}
-        <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-primary/15 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
+        {showAmbient && (
+          <>
+            <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-primary/15 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
+          </>
+        )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-black/[0.2]" />
 
         <div className="relative z-10">
