@@ -220,7 +220,6 @@ class GameServersApiTests(TestCase):
                 "title": "Elden Ring Deluxe",
                 "size": 50_000_000_000,
                 "download_url": "https://prowlarr.local/nzb/123",
-                "indexer": "Geek",
                 "protocol": "usenet",
             }
         ]
@@ -228,3 +227,104 @@ class GameServersApiTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.json()), 1)
         self.assertEqual(res.json()[0]["title"], "Elden Ring Deluxe")
+
+    @mock.patch("apps.library.services.game_server.httpx.Client")
+    def test_usenet_download_is_persisted_and_history_syncs(self, mock_client_cls):
+        from apps.library.models import GameServerDownload
+
+        media = MediaItem.objects.create(media_type="game", title="Elden Ring", slug="elden-ring")
+        server = UserGameServer.objects.create(
+            user=self.user,
+            name="History Node",
+            local_url="http://127.0.0.1:8090",
+            auth_token="secret_token",
+            is_active=True,
+        )
+
+        mock_client = mock.MagicMock()
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_client.request.return_value = mock_resp
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        mock_resp.json.return_value = {
+            "status": "queued",
+            "nzo_id": "SABnzbd_nzo_hist",
+            "title": "ELDEN RING v1.09-Razor1911",
+        }
+        res = self.client.post(
+            f"/api/v1/library/servers/{server.id}/usenet/download",
+            {
+                "title": "ELDEN RING v1.09-Razor1911",
+                "download_url": "https://prowlarr.local/nzb/123",
+                "protocol": "usenet",
+                "media_item_id": media.id,
+                "size": 54_700_000_000,
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        posted = mock_client.request.call_args
+        self.assertNotIn("media_item_id", posted.kwargs.get("json") or {})
+
+        row = GameServerDownload.objects.get(server=server, nzo_id="SABnzbd_nzo_hist")
+        self.assertEqual(row.media_item_id, media.id)
+        self.assertEqual(row.status, "queued")
+        self.assertEqual(row.size_bytes, 54_700_000_000)
+
+        mock_resp.json.return_value = {
+            "items": [
+                {
+                    "nzo_id": "SABnzbd_nzo_hist",
+                    "filename": "ELDEN RING v1.09-Razor1911",
+                    "status": "Completed",
+                    "size_bytes": 54_700_000_000,
+                    "fail_message": "",
+                    "completed_at": "2026-09-16T01:00:00+00:00",
+                }
+            ]
+        }
+        history_res = self.client.get(f"/api/v1/library/servers/{server.id}/usenet/history")
+        self.assertEqual(history_res.status_code, 200)
+        items = history_res.json()["items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["status"], "completed")
+        self.assertEqual(items[0]["media_item_id"], str(media.id))
+        row.refresh_from_db()
+        self.assertEqual(row.status, "completed")
+        self.assertEqual(row.media_item_id, media.id)
+
+        mock_resp.json.return_value = {"status": "deleted", "nzo_id": "SABnzbd_nzo_hist"}
+        cancel_res = self.client.delete(
+            f"/api/v1/library/servers/{server.id}/usenet/queue/SABnzbd_nzo_hist"
+        )
+        self.assertEqual(cancel_res.status_code, 200)
+        row.refresh_from_db()
+        self.assertEqual(row.status, "cancelled")
+
+    @mock.patch("apps.library.services.game_server.httpx.Client")
+    def test_scan_proxies_to_game_server(self, mock_client_cls):
+        server = UserGameServer.objects.create(
+            user=self.user,
+            name="Scan Node",
+            local_url="http://127.0.0.1:8090",
+            auth_token="secret_token",
+            is_active=True,
+        )
+        mock_client = mock.MagicMock()
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"status": "scanned", "total_files": 4}
+        mock_client.request.return_value = mock_resp
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        res = self.client.post(f"/api/v1/library/servers/{server.id}/scan")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["status"], "scanned")
+        self.assertEqual(res.json()["total_files"], 4)
+        called = mock_client.request.call_args
+        self.assertEqual(called.kwargs.get("method") or called.args[0], "POST")
+        url = called.kwargs.get("url") or ""
+        self.assertTrue(url.endswith("/api/v1/scan"))

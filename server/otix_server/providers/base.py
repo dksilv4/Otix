@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 from otix_server.usenet_types import (
     ProwlarrRelease,
+    ServerDownloadHistory,
     ServerDownloadQueue,
 )
 
@@ -55,6 +56,10 @@ class BaseDownloader(ABC):
     def delete_download(self, download_id: str) -> bool:
         """Delete or cancel a download task by ID."""
         pass
+
+    def get_history(self, limit: int = 50) -> ServerDownloadHistory:
+        """Completed and failed downloads. Default is empty for clients without history."""
+        return ServerDownloadHistory()
 
     def to_info(self) -> ProviderInfo:
         return ProviderInfo(

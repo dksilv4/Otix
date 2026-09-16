@@ -20,16 +20,16 @@ export function getProtocolBadgeInfo(protocol?: ProviderProtocol): ProtocolBadge
     case 'usenet':
       return {
         label: 'USENET',
-        bg: 'bg-amber-500/10',
-        text: 'text-amber-400',
-        border: 'border-amber-500/30',
+        bg: 'bg-blue-500/10',
+        text: 'text-blue-400',
+        border: 'border-blue-500/30',
       };
     case 'torrent':
       return {
         label: 'TORRENT',
-        bg: 'bg-cyan-500/10',
-        text: 'text-cyan-400',
-        border: 'border-cyan-500/30',
+        bg: 'bg-red-500/10',
+        text: 'text-red-400',
+        border: 'border-red-500/30',
       };
     case 'direct':
     case 'http':
@@ -89,4 +89,62 @@ export function normalizeQueueEta(timeLeft?: string | number | null): string {
 /** Checks whether a connection test result succeeded. */
 export function isProviderHealthy(testResult?: ProviderConnectionTestResult | null): boolean {
   return !!testResult && testResult.ok === true;
+}
+
+function providerFlag(provider: ProviderInfo, key: 'configured' | 'is_active'): boolean {
+  const raw = provider as ProviderInfo & {
+    is_configured?: boolean
+    isConfigured?: boolean
+    isActive?: boolean
+  }
+  if (key === 'configured') {
+    return Boolean(raw.configured ?? raw.is_configured ?? raw.isConfigured)
+  }
+  return Boolean(raw.is_active ?? raw.isActive)
+}
+
+/** True when a downloader has credentials and can handle this protocol. */
+export function hasConfiguredDownloader(
+  downloaders: ProviderInfo[] | undefined,
+  protocol: string,
+): boolean {
+  const wanted = (protocol || '').toLowerCase().trim()
+  if (!wanted) return false
+  return (downloaders ?? []).some((provider) => {
+    if ((provider.provider_type || (provider as { type?: string }).type) === 'search-provider') {
+      return false
+    }
+    if (!providerFlag(provider, 'configured')) return false
+    const proto = (provider.protocol || '').toLowerCase()
+    return proto === wanted || proto === 'multi'
+  })
+}
+
+/** Infer usenet vs torrent from the indexer protocol or the download URL. */
+export function inferReleaseProtocol(release: {
+  protocol?: string | null
+  download_url?: string | null
+}): string {
+  const proto = (release.protocol || '').toLowerCase().trim()
+  if (proto === 'torrent' || proto === 'usenet') return proto
+  const url = (release.download_url || '').toLowerCase()
+  if (url.startsWith('magnet:') || /\.torrent(\?|#|$)/.test(url)) return 'torrent'
+  if (/\.nzb(\?|#|$)/.test(url)) return 'usenet'
+  return proto || 'usenet'
+}
+
+/** Why a release cannot be queued, or null when Download should stay enabled. */
+export function releaseQueueBlockReason(
+  release: { protocol?: string | null; download_url?: string | null },
+  options: { torrentConfigured: boolean; usenetConfigured: boolean },
+): string | null {
+  if (!release.download_url) return 'No download URL from this indexer'
+  const protocol = inferReleaseProtocol(release)
+  if (protocol === 'torrent' && !options.torrentConfigured) {
+    return 'No torrent client is configured on this server'
+  }
+  if (protocol === 'usenet' && !options.usenetConfigured) {
+    return 'No Usenet client is configured on this server'
+  }
+  return null
 }

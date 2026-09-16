@@ -6,6 +6,7 @@ server:
   registry_url: "https://api.otix.io"
   enable_upnp: true
   enable_heartbeat: true
+  downloads_path: "./storage/downloads"
 
 game_libraries:
   - name: "PC Installers & ISOs"
@@ -19,3 +20,19 @@ saves:
   storage_path: "./storage/saves"
   max_snapshots_per_game: 10
   auto_backup_on_exit: true
+
+usenet:
+  enabled: false
+  sabnzbd:
+    host: "127.0.0.1"
+    port: 8080
+    api_key: ""
+    use_ssl: false
+    category: "games"
+    # Provider-specific mappings. Add one pair per shared completed folder.
+    # Leave the list empty to auto-discover SABnzbd's main completed folder.
+    path_mappings: []
+    # Example:
+    # path_mappings:
+    #   - remote_path: "/downloads/complete/games"
+    #     host_path: "/mnt/sabnzbd/complete/games"

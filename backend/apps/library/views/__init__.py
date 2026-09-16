@@ -3,6 +3,7 @@
 from apps.library.views.game_servers import (
     GameServerDetailView,
     GameServerDownloadsAddView,
+    GameServerDownloadsHistoryView,
     GameServerDownloadsQueueView,
     GameServerDownloadsSearchView,
     GameServerExplorerBrowseView,
@@ -15,6 +16,7 @@ from apps.library.views.game_servers import (
     GameServerProviderTestView,
     GameServerUsenetConfigView,
     GameServerUsenetDownloadView,
+    GameServerUsenetHistoryView,
     GameServerUsenetQueueView,
     GameServerUsenetSearchView,
     GameServerUsenetTestProwlarrView,
@@ -22,6 +24,7 @@ from apps.library.views.game_servers import (
     GameServerProwlarrIndexersView,
     GameServerProwlarrSyncView,
     GameServerSabnzbdQueueControlView,
+    GameServerScanView,
 )
 from apps.library.views.library import (
     InstalledGamesView,
@@ -39,6 +42,7 @@ from apps.library.views.library import (
 __all__ = [
     "GameServerDetailView",
     "GameServerDownloadsAddView",
+    "GameServerDownloadsHistoryView",
     "GameServerDownloadsQueueView",
     "GameServerDownloadsSearchView",
     "GameServerExplorerBrowseView",
@@ -51,6 +55,7 @@ __all__ = [
     "GameServerProviderTestView",
     "GameServerUsenetConfigView",
     "GameServerUsenetDownloadView",
+    "GameServerUsenetHistoryView",
     "GameServerUsenetQueueView",
     "GameServerUsenetSearchView",
     "GameServerUsenetTestProwlarrView",
@@ -58,6 +63,7 @@ __all__ = [
     "GameServerProwlarrIndexersView",
     "GameServerProwlarrSyncView",
     "GameServerSabnzbdQueueControlView",
+    "GameServerScanView",
     "InstalledGamesView",
 
 

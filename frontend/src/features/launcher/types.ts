@@ -35,6 +35,10 @@ export interface Game {
   logoColorGuess?: string | null
   releaseDate?: string | null
   genres?: { id: string; name: string; slug: string }[]
+  platforms?: Array<{
+    id: string
+    platform: { id: string; name: string; slug: string }
+  }>
   gameModes?: { id: string; gameMode: { id: string; name: string; slug: string } }[]
   involvedCompanies?: {
     id: string

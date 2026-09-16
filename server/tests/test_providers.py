@@ -83,6 +83,24 @@ class TestProvidersFramework(unittest.TestCase):
         with self.assertRaises(ValueError):
             mgr.get_search_provider("unknown")
 
+    def test_download_rejects_torrent_when_only_sabnzbd_is_configured(self):
+        mgr = ProviderManager()
+        mgr.register_downloader(SabnzbdDownloader(SabnzbdConfig(api_key="k")))
+        with self.assertRaisesRegex(ValueError, "No torrent download client"):
+            mgr.download("magnet:?xt=urn:btih:abc", "Hades II", protocol="torrent")
+
+    def test_sabnzbd_rejects_magnet_urls(self):
+        downloader = SabnzbdDownloader(SabnzbdConfig(api_key="k"))
+        with self.assertRaisesRegex(ValueError, "cannot queue torrent"):
+            downloader.add_download("magnet:?xt=urn:btih:abc", "Hades II")
+
+    @patch("otix_server.providers.sabnzbd.send_nzb_to_sabnzbd", return_value="SABnzbd_nzo_1")
+    def test_add_download_returns_nzo_id_dict(self, _mock_send):
+        downloader = SabnzbdDownloader(SabnzbdConfig(api_key="k"))
+        result = downloader.add_download("https://indexer.example/a.nzb", "Hades II")
+        self.assertEqual(result["nzo_id"], "SABnzbd_nzo_1")
+        self.assertEqual(result["status"], "queued")
+
     @patch("otix_server.providers.sabnzbd.fetch_sabnzbd_queue")
     def test_provider_manager_get_queue(self, mock_queue):
         mock_queue.return_value = ServerDownloadQueue(
@@ -209,6 +227,18 @@ class TestProvidersFramework(unittest.TestCase):
         url3 = build_sabnzbd_url(cfg3, "version")
         self.assertTrue(url3.startswith("https://nas.example.com/sabnzbd/api?"))
 
+    def test_sabnzbd_addurl_encodes_grab_query_string(self):
+        from urllib.parse import parse_qs, urlparse
+        from otix_server.usenet_utils import build_sabnzbd_url
+
+        cfg = SabnzbdConfig(host="192.168.1.50", port=8080, api_key="sabkey")
+        grab = "https://prowlarr.local/api/v1/search?apikey=idx&id=42"
+        url = build_sabnzbd_url(cfg, "addurl", {"name": grab, "nzbname": "Hades II", "cat": "games"})
+        params = parse_qs(urlparse(url).query)
+        self.assertEqual(params["name"][0], grab)
+        self.assertEqual(params["nzbname"][0], "Hades II")
+        self.assertEqual(params["mode"][0], "addurl")
+
     def test_url_base_resolution_for_prowlarr(self):
         from otix_server.usenet_utils import build_prowlarr_base_url
 
@@ -244,6 +274,185 @@ class TestProvidersFramework(unittest.TestCase):
         cfg_prow_domain = ProwlarrConfig(host="prowlarr.diogodasilva.com", port=9696, use_ssl=True, api_key="pk123")
         base_prow = build_prowlarr_base_url(cfg_prow_domain)
         self.assertEqual(base_prow, "https://prowlarr.diogodasilva.com")
+
+    def test_parse_and_fetch_sabnzbd_history(self):
+        from otix_server.usenet_utils import parse_sabnzbd_history_slot, fetch_sabnzbd_history
+
+        parsed = parse_sabnzbd_history_slot({
+            "nzo_id": "SABnzbd_nzo_hist1",
+            "name": "Hollow Knight Silksong",
+            "status": "Completed",
+            "bytes": 123456789,
+            "fail_message": "",
+            "completed": 1710000000,
+            "category": "games",
+            "storage": "/downloads/complete/Hollow Knight Silksong",
+        })
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed.nzo_id, "SABnzbd_nzo_hist1")
+        self.assertEqual(parsed.size_bytes, 123456789)
+        self.assertTrue(parsed.completed_at.startswith("2024-"))
+
+        cfg = SabnzbdConfig(host="127.0.0.1", port=8080, api_key="k")
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "history": {
+                "slots": [
+                    {
+                        "nzo_id": "SABnzbd_nzo_hist1",
+                        "name": "Hollow Knight Silksong",
+                        "status": "Completed",
+                        "bytes": 50,
+                        "completed": 1710000000,
+                    }
+                ]
+            }
+        }
+        mock_client = MagicMock()
+        mock_client.get.return_value = mock_resp
+        mock_client.__enter__.return_value = mock_client
+        with patch("otix_server.usenet_utils.httpx.Client", return_value=mock_client):
+            history = fetch_sabnzbd_history(cfg, limit=20)
+        self.assertEqual(len(history.items), 1)
+        self.assertEqual(history.items[0].filename, "Hollow Knight Silksong")
+        called_url = mock_client.get.call_args[0][0]
+        self.assertIn("mode=history", called_url)
+        self.assertIn("limit=20", called_url)
+
+    def test_parse_sabnzbd_download_directories(self):
+        from otix_server.usenet_utils import (
+            parse_sabnzbd_category_dir,
+            parse_sabnzbd_complete_dir,
+            resolve_provider_complete_path,
+        )
+
+        misc = {"config": {"misc": {"complete_dir": "/downloads/complete"}}}
+        categories = {
+            "config": {
+                "categories": [
+                    {"name": "*", "dir": ""},
+                    {"name": "games", "dir": "games"},
+                ]
+            }
+        }
+        self.assertEqual(parse_sabnzbd_complete_dir(misc), "/downloads/complete")
+        self.assertEqual(parse_sabnzbd_category_dir(categories, "games"), "games")
+        self.assertEqual(
+            resolve_provider_complete_path("/downloads/complete", "games"),
+            "/downloads/complete/games",
+        )
+        self.assertEqual(
+            resolve_provider_complete_path("/downloads/complete", "/category/absolute"),
+            "/category/absolute",
+        )
+
+    def test_link_sabnzbd_folder_as_game_library(self):
+        import tempfile
+        from pathlib import Path
+
+        from otix_server.config import AppConfig
+        from otix_server.download_library import link_sabnzbd_library
+        from otix_server.indexer import StorageIndexer
+
+        with tempfile.TemporaryDirectory() as tmp:
+            games = Path(tmp) / "complete" / "games"
+            games.mkdir(parents=True)
+            (games / "Elden.Ring.iso").write_bytes(b"iso")
+            cfg = AppConfig()
+            indexer = StorageIndexer([])
+
+            result = link_sabnzbd_library(
+                cfg,
+                indexer,
+                {
+                    "complete_dir": str(games.parent),
+                    "category_dir": "games",
+                    "library_path": str(games),
+                },
+            )
+
+            self.assertTrue(result["folder_linked"])
+            self.assertEqual(result["provider"], "sabnzbd")
+            self.assertEqual(result["remote_path"], str(games))
+            self.assertEqual(result["host_path"], str(games))
+            self.assertEqual(result["linked_library_path"], str(games.resolve()))
+            self.assertEqual(cfg.server.downloads_path, "./storage/downloads")
+            self.assertEqual(cfg.usenet.sabnzbd.complete_dir, str(games.parent))
+            self.assertEqual(len(cfg.game_libraries), 1)
+            self.assertEqual(indexer.files_by_id[next(iter(indexer.files_by_id))].filename, "Elden.Ring.iso")
+
+    def test_local_sabnzbd_path_mapping_overrides_provider_path(self):
+        import tempfile
+        from pathlib import Path
+
+        from otix_server.config import AppConfig
+        from otix_server.download_library import link_sabnzbd_library
+        from otix_server.indexer import StorageIndexer
+
+        with tempfile.TemporaryDirectory() as tmp:
+            shared = Path(tmp) / "mounted-complete"
+            shared.mkdir()
+            cfg = AppConfig()
+            cfg.usenet.sabnzbd.remote_path = "/downloads/inside-sab-container/games"
+            cfg.usenet.sabnzbd.host_path = str(shared)
+
+            result = link_sabnzbd_library(
+                cfg,
+                StorageIndexer([]),
+                {
+                    "complete_dir": "/downloads/inside-sab-container",
+                    "library_path": "/downloads/inside-sab-container/games",
+                },
+            )
+
+            self.assertTrue(result["folder_linked"])
+            self.assertEqual(result["provider"], "sabnzbd")
+            self.assertEqual(result["remote_path"], "/downloads/inside-sab-container/games")
+            self.assertEqual(result["host_path"], str(shared))
+            self.assertEqual(result["provider_complete_dir"], "/downloads/inside-sab-container")
+            self.assertEqual(result["linked_library_path"], str(shared.resolve()))
+            self.assertEqual(cfg.server.downloads_path, "./storage/downloads")
+
+    def test_multiple_sabnzbd_path_mappings_are_indexed(self):
+        import tempfile
+        from pathlib import Path
+
+        from otix_server.config import AppConfig
+        from otix_server.download_library import link_sabnzbd_library
+        from otix_server.indexer import StorageIndexer
+        from otix_server.usenet_types import DownloadPathMapping
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            host_a = root / "host-a"
+            host_b = root / "host-b"
+            host_a.mkdir()
+            host_b.mkdir()
+            (host_a / "Game.One.iso").write_bytes(b"one")
+            (host_b / "Game.Two.zip").write_bytes(b"two")
+
+            cfg = AppConfig()
+            cfg.usenet.sabnzbd.path_mappings = [
+                DownloadPathMapping(remote_path="/remote/a", host_path=str(host_a)),
+                DownloadPathMapping(remote_path="/remote/b", host_path=str(host_b)),
+            ]
+            indexer = StorageIndexer([])
+
+            result = link_sabnzbd_library(cfg, indexer)
+
+            self.assertTrue(result["folder_linked"])
+            self.assertEqual(len(result["path_mappings"]), 2)
+            self.assertTrue(all(item["linked"] for item in result["path_mappings"]))
+            self.assertEqual(
+                {item.filename for item in indexer.files_by_id.values()},
+                {"Game.One.iso", "Game.Two.zip"},
+            )
+            self.assertEqual(
+                [lib.name for lib in cfg.game_libraries],
+                ["SABnzbd Completed Games", "SABnzbd Completed Games (2)"],
+            )
+            self.assertEqual(cfg.server.downloads_path, "./storage/downloads")
 
 
 if __name__ == "__main__":

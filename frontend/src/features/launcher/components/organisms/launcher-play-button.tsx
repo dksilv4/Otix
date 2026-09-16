@@ -1,11 +1,12 @@
-import { useMemo } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { FolderOpen, Server, Pause, Play, X } from 'lucide-react'
-import { osName, formatBytes } from '@/lib/utils'
+import { formatBytes } from '@/lib/utils'
 import { isTitleMatch } from '@media'
 import { useLocalGame } from '@/features/launcher/data/game-queries'
 import { useInstallProgress } from '@/features/launcher/data/install-store'
 import { useServerGames, useRemoteDownloads } from '@/features/downloads/use-server-downloads'
+import { matchServerGameFile } from '@/features/downloads/server-availability'
+import { gameInstallCompatibility } from '@/features/downloads/os-compatibility'
 import { PlayGameButton } from '@/features/launcher/components/atoms/launcher-play-game-button'
 import { IncompatibleButton } from '@/features/launcher/components/atoms/launcher-incompatible-button'
 import { IsoInstallingProgress } from '@/features/launcher/components/atoms/launcher-iso-installing-progress'
@@ -49,25 +50,25 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
   }
 
   const isInstalled = !!g?.exePath && g?.platform !== 'iso' && !!g.data?.id
-  const isIncompatible = g?.platform === 'iso' && osName !== 'Windows'
   const mediaId = g?.otixMediaId || g?.data?.id
+  const installCompatibility = gameInstallCompatibility(g.data?.platforms)
+  const isIncompatible = g?.platform === 'iso' && !installCompatibility.compatible
 
   // ── Remote Download in Progress ──
   const activeTransfer = activeTransfers.find((t) => {
-    if (mediaId && t.mediaItemId === mediaId) return true
     if (g.title && isTitleMatch(t.gameTitle, g.title)) return true
     return false
   })
 
-  const activeInstall = useMemo(() => {
-    const activePath = g?.exePath?.toLowerCase()
-    if (!activePath) return null
-    return activeInstalls.find((i: { isoPath?: string }) => i.isoPath?.toLowerCase() === activePath)
-  }, [activeInstalls, g])
+  const activePath = g.exePath?.toLowerCase()
+  const activeInstall = activePath
+    ? activeInstalls.find((i: { isoPath?: string }) => i.isoPath?.toLowerCase() === activePath)
+    : null
 
   // ── Remote Transfer in progress UI ──
   if (activeTransfer) {
     const isDownloading = activeTransfer.status === 'downloading'
+    const speedMBps = activeTransfer.speedBytesPerSec / (1024 * 1024)
     return (
       <div className="flex items-center gap-3 bg-neutral-900/90 border border-cyan-500/30 px-4 py-2 rounded-xl backdrop-blur-md shadow-lg shadow-cyan-500/10">
         <div className="flex items-center gap-2.5">
@@ -80,8 +81,8 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
             <div className="flex items-center gap-2 text-xs font-bold text-white">
               <span>{isDownloading ? 'Streaming from Server' : 'Paused'}</span>
               <span className="text-cyan-400 tabular-nums font-mono">{activeTransfer.percentage}%</span>
-              {activeTransfer.speedMBps > 0 && isDownloading && (
-                <span className="text-[10px] text-neutral-400 font-mono">({activeTransfer.speedMBps.toFixed(1)} MB/s)</span>
+              {speedMBps > 0 && isDownloading && (
+                <span className="text-[10px] text-neutral-400 font-mono">({speedMBps.toFixed(1)} MB/s)</span>
               )}
             </div>
             <div className="w-36 h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-1">
@@ -130,7 +131,12 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
 
   // ── Incompatible (ISO on non-Windows) ──
   if (isIncompatible) {
-    return <IncompatibleButton />
+    return (
+      <IncompatibleButton
+        label={installCompatibility.button}
+        title={installCompatibility.title}
+      />
+    )
   }
 
   // ── ISO installing ──
@@ -150,24 +156,27 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
   }
 
   // ── Available on Remote Game Server ──
-  const matchingServerFile = serverGamesData?.files?.find((f) => {
-    if (mediaId && f.catalogItem?.id === mediaId) return true
-    if (f.catalogItem?.title && isTitleMatch(f.catalogItem.title, g.title)) return true
-    if (f.gameTitle && isTitleMatch(f.gameTitle, g.title)) return true
-    return false
-  })
+  const matchingServerFile = matchServerGameFile(serverGamesData?.files, mediaId, g.title)
 
   if (matchingServerFile) {
+    if (!installCompatibility.compatible) {
+      return (
+        <IncompatibleButton
+          label={installCompatibility.button}
+          title={installCompatibility.title}
+        />
+      )
+    }
     return (
       <button
         onClick={async () => {
           await startDownload(matchingServerFile, mediaId)
         }}
-        className="h-10 px-5 bg-cyan-400 hover:bg-cyan-300 text-neutral-950 font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:shadow-[0_0_30px_rgba(34,211,238,0.55)] active:scale-95 shrink-0"
-        title={`Download ${matchingServerFile.filename} (${formatBytes(matchingServerFile.filesize)})`}
+        className="h-10 px-5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_24px_rgba(22,163,74,0.35)] hover:shadow-[0_0_30px_rgba(22,163,74,0.55)] active:scale-95 shrink-0"
+        title={`On ${matchingServerFile.serverName}, not installed on this device (${formatBytes(matchingServerFile.filesize)})`}
       >
         <Server size={15} className="stroke-[2.5]" />
-        <span>Download from {matchingServerFile.serverName} ({formatBytes(matchingServerFile.filesize)})</span>
+        <span>Install</span>
       </button>
     )
   }

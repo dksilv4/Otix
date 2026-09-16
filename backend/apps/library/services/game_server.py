@@ -211,11 +211,21 @@ def usenet_search(server: UserGameServer, query: str) -> tuple[int, dict | list]
 
 
 def usenet_download(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "POST", "/api/v1/usenet/download", json=payload, timeout=10.0)
+    return usenet_proxy_request(server, "POST", "/api/v1/usenet/download", json=payload, timeout=60.0)
 
 
 def usenet_get_queue(server: UserGameServer) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "GET", "/api/v1/usenet/queue", timeout=4.0)
+
+
+def usenet_get_history(server: UserGameServer, limit: int = 50) -> tuple[int, dict | list]:
+    return usenet_proxy_request(
+        server,
+        "GET",
+        "/api/v1/usenet/history",
+        params={"limit": limit},
+        timeout=6.0,
+    )
 
 
 def usenet_delete_queue(server: UserGameServer, nzo_id: str) -> tuple[int, dict | list]:
@@ -254,6 +264,14 @@ def downloads_queue(server: UserGameServer, downloader: str | None = None) -> tu
     return usenet_proxy_request(server, "GET", "/api/v1/downloads/queue", params=params, timeout=4.0)
 
 
+def downloads_history(server: UserGameServer, downloader: str | None = None, limit: int = 50) -> tuple[int, dict | list]:
+    """Fetch completed and failed downloads from the downloader."""
+    params: dict = {"limit": limit}
+    if downloader:
+        params["downloader"] = downloader
+    return usenet_proxy_request(server, "GET", "/api/v1/downloads/history", params=params, timeout=6.0)
+
+
 def downloads_cancel(server: UserGameServer, download_id: str, downloader: str | None = None) -> tuple[int, dict | list]:
     """Cancel or remove an item from the download queue."""
     params = {"downloader": downloader} if downloader else None
@@ -280,6 +298,11 @@ def sabnzbd_pause_queue(server: UserGameServer) -> tuple[int, dict | list]:
 def sabnzbd_resume_queue(server: UserGameServer) -> tuple[int, dict | list]:
     """Resume SABnzbd queue on the game server node."""
     return usenet_proxy_request(server, "POST", "/api/v1/sabnzbd/resume", timeout=5.0)
+
+
+def scan_game_libraries(server: UserGameServer) -> tuple[int, dict | list]:
+    """Ask the game server to re-index installer files after a download completes."""
+    return usenet_proxy_request(server, "POST", "/api/v1/scan", timeout=30.0)
 
 
 

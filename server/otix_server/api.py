@@ -3,7 +3,17 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import List, Optional
-from fastapi import FastAPI, Depends, HTTPException, Header, Query, UploadFile, File, Response
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    Depends,
+    HTTPException,
+    Header,
+    Query,
+    UploadFile,
+    File,
+    Response,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from otix_server.config import AppConfig, LibraryConfig, load_config, save_config
@@ -22,12 +32,15 @@ from otix_server.explorer_utils import (
     is_safe_folder_name,
     sanitize_and_resolve_path,
 )
+from otix_server.download_library import link_sabnzbd_library, provider_library_status
 from otix_server.usenet_types import (
+    DownloadPathMapping,
     DownloadReleaseRequest,
     DownloadReleaseResponse,
     ProwlarrConfig,
     ProwlarrRelease,
     SabnzbdConfig,
+    ServerDownloadHistory,
     ServerDownloadQueue,
     UsenetConfig,
 )
@@ -42,6 +55,7 @@ from otix_server.usenet_utils import (
     sync_prowlarr_indexers,
     pause_sabnzbd_queue,
     resume_sabnzbd_queue,
+    fetch_sabnzbd_directories,
 )
 from otix_server.providers import (
     ProviderManager,
@@ -76,6 +90,14 @@ def get_app_config() -> AppConfig:
     return _config
 
 
+def nzo_id_from_download_result(res: object) -> str:
+    if isinstance(res, str):
+        return res.strip()
+    if isinstance(res, dict):
+        return str(res.get("nzo_id") or res.get("id") or "").strip()
+    return ""
+
+
 def get_indexer() -> StorageIndexer:
     global _indexer
     if _indexer is None:
@@ -83,6 +105,21 @@ def get_indexer() -> StorageIndexer:
         _indexer = StorageIndexer([lib.model_dump() for lib in cfg.game_libraries])
         _indexer.scan_all()
     return _indexer
+
+
+def get_indexer_without_scan() -> StorageIndexer:
+    global _indexer
+    if _indexer is None:
+        cfg = get_app_config()
+        _indexer = StorageIndexer([lib.model_dump() for lib in cfg.game_libraries])
+    return _indexer
+
+
+def refresh_indexer(indexer: StorageIndexer) -> None:
+    """Scan into a fresh map so existing results remain available meanwhile."""
+    refreshed = StorageIndexer(list(indexer.libraries))
+    refreshed.scan_all()
+    indexer.files_by_id = refreshed.files_by_id
 
 
 def get_saves_manager() -> SaveCloudManager:
@@ -617,12 +654,15 @@ async def modular_add_download(
             title=req.title,
             category=req.category,
             downloader_name=downloader,
+            protocol=req.protocol,
         )
         return DownloadReleaseResponse(
             status="queued",
-            nzo_id=res.get("nzo_id") or res.get("id"),
+            nzo_id=nzo_id_from_download_result(res),
             title=req.title,
         )
+    except ValueError as err:
+        raise HTTPException(status_code=422, detail=str(err))
     except Exception as err:
         raise HTTPException(status_code=502, detail=f"Failed to dispatch download: {err}")
 
@@ -635,6 +675,20 @@ async def modular_get_download_queue(
     """Fetch real-time download queue from the active downloader."""
     mgr = get_provider_manager()
     return mgr.get_queue(downloader_name=downloader)
+
+
+@app.get("/api/v1/downloads/history", response_model=ServerDownloadHistory)
+async def modular_get_download_history(
+    downloader: Optional[str] = Query(None, description="Optional downloader name"),
+    limit: int = Query(50, ge=1, le=200),
+    _: None = Depends(verify_token),
+):
+    """Fetch completed and failed downloads from the active downloader."""
+    mgr = get_provider_manager()
+    try:
+        return mgr.get_history(downloader_name=downloader, limit=limit)
+    except Exception as err:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch download history: {err}")
 
 
 @app.delete("/api/v1/downloads/queue/{download_id}")
@@ -656,6 +710,7 @@ async def get_usenet_config(_: None = Depends(verify_token)):
     """Get Usenet download client and indexer configuration."""
     cfg = get_app_config()
     u = cfg.usenet
+    library_status = provider_library_status(cfg)
     return {
         "enabled": u.enabled,
         "sabnzbd": {
@@ -668,9 +723,14 @@ async def get_usenet_config(_: None = Depends(verify_token)):
             "url_base": u.sabnzbd.url_base,
             "urlBase": u.sabnzbd.url_base,
             "category": u.sabnzbd.category,
+            "complete_dir": u.sabnzbd.complete_dir,
+            "local_complete_dir": u.sabnzbd.local_complete_dir,
+            "remote_path": u.sabnzbd.remote_path,
+            "host_path": u.sabnzbd.host_path,
             "configured": bool(u.sabnzbd.host and u.sabnzbd.api_key),
             "has_api_key": bool(u.sabnzbd.api_key),
             "hasApiKey": bool(u.sabnzbd.api_key),
+            **library_status,
         },
         "prowlarr": {
             "host": u.prowlarr.host,
@@ -696,7 +756,11 @@ class UpdateUsenetConfigRequest(BaseModel):
 
 
 @app.post("/api/v1/usenet/config")
-async def update_usenet_config(req: UpdateUsenetConfigRequest, _: None = Depends(verify_token)):
+async def update_usenet_config(
+    req: UpdateUsenetConfigRequest,
+    background_tasks: BackgroundTasks,
+    _: None = Depends(verify_token),
+):
     """Update Usenet download client and indexer settings."""
     cfg = get_app_config()
     if req.enabled is not None:
@@ -719,6 +783,36 @@ async def update_usenet_config(req: UpdateUsenetConfigRequest, _: None = Depends
             cfg.usenet.sabnzbd.url_base = str(base_val).strip()
         if "category" in s and s["category"] is not None:
             cfg.usenet.sabnzbd.category = str(s["category"]).strip()
+        path_mappings = (
+            s.get("path_mappings")
+            if "path_mappings" in s
+            else s.get("pathMappings")
+        )
+        if isinstance(path_mappings, list):
+            cfg.usenet.sabnzbd.path_mappings = [
+                DownloadPathMapping.model_validate(item)
+                for item in path_mappings
+                if isinstance(item, dict)
+            ]
+            cfg.usenet.sabnzbd.remote_path = ""
+            cfg.usenet.sabnzbd.host_path = ""
+            cfg.usenet.sabnzbd.local_complete_dir = ""
+        local_complete_dir = (
+            s.get("local_complete_dir")
+            if "local_complete_dir" in s
+            else s.get("localCompleteDir")
+        )
+        if path_mappings is None and local_complete_dir is not None:
+            cfg.usenet.sabnzbd.local_complete_dir = str(local_complete_dir).strip()
+            if "host_path" not in s and "hostPath" not in s:
+                cfg.usenet.sabnzbd.host_path = str(local_complete_dir).strip()
+        remote_path = s.get("remote_path") if "remote_path" in s else s.get("remotePath")
+        if path_mappings is None and remote_path is not None:
+            cfg.usenet.sabnzbd.remote_path = str(remote_path).strip()
+        host_path = s.get("host_path") if "host_path" in s else s.get("hostPath")
+        if path_mappings is None and host_path is not None:
+            cfg.usenet.sabnzbd.host_path = str(host_path).strip()
+            cfg.usenet.sabnzbd.local_complete_dir = ""
 
     if req.prowlarr:
         p = req.prowlarr
@@ -738,8 +832,20 @@ async def update_usenet_config(req: UpdateUsenetConfigRequest, _: None = Depends
         if "categories" in p and isinstance(p["categories"], list):
             cfg.usenet.prowlarr.categories = [int(c) for c in p["categories"]]
 
+    library_status = provider_library_status(cfg)
+    if req.sabnzbd:
+        discovered = fetch_sabnzbd_directories(cfg.usenet.sabnzbd)
+        indexer = get_indexer_without_scan()
+        library_status = link_sabnzbd_library(
+            cfg,
+            indexer,
+            discovered,
+            scan_index=False,
+        )
+        background_tasks.add_task(refresh_indexer, indexer)
+
     save_config(cfg)
-    return {"status": "saved"}
+    return {"status": "saved", "sabnzbd_library": library_status}
 
 
 class TestSabnzbdRequest(BaseModel):
@@ -808,12 +914,19 @@ async def start_usenet_download(
     """Queue a game NZB release into SABnzbd on the server (compatibility route)."""
     mgr = get_provider_manager()
     try:
-        res = mgr.download(download_url=req.download_url, title=req.title, category=req.category)
+        res = mgr.download(
+            download_url=req.download_url,
+            title=req.title,
+            category=req.category,
+            protocol=req.protocol,
+        )
         return DownloadReleaseResponse(
             status="queued",
-            nzo_id=res.get("nzo_id") or res.get("id"),
+            nzo_id=nzo_id_from_download_result(res),
             title=req.title,
         )
+    except ValueError as err:
+        raise HTTPException(status_code=422, detail=str(err))
     except Exception as err:
         raise HTTPException(status_code=502, detail=f"Failed to queue download: {err}")
 
@@ -823,6 +936,19 @@ async def get_usenet_queue(_: None = Depends(verify_token)):
     """Get real-time download queue from SABnzbd (compatibility route)."""
     mgr = get_provider_manager()
     return mgr.get_queue()
+
+
+@app.get("/api/v1/usenet/history", response_model=ServerDownloadHistory)
+async def get_usenet_history(
+    limit: int = Query(50, ge=1, le=200),
+    _: None = Depends(verify_token),
+):
+    """Get completed and failed SABnzbd downloads (compatibility route)."""
+    mgr = get_provider_manager()
+    try:
+        return mgr.get_history(limit=limit)
+    except Exception as err:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch download history: {err}")
 
 
 @app.delete("/api/v1/usenet/queue/{nzo_id}")

@@ -64,9 +64,9 @@ function DkDialog({ open, onOpenChange, title, description, children, className,
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-black/[0.2]" />
 
-        <div className="relative z-10">
+        <div className="relative z-10 flex h-full min-h-0 flex-col">
         {title && (
-          <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="mb-5 flex shrink-0 items-start justify-between gap-4">
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
               {description && <p className="text-xs text-white/60 leading-relaxed">{description}</p>}

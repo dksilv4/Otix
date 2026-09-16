@@ -5,12 +5,16 @@ import type {
   DownloadReleasePayload,
   ProwlarrIndexerItem,
   ProwlarrSyncResponse,
+  ServerDownloadHistoryData,
+  ServerDownloadHistoryItem,
   ServerDownloadQueueData,
   ServerProwlarrConfig,
   ServerProwlarrRelease,
   ServerSabnzbdConfig,
+  SaveServerUsenetConfigResponse,
   ServerUsenetConfig,
 } from './usenet-types';
+import { normalizeProwlarrRelease } from './usenet-utils';
 
 export const usenetKeys = {
   all: ['server-usenet'] as const,
@@ -18,6 +22,7 @@ export const usenetKeys = {
   search: (serverId?: number, query?: string) =>
     [...usenetKeys.all, serverId, 'search', query] as const,
   queue: (serverId?: number) => [...usenetKeys.all, serverId, 'queue'] as const,
+  history: (serverId?: number) => [...usenetKeys.all, serverId, 'history'] as const,
   prowlarrIndexers: (serverId?: number, protocol?: string) =>
     [...usenetKeys.all, serverId, 'prowlarr-indexers', protocol] as const,
 };
@@ -102,11 +107,14 @@ export function useServerUsenetSearch(serverId?: number, query?: string) {
     queryKey: usenetKeys.search(serverId, query),
     queryFn: async () => {
       if (!serverId || !query?.trim()) return [];
-      const { data } = await apiClient.get<ServerProwlarrRelease[]>(
+      const { data } = await apiClient.get<unknown>(
         `/library/servers/${serverId}/usenet/search`,
         { params: { query: query.trim() } }
       );
-      return data || [];
+      const rows = Array.isArray(data) ? data : [];
+      return rows
+        .map((row) => normalizeProwlarrRelease(row))
+        .filter((row): row is ServerProwlarrRelease => row != null);
     },
     enabled: !!serverId && !!query?.trim(),
     staleTime: 60_000,
@@ -127,7 +135,27 @@ export function useStartServerDownload(serverId?: number) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: usenetKeys.queue(serverId) });
+      queryClient.invalidateQueries({ queryKey: usenetKeys.history(serverId) });
     },
+  });
+}
+
+/** Hook to fetch persisted download history, synced from SABnzbd. */
+export function useServerUsenetHistory(serverId?: number, pollingIntervalMs: number = 10000) {
+  return useQuery<ServerDownloadHistoryItem[]>({
+    queryKey: usenetKeys.history(serverId),
+    queryFn: async () => {
+      if (!serverId) throw new Error('No server selected');
+      const { data } = await apiClient.get<ServerDownloadHistoryData>(
+        `/library/servers/${serverId}/usenet/history`,
+        { params: { limit: 50 } }
+      );
+      return Array.isArray(data?.items) ? data.items : [];
+    },
+    enabled: !!serverId,
+    refetchInterval: pollingIntervalMs,
+    refetchIntervalInBackground: true,
+    staleTime: 8000,
   });
 }
 
@@ -144,6 +172,7 @@ export function useServerUsenetQueue(serverId?: number, pollingIntervalMs: numbe
     },
     enabled: !!serverId,
     refetchInterval: pollingIntervalMs,
+    refetchIntervalInBackground: true,
     staleTime: 2000,
   });
 }
@@ -161,6 +190,7 @@ export function useCancelServerQueueDownload(serverId?: number) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: usenetKeys.queue(serverId) });
+      queryClient.invalidateQueries({ queryKey: usenetKeys.history(serverId) });
     },
   });
 }
@@ -171,7 +201,7 @@ export function useSaveServerSabnzbdConfig(serverId?: number) {
   return useMutation({
     mutationFn: async (sabnzbd: Partial<ServerSabnzbdConfig>) => {
       if (!serverId) throw new Error('No server selected');
-      const { data } = await apiClient.post(
+      const { data } = await apiClient.post<SaveServerUsenetConfigResponse>(
         `/library/servers/${serverId}/usenet/config`,
         { sabnzbd }
       );

@@ -11,6 +11,7 @@ from django.urls import path
 from apps.library.views import (
     GameServerDetailView,
     GameServerDownloadsAddView,
+    GameServerDownloadsHistoryView,
     GameServerDownloadsQueueView,
     GameServerDownloadsSearchView,
     GameServerExplorerBrowseView,
@@ -23,6 +24,7 @@ from apps.library.views import (
     GameServerProviderTestView,
     GameServerUsenetConfigView,
     GameServerUsenetDownloadView,
+    GameServerUsenetHistoryView,
     GameServerUsenetQueueView,
     GameServerUsenetSearchView,
     GameServerUsenetTestProwlarrView,
@@ -30,6 +32,7 @@ from apps.library.views import (
     GameServerProwlarrIndexersView,
     GameServerProwlarrSyncView,
     GameServerSabnzbdQueueControlView,
+    GameServerScanView,
     InstalledGamesView,
     LibraryTabView,
     PlexLibraryView,
@@ -59,6 +62,7 @@ urlpatterns = [
     path("servers/<int:server_id>/downloads/add", GameServerDownloadsAddView.as_view(), name="library-server-downloads-add"),
     path("servers/<int:server_id>/downloads/queue", GameServerDownloadsQueueView.as_view(), name="library-server-downloads-queue"),
     path("servers/<int:server_id>/downloads/queue/<str:download_id>", GameServerDownloadsQueueView.as_view(), name="library-server-downloads-queue-item"),
+    path("servers/<int:server_id>/downloads/history", GameServerDownloadsHistoryView.as_view(), name="library-server-downloads-history"),
     # Backward compatibility aliases for Usenet
     path("servers/<int:server_id>/usenet/config", GameServerUsenetConfigView.as_view(), name="library-server-usenet-config"),
     path("servers/<int:server_id>/usenet/test-sabnzbd", GameServerUsenetTestSabnzbdView.as_view(), name="library-server-usenet-test-sabnzbd"),
@@ -67,10 +71,12 @@ urlpatterns = [
     path("servers/<int:server_id>/usenet/download", GameServerUsenetDownloadView.as_view(), name="library-server-usenet-download"),
     path("servers/<int:server_id>/usenet/queue", GameServerUsenetQueueView.as_view(), name="library-server-usenet-queue"),
     path("servers/<int:server_id>/usenet/queue/<str:nzo_id>", GameServerUsenetQueueView.as_view(), name="library-server-usenet-queue-item"),
+    path("servers/<int:server_id>/usenet/history", GameServerUsenetHistoryView.as_view(), name="library-server-usenet-history"),
     # Prowlarr & SABnzbd specific routes
     path("servers/<int:server_id>/prowlarr/indexers", GameServerProwlarrIndexersView.as_view(), name="library-server-prowlarr-indexers"),
     path("servers/<int:server_id>/prowlarr/sync", GameServerProwlarrSyncView.as_view(), name="library-server-prowlarr-sync"),
     path("servers/<int:server_id>/sabnzbd/queue/<str:action>", GameServerSabnzbdQueueControlView.as_view(), name="library-server-sabnzbd-queue-control"),
+    path("servers/<int:server_id>/scan", GameServerScanView.as_view(), name="library-server-scan"),
     path("server-games", GameServerFilesView.as_view(), name="library-server-games"),
 
 

@@ -47,6 +47,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { id: 'desktop', label: 'Desktop', icon: Monitor, desktop: true, requiresAuth: false, group: 'preferences' },
   { id: 'launcher', label: 'Launcher', icon: Gamepad2, desktop: false, requiresAuth: false, group: 'preferences' },
+  { id: 'downloads', label: 'Downloads', icon: Download, desktop: false, requiresAuth: false, group: 'preferences' },
   { id: 'library', label: 'Library', icon: HardDrive, desktop: true, requiresAuth: false, group: 'preferences' },
   { id: 'integrations', label: 'Integrations', icon: Link2, desktop: false, requiresAuth: false, group: 'preferences' },
   { id: 'plugins', label: 'Plugins', icon: Puzzle, desktop: true, requiresAuth: false, group: 'preferences' },

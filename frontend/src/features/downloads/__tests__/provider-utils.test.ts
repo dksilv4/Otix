@@ -7,6 +7,9 @@ import {
   normalizeQueueSpeed,
   normalizeQueueEta,
   isProviderHealthy,
+  hasConfiguredDownloader,
+  inferReleaseProtocol,
+  releaseQueueBlockReason,
 } from '../provider-utils';
 import type { ProviderInfo } from '../provider-types';
 
@@ -15,13 +18,13 @@ describe('Modular Provider Utilities', () => {
     it('returns appropriate badge metadata for Usenet', () => {
       const badge = getProtocolBadgeInfo('usenet');
       expect(badge.label).toBe('USENET');
-      expect(badge.text).toContain('amber');
+      expect(badge.text).toContain('blue');
     });
 
     it('returns appropriate badge metadata for Torrent', () => {
       const badge = getProtocolBadgeInfo('torrent');
       expect(badge.label).toBe('TORRENT');
-      expect(badge.text).toContain('cyan');
+      expect(badge.text).toContain('red');
     });
 
     it('returns appropriate badge metadata for Direct/HTTP', () => {
@@ -133,5 +136,49 @@ describe('Modular Provider Utilities', () => {
       expect(isProviderHealthy(null)).toBe(false);
       expect(isProviderHealthy(undefined)).toBe(false);
     });
+  });
+});
+
+describe('downloader protocol gating', () => {
+  const sabnzbd: ProviderInfo = {
+    name: 'sabnzbd',
+    display_name: 'SABnzbd',
+    provider_type: 'downloader',
+    protocol: 'usenet',
+    is_active: true,
+    configured: true,
+  };
+
+  it('does not treat SABnzbd as a torrent client', () => {
+    expect(hasConfiguredDownloader([sabnzbd], 'torrent')).toBe(false);
+    expect(hasConfiguredDownloader([sabnzbd], 'usenet')).toBe(true);
+  });
+
+  it('reads isConfigured from the otix-server payload shape', () => {
+    const raw = {
+      name: 'SABnzbd',
+      protocol: 'usenet',
+      isConfigured: true,
+    } as unknown as ProviderInfo;
+    expect(hasConfiguredDownloader([raw], 'usenet')).toBe(true);
+  });
+
+  it('blocks torrent rows until a torrent downloader exists', () => {
+    expect(
+      releaseQueueBlockReason(
+        { protocol: 'torrent', download_url: 'magnet:?xt=urn:btih:abc' },
+        { torrentConfigured: false, usenetConfigured: true },
+      ),
+    ).toBe('No torrent client is configured on this server');
+    expect(
+      releaseQueueBlockReason(
+        { protocol: 'usenet', download_url: 'https://indexer.example/a.nzb' },
+        { torrentConfigured: false, usenetConfigured: true },
+      ),
+    ).toBeNull();
+  });
+
+  it('infers torrent from magnet URLs even if protocol is missing', () => {
+    expect(inferReleaseProtocol({ download_url: 'magnet:?xt=urn:btih:abc' })).toBe('torrent');
   });
 });

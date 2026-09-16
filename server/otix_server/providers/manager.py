@@ -9,8 +9,17 @@ from otix_server.providers.base import (
     BaseSearchProvider,
     ProviderInfo,
 )
+
+
+def infer_download_protocol(download_url: str) -> str:
+    """Guess usenet vs torrent from the grab URL when the indexer hint is missing."""
+    url = (download_url or "").strip().lower()
+    if url.startswith("magnet:") or url.endswith(".torrent") or ".torrent?" in url:
+        return "torrent"
+    return "usenet"
 from otix_server.usenet_types import (
     ProwlarrRelease,
+    ServerDownloadHistory,
     ServerDownloadQueue,
 )
 
@@ -84,17 +93,50 @@ class ProviderManager:
         title: str,
         category: str = "games",
         downloader_name: Optional[str] = None,
+        protocol: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Send a download task to the active or specified download client."""
-        downloader = self.get_downloader(downloader_name)
-        if not downloader.is_configured():
-            raise ValueError(f"Downloader '{downloader.name}' is not configured or missing API key")
-        return downloader.add_download(download_url, title, category)
+        """Send a download task to a client that supports this release protocol."""
+        inferred = (protocol or infer_download_protocol(download_url)).lower()
+        if downloader_name:
+            downloader = self.get_downloader(downloader_name)
+            if not downloader.is_configured():
+                raise ValueError(f"Downloader '{downloader.name}' is not configured or missing API key")
+            downloader_protocol = (downloader.protocol or "").lower()
+            if downloader_protocol not in (inferred, "multi"):
+                raise ValueError(f"{downloader.name} cannot download {inferred} releases")
+            return downloader.add_download(download_url, title, category)
+
+        matches = self._configured_downloaders_for(inferred)
+        if not matches:
+            if inferred == "torrent":
+                raise ValueError(
+                    "No torrent download client is configured. Add qBittorrent, Transmission, or another torrent client."
+                )
+            raise ValueError("No Usenet download client is configured.")
+        return matches[0].add_download(download_url, title, category)
+
+    def _configured_downloaders_for(self, protocol: str) -> List[BaseDownloader]:
+        wanted = (protocol or "").lower()
+        matches: List[BaseDownloader] = []
+        for downloader in self._downloaders.values():
+            if not downloader.is_configured():
+                continue
+            proto = (downloader.protocol or "").lower()
+            if proto == wanted or proto == "multi":
+                matches.append(downloader)
+        return matches
 
     def get_queue(self, downloader_name: Optional[str] = None) -> ServerDownloadQueue:
         """Fetch live download queue from the active or specified downloader."""
         downloader = self.get_downloader(downloader_name)
         return downloader.get_queue()
+
+    def get_history(
+        self, downloader_name: Optional[str] = None, limit: int = 50
+    ) -> ServerDownloadHistory:
+        """Fetch completed and failed downloads from the active or specified downloader."""
+        downloader = self.get_downloader(downloader_name)
+        return downloader.get_history(limit=limit)
 
     def delete_download(
         self, download_id: str, downloader_name: Optional[str] = None

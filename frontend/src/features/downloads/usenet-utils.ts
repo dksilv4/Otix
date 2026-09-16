@@ -51,6 +51,36 @@ export function cleanReleaseTitle(raw: string): string {
   return spaceCleaned.trim();
 }
 
+/** Map a Prowlarr release from either snake_case (API) or camelCase (axios interceptor). */
+export function normalizeProwlarrRelease(raw: unknown): ServerProwlarrRelease | null {
+  if (!raw || typeof raw !== 'object') return null
+  const item = raw as Record<string, unknown>
+  const title = String(item.title ?? '').trim()
+  if (!title) return null
+
+  const downloadUrl = String(item.downloadUrl ?? item.download_url ?? '')
+  const infoUrl = item.infoUrl ?? item.info_url
+  const publishDate = item.publishDate ?? item.publish_date
+  const ageDays = item.ageDays ?? item.age_days
+
+  return {
+    guid: String(item.guid ?? item.id ?? title),
+    title,
+    size: Number(item.size ?? 0) || 0,
+    download_url: downloadUrl,
+    info_url: typeof infoUrl === 'string' ? infoUrl : null,
+    publish_date: typeof publishDate === 'string' ? publishDate : null,
+    indexer: String(item.indexer ?? 'Indexer'),
+    protocol: String(item.protocol ?? 'usenet'),
+    age_days: typeof ageDays === 'number' ? ageDays : ageDays != null ? Number(ageDays) || null : null,
+    seeders: typeof item.seeders === 'number' ? item.seeders : null,
+  }
+}
+
+export function releaseDownloadUrl(release: ServerProwlarrRelease): string {
+  return release.download_url || ''
+}
+
 /** Rank and sort search results by preferred repackers, scene tags, and size. */
 export function sortReleasesByQuality(
   releases: ServerProwlarrRelease[],

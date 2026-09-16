@@ -26,14 +26,31 @@ export function useGameServers() {
   })
 }
 
-export function useServerGames() {
+export function useServerGames(options?: { refetchInterval?: number | false }) {
   return useQuery<ServerGamesResponse>({
     queryKey: serverKeys.games(),
     queryFn: async () => {
       const { data } = await apiClient.get<ServerGamesResponse>('/library/server-games')
       return data || { servers: [], files: [] }
     },
-    staleTime: 60_000,
+    staleTime: 15_000,
+    refetchInterval: options?.refetchInterval,
+  })
+}
+
+export function useScanGameServer(serverId?: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      if (!serverId) throw new Error('No server selected')
+      const { data } = await apiClient.post<{ status?: string; totalFiles?: number }>(
+        `/library/servers/${serverId}/scan`
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: serverKeys.games() })
+    },
   })
 }
 

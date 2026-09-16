@@ -11,7 +11,7 @@ import { RemoteDownloadCard } from '../molecules/remote-download-card';
 import { ServerFileExplorer } from '../molecules/server-file-explorer';
 import { ServerUsenetSettingsModal } from '../molecules/server-usenet-settings-modal';
 import { ServerGameSearchModal } from '../molecules/server-game-search-modal';
-import { useServerUsenetQueue, useCancelServerQueueDownload } from '../use-server-usenet';
+import { useServerUsenetHistory, useServerUsenetQueue, useCancelServerQueueDownload } from '../use-server-usenet';
 import { DkButton } from '@/old-features/ui/atoms/button';
 import { cn, formatBytes } from '@/lib/utils';
 import { isDesktop } from '@/lib/desktop/api';
@@ -39,7 +39,10 @@ export function DownloadQueuePage() {
   const activeServer = serverData?.servers?.[0];
   const activeServerId = activeServer?.id;
   const { data: usenetQueueData, refetch: refetchUsenetQueue } = useServerUsenetQueue(activeServerId);
+  const { data: usenetHistory = [] } = useServerUsenetHistory(activeServerId);
   const cancelUsenetDownloadMutation = useCancelServerQueueDownload(activeServerId);
+  const activeUsenetIds = new Set((usenetQueueData?.items ?? []).map((item) => item.nzo_id));
+  const usenetHistoryItems = usenetHistory.filter((item) => !activeUsenetIds.has(item.nzo_id));
 
   const [gamesDownloadPath, setGamesDownloadPath] = useState<string>(() => {
 
@@ -306,6 +309,33 @@ export function DownloadQueuePage() {
                       <span>Status: {item.status}</span>
                       {item.time_left && <span>ETA: {item.time_left}</span>}
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {hasGameServers && usenetHistoryItems.length > 0 && (
+            <div className="mb-5 p-4 rounded-2xl bg-card border border-border space-y-3">
+              <h3 className="text-xs font-bold text-foreground">Download History</h3>
+              <div className="space-y-2">
+                {usenetHistoryItems.map((item) => (
+                  <div
+                    key={item.nzo_id || item.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/30 border border-border"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground truncate">{item.title}</p>
+                      <p className="text-[10px] text-muted-foreground capitalize">
+                        {item.status}
+                        {item.size_bytes ? ` · ${formatBytes(item.size_bytes)}` : ''}
+                      </p>
+                    </div>
+                    {item.status === 'failed' && item.error_message ? (
+                      <p className="text-[10px] text-rose-400 max-w-[40%] truncate" title={item.error_message}>
+                        {item.error_message}
+                      </p>
+                    ) : null}
                   </div>
                 ))}
               </div>

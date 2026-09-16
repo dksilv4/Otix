@@ -231,14 +231,14 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
               {isAnime ? (
                 <Badge
                   variant="secondary"
-                  className="bg-pink-500 text-white gap-1 px-2.5 py-1 text-xs font-semibold border-0 shadow-sm"
+                  className="bg-pink-500/80 text-white gap-1 px-2.5 py-1 text-xs font-medium border-0"
                 >
                   <Sparkles className="h-3 w-3" /> Anime
                 </Badge>
               ) : isKdrama ? (
                 <Badge
                   variant="secondary"
-                  className="bg-rose-500 text-white gap-1 px-2.5 py-1 text-xs font-semibold border-0 shadow-sm"
+                  className="bg-rose-500/80 text-white gap-1 px-2.5 py-1 text-xs font-medium border-0"
                 >
                   <Heart className="h-3 w-3" /> K-Drama
                 </Badge>
@@ -351,7 +351,7 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
               )}
 
               {/* ── Secondary Icon-Based Interaction Cluster ── */}
-              <div className="flex items-center gap-1 rounded-full bg-black/45 p-1 border border-white/[0.12] backdrop-blur-xl shadow-lg">
+              <div className="flex items-center gap-1 rounded-full bg-black/45 p-1 backdrop-blur-xl shadow-lg">
                 {/* Watchlist / Wishlist Button */}
                 {isAuthenticated && (
                   <button

@@ -1,17 +1,54 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Clock, Download, Loader2, RefreshCw, CheckCircle2, AlertCircle, X } from 'lucide-react'
 import { useDownloads } from '@/features/downloads/use-downloads'
+import { useGameServers } from '@/features/downloads/use-server-downloads'
+import {
+  useServerUsenetHistory,
+  useServerUsenetQueue,
+  useCancelServerQueueDownload,
+} from '@/features/downloads/use-server-usenet'
 import { useAuth } from '@/lib/providers/auth'
 import { ActivityModuleSection } from './activity-module-section'
 import { formatBytes } from '@/lib/utils'
+import type { ServerDownloadHistoryItem } from '@/features/downloads/usenet-types'
 
 const FIFTEEN_MIN = 15 * 60 * 1000
+const HISTORY_LIMIT = 12
+
+function historyStatusIcon(status: string) {
+  if (status === 'completed') return <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+  if (status === 'failed') return <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+  if (status === 'processing') return <RefreshCw className="h-4 w-4 text-purple-400 animate-spin shrink-0" />
+  if (status === 'paused') return <Clock className="h-4 w-4 text-amber-400 shrink-0" />
+  return <Clock className="h-4 w-4 text-white/35 shrink-0" />
+}
+
+function historyMeta(item: ServerDownloadHistoryItem) {
+  const parts: string[] = [(item.protocol || 'usenet').toUpperCase(), item.status]
+  if (item.size_bytes) parts.push(formatBytes(item.size_bytes))
+  return parts.join(' · ')
+}
 
 /** Molecule showing active and recent downloads with progress bars. */
 export function ActivityModuleDownloads() {
   const { user: currentUser } = useAuth()
   const { downloads, cancelDownload } = useDownloads(currentUser?.id)
+  const { data: gameServers = [] } = useGameServers()
+  const activeServer = gameServers.find((s) => s.is_active) || gameServers[0]
+  const { data: serverQueue } = useServerUsenetQueue(activeServer?.id)
+  const { data: serverHistory = [] } = useServerUsenetHistory(activeServer?.id)
+  const cancelServerQueue = useCancelServerQueueDownload(activeServer?.id)
   const [cutoff] = useState(() => Date.now() - FIFTEEN_MIN)
+
+  const serverItems = serverQueue?.items ?? []
+  const activeNzoIds = useMemo(() => new Set(serverItems.map((item) => item.nzo_id)), [serverItems])
+  const historyItems = useMemo(
+    () =>
+      serverHistory
+        .filter((item) => !activeNzoIds.has(item.nzo_id) && item.status !== 'queued' && item.status !== 'downloading')
+        .slice(0, HISTORY_LIMIT),
+    [serverHistory, activeNzoIds],
+  )
 
   const activeAndRecentDownloads = downloads
     .filter(d => {
@@ -30,15 +67,21 @@ export function ActivityModuleDownloads() {
       return getProgress(b) - getProgress(a)
     })
 
-  const hasDownloads = activeAndRecentDownloads.length > 0
+  const hasDownloads =
+    activeAndRecentDownloads.length > 0 || serverItems.length > 0 || historyItems.length > 0
   if (!hasDownloads) return null
+
+  const serverBusy = serverItems.some((item) => {
+    const status = (item.status || '').toLowerCase()
+    return status.includes('download') || status.includes('queued') || status.includes('grab')
+  })
 
   return (
     <ActivityModuleSection className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <div className="relative flex items-center justify-center">
             <Download className="h-4 w-4 text-blue-400" />
-            {activeAndRecentDownloads.some(d => d.status === 'downloading') && (
+            {(activeAndRecentDownloads.some(d => d.status === 'downloading') || serverBusy) && (
               <span className="absolute -top-1 -right-1 flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full rounded-full opacity-75 bg-blue-400 animate-ping" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
@@ -48,6 +91,74 @@ export function ActivityModuleDownloads() {
           <span className="text-xs font-semibold uppercase tracking-wider text-white/50">Downloads</span>
         </div>
         <div className="space-y-4">
+          {serverItems.map((item) => {
+            const pct = Math.min(100, Math.max(0, item.percentage ?? 0))
+            const status = (item.status || 'Downloading').toLowerCase()
+            const isPaused = status.includes('pause')
+
+            return (
+              <div key={item.nzo_id} className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  {isPaused ? (
+                    <Clock className="h-4 w-4 text-amber-400 shrink-0" />
+                  ) : (
+                    <Loader2 className="h-4 w-4 text-blue-400 animate-spin shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate text-white/90" title={item.filename}>
+                      {item.filename || 'SABnzbd download'}
+                    </p>
+                    <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-white/35">
+                      <span className="uppercase tracking-wider text-[9px] font-bold text-blue-300/70">Usenet</span>
+                      {item.size_mb ? formatBytes(item.size_mb * 1024 * 1024) : null}
+                      {item.speed && item.speed !== '0 B/s' ? <span>· {item.speed}</span> : null}
+                    </p>
+                  </div>
+                  <div className="shrink-0 flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => cancelServerQueue.mutate(item.nzo_id)}
+                      className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-white/30 hover:text-red-400 hover:bg-red-400/10"
+                      title="Cancel Download"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-1.5 rounded-full overflow-hidden flex-1 bg-white/[0.06]">
+                    <div
+                      className="h-full rounded-full transition-all duration-700 bg-gradient-to-r from-blue-500 to-indigo-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-mono tabular-nums font-medium text-white/40">{pct.toFixed(0)}%</span>
+                </div>
+              </div>
+            )
+          })}
+
+          {historyItems.map((item) => (
+            <div key={item.nzo_id || item.id} className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                {historyStatusIcon(item.status)}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate text-white/90" title={item.title}>
+                    {item.title}
+                  </p>
+                  <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-white/35">
+                    {historyMeta(item)}
+                  </p>
+                </div>
+              </div>
+              {item.status === 'failed' && item.error_message ? (
+                <p className="text-[11px] rounded-xl px-3 py-2 leading-relaxed break-words font-medium text-rose-400/80 bg-rose-400/5">
+                  {item.error_message}
+                </p>
+              ) : null}
+            </div>
+          ))}
+
           {activeAndRecentDownloads.map(d => {
             const isActive = d.status === 'queued' || d.status === 'downloading' || d.status === 'processing'
             const pct = d.percentage ?? 0

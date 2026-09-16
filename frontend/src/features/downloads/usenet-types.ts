@@ -1,14 +1,59 @@
 /** Dedicated TypeScript types for Usenet (SABnzbd + Prowlarr) integration. */
 
+export interface DownloadProviderPathMapping {
+  remote_path?: string;
+  remotePath?: string;
+  host_path?: string;
+  hostPath?: string;
+  linked?: boolean;
+  linkedLibraryPath?: string;
+  error?: string;
+}
+
 export interface ServerSabnzbdConfig {
   host: string;
   port: number;
   api_key: string;
+  apiKey?: string;
   use_ssl: boolean;
+  useSsl?: boolean;
   url_base?: string;
+  urlBase?: string;
   category: string;
+  complete_dir?: string;
+  completeDir?: string;
+  local_complete_dir?: string;
+  localCompleteDir?: string;
+  remote_path?: string;
+  remotePath?: string;
+  host_path?: string;
+  hostPath?: string;
+  path_mappings?: DownloadProviderPathMapping[];
+  pathMappings?: DownloadProviderPathMapping[];
+  providerCompleteDir?: string;
+  linkedLibraryPath?: string;
+  folderLinked?: boolean;
+  folderError?: string;
   configured?: boolean;
   has_api_key?: boolean;
+  hasApiKey?: boolean;
+}
+
+export interface SabnzbdLibraryStatus {
+  provider: 'sabnzbd';
+  folderLinked: boolean;
+  remotePath: string;
+  hostPath: string;
+  pathMappings: DownloadProviderPathMapping[];
+  providerCompleteDir: string;
+  localCompleteDir: string;
+  linkedLibraryPath: string;
+  folderError: string;
+}
+
+export interface SaveServerUsenetConfigResponse {
+  status: string;
+  sabnzbdLibrary?: SabnzbdLibraryStatus;
 }
 
 export interface ServerProwlarrConfig {
@@ -59,10 +104,32 @@ export interface ServerDownloadQueueData {
   items: ServerSabnzbdQueueItem[];
 }
 
+export interface ServerDownloadHistoryItem {
+  id: number;
+  nzo_id: string;
+  title: string;
+  protocol: string;
+  status: string;
+  percentage: number;
+  size_bytes: number;
+  error_message?: string | null;
+  media_item_id?: string | null;
+  completed_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ServerDownloadHistoryData {
+  items: ServerDownloadHistoryItem[];
+}
+
 export interface DownloadReleasePayload {
   title: string;
   download_url: string;
   category?: string | null;
+  protocol?: string | null;
+  media_item_id?: string | number | null;
+  size?: number | null;
 }
 
 export interface ConnectionTestResult {

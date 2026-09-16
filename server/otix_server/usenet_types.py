@@ -4,6 +4,11 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+class DownloadPathMapping(BaseModel):
+    remote_path: str = ""
+    host_path: str = ""
+
+
 class SabnzbdConfig(BaseModel):
     host: str = "127.0.0.1"
     port: int = 8080
@@ -11,6 +16,12 @@ class SabnzbdConfig(BaseModel):
     api_key: str = ""
     use_ssl: bool = False
     category: str = "games"
+    complete_dir: str = ""
+    local_complete_dir: str = ""
+    remote_path: str = ""
+    host_path: str = ""
+    linked_library_path: str = ""
+    path_mappings: List[DownloadPathMapping] = Field(default_factory=list)
 
     @property
     def clean_url_base(self) -> str:
@@ -69,10 +80,26 @@ class ServerDownloadQueue(BaseModel):
     items: List[SabnzbdQueueItem] = Field(default_factory=list)
 
 
+class SabnzbdHistoryItem(BaseModel):
+    nzo_id: str
+    filename: str
+    status: str = "Completed"
+    size_bytes: int = 0
+    fail_message: str = ""
+    completed_at: Optional[str] = None
+    category: str = ""
+    storage: Optional[str] = None
+
+
+class ServerDownloadHistory(BaseModel):
+    items: List[SabnzbdHistoryItem] = Field(default_factory=list)
+
+
 class DownloadReleaseRequest(BaseModel):
     title: str
     download_url: str
     category: Optional[str] = None
+    protocol: Optional[str] = None
 
 
 class DownloadReleaseResponse(BaseModel):

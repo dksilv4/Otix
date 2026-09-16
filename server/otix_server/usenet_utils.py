@@ -4,11 +4,14 @@ import httpx
 import re
 from typing import Any, List, Optional
 import urllib.parse
+from datetime import datetime, timezone
 from otix_server.usenet_types import (
     ProwlarrConfig,
     ProwlarrRelease,
     SabnzbdConfig,
+    SabnzbdHistoryItem,
     SabnzbdQueueItem,
+    ServerDownloadHistory,
     ServerDownloadQueue,
 )
 
@@ -113,8 +116,7 @@ def build_sabnzbd_url(cfg: SabnzbdConfig, mode: str, extra_params: Optional[dict
     if extra_params:
         params.update(extra_params)
 
-    query_str = "&".join(f"{k}={v}" for k, v in params.items())
-    return f"{base}?{query_str}"
+    return f"{base}?{urllib.parse.urlencode(params)}"
 
 
 def build_prowlarr_base_url(cfg: ProwlarrConfig) -> str:
@@ -282,7 +284,7 @@ def send_nzb_to_sabnzbd(
         },
     )
 
-    with httpx.Client(timeout=8.0) as client:
+    with httpx.Client(timeout=45.0) as client:
         resp = client.get(url)
         if resp.status_code != 200:
             raise RuntimeError(f"SABnzbd returned HTTP {resp.status_code}")
@@ -346,6 +348,70 @@ def fetch_sabnzbd_queue(cfg: SabnzbdConfig) -> ServerDownloadQueue:
         return ServerDownloadQueue(status=f"Error: {exc}")
 
 
+def _history_completed_at(value: Any) -> Optional[str]:
+    if value in (None, "", 0, "0"):
+        return None
+    try:
+        ts = int(float(value))
+        if ts <= 0:
+            return None
+        return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+    except (TypeError, ValueError, OSError):
+        text = str(value).strip()
+        return text or None
+
+
+def _history_size_bytes(slot: dict) -> int:
+    raw = slot.get("bytes")
+    if raw in (None, ""):
+        raw = slot.get("sizebytes")
+    try:
+        return max(0, int(float(raw)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def parse_sabnzbd_history_slot(slot: dict) -> Optional[SabnzbdHistoryItem]:
+    if not isinstance(slot, dict):
+        return None
+    nzo_id = str(slot.get("nzo_id") or "").strip()
+    filename = str(slot.get("name") or slot.get("nzb_name") or "").strip()
+    if not nzo_id or not filename:
+        return None
+    return SabnzbdHistoryItem(
+        nzo_id=nzo_id,
+        filename=filename,
+        status=str(slot.get("status") or "Completed"),
+        size_bytes=_history_size_bytes(slot),
+        fail_message=str(slot.get("fail_message") or ""),
+        completed_at=_history_completed_at(slot.get("completed")),
+        category=str(slot.get("category") or ""),
+        storage=str(slot.get("storage") or "") or None,
+    )
+
+
+def fetch_sabnzbd_history(cfg: SabnzbdConfig, limit: int = 50) -> ServerDownloadHistory:
+    """Fetch completed / failed SABnzbd history slots."""
+    url = build_sabnzbd_url(cfg, "history", {"limit": str(max(1, min(int(limit), 200)))})
+    try:
+        with httpx.Client(timeout=6.0) as client:
+            resp = client.get(url)
+            if resp.status_code != 200:
+                return ServerDownloadHistory()
+
+            data = resp.json()
+            history_obj = data.get("history") or {}
+            slots = history_obj.get("slots") or []
+            items: List[SabnzbdHistoryItem] = []
+            for slot in slots:
+                parsed = parse_sabnzbd_history_slot(slot)
+                if parsed:
+                    items.append(parsed)
+            return ServerDownloadHistory(items=items)
+    except Exception:
+        return ServerDownloadHistory()
+
+
 def delete_sabnzbd_slot(cfg: SabnzbdConfig, nzo_id: str) -> bool:
     """Cancel and remove a download slot from SABnzbd queue."""
     url = build_sabnzbd_url(cfg, "queue", {"name": "delete", "value": nzo_id})
@@ -380,6 +446,93 @@ def resume_sabnzbd_queue(cfg: SabnzbdConfig) -> bool:
             return resp.status_code == 200
     except Exception:
         return False
+
+
+def _config_section_value(section: object, key: str) -> str:
+    if isinstance(section, dict):
+        raw = section.get(key)
+        if isinstance(raw, dict):
+            raw = raw.get("value")
+        return str(raw or "").strip()
+    if isinstance(section, list):
+        for item in section:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or item.get("keyword") or "").strip()
+            if name == key:
+                raw = item.get("value") if "value" in item else item.get("dir")
+                return str(raw or "").strip()
+    return ""
+
+
+def parse_sabnzbd_complete_dir(payload: object) -> str:
+    """Read complete_dir from a SABnzbd get_config payload."""
+    if not isinstance(payload, dict):
+        return ""
+    config = payload.get("config") if isinstance(payload.get("config"), dict) else payload
+    misc = config.get("misc") if isinstance(config, dict) else None
+    return _config_section_value(misc, "complete_dir") or _config_section_value(misc, "completedir")
+
+
+def parse_sabnzbd_category_dir(payload: object, category: str) -> str:
+    """Read a category's relative output dir from a SABnzbd get_config payload."""
+    wanted = (category or "").strip().lower()
+    if not wanted or not isinstance(payload, dict):
+        return ""
+    config = payload.get("config") if isinstance(payload.get("config"), dict) else payload
+    categories = config.get("categories") if isinstance(config, dict) else None
+    if not isinstance(categories, list):
+        return ""
+    for item in categories:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip().lower()
+        if name == wanted:
+            return str(item.get("dir") or item.get("value") or "").strip()
+    return ""
+
+
+def resolve_provider_complete_path(complete_dir: str, category_subdir: str = "") -> str:
+    """Resolve the provider-side category output without local filesystem checks."""
+    base = (complete_dir or "").strip()
+    if not base:
+        return ""
+    from pathlib import Path
+
+    root = Path(base).expanduser()
+    category = (category_subdir or "").strip()
+    if category and category not in (".", "*"):
+        category_path = Path(category).expanduser()
+        if category_path.is_absolute():
+            return str(category_path)
+        return str(root / category_path)
+    return str(root)
+
+
+def fetch_sabnzbd_directories(cfg: SabnzbdConfig) -> dict:
+    """Ask SABnzbd for its complete folder and optional category subfolder."""
+    empty = {"complete_dir": "", "category_dir": "", "library_path": ""}
+    if not (cfg.api_key or "").strip():
+        return empty
+    try:
+        with httpx.Client(timeout=4.0) as client:
+            misc_url = build_sabnzbd_url(cfg, "get_config", {"section": "misc"})
+            misc_resp = client.get(misc_url)
+            complete_dir = parse_sabnzbd_complete_dir(misc_resp.json() if misc_resp.status_code == 200 else {})
+            category_dir = ""
+            if (cfg.category or "").strip():
+                cat_url = build_sabnzbd_url(cfg, "get_config", {"section": "categories"})
+                cat_resp = client.get(cat_url)
+                if cat_resp.status_code == 200:
+                    category_dir = parse_sabnzbd_category_dir(cat_resp.json(), cfg.category)
+    except Exception:
+        return empty
+    library_path = resolve_provider_complete_path(complete_dir, category_dir)
+    return {
+        "complete_dir": complete_dir,
+        "category_dir": category_dir,
+        "library_path": library_path or complete_dir,
+    }
 
 
 def fetch_prowlarr_indexers(

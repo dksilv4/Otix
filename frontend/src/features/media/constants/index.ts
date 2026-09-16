@@ -20,7 +20,7 @@ export const EMPTY_TRACKS: TrackOut[] = []
 
 // ── Hero ──
 
-export const GLASS_PILL = 'bg-white/5 hover:bg-white/10 text-white gap-1.5 px-3 py-1.5 text-xs font-semibold backdrop-blur border-0 transition-colors'
+export const GLASS_PILL = 'bg-white/[0.08] hover:bg-white/[0.14] text-white/90 gap-1.5 px-3 py-1.5 text-xs font-medium border-0 transition-colors'
 
 // ── Download Game ──
 

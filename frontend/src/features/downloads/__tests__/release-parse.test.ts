@@ -1,0 +1,260 @@
+import { describe, expect, it } from 'vitest'
+import {
+  classifyReleaseKind,
+  compareVersions,
+  extractReleaseVersion,
+  groupReleasesByEdition,
+  groupReleasesByGame,
+  groupReleasesByRepackerAndVersion,
+  parseReleaseTitle,
+  groupResultsByEditionAndPack,
+  releaseMatchesSearchHint,
+} from '../release-parse'
+import type { ServerProwlarrRelease } from '../usenet-types'
+
+function release(title: string, extras: Partial<ServerProwlarrRelease> = {}): ServerProwlarrRelease {
+  return {
+    guid: extras.guid ?? title,
+    title,
+    size: extras.size ?? 1_000_000_000,
+    download_url: extras.download_url ?? 'https://example.test/dl',
+    indexer: extras.indexer ?? 'NZBGeek',
+    protocol: extras.protocol ?? 'usenet',
+    age_days: extras.age_days ?? 1,
+    seeders: extras.seeders ?? null,
+  }
+}
+
+describe('parseReleaseTitle', () => {
+  it('treats a scene installer as a base game and strips the group', () => {
+    const parsed = parseReleaseTitle('Kingdom.Come.Deliverance.II-RUNE')
+    expect(parsed.kind).toBe('game')
+    expect(parsed.gameKey).toBe('kingdom come deliverance 2')
+    expect(parsed.gameTitle).toBe('Kingdom Come Deliverance 2')
+    expect(parsed.sceneGroup).toBe('RUNE')
+    expect(parsed.version).toBeNull()
+  })
+
+  it('normalizes roman numerals so II and 2 group together', () => {
+    const a = parseReleaseTitle('Hades.II-GOG')
+    const b = parseReleaseTitle('Hades.2.Update.1.1-RUNE')
+    expect(a.gameKey).toBe(b.gameKey)
+    expect(a.kind).toBe('game')
+    expect(b.kind).toBe('update')
+    expect(b.version).toBe('1.1')
+  })
+
+  it('classifies patches, hotfixes, and named updates', () => {
+    expect(classifyReleaseKind('Cyberpunk.2077.Update.2.13-GOG')).toBe('update')
+    expect(classifyReleaseKind('Elden.Ring.Patch.1.12.3-FLT')).toBe('update')
+    expect(classifyReleaseKind('Silent.Hill.2.Hotfix-RUNE')).toBe('update')
+    expect(extractReleaseVersion('Cyberpunk.2077.Update.2.13-GOG')).toBe('2.13')
+  })
+
+  it('keeps full packs that include updates as the base game', () => {
+    const parsed = parseReleaseTitle(
+      'Baldurs.Gate.3.MULTi13.Incl.Update.v4.1.1-FitGirl.Repack',
+    )
+    expect(parsed.kind).toBe('game')
+    expect(parsed.gameKey).toBe('baldurs gate 3')
+    expect(parsed.version).toBe('4.1.1')
+  })
+
+  it('classifies DLC separately but groups it under the same game', () => {
+    const dlc = parseReleaseTitle('Cyberpunk.2077.Phantom.Liberty.DLC-GOG', 'Cyberpunk 2077')
+    expect(dlc.kind).toBe('dlc')
+    expect(dlc.gameKey).toBe('cyberpunk 2077')
+  })
+
+  it('uses the search hint so noisy titles still attach to the queried game', () => {
+    const parsed = parseReleaseTitle(
+      'KCD2.Royal.Edition.Update.v1.2.2-DODI',
+      'Kingdom Come: Deliverance II',
+    )
+    expect(parsed.kind).toBe('update')
+    expect(parsed.gameKey).toBe('kingdom come deliverance 2')
+    expect(parsed.version).toBe('1.2.2')
+  })
+
+  it('matches SABnzbd queue names back to the searched game', () => {
+    expect(
+      releaseMatchesSearchHint(
+        'Kingdom Come Deliverance II v1.5.0 ElAmigos',
+        'Kingdom Come: Deliverance II',
+      ),
+    ).toBe(true)
+    expect(releaseMatchesSearchHint('Unrelated Sports Title-FLT', 'Kingdom Come: Deliverance II')).toBe(false)
+  })
+})
+
+describe('compareVersions', () => {
+  it('sorts dotted versions newest first', () => {
+    expect(compareVersions('1.2.1', '1.2.0')).toBeLessThan(0)
+    expect(compareVersions('1.10', '1.9')).toBeLessThan(0)
+    expect(compareVersions(null, '1.0')).toBeGreaterThan(0)
+  })
+})
+
+describe('groupReleasesByGame', () => {
+  it('keeps one cluster for the search and nests updates and DLC under it', () => {
+    const clusters = groupReleasesByGame(
+      [
+        release('Cyberpunk.2077.Phantom.Liberty.DLC-GOG', { guid: 'dlc', size: 30_000_000_000 }),
+        release('Cyberpunk.2077.Update.2.13-GOG', { guid: 'upd', size: 8_000_000_000 }),
+        release('Cyberpunk.2077.v2.0-GOG.iso', { guid: 'base', size: 70_000_000_000 }),
+        release('Unrelated.Sports.Title-FLT', { guid: 'other', size: 4_000_000_000 }),
+      ],
+      'Cyberpunk 2077',
+    )
+
+    expect(clusters).toHaveLength(1)
+    const cyber = clusters[0]
+    expect(cyber.title).toBe('Cyberpunk 2077')
+    expect(cyber.games.map((item) => item.release.guid)).toContain('base')
+    expect(cyber.updates.map((item) => item.release.guid)).toEqual(['upd'])
+    expect(cyber.dlc.map((item) => item.release.guid)).toEqual(['dlc'])
+    expect(cyber.other.map((item) => item.release.guid)).toEqual(['other'])
+  })
+
+  it('orders updates from newest version to oldest', () => {
+    const cluster = groupReleasesByGame([
+      release('Hades.II.Update.1.0-RUNE', { guid: 'u1' }),
+      release('Hades.II-RUNE', { guid: 'g' }),
+      release('Hades.II.Update.1.1.2-RUNE', { guid: 'u2' }),
+    ])[0]
+
+    expect(cluster.updates.map((item) => item.parsed.version)).toEqual(['1.1.2', '1.0'])
+  })
+
+  it('groups Royal Edition installers and updates together without splitting games', () => {
+    const [cluster] = groupReleasesByGame(
+      [
+        release('Kingdom.Come.Deliverance.II-RUNE', { guid: 'std' }),
+        release('KCD2.Royal.Edition-DODI', { guid: 'royal' }),
+        release('KCD2.Royal.Edition.Update.v1.2.2-DODI', { guid: 'upd' }),
+      ],
+      'Kingdom Come: Deliverance II',
+    )
+
+    expect(cluster).toBeDefined()
+    expect(cluster.games.map((item) => item.release.guid).sort()).toEqual(['royal', 'std'])
+    expect(cluster.updates.map((item) => item.release.guid)).toEqual(['upd'])
+    expect(cluster.updates[0].parsed.editionLabel).toBe('Royal Edition')
+  })
+})
+
+describe('groupReleasesByEdition', () => {
+  it('puts named editions first with their updates nested, not a game dump', () => {
+    const clusters = groupReleasesByEdition(
+      [
+        release('Kingdom.Come.Deliverance.II-RUNE', { guid: 'std', size: 80_000_000_000 }),
+        release('KCD2.Royal.Edition-DODI', { guid: 'royal', size: 90_000_000_000 }),
+        release('KCD2.Royal.Edition.Update.v1.2.2-DODI', { guid: 'upd' }),
+        release('Unrelated.Sports.Title-FLT', { guid: 'other' }),
+      ],
+      'Kingdom Come: Deliverance II',
+    )
+
+    expect(clusters.map((cluster) => cluster.title)).toEqual([
+      'Royal Edition',
+      'Release',
+      'Other results',
+    ])
+    expect(clusters[0].releases.map((item) => item.release.guid)).toEqual(['royal'])
+    expect(clusters[0].updates.map((item) => item.release.guid)).toEqual(['upd'])
+    expect(clusters[1].releases.map((item) => item.release.guid)).toEqual(['std'])
+    expect(clusters[2].releases.map((item) => item.release.guid)).toEqual(['other'])
+  })
+
+  it('keeps DLC as its own edition group', () => {
+    const clusters = groupReleasesByEdition(
+      [
+        release('Cyberpunk.2077.Phantom.Liberty.DLC-GOG', { guid: 'dlc' }),
+        release('Cyberpunk.2077.Update.2.13-GOG', { guid: 'upd' }),
+        release('Cyberpunk.2077.v2.0-GOG.iso', { guid: 'base' }),
+      ],
+      'Cyberpunk 2077',
+    )
+
+    expect(clusters.map((cluster) => cluster.title)).toEqual(['Release', 'Phantom Liberty'])
+    const base = clusters[0]
+    expect(base.releases.map((item) => item.release.guid)).toEqual(['base'])
+    expect(base.updates.map((item) => item.release.guid)).toEqual(['upd'])
+    expect(clusters[1].releases.map((item) => item.release.guid)).toEqual(['dlc'])
+  })
+})
+
+describe('groupReleasesByRepackerAndVersion', () => {
+  it('nests ElAmigos updates under the matching installer version', () => {
+    const clusters = groupReleasesByRepackerAndVersion(
+      [
+        release('Kingdom.Come.Deliverance.II.v1.5-ElAmigos', { guid: 'base', size: 80_000_000_000 }),
+        release('Kingdom.Come.Deliverance.II.Update.v1.5.2-ElAmigos', { guid: 'u2' }),
+        release('Kingdom.Come.Deliverance.II.Update.v1.5.3-ElAmigos', { guid: 'u3' }),
+        release('Kingdom.Come.Deliverance.II-RUNE', { guid: 'rune', size: 70_000_000_000 }),
+      ],
+      'Kingdom Come: Deliverance II',
+    )
+
+    expect(clusters.map((cluster) => cluster.title)).toEqual(['ElAmigos', 'RUNE'])
+    const elamigos = clusters[0].versions
+    expect(elamigos).toHaveLength(1)
+    expect(elamigos[0].version).toBe('1.5')
+    expect(elamigos[0].releases.map((item) => item.release.guid)).toEqual(['base'])
+    expect(elamigos[0].updates.map((item) => item.parsed.version)).toEqual(['1.5.3', '1.5.2'])
+  })
+
+  it('treats v1.5.0 and later 1.5.x patches as the same full-game pack', () => {
+    const clusters = groupReleasesByRepackerAndVersion(
+      [
+        release('Kingdom.Come.Deliverance.II.v1.5.0-ElAmigos', { guid: 'base' }),
+        release('Kingdom.Come.Deliverance.II.Update.v1.5.1-ElAmigos', { guid: 'u1' }),
+        release('Kingdom.Come.Deliverance.II.Update.v1.5.2-ElAmigos', { guid: 'u2' }),
+      ],
+      'Kingdom Come: Deliverance II',
+    )
+
+    expect(clusters[0].versions).toHaveLength(1)
+    expect(clusters[0].versions[0].version).toBe('1.5')
+    expect(clusters[0].versions[0].releases.map((item) => item.release.guid)).toEqual(['base'])
+    expect(clusters[0].versions[0].updates.map((item) => item.parsed.version)).toEqual(['1.5.2', '1.5.1'])
+  })
+})
+
+describe('groupResultsByEditionAndPack', () => {
+  it('groups by version only, newest first, with later patches under that full game version', () => {
+    const groups = groupResultsByEditionAndPack(
+      [
+        release('KCD2.Royal.Edition.v1.5-ElAmigos', { guid: 'royal', size: 90_000_000_000 }),
+        release('KCD2.Royal.Edition.Update.v1.5.2-ElAmigos', { guid: 'u2' }),
+        release('KCD2.Royal.Edition.Update.v1.5.3-ElAmigos', { guid: 'u3' }),
+        release('Kingdom.Come.Deliverance.II-RUNE', { guid: 'rune', size: 70_000_000_000 }),
+        release('Kingdom.Come.Deliverance.II.v1.4-ElAmigos', { guid: 'v14', size: 80_000_000_000 }),
+      ],
+      'Kingdom Come: Deliverance II',
+    )
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0].packs.map((pack) => pack.title)).toEqual(['v1.5', 'v1.4', 'No version'])
+    expect(groups[0].packs[0].releases.map((item) => item.release.guid)).toEqual(['royal'])
+    expect(groups[0].packs[0].updates.map((item) => item.parsed.version)).toEqual(['1.5.3', '1.5.2'])
+    expect(groups[0].packs[2].releases.map((item) => item.release.guid)).toEqual(['rune'])
+  })
+
+  it('puts different repackers of the same version in one version group', () => {
+    const groups = groupResultsByEditionAndPack(
+      [
+        release('Kingdom.Come.Deliverance.II.v1.5-ElAmigos', { guid: 'ela', size: 80_000_000_000 }),
+        release('Kingdom.Come.Deliverance.II.v1.5-RUNE', { guid: 'rune', size: 90_000_000_000 }),
+        release('Kingdom.Come.Deliverance.II.Update.v1.5.2-DODI', { guid: 'u2' }),
+      ],
+      'Kingdom Come: Deliverance II',
+    )
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0].packs).toHaveLength(1)
+    expect(groups[0].packs[0].title).toBe('v1.5')
+    expect(groups[0].packs[0].releases.map((item) => item.release.guid).sort()).toEqual(['ela', 'rune'])
+    expect(groups[0].packs[0].updates.map((item) => item.release.guid)).toEqual(['u2'])
+  })
+})

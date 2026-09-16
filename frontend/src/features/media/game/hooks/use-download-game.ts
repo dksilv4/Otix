@@ -1,17 +1,40 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/old-features/auth'
 import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downloads'
-import { useServerGames, useRemoteDownloads, type ServerGameFile, useGameServers, type GameServer } from '@/features/downloads/use-server-downloads'
+import { useServerUsenetHistory, useServerUsenetQueue, useCancelServerQueueDownload } from '@/features/downloads/use-server-usenet'
+import { releaseMatchesSearchHint } from '@/features/downloads/release-parse'
+import {
+  findCompletedServerDownload,
+  matchServerGameFile,
+  serverInstallCaption,
+  completedDownloadKey,
+  completedDownloadSize,
+} from '@/features/downloads/server-availability'
+import type { ServerDownloadHistoryItem, ServerSabnzbdQueueItem } from '@/features/downloads/usenet-types'
+import {
+  serverKeys,
+  useServerGames,
+  useRemoteDownloads,
+  useScanGameServer,
+  type ServerGameFile,
+  useGameServers,
+  type GameServer,
+} from '@/features/downloads/use-server-downloads'
 import type { RemoteDownloadProgress } from '@/lib/desktop/api'
 import type { HypervisorConfirmResponse, Download, DownloadConfig } from '@/features/downloads/types'
+import {
+  gameInstallCompatibility,
+  type InstallCompatibility,
+} from '@/features/downloads/os-compatibility'
 import { useFeature } from '@/features/_config'
 import { useLocalGames } from '@/features/launcher/data/game-queries'
 import { setLocalGamesMapEntry, getLocalGamesMap } from '@/features/launcher/data/storage'
 import { useInstallProgress } from '@/features/launcher/data/install-store'
 import type { InstallStoreEntry } from '@/features/launcher/types'
 import { isTitleMatch, mediaQueries } from '@media'
+import { formatBytes } from '@/lib/utils'
 
 type LocalGame = import('@/features/launcher/types').LocalGame
 
@@ -26,6 +49,7 @@ export interface DownloadGameState {
   isFailed: boolean
   downloadsEnabled: boolean
   canLocalDownload: boolean
+  mediaId: string
   // Display data
   mediaTitle: string
   matchingScannedGame: LocalGame | null
@@ -43,6 +67,12 @@ export interface DownloadGameState {
   activeRemoteTransfer: RemoteDownloadProgress | null
   isRemoteDownloading: boolean
   isRemotePaused: boolean
+  activeServerQueueItem: ServerSabnzbdQueueItem | null
+  completedServerDownload: ServerDownloadHistoryItem | null
+  availableOnServer: boolean
+  indexingServerFile: boolean
+  installCopy: { button: string; caption: string; title: string }
+  installCompatibility: InstallCompatibility
   // Game servers
   activeServer: GameServer | null
   gameServers: GameServer[]
@@ -62,6 +92,7 @@ export interface DownloadGameState {
   handleRemotePause: () => Promise<boolean | undefined>
   handleRemoteResume: () => Promise<boolean | undefined>
   handleRemoteCancel: () => Promise<boolean | undefined>
+  handleCancelServerQueue: () => void
   handleHvConfirm: () => Promise<void>
   handleHvDismiss: () => void
   handleCancelDownload: () => void
@@ -78,7 +109,20 @@ export function useDownloadGame(): DownloadGameState {
   const { user } = useAuth()
   const downloadsEnabled = useFeature('downloads')
   const { downloads, searchAndDownload, cancelDownload, pollQueue } = useDownloads(user?.id)
-  const { data: serverGamesData } = useServerGames()
+  const queryClient = useQueryClient()
+  const { data: gameServers = [] } = useGameServers()
+  const activeServer = gameServers.find((s) => s.isActive) || gameServers[0] || null
+  const hasGameServer = !!activeServer
+  const mediaTitle = data?.title || ''
+  const { data: serverHistory = [] } = useServerUsenetHistory(activeServer?.id)
+  const completedServerDownload = useMemo(
+    () => findCompletedServerDownload(serverHistory, mediaId, mediaTitle),
+    [serverHistory, mediaId, mediaTitle],
+  )
+  const { data: serverGamesData, refetch: refetchServerGames } = useServerGames({
+    refetchInterval: completedServerDownload ? 8_000 : false,
+  })
+  const scanGameServer = useScanGameServer(activeServer?.id)
   const {
     activeTransfers,
     startDownload: startRemoteDownload,
@@ -87,34 +131,42 @@ export function useDownloadGame(): DownloadGameState {
     cancelDownload: cancelRemoteDownload,
   } = useRemoteDownloads()
   const { config: dlConfig } = useDownloadConfig(user?.id)
-  const { data: gameServers = [] } = useGameServers()
-  const activeServer = gameServers.find((s) => s.is_active) || gameServers[0] || null
-  const hasGameServer = !!activeServer
+  const { data: serverQueue } = useServerUsenetQueue(activeServer?.id)
+  const cancelServerQueue = useCancelServerQueueDownload(activeServer?.id)
 
   const [searching, setSearching] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [postProcessing, setPostProcessing] = useState(false)
   const [isInstallerOpen, setIsInstallerOpen] = useState(false)
   const { data: scannedGames = [] } = useLocalGames()
-  const [localGame, setLocalGame] = useState<LocalGame | null>(null)
   const [hvDialogOpen, setHvDialogOpen] = useState(false)
   const [hvCountdown, setHvCountdown] = useState(10)
   const [hvPending, setHvPending] = useState<HypervisorConfirmResponse | null>(null)
   const { installs: allInstalls } = useInstallProgress()
-
-  const mediaTitle = data?.title || ''
+  const scannedForNzo = useRef<string | null>(null)
+  const completedKey = completedDownloadKey(completedServerDownload)
+  const storedLocalGame = useMemo(() => {
+    try {
+      return getLocalGamesMap()[mediaId] || null
+    } catch {
+      return null
+    }
+  }, [mediaId])
 
   // ── Remote Server Games & Active Transfer Matching ──
-  const serverFile = (serverGamesData?.files || []).find(
-    (f) =>
-      (mediaId && f.catalogItem?.id === mediaId) ||
-      (mediaTitle && f.catalogItem?.title && isTitleMatch(f.catalogItem.title, mediaTitle)) ||
-      (mediaTitle && isTitleMatch(f.gameTitle, mediaTitle))
-  ) || null
+  const serverFile = matchServerGameFile(serverGamesData?.files, mediaId, mediaTitle)
+  const availableOnServer = !!serverFile || !!completedServerDownload
+  const indexingServerFile = scanGameServer.isPending && !serverFile
+  const installCopy = serverInstallCaption({
+    serverName: serverFile?.serverName || activeServer?.name,
+    filesize: serverFile?.filesize ?? completedDownloadSize(completedServerDownload),
+    indexed: !!serverFile,
+    formatBytes,
+  })
+  const installCompatibility = gameInstallCompatibility(data?.platforms)
 
   const activeRemoteTransfer = activeTransfers.find(
     (t) =>
-      (mediaId && t.mediaItemId === mediaId) ||
       (serverFile && t.fileId === serverFile.fileId) ||
       (mediaTitle && isTitleMatch(t.gameTitle, mediaTitle))
   ) || null
@@ -122,41 +174,51 @@ export function useDownloadGame(): DownloadGameState {
   const isRemoteDownloading = activeRemoteTransfer?.status === 'downloading'
   const isRemotePaused = activeRemoteTransfer?.status === 'paused'
 
-  // ── Effect: match local game ──
+  const activeServerQueueItem = useMemo(() => {
+    if (!mediaTitle || !serverQueue?.items?.length) return null
+    return (
+      serverQueue.items.find((item) => releaseMatchesSearchHint(item.filename, mediaTitle)) ||
+      null
+    )
+  }, [mediaTitle, serverQueue])
 
   useEffect(() => {
-    let currentLocal: LocalGame | null = null
-    try {
-      const map = getLocalGamesMap()
-      currentLocal = map[mediaId] || null
-      setLocalGame(currentLocal)
-    } catch {
-      setLocalGame(null)
-    }
+    if (!completedKey) return
+    queryClient.invalidateQueries({ queryKey: serverKeys.games() })
+  }, [completedKey, queryClient])
 
-    if (!currentLocal && mediaTitle) {
-      const match = scannedGames.find(g => g.data?.id === mediaId) ||
-                    scannedGames.find(g => isTitleMatch(g.title, mediaTitle))
+  useEffect(() => {
+    if (!completedKey || serverFile || !activeServer?.id) return
+    if (scannedForNzo.current === completedKey || scanGameServer.isPending) return
+    scannedForNzo.current = completedKey
+    scanGameServer.mutate()
+  }, [activeServer?.id, completedKey, scanGameServer, serverFile])
+
+  useEffect(() => {
+    if (!storedLocalGame && mediaTitle) {
+      const match =
+        scannedGames.find(g => g.data?.id === mediaId) ||
+        scannedGames.find(g => isTitleMatch(g.title, mediaTitle))
       if (match) {
         setLocalGamesMapEntry(mediaId, match)
-        setLocalGame(match)
       }
     }
-  }, [mediaId, mediaTitle, scannedGames])
+  }, [mediaId, mediaTitle, scannedGames, storedLocalGame])
 
   // ── Effect: hypervisor countdown ──
 
   useEffect(() => {
-    if (!hvDialogOpen) {
-      setHvCountdown(10)
-      return
-    }
-    if (hvCountdown <= 0) {
-      setHvDialogOpen(false)
-      setErrorMsg('Hypervisor download cancelled (timeout).')
-      return
-    }
-    const timer = setTimeout(() => setHvCountdown(c => c - 1), 1000)
+    if (!hvDialogOpen) return
+    const timer = setTimeout(() => {
+      setHvCountdown((current) => {
+        if (current <= 1) {
+          setHvDialogOpen(false)
+          setErrorMsg('Hypervisor download cancelled (timeout).')
+          return 0
+        }
+        return current - 1
+      })
+    }, 1000)
     return () => clearTimeout(timer)
   }, [hvDialogOpen, hvCountdown])
 
@@ -166,7 +228,10 @@ export function useDownloadGame(): DownloadGameState {
   const canLocalDownload = isDesktop && !!user?.isAdmin && downloadsEnabled
   const dataMissing = !data
 
-  const matchingScannedGame = scannedGames.find(g => g.data?.id === mediaId) || localGame
+  const matchingScannedGame =
+    scannedGames.find(g => g.data?.id === mediaId) ||
+    scannedGames.find(g => mediaTitle && isTitleMatch(g.title, mediaTitle)) ||
+    storedLocalGame
   const isInstalled = !!(matchingScannedGame && matchingScannedGame.platform !== 'iso')
 
   const existingDownload = downloads.find(d => d.mediaItemId === mediaId)
@@ -191,7 +256,14 @@ export function useDownloadGame(): DownloadGameState {
   // ── Hidden guard ──
   const hidden =
     dataMissing ||
-    (!canLocalDownload && !matchingScannedGame && !serverFile && !activeRemoteTransfer && !hasGameServer)
+    (
+      !canLocalDownload &&
+      !matchingScannedGame &&
+      !serverFile &&
+      !activeRemoteTransfer &&
+      !hasGameServer &&
+      !availableOnServer
+    )
 
   // ── Handlers ──
 
@@ -250,10 +322,29 @@ export function useDownloadGame(): DownloadGameState {
   }
 
   const handleRemoteDownload = async () => {
-    if (!serverFile) return
     setErrorMsg('')
+    if (!installCompatibility.compatible) {
+      setErrorMsg(installCompatibility.title)
+      return
+    }
+    let file = serverFile
+    if (!file && availableOnServer && activeServer?.id) {
+      try {
+        await scanGameServer.mutateAsync()
+        const fresh = await refetchServerGames()
+        file = matchServerGameFile(fresh.data?.files, mediaId, mediaTitle)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        setErrorMsg(msg)
+        return
+      }
+    }
+    if (!file) {
+      setErrorMsg('The game is on the server but has not been indexed yet. Try Install again in a moment.')
+      return
+    }
     try {
-      await startRemoteDownload(serverFile, mediaId)
+      await startRemoteDownload(file, mediaId)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       setErrorMsg(msg)
@@ -275,6 +366,12 @@ export function useDownloadGame(): DownloadGameState {
   const handleRemoteCancel = async () => {
     if (activeRemoteTransfer) {
       return await cancelRemoteDownload(activeRemoteTransfer.id)
+    }
+  }
+
+  const handleCancelServerQueue = () => {
+    if (activeServerQueueItem) {
+      cancelServerQueue.mutate(activeServerQueueItem.nzo_id)
     }
   }
 
@@ -315,6 +412,7 @@ export function useDownloadGame(): DownloadGameState {
     justInstalled,
     isFailed,
     downloadsEnabled,
+    mediaId,
     mediaTitle,
     matchingScannedGame,
     isoPath,
@@ -334,6 +432,12 @@ export function useDownloadGame(): DownloadGameState {
     activeRemoteTransfer,
     isRemoteDownloading,
     isRemotePaused,
+    activeServerQueueItem,
+    completedServerDownload,
+    availableOnServer,
+    indexingServerFile,
+    installCopy,
+    installCompatibility,
     downloadStatus,
     downloadPercentage,
     downloadNzbName,
@@ -346,6 +450,7 @@ export function useDownloadGame(): DownloadGameState {
     handleRemotePause,
     handleRemoteResume,
     handleRemoteCancel,
+    handleCancelServerQueue,
     handleHvConfirm,
     handleHvDismiss,
     handleCancelDownload,

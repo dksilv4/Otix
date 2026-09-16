@@ -8,6 +8,9 @@ import {
   DownloadCloud,
   Check,
   RefreshCw,
+  Link2,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/old-features/ui/molecules/toast';
@@ -47,14 +50,38 @@ function SabnzbdForm({
   const initialSab = config?.sabnzbd;
   const isConfigured = Boolean(
     initialSab?.host &&
-    Boolean(initialSab?.api_key || initialSab?.configured)
+    Boolean(initialSab?.apiKey || initialSab?.api_key || initialSab?.configured)
   );
   const [sabHost, setSabHost] = useState(initialSab?.host || '127.0.0.1');
   const [sabPort, setSabPort] = useState(initialSab?.port || 8080);
-  const [sabApiKey, setSabApiKey] = useState(initialSab?.api_key || '');
-  const [sabSsl, setSabSsl] = useState(Boolean(initialSab?.use_ssl));
-  const [sabUrlBase, setSabUrlBase] = useState(initialSab?.url_base || '');
+  const [sabApiKey, setSabApiKey] = useState(initialSab?.apiKey || initialSab?.api_key || '');
+  const [sabSsl, setSabSsl] = useState(Boolean(initialSab?.useSsl ?? initialSab?.use_ssl));
+  const [sabUrlBase, setSabUrlBase] = useState(initialSab?.urlBase || initialSab?.url_base || '');
   const [sabCategory, setSabCategory] = useState(initialSab?.category || 'games');
+  const configuredMappings = initialSab?.pathMappings || initialSab?.path_mappings;
+  const [pathMappings, setPathMappings] = useState(() =>
+    configuredMappings?.length
+      ? configuredMappings.map((mapping) => ({
+          remotePath: mapping.remotePath || mapping.remote_path || '',
+          hostPath: mapping.hostPath || mapping.host_path || '',
+          linked: mapping.linked,
+          error: mapping.error,
+        }))
+      : [{
+          remotePath:
+            initialSab?.remotePath ||
+            initialSab?.providerCompleteDir ||
+            initialSab?.completeDir ||
+            '',
+          hostPath:
+            initialSab?.hostPath ||
+            initialSab?.localCompleteDir ||
+            initialSab?.local_complete_dir ||
+            '',
+          linked: initialSab?.folderLinked,
+          error: initialSab?.folderError,
+        }],
+  );
   const [sabTestResult, setSabTestResult] = useState<ConnectionTestResult | null>(null);
 
   const handleSabHostChange = (val: string) => {
@@ -100,17 +127,44 @@ function SabnzbdForm({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await saveMutation.mutateAsync({
+      const result = await saveMutation.mutateAsync({
         host: sabHost.trim(),
         port: Number(sabPort),
         api_key: sabApiKey.trim(),
         use_ssl: sabSsl,
         url_base: sabUrlBase.trim(),
         category: sabCategory.trim() || 'games',
+        path_mappings: pathMappings
+          .filter((mapping) => mapping.remotePath.trim() || mapping.hostPath.trim())
+          .map((mapping) => ({
+            remote_path: mapping.remotePath.trim(),
+            host_path: mapping.hostPath.trim(),
+          })),
       });
+      const library = result.sabnzbdLibrary;
+      if (library && !library.folderLinked) {
+        if (library.pathMappings?.length) {
+          setPathMappings(
+            library.pathMappings.map((mapping) => ({
+              remotePath: mapping.remotePath || mapping.remote_path || '',
+              hostPath: mapping.hostPath || mapping.host_path || '',
+              linked: mapping.linked,
+              error: mapping.error,
+            })),
+          );
+        }
+        toast({
+          title: 'SABnzbd Saved — Folder Not Linked',
+          description: library.folderError || 'Set the path that Otix Server uses to access SABnzbd downloads.',
+          variant: 'error',
+        });
+        return;
+      }
       toast({
-        title: 'SABnzbd Settings Saved',
-        description: `Configured on ${targetServerName}.`,
+        title: 'SABnzbd Folder Linked',
+        description: library?.linkedLibraryPath
+          ? `Otix now indexes ${library.linkedLibraryPath}.`
+          : `Configured on ${targetServerName}.`,
         variant: 'success',
       });
       onClose();
@@ -230,6 +284,105 @@ function SabnzbdForm({
             onChange={(e) => setSabUrlBase(e.target.value)}
             className="w-full px-3 py-1.5 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-amber-400 text-xs"
           />
+        </div>
+
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-3 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-cyan-300">
+              <Link2 className="h-3.5 w-3.5" />
+              SABnzbd Path Mapping
+            </label>
+            {initialSab?.folderLinked && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+                <CheckCircle2 className="h-3 w-3" />
+                Linked
+              </span>
+            )}
+          </div>
+          <div className="space-y-2">
+            {pathMappings.map((mapping, index) => {
+              return (
+                <div key={index} className="rounded-lg border border-white/[0.06] bg-black/10 p-2">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-foreground/70">
+                      Mapping {index + 1}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {mapping.linked && (
+                        <span className="text-[10px] font-medium text-emerald-400">Linked</span>
+                      )}
+                      {pathMappings.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setPathMappings((items) => items.filter((_, i) => i !== index))}
+                          className="rounded p-1 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
+                          aria-label={`Remove path mapping ${index + 1}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-[10px] font-medium text-muted-foreground">
+                        Remote path (inside SABnzbd)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Auto-detect, e.g. /downloads/complete/games"
+                        value={mapping.remotePath}
+                        onChange={(e) => setPathMappings((items) =>
+                          items.map((item, i) =>
+                            i === index
+                              ? { ...item, remotePath: e.target.value, linked: false, error: '' }
+                              : item
+                          )
+                        )}
+                        className="w-full px-3 py-1.5 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-cyan-400 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] font-medium text-muted-foreground">
+                        Host path (inside Otix Server)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Same as remote path when left empty"
+                        value={mapping.hostPath}
+                        onChange={(e) => setPathMappings((items) =>
+                          items.map((item, i) =>
+                            i === index
+                              ? { ...item, hostPath: e.target.value, linked: false, error: '' }
+                              : item
+                          )
+                        )}
+                        className="w-full px-3 py-1.5 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-cyan-400 text-xs"
+                      />
+                    </div>
+                  </div>
+                  {mapping.error && <p className="mt-1.5 text-[10px] text-amber-400">{mapping.error}</p>}
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setPathMappings((items) => [
+                ...items,
+                { remotePath: '', hostPath: '', linked: false, error: '' },
+              ])}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-cyan-500/[0.06] px-2.5 py-1.5 text-[10px] font-semibold text-cyan-300 transition-colors hover:bg-cyan-500/10"
+            >
+              <Plus className="h-3 w-3" />
+              Add mapping
+            </button>
+          </div>
+          <p className="text-[10px] leading-relaxed text-muted-foreground">
+            This mapping applies only to SABnzbd. The two paths must point to the same shared folder.
+          </p>
+          {initialSab?.folderError && !initialSab.folderLinked && (
+            <p className="text-[10px] leading-relaxed text-amber-400">{initialSab.folderError}</p>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-1">

@@ -1,6 +1,9 @@
 """Game server API views: self-hosted otix-server node management and library indexing."""
 
+import logging
+
 import httpx
+from django.db.utils import OperationalError, ProgrammingError
 from rest_framework import status
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny
@@ -16,6 +19,7 @@ from apps.library.serializers import (
 from apps.library.services.game_server import (
     downloads_add,
     downloads_cancel,
+    downloads_history,
     downloads_queue,
     downloads_search,
     explorer_browse,
@@ -27,6 +31,7 @@ from apps.library.services.game_server import (
     usenet_delete_queue,
     usenet_download,
     usenet_get_config,
+    usenet_get_history,
     usenet_get_queue,
     usenet_save_config,
     usenet_search,
@@ -36,8 +41,28 @@ from apps.library.services.game_server import (
     prowlarr_sync_indexers,
     sabnzbd_pause_queue,
     sabnzbd_resume_queue,
+    scan_game_libraries,
+)
+from apps.library.services.download_history import (
+    apply_history_slots,
+    apply_queue_progress,
+    list_download_history,
+    mark_download_cancelled,
+    proxy_download_payload,
+    record_queued_download,
 )
 from apps.media.models import MediaItem
+
+logger = logging.getLogger(__name__)
+
+
+def _track_download_history(fn, *args, **kwargs):
+    """History writes must never fail the live SABnzbd proxy."""
+    try:
+        return fn(*args, **kwargs)
+    except (OperationalError, ProgrammingError) as exc:
+        logger.warning("download history skipped: %s", exc)
+        return None
 
 
 def _get_server_or_404(request: Request, server_id: int) -> UserGameServer:
@@ -300,7 +325,10 @@ class GameServerUsenetDownloadView(APIView):
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = usenet_download(server, request.data)
+        payload = request.data if isinstance(request.data, dict) else {}
+        status_code, data = usenet_download(server, proxy_download_payload(payload))
+        if status_code < 300:
+            _track_download_history(record_queued_download, server, payload, data, user=request.user)
         return Response(data, status=status_code)
 
 
@@ -312,12 +340,34 @@ class GameServerUsenetQueueView(APIView):
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
         status_code, data = usenet_get_queue(server)
+        if status_code < 300:
+            _track_download_history(apply_queue_progress, server, data)
         return Response(data, status=status_code)
 
     def delete(self, request: Request, server_id: int, nzo_id: str) -> Response:
         server = _get_server_or_404(request, server_id)
         status_code, data = usenet_delete_queue(server, nzo_id)
+        if status_code < 300:
+            _track_download_history(mark_download_cancelled, server, nzo_id)
         return Response(data, status=status_code)
+
+
+class GameServerUsenetHistoryView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/usenet/history`` — persisted + SABnzbd history."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        try:
+            limit = int(request.query_params.get("limit") or 50)
+        except (TypeError, ValueError):
+            limit = 50
+        status_code, data = usenet_get_history(server, limit=limit)
+        if status_code < 300:
+            _track_download_history(apply_history_slots, server, data)
+        items = _track_download_history(list_download_history, server, limit=limit) or []
+        return Response({"items": items})
 
 
 class GameServerProvidersView(APIView):
@@ -365,7 +415,10 @@ class GameServerDownloadsAddView(APIView):
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
         downloader = request.query_params.get("downloader")
-        status_code, data = downloads_add(server, request.data, downloader=downloader)
+        payload = request.data if isinstance(request.data, dict) else {}
+        status_code, data = downloads_add(server, proxy_download_payload(payload), downloader=downloader)
+        if status_code < 300:
+            _track_download_history(record_queued_download, server, payload, data, user=request.user)
         return Response(data, status=status_code)
 
 
@@ -380,13 +433,36 @@ class GameServerDownloadsQueueView(APIView):
         server = _get_server_or_404(request, server_id)
         downloader = request.query_params.get("downloader")
         status_code, data = downloads_queue(server, downloader=downloader)
+        if status_code < 300:
+            _track_download_history(apply_queue_progress, server, data)
         return Response(data, status=status_code)
 
     def delete(self, request: Request, server_id: int, download_id: str) -> Response:
         server = _get_server_or_404(request, server_id)
         downloader = request.query_params.get("downloader")
         status_code, data = downloads_cancel(server, download_id, downloader=downloader)
+        if status_code < 300:
+            _track_download_history(mark_download_cancelled, server, download_id)
         return Response(data, status=status_code)
+
+
+class GameServerDownloadsHistoryView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/downloads/history`` — persisted download history."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        downloader = request.query_params.get("downloader")
+        try:
+            limit = int(request.query_params.get("limit") or 50)
+        except (TypeError, ValueError):
+            limit = 50
+        status_code, data = downloads_history(server, downloader=downloader, limit=limit)
+        if status_code < 300:
+            _track_download_history(apply_history_slots, server, data)
+        items = _track_download_history(list_download_history, server, limit=limit) or []
+        return Response({"items": items})
 
 
 class GameServerProwlarrIndexersView(APIView):
@@ -426,6 +502,17 @@ class GameServerSabnzbdQueueControlView(APIView):
             status_code, data = sabnzbd_resume_queue(server)
         else:
             return Response({"detail": f"Unknown action '{action}'"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(data, status=status_code)
+
+
+class GameServerScanView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/scan`` — re-index hosted installer files."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = scan_game_libraries(server)
         return Response(data, status=status_code)
 
 
