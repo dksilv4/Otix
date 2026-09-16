@@ -118,11 +118,24 @@ export function ManualSearch({ onSelect, defaultQuery, gameContext }: ManualSear
             return (
               <button
                 key={`${r.provider}:${r.id}`}
-                onClick={() => onSelect({
-                  id: r.id,
-                  title: r.title,
-                  posterUrl: r.posterUrl || null,
-                })}
+                onClick={async () => {
+                  let id = r.id
+                  let title = r.title
+                  let posterUrl = r.posterUrl || null
+                  if (String(id).startsWith('igdb:')) {
+                    try {
+                      const { data } = await apiClient.post<{
+                        mediaId: number | string
+                        title?: string
+                      }>('/media/import/igdb', {}, { params: { igdb_id: String(id).slice(5) } })
+                      id = String(data.mediaId)
+                      title = data.title || title
+                    } catch {
+                      return
+                    }
+                  }
+                  onSelect({ id, title, posterUrl })
+                }}
                 className="rounded-xl overflow-hidden bg-white/5 hover:bg-white/10 transition-colors text-left group relative"
               >
                 <div className="w-full aspect-[2/3] bg-white/5 overflow-hidden">

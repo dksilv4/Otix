@@ -16,6 +16,16 @@ export interface InstallCompatibility {
   title: string
 }
 
+/**
+ * Temporary: show scanned releases as installable on the current OS while
+ * incompatible styling is designed.
+ */
+export const PREVIEW_INCOMPATIBLE_AS_AVAILABLE = true
+
+export function treatInstallAsAvailable(compatibility: InstallCompatibility): boolean {
+  return PREVIEW_INCOMPATIBLE_AS_AVAILABLE || compatibility.compatible
+}
+
 const OS_LABELS: Record<ClientOperatingSystem, string> = {
   windows: 'Windows',
   macos: 'macOS',

@@ -69,7 +69,7 @@ export function NavSearch() {
 
  const timer = setTimeout(async () => {
  try {
- const { data } = await apiClient.get<MediaItemSummary[]>('/media/suggestions', {
+ const { data } = await apiClient.get<MediaItemSummary[]>('/search/suggestions', {
  params: { q: trimmed, limit: 8 }
  })
  setSuggestions(data)

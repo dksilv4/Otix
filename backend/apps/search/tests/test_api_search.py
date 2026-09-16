@@ -7,11 +7,13 @@ provider contracts and the Otix-catalog branch of ``/search/providers``.
 """
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
+from unittest.mock import patch
 
 from apps.company.models import Company
+from apps.integrations.models import SyncJob
 from apps.media.models import Album, Game, MediaItem, Movie, Show
 from apps.people.models import Person
 from apps.search.models import SearchLog
@@ -94,6 +96,11 @@ class SearchApiTests(TestCase):
         self.assertFalse(log.cache_hit)
         self.assertFalse(log.backfill_triggered)
 
+    def test_search_accepts_path_without_trailing_slash(self) -> None:
+        response = self.client.get("/api/v1/search", {"q": "inception"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("items", response.data)
+
     def test_search_filters_by_media_type(self) -> None:
         response = self.client.get("/api/v1/search/", {"q": "inception", "media_type": "movie"})
         self.assertEqual(response.status_code, 200)
@@ -132,6 +139,12 @@ class SearchApiTests(TestCase):
         summary = response.data[0]
         self.assertIn("media_type", summary)
         self.assertIn("title", summary)
+
+    def test_media_suggestions_alias_matches_search_suggestions(self):
+        response = self.client.get("/api/v1/media/suggestions", {"q": "inception", "media_type": "game"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.data, list)
+        self.assertTrue(all(item["media_type"] == "game" for item in response.data))
 
     # --- grouped ---
     def test_grouped_returns_type_groups(self) -> None:
@@ -215,10 +228,9 @@ class SearchApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(response.data), {"items", "backfill_pending"})
-        self.assertIs(response.data["backfill_pending"], False)
         self.assertTrue(response.data["items"])
-        self.assertTrue(all(item["provider"] == "otix" for item in response.data["items"]))
-        self.assertIn(self.game.pk, {int(item["id"]) for item in response.data["items"]})
+        otix_ids = {int(item["id"]) for item in response.data["items"] if item["provider"] == "otix"}
+        self.assertIn(self.game.pk, otix_ids)
 
     def test_providers_requires_query(self) -> None:
         response = self.client.post("/api/v1/search/providers", {}, format="json")
@@ -229,3 +241,72 @@ class SearchApiTests(TestCase):
         response = self.client.post(url, {"query": "inception"}, format="json")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, {"items": []})
+
+    @override_settings(IGDB_CLIENT_ID="id", IGDB_CLIENT_SECRET="secret")
+    @patch("apps.media.services.igdb.configured", return_value=True)
+    @patch("apps.media.services.igdb.IGDBProvider")
+    def test_game_suggestions_backfill_igdb_placeholders(self, mock_provider, _configured) -> None:
+        mock_provider.return_value.search_games.return_value = [
+            {
+                "id": 1942,
+                "name": "The Witcher 3",
+                "slug": "witcher-3",
+                "cover": {"image_id": "abc"},
+            }
+        ]
+        response = self.client.get(
+            "/api/v1/search/suggestions",
+            {"q": "witcher", "media_type": "game", "limit": 8},
+        )
+        self.assertEqual(response.status_code, 200)
+        titles = {item["title"] for item in response.data}
+        self.assertIn("The Witcher 3", titles)
+        self.assertIn("igdb:1942", {str(item["id"]) for item in response.data})
+
+    @override_settings(IGDB_CLIENT_ID="id", IGDB_CLIENT_SECRET="secret")
+    @patch("apps.media.services.igdb.configured", return_value=True)
+    @patch("apps.media.services.igdb.IGDBProvider")
+    def test_game_search_enqueues_igdb_backfill(self, mock_provider, _configured) -> None:
+        mock_provider.return_value.search_games.return_value = [
+            {"id": 1942, "name": "The Witcher 3", "slug": "witcher-3", "cover": None}
+        ]
+        response = self.client.get("/api/v1/search/", {"q": "witcher", "media_type": "game"})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["backfill_pending"])
+        self.assertTrue(
+            all(not str(item["id"]).startswith("igdb:") for item in response.data["items"])
+        )
+        self.assertTrue(
+            SyncJob.objects.filter(provider="igdb", entity_type="game", external_id="1942").exists()
+        )
+
+    @override_settings(IGDB_CLIENT_ID="id", IGDB_CLIENT_SECRET="secret")
+    @patch("apps.media.services.igdb.configured", return_value=True)
+    @patch("apps.media.services.igdb.IGDBProvider")
+    def test_game_search_include_external_returns_igdb_placeholders(self, mock_provider, _configured) -> None:
+        mock_provider.return_value.search_games.return_value = [
+            {"id": 1942, "name": "The Witcher 3", "slug": "witcher-3", "cover": None}
+        ]
+        response = self.client.get(
+            "/api/v1/search/",
+            {"q": "witcher", "media_type": "game", "include_external": "true"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("igdb:1942", {str(item["id"]) for item in response.data["items"]})
+
+    def test_prehydrate_queues_unique_titles(self) -> None:
+        response = self.auth_client.post(
+            "/api/v1/search/prehydrate",
+            {"titles": ["Portal", "portal", "x"]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["queued"], 1)
+
+    def test_prehydrate_requires_auth(self) -> None:
+        response = self.client.post(
+            "/api/v1/search/prehydrate",
+            {"titles": ["Portal"]},
+            format="json",
+        )
+        self.assertIn(response.status_code, (401, 403))

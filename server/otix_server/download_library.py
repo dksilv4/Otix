@@ -17,7 +17,6 @@ INSTALLER_EXTENSIONS = [
     ".zip",
     ".7z",
     ".rar",
-    ".bin",
     ".chd",
     ".rvz",
 ]

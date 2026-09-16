@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   detectClientOperatingSystem,
   gameInstallCompatibility,
+  PREVIEW_INCOMPATIBLE_AS_AVAILABLE,
+  treatInstallAsAvailable,
 } from '../os-compatibility'
 
 const platforms = (...values: Array<[string, string]>) =>
@@ -43,5 +45,15 @@ describe('game install OS compatibility', () => {
     expect(result.compatible).toBe(false)
     expect(result.verified).toBe(false)
     expect(result.button).toBe('Compatibility unknown')
+  })
+
+  it('can treat incompatible titles as available while styling is unfinished', () => {
+    const result = gameInstallCompatibility(
+      platforms(['win', 'PC (Microsoft Windows)']),
+      'macos',
+    )
+
+    expect(result.compatible).toBe(false)
+    expect(treatInstallAsAvailable(result)).toBe(PREVIEW_INCOMPATIBLE_AS_AVAILABLE)
   })
 })

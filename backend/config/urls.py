@@ -11,6 +11,7 @@ from django.urls import include, path
 
 from apps.accounts.views import UploadFileView
 from apps.media.views import AssetFileView
+from apps.search.views import SearchView
 
 
 def health(_request: HttpRequest) -> JsonResponse:
@@ -29,6 +30,7 @@ urlpatterns = [
     path("api/v1/list/", include("apps.lists.urls")),
     path("api/v1/blueprints/", include("apps.blueprint.urls")),
     path("api/v1/push/", include("apps.push.urls")),
+    path("api/v1/search", SearchView.as_view(), name="search-root"),
     path("api/v1/search/", include("apps.search.urls")),
     path("api/v1/library/", include("apps.library.urls")),
     path("api/v1/media/", include("apps.media.urls")),

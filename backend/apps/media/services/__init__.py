@@ -51,6 +51,8 @@ from apps.media.services.episodes import (
 from apps.media.services.imports import (
     empty_game_match,
     import_response,
+    match_game_payload,
+    match_games_payload,
     resolve_imported_item,
     sync_local_games,
 )
@@ -86,6 +88,8 @@ __all__ = [
     "delete_rating",
     "delete_review",
     "empty_game_match",
+    "match_game_payload",
+    "match_games_payload",
     "enrich_summaries",
     "episode_interactions",
     "external_ids_for",

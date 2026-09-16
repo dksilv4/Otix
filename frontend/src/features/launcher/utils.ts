@@ -15,11 +15,12 @@ export function toDisplayGame(g: LocalGame): DisplayGame {
   const matchLabel = isMatched ? '✓ Matched' : (g.matchSuggestion ? '⚠ Suggestion' : 'Unmatched')
   return {
     id: g.id,
-    title: g.data?.title || g.title,
-    posterUrl: g.data?.posterUrl || g.posterUrl || null,
+    title: g.data?.title || g.otixMediaTitle || g.title,
+    posterUrl: g.otixPosterUrl || g.data?.posterUrl || g.posterUrl || null,
+    textlessPosterUrl: g.otixTextlessPosterUrl || g.data?.textlessPosterUrl || null,
     backdropUrl: g.otixBackdropUrl || g.data?.backdropUrl || undefined,
     localIconUrl: g.localIconUrl || undefined,
-    iconUrl: g.data?.iconUrl || g.iconUrl || undefined,
+    iconUrl: g.data?.iconUrl || g.otixIconUrl || g.iconUrl || undefined,
     logoUrl: g.otixLogoUrl || g.data?.logoUrl || g.logoUrl || undefined,
     logoColorGuess: g.data?.logoColorGuess || undefined,
     badge: `${platformLabel} · ${matchLabel}`,
@@ -30,7 +31,7 @@ export function toDisplayGame(g: LocalGame): DisplayGame {
     exePath: g.exePath,
     installDir: g.installDir,
     isInstalled: !!g.exePath && g.platform !== 'iso',
-    otixMediaId: g.data?.id || undefined,
+    otixMediaId: g.otixMediaId || g.data?.id || undefined,
     rawGame: g,
   }
 }

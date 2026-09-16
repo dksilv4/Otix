@@ -199,5 +199,128 @@ describe('apiClient', () => {
     await expect(apiClient.get('/secure-page')).rejects.toThrow()
     expect(sessionExpiredDispatched).toBe(true)
   })
+
+  it('retries a 401 with a newer access token without calling refresh', async () => {
+    const { apiClient } = await import('./client')
+    localStorage.setItem('otix-access-token', 'old-token')
+    let refreshCalls = 0
+    let requestCount = 0
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+      if (config.url?.includes('/auth/refresh')) {
+        refreshCalls++
+        return jsonResponse(config, { access_token: 'from-refresh' })
+      }
+      requestCount++
+      if (requestCount === 1) {
+        localStorage.setItem('otix-access-token', 'already-rotated-token')
+        const err = new Error('Unauthorized') as unknown as {
+          response: { status: number; headers: Record<string, string>; data: string; config: InternalAxiosRequestConfig }
+          config: InternalAxiosRequestConfig
+        }
+        err.response = {
+          status: 401,
+          headers: {},
+          data: 'Unauthorized',
+          config,
+        }
+        err.config = config
+        throw err
+      }
+      return jsonResponse(config, { success: true })
+    }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
+
+    const res = await apiClient.get('/late-inflight')
+    expect(res.data).toEqual({ success: true })
+    expect(refreshCalls).toBe(0)
+    expect(requestCount).toBe(2)
+  })
+
+  it('single-flights concurrent 401s into one refresh', async () => {
+    const { apiClient } = await import('./client')
+    localStorage.setItem('otix-access-token', 'old-token')
+    let refreshCalls = 0
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+      if (config.url?.includes('/auth/refresh')) {
+        refreshCalls++
+        return jsonResponse(config, { access_token: 'new-token-999' })
+      }
+      const auth = String(config.headers?.Authorization ?? '')
+      if (auth === 'Bearer old-token') {
+        const err = new Error('Unauthorized') as unknown as {
+          response: { status: number; headers: Record<string, string>; data: string; config: InternalAxiosRequestConfig }
+          config: InternalAxiosRequestConfig
+        }
+        err.response = {
+          status: 401,
+          headers: {},
+          data: 'Unauthorized',
+          config,
+        }
+        err.config = config
+        throw err
+      }
+      return jsonResponse(config, { ok: true })
+    }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
+
+    const [a, b] = await Promise.all([
+      apiClient.get('/one'),
+      apiClient.get('/two'),
+    ])
+    expect(a.data).toEqual({ ok: true })
+    expect(b.data).toEqual({ ok: true })
+    expect(refreshCalls).toBe(1)
+  })
+
+  it('does not retry refresh after a failure until auth state is reset', async () => {
+    const { apiClient } = await import('./client')
+    const { resetAuthRefreshState } = await import('./session-refresh')
+    localStorage.setItem('otix-access-token', 'old-token')
+    let refreshCalls = 0
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+      if (config.url?.includes('/auth/refresh')) {
+        refreshCalls++
+        const err = new Error('Refresh failed') as unknown as {
+          response: { status: number; headers: Record<string, string>; data: string; config: InternalAxiosRequestConfig }
+          config: InternalAxiosRequestConfig
+        }
+        err.response = {
+          status: 401,
+          headers: {},
+          data: 'Refresh token expired',
+          config,
+        }
+        err.config = config
+        throw err
+      }
+      const err = new Error('Unauthorized') as unknown as {
+        response: { status: number; headers: Record<string, string>; data: string; config: InternalAxiosRequestConfig }
+        config: InternalAxiosRequestConfig
+      }
+      err.response = {
+        status: 401,
+        headers: {},
+        data: 'Unauthorized',
+        config,
+      }
+      err.config = config
+      throw err
+    }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
+
+    await expect(apiClient.get('/first')).rejects.toThrow()
+    expect(refreshCalls).toBe(1)
+    await expect(apiClient.get('/second')).rejects.toThrow('Session expired')
+    expect(refreshCalls).toBe(1)
+
+    resetAuthRefreshState()
+    localStorage.setItem('otix-access-token', 'old-token')
+    await expect(apiClient.get('/third')).rejects.toThrow()
+    expect(refreshCalls).toBe(2)
+  })
 })
 

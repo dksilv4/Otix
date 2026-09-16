@@ -3,11 +3,11 @@ import {useNavigate, useParams} from '@tanstack/react-router'
 import {useQueryClient} from '@tanstack/react-query'
 import {Gamepad2, Search, X} from 'lucide-react'
 import {motion, AnimatePresence} from 'framer-motion'
-import {useLocalGames, localGameKeys} from '@/features/launcher/data/game-queries'
+import {useLauncherVisibleGames, localGameKeys} from '@/features/launcher/data/game-queries'
 import {usePopularGames, gameDetailOptions} from '@/features/launcher/data/queries'
 import {fetchGameById} from '@/features/launcher/data/storage'
 import {hasDesktopAPI} from '@/lib/desktop/api'
-import {toDisplayGame, isApplicationGame} from '@/features/launcher/utils'
+import {toDisplayGame} from '@/features/launcher/utils'
 import {OTIX_DEFAULT_GAME} from '@/features/launcher/data/otix-default-game'
 import GameThumbList from '@/features/launcher/components/molecules/launcher-game-thumb-list'
 import type {DisplayGame, LauncherPlatform} from '@/features/launcher/types'
@@ -23,16 +23,15 @@ export function FloatingGameSelector() {
     const [searchQuery, setSearchQuery] = useState('')
     const searchInputRef = useRef<HTMLInputElement>(null)
 
-    const {data: localGames = []} = useLocalGames(
+    const {data: visibleGames = []} = useLauncherVisibleGames(
         isDesktop ? {sortBy: 'last_played_at', sortDir: 'desc'} : undefined,
     )
     const {data: popularGames = []} = usePopularGames()
 
     const games: DisplayGame[] = useMemo(() => {
-        if (localGames.length > 0) {
-            return localGames
-                .filter((g) => !isApplicationGame(g as any))
-                .map((g) => toDisplayGame(g as any))
+        if (visibleGames.length > 0) {
+            return visibleGames
+                .map((g) => toDisplayGame(g))
                 .slice(0, 30)
         }
         if (popularGames.length > 0) {
@@ -52,7 +51,7 @@ export function FloatingGameSelector() {
         }
         // Filler Otix game when library is empty
         return [toDisplayGame(OTIX_DEFAULT_GAME)]
-    }, [localGames, popularGames])
+    }, [visibleGames, popularGames])
 
     const filteredGames = useMemo(() => {
         if (!searchQuery.trim()) return games

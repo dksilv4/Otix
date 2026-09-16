@@ -4,9 +4,12 @@ import type { CamelCaseKeys } from "@/lib/api/client"
 import type { components } from "@/lib/api/openapi"
 import type { CatalogGame, CatalogGameDetail } from "../types"
 
+const IGDB_ID_PREFIX = "igdb:"
+
 // ponytail: use generated API types — the axios interceptor converts snake_case → camelCase
 type MediaItemSummary = CamelCaseKeys<components["schemas"]["MediaItemSummary"]>
 type MediaItemDetail = CamelCaseKeys<components["schemas"]["MediaItemDetail"]>
+type MediaListResponse = CamelCaseKeys<components["schemas"]["MediaItemListResponse"]>
 
 // ── Query key factory ──────────────────────────────────────────────
 
@@ -14,7 +17,7 @@ export const gameKeys = {
   all: ["games"] as const,
   popular: () => [...gameKeys.all, "popular"] as const,
   detail: (id: string) => [...gameKeys.all, "detail", id] as const,
-  suggestions: (query: string) => [...gameKeys.all, "suggestions", query] as const,
+  search: (query: string) => [...gameKeys.all, "search", query] as const,
   genres: () => [...gameKeys.all, "genres"] as const,
 }
 
@@ -55,19 +58,46 @@ export const gameDetailOptions = (id: string) =>
     staleTime: 1000 * 60 * 5,
   })
 
-export const gameSuggestionsOptions = (query: string) =>
+export const gameSearchOptions = (query: string) =>
   queryOptions({
-    queryKey: gameKeys.suggestions(query),
-    queryFn: async (): Promise<CatalogGame[]> => {
-      if (!query || query.length < 1) return []
-      const { data } = await apiClient.get<MediaItemSummary[]>("/media/suggestions", {
-        params: { q: query, limit: 8, media_type: 'game' },
+    queryKey: gameKeys.search(query),
+    queryFn: async (): Promise<{ items: CatalogGame[]; backfillPending: boolean }> => {
+      if (!query || query.length < 1) return { items: [], backfillPending: false }
+      const { data } = await apiClient.get<MediaListResponse>("/search", {
+        params: { q: query, page_size: 12, media_type: "game", include_external: true },
       })
-      return (data ?? []).filter((item) => item.mediaType === 'game')
+      const items = (Array.isArray(data.items) ? data.items : []).filter(
+        (item) => !item.mediaType || item.mediaType === "game",
+      ) as unknown as CatalogGame[]
+      return { items, backfillPending: Boolean(data.backfillPending) }
     },
     enabled: query.length >= 1,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 15,
+    refetchInterval: (result) => {
+      const data = result.state.data
+      if (!data) return false
+      if (data.backfillPending) return 2000
+      if (data.items.some((item) => String(item.id).startsWith(IGDB_ID_PREFIX))) return 2000
+      return false
+    },
   })
+
+export async function resolveCatalogGame(result: CatalogGame): Promise<CatalogGame> {
+  const id = String(result.id)
+  if (!id.startsWith(IGDB_ID_PREFIX)) return result
+  const igdbId = id.slice(IGDB_ID_PREFIX.length)
+  const { data } = await apiClient.post<{ mediaId: number | string; title?: string; slug?: string }>(
+    "/media/import/igdb",
+    {},
+    { params: { igdb_id: igdbId } },
+  )
+  return {
+    ...result,
+    id: String(data.mediaId),
+    title: data.title || result.title,
+    slug: data.slug || result.slug,
+  }
+}
 
 export const gameGenresOptions = () =>
   queryOptions({
@@ -98,8 +128,8 @@ export function useGame(id: string | undefined | null) {
   })
 }
 
-export function useGameSuggestions(query: string) {
-  return useQuery(gameSuggestionsOptions(query))
+export function useGameSearch(query: string) {
+  return useQuery(gameSearchOptions(query))
 }
 
 export function useGameGenres() {

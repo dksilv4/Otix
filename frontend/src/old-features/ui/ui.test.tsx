@@ -148,7 +148,7 @@ describe('dk-ui molecules', () => {
     expect(screen.getByText('Some Description')).toBeInTheDocument()
 
     // Test overlay click (dialog uses createPortal → in document.body, not container)
-    const overlay = document.querySelector('.bg-black\\/60')
+    const overlay = document.querySelector('.bg-black\\/75')
     expect(overlay).toBeInTheDocument()
     await userEvent.click(overlay!)
     expect(onOpenChange).toHaveBeenCalledWith(false)

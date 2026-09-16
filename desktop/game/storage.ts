@@ -39,6 +39,7 @@ export interface GameRow {
   updateFiles?: { name: string; path: string }[];
   lastPlayedAt?: string;
   otixMediaId?: string;
+  otixMediaTitle?: string;
   otixMediaSlug?: string;
   otixConfidence?: number;
   otixPosterUrl?: string;
@@ -230,8 +231,8 @@ export function upsertGames(games: GameRow[]): void {
     const seeded = existingSeeded.get(g.id) ?? 0
     // Preserve existing match data if the incoming row doesn't have it
     const existing = __get('SELECT otix_media_id, otix_media_title, otix_match_suggestion, otix_data, otix_poster_url, otix_backdrop_url, otix_icon_url, otix_confidence FROM scanned_games WHERE id = ?', g.id)
-    const otixMediaId = g.data?.id || (existing as any)?.otix_media_id || null
-    const otixMediaTitle = g.data?.title || (existing as any)?.otix_media_title || null
+    const otixMediaId = g.data?.id || g.otixMediaId || (existing as any)?.otix_media_id || null
+    const otixMediaTitle = g.data?.title || g.otixMediaTitle || (existing as any)?.otix_media_title || null
     const matchSuggestion = g.matchSuggestion ? JSON.stringify(g.matchSuggestion) : (existing as any)?.otix_match_suggestion || null
     // ponytail: only update otix columns if we have data — preserve existing match on re-scan
     // Merge top-level isDlc/dlcOf into source entries so DLC flags survive scans that
@@ -271,11 +272,11 @@ export function upsertGames(games: GameRow[]): void {
       otixMediaId,
       otixMediaTitle,
       matchSuggestion,
-      (existing as any)?.otix_data || null,
-      (existing as any)?.otix_poster_url || null,
-      (existing as any)?.otix_backdrop_url || null,
-      (existing as any)?.otix_icon_url || null,
-      (existing as any)?.otix_confidence ?? null,
+      (existing as any)?.otix_data || (g.data ? JSON.stringify(g.data) : null),
+      (existing as any)?.otix_poster_url || g.otixPosterUrl || null,
+      (existing as any)?.otix_backdrop_url || g.otixBackdropUrl || null,
+      (existing as any)?.otix_icon_url || g.otixIconUrl || null,
+      (existing as any)?.otix_confidence ?? g.otixConfidence ?? null,
       seeded,
     );
   }

@@ -240,6 +240,18 @@ class Command(BaseCommand):
                 "assets": _steam_assets(1086940),
             },
             {
+                "title": "Balatro",
+                "slug": "balatro",
+                "overview": "The poker roguelike. Combine valid poker hands with unique Joker cards to create synergies, beat blinds, and reach the final ante.",
+                "release_date": date(2024, 2, 20),
+                "popularity": 96.0,
+                "avg_rating": 94.0,
+                "rating_count": 2200,
+                "platforms": ["windows", "playstation-5", "xbox-series-x-s", "nintendo-switch"],
+                "genres": ["strategy"],
+                "assets": _steam_assets(2379780),
+            },
+            {
                 "title": "Elden Ring",
                 "slug": "elden-ring",
                 "overview": "Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring and become an Elden Lord in the Lands Between. An epic dark fantasy action RPG created by Hidetaka Miyazaki and George R. R. Martin.",

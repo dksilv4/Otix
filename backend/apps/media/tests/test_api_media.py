@@ -8,7 +8,7 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
@@ -327,6 +327,7 @@ class MediaApiTests(TestCase):
         )
         self.assertEqual(missing.status_code, 404)
 
+    @override_settings(IGDB_CLIENT_ID="", IGDB_CLIENT_SECRET="")
     def test_match_stubs_and_sync_local_games(self) -> None:
         single = self.auth_client.post(
             "/api/v1/media/match", {"query_id": "g1", "title": "Dune"}, format="json"
@@ -347,6 +348,21 @@ class MediaApiTests(TestCase):
         )
         self.assertEqual(synced.status_code, 200)
         self.assertEqual(synced.data["upserted"], 1)
+
+    @override_settings(IGDB_CLIENT_ID="", IGDB_CLIENT_SECRET="")
+    def test_match_batch_auto_matches_catalog_game(self) -> None:
+        game = MediaItem.objects.create(media_type="game", title="Balatro", slug="balatro")
+        batch = self.auth_client.post(
+            "/api/v1/media/match/batch",
+            {"games": [{"query_id": "server-balatro", "title": "Balatro"}]},
+            format="json",
+        )
+        self.assertEqual(batch.status_code, 200)
+        match = batch.data["matches"][0]
+        self.assertEqual(match["query_id"], "server-balatro")
+        self.assertIsNotNone(match["auto_match"])
+        self.assertEqual(str(match["auto_match"]["media_item_id"]), str(game.pk))
+        self.assertGreaterEqual(match["auto_match"]["confidence"], 0.95)
 
     def test_rehydrate_admin_only(self) -> None:
         path = f"/api/v1/media/{self.movie_item.pk}/rehydrate"

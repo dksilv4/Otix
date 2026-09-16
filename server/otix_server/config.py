@@ -31,6 +31,7 @@ class SavesConfig(BaseModel):
 
 
 from otix_server.usenet_types import UsenetConfig
+from otix_server.arr_types import RadarrConfig, SonarrConfig
 
 
 class AppConfig(BaseModel):
@@ -38,6 +39,8 @@ class AppConfig(BaseModel):
     game_libraries: List[LibraryConfig] = Field(default_factory=list)
     saves: SavesConfig = Field(default_factory=SavesConfig)
     usenet: UsenetConfig = Field(default_factory=UsenetConfig)
+    radarr: RadarrConfig = Field(default_factory=RadarrConfig)
+    sonarr: SonarrConfig = Field(default_factory=SonarrConfig)
 
 
 

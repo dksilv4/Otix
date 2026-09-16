@@ -1,11 +1,8 @@
 """Import / match / rehydrate / local-game-sync routes.
 
-Most of these are deferred-platform: legacy handlers block on a Celery worker or
-the SteamGridDB/embedding platform that does not exist in the Django backend
-yet (see ARCHITECTURE §7). They are NOT silently dropped — each returns the
-closest legacy success shape so callers get a decodable response, and the
-``/import*`` + ``/sync-local-games`` routes are implemented for the parts that
-only touch the local database.
+``/import*`` and ``/sync-local-games`` talk to the local database. Game matching
+runs through ``GameMatcher``. Rehydrate still returns a placeholder because
+there is no task worker in the Django backend.
 """
 
 from __future__ import annotations
@@ -39,6 +36,27 @@ def _enqueue_local_game_mirror(media_item_id: int) -> None:
         logger.exception("could not enqueue local-game mirror for %s", media_item_id)
 
 
+def import_igdb_game(igdb_id: int) -> MediaItem | None:
+    """Return the catalog row for an IGDB id, seeding it when missing."""
+    item = resolve_imported_item("igdb", str(igdb_id))
+    if item is not None:
+        return item
+    from apps.media.services.igdb import IGDBProvider, configured
+    from apps.media.services.igdb_ingest import seed_game_from_igdb
+
+    if not configured():
+        return None
+    try:
+        raw = IGDBProvider().get_game(igdb_id)
+    except Exception:  # noqa: BLE001 - import must fail cleanly for the client
+        logger.exception("igdb import fetch failed igdb_id=%s", igdb_id)
+        return None
+    if not raw:
+        return None
+    media_id = seed_game_from_igdb(raw, igdb_id)
+    return MediaItem.objects.filter(pk=media_id).first()
+
+
 def resolve_imported_item(
     provider: str, provider_id: str, media_type: str | None = None
 ) -> MediaItem | None:
@@ -65,7 +83,7 @@ def import_response(provider: str, provider_id: str, item: MediaItem) -> dict:
     }
 
 
-# ── Game matching (deferred platform) ────────────────────────────────────
+# ── Game matching ────────────────────────────────────────────────────────
 
 
 def empty_game_match(query_id: str, query_title: str | None = None) -> dict:
@@ -75,6 +93,105 @@ def empty_game_match(query_id: str, query_title: str | None = None) -> dict:
         "candidates": [],
         "auto_match": None,
     }
+
+
+def _serialize_match_candidate(candidate) -> dict | None:
+    if candidate is None:
+        return None
+    media_id = candidate.media_item_id
+    return {
+        "media_item_id": str(media_id) if media_id is not None else None,
+        "title": candidate.title,
+        "poster_url": candidate.poster_url,
+        "backdrop_url": candidate.backdrop_url,
+        "release_year": candidate.release_year,
+        "platforms": candidate.platforms,
+        "confidence": candidate.confidence,
+        "match_type": candidate.match_type,
+        "needs_import": candidate.needs_import,
+    }
+
+
+def _serialize_match_result(request, outcome) -> dict:
+    if outcome is None:
+        return empty_game_match(request.query_id, request.title)
+    return {
+        "query_id": getattr(outcome, "query_id", None) or request.query_id,
+        "query_title": getattr(outcome, "query_title", None) or request.title,
+        "candidates": [
+            row
+            for row in (_serialize_match_candidate(c) for c in getattr(outcome, "candidates", []))
+            if row is not None
+        ],
+        "auto_match": _serialize_match_candidate(getattr(outcome, "auto_match", None)),
+    }
+
+
+def _match_request_from_game(game: dict):
+    from apps.media.services.game_matcher import ExternalIDRef, MatchRequest
+
+    title = str(game.get("title") or game.get("query_title") or "").strip()
+    platforms = game.get("platforms")
+    if isinstance(platforms, str) and platforms.strip():
+        platforms = [platforms.strip()]
+    elif not isinstance(platforms, list):
+        platform = game.get("platform")
+        platforms = [platform] if isinstance(platform, str) and platform.strip() else None
+    else:
+        platforms = [str(item) for item in platforms if item] or None
+    refs = []
+    for raw in game.get("external_ids") or []:
+        if isinstance(raw, dict) and raw.get("source") and raw.get("id"):
+            refs.append(ExternalIDRef(source=str(raw["source"]), id=str(raw["id"])))
+    developer = game.get("developer")
+    return MatchRequest(
+        title=title,
+        query_id=str(game.get("query_id") or ""),
+        developer=developer if isinstance(developer, str) else None,
+        platforms=platforms,
+        external_ids=refs or None,
+    )
+
+
+def match_games_payload(games: list[dict]) -> dict:
+    """Run GameMatcher on scanned/local titles and return the batch envelope."""
+    from apps.media.services.game_matcher import GameMatcher
+
+    prepared: list[tuple[dict | None, object | None]] = []
+    for game in games:
+        if not isinstance(game, dict):
+            prepared.append((None, None))
+            continue
+        request = _match_request_from_game(game)
+        prepared.append((game, request if request.title else None))
+
+    runnable = [request for _, request in prepared if request is not None]
+    outcomes = []
+    if runnable:
+        try:
+            outcomes = GameMatcher().match_batch(runnable)
+        except Exception:  # noqa: BLE001 - callers still need a decodable row per input
+            logger.exception("match_batch failed")
+    queued = iter(outcomes)
+    matches: list[dict] = []
+    for game, request in prepared:
+        if request is None:
+            if game is None:
+                matches.append(empty_game_match("", ""))
+            else:
+                matches.append(
+                    empty_game_match(
+                        str(game.get("query_id") or ""),
+                        str(game.get("title") or game.get("query_title") or ""),
+                    )
+                )
+            continue
+        matches.append(_serialize_match_result(request, next(queued, None)))
+    return {"matches": matches}
+
+
+def match_game_payload(game: dict) -> dict:
+    return match_games_payload([game])["matches"][0]
 
 
 # ── Sync local games ─────────────────────────────────────────────────────

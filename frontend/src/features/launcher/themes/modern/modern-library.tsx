@@ -17,8 +17,10 @@ import {
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { LauncherActionButtons } from "../common/launcher-action-buttons"
+import { LauncherMediaCard } from "@/features/launcher/components/molecules/launcher-media-card"
+import { LauncherFoundGames } from "@/features/launcher/components/organisms/launcher-found-games"
 import { PLATFORM_LABELS } from "@/constants/games"
-import { toDisplayGame, isApplicationGame } from "@/features/launcher/utils"
+import { isApplicationGame } from "@/features/launcher/utils"
 import type { LocalGame, DisplayGame, LauncherPlatform } from "@/features/launcher/types"
 
 type ViewMode = "grid" | "banner" | "list"
@@ -204,56 +206,13 @@ export function ModernLibrary({
           transition={{ duration: 0.2 }}
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5"
         >
-          {filteredGames.map((game) => {
-            const poster = game.otixPosterUrl || game.data?.posterUrl || game.posterUrl
-            const logo = game.otixLogoUrl || game.data?.logoUrl || game.logoUrl
-            const isInstalled = !!game.exePath && game.platform !== "iso"
-
-            return (
-              <div
+          {filteredGames.map((game) => (
+              <LauncherMediaCard
                 key={game.id}
+                game={game}
                 onClick={() => onOpenDetails(game)}
-                className="group relative rounded-2xl overflow-hidden aspect-[2/3] bg-neutral-900 border border-white/[0.08] hover:border-white/30 transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-1.5"
-              >
-                {poster ? (
-                  <img
-                    src={poster}
-                    alt={game.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center text-white/30">
-                    <Gamepad2 size={32} className="mb-2" />
-                    <span className="text-xs font-bold text-white/60 line-clamp-2">{game.title}</span>
-                  </div>
-                )}
-
-                {/* Vignette */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent opacity-80 group-hover:opacity-95 transition-opacity" />
-
-                {/* Platform Badge */}
-                <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-white/90 text-[9px] font-black uppercase tracking-wider">
-                    {PLATFORM_LABELS[game.platform] || game.platform}
-                  </span>
-                  {isInstalled && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                  )}
-                </div>
-
-                {/* Bottom Content */}
-                <div className="absolute inset-x-0 bottom-0 p-3.5 z-10 space-y-2">
-                  <h4 className="text-xs font-black text-white line-clamp-2 drop-shadow-md">
-                    {game.title}
-                  </h4>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <LauncherActionButtons game={game} size="sm" />
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+              />
+            ))}
         </motion.div>
       ) : viewMode === "banner" ? (
         /* ── Banner View (16:9 widescreen cards) ── */
@@ -428,6 +387,8 @@ export function ModernLibrary({
           </table>
         </motion.div>
       )}
+
+      <LauncherFoundGames />
     </div>
   )
 }

@@ -1,10 +1,10 @@
 /* ── MatchGameModal — full match flow with results, search, accept ── */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Search, Loader2, Check, Sparkles, Gamepad2, RefreshCw } from 'lucide-react'
+import { X, Search, Loader2, Check, Sparkles, Gamepad2, RefreshCw, Import } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { getDesktopAPI } from '@/lib/desktop/api'
-import { useGameSuggestions } from '@/features/launcher/data/queries'
+import { useGameSearch, resolveCatalogGame } from '@/features/launcher/data/queries'
 import { useMatchLocalGames, useSyncLocalGames } from '@/features/launcher/data/game-queries'
 import { localGameKeys } from '@/features/launcher/data/game-queries'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
@@ -55,7 +55,9 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const { data: searchResults, isLoading: searchLoading, isError: searchError } = useGameSuggestions(debouncedQuery)
+  const { data: searchData, isLoading: searchLoading, isError: searchError } = useGameSearch(debouncedQuery)
+  const searchResults = searchData?.items
+  const backfillPending = Boolean(searchData?.backfillPending)
 
   // ── Debounce search ──
   useEffect(() => {
@@ -166,10 +168,12 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
     setStep('accepting')
     const synced = buildSyncedGame(matchedId, matchedTitle)
     try {
-      // 1. Sync to web backend
-      await syncMutation.mutateAsync([synced])
+      try {
+        await syncMutation.mutateAsync([synced])
+      } catch (err) {
+        console.warn('[MatchGameModal] Backend sync failed, saving match locally:', err)
+      }
 
-      // 2. Persist to desktop local DB (no-op on web-only)
       const api = getDesktopAPI()
       if (api?.acceptSuggestion) {
         await api.acceptSuggestion(game.id, {
@@ -186,12 +190,30 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
 
       // 3. Direct cache write — UI updates instantly
       queryClient.setQueryData(localGameKeys.detail(game.id), (old: LocalGame | undefined) => {
-        if (!old) return old
+        const base = old || game
         return {
-          ...old,
+          ...base,
+          title: matchedTitle || base.title,
+          otixMediaId: matchedId,
+          otixMediaTitle: matchedTitle,
           data: synced.data,
           matchSuggestion: undefined,
         }
+      })
+      queryClient.setQueriesData({ queryKey: ['local-games', 'list'] }, (old: LocalGame[] | undefined) => {
+        if (!old) return old
+        const next = {
+          ...(old.find((item) => item.id === game.id) || game),
+          title: matchedTitle || game.title,
+          otixMediaId: matchedId,
+          otixMediaTitle: matchedTitle,
+          data: synced.data,
+          matchSuggestion: undefined,
+        }
+        if (old.some((item) => item.id === game.id)) {
+          return old.map((item) => (item.id === game.id ? next : item))
+        }
+        return [...old, next]
       })
 
       // 4. Stable mapping — survives local game re-fetches from desktop DB
@@ -209,12 +231,15 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
   // ── Accept search result as match ──
   const handleSelectSearchResult = useCallback(async (result: CatalogGame) => {
     setStep('accepting')
-    const { id, title, slug, posterUrl, iconUrl } = result
     try {
-      // 1. Sync to web backend (uses current match data from state)
-      await syncMutation.mutateAsync([buildSyncedGame(id, title, slug)])
+      const catalog = await resolveCatalogGame(result)
+      const { id, title, slug, posterUrl, iconUrl } = catalog
+      try {
+        await syncMutation.mutateAsync([buildSyncedGame(id, title, slug)])
+      } catch (err) {
+        console.warn('[MatchGameModal] Backend sync failed, saving match locally:', err)
+      }
 
-      // 2. Persist to desktop local DB
       const api = getDesktopAPI()
       if (api?.acceptSuggestion) {
         await api.acceptSuggestion(game.id, {
@@ -228,18 +253,44 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
 
       // 3. Direct cache write — use result data (no stale deps)
       queryClient.setQueryData(localGameKeys.detail(game.id), (old: LocalGame | undefined) => {
-        if (!old) return old
+        const base = old || game
+        const data = {
+          id,
+          title,
+          slug: slug || '',
+          posterUrl: posterUrl ?? null,
+          iconUrl: iconUrl ?? null,
+        } as Game
         return {
-          ...old,
-          data: {
-            id,
-            title,
-            slug: slug || '',
-            posterUrl: posterUrl ?? null,
-            iconUrl: iconUrl ?? null,
-          } as Game,
+          ...base,
+          title: title || base.title,
+          otixMediaId: id,
+          otixMediaTitle: title,
+          data,
           matchSuggestion: undefined,
         }
+      })
+      queryClient.setQueriesData({ queryKey: ['local-games', 'list'] }, (old: LocalGame[] | undefined) => {
+        if (!old) return old
+        const data = {
+          id,
+          title,
+          slug: slug || '',
+          posterUrl: posterUrl ?? null,
+          iconUrl: iconUrl ?? null,
+        } as Game
+        const next = {
+          ...(old.find((item) => item.id === game.id) || game),
+          title: title || game.title,
+          otixMediaId: id,
+          otixMediaTitle: title,
+          data,
+          matchSuggestion: undefined,
+        }
+        if (old.some((item) => item.id === game.id)) {
+          return old.map((item) => (item.id === game.id ? next : item))
+        }
+        return [...old, next]
       })
 
       // 4. Stable mapping — survives local game re-fetches from desktop DB
@@ -414,7 +465,7 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
             <div className="text-center py-4">
               <Gamepad2 size={32} className="mx-auto text-white/15 mb-2" />
               <p className="text-sm text-white/60">No confident match found.</p>
-              <p className="text-xs text-white/30 mt-1">Search the catalog to find the right game.</p>
+              <p className="text-xs text-white/30 mt-1">Search Otix; missing titles are filled in from IGDB.</p>
             </div>
 
             {/* Search input */}
@@ -445,12 +496,24 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
               </div>
             )}
 
+            {debouncedQuery && (backfillPending || searchResults?.some((result) => String(result.id).startsWith('igdb:'))) && (
+              <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-blue-500/10 text-[10px] text-blue-400">
+                <Import className="h-3 w-3" />
+                {backfillPending
+                  ? 'Importing games from IGDB — new matches will appear shortly'
+                  : 'Results from IGDB — matching imports them into Otix'}
+              </div>
+            )}
+
             {debouncedQuery && searchResults && searchResults.length > 0 && !searchLoading && (
               <div className="space-y-1.5 max-h-[240px] overflow-y-auto">
                 {searchResults.map((result) => (
-                  <div
+                  <button
+                    type="button"
                     key={result.id}
-                    className="flex items-center gap-3 p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] hover:border-white/[0.08] transition-all group"
+                    onClick={() => handleSelectSearchResult(result)}
+                    disabled={isSaving}
+                    className="flex items-center gap-3 w-full text-left p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] hover:border-white/[0.08] transition-all cursor-pointer disabled:opacity-50"
                   >
                     <div className="w-9 h-12 rounded-lg overflow-hidden shrink-0 bg-white/5">
                       {result.posterUrl ? (
@@ -463,21 +526,19 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-white/90 truncate">{result.title}</p>
-                      <p className="text-[10px] text-white/30 truncate">{result.slug}</p>
+                      <p className="text-[10px] text-white/30 truncate">
+                        {String(result.id).startsWith('igdb:') ? 'IGDB' : result.slug}
+                      </p>
                     </div>
-                    <button
-                      onClick={() => handleSelectSearchResult(result)}
-                      disabled={isSaving}
-                      className="px-3 py-1.5 rounded-lg bg-blue-500/80 hover:bg-blue-400 disabled:bg-blue-500/40 text-white text-[10px] font-bold transition-all cursor-pointer active:scale-95 opacity-0 group-hover:opacity-100"
-                    >
+                    <span className="px-3 py-1.5 rounded-lg bg-blue-500/80 text-white text-[10px] font-bold shrink-0">
                       Match
-                    </button>
-                  </div>
+                    </span>
+                  </button>
                 ))}
               </div>
             )}
 
-            {debouncedQuery && searchResults?.length === 0 && !searchLoading && !searchError && (
+            {debouncedQuery && searchResults?.length === 0 && !searchLoading && !searchError && !backfillPending && (
               <p className="text-xs text-white/30 text-center py-2">
                 No catalog results for "{debouncedQuery}"
               </p>

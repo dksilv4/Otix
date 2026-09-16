@@ -1,12 +1,4 @@
-"""Import / match / rehydrate / sync-local-games endpoints.
-
-Legacy handlers in this family block on the Celery worker and/or the
-SteamGridDB provider (both deferred, see ARCHITECTURE §7). Each route still
-exists and returns the closest legacy success shape so callers get a decodable
-response; anything that would need the external platform returns an honest
-"not available" body instead of silently dropping. ``/sync-local-games`` and the
-short-circuit import lookups only touch the local database and are implemented.
-"""
+"""Import / match / rehydrate / sync-local-games endpoints."""
 
 from __future__ import annotations
 
@@ -36,13 +28,13 @@ def _media_or_404(media_id: int):
     return item
 
 
-def _empty_match(game: dict) -> dict:
-    return {
-        "query_id": game.get("query_id") or "",
-        "query_title": game.get("title") or game.get("query_title") or "",
-        "candidates": [],
-        "auto_match": None,
-    }
+def _empty_match(game) -> dict:
+    if not isinstance(game, dict):
+        return import_service.empty_game_match("", "")
+    return import_service.empty_game_match(
+        str(game.get("query_id") or ""),
+        str(game.get("title") or game.get("query_title") or ""),
+    )
 
 
 class RehydrateView(APIView):
@@ -94,7 +86,7 @@ class ImportView(APIView):
 
 
 class ImportIgdbView(APIView):
-    """``POST /media/import/igdb?igdb_id=...`` — igdb import (short-circuit only)."""
+    """``POST /media/import/igdb?igdb_id=...`` — seed from IGDB when missing."""
 
     def post(self, request) -> Response:
         raw = request.query_params.get("igdb_id")
@@ -104,38 +96,32 @@ class ImportIgdbView(APIView):
             raise ValidationError("igdb_id must be an integer") from None
         if igdb_id is None:
             raise ValidationError("igdb_id query parameter is required")
-        item = import_service.resolve_imported_item("igdb", str(igdb_id))
+        item = import_service.import_igdb_game(igdb_id)
         if item is None:
             raise NotFound("IGDB game not found or import failed")
         return Response(import_service.import_response("igdb", str(igdb_id), item))
 
 
 class MatchGameView(APIView):
-    """``POST /media/match`` — single-game match (deferred platform)."""
+    """``POST /media/match`` — resolve one scanned/local title to the catalog."""
 
     def post(self, request) -> Response:
-        game = request.data or {}
-        return Response(_empty_match(game))
+        game = request.data if isinstance(request.data, dict) else {}
+        return Response(import_service.match_game_payload(game))
 
 
 class MatchBatchView(APIView):
-    """``POST /media/match/batch`` — batch match (deferred platform)."""
+    """``POST /media/match/batch`` — resolve scanned/local titles to the catalog."""
 
     def post(self, request) -> Response:
         games = request.data.get("games") if isinstance(request.data, dict) else None
         if not isinstance(games, list):
             raise ValidationError("games list is required")
-        return Response({"matches": [_empty_match(g) for g in games]})
+        return Response(import_service.match_games_payload(games))
 
 
-class MatchStreamView(APIView):
-    """``POST /media/match/stream`` — legacy SSE batch stream (deferred)."""
-
-    def post(self, request) -> Response:
-        games = request.data.get("games") if isinstance(request.data, dict) else None
-        if not isinstance(games, list):
-            raise ValidationError("games list is required")
-        return Response({"matches": [_empty_match(g) for g in games]})
+class MatchStreamView(MatchBatchView):
+    """``POST /media/match/stream`` — same batch matcher as ``/match/batch``."""
 
 
 class MatchScanView(APIView):

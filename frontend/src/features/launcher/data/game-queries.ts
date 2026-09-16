@@ -2,7 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGames, fetchGameById, fetchGameCount, acceptSuggestionOnServer, rejectSuggestionOnServer } from './storage';
 import { getDesktopAPI } from '@/lib/desktop/api';
 import { apiClient } from "@/lib/api/client";
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useServerGames } from '@/features/downloads/use-server-downloads';
+import { listFoundServerGames, mergeLocalAndServerGames, persistableServerGames } from './visible-games';
 import type { GamesFilter } from '../types';
 import type { Game, LocalGame } from "../types";
 
@@ -88,6 +90,46 @@ export function useLocalGameCount(filter?: GamesFilter) {
   });
 }
 
+/**
+ * Local library plus scanned server releases, for launcher lists.
+ * Does not change matching/hydration — those still use useLocalGames.
+ */
+export function useLauncherVisibleGames(filter?: GamesFilter) {
+  const local = useLocalGames(filter)
+  const server = useServerGames()
+  const data = useMemo(
+    () => mergeLocalAndServerGames(local.data, server.data?.files),
+    [local.data, server.data?.files],
+  )
+
+  return {
+    ...local,
+    data,
+    isLoading: local.isLoading || server.isLoading,
+  }
+}
+
+/** Scanned server titles, including ones that did not auto-match the catalog. */
+export function useLauncherFoundGames(filter?: GamesFilter) {
+  const local = useLocalGames(filter)
+  const server = useServerGames()
+  const data = useMemo(
+    () => listFoundServerGames(local.data, server.data?.files),
+    [local.data, server.data?.files],
+  )
+  const persistable = useMemo(
+    () => persistableServerGames(local.data, server.data?.files),
+    [local.data, server.data?.files],
+  )
+
+  return {
+    ...local,
+    data,
+    persistable,
+    isLoading: local.isLoading || server.isLoading,
+  }
+}
+
 // ── Mutations ─────────────────────────────────────────────────────
 
 export function useAcceptSuggestion() {
@@ -132,24 +174,24 @@ export function useUnmatchedGames() {
 
 // ── Match/sync mutations ──────────────────────────────────────────
 
-// Types for POST /media/match/batch response
+// Types for POST /media/match/batch response (camelCase after apiClient)
 interface BatchMatchCandidate {
-  media_item_id: string | null
+  mediaItemId: string | null
   title: string
-  poster_url: string | null
-  backdrop_url: string | null
-  release_year: number | null
+  posterUrl: string | null
+  backdropUrl: string | null
+  releaseYear: number | null
   platforms: string[] | null
   confidence: number
-  match_type: string
-  needs_import: boolean
+  matchType: string
+  needsImport: boolean
 }
 
 interface BatchMatchResult {
-  query_id: string
-  query_title: string
+  queryId: string
+  queryTitle: string
   candidates: BatchMatchCandidate[]
-  auto_match: BatchMatchCandidate | null
+  autoMatch: BatchMatchCandidate | null
 }
 
 interface BatchMatchResponse {
@@ -158,12 +200,12 @@ interface BatchMatchResponse {
 
 function candidateToGame(c: BatchMatchCandidate, confidence: number): Game {
   return {
-    id: c.media_item_id || '',
+    id: c.mediaItemId || '',
     title: c.title,
     slug: '',
-    posterUrl: c.poster_url ?? undefined,
+    posterUrl: c.posterUrl ?? undefined,
     textlessPosterUrl: null,
-    backdropUrl: c.backdrop_url ?? undefined,
+    backdropUrl: c.backdropUrl ?? undefined,
     logoUrl: undefined,
     iconUrl: undefined,
     confidence,
@@ -192,19 +234,21 @@ export function useMatchLocalGames() {
     mutationFn: async (games: LocalGame[]): Promise<LocalGame[]> => {
       const { data } = await apiClient.post<BatchMatchResponse>(
         "/media/match/batch",
-        { games: games.map((g, i) => ({ query_id: g.id || `game-${i}`, title: g.title, platform: g.platform })) },
+        { games: games.map((g, i) => ({ queryId: g.id || `game-${i}`, title: g.title, platform: g.platform })) },
       );
 
-      // Build title → best match lookup (auto_match first, then top candidate)
-      const matchMap = new Map<string, BatchMatchCandidate>();
+      const matchById = new Map<string, BatchMatchCandidate>();
+      const matchByTitle = new Map<string, BatchMatchCandidate>();
       for (const m of data.matches) {
-        const best = m.auto_match || m.candidates[0] || null;
-        if (best?.media_item_id) matchMap.set(m.query_title, best);
+        const best = m.autoMatch || (m.candidates[0]?.confidence >= 0.95 ? m.candidates[0] : null);
+        if (!best?.mediaItemId) continue;
+        if (m.queryId) matchById.set(m.queryId, best);
+        if (m.queryTitle) matchByTitle.set(m.queryTitle, best);
       }
 
       return games.map((game) => {
-        const match = matchMap.get(game.title);
-        if (match?.media_item_id) {
+        const match = (game.id && matchById.get(game.id)) || matchByTitle.get(game.title);
+        if (match?.mediaItemId) {
           const catalogGame = candidateToGame(match, match.confidence);
           if (game.data?.id || match.confidence >= 0.9) {
             return { ...game, data: catalogGame, matchSuggestion: undefined };

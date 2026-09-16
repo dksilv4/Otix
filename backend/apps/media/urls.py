@@ -11,6 +11,7 @@ never shadowed by ``<media_id>``.
 
 from django.urls import path
 
+from apps.search.views import ProvidersView, SuggestionsView
 from apps.media.views import (
     ArtworkSelectionView,
     ArtworkSettingsView,
@@ -62,6 +63,8 @@ urlpatterns = [
     # Literal catalog browse / admin routes (must precede <int:media_id> paths).
     path("", MediaListView.as_view(), name="media-list"),
     path("genres", GenreListView.as_view(), name="genre-list"),
+    path("suggestions", SuggestionsView.as_view(), name="media-suggestions"),
+    path("search-providers", ProvidersView.as_view(), name="media-search-providers"),
     path("certifications", CertificationListView.as_view(), name="certification-list"),
     path("company", CompanyLookupView.as_view(), name="company-lookup"),
     path(

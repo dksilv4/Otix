@@ -16,11 +16,11 @@ export interface LocalGame {
   exePath: string;
   localExePath?: string;
   installDir: string;
-  platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch';
+  platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'origin' | 'ea' | 'riot' | 'xbox' | 'itch' | 'server' | 'unknown';
   localIconUrl?: string; // base64 data URL from .exe icon
   iconUrl?: string; // Icon URL from plugin enrichment
   posterUrl?: string; // Poster URL from plugin enrichment
-  updateFiles?: { name: string; path: string }[];
+  updateFiles?: { name: string; path: string; kind?: 'update' | 'dlc'; version?: string | null; filesize?: number }[];
   isDlc?: boolean;
   dlcOf?: string;
   isBeta?: boolean;

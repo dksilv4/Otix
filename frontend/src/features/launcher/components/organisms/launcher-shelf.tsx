@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { MediaCard } from '@/old-features/ui/molecules/media-card'
+import { LauncherMediaCard } from '@/features/launcher/components/molecules/launcher-media-card'
+import { LauncherFoundGames } from '@/features/launcher/components/organisms/launcher-found-games'
 import { usePopularGames } from '@/features/launcher/data/queries'
-import { useLocalGames } from '@/features/launcher/data/game-queries'
+import { useLauncherVisibleGames } from '@/features/launcher/data/game-queries'
 
 type ShelfTab = 'my-games' | 'popular'
 
@@ -17,7 +19,7 @@ interface LauncherShelfProps {
 }
 
 export function LauncherShelf({ id }: LauncherShelfProps) {
-  const { data: localGames = [], isLoading: localLoading } = useLocalGames()
+  const { data: localGames = [], isLoading: localLoading } = useLauncherVisibleGames()
   const { data: popularGames = [], isLoading: popularLoading } = usePopularGames()
   const [shelfTab, setShelfTab] = useState<ShelfTab>('my-games')
 
@@ -66,13 +68,10 @@ export function LauncherShelf({ id }: LauncherShelfProps) {
           </div>
         ) : shelfTab === 'my-games' ? (
           localGames.map((g) => (
-            <MediaCard
+            <LauncherMediaCard
               key={`shelf-${g.id}`}
-              id={g.data?.id || g.id}
-              mediaType="game"
-              title={g.title}
-              posterUrl={g.posterUrl || g.iconUrl}
-              className="shrink-0 snap-start"
+              game={g}
+              className="w-[180px] shrink-0 snap-start"
             />
           ))
         ) : (
@@ -83,13 +82,22 @@ export function LauncherShelf({ id }: LauncherShelfProps) {
               mediaType="game"
               title={g.title}
               posterUrl={g.posterUrl}
+              textlessPosterUrl={g.textlessPosterUrl}
+              backdropUrl={g.backdropUrl}
+              logoUrl={g.logoUrl}
+              logoColorGuess={g.logoColorGuess}
               avgRating={g.avgRating}
               ratingCount={g.ratingCount}
-              className="shrink-0 snap-start"
+              releaseDate={g.releaseDate}
+              className="w-[180px] shrink-0 snap-start"
             />
           ))
         )}
       </div>
+
+      {shelfTab === 'my-games' && (
+        <LauncherFoundGames className="mt-6" compact />
+      )}
     </div>
   )
 }

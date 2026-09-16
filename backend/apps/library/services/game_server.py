@@ -305,4 +305,106 @@ def scan_game_libraries(server: UserGameServer) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "POST", "/api/v1/scan", timeout=30.0)
 
 
+# ── Radarr Operations ───────────────────────────────────────────────────
+
+def radarr_get_config(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/radarr/config", timeout=6.0)
+
+
+def radarr_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "POST", "/api/v1/radarr/config", json=payload, timeout=8.0)
+
+
+def radarr_test(server: UserGameServer, payload: dict | None = None) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "POST", "/api/v1/radarr/test", json=payload or {}, timeout=15.0)
+
+
+def radarr_get_root_folders(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/radarr/rootfolders", timeout=10.0)
+
+
+def radarr_get_quality_profiles(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/radarr/qualityprofiles", timeout=10.0)
+
+
+def radarr_get_movies(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/radarr/movies", timeout=20.0)
+
+
+def radarr_lookup(server: UserGameServer, term: str) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/radarr/lookup", params={"term": term}, timeout=15.0)
+
+
+def radarr_add_movie(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "POST", "/api/v1/radarr/movies", json=payload, timeout=20.0)
+
+
+def radarr_get_queue(server: UserGameServer, page: int = 1, page_size: int = 50) -> tuple[int, dict | list]:
+    params = {"page": page, "page_size": page_size}
+    return usenet_proxy_request(server, "GET", "/api/v1/radarr/queue", params=params, timeout=10.0)
+
+
+def radarr_delete_queue(
+    server: UserGameServer, queue_id: str | int, remove_from_client: bool = True, blocklist: bool = False
+) -> tuple[int, dict | list]:
+    params = {"remove_from_client": str(remove_from_client).lower(), "blocklist": str(blocklist).lower()}
+    return usenet_proxy_request(server, "DELETE", f"/api/v1/radarr/queue/{queue_id}", params=params, timeout=10.0)
+
+
+def radarr_get_history(server: UserGameServer, page: int = 1, page_size: int = 50) -> tuple[int, dict | list]:
+    params = {"page": page, "page_size": page_size}
+    return usenet_proxy_request(server, "GET", "/api/v1/radarr/history", params=params, timeout=10.0)
+
+
+# ── Sonarr Operations ───────────────────────────────────────────────────
+
+def sonarr_get_config(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/config", timeout=6.0)
+
+
+def sonarr_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "POST", "/api/v1/sonarr/config", json=payload, timeout=8.0)
+
+
+def sonarr_test(server: UserGameServer, payload: dict | None = None) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "POST", "/api/v1/sonarr/test", json=payload or {}, timeout=15.0)
+
+
+def sonarr_get_root_folders(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/rootfolders", timeout=10.0)
+
+
+def sonarr_get_quality_profiles(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/qualityprofiles", timeout=10.0)
+
+
+def sonarr_get_series(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/series", timeout=20.0)
+
+
+def sonarr_lookup(server: UserGameServer, term: str) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/lookup", params={"term": term}, timeout=15.0)
+
+
+def sonarr_add_series(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "POST", "/api/v1/sonarr/series", json=payload, timeout=20.0)
+
+
+def sonarr_get_queue(server: UserGameServer, page: int = 1, page_size: int = 50) -> tuple[int, dict | list]:
+    params = {"page": page, "page_size": page_size}
+    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/queue", params=params, timeout=10.0)
+
+
+def sonarr_delete_queue(
+    server: UserGameServer, queue_id: str | int, remove_from_client: bool = True, blocklist: bool = False
+) -> tuple[int, dict | list]:
+    params = {"remove_from_client": str(remove_from_client).lower(), "blocklist": str(blocklist).lower()}
+    return usenet_proxy_request(server, "DELETE", f"/api/v1/sonarr/queue/{queue_id}", params=params, timeout=10.0)
+
+
+def sonarr_get_history(server: UserGameServer, page: int = 1, page_size: int = 50) -> tuple[int, dict | list]:
+    params = {"page": page, "page_size": page_size}
+    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/history", params=params, timeout=10.0)
+
+
 

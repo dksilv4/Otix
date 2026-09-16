@@ -6,8 +6,11 @@ import axios from 'axios'
 import { ACCESS_TOKEN_KEY } from '@/lib/config/config'
 import { CLIENT_API_BASE_URL } from './client'
 
+const REFRESH_GRACE_MS = 10_000
+
 let isRefreshing = false
 let refreshFailed = false // cooldown — prevent a retry storm after a failed refresh
+let lastRefreshAt = 0
 let refreshQueue: Array<{
   resolve: (token: string) => void
   reject: (err: unknown) => void
@@ -32,9 +35,29 @@ export function clearAuthSession(): void {
   window.dispatchEvent(new CustomEvent('auth:sessionExpired'))
 }
 
+/** Call after a successful login/register so a prior failed refresh cannot stick. */
+export function resetAuthRefreshState(): void {
+  refreshFailed = false
+  isRefreshing = false
+  lastRefreshAt = 0
+  refreshQueue = []
+}
+
+export function isAuthSessionError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const err = error as { message?: string; response?: { status?: number } }
+  if (err.message === 'Session expired') return true
+  return err.response?.status === 401
+}
+
 export function refreshAccessToken(): Promise<string> {
   if (refreshFailed) {
     return Promise.reject(new Error('Session expired'))
+  }
+
+  const existing = localStorage.getItem(ACCESS_TOKEN_KEY)
+  if (existing && lastRefreshAt > 0 && Date.now() - lastRefreshAt < REFRESH_GRACE_MS) {
+    return Promise.resolve(existing)
   }
 
   if (isRefreshing) {
@@ -47,12 +70,14 @@ export function refreshAccessToken(): Promise<string> {
   return postRefresh()
     .then((token) => {
       refreshFailed = false
+      lastRefreshAt = Date.now()
       refreshQueue.forEach(({ resolve }) => resolve(token))
       refreshQueue = []
       return token
     })
     .catch((error) => {
       refreshFailed = true
+      lastRefreshAt = 0
       refreshQueue.forEach(({ reject }) => reject(error))
       refreshQueue = []
       clearAuthSession()

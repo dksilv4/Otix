@@ -155,5 +155,8 @@ describe('auth session', () => {
     expect(result.current.isAuthenticated).toBe(false)
     expect(result.current.user).toBeNull()
     expect(localStorage.getItem('otix-access-token')).toBeNull()
+
+    const { queryClient } = await import('@/lib/query/client')
+    expect(queryClient.clear).toHaveBeenCalled()
   })
 })

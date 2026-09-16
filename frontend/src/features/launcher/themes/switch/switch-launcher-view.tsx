@@ -12,7 +12,7 @@ import {
   Power,
   Search,
 } from "lucide-react"
-import { useLocalGames } from "@/features/launcher/data/game-queries"
+import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
 import { usePopularGames } from "@/features/launcher/data/queries"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { useAuth } from "@/lib/providers/auth"
@@ -25,7 +25,7 @@ export function SwitchLauncherView() {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
   const isDesktop = hasDesktopAPI()
-  const { data: localGames = [] } = useLocalGames()
+  const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
   const { runningGame } = useRunningGame()
   const { toast } = useToast()

@@ -13,6 +13,7 @@ from apps.search.views import (
     ExternalView,
     GroupedView,
     PollView,
+    PrehydrateView,
     ProvidersView,
     SearchView,
     SteamGridView,
@@ -29,5 +30,6 @@ urlpatterns = [
     path("poll", PollView.as_view(), name="search-poll"),
     path("external", ExternalView.as_view(), name="search-external"),
     path("providers", ProvidersView.as_view(), name="search-providers"),
+    path("prehydrate", PrehydrateView.as_view(), name="search-prehydrate"),
     path("steamgrid", SteamGridView.as_view(), name="search-steamgrid"),
 ]

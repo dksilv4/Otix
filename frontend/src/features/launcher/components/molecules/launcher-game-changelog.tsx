@@ -127,14 +127,18 @@ export function LauncherGameChangelog({ game }: LauncherGameChangelogProps) {
                     <FileCode size={13} className="text-white/40 shrink-0" />
                     {file.name}
                   </p>
-                  <p className="text-[11px] text-white/40 font-mono truncate">{file.path}</p>
+                  <p className="text-[11px] text-white/40 font-mono truncate">
+                    {file.kind === 'dlc' ? 'DLC' : file.version ? `Update ${file.version}` : file.path}
+                  </p>
                 </div>
-                <button
-                  onClick={() => handleApplyUpdate(file.path)}
-                  className="px-3 py-1.5 rounded-lg bg-[var(--color-accent)] hover:brightness-110 text-white font-semibold text-xs transition-all cursor-pointer shrink-0 shadow-md"
-                >
-                  Apply Patch
-                </button>
+                {!/^https?:\/\//i.test(file.path) && (
+                  <button
+                    onClick={() => handleApplyUpdate(file.path)}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--color-accent)] hover:brightness-110 text-white font-semibold text-xs transition-all cursor-pointer shrink-0 shadow-md"
+                  >
+                    Apply Patch
+                  </button>
+                )}
               </div>
             ))}
           </div>

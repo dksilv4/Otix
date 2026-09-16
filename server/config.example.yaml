@@ -14,7 +14,7 @@ game_libraries:
     allowed_extensions: [".iso", ".img", ".exe", ".zip", ".7z", ".rar"]
   - name: "Console ROMs"
     path: "./storage/roms"
-    allowed_extensions: [".iso", ".zip", ".7z", ".chd", ".rvz", ".bin"]
+    allowed_extensions: [".iso", ".zip", ".7z", ".chd", ".rvz"]
 
 saves:
   storage_path: "./storage/saves"
@@ -36,3 +36,26 @@ usenet:
     # path_mappings:
     #   - remote_path: "/downloads/complete/games"
     #     host_path: "/mnt/sabnzbd/complete/games"
+
+radarr:
+  enabled: false
+  host: "127.0.0.1"
+  port: 7878
+  api_key: ""
+  use_ssl: false
+  url_base: ""
+  quality_profile_id: 1
+  root_folder_path: "/movies"
+  minimum_availability: "announced"
+
+sonarr:
+  enabled: false
+  host: "127.0.0.1"
+  port: 8989
+  api_key: ""
+  use_ssl: false
+  url_base: ""
+  quality_profile_id: 1
+  root_folder_path: "/tv"
+  series_type: "standard"
+  season_folder: true

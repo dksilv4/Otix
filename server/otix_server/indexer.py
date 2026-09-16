@@ -6,20 +6,14 @@ from typing import Dict, List
 
 from .types import HostedFile
 from .utils import (
-    clean_title_from_filename,
     compute_head_hash,
     determine_format_category,
+    relative_library_path,
+    title_from_installer_path,
 )
 
-# Re-export for backwards compatibility
-__all__ = [
-    "HostedFile",
-    "compute_head_hash",
-    "determine_format_category",
-    "clean_title_from_filename",
-    "StorageIndexer",
-    "GameLibraryIndexer",
-]
+# Cue-sheet companions and raw dumps — never treat these as installable games.
+SKIP_EXTENSIONS = {".bin"}
 
 
 class StorageIndexer:
@@ -29,6 +23,7 @@ class StorageIndexer:
 
     def scan_all(self) -> List[HostedFile]:
         indexed: List[HostedFile] = []
+        self.files_by_id = {}
         for lib in self.libraries:
             lib_name = lib.get("name", "Default")
             lib_path = Path(lib.get("path", "."))
@@ -40,6 +35,8 @@ class StorageIndexer:
             for root, _, files in os.walk(lib_path):
                 for file in files:
                     ext = Path(file).suffix.lower()
+                    if ext in SKIP_EXTENSIONS:
+                        continue
                     if allowed_exts and ext not in allowed_exts:
                         continue
 
@@ -50,13 +47,15 @@ class StorageIndexer:
                         mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
                         head_hash = compute_head_hash(full_path)
                         file_id = f"file_{hashlib.md5(full_path.encode()).hexdigest()[:12]}"
-                        title = clean_title_from_filename(file)
+                        rel = relative_library_path(full_path, str(lib_path))
+                        title = title_from_installer_path(file, full_path, str(lib_path))
                         category = determine_format_category(ext)
 
                         hf = HostedFile(
                             id=file_id,
                             filename=file,
                             filepath=full_path,
+                            relative_path=rel,
                             filesize=size,
                             sha256_head=head_hash,
                             extension=ext,

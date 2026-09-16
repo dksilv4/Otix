@@ -1,6 +1,7 @@
 """Game server API views: self-hosted otix-server node management and library indexing."""
 
 import logging
+from pathlib import Path
 
 import httpx
 from django.db.utils import OperationalError, ProgrammingError
@@ -42,6 +43,28 @@ from apps.library.services.game_server import (
     sabnzbd_pause_queue,
     sabnzbd_resume_queue,
     scan_game_libraries,
+    radarr_get_config,
+    radarr_save_config,
+    radarr_test,
+    radarr_get_root_folders,
+    radarr_get_quality_profiles,
+    radarr_get_movies,
+    radarr_lookup,
+    radarr_add_movie,
+    radarr_get_queue,
+    radarr_delete_queue,
+    radarr_get_history,
+    sonarr_get_config,
+    sonarr_save_config,
+    sonarr_test,
+    sonarr_get_root_folders,
+    sonarr_get_quality_profiles,
+    sonarr_get_series,
+    sonarr_lookup,
+    sonarr_add_series,
+    sonarr_get_queue,
+    sonarr_delete_queue,
+    sonarr_get_history,
 )
 from apps.library.services.download_history import (
     apply_history_slots,
@@ -51,7 +74,8 @@ from apps.library.services.download_history import (
     proxy_download_payload,
     record_queued_download,
 )
-from apps.media.models import MediaItem
+from apps.library.services.server_catalog import match_files_to_catalog, unmatched_scan_titles
+from apps.search.services.search import enqueue_prehydrate_titles
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +185,11 @@ class GameServerFilesView(APIView):
                         raw_files = resp.json()
                         for f in raw_files:
                             file_id = f.get("id")
+                            relative_path = f.get("relative_path") or ""
+                            filepath = f.get("filepath") or ""
+                            if not relative_path and filepath:
+                                parts = [part for part in Path(filepath).parts if part not in ("/", "\\")]
+                                relative_path = "/".join(parts[-2:]) if len(parts) >= 2 else Path(filepath).name
                             files_out.append({
                                 "server_id": s.id,
                                 "server_name": s.name,
@@ -171,6 +200,8 @@ class GameServerFilesView(APIView):
                                 "extension": f.get("extension", ""),
                                 "format_category": f.get("format_category", "installer"),
                                 "game_title": f.get("game_title", ""),
+                                "relative_path": relative_path,
+                                "filepath": filepath,
                                 "library_name": f.get("library_name", "Default"),
                                 "modified_at": f.get("modified_at"),
                                 "download_url": f"{target_url}/api/v1/files/{file_id}/download",
@@ -180,27 +211,11 @@ class GameServerFilesView(APIView):
             except Exception as err:
                 errors.append({"server_id": s.id, "error": str(err)})
 
-        # Enrich files with catalog matches if titles match
-        titles = list({f["game_title"] for f in files_out if f.get("game_title")})
-        catalog_map = {}
-        if titles:
-            matched_items = MediaItem.objects.filter(
-                media_type="game",
-                title__in=titles,
-            ).values("id", "title", "slug")
-            for item in matched_items:
-                catalog_map[item["title"].lower()] = {
-                    "id": str(item["id"]),
-                    "title": item["title"],
-                    "slug": item["slug"],
-                }
-
-        for f in files_out:
-            t = (f.get("game_title") or "").lower()
-            if t in catalog_map:
-                f["catalog_item"] = catalog_map[t]
-            else:
-                f["catalog_item"] = None
+        # Enrich files with catalog matches (updates resolve to the parent game)
+        match_files_to_catalog(files_out)
+        enqueue_prehydrate_titles(unmatched_scan_titles(files_out))
+        for file in files_out:
+            file.pop("filepath", None)
 
         return Response({
             "servers": UserGameServerSerializer(servers, many=True).data,
@@ -513,6 +528,250 @@ class GameServerScanView(APIView):
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
         status_code, data = scan_game_libraries(server)
+        return Response(data, status=status_code)
+
+
+# ── Radarr Views ────────────────────────────────────────────────────────
+
+class GameServerRadarrConfigView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/radarr/config`` — get Radarr config.
+    ``POST /api/v1/library/servers/{server_id}/radarr/config`` — save Radarr config.
+    """
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = radarr_get_config(server)
+        return Response(data, status=status_code)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = radarr_save_config(server, request.data)
+        return Response(data, status=status_code)
+
+
+class GameServerRadarrTestView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/radarr/test`` — test Radarr connection."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = radarr_test(server, request.data)
+        return Response(data, status=status_code)
+
+
+class GameServerRadarrRootFoldersView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/radarr/rootfolders`` — list root folders."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = radarr_get_root_folders(server)
+        return Response(data, status=status_code)
+
+
+class GameServerRadarrQualityProfilesView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/radarr/qualityprofiles`` — list quality profiles."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = radarr_get_quality_profiles(server)
+        return Response(data, status=status_code)
+
+
+class GameServerRadarrMoviesView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/radarr/movies`` — list movies.
+    ``POST /api/v1/library/servers/{server_id}/radarr/movies`` — add movie.
+    """
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = radarr_get_movies(server)
+        return Response(data, status=status_code)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = radarr_add_movie(server, request.data)
+        return Response(data, status=status_code)
+
+
+class GameServerRadarrLookupView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/radarr/lookup`` — lookup movies."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        term = request.query_params.get("term", "")
+        if not term:
+            return Response([], status=status.HTTP_200_OK)
+        status_code, data = radarr_lookup(server, term)
+        return Response(data, status=status_code)
+
+
+class GameServerRadarrQueueView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/radarr/queue`` — get download queue.
+    ``DELETE /api/v1/library/servers/{server_id}/radarr/queue/{queue_id}`` — delete item from queue.
+    """
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 50))
+        status_code, data = radarr_get_queue(server, page=page, page_size=page_size)
+        return Response(data, status=status_code)
+
+    def delete(self, request: Request, server_id: int, queue_id: str) -> Response:
+        server = _get_server_or_404(request, server_id)
+        remove_from_client = request.query_params.get("remove_from_client", "true").lower() == "true"
+        blocklist = request.query_params.get("blocklist", "false").lower() == "true"
+        status_code, data = radarr_delete_queue(
+            server, queue_id, remove_from_client=remove_from_client, blocklist=blocklist
+        )
+        return Response(data, status=status_code)
+
+
+class GameServerRadarrHistoryView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/radarr/history`` — get history."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 50))
+        status_code, data = radarr_get_history(server, page=page, page_size=page_size)
+        return Response(data, status=status_code)
+
+
+# ── Sonarr Views ────────────────────────────────────────────────────────
+
+class GameServerSonarrConfigView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/sonarr/config`` — get Sonarr config.
+    ``POST /api/v1/library/servers/{server_id}/sonarr/config`` — save Sonarr config.
+    """
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = sonarr_get_config(server)
+        return Response(data, status=status_code)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = sonarr_save_config(server, request.data)
+        return Response(data, status=status_code)
+
+
+class GameServerSonarrTestView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/sonarr/test`` — test Sonarr connection."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = sonarr_test(server, request.data)
+        return Response(data, status=status_code)
+
+
+class GameServerSonarrRootFoldersView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/sonarr/rootfolders`` — list root folders."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = sonarr_get_root_folders(server)
+        return Response(data, status=status_code)
+
+
+class GameServerSonarrQualityProfilesView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/sonarr/qualityprofiles`` — list quality profiles."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = sonarr_get_quality_profiles(server)
+        return Response(data, status=status_code)
+
+
+class GameServerSonarrSeriesView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/sonarr/series`` — list series.
+    ``POST /api/v1/library/servers/{server_id}/sonarr/series`` — add series.
+    """
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = sonarr_get_series(server)
+        return Response(data, status=status_code)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = sonarr_add_series(server, request.data)
+        return Response(data, status=status_code)
+
+
+class GameServerSonarrLookupView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/sonarr/lookup`` — lookup series."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        term = request.query_params.get("term", "")
+        if not term:
+            return Response([], status=status.HTTP_200_OK)
+        status_code, data = sonarr_lookup(server, term)
+        return Response(data, status=status_code)
+
+
+class GameServerSonarrQueueView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/sonarr/queue`` — get download queue.
+    ``DELETE /api/v1/library/servers/{server_id}/sonarr/queue/{queue_id}`` — delete item from queue.
+    """
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 50))
+        status_code, data = sonarr_get_queue(server, page=page, page_size=page_size)
+        return Response(data, status=status_code)
+
+    def delete(self, request: Request, server_id: int, queue_id: str) -> Response:
+        server = _get_server_or_404(request, server_id)
+        remove_from_client = request.query_params.get("remove_from_client", "true").lower() == "true"
+        blocklist = request.query_params.get("blocklist", "false").lower() == "true"
+        status_code, data = sonarr_delete_queue(
+            server, queue_id, remove_from_client=remove_from_client, blocklist=blocklist
+        )
+        return Response(data, status=status_code)
+
+
+class GameServerSonarrHistoryView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/sonarr/history`` — get history."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("page_size", 50))
+        status_code, data = sonarr_get_history(server, page=page, page_size=page_size)
         return Response(data, status=status_code)
 
 

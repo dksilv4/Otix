@@ -21,6 +21,16 @@ import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
 import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/server-prowlarr-settings-modal'
+import { ServerRadarrSettingsModal } from '@/features/downloads/molecules/server-radarr-settings-modal'
+import { ServerSonarrSettingsModal } from '@/features/downloads/molecules/server-sonarr-settings-modal'
+import {
+  useServerRadarrConfig,
+  useServerRadarrMovies,
+  useServerRadarrQueue,
+  useServerSonarrConfig,
+  useServerSonarrSeries,
+  useServerSonarrQueue,
+} from '@/features/downloads/use-server-arr'
 import {
   useServerUsenetConfig,
   useServerUsenetQueue,
@@ -122,6 +132,8 @@ const BRAND_COLORS: Record<string, string> = {
   google: '#4285F4',
   sabnzbd: '#f59e0b',
   prowlarr: '#e05338',
+  radarr: '#ffc107',
+  sonarr: '#00c4df',
   usenet: '#06b6d4',
 }
 
@@ -132,6 +144,8 @@ const BRAND_BG: Record<string, string> = {
   google: 'bg-[#4285F4]/10',
   sabnzbd: 'bg-[#f59e0b]/10',
   prowlarr: 'bg-[#e05338]/10',
+  radarr: 'bg-[#ffc107]/10',
+  sonarr: 'bg-[#00c4df]/10',
   usenet: 'bg-[#06b6d4]/10',
 }
 
@@ -453,6 +467,27 @@ export function SettingsIntegrationsPage() {
     activeServer &&
     usenetConfig?.prowlarr?.host &&
     Boolean(usenetConfig?.prowlarr?.api_key || usenetConfig?.prowlarr?.configured)
+  )
+
+  // ── Radarr + Sonarr managed via Otix Server node ──
+  const [isRadarrModalOpen, setIsRadarrModalOpen] = useState(false)
+  const [isSonarrModalOpen, setIsSonarrModalOpen] = useState(false)
+  const { data: radarrConfig } = useServerRadarrConfig(activeServer?.id)
+  const { data: sonarrConfig } = useServerSonarrConfig(activeServer?.id)
+  const { data: radarrMovies = [] } = useServerRadarrMovies(activeServer?.id)
+  const { data: sonarrSeries = [] } = useServerSonarrSeries(activeServer?.id)
+  const { data: radarrQueue } = useServerRadarrQueue(activeServer?.id, 1, 50, 4000)
+  const { data: sonarrQueue } = useServerSonarrQueue(activeServer?.id, 1, 50, 4000)
+
+  const isRadarrConfigured = Boolean(
+    activeServer &&
+    radarrConfig?.host &&
+    Boolean(radarrConfig?.apiKey || radarrConfig?.api_key || radarrConfig?.configured)
+  )
+  const isSonarrConfigured = Boolean(
+    activeServer &&
+    sonarrConfig?.host &&
+    Boolean(sonarrConfig?.apiKey || sonarrConfig?.api_key || sonarrConfig?.configured)
   )
 
   // SABnzbd queue controls
@@ -1314,6 +1349,42 @@ export function SettingsIntegrationsPage() {
       onDisconnect: undefined,
       disconnecting: false,
     },
+    {
+      id: 'radarr',
+      name: 'Radarr',
+      keywords: 'radarr movie movies watchlist automated download arr otix server',
+      description: isRadarrConfigured
+        ? activeServer
+          ? `Configured via Otix Server: ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
+          : 'Configured via Otix Server'
+        : 'Connect Radarr to manage movie libraries and automate movie downloads on your server.',
+      isConnected: isRadarrConfigured,
+      brandColor: BRAND_COLORS.radarr,
+      brandBg: BRAND_BG.radarr,
+      icon: Film,
+      onConnect: () => setIsRadarrModalOpen(true),
+      connecting: false,
+      onDisconnect: undefined,
+      disconnecting: false,
+    },
+    {
+      id: 'sonarr',
+      name: 'Sonarr',
+      keywords: 'sonarr tv shows series automated download arr otix server',
+      description: isSonarrConfigured
+        ? activeServer
+          ? `Configured via Otix Server: ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
+          : 'Configured via Otix Server'
+        : 'Connect Sonarr to manage TV series and automate episode downloads on your server.',
+      isConnected: isSonarrConfigured,
+      brandColor: BRAND_COLORS.sonarr,
+      brandBg: BRAND_BG.sonarr,
+      icon: Tv,
+      onConnect: () => setIsSonarrModalOpen(true),
+      connecting: false,
+      onDisconnect: undefined,
+      disconnecting: false,
+    },
   ]
 
   const filteredIntegrations = (query
@@ -1779,6 +1850,88 @@ export function SettingsIntegrationsPage() {
                     />
                   </>
                 )}
+
+                {/* Radarr content */}
+                {i.id === 'radarr' && (
+                  <>
+                    <IntegrationProfile
+                      avatarAlt="Radarr"
+                      name="Radarr Movie Manager"
+                      detail={activeServer ? `Managed by ${activeServer.name} (${activeServer.primaryUrl})` : 'Connect a server to enable'}
+                      brandBg={BRAND_BG.radarr}
+                      icon={Film}
+                      brandColor={BRAND_COLORS.radarr}
+                      meta={
+                        <span className={cn(
+                          'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border shrink-0',
+                          isRadarrConfigured
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-white/5 text-white/40 border-white/10'
+                        )}>
+                          {isRadarrConfigured ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                          {isRadarrConfigured ? 'Connected' : 'Not Connected'}
+                        </span>
+                      }
+                    />
+
+                    {isRadarrConfigured && (
+                      <IntegrationStats items={[
+                        { label: 'indexed movies', value: String(radarrMovies.length) },
+                        { label: 'monitored', value: String(radarrMovies.filter((m) => m.monitored).length) },
+                        { label: 'queued downloads', value: String(radarrQueue?.totalRecords ?? radarrQueue?.records?.length ?? 0) },
+                      ]} />
+                    )}
+
+                    <IntegrationAction
+                      label="Radarr Settings"
+                      description="Configure host, port, API key, quality profile, and root folder"
+                      buttonLabel="Configure Radarr"
+                      buttonIcon={Film}
+                      onPress={() => setIsRadarrModalOpen(true)}
+                    />
+                  </>
+                )}
+
+                {/* Sonarr content */}
+                {i.id === 'sonarr' && (
+                  <>
+                    <IntegrationProfile
+                      avatarAlt="Sonarr"
+                      name="Sonarr TV Series Manager"
+                      detail={activeServer ? `Managed by ${activeServer.name} (${activeServer.primaryUrl})` : 'Connect a server to enable'}
+                      brandBg={BRAND_BG.sonarr}
+                      icon={Tv}
+                      brandColor={BRAND_COLORS.sonarr}
+                      meta={
+                        <span className={cn(
+                          'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border shrink-0',
+                          isSonarrConfigured
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-white/5 text-white/40 border-white/10'
+                        )}>
+                          {isSonarrConfigured ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                          {isSonarrConfigured ? 'Connected' : 'Not Connected'}
+                        </span>
+                      }
+                    />
+
+                    {isSonarrConfigured && (
+                      <IntegrationStats items={[
+                        { label: 'indexed series', value: String(sonarrSeries.length) },
+                        { label: 'monitored', value: String(sonarrSeries.filter((s) => s.monitored).length) },
+                        { label: 'queued downloads', value: String(sonarrQueue?.totalRecords ?? sonarrQueue?.records?.length ?? 0) },
+                      ]} />
+                    )}
+
+                    <IntegrationAction
+                      label="Sonarr Settings"
+                      description="Configure host, port, API key, quality profile, and series options"
+                      buttonLabel="Configure Sonarr"
+                      buttonIcon={Tv}
+                      onPress={() => setIsSonarrModalOpen(true)}
+                    />
+                  </>
+                )}
               </IntegrationCard>
             ))}
           </div>
@@ -1798,6 +1951,18 @@ export function SettingsIntegrationsPage() {
             serverName={activeServer.name}
             isOpen={isProwlarrModalOpen}
             onClose={() => setIsProwlarrModalOpen(false)}
+          />
+          <ServerRadarrSettingsModal
+            serverId={activeServer.id}
+            serverName={activeServer.name}
+            isOpen={isRadarrModalOpen}
+            onClose={() => setIsRadarrModalOpen(false)}
+          />
+          <ServerSonarrSettingsModal
+            serverId={activeServer.id}
+            serverName={activeServer.name}
+            isOpen={isSonarrModalOpen}
+            onClose={() => setIsSonarrModalOpen(false)}
           />
         </>
       )}

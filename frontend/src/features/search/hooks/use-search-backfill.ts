@@ -9,6 +9,7 @@ export function useSearchBackfill(
   sort: string,
   currentIds: Set<string>,
   hasMore: boolean | undefined,
+  backfillPending?: boolean,
 ) {
   const queryClient = useQueryClient()
   const polledIdsRef = useRef<Set<string>>(new Set())
@@ -22,7 +23,8 @@ export function useSearchBackfill(
       type: searchType,
       knownIds: Array.from(currentIds).join(','),
     }),
-    enabled: !!query && currentIds.size > 0 && hasMore,
+    enabled: !!query && (Boolean(backfillPending) || (currentIds.size > 0 && Boolean(hasMore))),
+    refetchInterval: backfillPending ? 2000 : false,
   })
 
   useEffect(() => {

@@ -3,18 +3,24 @@
 Port of the legacy ``backend/otix/api/search/search.py`` endpoint functions.
 Embeddings/pgvector are DEFERRED in this migration (ARCHITECTURE §9): every media
 query is a plain relational ``title__icontains`` stand-in and returns the legacy
-response envelope. Third-party provider paths (IGDB, SteamGridDB) are NOT faked;
-their payloads return the legacy-shaped empty contract until the provider layer
-lands.
+response envelope. Sparse game searches backfill from IGDB: already-imported
+hits are merged in as catalog rows, missing ids are enqueued for ingest, and
+typeahead may include ``igdb:{id}`` placeholders until that ingest lands.
 """
 
 from __future__ import annotations
 
+import logging
+import re
+
+from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.db.models import Case, IntegerField, QuerySet, Value, When
 
 from apps.company.models import Company
-from apps.media.models import MediaItem, Track
+from apps.media.models import ExternalID, MediaItem, Track
 from apps.people.models import Person
 from apps.search.models import SearchLog
 from apps.search.serializers import (
@@ -24,6 +30,8 @@ from apps.search.serializers import (
     ProviderResultSerializer,
     TrackSearchSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 # Adult-content rows are hidden for every caller until per-user date-of-birth /
 # ``show_adult_content`` preferences land on the accounts.User model.
@@ -35,6 +43,12 @@ _SORT_ORDERS = {
     "release_date": "-release_date",
     "title": "title",
 }
+
+BACKFILL_THRESHOLD = 20
+SUGGESTIONS_BACKFILL_THRESHOLD = 5
+IGDB_ID_PREFIX = "igdb:"
+PREHYDRATE_TITLE_LIMIT = 100
+PREHYDRATE_CACHE_TTL = 6 * 60 * 60
 
 
 def _media_base(q: str, media_type: str | None) -> QuerySet[MediaItem]:
@@ -104,32 +118,291 @@ def _search_people(q: str, limit: int = 10) -> list[Person]:
     )
 
 
+def _should_backfill(q: str) -> bool:
+    """Skip digits / tiny strings / scene-release consonants, matching legacy."""
+    stripped = q.strip()
+    if len(stripped) < 2 or stripped.isdigit():
+        return False
+    if re.search(r"[^aeiou\s]{8,}", stripped, re.IGNORECASE):
+        return False
+    return True
+
+
+def _placeholder_game_summary(*, item_id: str, title: str, slug: str, poster_url: str | None) -> dict:
+    return {
+        "id": item_id,
+        "media_type": "game",
+        "title": title,
+        "slug": slug or "",
+        "tmdb_id": None,
+        "poster_url": poster_url,
+        "backdrop_url": None,
+        "logo_url": None,
+        "icon_url": None,
+        "release_date": None,
+        "popularity": 0,
+        "avg_rating": None,
+        "rating_count": 0,
+        "overall_rating": None,
+        "overall_rating_source": None,
+        "like_count": 0,
+        "watchlist_count": 0,
+        "watched_count": 0,
+        "played_count": 0,
+        "started_count": 0,
+        "listened_count": 0,
+        "view_count": 0,
+        "is_adult": False,
+    }
+
+
+def _igdb_mapped(igdb_ids: list[str]) -> dict[str, int]:
+    if not igdb_ids:
+        return {}
+    ct = ContentType.objects.get_for_model(MediaItem)
+    rows = ExternalID.objects.filter(
+        content_type=ct,
+        provider="igdb",
+        media_type="game",
+        external_id__in=igdb_ids,
+    )
+    return {row.external_id: row.object_id for row in rows if row.object_id}
+
+
+def _enqueue_igdb_imports(igdb_ids: list[str]) -> bool:
+    """Queue missing IGDB games for ingest. Skip inline eager runs (test settings)."""
+    if not igdb_ids:
+        return False
+    from apps.integrations.models import SyncJob
+    from apps.integrations.services.sync import enqueue_sync_job
+    from apps.integrations.tasks import run_sync_job
+
+    pending = False
+    for gid in igdb_ids:
+        if SyncJob.objects.filter(
+            provider="igdb",
+            entity_type="game",
+            external_id=gid,
+            status__in=("pending", "running"),
+        ).exists():
+            pending = True
+            continue
+        job = enqueue_sync_job(provider="igdb", entity_type="game", external_id=gid)
+        pending = True
+        if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+            continue
+        try:
+            run_sync_job.delay(job.pk)
+        except Exception:  # noqa: BLE001 - search must still return catalog hits
+            logger.exception("could not enqueue igdb backfill for %s", gid)
+    return pending
+
+
+def _igdb_backfill_pending() -> bool:
+    from apps.integrations.models import SyncJob
+
+    return SyncJob.objects.filter(
+        provider="igdb",
+        entity_type="game",
+        status__in=("pending", "running"),
+    ).exists()
+
+
+def _igdb_game_backfill(
+    q: str,
+    *,
+    existing_count: int,
+    existing_ids: set[str],
+    limit: int,
+    include_placeholders: bool,
+    threshold: int,
+    force: bool = False,
+) -> tuple[list[dict], bool]:
+    """Search IGDB when the catalog is sparse; enqueue missing games for ingest.
+
+    Already-imported IGDB hits are returned as catalog summaries even when the
+    local title search missed them. Unimported hits are placeholders
+    (``igdb:{id}``) when ``include_placeholders`` is set so typeahead can show
+    provider results immediately.
+    """
+    if not _should_backfill(q):
+        return [], False
+    if not force and existing_count >= threshold:
+        return [], False
+
+    from apps.media.services.igdb import IGDBError, IGDBNotConfigured, IGDBProvider, configured, cover_url
+
+    if not configured():
+        return [], False
+    try:
+        raw = IGDBProvider().search_games(q, limit=limit, fields="id,name,slug,cover.image_id")
+    except (IGDBNotConfigured, IGDBError):
+        logger.warning("igdb search backfill skipped q=%s", q, exc_info=True)
+        return [], False
+    except Exception:  # noqa: BLE001 - provider outage must not fail search
+        logger.exception("igdb search backfill failed q=%s", q)
+        return [], False
+
+    igdb_ids = [str(game["id"]) for game in raw if game.get("id") is not None]
+    mapped = _igdb_mapped(igdb_ids)
+    catalog_rows = {
+        item.pk: item
+        for item in MediaItem.objects.filter(pk__in=mapped.values()).prefetch_related(
+            "assets", "external_ids"
+        )
+    }
+    extras: list[dict] = []
+    missing: list[str] = []
+    seen = set(existing_ids)
+    for game in raw:
+        gid = str(game.get("id") or "")
+        if not gid:
+            continue
+        pk = mapped.get(gid)
+        if pk:
+            sid = str(pk)
+            if sid in seen:
+                continue
+            media = catalog_rows.get(pk)
+            if media is None:
+                continue
+            extras.extend(dict(row) for row in MediaSummarySerializer([media], many=True).data)
+            seen.add(sid)
+            continue
+        missing.append(gid)
+        if not include_placeholders:
+            continue
+        placeholder_id = f"{IGDB_ID_PREFIX}{gid}"
+        if placeholder_id in seen:
+            continue
+        extras.append(
+            _placeholder_game_summary(
+                item_id=placeholder_id,
+                title=game.get("name") or q,
+                slug=game.get("slug") or "",
+                poster_url=cover_url(game.get("cover")),
+            )
+        )
+        seen.add(placeholder_id)
+    pending = _enqueue_igdb_imports(missing)
+    return extras, pending
+
+
+def prehydrate_title_list(titles: list[str], *, limit: int = PREHYDRATE_TITLE_LIMIT) -> list[str]:
+    """Deduped, searchable titles for a scan-time IGDB backfill."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in titles:
+        title = " ".join(str(raw or "").replace("_", " ").replace(".", " ").split())
+        if not _should_backfill(title):
+            continue
+        key = title.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(title)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def prehydrate_game_titles(titles: list[str]) -> dict:
+    """Search IGDB for each title and enqueue missing catalog ingest jobs."""
+    searched = 0
+    enqueued = 0
+    for title in prehydrate_title_list(titles):
+        cache_key = f"search:prehydrate:{title.lower()}"
+        if cache.get(cache_key):
+            continue
+        cache.set(cache_key, 1, PREHYDRATE_CACHE_TTL)
+        existing = MediaItem.objects.filter(media_type="game", title__icontains=title).count()
+        _extras, pending = _igdb_game_backfill(
+            title,
+            existing_count=existing,
+            existing_ids=set(),
+            limit=8,
+            include_placeholders=False,
+            threshold=SUGGESTIONS_BACKFILL_THRESHOLD,
+        )
+        searched += 1
+        if pending:
+            enqueued += 1
+    return {"searched": searched, "enqueued": enqueued}
+
+
+def enqueue_prehydrate_titles(titles: list[str]) -> int:
+    """Queue a worker to prehydrate titles. Skip inline eager runs (tests)."""
+    cleaned = prehydrate_title_list(titles)
+    if not cleaned:
+        return 0
+    if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+        return len(cleaned)
+    from apps.search.tasks import prehydrate_games_task
+
+    try:
+        prehydrate_games_task.delay(cleaned)
+    except Exception:  # noqa: BLE001 - scan listing must not fail if the worker is down
+        logger.exception("could not enqueue game prehydrate")
+        return 0
+    return len(cleaned)
+
+
 def search_media_payload(
     q: str,
     media_type: str | None = None,
     sort_by: str | None = None,
     page: int = 1,
     page_size: int = 24,
+    include_external: bool = False,
 ) -> dict:
     """Legacy ``MediaItemListResponse`` shape for ``GET /search``."""
     rows, total, has_more = _search_media_rows(q, media_type, sort_by, page, page_size)
     tracks: list[Track] = []
     if page == 1 and media_type in (None, "music"):
         tracks = _search_track_rows(q)
+    items = [dict(row) for row in MediaSummarySerializer(rows, many=True).data]
+    backfill_pending = False
+    if page == 1 and media_type == "game":
+        extras, pending = _igdb_game_backfill(
+            q,
+            existing_count=total or 0,
+            existing_ids={str(item["id"]) for item in items},
+            limit=12,
+            include_placeholders=include_external,
+            threshold=BACKFILL_THRESHOLD,
+        )
+        items.extend(extras)
+        backfill_pending = pending or _igdb_backfill_pending()
     return {
-        "items": MediaSummarySerializer(rows, many=True).data,
+        "items": items,
         "tracks": TrackSearchSerializer(tracks, many=True).data,
         "has_more": has_more,
         "total": total,
-        "backfill_pending": False,
+        "backfill_pending": backfill_pending,
         "next_cursor": None,
     }
 
 
 def suggestions_payload(q: str, media_type: str | None, limit: int) -> list[dict]:
-    """Legacy bare ``list[MediaItemSummary]`` for ``GET /search/suggestions``."""
-    rows, _total, _has_more = _search_media_rows(q, media_type, None, 1, limit)
-    return MediaSummarySerializer(rows, many=True).data
+    """Legacy bare ``list[MediaItemSummary]`` for ``GET /search/suggestions``.
+
+    Game typeahead backfills from IGDB when the catalog is sparse so Match can
+    show provider hits before ingest finishes (``id`` is ``igdb:{id}``).
+    """
+    rows, total, _has_more = _search_media_rows(q, media_type, None, 1, limit)
+    items = [dict(row) for row in MediaSummarySerializer(rows, many=True).data]
+    if media_type == "game":
+        extras, _pending = _igdb_game_backfill(
+            q,
+            existing_count=total or 0,
+            existing_ids={str(item["id"]) for item in items},
+            limit=limit,
+            include_placeholders=True,
+            threshold=SUGGESTIONS_BACKFILL_THRESHOLD,
+        )
+        items.extend(extras)
+        items = items[:limit]
+    return items
 
 
 def companies_payload(q: str, limit: int) -> dict:
@@ -146,19 +419,20 @@ def companies_payload(q: str, limit: int) -> dict:
 def poll_payload(q: str, media_type: str | None, known_ids: str, page_size: int) -> dict:
     """Legacy ``MediaItemListResponse`` for ``GET /search/poll``.
 
-    No external backfill runs in this migration, so every match not already
-    present in ``known_ids`` is returned immediately with ``backfill_pending``
-    False.
+    Returns catalog matches not already in ``known_ids``. While IGDB ingest
+    jobs are still pending, ``backfill_pending`` stays true so the client keeps
+    polling.
     """
     rows, total, _has_more = _search_media_rows(q, media_type, None, 1, page_size)
     known = {token for token in (known_ids or "").split(",") if token}
     fresh = [item for item in rows if str(item.id) not in known]
+    pending = media_type in (None, "game") and _igdb_backfill_pending()
     return {
         "items": MediaSummarySerializer(fresh, many=True).data,
         "tracks": [],
         "has_more": False,
         "total": total,
-        "backfill_pending": False,
+        "backfill_pending": pending,
         "next_cursor": None,
     }
 
@@ -272,23 +546,40 @@ def grouped_payload(q: str, media_type_limit: int) -> dict:
 def providers_payload(query: str, limit: int) -> dict:
     """Legacy ``ProviderSearchResponse`` for ``POST /search/providers``.
 
-    Only the Otix catalog branch (media_type ``game``) is answered from our DB.
-    IGDB and SteamGridDB rows are omitted until the provider integration lands.
+    Otix catalog games first, then IGDB hits (catalog id when already imported,
+    otherwise ``igdb:{id}``) with ingest queued for missing rows.
     """
-    rows, _total, _has_more = _search_media_rows(query, "game", None, 1, limit)
-    summaries = MediaSummarySerializer(rows, many=True).data
-    items = [
-        {
-            "provider": "otix",
-            "id": str(item["id"]),
-            "title": item["title"],
-            "poster_url": item["poster_url"],
-            "slug": item["slug"],
-            "confidence": None,
-        }
-        for item in summaries
-    ]
-    return {"items": ProviderResultSerializer(items, many=True).data, "backfill_pending": False}
+    rows, total, _has_more = _search_media_rows(query, "game", None, 1, limit)
+    summaries = [dict(row) for row in MediaSummarySerializer(rows, many=True).data]
+    extras, pending = _igdb_game_backfill(
+        query,
+        existing_count=total or 0,
+        existing_ids={str(item["id"]) for item in summaries},
+        limit=limit,
+        include_placeholders=True,
+        threshold=BACKFILL_THRESHOLD,
+        force=True,
+    )
+    items = []
+    for item in summaries + extras:
+        item_id = str(item["id"])
+        is_igdb = item_id.startswith(IGDB_ID_PREFIX)
+        items.append(
+            {
+                "provider": "igdb" if is_igdb else "otix",
+                "id": item_id,
+                "title": item["title"],
+                "poster_url": item.get("poster_url"),
+                "slug": item.get("slug") or "",
+                "confidence": None,
+            }
+        )
+        if len(items) >= limit:
+            break
+    return {
+        "items": ProviderResultSerializer(items, many=True).data,
+        "backfill_pending": pending or _igdb_backfill_pending(),
+    }
 
 
 def steamgrid_payload() -> dict:
@@ -311,6 +602,7 @@ def log_search(
     items_returned: int,
     tracks_returned: int,
     user: AbstractBaseUser | AnonymousUser | None,
+    backfill_triggered: bool = False,
 ) -> None:
     """Record one catalog search event (mirrors legacy ``log_search``)."""
     SearchLog.objects.create(
@@ -322,7 +614,7 @@ def log_search(
         result_count=result_count,
         items_returned=items_returned,
         tracks_returned=tracks_returned,
-        backfill_triggered=False,
+        backfill_triggered=backfill_triggered,
         cache_hit=False,
         query_embedding_available=None,
         user=user if getattr(user, "is_authenticated", False) else None,

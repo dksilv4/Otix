@@ -57,6 +57,19 @@ function getContentType(headers: Record<string, unknown>): string {
   return typeof ct === 'string' ? ct : ''
 }
 
+function readBearerToken(headers: InternalAxiosRequestConfig['headers'] | undefined): string | null {
+  if (!headers) return null
+  let raw: unknown
+  if (typeof (headers as { get?: unknown }).get === 'function') {
+    raw = (headers as { get: (key: string) => unknown }).get('Authorization')
+  } else {
+    const rec = headers as Record<string, unknown>
+    raw = rec.Authorization ?? rec.authorization
+  }
+  if (typeof raw !== 'string' || !raw) return null
+  return raw.replace(/^Bearer\s+/i, '')
+}
+
 // Type-level counterpart of convertKeysToCamelCase — maps a snake_case API
 // schema type to its camelCase runtime shape.
 type CamelCase<S extends string> = S extends `${infer P1}_${infer P2}${infer P3}`
@@ -158,6 +171,20 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
+    originalRequest._retry = true
+
+    // A refresh may have already rotated the access token while this request
+    // was in flight. Retry with the new token instead of rotating again —
+    // a second /auth/refresh would replay the old cookie and revoke the session.
+    const currentToken = localStorage.getItem(ACCESS_TOKEN_KEY)
+    const sentToken = readBearerToken(originalRequest.headers)
+    if (currentToken && sentToken && currentToken !== sentToken) {
+      if (originalRequest.headers) {
+        originalRequest.headers.Authorization = `Bearer ${currentToken}`
+      }
+      return apiClient(originalRequest)
+    }
+
     // refreshAccessToken() single-flights concurrent callers and signs the user
     // out (auth:sessionExpired) only when the refresh itself fails.
     try {
@@ -165,7 +192,6 @@ apiClient.interceptors.response.use(
       if (originalRequest.headers) {
         originalRequest.headers.Authorization = `Bearer ${token}`
       }
-      originalRequest._retry = true
       return apiClient(originalRequest)
     } catch (refreshError) {
       return Promise.reject(refreshError)

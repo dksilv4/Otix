@@ -1,5 +1,5 @@
 import { isTitleMatch } from '@media'
-import { releaseMatchesSearchHint } from './release-parse'
+import { classifyReleaseKind, releaseMatchesSearchHint } from './release-parse'
 import type { ServerGameFile } from './types'
 import type { ServerDownloadHistoryItem } from './usenet-types'
 
@@ -17,6 +17,22 @@ function historyMediaId(item: HistoryRow): string {
   return (item.mediaItemId || item.media_item_id || '').trim()
 }
 
+function fileMatchesGame(file: ServerGameFile, id: string, title: string): boolean {
+  if (id && file.catalogItem?.id === id) return true
+  if (title && file.catalogItem?.title && isTitleMatch(file.catalogItem.title, title)) return true
+  if (title && isTitleMatch(file.gameTitle, title)) return true
+  if (title && (releaseMatchesSearchHint(file.filename, title) || releaseMatchesSearchHint(file.gameTitle, title))) {
+    return true
+  }
+  return false
+}
+
+function preferBaseServerFile(files: ServerGameFile[]): ServerGameFile | null {
+  if (!files.length) return null
+  const base = files.find((file) => classifyReleaseKind(file.filename || file.gameTitle) === 'game')
+  return base || files[0]
+}
+
 export function matchServerGameFile(
   files: ServerGameFile[] | undefined,
   mediaId?: string | null,
@@ -25,17 +41,7 @@ export function matchServerGameFile(
   if (!files?.length) return null
   const id = mediaId?.trim() || ''
   const title = mediaTitle?.trim() || ''
-  return (
-    files.find((file) => {
-      if (id && file.catalogItem?.id === id) return true
-      if (title && file.catalogItem?.title && isTitleMatch(file.catalogItem.title, title)) return true
-      if (title && isTitleMatch(file.gameTitle, title)) return true
-      if (title && (releaseMatchesSearchHint(file.filename, title) || releaseMatchesSearchHint(file.gameTitle, title))) {
-        return true
-      }
-      return false
-    }) || null
-  )
+  return preferBaseServerFile(files.filter((file) => fileMatchesGame(file, id, title)))
 }
 
 export function findCompletedServerDownload(

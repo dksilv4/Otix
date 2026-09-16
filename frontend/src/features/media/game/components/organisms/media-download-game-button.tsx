@@ -3,7 +3,7 @@ import { DkDialog } from '@/old-features/ui/molecules/dialog'
 import { IsoInstallerModal } from '@/features/launcher/components/organisms/iso-installer-modal'
 import { ServerGameSearchModal } from '@/features/downloads/molecules/server-game-search-modal'
 import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc, Server, Pause, X, AlertTriangle, ChevronDown } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatBytes } from '@/lib/utils'
 import { DOWNLOAD_STATUS_LABELS } from '../../../constants'
 import { useDownloadGame } from '../../hooks/use-download-game'
 import { useModal } from '@/lib/modals'
@@ -435,7 +435,48 @@ export function DownloadGameButton() {
                   aria-label="Download options"
                   className="absolute left-0 top-full z-50 mt-2 min-w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#16181d]/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl"
                 >
-                  <p className="px-3 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
+                  {/* Current source details */}
+                  {(() => {
+                    const f = state.serverFile
+                    // Build title parts: size, edition/version from filename
+                    const parts: string[] = []
+                    if (f?.filesize) parts.push(formatBytes(f.filesize))
+                    if (f?.filename) {
+                      // Extract edition/version info from filename (strip title, extension, group tag)
+                      const clean = f.filename
+                        .replace(/\.[^.]+$/, '')        // remove extension
+                        .replace(/[-.](?:[A-Z0-9]{2,8})$/, '') // remove scene group tag
+                        .replace(/[._]/g, ' ')          // dots/underscores → spaces
+                      // Remove the game title prefix to get edition/version suffix
+                      const titleLower = (f.gameTitle || state.mediaTitle || '').toLowerCase()
+                      const idx = clean.toLowerCase().indexOf(titleLower)
+                      const suffix = idx >= 0
+                        ? clean.slice(idx + titleLower.length).trim()
+                        : clean.replace(new RegExp(titleLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), '').trim()
+                      if (suffix) parts.push(suffix)
+                    }
+                    if (f?.formatCategory) parts.push(f.formatCategory.toUpperCase())
+                    const title = parts.join(' · ') || 'Available'
+                    const subtitle = f?.serverName ?? state.activeServer?.name ?? 'Server'
+                    return (
+                      <div className="px-3 py-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-400/10">
+                            <Server className="h-4 w-4 text-emerald-400" />
+                          </span>
+                          <span className="flex min-w-0 flex-col">
+                            <span className="text-sm font-medium text-white truncate">{title}</span>
+                            <span className="text-xs text-white/40 truncate">From {subtitle}</span>
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Divider */}
+                  <div className="mx-2 border-t border-white/[0.06]" />
+
+                  <p className="px-3 pb-1.5 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
                     Other options
                   </p>
                   {state.activeServer && (
@@ -486,11 +527,7 @@ export function DownloadGameButton() {
                 </div>
               )}
             </div>
-            {state.installCompatibility.compatible && (
-              <p className="max-w-[220px] truncate text-xs text-muted-foreground sm:max-w-none">
-                {state.installCopy.caption}
-              </p>
-            )}
+
           </div>
         )}
 

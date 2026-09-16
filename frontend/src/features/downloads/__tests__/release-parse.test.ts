@@ -46,9 +46,24 @@ describe('parseReleaseTitle', () => {
 
   it('classifies patches, hotfixes, and named updates', () => {
     expect(classifyReleaseKind('Cyberpunk.2077.Update.2.13-GOG')).toBe('update')
+    expect(classifyReleaseKind('Cyberpunk.2077.Update2.13-GOG')).toBe('update')
+    expect(classifyReleaseKind('Cyberpunk 2077 [Update 2.13].iso')).toBe('update')
+    expect(classifyReleaseKind('Cyberpunk.2077.Updated.v2.21-ElAmigos')).toBe('update')
+    expect(classifyReleaseKind('setup_cyberpunk_2077_update_2.13_(64bit)_(gog).exe')).toBe('update')
     expect(classifyReleaseKind('Elden.Ring.Patch.1.12.3-FLT')).toBe('update')
     expect(classifyReleaseKind('Silent.Hill.2.Hotfix-RUNE')).toBe('update')
     expect(extractReleaseVersion('Cyberpunk.2077.Update.2.13-GOG')).toBe('2.13')
+    expect(extractReleaseVersion('Cyberpunk.2077.Update2.13-GOG')).toBe('2.13')
+  })
+
+  it('groups a versioned cyberpunk update under the same key as the base game', () => {
+    const base = parseReleaseTitle('Cyberpunk.2077-GOG.iso')
+    const glued = parseReleaseTitle('Cyberpunk.2077.Update2.13-GOG.iso')
+    const versioned = parseReleaseTitle('Cyberpunk.2077.v2.13-GOG.iso')
+    expect(base.kind).toBe('game')
+    expect(glued.kind).toBe('update')
+    expect(glued.gameKey).toBe(base.gameKey)
+    expect(versioned.gameKey).toBe(base.gameKey)
   })
 
   it('keeps full packs that include updates as the base game', () => {

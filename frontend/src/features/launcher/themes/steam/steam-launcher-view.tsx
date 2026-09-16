@@ -24,7 +24,7 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
-import { useLocalGames } from "@/features/launcher/data/game-queries"
+import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
 import { usePopularGames } from "@/features/launcher/data/queries"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
@@ -39,7 +39,7 @@ export function SteamLauncherView() {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
   const isDesktop = hasDesktopAPI()
-  const { data: localGames = [] } = useLocalGames()
+  const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
   const { runningGame, elapsedMs } = useRunningGame()
   const { toast } = useToast()

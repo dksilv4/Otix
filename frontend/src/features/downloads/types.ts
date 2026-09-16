@@ -92,14 +92,21 @@ export interface ServerGameFile {
   extension: string;
   formatCategory: 'iso' | 'installer' | 'archive' | 'rom';
   gameTitle: string;
+  relativePath?: string;
   libraryName: string;
   modifiedAt?: string | null;
   downloadUrl: string;
   catalogItem?: {
-    id: string;
-    title: string;
-    slug: string;
-  } | null;
+    id: string
+    title: string
+    slug: string
+    posterUrl?: string | null
+    backdropUrl?: string | null
+    logoUrl?: string | null
+    textlessPosterUrl?: string | null
+    iconUrl?: string | null
+    overview?: string | null
+  } | null
 }
 
 export interface ServerGamesResponse {

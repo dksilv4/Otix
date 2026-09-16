@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react"
-import { useLocalGames } from "@/features/launcher/data/game-queries"
+import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
 import { usePopularGames } from "@/features/launcher/data/queries"
 import { hasDesktopAPI } from "@/lib/desktop/api"
 import { useNavPillsVisibility } from "@/features/navigation"
@@ -19,7 +19,7 @@ export function ModernLauncherView() {
     return () => setOverride(null)
   }, [setOverride])
 
-  const { data: localGames = [] } = useLocalGames(
+  const { data: localGames = [] } = useLauncherVisibleGames(
     isDesktop ? { sortBy: "last_played_at", sortDir: "desc" } : undefined
   )
   const { data: popularGames = [] } = usePopularGames()

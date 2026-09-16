@@ -26,6 +26,7 @@ import type { RemoteDownloadProgress } from '@/lib/desktop/api'
 import type { HypervisorConfirmResponse, Download, DownloadConfig } from '@/features/downloads/types'
 import {
   gameInstallCompatibility,
+  PREVIEW_INCOMPATIBLE_AS_AVAILABLE,
   type InstallCompatibility,
 } from '@/features/downloads/os-compatibility'
 import { useFeature } from '@/features/_config'
@@ -163,7 +164,11 @@ export function useDownloadGame(): DownloadGameState {
     indexed: !!serverFile,
     formatBytes,
   })
-  const installCompatibility = gameInstallCompatibility(data?.platforms)
+  const installCompatibility = (() => {
+    const actual = gameInstallCompatibility(data?.platforms)
+    if (!PREVIEW_INCOMPATIBLE_AS_AVAILABLE || actual.compatible) return actual
+    return { ...actual, compatible: true }
+  })()
 
   const activeRemoteTransfer = activeTransfers.find(
     (t) =>

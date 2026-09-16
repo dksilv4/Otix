@@ -19,6 +19,9 @@ export interface InstallProgress {
 export interface UpdateFile {
   name: string
   path: string
+  kind?: 'update' | 'dlc'
+  version?: string | null
+  filesize?: number
 }
 
 export interface Game {
@@ -158,6 +161,7 @@ export interface DisplayGame {
   installDir?: string
   isInstalled?: boolean
   otixMediaId?: string
+  textlessPosterUrl?: string | null
   rawGame?: LocalGame
 }
 

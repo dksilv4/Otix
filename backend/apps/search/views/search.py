@@ -68,8 +68,14 @@ class SearchView(APIView):
         sort_by = _optional_str(params, "sort_by")
         page = _int_param(params, "page", 1, ge=1)
         page_size = _int_param(params, "page_size", 24, ge=1, le=100)
+        include_external = (params.get("include_external") or "").lower() in ("1", "true")
         payload = services.search_media_payload(
-            q=q, media_type=media_type, sort_by=sort_by, page=page, page_size=page_size
+            q=q,
+            media_type=media_type,
+            sort_by=sort_by,
+            page=page,
+            page_size=page_size,
+            include_external=include_external,
         )
         services.log_search(
             query=q,
@@ -81,6 +87,7 @@ class SearchView(APIView):
             items_returned=len(payload["items"]),
             tracks_returned=len(payload["tracks"]),
             user=request.user,
+            backfill_triggered=bool(payload.get("backfill_pending")),
         )
         return Response(payload)
 
@@ -176,3 +183,18 @@ class SteamGridView(APIView):
         body = SteamGridSearchRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         return Response(services.steamgrid_payload())
+
+
+class PrehydrateView(APIView):
+    """``POST /search/prehydrate`` — IGDB ingest for scanned game titles.
+
+    Runs the catalog search/backfill inline so a scan-time list hydrates even
+    when a Celery worker is not attached.
+    """
+
+    def post(self, request: Request) -> Response:
+        titles = request.data.get("titles") if isinstance(request.data, dict) else None
+        if not isinstance(titles, list):
+            raise ParseError("titles list is required.")
+        result = services.prehydrate_game_titles([str(title) for title in titles if title])
+        return Response({"queued": result["searched"], **result})

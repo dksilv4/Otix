@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
-import { WhereToWatchV4 } from './media-where-to-watch-v4'
-import { CastCrewV4 } from './media-cast-crew-v4'
+import { WhereToWatchV4 } from './media-where-to-watch'
+import { CastCrewV4 } from './media-cast-crew'
 import type { MediaWatchProvider } from '@media/queries/media-queries'
 
 describe('null/empty backend data', () => {

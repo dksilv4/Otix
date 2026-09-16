@@ -286,7 +286,8 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
 
   // Backfill polling for newly discovered media items (infinite mode only)
   const knownIds = useMemo(() => new Set(items.map((i) => i?.id).filter(Boolean)), [items])
-  useSearchBackfill(query, type, sort, knownIds, hasNextPage)
+  const backfillPending = Boolean(data?.pages?.[0]?.backfillPending)
+  useSearchBackfill(query, type, sort, knownIds, hasNextPage, backfillPending)
 
   // Auto-fetch next page when the sentinel enters the viewport
   useEffect(() => {

@@ -6,12 +6,15 @@ the status-code/response-key fidelity the frozen FastAPI contract specifies.
 """
 
 import re
+from datetime import timedelta
+from unittest.mock import patch
 
 import pyotp
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import RefreshToken, UserSession
@@ -96,13 +99,31 @@ class RealAuthFlowTests(TestCase):
         self.assertIn("access_token", rotated.data)
         self.assertEqual(RefreshToken.objects.filter(user=self.user).count(), 2)
 
-        # Replay the old (now-revoked) cookie on a fresh client → reuse → revoke all.
+        # Replay the old cookie after the concurrent-refresh grace window.
+        thief = APIClient()
+        thief.cookies[settings.REFRESH_COOKIE_NAME] = old_refresh
+        later = timezone.now() + timedelta(seconds=30)
+        with patch("apps.accounts.services.sessions.timezone.now", return_value=later):
+            replay = thief.post("/api/v1/auth/refresh")
+        self.assertEqual(replay.status_code, 401)
+        live = RefreshToken.objects.filter(user=self.user, revoked_at__isnull=True).count()
+        self.assertEqual(live, 0)
+
+    def test_refresh_recent_reuse_does_not_revoke_family(self) -> None:
+        login_client = APIClient()
+        result = self._login(login_client)
+        old_refresh = result["refresh"]
+
+        rotated = login_client.post("/api/v1/auth/refresh")
+        self.assertEqual(rotated.status_code, 200)
+
+        # Immediate replay looks like overlapping in-flight refreshes, not theft.
         thief = APIClient()
         thief.cookies[settings.REFRESH_COOKIE_NAME] = old_refresh
         replay = thief.post("/api/v1/auth/refresh")
         self.assertEqual(replay.status_code, 401)
         live = RefreshToken.objects.filter(user=self.user, revoked_at__isnull=True).count()
-        self.assertEqual(live, 0)
+        self.assertEqual(live, 1)
 
     def test_refresh_without_cookie_is_401(self) -> None:
         response = self.client.post("/api/v1/auth/refresh")

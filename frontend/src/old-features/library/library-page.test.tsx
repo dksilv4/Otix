@@ -37,7 +37,23 @@ vi.mock("@tanstack/react-router", () => ({
 }))
 
 // Mock auth
-vi.mock("@/features/auth/auth-provider", () => ({
+vi.mock("@/features/auth/hooks/use-auth", () => ({
+  useAuth: vi.fn(() => ({
+    user: {
+      id: "1",
+      email: "test@test.com",
+      username: "testuser",
+      isVerified: true,
+      twoFactorEnabled: false,
+      steamId: "steam-123",
+      plexId: "plex-123",
+    },
+    isLoading: false,
+    isAuthenticated: true,
+  })),
+}))
+
+vi.mock("@/old-features/auth", () => ({
   useAuth: vi.fn(() => ({
     user: {
       id: "1",

@@ -2,10 +2,12 @@
 
 from apps.search.services.search import (
     companies_payload,
+    enqueue_prehydrate_titles,
     external_payload,
     grouped_payload,
     log_search,
     poll_payload,
+    prehydrate_game_titles,
     providers_payload,
     search_media_payload,
     steamgrid_payload,
@@ -14,10 +16,12 @@ from apps.search.services.search import (
 
 __all__ = [
     "companies_payload",
+    "enqueue_prehydrate_titles",
     "external_payload",
     "grouped_payload",
     "log_search",
     "poll_payload",
+    "prehydrate_game_titles",
     "providers_payload",
     "search_media_payload",
     "steamgrid_payload",

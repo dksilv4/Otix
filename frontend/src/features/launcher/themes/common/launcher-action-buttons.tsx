@@ -1,9 +1,12 @@
 import { useState } from "react"
-import { Play, FolderOpen, Sliders, Info, CheckCircle2, AlertCircle, Loader2 } from "lucide-react"
+import { Play, FolderOpen, Sliders, Info, CheckCircle2, AlertCircle, Loader2, Server } from "lucide-react"
 import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
 import { useToast } from "@/old-features/ui/molecules/toast"
 import { useInstallProgress } from "@/features/launcher/data/install-store"
-import { osName } from "@/lib/utils"
+import { useServerGames, useRemoteDownloads } from "@/features/downloads/use-server-downloads"
+import { matchServerGameFile } from "@/features/downloads/server-availability"
+import { PREVIEW_INCOMPATIBLE_AS_AVAILABLE } from "@/features/downloads/os-compatibility"
+import { formatBytes, osName } from "@/lib/utils"
 import type { LocalGame, DisplayGame } from "@/features/launcher/types"
 
 interface LauncherActionButtonsProps {
@@ -24,12 +27,16 @@ export function LauncherActionButtons({
   const { toast } = useToast()
   const isDesktop = hasDesktopAPI()
   const { activeInstalls, startInstall, cancelInstall } = useInstallProgress()
+  const { data: serverGamesData } = useServerGames()
+  const { startDownload } = useRemoteDownloads()
   const [isLaunching, setIsLaunching] = useState(false)
 
   const raw = ("rawGame" in game && game.rawGame ? game.rawGame : game) as LocalGame
   const isInstalled = !!raw.exePath && raw.platform !== "iso"
   const isIso = raw.platform === "iso"
-  const isIncompatible = isIso && osName !== "Windows"
+  const isIncompatible = isIso && osName !== "Windows" && !PREVIEW_INCOMPATIBLE_AS_AVAILABLE
+  const mediaId = raw.otixMediaId || raw.data?.id
+  const matchingServerFile = matchServerGameFile(serverGamesData?.files, mediaId, raw.title)
 
   const activeInstall = activeInstalls.find(
     (i) => i.isoPath?.toLowerCase() === raw.exePath?.toLowerCase()
@@ -145,6 +152,31 @@ export function LauncherActionButtons({
             <span>Install Game</span>
           </button>
         )
+      ) : matchingServerFile ? (
+        <button
+          onClick={async (e) => {
+            e.stopPropagation()
+            try {
+              await startDownload(matchingServerFile, mediaId)
+              toast({
+                title: "Installing from Server",
+                description: `Streaming ${raw.title} from ${matchingServerFile.serverName}.`,
+                variant: "success",
+              })
+            } catch (err) {
+              toast({
+                title: "Install Failed",
+                description: (err as Error)?.message || "Could not start the server download.",
+                variant: "error",
+              })
+            }
+          }}
+          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition-all duration-200 cursor-pointer active:scale-95 bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] ${paddingClass}`}
+          title={`On ${matchingServerFile.serverName}, not installed on this device (${formatBytes(matchingServerFile.filesize)})`}
+        >
+          <Server size={size === "lg" ? 16 : 14} />
+          <span>Install</span>
+        </button>
       ) : (
         <button
           onClick={onOpenDetails || handlePlay}

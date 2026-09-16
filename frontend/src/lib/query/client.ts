@@ -4,6 +4,7 @@ import type { Persister, PersistedClient } from '@tanstack/react-query-persist-c
 import { getDesktopAPI } from '../desktop/api'
 import { showErrorToast } from '@/old-features/ui/molecules/toast'
 import { reportNetworkFailure, reportOnline } from '@/lib/offline'
+import { isAuthSessionError } from '@/lib/api/session-refresh'
 
 const CACHE_BUSTER = 'v3'
 const STORAGE_KEY = `otix_query_cache_${CACHE_BUSTER}`
@@ -76,6 +77,7 @@ export const queryClient = new QueryClient({
     onError: (error, query) => {
       reportNetworkFailure(error)
       if (query.meta?.suppressToast) return
+      if (isAuthSessionError(error)) return
       showErrorToast(error, 'Query Error')
     },
     onSuccess: () => reportOnline(),
@@ -84,6 +86,7 @@ export const queryClient = new QueryClient({
     onError: (error, _variables, _context, mutation) => {
       reportNetworkFailure(error)
       if (mutation.meta?.suppressToast) return
+      if (isAuthSessionError(error)) return
       showErrorToast(error, 'Operation Failed')
     },
   }),
@@ -91,7 +94,10 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
       gcTime: 1000 * 60 * 10, // 10 minutes
-      retry: 1,
+      retry: (failureCount, error) => {
+        if (isAuthSessionError(error)) return false
+        return failureCount < 1
+      },
       refetchOnWindowFocus: false,
       refetchOnMount: true,
       refetchOnReconnect: false,

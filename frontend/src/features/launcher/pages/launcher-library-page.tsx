@@ -3,19 +3,21 @@ import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Gamepad2, Play, Clock, ChevronRight, Settings } from 'lucide-react'
-import { useLocalGames, localGameKeys } from '@/features/launcher/data/game-queries'
+import { useLauncherVisibleGames, useLauncherFoundGames, localGameKeys } from '@/features/launcher/data/game-queries'
 import { usePopularGames, gameDetailOptions } from '@/features/launcher/data/queries'
-import { useServerGames } from '@/features/downloads/use-server-downloads'
-import { isTitleMatch } from '@media'
 import { fetchGameById } from '@/features/launcher/data/storage'
 import { hasDesktopAPI } from '@/lib/desktop/api'
-import { toDisplayGame, heroImage, isApplicationGame } from '@/features/launcher/utils'
+import { toDisplayGame, heroImage } from '@/features/launcher/utils'
+import { useHydrateLocalGames } from '@/features/launcher/hooks/use-launcher-hydrate'
+import { LauncherMediaCard } from '@/features/launcher/components/molecules/launcher-media-card'
+import { LauncherFoundGames } from '@/features/launcher/components/organisms/launcher-found-games'
+import { MediaGrid } from '@ui/molecules/media-grid'
 import { useOffline } from '@/lib/offline'
 import { OfflineNotice } from '@/lib/offline-notice'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import { PLATFORM_LABELS } from '@/constants/games'
 import { MediaLogo } from '@/lib/media/media-logo'
-import type { DisplayGame, LauncherPlatform, LocalGame } from '@/features/launcher/types'
+import type { DisplayGame, LauncherPlatform } from '@/features/launcher/types'
 
 type SortMode = 'recent' | 'title' | 'platform'
 
@@ -23,59 +25,19 @@ export function LauncherLibraryPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isDesktop = hasDesktopAPI()
+  useHydrateLocalGames()
 
   // ── Data ──
-  const { data: localGames = [] } = useLocalGames(
+  const { data: visibleGames = [] } = useLauncherVisibleGames(
     isDesktop ? { sortBy: 'last_played_at', sortDir: 'desc' } : undefined,
   )
+  const { data: foundGames = [] } = useLauncherFoundGames()
   const { data: popularGames = [] } = usePopularGames({ enabled: !isDesktop })
-  const { data: serverGamesData } = useServerGames()
 
   const rawGames: DisplayGame[] = useMemo(() => {
-    const serverFiles = serverGamesData?.files || []
-    const serverGames: DisplayGame[] = serverFiles
-      .filter((f) => !localGames.some((g) =>
-        (f.catalogItem?.id && (g.otixMediaId === f.catalogItem.id || g.data?.id === f.catalogItem.id)) ||
-        (g.title && isTitleMatch(g.title, f.gameTitle))
-      ))
-      .map((f) => {
-        const id = f.catalogItem?.id ? f.catalogItem.id : `server-${f.fileId}`
-        return {
-          id,
-          title: f.catalogItem?.title || f.gameTitle,
-          posterUrl: null,
-          backdropUrl: undefined,
-          iconUrl: undefined,
-          logoUrl: undefined,
-          logoColorGuess: undefined,
-          badge: `SERVER · ${f.serverName}`,
-          playtime: '—',
-          achievements: 'On Server',
-          isDefault: false,
-          platform: 'server' as LauncherPlatform,
-          exePath: '',
-          installDir: '',
-          isInstalled: false,
-          otixMediaId: f.catalogItem?.id,
-          rawGame: {
-            id,
-            title: f.catalogItem?.title || f.gameTitle,
-            platform: 'server' as LauncherPlatform,
-            exePath: '',
-            installDir: '',
-            otixMediaId: f.catalogItem?.id,
-            otixMediaTitle: f.catalogItem?.title,
-          } as LocalGame,
-        }
-      })
+    const listed = visibleGames.map(toDisplayGame)
 
-    if (isDesktop) {
-      const local = localGames
-        .filter((g) => !isApplicationGame(g)) // applications hidden for now
-        .map(toDisplayGame)
-
-      return [...local, ...serverGames]
-    }
+    if (isDesktop) return listed
 
     const popular = popularGames.map((g) => ({
       id: g.id, title: g.title,
@@ -88,8 +50,8 @@ export function LauncherLibraryPage() {
       isInstalled: false, platform: 'unknown' as LauncherPlatform,
     }))
 
-    return [...serverGames, ...popular]
-  }, [isDesktop, localGames, popularGames, serverGamesData?.files])
+    return [...listed, ...popular]
+  }, [isDesktop, visibleGames, popularGames])
 
   // ── State ──
   const [searchQuery, setSearchQuery] = useState('')
@@ -97,7 +59,6 @@ export function LauncherLibraryPage() {
   const [sortBy, setSortBy] = useState<SortMode>('recent')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set())
-  const [posterErrors, setPosterErrors] = useState<Set<string>>(new Set())
   const offline = useOffline()
   const { settings } = useLauncherSettings()
 
@@ -119,10 +80,6 @@ export function LauncherLibraryPage() {
 
   const handleLogoError = useCallback((gameId: string) => {
     setLogoErrors((prev) => new Set(prev).add(gameId))
-  }, [])
-
-  const handlePosterError = useCallback((gameId: string) => {
-    setPosterErrors((prev) => new Set(prev).add(gameId))
   }, [])
 
   // ── Derived data ──
@@ -389,136 +346,24 @@ export function LauncherLibraryPage() {
 
           {/* ────────── Game Grid ────────── */}
           {gridGames.length > 0 ? (
-            <motion.div
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5"
-              initial="hidden"
-              animate="visible"
-              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.03 } } }}
-            >
-              {gridGames.map((game) => {
-                const hasLogo = !!game.logoUrl && !logoErrors.has(game.id)
-                // Prefer textless poster so the logo hover pops cleanly
-                const cardPoster = game.rawGame?.otixTextlessPosterUrl || game.rawGame?.textlessPosterUrl || game.rawGame?.data?.textlessPosterUrl || game.posterUrl
-                const posterFailed = posterErrors.has(game.id)
-
-                return (
-                  <motion.div
-                    key={game.id}
-                    variants={{
-                      hidden: { opacity: 0, y: 16, scale: 0.97 },
-                      visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
-                    }}
-                    onMouseEnter={() => { setHoveredId(game.id); handlePrefetch(game) }}
-                    onMouseLeave={() => setHoveredId(null)}
-                    onClick={() => openGame(game.id)}
-                    className="group relative cursor-pointer rounded-2xl overflow-hidden aspect-[2/3] transition-all duration-300 hover:-translate-y-1.5"
-                    style={{
-                      boxShadow: hoveredId === game.id
-                        ? 'inset 0 0 0 1px rgb(255 255 255 / 0.15), 0 16px 48px rgb(0 0 0 / 0.6)'
-                        : 'inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 4px 16px rgb(0 0 0 / 0.3)',
-                      transition: 'box-shadow 0.3s, transform 0.3s cubic-bezier(0.16,1,0.3,1)',
-                    }}
-                  >
-                    {/* Poster — prefer textless so logo hover doesn't double up */}
-                    {cardPoster && !posterFailed ? (
-                      <img
-                        src={cardPoster}
-                        alt={game.title}
-                        className="w-full h-full object-cover group-hover:scale-[1.06] transition-transform duration-700 ease-out"
-                        loading="lazy"
-                        draggable={false}
-                        onError={() => handlePosterError(game.id)}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[var(--dk-surface-ghost)] flex flex-col items-center justify-center gap-3 text-white/15">
-                        <Gamepad2 size={36} />
-                        <span className="text-[10px] text-center font-bold px-4 uppercase tracking-wider leading-tight line-clamp-2">
-                          {game.title}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* ── Hover overlay with logo ── */}
-                    <div className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                      {/* Dark vignette */}
-                      <div className="absolute inset-0 bg-black/60" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/30" />
-
-                      {/* Center content: logo + play button */}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
-                        {/* Game logo — fades up on hover */}
-                        {hasLogo && (
-                          <div className="relative w-full flex items-center justify-center pointer-events-none">
-                            <div
-                              className="absolute inset-0 pointer-events-none opacity-85"
-                              style={{
-                                background:
-                                  'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0) 80%)',
-                              }}
-                            />
-                            <MediaLogo
-                              src={game.logoUrl!}
-                              alt={game.title}
-                              className="relative z-10 max-h-[35%] max-w-[70%] object-contain translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out"
-                              colorGuess={game.logoColorGuess ?? null}
-                              background="dark"
-                              shadow="drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 6px 24px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
-                              style={{ transitionDelay: '50ms' }}
-                              onError={() => handleLogoError(game.id)}
-                            />
-                          </div>
-                        )}
-
-                        {/* Play circle — scales up beneath the logo */}
-                        <div
-                          className="rounded-full flex items-center justify-center scale-50 group-hover:scale-100 transition-all duration-300"
-                          style={{
-                            width: 48, height: 48,
-                            background: 'oklch(0.705 0.213 47.604)',
-                            boxShadow: '0 0 32px oklch(0.705 0.213 47.604 / 0.5)',
-                            transitionDelay: '80ms',
-                          }}
-                        >
-                          <Play size={20} fill="white" color="white" className="ml-0.5" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ── Bottom info bar ── */}
-                    <div className="absolute inset-x-0 bottom-0 z-[15]">
-                      <div className="bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-16 pb-3 px-4 transition-opacity duration-300 group-hover:opacity-0">
-                        <h3 className="text-[13px] font-bold text-white truncate drop-shadow-md">
-                          {game.title}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[8px] uppercase tracking-wider font-semibold text-white/40 bg-white/[0.06] px-1.5 py-0.5 rounded-full border border-white/[0.04]">
-                            {PLATFORM_LABELS[game.platform] ?? game.platform}
-                          </span>
-                          {game.playtime && game.playtime !== '—' && (
-                            <span className="text-[8px] text-white/30 flex items-center gap-0.5">
-                              <Clock size={7} />
-                              {game.playtime}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Gloss sweep */}
-                    <div className="absolute inset-0 pointer-events-none z-20 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-[1.2s] ease-out" />
-
-                    {/* Installed dot */}
-                    {game.isInstalled && (
-                      <div
-                        className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full z-20"
-                        style={{ background: 'var(--color-accent)', boxShadow: '0 0 8px var(--color-accent)' }}
-                      />
-                    )}
-                  </motion.div>
-                )
-              })}
-            </motion.div>
-          ) : (
+            <MediaGrid className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {gridGames.map((game) => (
+                <LauncherMediaCard
+                  key={game.id}
+                  game={game}
+                  onClick={() => {
+                    handlePrefetch(game)
+                    openGame(game.id)
+                  }}
+                  onMouseEnter={() => {
+                    setHoveredId(game.id)
+                    handlePrefetch(game)
+                  }}
+                  onMouseLeave={() => setHoveredId(null)}
+                />
+              ))}
+            </MediaGrid>
+          ) : foundGames.length === 0 ? (
             <div className="glass-card flex flex-col items-center justify-center py-24 text-white/30 gap-4">
               <Gamepad2 size={44} className="animate-pulse" style={{ animationDuration: '3s' }} />
               <h3 className="text-xs font-bold uppercase tracking-wider">
@@ -550,7 +395,9 @@ export function LauncherLibraryPage() {
                 </button>
               )}
             </div>
-          )}
+          ) : null}
+
+          <LauncherFoundGames className="mt-8" />
 
           <div className="h-12" />
         </div>

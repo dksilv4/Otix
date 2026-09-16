@@ -1,3 +1,5 @@
+import type { UpdateFile } from '@/features/launcher/types'
+
 export interface GameChangelogItem {
   id: string
   title: string
@@ -14,5 +16,5 @@ export interface GameVersionInfo {
   installedVersion?: string
   latestVersion?: string
   hasLocalUpdate: boolean
-  localUpdateFiles: { name: string; path: string }[]
+  localUpdateFiles: UpdateFile[]
 }

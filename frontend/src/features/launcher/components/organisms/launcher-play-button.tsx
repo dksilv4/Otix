@@ -6,7 +6,7 @@ import { useLocalGame } from '@/features/launcher/data/game-queries'
 import { useInstallProgress } from '@/features/launcher/data/install-store'
 import { useServerGames, useRemoteDownloads } from '@/features/downloads/use-server-downloads'
 import { matchServerGameFile } from '@/features/downloads/server-availability'
-import { gameInstallCompatibility } from '@/features/downloads/os-compatibility'
+import { gameInstallCompatibility, treatInstallAsAvailable } from '@/features/downloads/os-compatibility'
 import { PlayGameButton } from '@/features/launcher/components/atoms/launcher-play-game-button'
 import { IncompatibleButton } from '@/features/launcher/components/atoms/launcher-incompatible-button'
 import { IsoInstallingProgress } from '@/features/launcher/components/atoms/launcher-iso-installing-progress'
@@ -52,7 +52,8 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
   const isInstalled = !!g?.exePath && g?.platform !== 'iso' && !!g.data?.id
   const mediaId = g?.otixMediaId || g?.data?.id
   const installCompatibility = gameInstallCompatibility(g.data?.platforms)
-  const isIncompatible = g?.platform === 'iso' && !installCompatibility.compatible
+  const treatAsAvailable = treatInstallAsAvailable(installCompatibility)
+  const isIncompatible = g?.platform === 'iso' && !treatAsAvailable
 
   // ── Remote Download in Progress ──
   const activeTransfer = activeTransfers.find((t) => {
@@ -159,7 +160,7 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
   const matchingServerFile = matchServerGameFile(serverGamesData?.files, mediaId, g.title)
 
   if (matchingServerFile) {
-    if (!installCompatibility.compatible) {
+    if (!treatAsAvailable) {
       return (
         <IncompatibleButton
           label={installCompatibility.button}

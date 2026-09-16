@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { SearchX } from 'lucide-react'
 import { osName } from "@/lib/utils"
+import { PREVIEW_INCOMPATIBLE_AS_AVAILABLE } from "@/features/downloads/os-compatibility"
 import GameThumb from "@/features/launcher/components/atoms/launcher-game-thumb"
 import type {DisplayGame} from "@/features/launcher/types"
 
@@ -58,11 +59,14 @@ const GameThumbList = ({ games, activeGameId, onSelect, onHover }: GameThumbList
                             {game.isInstalled && (
                                 <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--color-accent)] border border-black/30 shadow-sm" />
                             )}
+                            {!game.isInstalled && game.platform === 'server' && (
+                                <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-black/30 shadow-sm" title="Available on server" />
+                            )}
                             {!game.isInstalled && game.platform === 'iso' && (
-                                osName !== 'Windows' ? (
-                                    <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-red-500/50 border border-black/30 shadow-sm" title="Can't install this on macOS" />
-                                ) : (
+                                (PREVIEW_INCOMPATIBLE_AS_AVAILABLE || osName === 'Windows') ? (
                                     <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-blue-500 border border-black/30 shadow-sm" title="Ready to Install" />
+                                ) : (
+                                    <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-red-500/50 border border-black/30 shadow-sm" title="Can't install this on macOS" />
                                 )
                             )}
                         </button>

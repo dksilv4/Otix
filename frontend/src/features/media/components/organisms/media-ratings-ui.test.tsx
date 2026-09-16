@@ -7,8 +7,8 @@ vi.mock('@tanstack/react-router', () => ({
   useParams: () => ({ mediaType: 'movie', mediaId: '1' }),
 }))
 
-import { WhereToWatchV4 } from './media-where-to-watch-v4'
-import { MediaStorylineV4 } from './media-storyline-v4'
+import { WhereToWatchV4 } from './media-where-to-watch'
+import { MediaStorylineV4 } from './media-storyline'
 import { formatMusicCreditsLine, groupByRole, getPreferredSeason } from '@media/utils'
 import type { MediaItemDetail } from '@media'
 

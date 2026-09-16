@@ -4,6 +4,11 @@ import { useGameDetail } from '@/features/launcher/data/queries'
 import { useServerGames } from '@/features/downloads/use-server-downloads'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 import { OTIX_DEFAULT_GAME, OTIX_DEFAULT_GAME_ID } from '@/features/launcher/data/otix-default-game'
+import {
+  attachGroupToLocalGame,
+  findGroupedServerGame,
+  groupedServerGameToLocalGame,
+} from '@/features/launcher/data/visible-games'
 import type { LocalGame, Game } from '@/features/launcher/types'
 
 export function useLauncherGame(gameId: string | undefined) {
@@ -15,20 +20,22 @@ export function useLauncherGame(gameId: string | undefined) {
   const { data: localGame, isLoading: isLocalLoading } = useLocalGame(gameId)
   const { data: serverGamesData } = useServerGames()
 
-  const serverFile = useMemo(() => {
-    if (!gameId || !serverGamesData?.files?.length) return null
-    if (gameId.startsWith('server-')) {
-      const fid = gameId.replace('server-', '')
-      return serverGamesData.files.find((f) => f.fileId === fid) || null
-    }
-    return serverGamesData.files.find((f) => f.catalogItem?.id === gameId) || null
-  }, [gameId, serverGamesData?.files])
+  const group = useMemo(
+    () => findGroupedServerGame(serverGamesData?.files, { gameId, local: localGame }),
+    [gameId, localGame, serverGamesData?.files],
+  )
+  const serverFile = group?.primary.file || null
+  const groupedGame = useMemo(
+    () => (group ? groupedServerGameToLocalGame(group) : null),
+    [group],
+  )
 
   // For desktop matched games, use the otix ID for catalog detail fetch.
-  // Falls back to serverFile catalog id, or gameId directly if not a server- prefix.
+  // Falls back to grouped catalog id, or gameId directly if not a server- prefix.
   const catalogId =
     localGame?.data?.id ||
     localGame?.otixMediaId ||
+    groupedGame?.otixMediaId ||
     serverFile?.catalogItem?.id ||
     (gameId && !gameId.startsWith('server-') ? gameId : undefined)
 
@@ -36,72 +43,79 @@ export function useLauncherGame(gameId: string | undefined) {
 
   const isLoading = isDesktop ? (isLocalLoading || (!!catalogId && isCatalogLoading)) : isCatalogLoading
 
+  const withUpdates = localGame
+    ? attachGroupToLocalGame(localGame, group)
+    : groupedGame
+
   // Merge catalog data into local game — prefers data, falls back to otix* fields / catalog detail
-  if (localGame) {
-    const hasRichData = !!(localGame.data?.backdropUrl && localGame.data?.posterUrl)
+  if (withUpdates) {
+    const hasRichData = !!(withUpdates.data?.backdropUrl && withUpdates.data?.posterUrl)
     const catalogSource = (catalogDetail as Record<string, unknown> | null) ?? {}
 
     if (!hasRichData) {
       const richData: Game = {
-        id: localGame.otixMediaId || localGame.data?.id || '',
-        title: localGame.otixMediaTitle || localGame.data?.title || localGame.title,
-        slug: localGame.otixMediaSlug || localGame.data?.slug || '',
-        posterUrl: (localGame.otixPosterUrl || catalogSource.posterUrl || localGame.data?.posterUrl) as string | undefined,
-        backdropUrl: (localGame.otixBackdropUrl || catalogSource.backdropUrl || localGame.data?.backdropUrl) as string | undefined,
-        textlessPosterUrl: (localGame.otixTextlessPosterUrl || catalogSource.textlessPosterUrl || localGame.data?.textlessPosterUrl) as string | null | undefined,
-        logoUrl: (localGame.otixLogoUrl || catalogSource.logoUrl || localGame.data?.logoUrl) as string | undefined,
+        id: withUpdates.otixMediaId || withUpdates.data?.id || catalogDetail?.id || '',
+        title: withUpdates.otixMediaTitle || withUpdates.data?.title || withUpdates.title,
+        slug: withUpdates.otixMediaSlug || withUpdates.data?.slug || catalogDetail?.slug || '',
+        overview: catalogDetail?.overview || withUpdates.data?.overview || null,
+        posterUrl: (withUpdates.otixPosterUrl || catalogSource.posterUrl || withUpdates.data?.posterUrl) as string | undefined,
+        backdropUrl: (withUpdates.otixBackdropUrl || catalogSource.backdropUrl || withUpdates.data?.backdropUrl) as string | undefined,
+        textlessPosterUrl: (withUpdates.otixTextlessPosterUrl || catalogSource.textlessPosterUrl || withUpdates.data?.textlessPosterUrl) as string | null | undefined,
+        logoUrl: (withUpdates.otixLogoUrl || catalogSource.logoUrl || withUpdates.data?.logoUrl) as string | undefined,
         logoColorGuess: catalogSource.logoColorGuess as string | null | undefined,
-        iconUrl: (localGame.otixIconUrl || catalogSource.iconUrl || localGame.data?.iconUrl) as string | undefined,
-        screenshots: (catalogSource.screenshots || localGame.data?.screenshots) as Game['screenshots'],
+        iconUrl: (withUpdates.otixIconUrl || catalogSource.iconUrl || withUpdates.data?.iconUrl) as string | undefined,
+        screenshots: (catalogSource.screenshots || withUpdates.data?.screenshots) as Game['screenshots'],
+        genres: catalogDetail?.genres || withUpdates.data?.genres || [],
+        involvedCompanies: catalogDetail?.involvedCompanies || withUpdates.data?.involvedCompanies || [],
+        platforms: (catalogSource.platforms || withUpdates.data?.platforms) as Game['platforms'],
       }
       return {
-        game: { ...localGame, data: richData } as LocalGame,
+        game: { ...withUpdates, data: richData } as LocalGame,
         isLoading,
       }
     }
 
     // Already has rich data — merge screenshots from catalog if newer
-    if (catalogSource.screenshots && !localGame.data?.screenshots?.length) {
+    if (catalogSource.screenshots && !withUpdates.data?.screenshots?.length) {
       return {
         game: {
-          ...localGame,
-          data: { ...localGame.data, screenshots: catalogSource.screenshots as Game['screenshots'] },
+          ...withUpdates,
+          data: { ...withUpdates.data, screenshots: catalogSource.screenshots as Game['screenshots'] },
         } as LocalGame,
         isLoading,
       }
     }
 
-    return { game: localGame, isLoading }
+    return { game: withUpdates, isLoading }
   }
 
-  // Server game or web game without local DB entry
-  if (catalogDetail || serverFile) {
-    const title = catalogDetail?.title || serverFile?.catalogItem?.title || serverFile?.gameTitle || 'Game'
+  if (catalogDetail) {
+    const title = catalogDetail.title || 'Game'
     const remoteGame: LocalGame = {
-      id: gameId || serverFile?.fileId || catalogDetail?.id || '',
+      id: gameId || catalogDetail.id,
       title,
-      platform: 'server' as const,
+      platform: 'server',
       exePath: '',
       installDir: '',
-      iconUrl: catalogDetail?.iconUrl ?? undefined,
-      posterUrl: catalogDetail?.posterUrl ?? undefined,
-      otixMediaId: catalogDetail?.id || serverFile?.catalogItem?.id || undefined,
+      iconUrl: catalogDetail.iconUrl ?? undefined,
+      posterUrl: catalogDetail.posterUrl ?? undefined,
+      otixMediaId: catalogDetail.id,
       otixMediaTitle: title,
-      otixMediaSlug: catalogDetail?.slug || serverFile?.catalogItem?.slug || undefined,
+      otixMediaSlug: catalogDetail.slug,
       data: {
-        id: catalogDetail?.id || serverFile?.catalogItem?.id || '',
+        id: catalogDetail.id,
         title,
-        slug: catalogDetail?.slug || serverFile?.catalogItem?.slug || '',
-        overview: catalogDetail?.overview || null,
-        posterUrl: catalogDetail?.posterUrl ?? undefined,
-        backdropUrl: catalogDetail?.backdropUrl ?? undefined,
-        logoUrl: catalogDetail?.logoUrl ?? undefined,
-        logoColorGuess: catalogDetail?.logoColorGuess ?? undefined,
-        iconUrl: catalogDetail?.iconUrl ?? undefined,
-        screenshots: (catalogDetail as unknown as Record<string, unknown>)?.screenshots as Game['screenshots'],
-        genres: catalogDetail?.genres || [],
-        involvedCompanies: catalogDetail?.involvedCompanies || [],
-      } as Game,
+        slug: catalogDetail.slug,
+        overview: catalogDetail.overview || null,
+        posterUrl: catalogDetail.posterUrl ?? undefined,
+        backdropUrl: catalogDetail.backdropUrl ?? undefined,
+        logoUrl: catalogDetail.logoUrl ?? undefined,
+        logoColorGuess: catalogDetail.logoColorGuess ?? undefined,
+        iconUrl: catalogDetail.iconUrl ?? undefined,
+        genres: catalogDetail.genres || [],
+        involvedCompanies: catalogDetail.involvedCompanies || [],
+        platforms: catalogDetail.platforms || [],
+      },
     }
     return { game: remoteGame, isLoading }
   }

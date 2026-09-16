@@ -42,13 +42,13 @@ export interface ReleaseSection {
 const FULL_PACK_RE =
   /\b(?:incl(?:uding)?|incl\.?)\b[\s._-]*(?:all[\s._-]*)?(?:updates?|dlcs?|dlc)\b/i
 const UPDATE_RE =
-  /(?:^|[.\s_\-])(?:updates?|patch(?:es)?|hotfix(?:es)?|crackfix(?:es)?|crack[\s._-]*only)(?=$|[.\s_\-])/i
-const DLC_RE = /(?:^|[.\s_\-])(?:dlcs?|expansion(?:s)?|add[\s._-]*ons?)(?=$|[.\s_\-])/i
+  /(?:^|[^a-z0-9])(?:updates?d?|patch(?:es)?|hotfix(?:es)?|crackfix(?:es)?|crack[\s._-]*only)(?=$|[^a-z])/i
+const DLC_RE = /(?:^|[^a-z0-9])(?:dlcs?|expansion(?:s)?|add[\s._-]*ons?)(?=$|[^a-z])/i
 const COMPLETE_EDITION_RE = /\bcomplete[\s._-]*edition\b/i
 const SCENE_GROUP_RE = /-([A-Za-z][A-Za-z0-9]{1,24})(?:\.[A-Za-z0-9]+)?$/
 const FILE_EXT_RE = /\.(nzb|rar|iso|zip|7z|exe|torrent)$/i
 const UPDATE_VERSION_RE =
-  /\b(?:update|patch|hotfix|crackfix)s?[\s._-]*(?:v(?:er(?:sion)?)?[\s._-]*)?(\d+(?:[._]\d+){0,4})\b/i
+  /\b(?:update|patch|hotfix|crackfix)s?d?[\s._-]*(?:v(?:er(?:sion)?)?[\s._-]*)?(\d+(?:[._]\d+){0,4})\b/i
 const PREFIXED_VERSION_RE = /\bv(?:er(?:sion)?)?[\s._-]*(\d+(?:[._]\d+){1,4})\b/i
 
 const EDITIONS: { key: string; label: string; pattern: RegExp }[] = [
@@ -97,6 +97,7 @@ const NOISE_TAGS = new Set([
   'english',
   'eng',
   'iso',
+  'setup',
   'gog',
   'steam',
   'epic',
@@ -188,6 +189,7 @@ function stripSceneGroup(title: string): { body: string; group: string | null } 
 function tokenize(body: string): string[] {
   return body
     .toLowerCase()
+    .replace(/(update|patch|hotfix|dlc)s?d?(?=\d)/g, '$1 ')
     .replace(/[^a-z0-9]+/g, ' ')
     .split(/\s+/)
     .filter(Boolean)
@@ -221,9 +223,10 @@ export function extractReleaseVersion(title: string): string | null {
 }
 
 export function classifyReleaseKind(title: string): ReleaseKind {
-  if (FULL_PACK_RE.test(title)) return 'game'
-  if (UPDATE_RE.test(title)) return 'update'
-  if (DLC_RE.test(title) && !COMPLETE_EDITION_RE.test(title)) return 'dlc'
+  const spaced = title.replace(/[._]/g, ' ')
+  if (FULL_PACK_RE.test(title) || FULL_PACK_RE.test(spaced)) return 'game'
+  if (UPDATE_RE.test(title) || UPDATE_RE.test(spaced)) return 'update'
+  if ((DLC_RE.test(title) || DLC_RE.test(spaced)) && !COMPLETE_EDITION_RE.test(title)) return 'dlc'
   return 'game'
 }
 
@@ -246,12 +249,14 @@ export function extractRepacker(title: string, sceneGroup?: string | null): { ke
 function buildGameIdentity(tokens: string[]): { key: string; title: string } {
   const kept: string[] = []
   let skippingKindTail = false
+  let skippingVersionTail = false
 
   for (const raw of tokens) {
     const token = raw.toLowerCase()
     if (
       token === 'update' ||
       token === 'updates' ||
+      token === 'updated' ||
       token === 'patch' ||
       token === 'patches' ||
       token === 'hotfix' ||
@@ -266,7 +271,12 @@ function buildGameIdentity(tokens: string[]): { key: string; title: string } {
     if (NOISE_TAGS.has(token)) continue
     if (/^multi\d+$/i.test(token)) continue
     if (/^\d{3,4}p$/i.test(token)) continue
-    if (isVersionToken(token)) continue
+    if (isVersionToken(token)) {
+      skippingVersionTail = true
+      continue
+    }
+    if (skippingVersionTail && /^\d{1,4}$/.test(token)) continue
+    skippingVersionTail = false
     kept.push(normalizeToken(token))
   }
 

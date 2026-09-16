@@ -135,6 +135,85 @@ class GameServersApiTests(TestCase):
         portal = next(f for f in data["files"] if f["file_id"] == "file_xyz789")
         self.assertIsNone(portal["catalog_item"])
 
+    @mock.patch("apps.library.views.game_servers.enqueue_prehydrate_titles")
+    @mock.patch("apps.library.views.game_servers.httpx.Client")
+    def test_server_games_queues_prehydrate_for_unmatched(self, mock_client_cls, mock_prehydrate):
+        MediaItem.objects.create(media_type="game", title="Half Life 2", slug="half-life-2")
+        UserGameServer.objects.create(
+            user=self.user,
+            name="Unraid Box",
+            local_url="http://192.168.1.50:8000",
+            is_active=True,
+        )
+        mock_client = mock.MagicMock()
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = [
+            {
+                "id": "file_abc123",
+                "filename": "Half.Life.2.ISO",
+                "filesize": 4_500_000_000,
+                "extension": ".iso",
+                "game_title": "Half Life 2",
+            },
+            {
+                "id": "file_xyz789",
+                "filename": "Portal.exe",
+                "filesize": 2_000_000_000,
+                "extension": ".exe",
+                "game_title": "Portal",
+            },
+        ]
+        mock_client.get.return_value = mock_resp
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        res = self.client.get("/api/v1/library/server-games")
+        self.assertEqual(res.status_code, 200)
+        mock_prehydrate.assert_called_once()
+        titles = mock_prehydrate.call_args[0][0]
+        self.assertIn("Portal", titles)
+        self.assertNotIn("Half Life 2", titles)
+
+    @mock.patch("apps.library.views.game_servers.httpx.Client")
+    def test_server_games_match_update_files_to_parent_catalog(self, mock_client_cls):
+        media = MediaItem.objects.create(
+            media_type="game",
+            title="Half Life 2",
+            slug="half-life-2",
+            overview="Follow Gordon Freeman.",
+        )
+        UserGameServer.objects.create(
+            user=self.user,
+            name="Unraid Box",
+            local_url="http://192.168.1.50:8000",
+            is_active=True,
+        )
+        mock_client = mock.MagicMock()
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = [
+            {
+                "id": "file_upd",
+                "filename": "Half.Life.2.Update.1-FLT.iso",
+                "filesize": 800_000_000,
+                "extension": ".iso",
+                "format_category": "iso",
+                "game_title": "Half Life 2 Update 1 Flt",
+                "library_name": "PC Games",
+            }
+        ]
+        mock_client.get.return_value = mock_resp
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        res = self.client.get("/api/v1/library/server-games")
+        self.assertEqual(res.status_code, 200)
+        upd = res.json()["files"][0]
+        self.assertEqual(upd["catalog_item"]["id"], str(media.id))
+        self.assertEqual(upd["catalog_item"]["title"], "Half Life 2")
+        self.assertEqual(upd["catalog_item"]["overview"], "Follow Gordon Freeman.")
+
     @mock.patch("apps.library.services.game_server.httpx.Client")
     def test_modular_providers_and_downloads_flow(self, mock_client_cls):
         server = UserGameServer.objects.create(
@@ -328,3 +407,97 @@ class GameServersApiTests(TestCase):
         self.assertEqual(called.kwargs.get("method") or called.args[0], "POST")
         url = called.kwargs.get("url") or ""
         self.assertTrue(url.endswith("/api/v1/scan"))
+
+    @mock.patch("apps.library.services.game_server.httpx.Client")
+    def test_radarr_and_sonarr_proxy_endpoints(self, mock_client_cls):
+        server = UserGameServer.objects.create(
+            user=self.user,
+            name="Arr Node",
+            local_url="http://127.0.0.1:8090",
+            auth_token="secret_token",
+            is_active=True,
+        )
+        mock_client = mock.MagicMock()
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        # 1. Radarr Config
+        mock_resp.json.return_value = {"enabled": True, "host": "127.0.0.1", "port": 7878, "configured": True}
+        mock_client.request.return_value = mock_resp
+        res = self.client.get(f"/api/v1/library/servers/{server.id}/radarr/config")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["port"], 7878)
+
+        # 2. Radarr Test
+        mock_resp.json.return_value = {"ok": True, "version": "5.4.2", "message": "Connected to Radarr v5.4.2"}
+        res = self.client.post(
+            f"/api/v1/library/servers/{server.id}/radarr/test",
+            {"host": "127.0.0.1", "port": 7878, "api_key": "test_key"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.json()["ok"])
+
+        # 3. Radarr Movies
+        mock_resp.json.return_value = [{"id": 1, "title": "Dune", "tmdb_id": 438631, "monitored": True}]
+        res = self.client.get(f"/api/v1/library/servers/{server.id}/radarr/movies")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.json()), 1)
+        self.assertEqual(res.json()[0]["title"], "Dune")
+
+        # 4. Radarr Add Movie
+        mock_resp.json.return_value = {"id": 2, "title": "Oppenheimer", "tmdbId": 872585}
+        res = self.client.post(
+            f"/api/v1/library/servers/{server.id}/radarr/movies",
+            {"title": "Oppenheimer", "tmdb_id": 872585},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["title"], "Oppenheimer")
+
+        # 5. Radarr Delete Queue
+        mock_resp.json.return_value = {"status": "deleted", "queue_id": 99}
+        res = self.client.delete(f"/api/v1/library/servers/{server.id}/radarr/queue/99")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["status"], "deleted")
+
+        # 6. Sonarr Config
+        mock_resp.json.return_value = {"enabled": True, "host": "127.0.0.1", "port": 8989, "configured": True}
+        res = self.client.get(f"/api/v1/library/servers/{server.id}/sonarr/config")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["port"], 8989)
+
+        # 7. Sonarr Test
+        mock_resp.json.return_value = {"ok": True, "version": "4.0.0", "message": "Connected to Sonarr v4.0.0"}
+        res = self.client.post(
+            f"/api/v1/library/servers/{server.id}/sonarr/test",
+            {"host": "127.0.0.1", "port": 8989, "api_key": "test_key"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.json()["ok"])
+
+        # 8. Sonarr Series
+        mock_resp.json.return_value = [{"id": 1, "title": "Shogun", "tvdb_id": 354316}]
+        res = self.client.get(f"/api/v1/library/servers/{server.id}/sonarr/series")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.json()), 1)
+        self.assertEqual(res.json()[0]["title"], "Shogun")
+
+        # 9. Sonarr Add Series
+        mock_resp.json.return_value = {"id": 2, "title": "Fallout", "tvdbId": 385599}
+        res = self.client.post(
+            f"/api/v1/library/servers/{server.id}/sonarr/series",
+            {"title": "Fallout", "tvdb_id": 385599},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["title"], "Fallout")
+
+        # 10. Sonarr Delete Queue
+        mock_resp.json.return_value = {"status": "deleted", "queue_id": 88}
+        res = self.client.delete(f"/api/v1/library/servers/{server.id}/sonarr/queue/88")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["status"], "deleted")

@@ -3,6 +3,8 @@ import { Loader2, Film, List, Download, ChevronDown, CheckCircle2, XCircle, Cloc
 import { cn } from '@/lib/utils'
 import { ListsTabContent } from '@/old-features/library/molecules/lists-tab-content'
 import { isDesktop } from '@/lib/desktop/api'
+import { useGameServers } from '@/features/downloads/use-server-downloads'
+import { apiClient } from '@/lib/api/client'
 
 type Tab = { id: string; label: string; icon: React.ComponentType<{ className?: string }> }
 
@@ -103,6 +105,8 @@ function ArrTab({
   const [error, setError] = useState<string | null>(null)
   const [libraries, setLibraries] = useState<ArrLibrary[]>([])
   const [expandedInstance, setExpandedInstance] = useState<string | null>(null)
+  const { data: servers = [] } = useGameServers()
+  const activeServer = servers[0]
 
   const loadLibraries = useCallback(async () => {
     try {
@@ -114,21 +118,75 @@ function ArrTab({
         }
       }).desktopAPI?.plugin
 
-      if (!api?.callData) {
-        Promise.resolve().then(() => {
-          setError(`${label} libraries are only available in the desktop app.`)
-          setLoading(false)
-        })
+      if (api?.callData) {
+        const data = await api.callData(pluginId, 'getAllLibraries') as ArrLibrary[]
+        setLibraries(data)
         return
       }
-      const data = await api.callData(pluginId, 'getAllLibraries') as ArrLibrary[]
-      setLibraries(data)
+
+      if (activeServer) {
+        if (pluginId.includes('radarr')) {
+          const { data } = await apiClient.get<Array<{
+            id: number
+            title: string
+            year?: number
+            images?: Array<{ coverType?: string; remoteUrl?: string; url?: string }>
+          }>>(`/library/servers/${activeServer.id}/radarr/movies`)
+          const movies = data || []
+          setLibraries([
+            {
+              name: `${activeServer.name} (Radarr)`,
+              url: activeServer.primaryUrl || '',
+              count: movies.length,
+              movies: movies.map((m) => ({
+                id: m.id,
+                title: m.title,
+                year: m.year,
+                images: m.images?.map((img) => ({
+                  coverType: img.coverType || 'poster',
+                  remoteUrl: img.remoteUrl || img.url || '',
+                })),
+              })),
+            },
+          ])
+          return
+        }
+
+        if (pluginId.includes('sonarr')) {
+          const { data } = await apiClient.get<Array<{
+            id: number
+            title: string
+            year?: number
+            images?: Array<{ coverType?: string; remoteUrl?: string; url?: string }>
+          }>>(`/library/servers/${activeServer.id}/sonarr/series`)
+          const series = data || []
+          setLibraries([
+            {
+              name: `${activeServer.name} (Sonarr)`,
+              url: activeServer.primaryUrl || '',
+              count: series.length,
+              series: series.map((s) => ({
+                id: s.id,
+                title: s.title,
+                year: s.year,
+                images: s.images?.map((img) => ({
+                  coverType: img.coverType || 'poster',
+                  remoteUrl: img.remoteUrl || img.url || '',
+                })),
+              })),
+            },
+          ])
+          return
+        }
+      }
+
+      setError(`Configure ${label} on your connected Otix Server or desktop plugin to view library.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to load ${label} libraries`)
     } finally {
       setLoading(false)
     }
-  }, [pluginId, label])
+  }, [pluginId, label, activeServer])
 
   useEffect(() => {
     Promise.resolve().then(() => {

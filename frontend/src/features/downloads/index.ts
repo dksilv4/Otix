@@ -19,8 +19,13 @@ export * from './server-availability';
 export * from './use-downloads';
 export * from './use-server-downloads';
 
+export * from './arr-types';
+export * from './use-server-arr';
+
 export * from './molecules/server-sabnzbd-settings-modal';
 export * from './molecules/server-prowlarr-settings-modal';
+export * from './molecules/server-radarr-settings-modal';
+export * from './molecules/server-sonarr-settings-modal';
 export * from './molecules/server-usenet-settings-modal';
 export * from './molecules/server-game-search-modal';
 

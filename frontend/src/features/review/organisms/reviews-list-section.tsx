@@ -113,36 +113,28 @@ function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectio
         ? (reviews as any).items
         : []
 
+  if (reviewList.length === 0) return null
+
   return (
     <section className={cn("dk-review", className)}>
       <h2 className="dk-review__heading">
         Reviews
-        {reviewList.length > 0 && (
-          <span className="dk-review__count">
-            ({reviewList.length})
-          </span>
-        )}
+        <span className="dk-review__count">
+          ({reviewList.length})
+        </span>
       </h2>
 
-      {reviewList.length === 0 ? (
-        <div className="dk-review__placeholder">
-          <p className="dk-review__placeholder-text">
-            No reviews yet. Be the first to share your thoughts!
-          </p>
-        </div>
-      ) : (
-        <div className="dk-review__list">
-          {reviewList.map((review) => (
-            <ReviewCard
-              key={`${review.userId}-${review.createdAt}`}
-              review={review}
-              isOwn={user?.id === review.userId}
-              onEdit={() => handleEdit(review)}
-              onDelete={() => handleDelete(review)}
-            />
-          ))}
-        </div>
-      )}
+      <div className="dk-review__list">
+        {reviewList.map((review) => (
+          <ReviewCard
+            key={`${review.userId}-${review.createdAt}`}
+            review={review}
+            isOwn={user?.id === review.userId}
+            onEdit={() => handleEdit(review)}
+            onDelete={() => handleDelete(review)}
+          />
+        ))}
+      </div>
     </section>
   )
 }

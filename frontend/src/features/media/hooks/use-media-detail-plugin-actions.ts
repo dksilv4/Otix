@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
+import { apiClient } from '@/lib/api/client'
+import { useGameServers } from '@/features/downloads/use-server-downloads'
 import type {
   RequestInstance,
   RequestWidget,
@@ -28,6 +30,9 @@ export function useMediaDetailPluginActions(
 ) {
   // Radarr/other source services need the real TMDB id, not the internal ULID.
   const requestId = tmdbId || mediaId
+  const { data: servers = [] } = useGameServers()
+  const activeServer = servers.find((s) => s.is_online) || servers[0]
+
   const [widgets, setWidgets] = useState<RequestWidget[]>([])
   const [playWidgets, setPlayWidgets] = useState<PlayWidget[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,55 +40,138 @@ export function useMediaDetailPluginActions(
 
   const loadSlots = useCallback(async () => {
     const api = getPluginApi()
-    if (!api?.getSlotData) {
-      setLoading(false)
-      return
-    }
-    try {
-      const data = await api.getSlotData('media/detail/actions', { mediaId: requestId, mediaType }) as Array<{
-        pluginId: string
-        label: string
-        data?: {
-          widgets?: Array<{
-            type: string
-            props: {
-              label?: string
-              mediaType: string
-              mediaId: string
-              instances: RequestInstance[] | PlayInstance[]
-            }
-          }>
-        }
-      }>
-      const requestWidgets: RequestWidget[] = []
-      const playList: PlayWidget[] = []
-      if (data) {
-        for (const entry of data) {
-          for (const widget of entry.data?.widgets || []) {
-            if (widget.type === 'request-button') {
-              requestWidgets.push({
-                pluginId: entry.pluginId,
-                label: entry.label,
-                props: widget.props as RequestWidget['props'],
-              })
-            } else if (widget.type === 'play-button') {
-              playList.push({
-                pluginId: entry.pluginId,
-                label: entry.label,
-                props: widget.props as PlayWidget['props'],
-              })
+    if (api?.getSlotData) {
+      try {
+        const data = await api.getSlotData('media/detail/actions', { mediaId: requestId, mediaType }) as Array<{
+          pluginId: string
+          label: string
+          data?: {
+            widgets?: Array<{
+              type: string
+              props: {
+                label?: string
+                mediaType: string
+                mediaId: string
+                instances: RequestInstance[] | PlayInstance[]
+              }
+            }>
+          }
+        }>
+        const requestWidgets: RequestWidget[] = []
+        const playList: PlayWidget[] = []
+        if (data) {
+          for (const entry of data) {
+            for (const widget of entry.data?.widgets || []) {
+              if (widget.type === 'request-button') {
+                requestWidgets.push({
+                  pluginId: entry.pluginId,
+                  label: entry.label,
+                  props: widget.props as RequestWidget['props'],
+                })
+              } else if (widget.type === 'play-button') {
+                playList.push({
+                  pluginId: entry.pluginId,
+                  label: entry.label,
+                  props: widget.props as PlayWidget['props'],
+                })
+              }
             }
           }
         }
+        setWidgets(requestWidgets)
+        setPlayWidgets(playList)
+      } catch (err) {
+        console.error('Failed to load plugin slots:', err)
+      } finally {
+        setLoading(false)
       }
-      setWidgets(requestWidgets)
-      setPlayWidgets(playList)
-    } catch (err) {
-      console.error('Failed to load plugin slots:', err)
-    } finally {
-      setLoading(false)
+      return
     }
-  }, [requestId, mediaType])
+
+    // Fallback: If no desktop plugin API, check connected Otix game server for Radarr/Sonarr
+    if (activeServer) {
+      try {
+        const numId = Number(requestId)
+        if (mediaType === 'movie') {
+          const { data } = await apiClient.get<Array<{
+            id: number
+            title: string
+            tmdb_id?: number
+            tmdbId?: number
+            has_file?: boolean
+            hasFile?: boolean
+            monitored?: boolean
+          }>>(`/library/servers/${activeServer.id}/radarr/movies`)
+          const movies = data || []
+          const existing = movies.find(m => (m.tmdb_id || m.tmdbId) === numId)
+          const status: RequestInstance['status'] = existing
+            ? (existing.has_file || existing.hasFile ? 'downloaded' : 'requested')
+            : 'not_exists'
+
+          setWidgets([
+            {
+              pluginId: 'server-radarr',
+              label: `${activeServer.name} (Radarr)`,
+              props: {
+                label: 'Radarr',
+                mediaType: 'movie',
+                mediaId: requestId,
+                instances: [
+                  {
+                    id: String(activeServer.id),
+                    name: `${activeServer.name} Radarr`,
+                    status,
+                  },
+                ],
+              },
+            },
+          ])
+        } else if (mediaType === 'tv') {
+          const { data } = await apiClient.get<Array<{
+            id: number
+            title: string
+            tvdb_id?: number
+            tvdbId?: number
+            episode_file_count?: number
+            episodeFileCount?: number
+            monitored?: boolean
+          }>>(`/library/servers/${activeServer.id}/sonarr/series`)
+          const series = data || []
+          const existing = series.find(s => (s.tvdb_id || s.tvdbId) === numId)
+          const fileCount = existing ? (existing.episode_file_count ?? existing.episodeFileCount ?? 0) : 0
+          const status: RequestInstance['status'] = existing
+            ? (fileCount > 0 ? 'downloaded' : 'requested')
+            : 'not_exists'
+
+          setWidgets([
+            {
+              pluginId: 'server-sonarr',
+              label: `${activeServer.name} (Sonarr)`,
+              props: {
+                label: 'Sonarr',
+                mediaType: 'tv',
+                mediaId: requestId,
+                instances: [
+                  {
+                    id: String(activeServer.id),
+                    name: `${activeServer.name} Sonarr`,
+                    status,
+                  },
+                ],
+              },
+            },
+          ])
+        }
+      } catch (err) {
+        console.warn('Failed to query server arr media status:', err)
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
+    setLoading(false)
+  }, [requestId, mediaType, activeServer])
 
   useEffect(() => {
     if (!enabled) return
@@ -94,6 +182,41 @@ export function useMediaDetailPluginActions(
 
   const handleRequest = async (pluginId: string, instanceId: string) => {
     setRequesting(instanceId)
+
+    // Handle server-based Radarr/Sonarr requests
+    if (pluginId === 'server-radarr' || pluginId === 'server-sonarr') {
+      const serverId = Number(instanceId) || activeServer?.id
+      if (!serverId) {
+        alert('No server selected')
+        setRequesting(null)
+        return
+      }
+
+      try {
+        if (pluginId === 'server-radarr') {
+          await apiClient.post(`/library/servers/${serverId}/radarr/movies`, {
+            title: requestId,
+            tmdb_id: Number(requestId),
+            monitored: true,
+            search_for_movie: true,
+          })
+        } else {
+          await apiClient.post(`/library/servers/${serverId}/sonarr/series`, {
+            title: requestId,
+            tvdb_id: Number(requestId),
+            monitored: true,
+            search_for_missing_episodes: true,
+          })
+        }
+        await loadSlots()
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to send request to server')
+      } finally {
+        setRequesting(null)
+      }
+      return
+    }
+
     const api = getPluginApi()
     if (!api?.callData) {
       setRequesting(null)

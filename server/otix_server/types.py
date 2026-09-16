@@ -7,6 +7,7 @@ class HostedFile(BaseModel):
     id: str
     filename: str
     filepath: str
+    relative_path: str = ""
     filesize: int
     sha256_head: str
     extension: str

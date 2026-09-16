@@ -52,6 +52,24 @@ describe('matchServerGameFile', () => {
     ]
     expect(matchServerGameFile(files, undefined, 'Hollow Knight: Silksong')?.fileId).toBe('hk')
   })
+
+  it('prefers the base game file over a matching update', () => {
+    const files = [
+      file({
+        fileId: 'upd',
+        filename: 'Elden.Ring.Update.1.12-FLT.iso',
+        gameTitle: 'Elden Ring Update 1 12',
+        catalogItem: { id: '42', title: 'Elden Ring', slug: 'elden-ring' },
+      }),
+      file({
+        fileId: 'base',
+        filename: 'Elden.Ring-RUNE.iso',
+        gameTitle: 'Elden Ring',
+        catalogItem: { id: '42', title: 'Elden Ring', slug: 'elden-ring' },
+      }),
+    ]
+    expect(matchServerGameFile(files, '42', 'Elden Ring')?.fileId).toBe('base')
+  })
 })
 
 describe('findCompletedServerDownload', () => {

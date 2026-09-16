@@ -6,7 +6,8 @@ Faithful port of the legacy ``SessionService``/``AuthService`` behaviours:
   (the cookie's JWT carries ``jti`` + ``session_key`` claims);
 - ``refresh_session`` rotates: the presented row is revoked and a new token
   (new jti, same session_key) is minted. Presenting an already-revoked jti is
-  treated as token reuse and revokes *every* token the user owns;
+  treated as token reuse and revokes *every* token the user owns, unless the
+  reuse lands within a short grace window (concurrent client refresh race);
 - ``logout`` sets ``users.global_logout_marker`` (no row revocation), which
   makes every earlier refresh token fail its next refresh — a global logout;
 - revoking ``UserSession`` rows (DELETE /sessions) is cosmetic (UI list), it
@@ -16,7 +17,7 @@ Faithful port of the legacy ``SessionService``/``AuthService`` behaviours:
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from django.utils import timezone
@@ -34,6 +35,11 @@ if TYPE_CHECKING:
 
 class AuthServiceError(Exception):
     """Raised for login/refresh failures; carries a client-facing message."""
+
+
+# Overlapping /auth/refresh calls (in-flight 401s after a rotation) replay the
+# old cookie within this window. Treat that as a race, not theft.
+_REUSE_GRACE = timedelta(seconds=10)
 
 
 def _now() -> datetime:
@@ -124,8 +130,18 @@ def refresh_session(refresh_jwt: str, request: HttpRequest | None = None) -> tup
         raise AuthServiceError(invalid)
 
     row = RefreshToken.objects.filter(jti=jti, user=user).first()
-    if row is None or row.revoked_at is not None:
-        _revoke_all_tokens(user)  # reuse of a rotated token => compromised
+    if row is None:
+        _revoke_all_tokens(user)  # unknown jti => compromised
+        raise AuthServiceError(invalid)
+    if row.revoked_at is not None:
+        # A refresh that lands within the grace window is almost always a
+        # client race (in-flight 401s after rotation), not a stolen cookie.
+        revoked_at = row.revoked_at
+        if revoked_at.tzinfo is None:
+            revoked_at = revoked_at.replace(tzinfo=UTC)
+        if _now() - revoked_at <= _REUSE_GRACE:
+            raise AuthServiceError(invalid)
+        _revoke_all_tokens(user)
         raise AuthServiceError(invalid)
     if row.expires_at <= _now():
         raise AuthServiceError(invalid)
