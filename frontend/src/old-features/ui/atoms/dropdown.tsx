@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check } from 'lucide-react'
@@ -33,6 +33,7 @@ export function DkDropdown<T extends string = string>({
   const [open, setOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const triggerId = useId()
   const [coords, setCoords] = useState<{ top: number; left?: number; right?: number; width: number }>({
     top: 0,
     width: 0,
@@ -106,9 +107,15 @@ export function DkDropdown<T extends string = string>({
   const isFilter = variant === 'filter'
 
   return (
-    <div className={cn('relative inline-block', !isFilter && 'w-full', className)}>
+    <div className={cn('relative', !isFilter && 'w-full', !isFilter && label && 'space-y-1', className)}>
+      {!isFilter && label ? (
+        <label htmlFor={triggerId} className="block pl-4 text-sm font-medium text-foreground">
+          {label}
+        </label>
+      ) : null}
       <button
         ref={buttonRef}
+        id={!isFilter && label ? triggerId : undefined}
         type="button"
         onClick={() => setOpen(!open)}
         className={

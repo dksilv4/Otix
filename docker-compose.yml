@@ -68,6 +68,7 @@ services:
       # is 127.0.0.1, which is unreachable inside the container.
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/1
       ENABLE_RELOAD: "true"
     command: bash entrypoints/start-api.sh
     depends_on:
@@ -109,6 +110,7 @@ services:
       DATABASE_URL: postgresql://otix:password@db:5432/otix_dev
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/1
     command: celery -A config worker -Q celery -c 2 -n otix-worker@%h --loglevel INFO
     depends_on:
       db:
@@ -136,6 +138,7 @@ services:
       DATABASE_URL: postgresql://otix:password@db:5432/otix_dev
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/1
     command: celery -A config beat --loglevel INFO
     depends_on:
       db:

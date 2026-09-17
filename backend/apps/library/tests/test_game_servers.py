@@ -501,3 +501,58 @@ class GameServersApiTests(TestCase):
         res = self.client.delete(f"/api/v1/library/servers/{server.id}/sonarr/queue/88")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["status"], "deleted")
+
+    @mock.patch("apps.library.services.game_server.httpx.Client")
+    def test_radarr_and_sonarr_proxy_forwards_instance_id(self, mock_client_cls):
+        server = UserGameServer.objects.create(
+            user=self.user,
+            name="Arr Multi",
+            local_url="http://127.0.0.1:8090",
+            auth_token="secret_token",
+            is_active=True,
+        )
+        mock_client = mock.MagicMock()
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = []
+        mock_client.request.return_value = mock_resp
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        res = self.client.get(
+            f"/api/v1/library/servers/{server.id}/radarr/rootfolders",
+            {"instance_id": "uhd"},
+        )
+        self.assertEqual(res.status_code, 200)
+        called = mock_client.request.call_args
+        params = called.kwargs.get("params") or {}
+        self.assertEqual(params.get("instance_id"), "uhd")
+
+        mock_resp.json.return_value = {"ok": True, "message": "ok"}
+        res = self.client.post(
+            f"/api/v1/library/servers/{server.id}/radarr/test",
+            {"host": "10.0.0.5", "port": 7878, "api_key": "k", "instance_id": "uhd"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        body = mock_client.request.call_args.kwargs.get("json") or {}
+        self.assertEqual(body.get("instance_id"), "uhd")
+
+        mock_resp.json.return_value = []
+        res = self.client.get(
+            f"/api/v1/library/servers/{server.id}/sonarr/series",
+            {"instance_id": "anime"},
+        )
+        self.assertEqual(res.status_code, 200)
+        params = mock_client.request.call_args.kwargs.get("params") or {}
+        self.assertEqual(params.get("instance_id"), "anime")
+
+        mock_resp.json.return_value = {"id": 2, "title": "Fallout"}
+        res = self.client.post(
+            f"/api/v1/library/servers/{server.id}/sonarr/series",
+            {"title": "Fallout", "tvdb_id": 385599, "instance_id": "anime"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        body = mock_client.request.call_args.kwargs.get("json") or {}
+        self.assertEqual(body.get("instance_id"), "anime")

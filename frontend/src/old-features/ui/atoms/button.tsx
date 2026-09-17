@@ -1,11 +1,11 @@
 import { forwardRef } from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Check, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--dk-ring-color)] disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97]',
+  'inline-flex items-center justify-center whitespace-nowrap font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--dk-ring-color)] disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97]',
   {
     variants: {
       variant: {
@@ -20,9 +20,9 @@ const buttonVariants = cva(
       size: {
         xs: 'h-7 rounded-lg px-2.5 text-xs gap-1.5',
         sm: 'h-8 rounded-lg px-3 text-xs gap-1.5',
-        md: 'h-10 rounded-xl px-4 text-sm',
-        lg: 'h-12 rounded-xl px-6 text-base',
-        xl: 'h-14 rounded-2xl px-8 text-base font-bold tracking-wide uppercase',
+        md: 'h-10 rounded-xl px-4 text-sm gap-2',
+        lg: 'h-12 rounded-xl px-6 text-base gap-2.5',
+        xl: 'h-14 rounded-2xl px-8 text-base font-bold tracking-wide uppercase gap-3',
         icon: 'h-10 w-10 rounded-xl',
       },
     },
@@ -33,11 +33,36 @@ const buttonVariants = cva(
   },
 )
 
+// Icon sizes mapped to button sizes for consistent proportions
+const iconSizeMap: Record<string, string> = {
+  xs: 'h-3.5 w-3.5',
+  sm: 'h-3.5 w-3.5',
+  md: 'h-4 w-4',
+  lg: 'h-5 w-5',
+  xl: 'h-5 w-5',
+  icon: 'h-5 w-5',
+}
+
 export interface DkButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
+  /** Show a loading spinner and disable the button */
   loading?: boolean
+  /** Optional text to display while loading (replaces children) */
+  loadingText?: string
+  /** Icon component rendered before the label — auto-sized to match button size */
+  leftIcon?: React.ComponentType<{ className?: string }>
+  /** Icon component rendered after the label — auto-sized to match button size */
+  rightIcon?: React.ComponentType<{ className?: string }>
+  /** Show a success state (green tint + check icon replacing leftIcon) */
+  success?: boolean
+  /** Custom icon for the success state (defaults to Check) */
+  successIcon?: React.ComponentType<{ className?: string }>
+  /** Show an error state (red tint + alert icon replacing leftIcon) */
+  error?: boolean
+  /** Render as a square icon-only button (hides children) */
+  iconOnly?: boolean
 }
 
 const variantStyles: Record<string, React.CSSProperties> = {
@@ -54,11 +79,59 @@ const variantStyles: Record<string, React.CSSProperties> = {
 }
 
 const DkButton = forwardRef<HTMLButtonElement, DkButtonProps>(
-  ({ className, variant, size, asChild = false, loading, disabled, children, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      loading,
+      loadingText,
+      leftIcon: LeftIcon,
+      rightIcon: RightIcon,
+      success,
+      successIcon: SuccessIcon = Check,
+      error,
+      iconOnly,
+      disabled,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : 'button'
+    const resolvedSize = size ?? 'md'
+    const iconCls = iconSizeMap[resolvedSize] ?? iconSizeMap.md
+
+    // Determine which left-side icon to render based on state priority
+    const renderLeftIcon = () => {
+      if (loading) {
+        return <Loader2 className={cn(iconCls, 'animate-spin shrink-0')} />
+      }
+      if (success) {
+        return <SuccessIcon className={cn(iconCls, 'shrink-0 text-emerald-400')} />
+      }
+      if (error) {
+        return <AlertCircle className={cn(iconCls, 'shrink-0 text-red-400')} />
+      }
+      if (LeftIcon) {
+        return <LeftIcon className={cn(iconCls, 'shrink-0')} />
+      }
+      return null
+    }
+
+    // State-based ring/tint classes
+    const stateClasses = cn(
+      success && 'ring-1 ring-emerald-500/30',
+      error && 'ring-1 ring-red-500/30',
+    )
+
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(
+          buttonVariants({ variant, size, className }),
+          stateClasses,
+        )}
         ref={ref}
         disabled={disabled || loading}
         style={{
@@ -71,8 +144,11 @@ const DkButton = forwardRef<HTMLButtonElement, DkButtonProps>(
           children
         ) : (
           <>
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {children}
+            {renderLeftIcon()}
+            {iconOnly ? null : (loading && loadingText ? loadingText : children)}
+            {RightIcon && !iconOnly && (
+              <RightIcon className={cn(iconCls, 'shrink-0')} />
+            )}
           </>
         )}
       </Comp>

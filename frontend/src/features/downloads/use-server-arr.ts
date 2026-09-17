@@ -79,6 +79,7 @@ export function useTestRadarr(serverId?: number) {
       api_key?: string;
       use_ssl?: boolean;
       url_base?: string;
+      instance_id?: string;
     }) => {
       if (!serverId) throw new Error('No server selected');
       const { data } = await apiClient.post<ArrConnectionTestResult>(
@@ -90,32 +91,42 @@ export function useTestRadarr(serverId?: number) {
   });
 }
 
-export function useServerRadarrRootFolders(serverId?: number) {
+export function useServerRadarrRootFolders(
+  serverId?: number,
+  instanceId?: string,
+  options?: { enabled?: boolean }
+) {
   return useQuery<ArrRootFolder[]>({
-    queryKey: arrKeys.radarr.rootFolders(serverId),
+    queryKey: [...arrKeys.radarr.rootFolders(serverId), instanceId],
     queryFn: async () => {
       if (!serverId) return [];
       const { data } = await apiClient.get<ArrRootFolder[]>(
-        `/library/servers/${serverId}/radarr/rootfolders`
+        `/library/servers/${serverId}/radarr/rootfolders`,
+        { params: instanceId ? { instance_id: instanceId } : undefined }
       );
       return data || [];
     },
-    enabled: !!serverId,
+    enabled: !!serverId && (options?.enabled ?? true),
     staleTime: 60_000,
   });
 }
 
-export function useServerRadarrQualityProfiles(serverId?: number) {
+export function useServerRadarrQualityProfiles(
+  serverId?: number,
+  instanceId?: string,
+  options?: { enabled?: boolean }
+) {
   return useQuery<ArrQualityProfile[]>({
-    queryKey: arrKeys.radarr.qualityProfiles(serverId),
+    queryKey: [...arrKeys.radarr.qualityProfiles(serverId), instanceId],
     queryFn: async () => {
       if (!serverId) return [];
       const { data } = await apiClient.get<ArrQualityProfile[]>(
-        `/library/servers/${serverId}/radarr/qualityprofiles`
+        `/library/servers/${serverId}/radarr/qualityprofiles`,
+        { params: instanceId ? { instance_id: instanceId } : undefined }
       );
       return data || [];
     },
-    enabled: !!serverId,
+    enabled: !!serverId && (options?.enabled ?? true),
     staleTime: 60_000,
   });
 }
@@ -253,6 +264,7 @@ export function useTestSonarr(serverId?: number) {
       api_key?: string;
       use_ssl?: boolean;
       url_base?: string;
+      instance_id?: string;
     }) => {
       if (!serverId) throw new Error('No server selected');
       const { data } = await apiClient.post<ArrConnectionTestResult>(
@@ -264,32 +276,42 @@ export function useTestSonarr(serverId?: number) {
   });
 }
 
-export function useServerSonarrRootFolders(serverId?: number) {
+export function useServerSonarrRootFolders(
+  serverId?: number,
+  instanceId?: string,
+  options?: { enabled?: boolean }
+) {
   return useQuery<ArrRootFolder[]>({
-    queryKey: arrKeys.sonarr.rootFolders(serverId),
+    queryKey: [...arrKeys.sonarr.rootFolders(serverId), instanceId],
     queryFn: async () => {
       if (!serverId) return [];
       const { data } = await apiClient.get<ArrRootFolder[]>(
-        `/library/servers/${serverId}/sonarr/rootfolders`
+        `/library/servers/${serverId}/sonarr/rootfolders`,
+        { params: instanceId ? { instance_id: instanceId } : undefined }
       );
       return data || [];
     },
-    enabled: !!serverId,
+    enabled: !!serverId && (options?.enabled ?? true),
     staleTime: 60_000,
   });
 }
 
-export function useServerSonarrQualityProfiles(serverId?: number) {
+export function useServerSonarrQualityProfiles(
+  serverId?: number,
+  instanceId?: string,
+  options?: { enabled?: boolean }
+) {
   return useQuery<ArrQualityProfile[]>({
-    queryKey: arrKeys.sonarr.qualityProfiles(serverId),
+    queryKey: [...arrKeys.sonarr.qualityProfiles(serverId), instanceId],
     queryFn: async () => {
       if (!serverId) return [];
       const { data } = await apiClient.get<ArrQualityProfile[]>(
-        `/library/servers/${serverId}/sonarr/qualityprofiles`
+        `/library/servers/${serverId}/sonarr/qualityprofiles`,
+        { params: instanceId ? { instance_id: instanceId } : undefined }
       );
       return data || [];
     },
-    enabled: !!serverId,
+    enabled: !!serverId && (options?.enabled ?? true),
     staleTime: 60_000,
   });
 }

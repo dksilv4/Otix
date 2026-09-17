@@ -8,6 +8,8 @@
 .eggs/
 .ruff_cache/
 .pytest_cache/
+.fastembed_cache/
+graphify-out/
 .coverage
 htmlcov/
 staticfiles/
@@ -25,3 +27,4 @@ staticfiles/
 /plugin-root/
 /deploy/
 /bundled_plugins/
+/tests/

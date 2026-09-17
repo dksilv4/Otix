@@ -17,9 +17,9 @@ const DkSelect = forwardRef<HTMLSelectElement, DkSelectProps>(
     const hintId = `${selectId}-hint`
 
     return (
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {label && (
-          <label htmlFor={selectId} className="text-sm font-medium text-foreground">
+          <label htmlFor={selectId} className="block pl-4 text-sm font-medium text-foreground">
             {label}
             {required && <span className="ml-0.5 text-destructive">*</span>}
           </label>
@@ -47,12 +47,12 @@ const DkSelect = forwardRef<HTMLSelectElement, DkSelectProps>(
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>
         {hint && !error && (
-          <p id={hintId} className="text-xs text-muted-foreground">
+          <p id={hintId} className="pl-4 text-xs text-muted-foreground">
             {hint}
           </p>
         )}
         {error && (
-          <p id={errorId} role="alert" className="text-xs text-destructive">
+          <p id={errorId} role="alert" className="pl-4 text-xs text-destructive">
             {error}
           </p>
         )}

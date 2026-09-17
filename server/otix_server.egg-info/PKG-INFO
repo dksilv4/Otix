@@ -1,0 +1,57 @@
+Metadata-Version: 2.4
+Name: otix-server
+Version: 0.1.0
+Summary: Standalone Headless Otix Game Installer & Cloud Save Backup Server
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.110.0
+Requires-Dist: uvicorn[standard]>=0.28.0
+Requires-Dist: pydantic>=2.6.0
+Requires-Dist: pydantic-settings>=2.2.0
+Requires-Dist: pyyaml>=6.0.1
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: python-jose[cryptography]>=3.3.0
+Requires-Dist: python-multipart>=0.0.9
+Requires-Dist: aiofiles>=23.2.1
+
+# Otix Standalone Game & Save Server (`otix-server`)
+
+A lightweight, standalone, headless server daemon for hosting game installer files (`.iso`, `.exe`, setup packages, repacks, ROMs) and managing personal cloud save file backups.
+
+---
+
+## Features
+- **Standalone Headless Executable**: Runs on Linux, macOS, Windows, NAS, or Docker with zero mandatory UI.
+- **Steam-Style Game Installer Node**: Multi-threaded HTTP/2 Range Request file server with full pause/resume support.
+- **SHA-256 Chunk Hashing & IGDB Matching**: Automatic installer metadata indexing and file integrity verification.
+- **Cloud Save File Backups**: Versioned game save snapshots with automatic upload on game exit and cross-device restore.
+- **Plex-Style Server Discovery**: Automatic WAN IP heartbeat announcement and smart LAN/WAN connection auto-select.
+
+---
+
+## Quick Start
+
+### 1. Installation
+```bash
+cd server
+pip install -e .
+```
+
+### 2. Configuration
+Copy `config.example.yaml` to `config.yaml` and configure your installer directories:
+```bash
+cp config.example.yaml config.yaml
+```
+
+### 3. Run Server
+```bash
+otix-server start --config config.yaml
+```
+
+---
+
+## Docker Deployment
+```bash
+docker build -t otix-server .
+docker run -d -p 8000:8000 -v /path/to/config.yaml:/app/config.yaml -v /path/to/games:/storage/games otix-server
+```

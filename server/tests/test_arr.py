@@ -11,15 +11,19 @@ from otix_server.arr_types import (
     ArrQueueResponse,
     QualityProfile,
     RadarrConfig,
+    RadarrInstance,
     RadarrMovie,
     RootFolder,
     SonarrConfig,
+    SonarrInstance,
     SonarrSeries,
+    serialize_radarr_config,
+    serialize_sonarr_config,
 )
 from otix_server.arr_utils import (
     build_arr_base_url,
-    test_radarr_connection,
-    test_sonarr_connection,
+    test_radarr_connection as check_radarr_connection,
+    test_sonarr_connection as check_sonarr_connection,
     fetch_radarr_movies,
     fetch_sonarr_series,
     fetch_radarr_queue,
@@ -81,7 +85,7 @@ class TestArrIntegration(unittest.TestCase):
         mock_client_cls.return_value = mock_client
 
         cfg = RadarrConfig(api_key="valid_key")
-        res = test_radarr_connection(cfg)
+        res = check_radarr_connection(cfg)
         self.assertTrue(res.ok)
         self.assertEqual(res.version, "5.4.2")
         self.assertIn("v5.4.2", res.message)
@@ -96,7 +100,7 @@ class TestArrIntegration(unittest.TestCase):
         mock_client_cls.return_value = mock_client
 
         cfg = SonarrConfig(api_key="bad_key")
-        res = test_sonarr_connection(cfg)
+        res = check_sonarr_connection(cfg)
         self.assertFalse(res.ok)
         self.assertIn("Invalid", res.message)
 
@@ -224,6 +228,90 @@ class TestArrIntegration(unittest.TestCase):
             headers={"X-Api-Key": "key"},
             params={"removeFromClient": "true", "blocklist": "true"},
         )
+
+
+class TestArrMultiInstance(unittest.TestCase):
+    def test_legacy_flat_radarr_migrates_to_default_instance(self):
+        cfg = RadarrConfig(
+            host="192.168.1.10",
+            port=7878,
+            api_key="secret",
+            use_ssl=True,
+            url_base="/radarr",
+            quality_profile_id=2,
+            root_folder_path="/movies",
+        )
+        self.assertEqual(len(cfg.instances), 1)
+        self.assertEqual(cfg.instances[0].name, "Default")
+        self.assertEqual(cfg.instances[0].host, "192.168.1.10")
+        self.assertEqual(cfg.instances[0].api_key, "secret")
+        self.assertEqual(cfg.host, "192.168.1.10")
+        self.assertEqual(cfg.api_key, "secret")
+        self.assertEqual(cfg.clean_url_base, "/radarr")
+
+    def test_legacy_flat_sonarr_migrates_series_defaults(self):
+        cfg = SonarrConfig(
+            host="sonarr.local",
+            port=8989,
+            api_key="skey",
+            series_type="anime",
+            season_folder=False,
+            language_profile_id=4,
+        )
+        self.assertEqual(len(cfg.instances), 1)
+        self.assertEqual(cfg.instances[0].name, "Default")
+        self.assertEqual(cfg.series_type, "anime")
+        self.assertFalse(cfg.season_folder)
+        self.assertEqual(cfg.language_profile_id, 4)
+
+    def test_resolve_defaults_to_first_enabled_instance(self):
+        cfg = RadarrConfig(
+            instances=[
+                RadarrInstance(id="off", name="Off", enabled=False, host="10.0.0.1", api_key="a"),
+                RadarrInstance(id="on", name="On", enabled=True, host="10.0.0.2", api_key="b"),
+            ]
+        )
+        self.assertEqual(cfg.resolve().id, "on")
+        self.assertEqual(cfg.resolve("off").id, "off")
+
+    def test_serialize_keeps_flattened_first_instance_and_instances_list(self):
+        cfg = RadarrConfig(
+            enabled=True,
+            instances=[
+                RadarrInstance(
+                    id="main",
+                    name="Main",
+                    enabled=True,
+                    host="10.0.0.8",
+                    port=7878,
+                    api_key="hidden",
+                    quality_profile_id=1,
+                    root_folder_path="/movies",
+                )
+            ],
+        )
+        payload = serialize_radarr_config(cfg)
+        self.assertEqual(payload["host"], "10.0.0.8")
+        self.assertEqual(payload["port"], 7878)
+        self.assertEqual(len(payload["instances"]), 1)
+        self.assertEqual(payload["instances"][0]["name"], "Main")
+        self.assertEqual(payload["instances"][0]["api_key"], "***")
+
+        sonarr = SonarrConfig(
+            instances=[
+                SonarrInstance(
+                    id="tv",
+                    name="TV",
+                    host="10.0.0.9",
+                    port=8989,
+                    api_key="s",
+                    series_type="daily",
+                )
+            ]
+        )
+        s_payload = serialize_sonarr_config(sonarr)
+        self.assertEqual(s_payload["series_type"], "daily")
+        self.assertEqual(s_payload["instances"][0]["name"], "TV")
 
 
 if __name__ == "__main__":

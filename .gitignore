@@ -42,3 +42,4 @@ desktop/nul
 # Regenerated graphify knowledge-graph output (do not version)
 /graphify-out/
 /frontend/graphify-out/
+/backend/.fastembed_cache

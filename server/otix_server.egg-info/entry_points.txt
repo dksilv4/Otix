@@ -1,0 +1,2 @@
+[console_scripts]
+otix-server = otix_server.main:cli

@@ -35,6 +35,7 @@ export interface ServerRadarrConfig {
   configured?: boolean;
   hasApiKey?: boolean;
   has_api_key?: boolean;
+  instances?: import('./arr-instances').ArrServiceInstance[];
 }
 
 export interface ServerSonarrConfig {
@@ -60,6 +61,7 @@ export interface ServerSonarrConfig {
   configured?: boolean;
   hasApiKey?: boolean;
   has_api_key?: boolean;
+  instances?: import('./arr-instances').ArrServiceInstance[];
 }
 
 export interface ServerRadarrMovie {

@@ -64,10 +64,14 @@ from otix_server.arr_types import (
     ArrQueueResponse,
     QualityProfile,
     RadarrConfig,
+    RadarrInstance,
     RadarrMovie,
     RootFolder,
     SonarrConfig,
+    SonarrInstance,
     SonarrSeries,
+    serialize_radarr_config,
+    serialize_sonarr_config,
 )
 from otix_server.arr_utils import (
     add_radarr_movie,
@@ -970,6 +974,9 @@ async def start_usenet_download(
 @app.get("/api/v1/usenet/queue", response_model=ServerDownloadQueue)
 async def get_usenet_queue(_: None = Depends(verify_token)):
     """Get real-time download queue from SABnzbd (compatibility route)."""
+    cfg = get_app_config()
+    if not cfg.usenet.enabled or not cfg.usenet.sabnzbd.api_key:
+        return ServerDownloadQueue(status="idle", queue=[], speed="0 B/s")
     mgr = get_provider_manager()
     return mgr.get_queue()
 
@@ -980,6 +987,9 @@ async def get_usenet_history(
     _: None = Depends(verify_token),
 ):
     """Get completed and failed SABnzbd downloads (compatibility route)."""
+    cfg = get_app_config()
+    if not cfg.usenet.enabled or not cfg.usenet.sabnzbd.api_key:
+        return ServerDownloadHistory(history=[])
     mgr = get_provider_manager()
     try:
         return mgr.get_history(limit=limit)
@@ -1004,6 +1014,8 @@ async def get_prowlarr_indexers(
 ):
     """Fetch indexers from Prowlarr."""
     cfg = get_app_config()
+    if not cfg.usenet.prowlarr.api_key:
+        return []
     try:
         return fetch_prowlarr_indexers(cfg.usenet.prowlarr, protocol=protocol)
     except Exception as err:
@@ -1047,27 +1059,123 @@ async def resume_sabnzbd(_: None = Depends(verify_token)):
 async def get_radarr_config(_: None = Depends(verify_token)):
     """Get Radarr configuration."""
     cfg = get_app_config()
-    r = cfg.radarr
-    return {
-        "enabled": r.enabled,
-        "host": r.host,
-        "port": r.port,
-        "api_key": "***" if r.api_key else "",
-        "apiKey": "***" if r.api_key else "",
-        "use_ssl": r.use_ssl,
-        "useSsl": r.use_ssl,
-        "url_base": r.url_base,
-        "urlBase": r.url_base,
-        "quality_profile_id": r.quality_profile_id,
-        "qualityProfileId": r.quality_profile_id,
-        "root_folder_path": r.root_folder_path,
-        "rootFolderPath": r.root_folder_path,
-        "minimum_availability": r.minimum_availability,
-        "minimumAvailability": r.minimum_availability,
-        "configured": bool(r.host and r.api_key),
-        "has_api_key": bool(r.api_key),
-        "hasApiKey": bool(r.api_key),
-    }
+    return serialize_radarr_config(cfg.radarr)
+
+
+class ArrInstanceUpdate(BaseModel):
+    id: Optional[str] = None
+    name: Optional[str] = None
+    enabled: Optional[bool] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    api_key: Optional[str] = None
+    apiKey: Optional[str] = None
+    use_ssl: Optional[bool] = None
+    useSsl: Optional[bool] = None
+    url_base: Optional[str] = None
+    urlBase: Optional[str] = None
+    quality_profile_id: Optional[int] = None
+    qualityProfileId: Optional[int] = None
+    root_folder_path: Optional[str] = None
+    rootFolderPath: Optional[str] = None
+    minimum_availability: Optional[str] = None
+    minimumAvailability: Optional[str] = None
+    series_type: Optional[str] = None
+    seriesType: Optional[str] = None
+    season_folder: Optional[bool] = None
+    seasonFolder: Optional[bool] = None
+    language_profile_id: Optional[int] = None
+    languageProfileId: Optional[int] = None
+
+
+def _pick(a, b):
+    return a if a is not None else b
+
+
+def _apply_radarr_instances(cfg: RadarrConfig, items: list[ArrInstanceUpdate]) -> None:
+    mapped: list[RadarrInstance] = []
+    for raw in items:
+        api_key_val = _pick(raw.api_key, raw.apiKey)
+        mapped.append(
+            RadarrInstance(
+                id=raw.id or "",
+                name=(raw.name or "Default").strip() or "Default",
+                enabled=True if raw.enabled is None else bool(raw.enabled),
+                host=str(_pick(raw.host, "127.0.0.1")).strip(),
+                port=int(_pick(raw.port, 7878)),
+                url_base=str(_pick(_pick(raw.url_base, raw.urlBase), "")).strip(),
+                api_key="" if not api_key_val or str(api_key_val).strip() == "***" else str(api_key_val).strip(),
+                use_ssl=bool(_pick(_pick(raw.use_ssl, raw.useSsl), False)),
+                quality_profile_id=_pick(raw.quality_profile_id, raw.qualityProfileId),
+                root_folder_path=str(_pick(_pick(raw.root_folder_path, raw.rootFolderPath), "")).strip(),
+                minimum_availability=str(_pick(_pick(raw.minimum_availability, raw.minimumAvailability), "announced")).strip(),
+            )
+        )
+        if api_key_val and str(api_key_val).strip() == "***":
+            existing = next((inst for inst in cfg.instances if inst.id == mapped[-1].id), None)
+            if existing:
+                mapped[-1].api_key = existing.api_key
+        if not mapped[-1].id:
+            mapped[-1].id = mapped[-1].name.lower().replace(" ", "-") or "default"
+    cfg.instances = mapped or cfg.instances
+    if cfg.instances:
+        first = cfg.resolve()
+        cfg.host = first.host
+        cfg.port = first.port
+        cfg.url_base = first.url_base
+        cfg.api_key = first.api_key
+        cfg.use_ssl = first.use_ssl
+        cfg.quality_profile_id = first.quality_profile_id
+        cfg.root_folder_path = first.root_folder_path
+        cfg.minimum_availability = first.minimum_availability
+        cfg.enabled = any(inst.enabled for inst in cfg.instances)
+
+
+def _apply_sonarr_instances(cfg: SonarrConfig, items: list[ArrInstanceUpdate]) -> None:
+    mapped: list[SonarrInstance] = []
+    for raw in items:
+        api_key_val = _pick(raw.api_key, raw.apiKey)
+        mapped.append(
+            SonarrInstance(
+                id=raw.id or "",
+                name=(raw.name or "Default").strip() or "Default",
+                enabled=True if raw.enabled is None else bool(raw.enabled),
+                host=str(_pick(raw.host, "127.0.0.1")).strip(),
+                port=int(_pick(raw.port, 8989)),
+                url_base=str(_pick(_pick(raw.url_base, raw.urlBase), "")).strip(),
+                api_key="" if not api_key_val or str(api_key_val).strip() == "***" else str(api_key_val).strip(),
+                use_ssl=bool(_pick(_pick(raw.use_ssl, raw.useSsl), False)),
+                quality_profile_id=_pick(raw.quality_profile_id, raw.qualityProfileId),
+                root_folder_path=str(_pick(_pick(raw.root_folder_path, raw.rootFolderPath), "")).strip(),
+                series_type=str(_pick(_pick(raw.series_type, raw.seriesType), "standard")).strip(),
+                season_folder=True if _pick(raw.season_folder, raw.seasonFolder) is None else bool(_pick(raw.season_folder, raw.seasonFolder)),
+                language_profile_id=_pick(raw.language_profile_id, raw.languageProfileId),
+            )
+        )
+        if api_key_val and str(api_key_val).strip() == "***":
+            existing = next((inst for inst in cfg.instances if inst.id == mapped[-1].id), None)
+            if existing:
+                mapped[-1].api_key = existing.api_key
+        if not mapped[-1].id:
+            mapped[-1].id = mapped[-1].name.lower().replace(" ", "-") or "default"
+    cfg.instances = mapped or cfg.instances
+    if cfg.instances:
+        first = cfg.resolve()
+        cfg.host = first.host
+        cfg.port = first.port
+        cfg.url_base = first.url_base
+        cfg.api_key = first.api_key
+        cfg.use_ssl = first.use_ssl
+        cfg.quality_profile_id = first.quality_profile_id
+        cfg.root_folder_path = first.root_folder_path
+        cfg.series_type = first.series_type
+        cfg.season_folder = first.season_folder
+        cfg.language_profile_id = first.language_profile_id
+        cfg.enabled = any(inst.enabled for inst in cfg.instances)
+
+
+def _instance_ready(inst) -> bool:
+    return bool(getattr(inst, "enabled", True) and inst.api_key)
 
 
 class UpdateRadarrConfigRequest(BaseModel):
@@ -1086,6 +1194,7 @@ class UpdateRadarrConfigRequest(BaseModel):
     rootFolderPath: Optional[str] = None
     minimum_availability: Optional[str] = None
     minimumAvailability: Optional[str] = None
+    instances: Optional[List[ArrInstanceUpdate]] = None
 
 
 @app.post("/api/v1/radarr/config")
@@ -1097,30 +1206,34 @@ async def update_radarr_config(
     cfg = get_app_config()
     r = cfg.radarr
 
-    if req.enabled is not None:
-        r.enabled = req.enabled
-    if req.host is not None:
-        r.host = str(req.host).strip()
-    if req.port is not None:
-        r.port = int(req.port)
-    api_key_val = req.api_key if req.api_key is not None else req.apiKey
-    if api_key_val and str(api_key_val).strip() != "***":
-        r.api_key = str(api_key_val).strip()
-    ssl_val = req.use_ssl if req.use_ssl is not None else req.useSsl
-    if ssl_val is not None:
-        r.use_ssl = bool(ssl_val)
-    base_val = req.url_base if req.url_base is not None else req.urlBase
-    if base_val is not None:
-        r.url_base = str(base_val).strip()
-    qp_val = req.quality_profile_id if req.quality_profile_id is not None else req.qualityProfileId
-    if qp_val is not None:
-        r.quality_profile_id = int(qp_val)
-    rf_val = req.root_folder_path if req.root_folder_path is not None else req.rootFolderPath
-    if rf_val is not None:
-        r.root_folder_path = str(rf_val).strip()
-    ma_val = req.minimum_availability if req.minimum_availability is not None else req.minimumAvailability
-    if ma_val is not None:
-        r.minimum_availability = str(ma_val).strip()
+    if req.instances is not None:
+        _apply_radarr_instances(r, req.instances)
+    else:
+        if req.enabled is not None:
+            r.enabled = req.enabled
+        if req.host is not None:
+            r.host = str(req.host).strip()
+        if req.port is not None:
+            r.port = int(req.port)
+        api_key_val = req.api_key if req.api_key is not None else req.apiKey
+        if api_key_val and str(api_key_val).strip() != "***":
+            r.api_key = str(api_key_val).strip()
+        ssl_val = req.use_ssl if req.use_ssl is not None else req.useSsl
+        if ssl_val is not None:
+            r.use_ssl = bool(ssl_val)
+        base_val = req.url_base if req.url_base is not None else req.urlBase
+        if base_val is not None:
+            r.url_base = str(base_val).strip()
+        qp_val = req.quality_profile_id if req.quality_profile_id is not None else req.qualityProfileId
+        if qp_val is not None:
+            r.quality_profile_id = int(qp_val)
+        rf_val = req.root_folder_path if req.root_folder_path is not None else req.rootFolderPath
+        if rf_val is not None:
+            r.root_folder_path = str(rf_val).strip()
+        ma_val = req.minimum_availability if req.minimum_availability is not None else req.minimumAvailability
+        if ma_val is not None:
+            r.minimum_availability = str(ma_val).strip()
+        r.apply_flat_to_instance()
 
     save_config(cfg)
     return {"status": "saved"}
@@ -1135,6 +1248,7 @@ class TestArrRequest(BaseModel):
     useSsl: Optional[bool] = None
     url_base: Optional[str] = None
     urlBase: Optional[str] = None
+    instance_id: Optional[str] = None
 
 
 @app.post("/api/v1/radarr/test", response_model=ArrConnectionTestResult)
@@ -1144,26 +1258,27 @@ async def test_radarr(
 ):
     """Test connectivity and authentication to Radarr."""
     cfg = get_app_config()
-    target_host = (req.host if req and req.host else cfg.radarr.host) or "127.0.0.1"
-    target_port = (req.port if req and req.port else cfg.radarr.port) or 7878
+    saved = cfg.radarr.resolve(req.instance_id if req else None)
+    target_host = (req.host if req and req.host else saved.host) or "127.0.0.1"
+    target_port = (req.port if req and req.port else saved.port) or 7878
     raw_api_key = req.api_key if req and req.api_key else (req.apiKey if req and req.apiKey else None)
     target_api_key = (
         raw_api_key
         if raw_api_key and raw_api_key != "***"
-        else cfg.radarr.api_key
+        else saved.api_key
     )
     target_ssl = (
         (req.use_ssl if req.use_ssl is not None else req.useSsl)
         if req and (req.use_ssl is not None or req.useSsl is not None)
-        else cfg.radarr.use_ssl
+        else saved.use_ssl
     )
     target_base = (
         (req.url_base if req.url_base is not None else req.urlBase)
         if req and (req.url_base is not None or req.urlBase is not None)
-        else cfg.radarr.url_base
+        else saved.url_base
     )
 
-    client_cfg = RadarrConfig(
+    client_cfg = RadarrInstance(
         host=target_host,
         port=target_port,
         api_key=target_api_key,
@@ -1174,31 +1289,49 @@ async def test_radarr(
 
 
 @app.get("/api/v1/radarr/rootfolders", response_model=List[RootFolder])
-async def get_radarr_root_folders(_: None = Depends(verify_token)):
+async def get_radarr_root_folders(
+    instance_id: Optional[str] = Query(None),
+    _: None = Depends(verify_token),
+):
     """Fetch root folders from Radarr."""
     cfg = get_app_config()
+    inst = cfg.radarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return []
     try:
-        return fetch_radarr_root_folders(cfg.radarr)
+        return fetch_radarr_root_folders(inst)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Radarr root folders: {exc}")
 
 
 @app.get("/api/v1/radarr/qualityprofiles", response_model=List[QualityProfile])
-async def get_radarr_quality_profiles(_: None = Depends(verify_token)):
+async def get_radarr_quality_profiles(
+    instance_id: Optional[str] = Query(None),
+    _: None = Depends(verify_token),
+):
     """Fetch quality profiles from Radarr."""
     cfg = get_app_config()
+    inst = cfg.radarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return []
     try:
-        return fetch_radarr_quality_profiles(cfg.radarr)
+        return fetch_radarr_quality_profiles(inst)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Radarr quality profiles: {exc}")
 
 
 @app.get("/api/v1/radarr/movies", response_model=List[RadarrMovie])
-async def get_radarr_movies(_: None = Depends(verify_token)):
+async def get_radarr_movies(
+    instance_id: Optional[str] = Query(None),
+    _: None = Depends(verify_token),
+):
     """Fetch all movies in Radarr library."""
     cfg = get_app_config()
+    inst = cfg.radarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return []
     try:
-        return fetch_radarr_movies(cfg.radarr)
+        return fetch_radarr_movies(inst)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Radarr movies: {exc}")
 
@@ -1206,12 +1339,16 @@ async def get_radarr_movies(_: None = Depends(verify_token)):
 @app.get("/api/v1/radarr/lookup")
 async def lookup_movie(
     term: str = Query(..., description="Movie title or tmdb:<id> lookup term"),
+    instance_id: Optional[str] = Query(None),
     _: None = Depends(verify_token),
 ):
     """Lookup movie in Radarr."""
     cfg = get_app_config()
+    inst = cfg.radarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return []
     try:
-        return lookup_radarr_movie(cfg.radarr, term)
+        return lookup_radarr_movie(inst, term)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to lookup Radarr movie: {exc}")
 
@@ -1223,8 +1360,9 @@ async def add_movie(
 ):
     """Add a movie to Radarr."""
     cfg = get_app_config()
+    inst = cfg.radarr.resolve(req.instance_id)
     try:
-        return add_radarr_movie(cfg.radarr, req.model_dump())
+        return add_radarr_movie(inst, req.model_dump())
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to add movie to Radarr: {exc}")
 
@@ -1233,12 +1371,16 @@ async def add_movie(
 async def get_radarr_queue(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    instance_id: Optional[str] = Query(None),
     _: None = Depends(verify_token),
 ):
     """Get active Radarr download queue."""
     cfg = get_app_config()
+    inst = cfg.radarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return ArrQueueResponse(page=page, pageSize=page_size, totalRecords=0, records=[])
     try:
-        return fetch_radarr_queue(cfg.radarr, page=page, page_size=page_size)
+        return fetch_radarr_queue(inst, page=page, page_size=page_size)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Radarr queue: {exc}")
 
@@ -1248,12 +1390,14 @@ async def delete_radarr_queue(
     queue_id: int,
     remove_from_client: bool = Query(True),
     blocklist: bool = Query(False),
+    instance_id: Optional[str] = Query(None),
     _: None = Depends(verify_token),
 ):
     """Delete an item from Radarr queue."""
     cfg = get_app_config()
+    inst = cfg.radarr.resolve(instance_id)
     ok = delete_radarr_queue_item(
-        cfg.radarr, queue_id, remove_from_client=remove_from_client, blocklist=blocklist
+        inst, queue_id, remove_from_client=remove_from_client, blocklist=blocklist
     )
     return {"status": "deleted" if ok else "failed", "queue_id": queue_id}
 
@@ -1262,12 +1406,16 @@ async def delete_radarr_queue(
 async def get_radarr_history(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    instance_id: Optional[str] = Query(None),
     _: None = Depends(verify_token),
 ):
     """Get Radarr download and import history."""
     cfg = get_app_config()
+    inst = cfg.radarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return {"records": []}
     try:
-        return fetch_radarr_history(cfg.radarr, page=page, page_size=page_size)
+        return fetch_radarr_history(inst, page=page, page_size=page_size)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Radarr history: {exc}")
 
@@ -1278,31 +1426,7 @@ async def get_radarr_history(
 async def get_sonarr_config(_: None = Depends(verify_token)):
     """Get Sonarr configuration."""
     cfg = get_app_config()
-    s = cfg.sonarr
-    return {
-        "enabled": s.enabled,
-        "host": s.host,
-        "port": s.port,
-        "api_key": "***" if s.api_key else "",
-        "apiKey": "***" if s.api_key else "",
-        "use_ssl": s.use_ssl,
-        "useSsl": s.use_ssl,
-        "url_base": s.url_base,
-        "urlBase": s.url_base,
-        "quality_profile_id": s.quality_profile_id,
-        "qualityProfileId": s.quality_profile_id,
-        "root_folder_path": s.root_folder_path,
-        "rootFolderPath": s.root_folder_path,
-        "series_type": s.series_type,
-        "seriesType": s.series_type,
-        "season_folder": s.season_folder,
-        "seasonFolder": s.season_folder,
-        "language_profile_id": s.language_profile_id,
-        "languageProfileId": s.language_profile_id,
-        "configured": bool(s.host and s.api_key),
-        "has_api_key": bool(s.api_key),
-        "hasApiKey": bool(s.api_key),
-    }
+    return serialize_sonarr_config(cfg.sonarr)
 
 
 class UpdateSonarrConfigRequest(BaseModel):
@@ -1325,6 +1449,7 @@ class UpdateSonarrConfigRequest(BaseModel):
     seasonFolder: Optional[bool] = None
     language_profile_id: Optional[int] = None
     languageProfileId: Optional[int] = None
+    instances: Optional[List[ArrInstanceUpdate]] = None
 
 
 @app.post("/api/v1/sonarr/config")
@@ -1336,36 +1461,40 @@ async def update_sonarr_config(
     cfg = get_app_config()
     s = cfg.sonarr
 
-    if req.enabled is not None:
-        s.enabled = req.enabled
-    if req.host is not None:
-        s.host = str(req.host).strip()
-    if req.port is not None:
-        s.port = int(req.port)
-    api_key_val = req.api_key if req.api_key is not None else req.apiKey
-    if api_key_val and str(api_key_val).strip() != "***":
-        s.api_key = str(api_key_val).strip()
-    ssl_val = req.use_ssl if req.use_ssl is not None else req.useSsl
-    if ssl_val is not None:
-        s.use_ssl = bool(ssl_val)
-    base_val = req.url_base if req.url_base is not None else req.urlBase
-    if base_val is not None:
-        s.url_base = str(base_val).strip()
-    qp_val = req.quality_profile_id if req.quality_profile_id is not None else req.qualityProfileId
-    if qp_val is not None:
-        s.quality_profile_id = int(qp_val)
-    rf_val = req.root_folder_path if req.root_folder_path is not None else req.rootFolderPath
-    if rf_val is not None:
-        s.root_folder_path = str(rf_val).strip()
-    st_val = req.series_type if req.series_type is not None else req.seriesType
-    if st_val is not None:
-        s.series_type = str(st_val).strip()
-    sf_val = req.season_folder if req.season_folder is not None else req.seasonFolder
-    if sf_val is not None:
-        s.season_folder = bool(sf_val)
-    lp_val = req.language_profile_id if req.language_profile_id is not None else req.languageProfileId
-    if lp_val is not None:
-        s.language_profile_id = int(lp_val)
+    if req.instances is not None:
+        _apply_sonarr_instances(s, req.instances)
+    else:
+        if req.enabled is not None:
+            s.enabled = req.enabled
+        if req.host is not None:
+            s.host = str(req.host).strip()
+        if req.port is not None:
+            s.port = int(req.port)
+        api_key_val = req.api_key if req.api_key is not None else req.apiKey
+        if api_key_val and str(api_key_val).strip() != "***":
+            s.api_key = str(api_key_val).strip()
+        ssl_val = req.use_ssl if req.use_ssl is not None else req.useSsl
+        if ssl_val is not None:
+            s.use_ssl = bool(ssl_val)
+        base_val = req.url_base if req.url_base is not None else req.urlBase
+        if base_val is not None:
+            s.url_base = str(base_val).strip()
+        qp_val = req.quality_profile_id if req.quality_profile_id is not None else req.qualityProfileId
+        if qp_val is not None:
+            s.quality_profile_id = int(qp_val)
+        rf_val = req.root_folder_path if req.root_folder_path is not None else req.rootFolderPath
+        if rf_val is not None:
+            s.root_folder_path = str(rf_val).strip()
+        st_val = req.series_type if req.series_type is not None else req.seriesType
+        if st_val is not None:
+            s.series_type = str(st_val).strip()
+        sf_val = req.season_folder if req.season_folder is not None else req.seasonFolder
+        if sf_val is not None:
+            s.season_folder = bool(sf_val)
+        lp_val = req.language_profile_id if req.language_profile_id is not None else req.languageProfileId
+        if lp_val is not None:
+            s.language_profile_id = int(lp_val)
+        s.apply_flat_to_instance()
 
     save_config(cfg)
     return {"status": "saved"}
@@ -1378,26 +1507,27 @@ async def test_sonarr(
 ):
     """Test connectivity and authentication to Sonarr."""
     cfg = get_app_config()
-    target_host = (req.host if req and req.host else cfg.sonarr.host) or "127.0.0.1"
-    target_port = (req.port if req and req.port else cfg.sonarr.port) or 8989
+    saved = cfg.sonarr.resolve(req.instance_id if req else None)
+    target_host = (req.host if req and req.host else saved.host) or "127.0.0.1"
+    target_port = (req.port if req and req.port else saved.port) or 8989
     raw_api_key = req.api_key if req and req.api_key else (req.apiKey if req and req.apiKey else None)
     target_api_key = (
         raw_api_key
         if raw_api_key and raw_api_key != "***"
-        else cfg.sonarr.api_key
+        else saved.api_key
     )
     target_ssl = (
         (req.use_ssl if req.use_ssl is not None else req.useSsl)
         if req and (req.use_ssl is not None or req.useSsl is not None)
-        else cfg.sonarr.use_ssl
+        else saved.use_ssl
     )
     target_base = (
         (req.url_base if req.url_base is not None else req.urlBase)
         if req and (req.url_base is not None or req.urlBase is not None)
-        else cfg.sonarr.url_base
+        else saved.url_base
     )
 
-    client_cfg = SonarrConfig(
+    client_cfg = SonarrInstance(
         host=target_host,
         port=target_port,
         api_key=target_api_key,
@@ -1408,31 +1538,49 @@ async def test_sonarr(
 
 
 @app.get("/api/v1/sonarr/rootfolders", response_model=List[RootFolder])
-async def get_sonarr_root_folders(_: None = Depends(verify_token)):
+async def get_sonarr_root_folders(
+    instance_id: Optional[str] = Query(None),
+    _: None = Depends(verify_token),
+):
     """Fetch root folders from Sonarr."""
     cfg = get_app_config()
+    inst = cfg.sonarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return []
     try:
-        return fetch_sonarr_root_folders(cfg.sonarr)
+        return fetch_sonarr_root_folders(inst)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Sonarr root folders: {exc}")
 
 
 @app.get("/api/v1/sonarr/qualityprofiles", response_model=List[QualityProfile])
-async def get_sonarr_quality_profiles(_: None = Depends(verify_token)):
+async def get_sonarr_quality_profiles(
+    instance_id: Optional[str] = Query(None),
+    _: None = Depends(verify_token),
+):
     """Fetch quality profiles from Sonarr."""
     cfg = get_app_config()
+    inst = cfg.sonarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return []
     try:
-        return fetch_sonarr_quality_profiles(cfg.sonarr)
+        return fetch_sonarr_quality_profiles(inst)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Sonarr quality profiles: {exc}")
 
 
 @app.get("/api/v1/sonarr/series", response_model=List[SonarrSeries])
-async def get_sonarr_series(_: None = Depends(verify_token)):
+async def get_sonarr_series(
+    instance_id: Optional[str] = Query(None),
+    _: None = Depends(verify_token),
+):
     """Fetch all series in Sonarr library."""
     cfg = get_app_config()
+    inst = cfg.sonarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return []
     try:
-        return fetch_sonarr_series(cfg.sonarr)
+        return fetch_sonarr_series(inst)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Sonarr series: {exc}")
 
@@ -1440,12 +1588,16 @@ async def get_sonarr_series(_: None = Depends(verify_token)):
 @app.get("/api/v1/sonarr/lookup")
 async def lookup_series(
     term: str = Query(..., description="Series title or tvdb:<id> lookup term"),
+    instance_id: Optional[str] = Query(None),
     _: None = Depends(verify_token),
 ):
     """Lookup series in Sonarr."""
     cfg = get_app_config()
+    inst = cfg.sonarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return []
     try:
-        return lookup_sonarr_series(cfg.sonarr, term)
+        return lookup_sonarr_series(inst, term)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to lookup Sonarr series: {exc}")
 
@@ -1457,8 +1609,9 @@ async def add_series(
 ):
     """Add a series to Sonarr."""
     cfg = get_app_config()
+    inst = cfg.sonarr.resolve(req.instance_id)
     try:
-        return add_sonarr_series(cfg.sonarr, req.model_dump())
+        return add_sonarr_series(inst, req.model_dump())
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to add series to Sonarr: {exc}")
 
@@ -1467,12 +1620,16 @@ async def add_series(
 async def get_sonarr_queue(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    instance_id: Optional[str] = Query(None),
     _: None = Depends(verify_token),
 ):
     """Get active Sonarr download queue."""
     cfg = get_app_config()
+    inst = cfg.sonarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return ArrQueueResponse(page=page, pageSize=page_size, totalRecords=0, records=[])
     try:
-        return fetch_sonarr_queue(cfg.sonarr, page=page, page_size=page_size)
+        return fetch_sonarr_queue(inst, page=page, page_size=page_size)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Sonarr queue: {exc}")
 
@@ -1482,12 +1639,14 @@ async def delete_sonarr_queue(
     queue_id: int,
     remove_from_client: bool = Query(True),
     blocklist: bool = Query(False),
+    instance_id: Optional[str] = Query(None),
     _: None = Depends(verify_token),
 ):
     """Delete an item from Sonarr queue."""
     cfg = get_app_config()
+    inst = cfg.sonarr.resolve(instance_id)
     ok = delete_sonarr_queue_item(
-        cfg.sonarr, queue_id, remove_from_client=remove_from_client, blocklist=blocklist
+        inst, queue_id, remove_from_client=remove_from_client, blocklist=blocklist
     )
     return {"status": "deleted" if ok else "failed", "queue_id": queue_id}
 
@@ -1496,12 +1655,16 @@ async def delete_sonarr_queue(
 async def get_sonarr_history(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    instance_id: Optional[str] = Query(None),
     _: None = Depends(verify_token),
 ):
     """Get Sonarr download and import history."""
     cfg = get_app_config()
+    inst = cfg.sonarr.resolve(instance_id)
+    if not _instance_ready(inst):
+        return {"records": []}
     try:
-        return fetch_sonarr_history(cfg.sonarr, page=page, page_size=page_size)
+        return fetch_sonarr_history(inst, page=page, page_size=page_size)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to fetch Sonarr history: {exc}")
 

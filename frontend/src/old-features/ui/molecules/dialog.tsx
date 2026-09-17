@@ -19,14 +19,18 @@ function DkDialog({ open, onOpenChange, title, description, children, className,
 
   useEffect(() => {
     if (!open) return
+    const previousOverflow = document.body.style.overflow
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onOpenChange(false)
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onOpenChange(false)
+      }
     }
     document.addEventListener('keydown', handler)
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', handler)
-      document.body.style.overflow = ''
+      document.body.style.overflow = previousOverflow
     }
   }, [open, onOpenChange])
 

@@ -16,9 +16,9 @@ const DkInput = forwardRef<HTMLInputElement, DkInputProps>(
     const hintId = `${inputId}-hint`
 
     return (
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-foreground">
+          <label htmlFor={inputId} className="block pl-4 text-sm font-medium text-foreground">
             {label}
             {required && <span className="ml-0.5 text-destructive">*</span>}
           </label>
@@ -41,12 +41,12 @@ const DkInput = forwardRef<HTMLInputElement, DkInputProps>(
           {...props}
         />
         {hint && !error && (
-          <p id={hintId} className="text-xs text-muted-foreground">
+          <p id={hintId} className="pl-4 text-xs text-muted-foreground">
             {hint}
           </p>
         )}
         {error && (
-          <p id={errorId} role="alert" className="text-xs text-destructive">
+          <p id={errorId} role="alert" className="pl-4 text-xs text-destructive">
             {error}
           </p>
         )}

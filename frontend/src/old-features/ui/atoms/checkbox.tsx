@@ -32,7 +32,6 @@ const DkCheckbox = forwardRef<HTMLInputElement, DkCheckboxProps>(
               checked && 'bg-primary',
             )}
             style={{
-              boxShadow: checked ? undefined : 'inset 0 0 0 1px var(--dk-separator)',
               backgroundColor: checked ? undefined : 'var(--dk-surface-glass)',
               transition: 'all var(--dk-duration-fast) var(--dk-ease-out)',
             }}

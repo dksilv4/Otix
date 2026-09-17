@@ -9,7 +9,7 @@
 # Variables:  make seed provider=igdb kind=game limit=10    make makemigrations app=media
 
 .PHONY: help up down build logs logs-all logs-worker shell worker-shell \
-	db-shell redis-shell deps migrate makemigrations seed lint drift parity \
+	db-shell redis-shell deps migrate makemigrations seed create-admin lint drift parity \
 	test check celery-status celery-queues celery-stats
 
 .DEFAULT_GOAL := help
@@ -59,6 +59,9 @@ makemigrations: ## Autogenerate a migration: make makemigrations app=<label>
 seed: ## Bulk-seed the catalog: make seed provider=igdb kind=game limit=10
 	docker compose exec api python manage.py catalog_seed \
 		--provider $(provider) --kind $(kind) --source $(source) --limit $(limit)
+
+create-admin: ## Create or update local admin account (admin / admin123)
+	docker compose exec api python manage.py create_admin
 # seed variables
 provider = tmdb
 kind = movie

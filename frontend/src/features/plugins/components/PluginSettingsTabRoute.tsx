@@ -1,30 +1,25 @@
 // Resolves /settings/<tabId> to a plugin settings tab (declared in the
 // plugin manifest under settings.tabs). Static settings routes win over this
 // dynamic sibling; unknown ids render a benign empty state or helpful fallback.
-import { useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { Download, DownloadCloud, Server, Puzzle, Check, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePluginTabs } from '@/features/_config/slots'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { useServerUsenetConfig } from '@/features/downloads/use-server-usenet'
-import { ServerUsenetSettingsModal } from '@/features/downloads/molecules/server-usenet-settings-modal'
 import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
 import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/server-prowlarr-settings-modal'
 import { ServerRadarrSettingsModal } from '@/features/downloads/molecules/server-radarr-settings-modal'
 import { ServerSonarrSettingsModal } from '@/features/downloads/molecules/server-sonarr-settings-modal'
 import { useServerRadarrConfig, useServerSonarrConfig } from '@/features/downloads/use-server-arr'
 import { PluginSettingsPage } from './PluginSettingsPage'
+import { useModal } from '@/lib/modals'
 
 export function PluginSettingsTabRoute() {
   const { tabId } = useParams({ from: '/settings/$tabId' })
   const { tabs, isLoading } = usePluginTabs()
   const tab = tabs.find((t) => t.id === tabId)
-  const [isUsenetModalOpen, setIsUsenetModalOpen] = useState(false)
-  const [isSabnzbdModalOpen, setIsSabnzbdModalOpen] = useState(false)
-  const [isProwlarrModalOpen, setIsProwlarrModalOpen] = useState(false)
-  const [isRadarrModalOpen, setIsRadarrModalOpen] = useState(false)
-  const [isSonarrModalOpen, setIsSonarrModalOpen] = useState(false)
+  const { openModal } = useModal()
   const { data: servers = [] } = useGameServers()
   const activeServer = servers[0]
   const { data: usenetConfig } = useServerUsenetConfig(activeServer?.id)
@@ -80,7 +75,15 @@ export function PluginSettingsTabRoute() {
               {(!isArrSearch || lowerTab.includes('sabnzbd')) && (
                 <button
                   type="button"
-                  onClick={() => setIsSabnzbdModalOpen(true)}
+                  onClick={() => {
+                    const close = openModal(
+                      <ServerSabnzbdSettingsModal
+                        serverId={activeServer?.id}
+                        serverName={activeServer?.name}
+                        onClose={() => close()}
+                      />
+                    )
+                  }}
                   className={cn(
                     'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
                     isSabnzbdConfigured
@@ -100,7 +103,15 @@ export function PluginSettingsTabRoute() {
               {(!isArrSearch || lowerTab.includes('prowlarr')) && (
                 <button
                   type="button"
-                  onClick={() => setIsProwlarrModalOpen(true)}
+                  onClick={() => {
+                    const close = openModal(
+                      <ServerProwlarrSettingsModal
+                        serverId={activeServer?.id}
+                        serverName={activeServer?.name}
+                        onClose={() => close()}
+                      />
+                    )
+                  }}
                   className={cn(
                     'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
                     isProwlarrConfigured
@@ -120,7 +131,15 @@ export function PluginSettingsTabRoute() {
               {(!isDownloaderSearch || lowerTab.includes('radarr')) && (
                 <button
                   type="button"
-                  onClick={() => setIsRadarrModalOpen(true)}
+                  onClick={() => {
+                    const close = openModal(
+                      <ServerRadarrSettingsModal
+                        serverId={activeServer?.id}
+                        serverName={activeServer?.name}
+                        onClose={() => close()}
+                      />
+                    )
+                  }}
                   className={cn(
                     'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
                     isRadarrConfigured
@@ -140,7 +159,15 @@ export function PluginSettingsTabRoute() {
               {(!isDownloaderSearch || lowerTab.includes('sonarr')) && (
                 <button
                   type="button"
-                  onClick={() => setIsSonarrModalOpen(true)}
+                  onClick={() => {
+                    const close = openModal(
+                      <ServerSonarrSettingsModal
+                        serverId={activeServer?.id}
+                        serverName={activeServer?.name}
+                        onClose={() => close()}
+                      />
+                    )
+                  }}
                   className={cn(
                     'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
                     isSonarrConfigured
@@ -174,41 +201,6 @@ export function PluginSettingsTabRoute() {
             Game Servers
           </Link>
         </div>
-
-        {activeServer && (
-          <>
-            <ServerSabnzbdSettingsModal
-              serverId={activeServer.id}
-              serverName={activeServer.name}
-              isOpen={isSabnzbdModalOpen}
-              onClose={() => setIsSabnzbdModalOpen(false)}
-            />
-            <ServerProwlarrSettingsModal
-              serverId={activeServer.id}
-              serverName={activeServer.name}
-              isOpen={isProwlarrModalOpen}
-              onClose={() => setIsProwlarrModalOpen(false)}
-            />
-            <ServerRadarrSettingsModal
-              serverId={activeServer.id}
-              serverName={activeServer.name}
-              isOpen={isRadarrModalOpen}
-              onClose={() => setIsRadarrModalOpen(false)}
-            />
-            <ServerSonarrSettingsModal
-              serverId={activeServer.id}
-              serverName={activeServer.name}
-              isOpen={isSonarrModalOpen}
-              onClose={() => setIsSonarrModalOpen(false)}
-            />
-            <ServerUsenetSettingsModal
-              serverId={activeServer.id}
-              serverName={activeServer.name}
-              isOpen={isUsenetModalOpen}
-              onClose={() => setIsUsenetModalOpen(false)}
-            />
-          </>
-        )}
       </div>
     )
   }

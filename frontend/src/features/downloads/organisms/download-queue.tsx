@@ -9,7 +9,7 @@ import { useRemoteDownloads, useServerGames } from '../use-server-downloads';
 import { DownloadCard } from '../molecules/download-card';
 import { RemoteDownloadCard } from '../molecules/remote-download-card';
 import { ServerFileExplorer } from '../molecules/server-file-explorer';
-import { ServerUsenetSettingsModal } from '../molecules/server-usenet-settings-modal';
+import { ServerSabnzbdSettingsModal } from '../molecules/server-sabnzbd-settings-modal';
 import { ServerGameSearchModal } from '../molecules/server-game-search-modal';
 import { useServerUsenetHistory, useServerUsenetQueue, useCancelServerQueueDownload } from '../use-server-usenet';
 import { DkButton } from '@/old-features/ui/atoms/button';
@@ -34,7 +34,6 @@ export function DownloadQueuePage() {
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'deleted'>('all');
   const [viewTab, setViewTab] = useState<'queue' | 'explorer'>('queue');
   const { openModal } = useModal();
-  const [isUsenetSettingsOpen, setIsUsenetSettingsOpen] = useState(false);
 
   const activeServer = serverData?.servers?.[0];
   const activeServerId = activeServer?.id;
@@ -152,12 +151,20 @@ export function DownloadQueuePage() {
               </button>
               <button
                 type="button"
-                onClick={() => setIsUsenetSettingsOpen(true)}
+                onClick={() => {
+                  const close = openModal(
+                    <ServerSabnzbdSettingsModal
+                      serverId={activeServerId}
+                      serverName={activeServer?.name}
+                      onClose={() => close()}
+                    />,
+                  );
+                }}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-muted/60 hover:bg-muted text-foreground text-xs font-semibold border border-border transition-colors"
-                title="Configure SABnzbd and Prowlarr"
+                title="Configure SABnzbd"
               >
                 <Sliders className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Usenet Settings</span>
+                <span className="hidden sm:inline">SABnzbd Settings</span>
               </button>
             </>
           )}
@@ -449,12 +456,7 @@ export function DownloadQueuePage() {
         </>
       )}
 
-      <ServerUsenetSettingsModal
-        serverId={activeServerId}
-        serverName={activeServer?.name}
-        isOpen={isUsenetSettingsOpen}
-        onClose={() => setIsUsenetSettingsOpen(false)}
-      />
+      )}
     </div>
   );
 

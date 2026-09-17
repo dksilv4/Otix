@@ -1,0 +1,54 @@
+================================================================================
+LOCAL ARR INSTANCES DETAILS
+================================================================================
+
+RADARR
+--------------------------------------------------------------------------------
+Service:               Radarr
+Status:                Running
+Version:               6.4.4.10685
+Web UI URL:            http://localhost:7878
+API URL:               http://localhost:7878/api/v3
+API Key:               0751644ce93c41ad8759d01bb4fc9131
+Container Name:        radarr
+Image:                 lscr.io/linuxserver/radarr:latest
+Host Port:             7878
+Container Port:        7878
+Config Volume:         otix_radarr_config
+
+Example Test Command (PowerShell):
+Invoke-RestMethod -Uri "http://localhost:7878/api/v3/system/status" -Headers @{"X-Api-Key"="0751644ce93c41ad8759d01bb4fc9131"}
+
+Example Test Command (curl):
+curl -H "X-Api-Key: 0751644ce93c41ad8759d01bb4fc9131" http://localhost:7878/api/v3/system/status
+
+
+SONARR
+--------------------------------------------------------------------------------
+Service:               Sonarr
+Status:                Running
+Version:               4.0.20.3014
+Web UI URL:            http://localhost:8989
+API URL:               http://localhost:8989/api/v3
+API Key:               1c9afdacc77643ea9dd80724a7ec0a64
+Container Name:        sonarr
+Image:                 lscr.io/linuxserver/sonarr:latest
+Host Port:             8989
+Container Port:        8989
+Config Volume:         otix_sonarr_config
+
+Example Test Command (PowerShell):
+Invoke-RestMethod -Uri "http://localhost:8989/api/v3/system/status" -Headers @{"X-Api-Key"="1c9afdacc77643ea9dd80724a7ec0a64"}
+
+Example Test Command (curl):
+curl -H "X-Api-Key: 1c9afdacc77643ea9dd80724a7ec0a64" http://localhost:8989/api/v3/system/status
+
+
+MANAGEMENT COMMANDS
+--------------------------------------------------------------------------------
+Start instances:       docker compose -f docker-compose.arr.yml up -d
+Stop instances:        docker compose -f docker-compose.arr.yml stop
+Restart instances:     docker compose -f docker-compose.arr.yml restart
+View logs:             docker compose -f docker-compose.arr.yml logs -f
+Remove instances:      docker compose -f docker-compose.arr.yml down
+================================================================================

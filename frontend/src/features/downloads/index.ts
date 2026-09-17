@@ -26,6 +26,7 @@ export * from './molecules/server-sabnzbd-settings-modal';
 export * from './molecules/server-prowlarr-settings-modal';
 export * from './molecules/server-radarr-settings-modal';
 export * from './molecules/server-sonarr-settings-modal';
-export * from './molecules/server-usenet-settings-modal';
 export * from './molecules/server-game-search-modal';
+export * from './molecules/server-integration-modal-shell';
+
 

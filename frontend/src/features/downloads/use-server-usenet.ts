@@ -14,7 +14,7 @@ import type {
   SaveServerUsenetConfigResponse,
   ServerUsenetConfig,
 } from './usenet-types';
-import { normalizeProwlarrRelease } from './usenet-utils';
+import { normalizeProwlarrRelease, normalizeProwlarrIndexers } from './usenet-utils';
 
 export const usenetKeys = {
   all: ['server-usenet'] as const,
@@ -24,7 +24,9 @@ export const usenetKeys = {
   queue: (serverId?: number) => [...usenetKeys.all, serverId, 'queue'] as const,
   history: (serverId?: number) => [...usenetKeys.all, serverId, 'history'] as const,
   prowlarrIndexers: (serverId?: number, protocol?: string) =>
-    [...usenetKeys.all, serverId, 'prowlarr-indexers', protocol] as const,
+    protocol
+      ? ([...usenetKeys.all, serverId, 'prowlarr-indexers', protocol] as const)
+      : ([...usenetKeys.all, serverId, 'prowlarr-indexers'] as const),
 };
 
 /** Hook to fetch Usenet configuration from the connected server node. */
@@ -241,11 +243,11 @@ export function useProwlarrIndexers(
     queryFn: async () => {
       if (!serverId) throw new Error('No server selected');
       const params = protocol && protocol !== 'all' ? { protocol } : undefined;
-      const { data } = await apiClient.get<ProwlarrIndexerItem[]>(
+      const { data } = await apiClient.get<unknown>(
         `/library/servers/${serverId}/prowlarr/indexers`,
         { params }
       );
-      return data || [];
+      return normalizeProwlarrIndexers(data);
     },
     enabled: !!serverId,
     staleTime: 60_000,
@@ -266,8 +268,9 @@ export function useSyncProwlarrIndexers(serverId?: number) {
       );
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usenetKeys.prowlarrIndexers(serverId) });
+    onSuccess: (data) => {
+      const indexers = normalizeProwlarrIndexers(data);
+      queryClient.setQueryData(usenetKeys.prowlarrIndexers(serverId), indexers);
     },
   });
 }

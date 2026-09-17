@@ -10,7 +10,7 @@ import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { useServerUsenetConfig } from '@/features/downloads/use-server-usenet'
 import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
 import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/server-prowlarr-settings-modal'
-import { ServerUsenetSettingsModal } from '@/features/downloads/molecules/server-usenet-settings-modal'
+import { useModal } from '@/lib/modals'
 
 const NAMING_PRESETS = [
   { id: 'standard', label: 'Standard', template: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}' },
@@ -44,9 +44,7 @@ export function SettingsDownloadsPage() {
   const [autoOrganizeEnabled, setAutoOrganizeEnabled] = useState(false)
   const [namingTemplate, setNamingTemplate] = useState(NAMING_PRESETS[0].template)
   const [presetId, setPresetId] = useState('standard')
-  const [isUsenetModalOpen, setIsUsenetModalOpen] = useState(false)
-  const [isSabnzbdModalOpen, setIsSabnzbdModalOpen] = useState(false)
-  const [isProwlarrModalOpen, setIsProwlarrModalOpen] = useState(false)
+  const { openModal } = useModal()
   const { data: gameServers = [] } = useGameServers()
   const activeServer = gameServers[0]
   const { data: usenetConfig } = useServerUsenetConfig(activeServer?.id)
@@ -180,7 +178,15 @@ export function SettingsDownloadsPage() {
             <DkButton
               size="sm"
               variant={isSabnzbdConfigured ? 'ghost' : 'primary'}
-              onClick={() => setIsSabnzbdModalOpen(true)}
+              onClick={() => {
+                const close = openModal(
+                  <ServerSabnzbdSettingsModal
+                    serverId={activeServer?.id}
+                    serverName={activeServer?.name}
+                    onClose={() => close()}
+                  />
+                )
+              }}
               className={cn(
                 isSabnzbdConfigured &&
                   'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/15'
@@ -201,7 +207,15 @@ export function SettingsDownloadsPage() {
             <DkButton
               size="sm"
               variant="ghost"
-              onClick={() => setIsProwlarrModalOpen(true)}
+              onClick={() => {
+                const close = openModal(
+                  <ServerProwlarrSettingsModal
+                    serverId={activeServer?.id}
+                    serverName={activeServer?.name}
+                    onClose={() => close()}
+                  />
+                )
+              }}
               className={cn(
                 isProwlarrConfigured
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/15'
@@ -464,29 +478,6 @@ export function SettingsDownloadsPage() {
           </div>
         </div>
       </div>
-
-      {activeServer && (
-        <>
-          <ServerSabnzbdSettingsModal
-            serverId={activeServer.id}
-            serverName={activeServer.name}
-            isOpen={isSabnzbdModalOpen}
-            onClose={() => setIsSabnzbdModalOpen(false)}
-          />
-          <ServerProwlarrSettingsModal
-            serverId={activeServer.id}
-            serverName={activeServer.name}
-            isOpen={isProwlarrModalOpen}
-            onClose={() => setIsProwlarrModalOpen(false)}
-          />
-          <ServerUsenetSettingsModal
-            serverId={activeServer.id}
-            serverName={activeServer.name}
-            isOpen={isUsenetModalOpen}
-            onClose={() => setIsUsenetModalOpen(false)}
-          />
-        </>
-      )}
     </div>
   )
 }

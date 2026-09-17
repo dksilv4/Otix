@@ -1,6 +1,6 @@
 /** Dedicated utility functions for Usenet (Prowlarr & SABnzbd) releases and metrics. */
 
-import type { ServerProwlarrRelease } from './usenet-types';
+import type { ProwlarrIndexerItem, ServerProwlarrRelease } from './usenet-types';
 
 export interface ReleaseBadge {
   label: string;
@@ -177,14 +177,54 @@ export function parseServiceAddress(rawInput: string, defaultPort?: number): Par
   }
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+/** Normalize Prowlarr indexer payloads from GET arrays or nested sync responses. */
+export function normalizeProwlarrIndexers(raw: unknown): ProwlarrIndexerItem[] {
+  const nested = asRecord(raw)
+  const rows = Array.isArray(raw)
+    ? raw
+    : Array.isArray(nested?.indexers)
+      ? nested.indexers
+      : Array.isArray(nested?.Indexers)
+        ? nested.Indexers
+        : []
+
+  return rows.flatMap((row, index) => {
+    const item = asRecord(row)
+    if (!item) return []
+    const name = String(item.name ?? item.Name ?? '').trim()
+    if (!name) return []
+    const protocol = String(item.protocol ?? item.Protocol ?? 'usenet').toLowerCase()
+    const idValue = item.id ?? item.Id ?? index
+    const id = typeof idValue === 'number' ? idValue : Number(idValue) || index
+    return [{
+      id,
+      name,
+      protocol,
+      enable: item.enable !== false && item.Enable !== false,
+      priority: typeof item.priority === 'number'
+        ? item.priority
+        : typeof item.Priority === 'number'
+          ? item.Priority
+          : undefined,
+    }]
+  })
+}
+
 /** Filter indexers by protocol ('all' | 'torrent' | 'usenet'). */
-export function filterIndexersByProtocol(
-  indexers: Array<{ protocol?: string }>,
+export function filterIndexersByProtocol<T extends { protocol?: string }>(
+  indexers: T[] | unknown,
   protocol: 'all' | 'torrent' | 'usenet' | string = 'all'
-): Array<{ protocol?: string }> {
+): T[] {
+  const list = Array.isArray(indexers) ? indexers : []
   const p = (protocol || 'all').toLowerCase().trim();
-  if (p === 'all' || !p) return indexers;
-  return indexers.filter((idx) => (idx.protocol || '').toLowerCase() === p);
+  if (p === 'all' || !p) return list;
+  return list.filter((idx) => (idx.protocol || '').toLowerCase() === p);
 }
 
 /** Calculate summary stats for indexers breakdown. */

@@ -11,9 +11,11 @@ from otix_server.arr_types import (
     ArrQueueResponse,
     QualityProfile,
     RadarrConfig,
+    RadarrInstance,
     RadarrMovie,
     RootFolder,
     SonarrConfig,
+    SonarrInstance,
     SonarrSeries,
 )
 
@@ -57,7 +59,7 @@ def _get_client_timeout() -> httpx.Timeout:
 
 # ── Radarr Client Functions ─────────────────────────────────────────────
 
-def test_radarr_connection(config: RadarrConfig) -> ArrConnectionTestResult:
+def test_radarr_connection(config: RadarrConfig | RadarrInstance) -> ArrConnectionTestResult:
     """Test connection to Radarr system/status endpoint."""
     if not config.api_key:
         return ArrConnectionTestResult(ok=False, message="Radarr API key is missing")
@@ -84,7 +86,7 @@ def test_radarr_connection(config: RadarrConfig) -> ArrConnectionTestResult:
         return ArrConnectionTestResult(ok=False, message=f"Cannot connect to Radarr: {exc}")
 
 
-def fetch_radarr_root_folders(config: RadarrConfig) -> List[RootFolder]:
+def fetch_radarr_root_folders(config: RadarrConfig | RadarrInstance) -> List[RootFolder]:
     """Fetch root folders configured in Radarr."""
     base = build_arr_base_url(config.host, config.port, config.use_ssl, config.url_base)
     url = f"{base}/api/v3/rootfolder"
@@ -104,7 +106,7 @@ def fetch_radarr_root_folders(config: RadarrConfig) -> List[RootFolder]:
         ]
 
 
-def fetch_radarr_quality_profiles(config: RadarrConfig) -> List[QualityProfile]:
+def fetch_radarr_quality_profiles(config: RadarrConfig | RadarrInstance) -> List[QualityProfile]:
     """Fetch quality profiles configured in Radarr."""
     base = build_arr_base_url(config.host, config.port, config.use_ssl, config.url_base)
     url = f"{base}/api/v3/qualityprofile"
@@ -120,7 +122,7 @@ def fetch_radarr_quality_profiles(config: RadarrConfig) -> List[QualityProfile]:
         ]
 
 
-def fetch_radarr_movies(config: RadarrConfig) -> List[RadarrMovie]:
+def fetch_radarr_movies(config: RadarrConfig | RadarrInstance) -> List[RadarrMovie]:
     """Fetch all movies in Radarr library."""
     base = build_arr_base_url(config.host, config.port, config.use_ssl, config.url_base)
     url = f"{base}/api/v3/movie"

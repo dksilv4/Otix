@@ -100,6 +100,17 @@ def _get_server_or_404(request: Request, server_id: int) -> UserGameServer:
     return server
 
 
+def _arr_instance_id(request: Request) -> str | None:
+    query_id = request.query_params.get("instance_id")
+    if query_id:
+        return query_id
+    data = getattr(request, "data", None)
+    if isinstance(data, dict):
+        value = data.get("instance_id")
+        return str(value) if value else None
+    return None
+
+
 class GameServerListCreateView(APIView):
     """``GET /api/v1/library/servers`` — list user's game servers.
     ``POST /api/v1/library/servers`` — register a new game server node.
@@ -569,7 +580,7 @@ class GameServerRadarrRootFoldersView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = radarr_get_root_folders(server)
+        status_code, data = radarr_get_root_folders(server, instance_id=_arr_instance_id(request))
         return Response(data, status=status_code)
 
 
@@ -580,7 +591,7 @@ class GameServerRadarrQualityProfilesView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = radarr_get_quality_profiles(server)
+        status_code, data = radarr_get_quality_profiles(server, instance_id=_arr_instance_id(request))
         return Response(data, status=status_code)
 
 
@@ -593,7 +604,7 @@ class GameServerRadarrMoviesView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = radarr_get_movies(server)
+        status_code, data = radarr_get_movies(server, instance_id=_arr_instance_id(request))
         return Response(data, status=status_code)
 
     def post(self, request: Request, server_id: int) -> Response:
@@ -612,7 +623,7 @@ class GameServerRadarrLookupView(APIView):
         term = request.query_params.get("term", "")
         if not term:
             return Response([], status=status.HTTP_200_OK)
-        status_code, data = radarr_lookup(server, term)
+        status_code, data = radarr_lookup(server, term, instance_id=_arr_instance_id(request))
         return Response(data, status=status_code)
 
 
@@ -627,7 +638,9 @@ class GameServerRadarrQueueView(APIView):
         server = _get_server_or_404(request, server_id)
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 50))
-        status_code, data = radarr_get_queue(server, page=page, page_size=page_size)
+        status_code, data = radarr_get_queue(
+            server, page=page, page_size=page_size, instance_id=_arr_instance_id(request)
+        )
         return Response(data, status=status_code)
 
     def delete(self, request: Request, server_id: int, queue_id: str) -> Response:
@@ -635,7 +648,11 @@ class GameServerRadarrQueueView(APIView):
         remove_from_client = request.query_params.get("remove_from_client", "true").lower() == "true"
         blocklist = request.query_params.get("blocklist", "false").lower() == "true"
         status_code, data = radarr_delete_queue(
-            server, queue_id, remove_from_client=remove_from_client, blocklist=blocklist
+            server,
+            queue_id,
+            remove_from_client=remove_from_client,
+            blocklist=blocklist,
+            instance_id=_arr_instance_id(request),
         )
         return Response(data, status=status_code)
 
@@ -649,7 +666,9 @@ class GameServerRadarrHistoryView(APIView):
         server = _get_server_or_404(request, server_id)
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 50))
-        status_code, data = radarr_get_history(server, page=page, page_size=page_size)
+        status_code, data = radarr_get_history(
+            server, page=page, page_size=page_size, instance_id=_arr_instance_id(request)
+        )
         return Response(data, status=status_code)
 
 
@@ -691,7 +710,7 @@ class GameServerSonarrRootFoldersView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = sonarr_get_root_folders(server)
+        status_code, data = sonarr_get_root_folders(server, instance_id=_arr_instance_id(request))
         return Response(data, status=status_code)
 
 
@@ -702,7 +721,7 @@ class GameServerSonarrQualityProfilesView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = sonarr_get_quality_profiles(server)
+        status_code, data = sonarr_get_quality_profiles(server, instance_id=_arr_instance_id(request))
         return Response(data, status=status_code)
 
 
@@ -715,7 +734,7 @@ class GameServerSonarrSeriesView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = sonarr_get_series(server)
+        status_code, data = sonarr_get_series(server, instance_id=_arr_instance_id(request))
         return Response(data, status=status_code)
 
     def post(self, request: Request, server_id: int) -> Response:
@@ -734,7 +753,7 @@ class GameServerSonarrLookupView(APIView):
         term = request.query_params.get("term", "")
         if not term:
             return Response([], status=status.HTTP_200_OK)
-        status_code, data = sonarr_lookup(server, term)
+        status_code, data = sonarr_lookup(server, term, instance_id=_arr_instance_id(request))
         return Response(data, status=status_code)
 
 
@@ -749,7 +768,9 @@ class GameServerSonarrQueueView(APIView):
         server = _get_server_or_404(request, server_id)
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 50))
-        status_code, data = sonarr_get_queue(server, page=page, page_size=page_size)
+        status_code, data = sonarr_get_queue(
+            server, page=page, page_size=page_size, instance_id=_arr_instance_id(request)
+        )
         return Response(data, status=status_code)
 
     def delete(self, request: Request, server_id: int, queue_id: str) -> Response:
@@ -757,7 +778,11 @@ class GameServerSonarrQueueView(APIView):
         remove_from_client = request.query_params.get("remove_from_client", "true").lower() == "true"
         blocklist = request.query_params.get("blocklist", "false").lower() == "true"
         status_code, data = sonarr_delete_queue(
-            server, queue_id, remove_from_client=remove_from_client, blocklist=blocklist
+            server,
+            queue_id,
+            remove_from_client=remove_from_client,
+            blocklist=blocklist,
+            instance_id=_arr_instance_id(request),
         )
         return Response(data, status=status_code)
 
@@ -771,7 +796,9 @@ class GameServerSonarrHistoryView(APIView):
         server = _get_server_or_404(request, server_id)
         page = int(request.query_params.get("page", 1))
         page_size = int(request.query_params.get("page_size", 50))
-        status_code, data = sonarr_get_history(server, page=page, page_size=page_size)
+        status_code, data = sonarr_get_history(
+            server, page=page, page_size=page_size, instance_id=_arr_instance_id(request)
+        )
         return Response(data, status=status_code)
 
 

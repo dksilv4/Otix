@@ -18,6 +18,7 @@ import {
   Plus,
   Radio,
   DownloadCloud,
+  Search,
 } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
@@ -35,12 +36,15 @@ import {
   usePingGameServer,
 } from '@/features/downloads/use-server-downloads'
 import { ServerFileExplorer } from '@/features/downloads/molecules/server-file-explorer'
-import { ServerUsenetSettingsModal } from '@/features/downloads/molecules/server-usenet-settings-modal'
+import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
+import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/server-prowlarr-settings-modal'
+import { useModal } from '@/lib/modals'
 
 
 export function SettingsLauncherPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { openModal } = useModal()
   const isDesktop = hasDesktopAPI()
   const { settings, update } = useLauncherSettings()
 
@@ -103,7 +107,6 @@ export function SettingsLauncherPage() {
   const [serverToken, setServerToken] = useState('')
   const [serverSubmitting, setServerSubmitting] = useState(false)
   const [exploringServerId, setExploringServerId] = useState<number | null>(null)
-  const [usenetServer, setUsenetServer] = useState<{ id: number; name: string } | null>(null)
 
 
   const handleAddServer = async (e: React.FormEvent) => {
@@ -721,12 +724,37 @@ export function SettingsLauncherPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setUsenetServer({ id: server.id, name: server.name })}
+                      onClick={() => {
+                        const close = openModal(
+                          <ServerSabnzbdSettingsModal
+                            serverId={server.id}
+                            serverName={server.name}
+                            onClose={() => close()}
+                          />
+                        )
+                      }}
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium border border-white/10 transition-colors"
-                      title="Configure SABnzbd and Prowlarr on this Server"
+                      title="Configure SABnzbd on this Server"
                     >
                       <DownloadCloud size={12} />
-                      <span>Usenet / SABnzbd</span>
+                      <span>SABnzbd</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const close = openModal(
+                          <ServerProwlarrSettingsModal
+                            serverId={server.id}
+                            serverName={server.name}
+                            onClose={() => close()}
+                          />
+                        )
+                      }}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium border border-white/10 transition-colors"
+                      title="Configure Prowlarr on this Server"
+                    >
+                      <Search size={12} />
+                      <span>Prowlarr</span>
                     </button>
                     <button
                       type="button"
@@ -770,15 +798,6 @@ export function SettingsLauncherPage() {
           </div>
         </div>
       </SettingsCard>
-
-      {usenetServer && (
-        <ServerUsenetSettingsModal
-          serverId={usenetServer.id}
-          serverName={usenetServer.name}
-          isOpen={true}
-          onClose={() => setUsenetServer(null)}
-        />
-      )}
     </div>
   )
 }
