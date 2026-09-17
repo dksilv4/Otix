@@ -1,6 +1,6 @@
 """Mood check-in request/response shapes (social domain).
 
-Mirrors ``backend/otix/schemas/mood.py``: ``MoodCheckInCreate`` is the request
+Mirrors ``old-backend/otix/schemas/mood.py``: ``MoodCheckInCreate`` is the request
 body, ``MoodCheckInOut`` the persisted row and ``MoodCheckInTodayResponse`` the
 ``/today`` envelope. Allowed ``mood``/``feeling`` values come straight off the
 model module so serializer choices can never drift from the CheckConstraints.

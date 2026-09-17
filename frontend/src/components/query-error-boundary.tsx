@@ -1,7 +1,7 @@
 // TODO: Review this file
 import { Component, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
-import { showErrorToast } from '@/old-features/ui/molecules/toast'
+import { showErrorToast } from '@ui/molecules/toast'
 import './query-error-boundary.scss'
 
 interface Props {

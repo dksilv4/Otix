@@ -4,7 +4,7 @@ import { MediaStickyHeaderV4 } from './media-sticky-header'
 import type { MediaItemDetail } from '@media'
 
 // Mocks
-vi.mock('@/old-features/auth', () => ({
+vi.mock('@auth/hooks/use-auth', () => ({
   useAuth: () => ({ isAuthenticated: true }),
 }))
 

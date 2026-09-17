@@ -89,6 +89,8 @@ export interface ServerSonarrSeries {
   year?: number;
   tvdbId?: number;
   tvdb_id?: number;
+  tmdbId?: number;
+  tmdb_id?: number;
   imdbId?: string;
   imdb_id?: string;
   overview?: string;
@@ -123,6 +125,10 @@ export interface ServerArrQueueItem {
   output_path?: string;
   errorMessage?: string;
   error_message?: string;
+  tmdbId?: number;
+  tmdb_id?: number;
+  tvdbId?: number;
+  tvdb_id?: number;
 }
 
 export interface ServerArrQueueResponse {
@@ -141,11 +147,13 @@ export interface AddRadarrMoviePayload {
   monitored?: boolean;
   search_for_movie?: boolean;
   minimum_availability?: string;
+  instance_id?: string;
 }
 
 export interface AddSonarrSeriesPayload {
-  title: string;
-  tvdb_id: number;
+  title?: string;
+  tvdb_id?: number;
+  tmdb_id?: number;
   year?: number;
   quality_profile_id?: number;
   root_folder_path?: string;
@@ -153,4 +161,5 @@ export interface AddSonarrSeriesPayload {
   search_for_missing_episodes?: boolean;
   series_type?: string;
   season_folder?: boolean;
+  instance_id?: string;
 }

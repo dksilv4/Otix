@@ -19,7 +19,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn, formatBytes } from '@/lib/utils';
-import { useToast } from '@/old-features/ui/molecules/toast';
+import { useToast } from '@ui/molecules/toast';
 import { isDesktop } from '@/lib/desktop/api';
 import { useGameServers } from '../use-server-downloads';
 import {

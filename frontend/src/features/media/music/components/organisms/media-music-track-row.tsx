@@ -4,7 +4,7 @@ import type { PlexTrackInfo } from '@/lib/player/plex-audio-provider'
 import { TrackInlineActions } from '@media/music/components/molecules/media-track-inline-actions'
 import { usePlayer } from '@/lib/player/use-player'
 import { useRateTrack } from '@media/queries/media-queries'
-import { useToast } from '@/old-features/ui/molecules/toast'
+import { useToast } from '@ui/molecules/toast'
 
 export interface TrackRowProps {
   track: TrackOut

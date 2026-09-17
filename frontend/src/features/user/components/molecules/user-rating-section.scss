@@ -1,0 +1,13 @@
+@reference "../../../../_tailwind-ref.css";
+
+.dk-user-rating-section__sign-in {
+  @apply inline-flex items-center gap-1.5 text-xs text-muted-foreground;
+}
+
+.dk-user-rating-section__link {
+  @apply text-primary;
+}
+
+.dk-user-rating-section__link:hover {
+  @apply underline;
+}

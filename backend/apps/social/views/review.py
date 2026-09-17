@@ -1,6 +1,6 @@
 """Review-vote endpoints (legacy composite-addressed review).
 
-Mirror the legacy ``backend/otix/api/media/review_vote/router.py`` handlers for
+Mirror the legacy ``old-backend/otix/api/media/review_vote/router.py`` handlers for
 ``/reviews/{review_user_id}/{media_item_id}/vote``: POST is a 204 upsert with
 toggle-off semantics, DELETE is 204 (404 ``"Vote not found"`` when absent) and
 GET returns the ``{up, down, my_vote}`` tallies. The legacy "cannot vote on your

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { DkButton } from '@/old-features/ui/atoms/button'
+import { DkButton } from '@ui/atoms/button'
 import { CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react'
 import { useSettingsSaveContext } from '../../context/settings-save-context'
 

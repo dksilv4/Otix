@@ -1,6 +1,6 @@
 import React from 'react'
-import { DkDropdown } from '@/old-features/ui/atoms/dropdown'
-import { DkInput } from '@/old-features/ui/atoms/input'
+import { DkDropdown } from '@ui/atoms/dropdown'
+import { DkInput } from '@ui/atoms/input'
 import type { ArrQualityProfile, ArrRootFolder } from '../arr-types'
 
 export function ArrLibraryDefaults({

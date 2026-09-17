@@ -1,6 +1,6 @@
 """User activity endpoints (timeline, mood, heatmap, daily rollup).
 
-Mirror the legacy ``backend/otix/api/user/{activity,daily_activity,friend_feed}
+Mirror the legacy ``old-backend/otix/api/user/{activity,daily_activity,friend_feed}
 /router.py`` handlers. Timeline/mood-timeline reads of any user are public;
 ``/me`` rollups are authenticated.
 """

@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import 'tailwindcss';
-@import '@/old-features/ui/tokens.css';
+@import '@/components/ui/tokens.css';
 
 /* ── shadcn/ui CSS variables (new-york, zinc) ── */
 @theme inline {

@@ -1,6 +1,6 @@
 """Peer user-rating and media-rating-aggregate endpoints.
 
-Mirror the legacy ``backend/otix/api/user/rating/router.py`` handlers. The peer
+Mirror the legacy ``old-backend/otix/api/user/rating/router.py`` handlers. The peer
 rating of another user is read/written via the ``workout.UserRating`` table
 (cross-app read, matching the legacy users-domain ``user_ratings`` table).
 ``rating-distribution``/``top-rated`` read the *target user's* media ratings and

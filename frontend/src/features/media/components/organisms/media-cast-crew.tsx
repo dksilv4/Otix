@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Users, ExternalLink } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { PeopleCard } from '@people/components/molecules/people-card'
 import { groupByRole } from '@media'
-import { DkDialog } from '@/old-features/ui/molecules/dialog'
+import { DkDialog } from '@ui/molecules/dialog'
 import { cn } from '@/lib/utils'
 
 export interface CreditItem {

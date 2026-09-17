@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { DownloadCloud } from 'lucide-react';
-import { useToast } from '@/old-features/ui/molecules/toast';
-import { DkInput } from '@/old-features/ui/atoms/input';
+import { useToast } from '@ui/molecules/toast';
+import { DkInput } from '@ui/atoms/input';
 import {
   useSaveServerSabnzbdConfig,
   useServerUsenetConfig,

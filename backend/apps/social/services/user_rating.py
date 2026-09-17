@@ -1,6 +1,6 @@
 """Peer user ratings, reputation and a user's media-rating aggregates.
 
-Port of ``backend/otix/services/user_rating_service.py``. The peer-rating table
+Port of ``old-backend/otix/services/user_rating_service.py``. The peer-rating table
 (``workout.UserRating``) is read cross-app exactly as the legacy ``user_ratings``
 table was a users-domain table: a rater scores another user 1-10. Reputation
 (``composite_score``) reproduces the legacy log2-scaled pillar math; XP-derived

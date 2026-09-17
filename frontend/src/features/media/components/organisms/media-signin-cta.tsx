@@ -1,5 +1,5 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { Logo } from '@/old-features/ui/atoms/logo'
+import { Logo } from '@ui/atoms/logo'
 
 export function SignInCTA() {
   const location = useLocation()

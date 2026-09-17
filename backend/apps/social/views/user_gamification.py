@@ -1,6 +1,6 @@
 """Achievement/badge/karma endpoints (``/users/{username}/badges`` etc.).
 
-Mirror the legacy ``backend/otix/api/user/{badges,karma}/router.py`` handlers.
+Mirror the legacy ``old-backend/otix/api/user/{badges,karma}/router.py`` handlers.
 Badge/achievement/karma reads are public (no auth dependency in legacy); the
 badge-claim mutation is authenticated. XP award tasks are not ported, so a claim
 only flips the persisted row.

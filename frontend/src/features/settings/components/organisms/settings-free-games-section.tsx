@@ -5,7 +5,7 @@ import { openSessionWindow } from '@/lib/utils/open-external'
 import { SettingsCard } from '../molecules/settings-card'
 import { SectionHeader } from '../molecules/settings-section-header'
 import { ProviderLogo } from '../atoms/provider-logo'
-import { Carousel } from '@/old-features/ui/molecules/carousel'
+import { Carousel } from '@ui/molecules/carousel'
 
 interface EpicFreeGame {
   id: string

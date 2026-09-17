@@ -17,7 +17,7 @@ import { usePopularGames } from "@/features/launcher/data/queries"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { useAuth } from "@/lib/providers/auth"
 import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
-import { useToast } from "@/old-features/ui/molecules/toast"
+import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
 

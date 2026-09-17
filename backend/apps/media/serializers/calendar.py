@@ -1,4 +1,4 @@
-"""Media-calendar serializers (legacy ``backend/otix/schemas/calendar.py``).
+"""Media-calendar serializers (legacy ``old-backend/otix/schemas/calendar.py``).
 
 ``CalendarEvent`` mirrors the legacy event payload for watchlist releases,
 new episodes and franchise/collection sequels. ``episode_info`` is only present

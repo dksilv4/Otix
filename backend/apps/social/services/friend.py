@@ -1,6 +1,6 @@
 """Friend-request graph domain logic.
 
-Port of the legacy ``FriendService`` (``backend/otix/services/friend_service.py``)
+Port of the legacy ``FriendService`` (``old-backend/otix/services/friend_service.py``)
 minus its Celery badge checks. Friends are represented only by accepted
 ``FriendRequest`` rows (legacy semantics -- there is no separate join row).
 ``ValueError``/``PermissionError`` are raised for request-state problems and the

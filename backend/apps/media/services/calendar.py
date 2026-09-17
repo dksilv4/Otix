@@ -1,6 +1,6 @@
 """Upcoming-release calendar derived from the current user's activity.
 
-Port of the legacy ``CalendarService`` (``backend/otix/services/
+Port of the legacy ``CalendarService`` (``old-backend/otix/services/
 calendar_service.py``). Three event families, merged newest-first:
 - ``watchlist_release``  — items on the user's watchlist with a release date
 - ``new_episode``        — recent/upcoming episodes of shows the user watches

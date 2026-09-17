@@ -1,6 +1,6 @@
 """Admin/moderator read endpoints (mounted at ``/api/v1/admin/``).
 
-Port of ``backend/otix/api/admin/**``. Five routes require a staff admin
+Port of ``old-backend/otix/api/admin/**``. Five routes require a staff admin
 (deleted-tmdb-ids, hydration, hydration/summary, metrics, stats) mirroring
 legacy ``get_current_admin_user``; ``edit-proposals`` mirrors legacy
 ``get_trusted_or_admin_user``, which our trusted-user approximation collapses

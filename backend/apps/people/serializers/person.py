@@ -3,7 +3,7 @@
 Follows the accounts golden pattern: read serializers are field-listed (never
 ``fields = "__all__"``) and grouped by audience (summary vs detail vs request
 bodies). Keys mirror the legacy FastAPI schemas in
-``backend/otix/schemas/people.py`` as closely as our models allow.
+``old-backend/otix/schemas/people.py`` as closely as our models allow.
 
 The detail serializer reads scalar aggregates and per-user state from
 ``context["person_context"]`` — populated once by the detail view from

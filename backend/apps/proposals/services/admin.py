@@ -1,6 +1,6 @@
 """Admin/moderator dashboard reads as plain callables.
 
-Faithful ports of ``backend/otix/services/admin_service.py`` where the
+Faithful ports of ``old-backend/otix/services/admin_service.py`` where the
 greenfield models can answer the query; model gaps are returned as the closest
 empty/zero state and listed in the endpoint-port report:
 - ``hydration/summary`` is Redis-sorted-set backed upstream (no hydration-run

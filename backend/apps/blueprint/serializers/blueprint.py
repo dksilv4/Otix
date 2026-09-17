@@ -1,7 +1,7 @@
 """Blueprint serializers: response shapes and create/update request bodies.
 
 Read serializers are field-listed (never ``__all__``) and mirror the legacy
-FastAPI schemas (``backend/otix/schemas/blueprint.py``): ``BlueprintListOut``
+FastAPI schemas (``old-backend/otix/schemas/blueprint.py``): ``BlueprintListOut``
 excludes the raw ``blueprint_string`` and ``updated_at``, while the detail shape
 adds them. ``likes_count``/``has_liked`` are read off the model instance after
 the service layer annotates them; ``author_name`` resolves through the

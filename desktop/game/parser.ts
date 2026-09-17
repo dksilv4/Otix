@@ -199,7 +199,7 @@ export function parseReleaseName(rawName: string): ParsedRelease {
 
 // ── applyNamingTemplate ─────────────────────────────────────────────────────
 
-const VALID_TOKENS = new Set([
+export const VALID_TOKENS = new Set([
   'Title', 'CleanTitle', 'Year', 'Edition', 'Platform',
   'ReleaseGroup', 'Version', 'OriginalName', 'MediaType', 'ext',
 ]);

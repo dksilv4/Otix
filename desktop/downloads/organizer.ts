@@ -11,7 +11,16 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { cleanGameTitle, extractGroup, parseVersion, type ParsedRelease, type FileInfo } from '../game/parser';
+import {
+  cleanGameTitle,
+  extractGroup,
+  parseVersion,
+  applyNamingTemplate,
+  validateNamingTemplate,
+  VALID_TOKENS,
+  type ParsedRelease,
+  type FileInfo,
+} from '../game/parser';
 import { executeOrganization, OrganizationPreviewItem } from '../installer';
 import { getDb } from '../db';
 import type Database from 'better-sqlite3';
@@ -284,80 +293,9 @@ export async function findDownloadedContent(
 
 // ── Template application ────────────────────────────────────────────────────
 
-const VALID_TOKENS = new Set([
-  'Title', 'CleanTitle', 'Year', 'Edition', 'Platform',
-  'ReleaseGroup', 'Version', 'OriginalName', 'MediaType', 'ext',
-]);
+// Re-export naming template utilities from canonical game/parser
+export { applyNamingTemplate, validateNamingTemplate, VALID_TOKENS };
 
-/**
- * Apply a naming template to a parsed release + file info.
- *
- * Template format follows arr-style:
- *   "{Title} ({Year}) [{Platform}]/{Title} ({Year}) [{Platform}].{ext}"
- * Everything before the last / is the folder path, the rest is the filename.
- *
- * Returns the absolute target path.
- */
-export function applyNamingTemplate(
-  release: ParsedRelease,
-  template: string,
-  fileInfo: FileInfo,
-  baseDir?: string,
-): string {
-  const tokens: Record<string, string> = {
-    Title: release.title,
-    CleanTitle: release.cleanTitle,
-    Year: release.year ?? '',
-    Edition: release.edition ?? '',
-    Platform: release.platform ?? 'PC',
-    ReleaseGroup: release.group ?? '',
-    Version: release.version ?? '',
-    OriginalName: release.rawName,
-    MediaType: fileInfo.type === 'iso' ? 'ISO' : fileInfo.type === 'pc_game' ? 'PC' : 'Update',
-    ext: fileInfo.ext,
-  };
-
-  let result = template;
-  for (const [key, value] of Object.entries(tokens)) {
-    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value || '');
-  }
-
-  // Clean up empty bracket pairs left by missing tokens (arr-style)
-  result = result.replace(/\(\s*\)/g, '').replace(/\[\s*\]/g, '').replace(/\{\s*\}/g, '');
-  // Clean double slashes, trailing slashes, double spaces, trailing spaces before /
-  result = result
-    .replace(/[\\/]+/g, '/')
-    .replace(/\/$/, '')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/\s+\//g, '/')
-    .replace(/\/\s+/g, '/')
-    // Strip trailing dot when ext is empty (folders)
-    .replace(/\.$/, '')
-    .trim();
-
-  // If a base directory is provided, resolve relative to it
-  if (baseDir) {
-    return path.join(baseDir, result);
-  }
-  return result;
-}
-
-/**
- * Validate a naming template string — ensures all tokens are known.
- */
-export function validateNamingTemplate(template: string): { valid: boolean; error?: string } {
-  const foundTokens = template.match(/\{(\w+)\}/g) || [];
-  for (const tok of foundTokens) {
-    const name = tok.slice(1, -1);
-    if (!VALID_TOKENS.has(name)) {
-      return { valid: false, error: `Unknown token: {${name}}` };
-    }
-  }
-  if (!template.includes('{Title}') && !template.includes('{CleanTitle}')) {
-    return { valid: false, error: 'Template must include {Title} or {CleanTitle}' };
-  }
-  return { valid: true };
-}
 
 /**
  * Smart-preview a directory using parseReleaseName + naming template.

@@ -1,6 +1,6 @@
 """Per-user ratings: a rater scores another user 1-10.
 
-Ported from ``UserRating`` in legacy ``backend/otix/domain/user.py``
+Ported from ``UserRating`` in legacy ``old-backend/otix/domain/user.py``
 (``user_ratings``). Both FKs point at the user model, so each carries a
 distinct reverse ``related_name``.
 """

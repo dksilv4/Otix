@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Search, ArrowRight, Shield, User, Lock, Sparkles, Settings } from 'lucide-react'
 import { useAuth } from '@/lib/providers/auth'
-import { DkAvatar } from '@/old-features/ui/atoms/avatar'
+import { DkAvatar } from '@ui/atoms/avatar'
 
 import { NAV_ITEMS } from '../constants'
 import type { NavItem } from '../constants'

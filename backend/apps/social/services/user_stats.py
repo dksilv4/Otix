@@ -1,6 +1,6 @@
 """User aggregate stats, hall-of-fame and library statistics.
 
-Port of ``backend/otix/api/user/stats/router.py``. ``hall-of-fame`` reads the
+Port of ``old-backend/otix/api/user/stats/router.py``. ``hall-of-fame`` reads the
 legacy ``User.hof_ids`` JSON column which has no greenfield model home, so it
 returns an empty list (the picks a user curates are not portable without that
 column). Library statistics reproduce the legacy interaction join plus episode

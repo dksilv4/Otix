@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useTheme } from '@/lib/providers/theme'
-import { useAuth } from '@/old-features/auth'
+import { useAuth } from '@auth/hooks/use-auth'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { useModal } from '@/lib/modals'
 import { MediaTrailerModal } from './media-trailer-modal'
@@ -35,13 +35,15 @@ import {
   primaryTrailer,
   useMediaParams,
 } from '@media'
-import { AdminActionsMenu } from '@/old-features/admin/molecules/admin-actions-menu'
-import { AddToListButton } from '@list/molecules/add-to-list-button'
+import { AdminActionsMenu } from '@/features/admin'
+import { AddToListButton } from '@list'
 import { MediaDetailPluginButtons } from './plugin-detail-actions'
 import { useMediaDetailPluginActions } from '@/features/media/hooks/use-media-detail-plugin-actions'
 import { DownloadGameButton } from '@/features/media/game/components/organisms/media-download-game-button'
+import { RequestMediaButton } from './media-request-button'
+import { useRequestMedia } from '@/features/media/hooks/use-request-media'
 import { useToggleInteraction, useUserInteractions } from '@/features/interaction/interaction-queries'
-import { showXPToast } from '@/old-features/ui/atoms/xp-toast'
+import { showXPToast } from '@ui/atoms/xp-toast'
 import { cn } from '@/lib/utils'
 
 interface MediaHeroProps {
@@ -58,6 +60,7 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
 
   const { data: detail } = useQuery(mediaQueries.detail(mediaType, mediaId, resolvedTheme))
   const pluginActions = useMediaDetailPluginActions(mediaType, mediaId, detail?.tmdbId, Boolean(detail))
+  const requestMedia = useRequestMedia()
 
   const { data: userInteractions } = useUserInteractions(mediaType, mediaId, {
     enabled: isAuthenticated,
@@ -305,6 +308,7 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
             {/* ── Action Command Row with Icon-Based Action Cluster ── */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2">
               {mediaType === 'game' && <DownloadGameButton />}
+              {(mediaType === 'movie' || mediaType === 'show') && <RequestMediaButton />}
 
               {/* PRIMARY ACTION: Plugin Play (e.g. Plex) */}
               {hasPlayWidgets ? (
@@ -338,8 +342,8 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
                 </button>
               )}
 
-              {/* Request Plugin Action Buttons (Radarr / Sonarr) */}
-              {pluginActions.widgets.length > 0 && (
+              {/* Request Plugin Action Buttons (Radarr / Sonarr) — desktop fallback */}
+              {requestMedia.hidden && pluginActions.widgets.length > 0 && (
                 <MediaDetailPluginButtons
                   widgets={pluginActions.widgets}
                   playWidgets={[]}

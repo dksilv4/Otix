@@ -1,4 +1,4 @@
-import { OrganizerSection } from '@/old-features/settings/organisms/settings-sections/organizer-section'
+import { OrganizerSection } from '../components/organisms/organizer-section'
 
 export function SettingsOrganizerPage() {
   return <OrganizerSection />

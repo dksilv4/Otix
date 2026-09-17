@@ -1,4 +1,4 @@
-"""Music track-rating serializers (legacy ``backend/otix/schemas/track.py``).
+"""Music track-rating serializers (legacy ``old-backend/otix/schemas/track.py``).
 
 Request body mirrors ``TrackRatingCreate`` (score 1-10); the response mirrors
 ``TrackRatingOut`` including the track-level aggregates the legacy service

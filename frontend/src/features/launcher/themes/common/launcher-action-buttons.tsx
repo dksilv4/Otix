@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Play, FolderOpen, Sliders, Info, CheckCircle2, AlertCircle, Loader2, Server } from "lucide-react"
 import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
-import { useToast } from "@/old-features/ui/molecules/toast"
+import { useToast } from "@ui/molecules/toast"
 import { useInstallProgress } from "@/features/launcher/data/install-store"
 import { useServerGames, useRemoteDownloads } from "@/features/downloads/use-server-downloads"
 import { matchServerGameFile } from "@/features/downloads/server-availability"

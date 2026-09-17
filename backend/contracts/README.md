@@ -10,7 +10,7 @@ introspecting the **live FastAPI app's router graph** — the FastAPI/Pydantic
 `ForwardRef('User | None')` on a `current_user` dependency raises
 `PydanticUserError: class-not-fully-defined`), so the route *surface* is frozen
 instead of the full OpenAPI schema. Response-shape parity must be read from the
-legacy code per area (`backend/otix/api/<area>/**` + `backend/otix/schemas/**`)
+legacy code per area (`old-backend/otix/api/<area>/**` + `old-backend/otix/schemas/**`)
 until schema generation is fixed.
 
 Each entry: `{ "method": "GET", "path": "/api/v1/media/{media_type}/{media_id}" }`

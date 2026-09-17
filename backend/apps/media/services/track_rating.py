@@ -1,6 +1,6 @@
 """Per-user 1-10 track ratings and the track aggregate columns they drive.
 
-Port of the legacy ``TrackRatingService`` (``backend/otix/services/
+Port of the legacy ``TrackRatingService`` (``old-backend/otix/services/
 track_rating_service.py``). Upsert keeps the ``media.Track``
 ``avg_rating``/``rating_count`` columns in sync so the read route can serve the
 same ``TrackRatingOut`` payload as the write route.

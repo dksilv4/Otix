@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { DkDropdown, type DkDropdownOption } from '@/old-features/ui/atoms/dropdown'
-import { DkSwitch } from '@/old-features/ui/atoms/switch'
+import { DkDropdown, type DkDropdownOption } from '@ui/atoms/dropdown'
+import { DkSwitch } from '@ui/atoms/switch'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'

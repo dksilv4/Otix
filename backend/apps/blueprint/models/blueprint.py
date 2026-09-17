@@ -1,6 +1,6 @@
 """Blueprint domain models: user blueprint strings and likes.
 
-Ported from the legacy FastAPI ``backend/otix/domain/blueprint.py``. A
+Ported from the legacy FastAPI ``old-backend/otix/domain/blueprint.py``. A
 blueprint belongs to a user and stores the raw share string plus optional
 parsed payload and tags; likes are deduplicated per user via ``uq_blueprint_like``.
 """

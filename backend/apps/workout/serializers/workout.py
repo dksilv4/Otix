@@ -1,7 +1,7 @@
 """Workout serializers: request bodies and response shapes.
 
 Field-listed read serializers mirror the legacy FastAPI payloads
-(``backend/otix/schemas/workout.py``): the full ``WorkoutOut`` shape for
+(``old-backend/otix/schemas/workout.py``): the full ``WorkoutOut`` shape for
 create/get/patch, the lighter ``WorkoutListOut`` shape for list/today, plus the
 exercise catalog and set/category shapes. A link's ``sets`` is stored as raw
 JSON (legacy JSONB) and echoed back verbatim.

@@ -3,8 +3,8 @@
 Edit proposals use the greenfield ``proposals.MediaEditProposal`` row; the
 legacy ``/media/admin/match-proposals`` endpoints delegate to the unified
 ``proposals.Proposal`` table, so those read/write serializers map to that row's
-``payload`` shape (``backend/otix/schemas/admin_edit.py`` and the inline
-``ProposalOut`` in ``backend/otix/api/media/match_proposal.py``).
+``payload`` shape (``old-backend/otix/schemas/admin_edit.py`` and the inline
+``ProposalOut`` in ``old-backend/otix/api/media/match_proposal.py``).
 """
 
 from rest_framework import serializers

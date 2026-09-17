@@ -1,6 +1,6 @@
 """User activity timeline, mood timeline, heatmap and daily-activity rollups.
 
-Port of ``backend/otix/api/user/activity/router.py`` and the shared
+Port of ``old-backend/otix/api/user/activity/router.py`` and the shared
 ``_fetch_user_activity_events`` helper. Activity events merge review,
 media-interaction and episode-interaction rows newest-first. Aggregations are
 computed in Python (over the small per-user window) so they behave identically

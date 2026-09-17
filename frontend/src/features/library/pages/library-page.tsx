@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Loader2, Film, List, Download, ChevronDown, CheckCircle2, XCircle, Clock, ArchiveX, Tv, Music } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ListsTabContent } from '@/old-features/library/molecules/lists-tab-content'
+import { ListsTabContent } from '@library/molecules/lists-tab-content'
 import { isDesktop } from '@/lib/desktop/api'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { apiClient } from '@/lib/api/client'

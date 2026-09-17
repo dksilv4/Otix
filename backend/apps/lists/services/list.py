@@ -1,7 +1,7 @@
 """List domain logic as plain callables over the models.
 
 Views stay thin; every query/mutation lives here. The functions mirror the
-legacy ``ListService`` (``backend/otix/services/list_service.py``):
+legacy ``ListService`` (``old-backend/otix/services/list_service.py``):
 
 - ownership/access rules are identical (owner, or accepted collaborator; writes
   like update/delete/add-item/reorder are owner-only, while collaborator

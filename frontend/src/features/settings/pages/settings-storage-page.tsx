@@ -5,12 +5,12 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { formatBytes, cn } from '@/lib/utils'
-import { DkCheckbox } from '@/old-features/ui/atoms/checkbox'
-import { DkInput } from '@/old-features/ui/atoms/input'
-import { DkSelect } from '@/old-features/ui/atoms/select'
-import { DkSwitch } from '@/old-features/ui/atoms/switch'
-import { DkDialog } from '@/old-features/ui/molecules/dialog'
-import { useToast } from '@/old-features/ui/molecules/toast'
+import { DkCheckbox } from '@ui/atoms/checkbox'
+import { DkInput } from '@ui/atoms/input'
+import { DkSelect } from '@ui/atoms/select'
+import { DkSwitch } from '@ui/atoms/switch'
+import { DkDialog } from '@ui/molecules/dialog'
+import { useToast } from '@ui/molecules/toast'
 import {
   AlertTriangle,
   Download,

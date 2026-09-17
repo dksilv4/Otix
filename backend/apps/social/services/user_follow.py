@@ -1,4 +1,4 @@
-"""User-to-user follow graph (port of ``backend/otix/services/follow_service.py``).
+"""User-to-user follow graph (port of ``old-backend/otix/services/follow_service.py``).
 
 Follows and pending follow requests mirror the legacy flow: following a user
 creates a ``Follow`` edge (the legacy private-account branch that returns a

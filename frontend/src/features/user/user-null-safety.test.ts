@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeReviewStats } from '@/old-features/user/user-queries'
+import { computeReviewStats } from './user-queries'
 
 describe('computeReviewStats null-safety and format resilience', () => {
   it('handles a bare array of review objects', () => {

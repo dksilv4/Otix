@@ -19,7 +19,7 @@ import { SlidePanel } from '@/lib/modals/slide-panel'
 import type { PluginConfigField, PluginInfo } from '@/features/plugins/types/plugins'
 import { PluginForm } from '../PluginForm'
 import { Alert, Badge, Button, EmptyState, Input, Select, Spinner } from '@/features/plugins/ui'
-import { MediaCard } from '@/old-features/ui/molecules/media-card'
+import { MediaCard } from '@ui/molecules/media-card'
 import { cn } from '@/lib/utils'
 
 interface PluginSettingsPageProps {

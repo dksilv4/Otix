@@ -7,7 +7,7 @@ import { ServerProwlarrSettingsModal } from '../server-prowlarr-settings-modal'
 import { ServerRadarrSettingsModal } from '../server-radarr-settings-modal'
 import { ServerSonarrSettingsModal } from '../server-sonarr-settings-modal'
 
-vi.mock('@/old-features/ui/molecules/toast', () => ({
+vi.mock('@ui/molecules/toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }))
 

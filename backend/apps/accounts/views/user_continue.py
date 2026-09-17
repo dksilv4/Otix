@@ -2,7 +2,7 @@
 
 The view is thin; the interaction/media queries live in the social services
 layer (``apps.social.services.get_continue_watching``) because the source rows
-are social tables. Mirrors ``backend/otix/api/user/continue_watching/router.py``.
+are social tables. Mirrors ``old-backend/otix/api/user/continue_watching/router.py``.
 """
 
 from rest_framework.request import Request

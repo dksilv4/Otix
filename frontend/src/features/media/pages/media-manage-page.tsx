@@ -5,11 +5,11 @@ import { useAuth } from '@auth/hooks/use-auth'
 import { ArrowLeft, Bookmark, ImageOff, Info, Loader2, Monitor, Moon, Scissors, ShieldAlert, Sun } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { mediaQueries, mediaTypeFromParam } from '@media'
-import { useToast } from '@/old-features/ui/molecules/toast'
-import { DkButton } from '@/old-features/ui/atoms/button'
-import { DkSwitch } from '@/old-features/ui/atoms/switch'
-import { Image } from '@/old-features/ui/atoms/image'
-import { DkSkeleton } from '@/old-features/ui/atoms/skeleton'
+import { useToast } from '@ui/molecules/toast'
+import { DkButton } from '@ui/atoms/button'
+import { DkSwitch } from '@ui/atoms/switch'
+import { Image } from '@ui/atoms/image'
+import { DkSkeleton } from '@ui/atoms/skeleton'
 import {
   useMediaAssets,
   useSetArtworkSelection,
@@ -17,7 +17,7 @@ import {
   useSetTextlessPick,
   type ArtworkContext,
   type MediaAsset,
-} from '@/old-features/admin/admin-edit-queries'
+} from '@/features/admin'
 import { useMirroring, useSetMirroring } from '../hooks/use-media-admin-settings'
 
 // Artwork is browsed by visual family. The Poster family shows every poster and

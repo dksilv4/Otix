@@ -21,8 +21,8 @@
       "@/*": ["./src/*"],
       "@auth/*": ["./src/features/auth/*"],
       "@auth": ["./src/features/auth"],
-      "@ui/*": ["./src/old-features/ui/*"],
-      "@ui": ["./src/old-features/ui"],
+      "@ui/*": ["./src/components/ui/*"],
+      "@ui": ["./src/components/ui"],
       "@media/*": ["./src/features/media/*"],
       "@media": ["./src/features/media"],
       "@calendar/*": ["./src/features/calendar/*"],
@@ -47,8 +47,8 @@
       "@user": ["./src/features/user"],
       "@library/*": ["./src/features/library/*"],
       "@library": ["./src/features/library"],
-      "@list/*": ["./src/features/list/*", "./src/old-features/list/*"],
-      "@list": ["./src/features/list", "./src/old-features/list"],
+      "@list/*": ["./src/features/list/*"],
+      "@list": ["./src/features/list"],
       "@desktop/*": ["../desktop/*"],
       "@desktop": ["../desktop"]
     }

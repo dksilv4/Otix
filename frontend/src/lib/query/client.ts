@@ -2,7 +2,7 @@
 import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query'
 import type { Persister, PersistedClient } from '@tanstack/react-query-persist-client'
 import { getDesktopAPI } from '../desktop/api'
-import { showErrorToast } from '@/old-features/ui/molecules/toast'
+import { showErrorToast } from '@ui/molecules/toast'
 import { reportNetworkFailure, reportOnline } from '@/lib/offline'
 import { isAuthSessionError } from '@/lib/api/session-refresh'
 

@@ -1,7 +1,7 @@
 """List serializers: output, detail, collaborators, items and history.
 
 Field-listed read serializers mirroring the legacy FastAPI schemas in
-``backend/otix/schemas/list.py``:
+``old-backend/otix/schemas/list.py``:
 
 - ``UserListOut`` carries placeholder ``like_count``/``is_liked`` keys that the
   legacy routers left at their defaults; the detail route replaces them with the

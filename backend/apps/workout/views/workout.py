@@ -1,6 +1,6 @@
 """Workout endpoints: collection, today check-in, heatmap and detail CRUD.
 
-Mirrors the legacy FastAPI routers under ``backend/otix/api/workout/**``. All
+Mirrors the legacy FastAPI routers under ``old-backend/otix/api/workout/**``. All
 workout routes require the authenticated user (the global default); the
 exercise catalog is public (``views/exercises.py``). Owner-scoping matches
 legacy: a missing id is a 404, an existing workout owned by someone else is a

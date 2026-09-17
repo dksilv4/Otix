@@ -57,10 +57,9 @@ src/
 │   ├── query/             # TanStack Query client setup with persistence
 │   ├── router/            # TanStack Router setup
 │   └── utils/             # cn(), formatDuration, formatBytes, etc.
-├── components/            # Global components (shader bg, 404, error boundary)
+├── components/            # Global UI & shared components
 ├── assets/                # Images, logos, provider badges
 ├── types/                 # Shared TypeScript types
-├── old-features/          # Legacy feature modules (migration in progress)
 ├── main.tsx               # App entry point
 └── index.css              # Tailwind + design tokens + glass styles
 ```
@@ -213,8 +212,8 @@ Multi-stage build: `node:22-alpine` builder → `nginx:1.27-alpine` runner. Serv
 | `@settings` | `src/features/settings` |
 | `@user` | `src/features/user` |
 | `@list` | `src/features/list` |
-| `@company` | `src/old-features/company` |
-| `@ui` | `src/old-features/dk-ui` |
+| `@company` | `src/features/company` |
+| `@ui` | `src/components/ui` |
 | `@desktop` | `../desktop` |
 
 ---

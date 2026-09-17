@@ -2,21 +2,21 @@ import { lazy } from 'react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 
-const LibraryLayout = lazy(() => import('@/old-features/library/pages/library-layout').then(m => ({ default: m.LibraryLayout })))
+const LibraryLayout = lazy(() => import('./pages/library-layout').then(m => ({ default: m.LibraryLayout })))
 
-// Page components — all from old-features until migrated
-const LibraryOverviewPage = lazy(() => import('@/old-features/library/pages/library-overview-page').then(m => ({ default: m.LibraryOverviewPage })))
-const LibraryWatchlistPage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryWatchlistPage })))
-const LibraryLikePage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryLikePage })))
-const LibraryWatchedPage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryWatchedPage })))
-const LibraryPlayedPage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryPlayedPage })))
-const LibraryListenedPage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryListenedPage })))
-const LibraryOwnedPage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryOwnedPage })))
-const LibraryIntegrationSteamSection = lazy(() => import('@/old-features/library/pages/library-integration-steam-section').then(m => ({ default: m.LibraryIntegrationSteamSection })))
-const LibraryIntegrationPlexSection = lazy(() => import('@/old-features/library/pages/library-integration-plex-section').then(m => ({ default: m.LibraryIntegrationPlexSection })))
-const LibraryIntegrationYoutubeSection = lazy(() => import('@/old-features/library/pages/library-integration-youtube-section').then(m => ({ default: m.LibraryIntegrationYoutubeSection })))
-const LibraryWishlistPage = lazy(() => import('@/old-features/library/pages/library-wishlist-page').then(m => ({ default: m.LibraryWishlistPage })))
-const LibraryListsPage = lazy(() => import('@/old-features/library/pages/library-lists-page').then(m => ({ default: m.LibraryListsPage })))
+// Page components
+const LibraryOverviewPage = lazy(() => import('./pages/library-overview-page').then(m => ({ default: m.LibraryOverviewPage })))
+const LibraryWatchlistPage = lazy(() => import('./pages/library-core-tab-pages').then(m => ({ default: m.LibraryWatchlistPage })))
+const LibraryLikePage = lazy(() => import('./pages/library-core-tab-pages').then(m => ({ default: m.LibraryLikePage })))
+const LibraryWatchedPage = lazy(() => import('./pages/library-core-tab-pages').then(m => ({ default: m.LibraryWatchedPage })))
+const LibraryPlayedPage = lazy(() => import('./pages/library-core-tab-pages').then(m => ({ default: m.LibraryPlayedPage })))
+const LibraryListenedPage = lazy(() => import('./pages/library-core-tab-pages').then(m => ({ default: m.LibraryListenedPage })))
+const LibraryOwnedPage = lazy(() => import('./pages/library-core-tab-pages').then(m => ({ default: m.LibraryOwnedPage })))
+const LibraryIntegrationSteamSection = lazy(() => import('./pages/library-integration-steam-section').then(m => ({ default: m.LibraryIntegrationSteamSection })))
+const LibraryIntegrationPlexSection = lazy(() => import('./pages/library-integration-plex-section').then(m => ({ default: m.LibraryIntegrationPlexSection })))
+const LibraryIntegrationYoutubeSection = lazy(() => import('./pages/library-integration-youtube-section').then(m => ({ default: m.LibraryIntegrationYoutubeSection })))
+const LibraryWishlistPage = lazy(() => import('./pages/library-wishlist-page').then(m => ({ default: m.LibraryWishlistPage })))
+const LibraryListsPage = lazy(() => import('./pages/library-lists-page').then(m => ({ default: m.LibraryListsPage })))
 
 export function createLibraryRoutes(rootRoute: AnyRoute) {
   const libraryLayoutRoute = createRoute({

@@ -1,7 +1,7 @@
 """Catalog response serializers.
 
 Mirror the legacy ``MediaItemDetail`` / ``MediaItemSummary`` payloads in
-``backend/otix/schemas/media.py`` as field-listed serializers. Asset URLs are
+``old-backend/otix/schemas/media.py`` as field-listed serializers. Asset URLs are
 resolved once by ``apps.media.services.catalog`` and attached to each model
 instance (``poster_url``/``backdrop_url``/...); the nested subtype dicts are
 serialized from the OneToOne child rows (``movie``/``show``/``game``/``album``).

@@ -1363,6 +1363,8 @@ async def add_movie(
     inst = cfg.radarr.resolve(req.instance_id)
     try:
         return add_radarr_movie(inst, req.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to add movie to Radarr: {exc}")
 
@@ -1612,6 +1614,8 @@ async def add_series(
     inst = cfg.sonarr.resolve(req.instance_id)
     try:
         return add_sonarr_series(inst, req.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Failed to add series to Sonarr: {exc}")
 

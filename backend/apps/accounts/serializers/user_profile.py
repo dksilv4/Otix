@@ -1,7 +1,7 @@
 """Public profile-hub serializers: profile detail, search and continue-watching.
 
 Field lists mirror the legacy FastAPI schemas in
-``backend/otix/schemas/user.py``. The profile payload is built by
+``old-backend/otix/schemas/user.py``. The profile payload is built by
 ``apps.accounts.services.user_profile.build_user_profile`` into a flat dict
 whose keys this serializer re-declares so the API surface stays explicit.
 """

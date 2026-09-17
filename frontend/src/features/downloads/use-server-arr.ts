@@ -175,6 +175,7 @@ export function useAddServerRadarrMovie(serverId?: number) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: arrKeys.radarr.movies(serverId) });
+      queryClient.invalidateQueries({ queryKey: arrKeys.radarr.lookup(serverId) });
       queryClient.invalidateQueries({ queryKey: arrKeys.radarr.queue(serverId) });
     },
   });
@@ -360,6 +361,7 @@ export function useAddServerSonarrSeries(serverId?: number) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: arrKeys.sonarr.series(serverId) });
+      queryClient.invalidateQueries({ queryKey: arrKeys.sonarr.lookup(serverId) });
       queryClient.invalidateQueries({ queryKey: arrKeys.sonarr.queue(serverId) });
     },
   });

@@ -1,6 +1,6 @@
 """User-follow endpoints (``/users/{username}/follow*``).
 
-Mirror the legacy ``backend/otix/api/user/follow/router.py``: follow POST is 201
+Mirror the legacy ``old-backend/otix/api/user/follow/router.py``: follow POST is 201
 with a message/status body, unfollow DELETE is 204, accept/decline are 200 with
 a message body and 404 when the request is gone. Unknown target users are a 404
 ``{"detail": "User not found"}``; a non-owner reading/acting on a request inbox

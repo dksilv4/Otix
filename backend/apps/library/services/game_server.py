@@ -55,107 +55,7 @@ def ping_server_sync(server: UserGameServer) -> dict:
     return {"online": False, "error": f"HTTP {resp.status_code}"}
 
 
-def explorer_browse(server: UserGameServer, path: str | None = None) -> tuple[int, dict]:
-    """Proxy directory browse request to connected otix-server node."""
-    target_url = (server.primary_url or "").rstrip("/")
-    if not target_url:
-        return 400, {"error": "Server URL not configured"}
-
-    headers = {}
-    if server.auth_token:
-        headers["Authorization"] = f"Bearer {server.auth_token}"
-
-    params = {}
-    if path:
-        params["path"] = path
-
-    try:
-        with httpx.Client(timeout=6.0) as client:
-            resp = client.get(f"{target_url}/api/v1/explorer/browse", params=params, headers=headers)
-            try:
-                data = resp.json()
-            except Exception:
-                data = {"detail": resp.text}
-            return resp.status_code, data
-    except Exception as exc:
-        return 502, {"detail": f"Failed to contact game server node: {exc}"}
-
-
-def explorer_set_download_path(
-    server: UserGameServer,
-    path: str,
-    create_if_missing: bool = True,
-    add_as_library: bool = True,
-) -> tuple[int, dict]:
-    """Proxy set-download-path request to connected otix-server node."""
-    target_url = (server.primary_url or "").rstrip("/")
-    if not target_url:
-        return 400, {"error": "Server URL not configured"}
-
-    headers = {}
-    if server.auth_token:
-        headers["Authorization"] = f"Bearer {server.auth_token}"
-
-    payload = {
-        "path": path,
-        "create_if_missing": create_if_missing,
-        "add_as_library": add_as_library,
-    }
-
-    try:
-        with httpx.Client(timeout=8.0) as client:
-            resp = client.post(
-                f"{target_url}/api/v1/explorer/set-download-path",
-                json=payload,
-                headers=headers,
-            )
-            try:
-                data = resp.json()
-            except Exception:
-                data = {"detail": resp.text}
-            return resp.status_code, data
-    except Exception as exc:
-        return 502, {"detail": f"Failed to contact game server node: {exc}"}
-
-
-def explorer_create_folder(
-    server: UserGameServer,
-    parent_path: str,
-    folder_name: str,
-) -> tuple[int, dict]:
-    """Proxy create-folder request to connected otix-server node."""
-    target_url = (server.primary_url or "").rstrip("/")
-    if not target_url:
-        return 400, {"error": "Server URL not configured"}
-
-    headers = {}
-    if server.auth_token:
-        headers["Authorization"] = f"Bearer {server.auth_token}"
-
-    payload = {
-        "parent_path": parent_path,
-        "folder_name": folder_name,
-    }
-
-    try:
-        with httpx.Client(timeout=6.0) as client:
-            resp = client.post(
-                f"{target_url}/api/v1/explorer/create-folder",
-                json=payload,
-                headers=headers,
-            )
-            try:
-                data = resp.json()
-            except Exception:
-                data = {"detail": resp.text}
-            return resp.status_code, data
-    except Exception as exc:
-        return 502, {"detail": f"Failed to contact game server node: {exc}"}
-
-
-# ── Usenet (SABnzbd & Prowlarr) Operations ──────────────────────────────
-
-def usenet_proxy_request(
+def server_proxy_request(
     server: UserGameServer,
     method: str,
     path: str,
@@ -163,7 +63,7 @@ def usenet_proxy_request(
     json: dict | None = None,
     timeout: float = 6.0,
 ) -> tuple[int, dict | list]:
-    """Generic helper to proxy Usenet requests to connected otix-server node."""
+    """Generic helper to proxy requests to connected otix-server node."""
     target_url = (server.primary_url or "").rstrip("/")
     if not target_url:
         return 400, {"error": "Server URL not configured"}
@@ -188,6 +88,47 @@ def usenet_proxy_request(
             return resp.status_code, data
     except Exception as exc:
         return 502, {"detail": f"Failed to contact game server node: {exc}"}
+
+
+# Backward-compatible alias
+usenet_proxy_request = server_proxy_request
+
+
+def explorer_browse(server: UserGameServer, path: str | None = None) -> tuple[int, dict | list]:
+    """Proxy directory browse request to connected otix-server node."""
+    params = {"path": path} if path else None
+    return server_proxy_request(server, "GET", "/api/v1/explorer/browse", params=params, timeout=6.0)
+
+
+def explorer_set_download_path(
+    server: UserGameServer,
+    path: str,
+    create_if_missing: bool = True,
+    add_as_library: bool = True,
+) -> tuple[int, dict | list]:
+    """Proxy set-download-path request to connected otix-server node."""
+    payload = {
+        "path": path,
+        "create_if_missing": create_if_missing,
+        "add_as_library": add_as_library,
+    }
+    return server_proxy_request(server, "POST", "/api/v1/explorer/set-download-path", json=payload, timeout=8.0)
+
+
+def explorer_create_folder(
+    server: UserGameServer,
+    parent_path: str,
+    folder_name: str,
+) -> tuple[int, dict | list]:
+    """Proxy create-folder request to connected otix-server node."""
+    payload = {
+        "parent_path": parent_path,
+        "folder_name": folder_name,
+    }
+    return server_proxy_request(server, "POST", "/api/v1/explorer/create-folder", json=payload, timeout=6.0)
+
+
+# ── Usenet (SABnzbd & Prowlarr) Operations ──────────────────────────────
 
 
 def usenet_get_config(server: UserGameServer) -> tuple[int, dict | list]:

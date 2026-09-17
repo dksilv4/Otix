@@ -3,8 +3,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useAuth } from '@auth/hooks/use-auth'
-import { showToast } from '@/old-features/ui/molecules/toast'
-import { libraryKeys } from '@/old-features/library/library-keys'
+import { showToast } from '@ui/molecules/toast'
+import { libraryKeys } from '@library/library-keys'
 import {
   clearOfflineWatchlist,
   getOfflineWatchlistCount,

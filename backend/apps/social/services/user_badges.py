@@ -1,6 +1,6 @@
 """Badge progress/earning reads and the badge-claim mutation.
 
-Port of the read half of ``backend/otix/services/gamification_service.py``
+Port of the read half of ``old-backend/otix/services/gamification_service.py``
 (``get_user_badges``). ``accounts.User`` has no ``total_xp`` column, so the
 level/XP-derived badge metrics stay at their zero value; ``UserBadge`` rows are
 the earned signal and are written by the future gamification worker, exactly as

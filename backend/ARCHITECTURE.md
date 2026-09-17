@@ -2166,28 +2166,24 @@ agents can trust the schema without re-reading the legacy FastAPI domain code.
   and notes that full OpenAPI *schema* generation is currently broken upstream
   (pydantic `ForwardRef('User | None')` on `current_user` →
   `class-not-fully-defined`), so response-shape parity is read per area from
-  `backend/otix/api/<area>/**` + `backend/otix/schemas/**` until that is fixed.
+  `old-backend/otix/api/<area>/**` + `old-backend/otix/schemas/**` until that is
+  fixed. The leftover FastAPI slice that used to live at `backend/otix/` has
+  been removed; Django `apps/` owns the live API.
 - **Coverage tool**: `scripts/parity_report.py` diffs the Django URLconf
   against the frozen contract at **METHOD+path granularity** (a template whose
   view lacks the frozen HTTP method is a *method-gap*, not silently counted).
-  Current (2026-09-05, wave #4 COMPLETE): **208/263 ported, 0 method-gaps**,
-  full suite **320 tests green**, `ruff check .` + `manage.py check` clean.
-  Real-auth core shipped (2026-09-05): JWT access (15 min, Bearer) + rotating
-  httpOnly refresh cookie (7 d, path-scoped to `/api/v1/auth/`), session +
-  refresh-token + action-token tables, global logout, session list/revoke,
-  TOTP 2FA (setup/enable/disable/challenge-login) and forgot/reset/verify-email
-  (see §6a). Profile/preference columns + enriched `/auth/me` +
-  `GET /auth/me/preferences` shipped (migration 0003; writable set = legacy
-  `_UPDATABLE_FIELDS` allow-list, `date_of_birth`/`total_xp`/`is_bot` stay
-  read-only). Remaining 55 are deliberately deferred to the platform /
-  integrations wave (task #6): auth remainder(27 — OAuth provider link/login
-  families + `/auth/me/integrations`, all
-  IdP/Redis/state bound), integrations(18 incl Google-Drive
-  cloud-save proxy), Google-Drive saves proxy(4), upload(1),
-  discover(4 — Redis+personalization+IGDB bound, no tables),
-  `/notifications/stream` SSE(1). Run
+  Current: **263/263 ported, 0 method-gaps, 0 remaining**. Run
   `scripts/parity_report.py` for live numbers (it adds the repo root to
-  `sys.path`, so it runs from any CWD).
+  `sys.path`, so it runs from any CWD). Real-auth core: JWT access (15 min,
+  Bearer) + rotating httpOnly refresh cookie (7 d, path-scoped to
+  `/api/v1/auth/`), session + refresh-token + action-token tables, global
+  logout, session list/revoke, TOTP 2FA (setup/enable/disable/challenge-login)
+  and forgot/reset/verify-email (see §6a). Profile/preference columns +
+  enriched `/auth/me` + `GET /auth/me/preferences` shipped (writable set =
+  legacy `_UPDATABLE_FIELDS` allow-list; `date_of_birth`/`total_xp`/`is_bot`
+  stay read-only). Unfrozen surfaces still only in `old-backend/otix` (never
+  in the 263-route contract): Spotify auth/integrations/library and
+  `GET /discover/trailers/trending`.
 - **Porting order guidance**: media hub reads first (highest traffic), then
   people/company, social, lists, proposals, integrations/push, search, workout,
   library/track/blueprint, admin. Each area agent mirrors the accounts golden
@@ -2229,25 +2225,21 @@ Conventions a porting agent must follow (mirror `apps/company`/`apps/people` +
   stricter than the model CheckConstraint (1–10); keep the legacy API range.
 - Ported areas may target different apps than legacy prefixes imply
   (`/person` → `people` app, `/list` → `lists` app). Area→app map — **wave #4 +
-  real-auth core + profile/preferences COMPLETE (2026-09-05): parity 208/263,
-  0 method-gaps, 320 tests green**:
+  platform wave COMPLETE: parity 263/263, 0 method-gaps**:
   person(7)+company(5) done; auth(3: register/me/health) done; real-auth
   slice(14: login/refresh/logout/sessions/2fa/forgot/reset/verify) done;
   profile/preferences slice(1: GET /auth/me/preferences + enriched /auth/me)
-  done — the remaining 27 auth routes (OAuth families + me/integrations)
-  defer to the §7 integrations wave; list(18)→`lists`; push(3)→`push`;
+  done; OAuth families + me/integrations done; list(18)→`lists`; push(3)→`push`;
   blueprints(7)→`blueprint`; search(8)→`search`; library GET(10)→`library`;
   workout(9)+exercises(2)→`workout`; proposals(8)+admin(6)→`proposals`;
-  media(50)→`media`; social surface 19/20 (friends8+notifications4+reviews3+
-  mood3+metric1; `/notifications/stream` SSE deliberately 404)→`social`;
+  media(50)→`media`; social surface 20/20 (friends8+notifications5+reviews3+
+  mood3+metric1; `/notifications/stream` is live SSE)→`social`;
   tracks(2)→`media` (music TrackRating); calendar(1)→`media`;
-  saves(2 DB-backed locations/suggest)→`track`; users(32)→`accounts`+`social`
+  saves (DB-backed + Drive proxy)→`track`; users(32)→`accounts`+`social`
   (identity→accounts, engagement→social; single `/users` URL module imports
-  both). **Deferred to platform wave (task #6):** auth remainder(27 — OAuth
-  link/login families + `/auth/me/integrations`),
-  integrations(18), Google-Drive saves proxy(4), upload(1),
-  discover(4 — Redis+personalization+IGDB/embedding bound; no tables),
-  `/notifications/stream`(1).
+  both); integrations + upload + discover frozen routes done.
+  Unfrozen (not in the 263 contract; still `old-backend/otix` only): Spotify
+  auth/integrations/library, `GET /discover/trailers/trending`.
   Dispatch agents in PARALLEL only for areas in DIFFERENT apps (one agent owns
   one app dir) to avoid write collisions; each self-validates then `manage.py
   test` + `ruff check .` + the full suite are run by the coordinator.

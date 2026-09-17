@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '@/old-features/auth'
+import { useAuth } from '@auth/hooks/use-auth'
 import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downloads'
 import { useServerUsenetHistory, useServerUsenetQueue, useCancelServerQueueDownload } from '@/features/downloads/use-server-usenet'
 import { releaseMatchesSearchHint } from '@/features/downloads/release-parse'

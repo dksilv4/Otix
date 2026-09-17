@@ -11,6 +11,7 @@ visible to upstream schedulers.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING
 
@@ -242,3 +243,43 @@ class BaseProvider:
     def _update_cb_gauge(self) -> None:
         state_map = {CBState.CLOSED: 0, CBState.OPEN: 1, CBState.HALF_OPEN: 2}
         CIRCUIT_BREAKER_STATE.set(float(state_map[self.circuit_breaker.state]), provider=self.name)
+
+
+def resolve_shared_http_client(
+    current_client: httpx.AsyncClient | None,
+    current_loop_id: int | None,
+    *,
+    base_url: str,
+    timeout: float,
+    headers: dict[str, str] | None = None,
+    follow_redirects: bool = False,
+) -> tuple[httpx.AsyncClient, int | None]:
+    """Return a process-shared AsyncClient bound to base_url.
+
+    Safely resets on event-loop changes (Celery prefork child).
+    """
+    try:
+        active_loop_id = id(asyncio.get_running_loop())
+    except RuntimeError:
+        active_loop_id = None
+
+    if current_client is not None and current_loop_id != active_loop_id:
+        try:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(current_client.aclose())
+        except Exception:
+            pass
+        current_client = None
+
+    if current_client is None or current_client.is_closed:
+        kwargs: dict = {
+            "base_url": base_url,
+            "timeout": timeout,
+            "follow_redirects": follow_redirects,
+        }
+        if headers:
+            kwargs["headers"] = headers
+        current_client = httpx.AsyncClient(**kwargs)
+        current_loop_id = active_loop_id
+
+    return current_client, current_loop_id

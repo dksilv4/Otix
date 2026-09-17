@@ -1,7 +1,7 @@
 """Custom user model.
 
 Mirrors the meaningful subset of the legacy FastAPI ``User``
-(``backend/otix/domain/user.py``). The legacy table carries a long tail of
+(``old-backend/otix/domain/user.py``). The legacy table carries a long tail of
 profile/tuning columns and pgvector embeddings; those arrive incrementally as
 their features are ported, not up front. This slice captures identity + auth
 fields plus the nullable external identities the platform keys on.
@@ -117,7 +117,7 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     # Populated by the /auth/oauth/google(+drive) link + callback flows; a null
     # google_id / drive_refresh_token respectively marks the account as not
     # linked. Token columns mirror the legacy ``User`` row column-for-column
-    # (``backend/otix/domain/user.py``).
+    # (``old-backend/otix/domain/user.py``).
     google_email = models.CharField(max_length=MAX_EMAIL_LENGTH, null=True, blank=True)
     google_name = models.CharField(max_length=MAX_DISPLAY_NAME_LENGTH, null=True, blank=True)
     google_avatar_url = models.CharField(
@@ -153,7 +153,7 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     global_logout_marker = models.DateTimeField(null=True, blank=True)
 
     # --- Profile & preferences ---
-    # Column set/defaults mirror the legacy ``User`` row (``backend/otix/
+    # Column set/defaults mirror the legacy ``User`` row (``old-backend/otix/
     # domain/user.py``). Integration-specific token columns (plex_*/tmdb_*/
     # google_*/drive_*) land with their OAuth slices, and the pgvector
     # ``embedding`` stays deferred (sqlite-safe schema).

@@ -1,7 +1,7 @@
 """Review-vote domain logic.
 
 Port of the vote helpers from the legacy ``KarmaService``
-(``backend/otix/services/karma_service.py``) for the ``/reviews/{user}/{media}/vote``
+(``old-backend/otix/services/karma_service.py``) for the ``/reviews/{user}/{media}/vote``
 routes. The greenfield ``ReviewVote`` rows FK a ``Review`` (resolved by its
 legacy composite address), unlike the legacy rows that referenced the composite
 columns directly; vote toggling semantics are unchanged. Karma ledger writes are

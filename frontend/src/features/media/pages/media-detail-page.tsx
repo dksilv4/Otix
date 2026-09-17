@@ -13,6 +13,7 @@ import { MediaSpecsCard } from '../components/organisms/media-specs-card'
 import { CastCrew } from '../components/organisms/media-cast-crew'
 import { MediaDetailPluginLibraryStatus } from '../components/organisms/plugin-detail-actions'
 import { useMediaDetailPluginActions } from '../hooks/use-media-detail-plugin-actions'
+import { useRequestMedia } from '../hooks/use-request-media'
 import { SignInCTA } from '../components/organisms/media-signin-cta'
 
 import { ShowSection } from '@media/show/components/organisms/media-show-section'
@@ -91,6 +92,9 @@ export function MediaDetailPage() {
     detail?.tmdbId,
     Boolean(detail),
   )
+  const requestMedia = useRequestMedia()
+  const libraryWidgets = requestMedia.hidden ? pluginActions.widgets : requestMedia.widgets
+  const hasLibraryStatus = requestMedia.hidden ? pluginActions.hasLibraryStatus : requestMedia.hasLibraryStatus
 
   if (!mediaId || isPending) return <DetailSkeleton />
   if (isError || !detail) {
@@ -269,13 +273,13 @@ export function MediaDetailPage() {
             <MediaSpecsCard detail={detail} />
 
             {/* Library / Server Status (Plex / Radarr / Sonarr) */}
-            {pluginActions.hasLibraryStatus && (
+            {hasLibraryStatus && (
               <div className="glass-card p-5 sm:p-6 space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
                   <h3 className="text-sm font-semibold tracking-tight">Library Server Status</h3>
                 </div>
-                <MediaDetailPluginLibraryStatus widgets={pluginActions.widgets} />
+                <MediaDetailPluginLibraryStatus widgets={libraryWidgets} />
               </div>
             )}
           </div>

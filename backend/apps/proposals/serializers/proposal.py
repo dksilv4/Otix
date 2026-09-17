@@ -1,7 +1,7 @@
 """Serializers for the unified proposal API surface.
 
 Keys mirror the legacy FastAPI response shapes in
-``backend/otix/api/proposals/router.py`` (``ProposalOut``,
+``old-backend/otix/api/proposals/router.py`` (``ProposalOut``,
 ``ProposalCreate``, ``VoteRequest``, ``RejectRequest``). Per-request state
 (``my_vote``) and target-media enrichment (``target_title`` etc.) are read
 from ``context["proposal_context"]`` so serializers stay one-line lookups and

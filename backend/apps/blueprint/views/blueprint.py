@@ -7,7 +7,7 @@ when no valid token is present (legacy ``get_optional_user``), which feeds the
 ``apps/blueprint/services``.
 
 Status codes match the legacy FastAPI router
-(``backend/otix/api/blueprint/router.py``): create -> 201, detail/list/update ->
+(``old-backend/otix/api/blueprint/router.py``): create -> 201, detail/list/update ->
 200, delete -> 204, and 404s carry the legacy ``detail`` strings verbatim.
 """
 

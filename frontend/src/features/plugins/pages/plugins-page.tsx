@@ -21,7 +21,7 @@ import {
 } from '@/features/plugins/api'
 import type { PluginInfo } from '@/features/plugins/types/plugins'
 import { cn } from '@/lib/utils'
-import { DkSwitch } from '@/old-features/ui/atoms/switch'
+import { DkSwitch } from '@ui/atoms/switch'
 
 // ── Topology Graph ─────────────────────────────────────────────────────────────
 

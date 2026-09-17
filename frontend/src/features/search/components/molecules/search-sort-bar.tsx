@@ -1,4 +1,4 @@
-import { DkDropdown } from '@/old-features/ui/atoms/dropdown'
+import { DkDropdown } from '@ui/atoms/dropdown'
 import type { SortValue, TypeValue } from '@search/types'
 
 export const SORT_OPTIONS: { value: SortValue; label: string }[] = [

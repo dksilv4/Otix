@@ -7,7 +7,7 @@ import { getDesktopAPI } from '@/lib/desktop/api'
 import { useGameSearch, resolveCatalogGame } from '@/features/launcher/data/queries'
 import { useMatchLocalGames, useSyncLocalGames } from '@/features/launcher/data/game-queries'
 import { localGameKeys } from '@/features/launcher/data/game-queries'
-import { DkDialog } from '@/old-features/ui/molecules/dialog'
+import { DkDialog } from '@ui/molecules/dialog'
 import { PLATFORM_LABELS } from '@/constants/games'
 import type { LocalGame, CatalogGame, Game } from '@/features/launcher/types'
 

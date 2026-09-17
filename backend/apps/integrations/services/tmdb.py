@@ -1,6 +1,6 @@
 """TMDb account sync: ratings (import/export) + watchlist import.
 
-Port of ``backend/otix/services/tmdb_rating_service.py`` behind a urllib
+Port of ``old-backend/otix/services/tmdb_rating_service.py`` behind a urllib
 ``_request`` leaf (patched in tests). Fetching a rated/watchlist page walks
 TMDb's paginated ``/account/{id}/...`` lists; a non-200 / non-JSON page or a
 network failure raises ``RuntimeError``/``URLError`` so the calling view answers

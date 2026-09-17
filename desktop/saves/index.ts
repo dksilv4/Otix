@@ -92,8 +92,8 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-async function hashFile(filePath: string): Promise<string> {
-  const hash = createHash('sha256');
+async function hashFile(filePath: string, algorithm: 'sha256' | 'md5' = 'sha256'): Promise<string> {
+  const hash = createHash(algorithm);
   const buffer = Buffer.alloc(65536);
   const fd = await fs.open(filePath, 'r');
   try {
@@ -108,19 +108,9 @@ async function hashFile(filePath: string): Promise<string> {
 }
 
 async function hashFileMd5(filePath: string): Promise<string> {
-  const hash = createHash('md5');
-  const buffer = Buffer.alloc(65536);
-  const fd = await fs.open(filePath, 'r');
-  try {
-    let bytesRead: number;
-    while ((bytesRead = (await fd.read(buffer, 0, 65536)).bytesRead) > 0) {
-      hash.update(buffer.subarray(0, bytesRead));
-    }
-  } finally {
-    await fd.close();
-  }
-  return hash.digest('hex');
+  return hashFile(filePath, 'md5');
 }
+
 
 async function fileExists(p: string): Promise<boolean> {
   try {

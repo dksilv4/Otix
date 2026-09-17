@@ -1,6 +1,6 @@
 """Web-push subscription domain logic as plain callables.
 
-Mirrors the legacy ``PushService`` (``backend/otix/services/push_service.py``)
+Mirrors the legacy ``PushService`` (``old-backend/otix/services/push_service.py``)
 subscribe/unsubscribe semantics: subscribing always inserts a row (the legacy
 table has no unique constraint on ``(user, endpoint)``), and unsubscribing
 deletes every row for the ``(user, endpoint)`` pair -- a no-op when none exist.

@@ -1,7 +1,7 @@
 """Serializers for the admin/moderator read endpoints.
 
-Mirrors the legacy schemas in ``backend/otix/schemas/admin.py`` and
-``backend/otix/schemas/admin_edit.py`` where the data is backed by models
+Mirrors the legacy schemas in ``old-backend/otix/schemas/admin.py`` and
+``old-backend/otix/schemas/admin_edit.py`` where the data is backed by models
 (``TMDBDeletedID``, ``MediaEditProposal``). Dashboard aggregates that are not
 model-backed are assembled as plain dicts in ``apps.proposals.services.admin``
 rather than given serializer classes.

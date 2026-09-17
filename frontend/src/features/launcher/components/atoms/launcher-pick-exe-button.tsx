@@ -1,6 +1,6 @@
 import { FileCode } from 'lucide-react'
 import { getDesktopAPI } from '@/lib/desktop/api'
-import { useToast } from '@/old-features/ui/molecules/toast'
+import { useToast } from '@ui/molecules/toast'
 import {useParams} from "@tanstack/react-router";
 import {useLocalGame} from "@/features/launcher/data/game-queries";
 

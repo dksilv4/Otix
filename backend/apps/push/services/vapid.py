@@ -1,7 +1,7 @@
 """VAPID configuration helpers for the push domain.
 
 The public key is exposed by ``GET /api/v1/push/vapid-public-key``. The legacy
-backend (``backend/otix/services/vapid.py``) reads ``VAPID_PUBLIC_KEY`` from the
+backend (``old-backend/otix/services/vapid.py``) reads ``VAPID_PUBLIC_KEY`` from the
 environment and, when unset, auto-generates a real keypair with ``pywebpush``
 and persists it to ``OTIX_DATA_DIR``. This rewrite exposes both halves: the
 public key (with a documented dev placeholder) and the private key/subject used

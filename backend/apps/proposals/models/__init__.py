@@ -1,6 +1,6 @@
 """Proposals domain models.
 
-Ported from legacy FastAPI domain modules under ``backend/otix/domain/``.
+Ported from legacy FastAPI domain modules under ``old-backend/otix/domain/``.
 One module per aggregate/concern:
 - ``proposal``:       unified Proposal (single-table, type-discriminated)
 - ``match_proposal``: MatchProposal (source game -> catalog item)

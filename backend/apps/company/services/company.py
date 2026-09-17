@@ -2,7 +2,7 @@
 
 Views stay thin; follow/rating mutations and the detail-response assembly live
 here so their semantics are testable without HTTP. The service methods mirror
-the legacy ``CompanyService`` (``backend/otix/services/company_service.py``):
+the legacy ``CompanyService`` (``old-backend/otix/services/company_service.py``):
 mutations are idempotent and ``get_company_detail`` returns ``None`` for an
 unknown id so callers can 404.
 """

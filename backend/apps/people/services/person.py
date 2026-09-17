@@ -1,6 +1,6 @@
 """Person domain logic as plain callables over the models.
 
-Port of the legacy ``PeopleService`` (``backend/otix/services/people_service.py``).
+Port of the legacy ``PeopleService`` (``old-backend/otix/services/people_service.py``).
 Search is a name-substring stand-in: the legacy endpoint is pgvector/trigram-backed
 and our schema defers embeddings, so we match on ``name__icontains`` and order by a
 prefix-boost then name/id.

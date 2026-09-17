@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Search, DownloadCloud, Loader2, CheckCircle2, AlertCircle, Clock, Sparkles, ExternalLink, ChevronDown, ArrowUpCircle } from 'lucide-react'
-import { DkDialog } from '@/old-features/ui/molecules/dialog'
+import { DkDialog } from '@ui/molecules/dialog'
 import { cn, formatBytes } from '@/lib/utils'
-import { useToast } from '@/old-features/ui/molecules/toast'
+import { useToast } from '@ui/molecules/toast'
 import {
   useServerUsenetConfig,
   useServerUsenetSearch,

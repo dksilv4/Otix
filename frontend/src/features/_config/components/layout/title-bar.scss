@@ -1,0 +1,83 @@
+@reference "../../../../_tailwind-ref.css";
+
+/* ── Title Bar Container ── */
+/* Fixed across the top — completely transparent so the window content
+   shows through. Only the interactive controls are visible. */
+
+.dk-title-bar {
+  @apply fixed top-0 left-0 right-0 z-[99999] flex items-center;
+  height: var(--title-bar-height, 38px);
+  /* Fully transparent — content shows through */
+  background: transparent;
+  /* The center area is draggable via .dk-title-bar__drag-region */
+}
+
+/* ── macOS Title Bar ── */
+/* macOS uses native traffic lights; we just show the app name. */
+
+.dk-title-bar--macos {
+  @apply justify-center pointer-events-none;
+  /* macOS has native traffic lights at left ~76px; center the title */
+}
+
+.dk-title-bar__app-title {
+  @apply text-xs font-semibold select-none;
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ── Drag Region ── */
+/* The main drag handle — spans the gap between window edges and controls */
+
+.dk-title-bar__drag-region {
+  @apply flex-1 h-full;
+  -webkit-app-region: drag;
+}
+
+.dk-title-bar__drag-region--left {
+  @apply pl-3;
+}
+
+/* ── Window Controls (right) ── */
+/* No-drag so min/max/close buttons work */
+
+.dk-title-bar__controls {
+  @apply flex items-center h-full;
+  -webkit-app-region: no-drag;
+}
+
+/* ── Title Bar Buttons ── */
+/* Semi-transparent backing so they're visible on any background,
+   but not opaque enough to ruin the transparent look. */
+
+.dk-title-bar__button {
+  @apply flex items-center justify-center;
+  color: var(--dk-text-primary);
+  transition: color 150ms, background-color 150ms;
+
+  &:hover {
+    background-color: var(--dk-surface-glass-hover);
+  }
+
+  &:active {
+    background-color: var(--dk-surface-glass);
+  }
+}
+
+.dk-title-bar__button--menu {
+  @apply w-8 h-8 rounded-lg;
+}
+
+.dk-title-bar__button--win {
+  @apply w-11 h-full;
+}
+
+.dk-title-bar__button--close {
+  &:hover {
+    background-color: hsl(var(--destructive) / 0.85);
+    color: hsl(var(--destructive-foreground));
+  }
+
+  &:active {
+    background-color: hsl(var(--destructive));
+  }
+}

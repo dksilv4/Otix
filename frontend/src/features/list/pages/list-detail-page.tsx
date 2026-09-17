@@ -18,7 +18,7 @@ import { apiClient } from "@/lib/api/client"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
 import { SearchField } from "@ui/molecules/search-field"
-import { DkTabs, DkTabList, DkTab } from "@/old-features/ui/molecules/tabs"
+import { DkTabs, DkTabList, DkTab } from "@ui/molecules/tabs"
 import { useAuth } from "@/lib/providers/auth"
 import { useModal } from "@/lib/modals"
 import { type MediaListResponse } from "@media/queries/media-queries"
@@ -29,14 +29,14 @@ import {
   useRemoveFromList,
   useAddToList,
   useReorderList,
-} from "../../../old-features/list/list-queries"
-import { ListComposer } from "../../../old-features/list/organisms/list-composer"
+} from "../list-queries"
+import { ListComposer } from "../components/organisms/list-composer"
 import {
   ListLikeButton,
   ShareModal,
   CollaboratorsModal,
   RankHistoryTimeline,
-} from "../../../old-features/list/molecules/list-actions"
+} from "../components/molecules/list-actions"
 
 const TYPE_TABS = [
   { value: "all", label: "All" },

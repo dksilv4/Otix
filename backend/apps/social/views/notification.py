@@ -1,6 +1,6 @@
 """Notification endpoints.
 
-Mirror the legacy ``backend/otix/api/user/notification/router.py``: list uses a
+Mirror the legacy ``old-backend/otix/api/user/notification/router.py``: list uses a
 cursor envelope ``{items, has_more, next_cursor}`` (not DRF page pagination),
 unread-count returns ``{count}``, and the read mutations return the legacy
 message bodies. ``GET /notifications/stream`` is a Redis-backed SSE stream on

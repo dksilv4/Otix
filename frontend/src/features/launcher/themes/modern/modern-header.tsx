@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { getDesktopAPI, hasDesktopAPI, type DiskInfo } from "@/lib/desktop/api"
-import { useToast } from "@/old-features/ui/molecules/toast"
+import { useToast } from "@ui/molecules/toast"
 
 interface ModernHeaderProps {
   activeTab: "dashboard" | "library"

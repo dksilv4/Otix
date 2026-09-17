@@ -3,7 +3,7 @@
 Exercises the ported legacy routes against a real test database: the public
 ``GET /api/v1/push/vapid-public-key`` and the authenticated
 ``POST``/``DELETE /api/v1/push/subscribe``. Status codes mirror the legacy
-FastAPI router (``backend/otix/api/push/router.py``): vapid 200, subscribe 201,
+FastAPI router (``old-backend/otix/api/push/router.py``): vapid 200, subscribe 201,
 unsubscribe 200 with the legacy ``message`` bodies.
 """
 

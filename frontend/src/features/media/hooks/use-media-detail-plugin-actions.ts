@@ -31,7 +31,7 @@ export function useMediaDetailPluginActions(
   // Radarr/other source services need the real TMDB id, not the internal ULID.
   const requestId = tmdbId || mediaId
   const { data: servers = [] } = useGameServers()
-  const activeServer = servers.find((s) => s.is_online) || servers[0]
+  const activeServer = servers.find((s) => s.isOnline || s.isActive) || servers[0]
 
   const [widgets, setWidgets] = useState<RequestWidget[]>([])
   const [playWidgets, setPlayWidgets] = useState<PlayWidget[]>([])
@@ -126,18 +126,22 @@ export function useMediaDetailPluginActions(
               },
             },
           ])
-        } else if (mediaType === 'tv') {
+        } else if (mediaType === 'show') {
           const { data } = await apiClient.get<Array<{
             id: number
             title: string
             tvdb_id?: number
             tvdbId?: number
+            tmdb_id?: number
+            tmdbId?: number
             episode_file_count?: number
             episodeFileCount?: number
             monitored?: boolean
           }>>(`/library/servers/${activeServer.id}/sonarr/series`)
           const series = data || []
-          const existing = series.find(s => (s.tvdb_id || s.tvdbId) === numId)
+          const existing = series.find(s =>
+            (s.tmdb_id || s.tmdbId) === numId || (s.tvdb_id || s.tvdbId) === numId
+          )
           const fileCount = existing ? (existing.episode_file_count ?? existing.episodeFileCount ?? 0) : 0
           const status: RequestInstance['status'] = existing
             ? (fileCount > 0 ? 'downloaded' : 'requested')
@@ -149,7 +153,7 @@ export function useMediaDetailPluginActions(
               label: `${activeServer.name} (Sonarr)`,
               props: {
                 label: 'Sonarr',
-                mediaType: 'tv',
+                mediaType: 'show',
                 mediaId: requestId,
                 instances: [
                   {
@@ -203,7 +207,7 @@ export function useMediaDetailPluginActions(
         } else {
           await apiClient.post(`/library/servers/${serverId}/sonarr/series`, {
             title: requestId,
-            tvdb_id: Number(requestId),
+            tmdb_id: Number(requestId),
             monitored: true,
             search_for_missing_episodes: true,
           })

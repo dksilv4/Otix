@@ -1,6 +1,6 @@
 """Search domain logic as plain callables over the models.
 
-Port of the legacy ``backend/otix/api/search/search.py`` endpoint functions.
+Port of the legacy ``old-backend/otix/api/search/search.py`` endpoint functions.
 Embeddings/pgvector are DEFERRED in this migration (ARCHITECTURE §9): every media
 query is a plain relational ``title__icontains`` stand-in and returns the legacy
 response envelope. Sparse game searches backfill from IGDB: already-imported

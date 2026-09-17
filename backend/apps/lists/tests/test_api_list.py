@@ -2,7 +2,7 @@
 
 Exercises all 18 frozen ``/api/v1/list/`` routes against a real test database,
 mirroring legacy status codes (201 create/invite/add, 204 writes, 200 reads,
-404 detail strings) and response keys from ``backend/otix/schemas/list.py``.
+404 detail strings) and response keys from ``old-backend/otix/schemas/list.py``.
 """
 
 import json

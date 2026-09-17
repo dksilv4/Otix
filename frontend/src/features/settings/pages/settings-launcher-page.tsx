@@ -23,11 +23,11 @@ import {
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { SettingsRow } from '../components/molecules/settings-row'
-import { DkSwitch } from '@/old-features/ui/atoms/switch'
+import { DkSwitch } from '@ui/atoms/switch'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import { LAUNCHER_THEMES, type LauncherThemeId } from '@/features/launcher/themes/theme-context'
 import { hasDesktopAPI, getDesktopAPI } from '@/lib/desktop/api'
-import { useToast } from '@/old-features/ui/molecules/toast'
+import { useToast } from '@ui/molecules/toast'
 import { cn, formatBytes } from '@/lib/utils'
 import {
   useGameServers,

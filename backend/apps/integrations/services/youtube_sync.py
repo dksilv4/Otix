@@ -1,6 +1,6 @@
 """YouTube liked-music-videos sync engine (registered under provider ``youtube``).
 
-Port of ``backend/otix/services/youtube_sync_service.py``. The engine pages the
+Port of ``old-backend/otix/services/youtube_sync_service.py``. The engine pages the
 user's liked videos (``videos.list myRating=like``), filters to the Music
 category, parses each title with :func:`parse_music_title`, and matches songs to
 catalog albums (3 strategies: exact title + artist credit, then substring title

@@ -1,6 +1,6 @@
 """Read/request serializers for the ``/users`` engagement surface.
 
-Mirrors the legacy FastAPI schemas in ``backend/otix/schemas/{follow,karma,
+Mirrors the legacy FastAPI schemas in ``old-backend/otix/schemas/{follow,karma,
 user_badge,user_rating}.py`` plus the review-with-user payload. Shapes that are
 free-form rollups (activity events, heatmap, daily activity) are returned as
 plain dicts by the views and are intentionally not modelled here.

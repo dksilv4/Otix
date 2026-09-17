@@ -1,6 +1,6 @@
 import React from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import { DkInput } from '@/old-features/ui/atoms/input'
+import { DkInput } from '@ui/atoms/input'
 import { cn } from '@/lib/utils'
 
 export interface PathMappingRow {

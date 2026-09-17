@@ -1,0 +1,21 @@
+@reference "../../../../_tailwind-ref.css";
+
+/* ──────────────────────────────────────────────
+   StreakDisplay — user molecule
+   ────────────────────────────────────────────── */
+
+.dk-user__streak {
+  @apply flex items-center gap-3 text-xs;
+}
+
+.dk-user__streak__login {
+  @apply inline-flex items-center gap-1 text-amber-400;
+}
+
+.dk-user__streak__review {
+  @apply inline-flex items-center gap-1 text-purple-400/80;
+}
+
+.dk-user__streak__sep {
+  @apply text-white/10;
+}

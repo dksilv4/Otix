@@ -1,9 +1,9 @@
 // TODO: Review this file
 import { useState } from "react"
 import { AlertTriangle, Lock } from "lucide-react"
-import { DkButton } from "@/old-features/ui/atoms/button"
-import { DkInput } from "@/old-features/ui/atoms/input"
-import { DkCheckbox } from "@/old-features/ui/atoms/checkbox"
+import { DkButton } from "@ui/atoms/button"
+import { DkInput } from "@ui/atoms/input"
+import { DkCheckbox } from "@ui/atoms/checkbox"
 import { StarInput } from "./star-input"
 import { useUpsertReview, useDeleteReview, type ReviewOut } from "../review-queries"
 import "./review-composer.scss"

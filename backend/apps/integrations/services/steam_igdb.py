@@ -1,6 +1,6 @@
 """Resolve unmatched Steam library games through the IGDB ``GameMatcher``.
 
-Ports ``backend/otix/services/steam_igdb_resolver.py``: finds the user's
+Ports ``old-backend/otix/services/steam_igdb_resolver.py``: finds the user's
 ``UserSteamGame`` rows still missing a catalog ``media_item`` and runs them
 through the 4-phase matcher (whose IGDB stages auto-seed new titles), then
 relinks any bare media stubs to their canonical entry. Returns the legacy

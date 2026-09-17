@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Gamepad2, ExternalLink, Gift, AlertCircle } from 'lucide-react'
 import { DiscoverMediaCard } from '@/features/discover/components/molecules/discover-media-card'
-import { Carousel } from '@/old-features/ui/molecules/carousel'
+import { Carousel } from '@ui/molecules/carousel'
 
 interface FreeGameResult {
   media_item: any | null

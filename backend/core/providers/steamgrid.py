@@ -12,13 +12,12 @@ Port of ``otix.providers.steamgrid.client``.
 
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING
 
 import httpx
 from django.conf import settings
 
-from core.providers.base import BaseProvider, ProviderError
+from core.providers.base import BaseProvider, ProviderError, resolve_shared_http_client
 from core.providers.types import JSONValue
 
 if TYPE_CHECKING:
@@ -34,27 +33,12 @@ _shared_client_loop_id: int | None = None
 def get_http_client() -> httpx.AsyncClient:
     """Return a process-shared AsyncClient bound to the SteamGridDB base URL."""
     global _shared_client, _shared_client_loop_id
-
-    try:
-        current_loop_id = id(asyncio.get_running_loop())
-    except RuntimeError:
-        current_loop_id = None
-
-    if _shared_client is not None and _shared_client_loop_id != current_loop_id:
-        # Event loop changed (Celery prefork child) — discard inherited client.
-        try:
-            loop = asyncio.new_event_loop()
-            loop.run_until_complete(_shared_client.aclose())
-        except Exception:
-            pass
-        _shared_client = None
-
-    if _shared_client is None or _shared_client.is_closed:
-        _shared_client = httpx.AsyncClient(
-            base_url=BASE_URL,
-            timeout=settings.STEAMGRID_REQUEST_TIMEOUT_SECONDS,
-        )
-        _shared_client_loop_id = current_loop_id
+    _shared_client, _shared_client_loop_id = resolve_shared_http_client(
+        _shared_client,
+        _shared_client_loop_id,
+        base_url=BASE_URL,
+        timeout=settings.STEAMGRID_REQUEST_TIMEOUT_SECONDS,
+    )
     return _shared_client
 
 

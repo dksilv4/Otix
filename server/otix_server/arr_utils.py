@@ -173,6 +173,17 @@ def add_radarr_movie(config: RadarrConfig, payload: Dict[str, Any]) -> Dict[str,
     headers = {"X-Api-Key": config.api_key, "Content-Type": "application/json"}
 
     # Default fallback quality profile and root folder from config if not provided in payload
+    root_folder = (
+        payload.get("root_folder_path")
+        or payload.get("rootFolderPath")
+        or config.root_folder_path
+    )
+    if not root_folder:
+        folders = fetch_radarr_root_folders(config)
+        root_folder = folders[0].path if folders else None
+    if not root_folder:
+        raise ValueError("No Radarr root folder path configured")
+
     final_payload = {
         "title": payload.get("title"),
         "tmdbId": payload.get("tmdb_id") or payload.get("tmdbId"),
@@ -181,10 +192,7 @@ def add_radarr_movie(config: RadarrConfig, payload: Dict[str, Any]) -> Dict[str,
         or payload.get("qualityProfileId")
         or config.quality_profile_id
         or 1,
-        "rootFolderPath": payload.get("root_folder_path")
-        or payload.get("rootFolderPath")
-        or config.root_folder_path
-        or "/movies",
+        "rootFolderPath": root_folder,
         "monitored": payload.get("monitored", True),
         "minimumAvailability": payload.get("minimum_availability")
         or payload.get("minimumAvailability")
@@ -219,10 +227,11 @@ def fetch_radarr_queue(
         raw_records = data.get("records") or []
         records: List[ArrQueueRecord] = []
         for r in raw_records:
+            movie = r.get("movie") or {}
             records.append(
                 ArrQueueRecord(
                     id=r.get("id", 0),
-                    title=r.get("title") or (r.get("movie") or {}).get("title") or "Unknown",
+                    title=r.get("title") or movie.get("title") or "Unknown",
                     status=r.get("status", "Unknown"),
                     tracked_download_status=r.get("trackedDownloadStatus"),
                     size=float(r.get("size", 0.0)),
@@ -234,6 +243,8 @@ def fetch_radarr_queue(
                     indexer=r.get("indexer"),
                     output_path=r.get("outputPath"),
                     error_message=r.get("errorMessage"),
+                    tmdb_id=movie.get("tmdbId") or r.get("tmdbId"),
+                    tvdb_id=movie.get("tvdbId") or r.get("tvdbId"),
                 )
             )
         return ArrQueueResponse(
@@ -359,6 +370,7 @@ def fetch_sonarr_series(config: SonarrConfig) -> List[SonarrSeries]:
                     title=item.get("title", ""),
                     year=item.get("year"),
                     tvdb_id=item.get("tvdbId"),
+                    tmdb_id=item.get("tmdbId"),
                     imdb_id=item.get("imdbId"),
                     overview=item.get("overview"),
                     monitored=item.get("monitored", True),
@@ -386,24 +398,67 @@ def lookup_sonarr_series(config: SonarrConfig, term: str) -> List[Dict[str, Any]
         return resp.json() or []
 
 
+def _match_sonarr_lookup(results: List[Dict[str, Any]], tmdb_id: Any) -> Optional[Dict[str, Any]]:
+    if not results:
+        return None
+    for item in results:
+        if item.get("tmdbId") is not None and str(item.get("tmdbId")) == str(tmdb_id):
+            return item
+    return results[0]
+
+
+def resolve_sonarr_add_target(config: SonarrConfig, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Resolve title/year/tvdbId for an add, using a TMDB lookup when needed."""
+    tvdb_id = payload.get("tvdb_id") or payload.get("tvdbId")
+    tmdb_id = payload.get("tmdb_id") or payload.get("tmdbId")
+    title = payload.get("title")
+    year = payload.get("year")
+
+    if tvdb_id:
+        return {"title": title, "tvdb_id": int(tvdb_id), "year": year}
+
+    if not tmdb_id:
+        raise ValueError("tvdb_id or tmdb_id is required")
+
+    match = _match_sonarr_lookup(lookup_sonarr_series(config, f"tmdb:{tmdb_id}"), tmdb_id)
+    if (not match or match.get("tvdbId") is None) and title:
+        match = _match_sonarr_lookup(lookup_sonarr_series(config, str(title)), tmdb_id)
+    if not match or match.get("tvdbId") is None:
+        raise ValueError(f"Could not resolve Sonarr series for TMDB id {tmdb_id}")
+
+    return {
+        "title": title or match.get("title"),
+        "tvdb_id": int(match["tvdbId"]),
+        "year": year or match.get("year"),
+    }
+
+
 def add_sonarr_series(config: SonarrConfig, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Add a series to Sonarr with monitoring and auto-search."""
     base = build_arr_base_url(config.host, config.port, config.use_ssl, config.url_base)
     url = f"{base}/api/v3/series"
     headers = {"X-Api-Key": config.api_key, "Content-Type": "application/json"}
+    resolved = resolve_sonarr_add_target(config, payload)
+    root_folder = (
+        payload.get("root_folder_path")
+        or payload.get("rootFolderPath")
+        or config.root_folder_path
+    )
+    if not root_folder:
+        folders = fetch_sonarr_root_folders(config)
+        root_folder = folders[0].path if folders else None
+    if not root_folder:
+        raise ValueError("No Sonarr root folder path configured")
 
     final_payload = {
-        "title": payload.get("title"),
-        "tvdbId": payload.get("tvdb_id") or payload.get("tvdbId"),
-        "year": payload.get("year"),
+        "title": resolved["title"],
+        "tvdbId": resolved["tvdb_id"],
+        "year": resolved["year"],
         "qualityProfileId": payload.get("quality_profile_id")
         or payload.get("qualityProfileId")
         or config.quality_profile_id
         or 1,
-        "rootFolderPath": payload.get("root_folder_path")
-        or payload.get("rootFolderPath")
-        or config.root_folder_path
-        or "/tv",
+        "rootFolderPath": root_folder,
         "monitored": payload.get("monitored", True),
         "seasonFolder": payload.get("season_folder", True)
         if "season_folder" in payload
@@ -444,10 +499,11 @@ def fetch_sonarr_queue(
         raw_records = data.get("records") or []
         records: List[ArrQueueRecord] = []
         for r in raw_records:
+            series = r.get("series") or {}
             records.append(
                 ArrQueueRecord(
                     id=r.get("id", 0),
-                    title=r.get("title") or (r.get("series") or {}).get("title") or "Unknown",
+                    title=r.get("title") or series.get("title") or "Unknown",
                     status=r.get("status", "Unknown"),
                     tracked_download_status=r.get("trackedDownloadStatus"),
                     size=float(r.get("size", 0.0)),
@@ -459,6 +515,8 @@ def fetch_sonarr_queue(
                     indexer=r.get("indexer"),
                     output_path=r.get("outputPath"),
                     error_message=r.get("errorMessage"),
+                    tmdb_id=series.get("tmdbId") or r.get("tmdbId"),
+                    tvdb_id=series.get("tvdbId") or r.get("tvdbId"),
                 )
             )
         return ArrQueueResponse(

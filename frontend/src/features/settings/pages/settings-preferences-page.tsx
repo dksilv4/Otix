@@ -1,4 +1,4 @@
-import { PreferencesSection } from '@/old-features/settings/organisms/settings-sections/preferences'
+import { PreferencesSection } from '../components/organisms/preferences'
 
 export function SettingsPreferencesPage() {
   return <PreferencesSection />

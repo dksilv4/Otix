@@ -1,6 +1,6 @@
 """User aggregate-stat endpoints (stats, hall-of-fame, library-stats).
 
-Port of ``backend/otix/api/user/stats/router.py``; all three reads are public in
+Port of ``old-backend/otix/api/user/stats/router.py``; all three reads are public in
 legacy. Hall-of-fame depends on the unported ``User.hof_ids`` column and so
 returns an empty list until that data has a model home.
 """

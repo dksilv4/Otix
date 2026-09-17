@@ -3,9 +3,9 @@ import { Link, useLocation } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { connectTaskSseStream, type SseEvent } from '@/lib/api/sse-client'
-import { DkButton } from '@/old-features/ui/atoms/button'
-import { DkDropdown } from '@/old-features/ui/atoms/dropdown'
-import { DkSwitch } from '@/old-features/ui/atoms/switch'
+import { DkButton } from '@ui/atoms/button'
+import { DkDropdown } from '@ui/atoms/dropdown'
+import { DkSwitch } from '@ui/atoms/switch'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import GoogleIcon from '@/assets/provider-logos/google.svg?react'
@@ -14,9 +14,9 @@ import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
 import { openExternal } from '@/lib/utils/open-external'
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
-import { Loader2, Plus, Unlink, RefreshCw, Download, DownloadCloud, ChevronDown, Link2, Film, Tv, Music, FolderOpen, Search, Pause, Play, Check, AlertCircle } from 'lucide-react'
-import { usePlexLibraries, streamPlexLibrarySync } from '@/old-features/library/library-queries'
-import type { PlexLibraryInfo } from '@/old-features/library/library-queries'
+import { Loader2, Plus, Unlink, RefreshCw, Download, DownloadCloud, ChevronDown, Link2, Film, Tv, Music, FolderOpen, Search, Pause, Play, Check } from 'lucide-react'
+import { usePlexLibraries, streamPlexLibrarySync } from '@library/library-queries'
+import type { PlexLibraryInfo } from '@library/library-queries'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { useModal } from '@/lib/modals'
@@ -1664,19 +1664,14 @@ export function SettingsIntegrationsPage() {
                 {/* Google Drive content */}
                 {i.id === 'google_drive' && (
                   <>
-                    <IntegrationProfile
-                      avatarUrl={googleAvatarUrl}
-                      avatarAlt="Google Drive"
-                      name={driveConnected ? 'Google Drive linked' : 'Google Drive'}
-                      detail="Game save cloud backup"
-                      brandBg={BRAND_BG.google}
-                      icon={GoogleIcon}
-                      brandColor={BRAND_COLORS.google}
-                    />
-                    <div className="px-5 py-3">
-                      <p className="text-xs text-white/60">
-                        Backs up your game saves to a folder in your Google Drive.
-                      </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-t border-white/5 text-xs text-white/60">
+                      <span>
+                        {googleEmail ? (
+                          <>Connected account: <span className="text-white/90 font-medium">{googleEmail}</span></>
+                        ) : (
+                          'Backs up your game saves to a dedicated folder in your Google Drive.'
+                        )}
+                      </span>
                     </div>
                     {driveMessage && <p className="px-5 py-2 text-xs text-green-400">{driveMessage}</p>}
                     {driveError && <p className="px-5 py-2 text-xs text-red-400">{driveError}</p>}
@@ -1737,28 +1732,21 @@ export function SettingsIntegrationsPage() {
                 {/* SABnzbd content */}
                 {i.id === 'sabnzbd' && (
                   <>
-                    <IntegrationProfile
-                      avatarAlt="SABnzbd"
-                      name="SABnzbd Downloader"
-                      detail={activeServer ? `Managed by ${activeServer.name} (${activeServer.primaryUrl})` : 'Connect a server to enable'}
-                      brandBg={BRAND_BG.sabnzbd}
-                      icon={DownloadCloud}
-                      brandColor={BRAND_COLORS.sabnzbd}
-                      meta={
-                        <div className="flex items-center gap-2.5 shrink-0">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <Check className="h-3 w-3" />
-                            Connected
-                          </span>
-                          <Link
-                            to="/downloads"
-                            className="text-xs text-white/40 hover:text-amber-400 transition-colors duration-150 shrink-0"
-                          >
-                            View Downloads Queue &rarr;
-                          </Link>
-                        </div>
-                      }
-                    />
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 border-t border-white/5 bg-white/[0.02] text-xs">
+                      <span className="text-white/60">
+                        {activeServer ? (
+                          <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
+                        ) : (
+                          'Connect a server to enable'
+                        )}
+                      </span>
+                      <Link
+                        to="/downloads"
+                        className="text-amber-400 hover:text-amber-300 font-medium transition-colors duration-150 inline-flex items-center gap-1"
+                      >
+                        View Downloads Queue &rarr;
+                      </Link>
+                    </div>
                     {sabnzbdQueue && (
                       <IntegrationStats items={[
                         { label: 'queue status', value: sabnzbdQueue.status || 'Idle' },
@@ -1800,20 +1788,15 @@ export function SettingsIntegrationsPage() {
                 {/* Prowlarr content */}
                 {i.id === 'prowlarr' && (
                   <>
-                    <IntegrationProfile
-                      avatarAlt="Prowlarr"
-                      name="Prowlarr Indexer Manager"
-                      detail={activeServer ? `Managed by ${activeServer.name} (${activeServer.primaryUrl})` : 'Connect a server to enable'}
-                      brandBg={BRAND_BG.prowlarr}
-                      icon={Search}
-                      brandColor={BRAND_COLORS.prowlarr}
-                      meta={
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-                          <Check className="h-3 w-3" />
-                          Connected
-                        </span>
-                      }
-                    />
+                    <div className="flex items-center justify-between px-5 py-2.5 border-t border-white/5 bg-white/[0.02] text-xs text-white/60">
+                      <span>
+                        {activeServer ? (
+                          <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
+                        ) : (
+                          'Connect a server to enable'
+                        )}
+                      </span>
+                    </div>
 
                     <div className="px-5 py-4 space-y-3">
                       <ProwlarrIndexersPanel
@@ -1839,25 +1822,15 @@ export function SettingsIntegrationsPage() {
                 {/* Radarr content */}
                 {i.id === 'radarr' && (
                   <>
-                    <IntegrationProfile
-                      avatarAlt="Radarr"
-                      name="Radarr Movie Manager"
-                      detail={activeServer ? `Managed by ${activeServer.name} (${activeServer.primaryUrl})` : 'Connect a server to enable'}
-                      brandBg={BRAND_BG.radarr}
-                      icon={Film}
-                      brandColor={BRAND_COLORS.radarr}
-                      meta={
-                        <span className={cn(
-                          'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border shrink-0',
-                          isRadarrConfigured
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : 'bg-white/5 text-white/40 border-white/10'
-                        )}>
-                          {isRadarrConfigured ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-                          {isRadarrConfigured ? 'Connected' : 'Not Connected'}
-                        </span>
-                      }
-                    />
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 border-t border-white/5 bg-white/[0.02] text-xs text-white/60">
+                      <span>
+                        {activeServer ? (
+                          <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
+                        ) : (
+                          'Connect a server to enable'
+                        )}
+                      </span>
+                    </div>
 
                     {isRadarrConfigured && (
                       <IntegrationStats items={[
@@ -1880,25 +1853,15 @@ export function SettingsIntegrationsPage() {
                 {/* Sonarr content */}
                 {i.id === 'sonarr' && (
                   <>
-                    <IntegrationProfile
-                      avatarAlt="Sonarr"
-                      name="Sonarr TV Series Manager"
-                      detail={activeServer ? `Managed by ${activeServer.name} (${activeServer.primaryUrl})` : 'Connect a server to enable'}
-                      brandBg={BRAND_BG.sonarr}
-                      icon={Tv}
-                      brandColor={BRAND_COLORS.sonarr}
-                      meta={
-                        <span className={cn(
-                          'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border shrink-0',
-                          isSonarrConfigured
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : 'bg-white/5 text-white/40 border-white/10'
-                        )}>
-                          {isSonarrConfigured ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-                          {isSonarrConfigured ? 'Connected' : 'Not Connected'}
-                        </span>
-                      }
-                    />
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 border-t border-white/5 bg-white/[0.02] text-xs text-white/60">
+                      <span>
+                        {activeServer ? (
+                          <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
+                        ) : (
+                          'Connect a server to enable'
+                        )}
+                      </span>
+                    </div>
 
                     {isSonarrConfigured && (
                       <IntegrationStats items={[

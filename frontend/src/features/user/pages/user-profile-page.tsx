@@ -12,18 +12,18 @@ import {
   Sparkles,
 } from 'lucide-react'
 
-import { DkAvatar } from '@/old-features/ui/atoms/avatar'
-import { DkButton } from '@/old-features/ui/atoms/button'
+import { DkAvatar } from '@ui/atoms/avatar'
+import { DkButton } from '@ui/atoms/button'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
 
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
-import { userQueries, computeReviewStats } from '@/old-features/user/user-queries'
-import { UserRatingSection } from '@/old-features/user/molecules/user-rating-section'
-import { FollowButton } from '@/old-features/user/molecules/follow-button'
-import { StreakDisplay } from '@/old-features/user/molecules/streak-display'
+import { userQueries, computeReviewStats } from '../user-queries'
+import { UserRatingSection } from '../components/molecules/user-rating-section'
+import { FollowButton } from '../components/molecules/follow-button'
+import { StreakDisplay } from '../components/molecules/streak-display'
 
 import { computeGamification, getLevelTier, pickGradient, formatMemberSince } from '@user/utils'
 import { XPProgressRing } from '@user/components/atoms/user-xp-progress-ring'

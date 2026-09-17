@@ -1,7 +1,7 @@
 // TODO: Review this file
 import { useQuery } from "@tanstack/react-query"
-import { DkButton } from "@/old-features/ui/atoms/button"
-import { DkDialog } from "@/old-features/ui/molecules/dialog"
+import { DkButton } from "@ui/atoms/button"
+import { DkDialog } from "@ui/molecules/dialog"
 import { useModal } from "@/lib/modals"
 import { useAuth } from "@/features/auth"
 import { ReviewCard } from "../molecules/review-card"

@@ -7,7 +7,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DkButton } from '@/old-features/ui/atoms/button';
+import { DkButton } from '@ui/atoms/button';
 
 export interface ServerIntegrationModalShellProps {
   isOpen?: boolean;

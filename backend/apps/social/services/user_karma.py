@@ -1,4 +1,4 @@
-"""User karma (port of ``backend/otix/services/karma_service.py``).
+"""User karma (port of ``old-backend/otix/services/karma_service.py``).
 
 The legacy ``User.karma`` running column has no greenfield home, so the balance
 is aggregated from the ``KarmaTransaction`` ledger on read (legacy kept the two

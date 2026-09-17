@@ -1,6 +1,6 @@
 import React from 'react'
-import { DkInput } from '@/old-features/ui/atoms/input'
-import { DkSwitch } from '@/old-features/ui/atoms/switch'
+import { DkInput } from '@ui/atoms/input'
+import { DkSwitch } from '@ui/atoms/switch'
 import { parseServiceAddress } from '../usenet-utils'
 
 export interface IntegrationConnectionFieldsProps {

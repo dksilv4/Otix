@@ -1,6 +1,6 @@
 server:
   name: DK Game Storage Server
-  port: 8001
+  port: 8090
   host: 0.0.0.0
   auth_token: otix_secret_token_abc123
   registry_url: https://api.otix.io

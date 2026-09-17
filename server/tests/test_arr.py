@@ -143,6 +143,7 @@ class TestArrIntegration(unittest.TestCase):
                 "title": "Severance",
                 "year": 2022,
                 "tvdbId": 371980,
+                "tmdbId": 95396,
                 "monitored": True,
                 "status": "continuing",
                 "statistics": {"totalEpisodeCount": 9, "episodeFileCount": 9},
@@ -157,6 +158,7 @@ class TestArrIntegration(unittest.TestCase):
         self.assertEqual(len(series_list), 1)
         self.assertEqual(series_list[0].title, "Severance")
         self.assertEqual(series_list[0].tvdb_id, 371980)
+        self.assertEqual(series_list[0].tmdb_id, 95396)
         self.assertEqual(series_list[0].episode_file_count, 9)
 
     @patch("otix_server.arr_utils.httpx.Client")
@@ -178,6 +180,7 @@ class TestArrIntegration(unittest.TestCase):
                     "timeleft": "00:10:00",
                     "downloadClient": "SABnzbd",
                     "protocol": "usenet",
+                    "movie": {"title": "Dune Part Two", "tmdbId": 693134},
                 }
             ],
         }
@@ -190,6 +193,7 @@ class TestArrIntegration(unittest.TestCase):
         self.assertEqual(queue.total_records, 1)
         self.assertEqual(queue.records[0].title, "Dune Part Two 2024")
         self.assertEqual(queue.records[0].status, "Downloading")
+        self.assertEqual(queue.records[0].tmdb_id, 693134)
 
     @patch("otix_server.arr_utils.httpx.Client")
     def test_add_radarr_movie(self, mock_client_cls):
@@ -210,6 +214,40 @@ class TestArrIntegration(unittest.TestCase):
         self.assertEqual(sent_json["qualityProfileId"], 1)
         self.assertEqual(sent_json["rootFolderPath"], "/movies")
         self.assertTrue(sent_json["addOptions"]["searchForMovie"])
+
+    @patch("otix_server.arr_utils.httpx.Client")
+    def test_add_sonarr_series_resolves_tmdb(self, mock_client_cls):
+        lookup_resp = MagicMock()
+        lookup_resp.status_code = 200
+        lookup_resp.json.return_value = [
+            {"title": "Severance", "tvdbId": 371980, "tmdbId": 95396, "year": 2022}
+        ]
+        post_resp = MagicMock()
+        post_resp.status_code = 201
+        post_resp.json.return_value = {"id": 7, "title": "Severance"}
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = lookup_resp
+        mock_client.post.return_value = post_resp
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        cfg = SonarrConfig(api_key="key", quality_profile_id=1, root_folder_path="/tv")
+        res = add_sonarr_series(cfg, {"title": "Severance", "tmdb_id": 95396, "year": 2022})
+        self.assertEqual(res["id"], 7)
+        sent_json = mock_client.post.call_args[1]["json"]
+        self.assertEqual(sent_json["title"], "Severance")
+        self.assertEqual(sent_json["tvdbId"], 371980)
+        self.assertTrue(sent_json["addOptions"]["searchForMissingEpisodes"])
+
+    def test_add_sonarr_series_request_accepts_tmdb_id(self):
+        req = AddSonarrSeriesRequest(title="Severance", tmdb_id=95396)
+        self.assertIsNone(req.tvdb_id)
+        self.assertEqual(req.tmdb_id, 95396)
+
+    def test_add_sonarr_series_request_requires_an_id(self):
+        with self.assertRaises(Exception):
+            AddSonarrSeriesRequest(title="Severance")
 
     @patch("otix_server.arr_utils.httpx.Client")
     def test_delete_radarr_queue_item(self, mock_client_cls):

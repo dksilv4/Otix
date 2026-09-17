@@ -607,11 +607,7 @@ export function upsertGameMatch(match: GameMatch): void {
   );
 }
 
-export function getGameMatch(source: string, sourceGameId: string): GameMatch | null {
-  const row = db().prepare(
-    'SELECT * FROM game_matches WHERE source = ? AND source_game_id = ?'
-  ).get(source, sourceGameId) as Record<string, unknown> | undefined;
-  if (!row) return null;
+function rowToGameMatch(row: Record<string, unknown>): GameMatch {
   return {
     source: row.source as string,
     sourceGameId: row.source_game_id as string,
@@ -627,22 +623,19 @@ export function getGameMatch(source: string, sourceGameId: string): GameMatch | 
   };
 }
 
+export function getGameMatch(source: string, sourceGameId: string): GameMatch | null {
+  const row = db().prepare(
+    'SELECT * FROM game_matches WHERE source = ? AND source_game_id = ?'
+  ).get(source, sourceGameId) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return rowToGameMatch(row);
+}
+
 export function getAllGameMatches(): GameMatch[] {
   const rows = db().prepare('SELECT * FROM game_matches ORDER BY matched_at DESC').all() as Record<string, unknown>[];
-  return rows.map(row => ({
-    source: row.source as string,
-    sourceGameId: row.source_game_id as string,
-    otixMediaId: row.otix_media_id as string,
-    otixTitle: (row.otix_title as string) || undefined,
-    otixPosterUrl: (row.otix_poster_url as string) || undefined,
-    otixBackdropUrl: (row.otix_backdrop_url as string) || undefined,
-    otixIconUrl: (row.otix_icon_url as string) || undefined,
-    otixConfidence: row.otix_confidence != null ? Number(row.otix_confidence) : undefined,
-    matchType: row.match_type as 'auto' | 'manual',
-    status: ((row.status as string) || 'approved') as GameMatch['status'],
-    matchedAt: row.matched_at as string,
-  }));
+  return rows.map(rowToGameMatch);
 }
+
 
 export function deleteGameMatch(source: string, sourceGameId: string): void {
   db().prepare('DELETE FROM game_matches WHERE source = ? AND source_game_id = ?').run(source, sourceGameId);

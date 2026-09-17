@@ -4,7 +4,7 @@ import { Carousel } from '@ui/molecules/carousel'
 import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
 import { mediaQueries } from '@media/queries/media-queries'
 import { useMediaParams } from '@media'
-import { useAuth } from '@/old-features/auth'
+import { useAuth } from '@auth/hooks/use-auth'
 import { cn } from '@/lib/utils'
 
 interface MoreLikeThisSectionProps {

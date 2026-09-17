@@ -1,7 +1,7 @@
 """Notification feed domain logic.
 
 Port of the legacy ``NotificationService``
-(``backend/otix/services/notification_service.py``) minus its Redis push
+(``old-backend/otix/services/notification_service.py``) minus its Redis push
 delivery. The list endpoint uses the same cursor shape: newest first, filtered
 to rows older than an ISO ``created_at`` cursor, with a ``limit + 1`` probe to
 compute ``has_more``.

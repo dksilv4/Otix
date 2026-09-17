@@ -1,6 +1,6 @@
 """Match raw free-game references from the desktop aggregator to the catalog.
 
-Ports ``backend/otix/api/discover/free_games/router.py``. Per-ref resolution
+Ports ``old-backend/otix/api/discover/free_games/router.py``. Per-ref resolution
 order: exact ``ExternalID`` lookup (store + external id), Epic bare-offerId
 fallback (earlier seeds store the bare id, the aggregator sends
 ``namespace:offerId``), then IGDB hydration for unmatched Epic refs that carry

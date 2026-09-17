@@ -1,7 +1,7 @@
 """Push request serializers.
 
 Field names mirror the legacy FastAPI request bodies
-(``backend/otix/api/push/router.py``) exactly: the wire format uses ``p256dh``
+(``old-backend/otix/api/push/router.py``) exactly: the wire format uses ``p256dh``
 and ``auth`` for the subscription keys even though the model columns are named
 ``p256dh_key`` / ``auth_key``. The mapping happens in the view/service layer.
 """

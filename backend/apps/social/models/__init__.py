@@ -1,6 +1,6 @@
 """Social domain models (user graph, reviews, interactions, notifications).
 
-Ported from the legacy FastAPI domain modules under ``backend/otix/domain/``.
+Ported from the legacy FastAPI domain modules under ``old-backend/otix/domain/``.
 One module per concern:
 - ``graph``:  friend requests + the user-to-user follow graph
 - ``review``: text reviews + up/down votes

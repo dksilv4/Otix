@@ -1,4 +1,4 @@
-"""Unified proposal model (legacy ``backend/otix/domain/proposal.py``).
+"""Unified proposal model (legacy ``old-backend/otix/domain/proposal.py``).
 
 The legacy ``proposals`` table is already single-table inheritance: every
 proposal type (match, edit, ...) shares one row, discriminated by

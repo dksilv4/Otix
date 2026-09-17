@@ -5,7 +5,7 @@ import { useAuth, TwoFactorChallenge } from '@auth'
 import { AuthBackground } from '@auth/components/atoms/auth-background'
 import { AuthCard } from '@auth/components/molecules/auth-card'
 import { AuthHeader } from '@auth/components/molecules/auth-header'
-import { Logo } from '@/old-features/ui/atoms/logo'
+import { Logo } from '@ui/atoms/logo'
 import { AuthBackButton } from '@auth/components/molecules/auth-back-button'
 import { useFeature } from '@/features/_config'
 

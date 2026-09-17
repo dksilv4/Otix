@@ -1,6 +1,6 @@
 """Metric endpoint.
 
-Legacy ``GET /metric`` (``backend/otix/api/user/metrics/router.py``) has no auth
+Legacy ``GET /metric`` (``old-backend/otix/api/user/metrics/router.py``) has no auth
 dependency and returns the process metrics registry snapshot, so this route opts
 out of the global ``IsAuthenticated`` default with ``AllowAny``.
 """

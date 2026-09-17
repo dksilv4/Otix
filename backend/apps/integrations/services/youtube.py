@@ -1,6 +1,6 @@
 """YouTube Data API v3 client (sync urllib leaf).
 
-Port of ``backend/otix/providers/youtube/client.py``. User-scoped calls carry the
+Port of ``old-backend/otix/providers/youtube/client.py``. User-scoped calls carry the
 user's Google access token; the module-level ``_request`` leaf (patched in tests)
 returns ``(status, text)`` so the sync engine can page ``videos.list`` without an
 HTTP stack. A non-2xx page that names the "insufficient authentication scopes"

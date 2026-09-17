@@ -1,7 +1,7 @@
 import { useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
-import { useToast } from '@/old-features/ui/molecules/toast'
+import { useToast } from '@ui/molecules/toast'
 import { useSseStream } from '@/lib/hooks/use-sse-stream'
 import type { SseEvent } from '@/lib/api/sse-client'
 import { NotificationRouter } from '../channels'

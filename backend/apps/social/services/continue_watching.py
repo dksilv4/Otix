@@ -1,6 +1,6 @@
 """Continue-watching rollup for the authenticated user.
 
-Port of ``backend/otix/api/user/continue_watching/router.py``: recent episode
+Port of ``old-backend/otix/api/user/continue_watching/router.py``: recent episode
 interactions first (they signal an in-progress show) then recent
 watched/played/listened/started media interactions, deduplicated by media item.
 Asset URLs are resolved from the generic ``MediaAsset`` rows because the legacy

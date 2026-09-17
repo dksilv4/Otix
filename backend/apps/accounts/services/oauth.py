@@ -1,6 +1,6 @@
 """Google / Google-Drive OAuth link + token service.
 
-Port of the legacy link-only family (``backend/otix/api/auth/oauth/google*``
+Port of the legacy link-only family (``old-backend/otix/api/auth/oauth/google*``
 and ``…/google_drive/*`` driving ``google_auth_service.py``). Behaviour mirrors
 the frozen contract string-for-string:
 

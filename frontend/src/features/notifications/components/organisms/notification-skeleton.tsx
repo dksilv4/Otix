@@ -1,4 +1,4 @@
-import { Skeleton } from '@/old-features/ui/atoms/skeleton'
+import { Skeleton } from '@ui/atoms/skeleton'
 
 export function NotificationSkeleton({ count = 8 }: { count?: number }) {
   return (

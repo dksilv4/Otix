@@ -1,4 +1,4 @@
-import { ScannersSection } from '@/old-features/settings/organisms/settings-sections/scanners-section'
+import { ScannersSection } from '../components/organisms/scanners-section'
 
 export function SettingsScannersPage() {
   return <ScannersSection />

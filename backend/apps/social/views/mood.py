@@ -1,6 +1,6 @@
 """Mood check-in endpoints.
 
-Mirror the legacy ``backend/otix/api/user/mood/router.py``: ``GET /today``
+Mirror the legacy ``old-backend/otix/api/user/mood/router.py``: ``GET /today``
 returns ``{due, checkin}``, ``POST /`` submits today's mood and ``POST /dismiss``
 silences today's prompt. All return the legacy 200 envelope (no 201 on create).
 """

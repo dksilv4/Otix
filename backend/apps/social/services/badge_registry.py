@@ -4,7 +4,7 @@
 
 Badges are code-defined, not stored in the DB: only earned badges persist as
 ``social.UserBadge`` rows. This module transcribes the legacy registry
-(``backend/otix/lib/badges.py``) into data the API can serve: the achievement
+(``old-backend/otix/lib/badges.py``) into data the API can serve: the achievement
 list, badge-detail rows and the claim route's ``xp_reward``. XP itself is a
 legacy ``User`` column that has no greenfield home yet, so ``xp_reward`` here is
 the tier amount used by the claim response only.

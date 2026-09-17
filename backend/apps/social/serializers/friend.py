@@ -1,6 +1,6 @@
 """Friend-graph output shapes (social domain).
 
-Mirrors the legacy FastAPI schemas in ``backend/otix/schemas/friend.py``:
+Mirrors the legacy FastAPI schemas in ``old-backend/otix/schemas/friend.py``:
 ``FriendOut`` (my friends), ``FriendRequestOut`` (incoming/outgoing requests with
 nested sender/receiver users) and ``FriendshipStatusOut``. These are plain read
 serializers -- the friend list is derived from accepted ``FriendRequest`` edges

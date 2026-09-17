@@ -1,7 +1,7 @@
 """Session, refresh-token and one-time action-token tables.
 
 Mirrors the legacy FastAPI auth runtime tables (``user_sessions``,
-``refresh_tokens``, ``auth_action_tokens`` in ``backend/otix/domain/``). All
+``refresh_tokens``, ``auth_action_tokens`` in ``old-backend/otix/domain/``). All
 three are keyed to ``settings.AUTH_USER_MODEL`` and carry the shared
 ``created_at``/``updated_at`` timestamps from ``core.models.TimestampedModel``.
 

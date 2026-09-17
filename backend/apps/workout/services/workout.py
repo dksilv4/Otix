@@ -1,6 +1,6 @@
 """Workout domain logic as plain callables over the models.
 
-Port of the legacy ``WorkoutService`` (``backend/otix/services/workout_service.py``).
+Port of the legacy ``WorkoutService`` (``old-backend/otix/services/workout_service.py``).
 The legacy routers dispatched write side-effects (XP award, streak update, badge
 checks) to Celery tasks owned by the social/gamification area; those are not
 re-emitted here. Today-status reads the social ``UserStreak`` ledger row when one

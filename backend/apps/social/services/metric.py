@@ -1,7 +1,7 @@
 """Metric snapshot domain logic.
 
 The legacy ``GET /metric`` endpoint returns the process metrics registry
-snapshot (``backend/otix/lib/metrics.py``), which exposes pre-declared sync
+snapshot (``old-backend/otix/lib/metrics.py``), which exposes pre-declared sync
 counters/histograms/gauges. The greenfield Django process has no such runtime
 registry yet, so the route returns the same JSON envelope with empty metric
 buckets. When infra metrics land this service should read from that registry.

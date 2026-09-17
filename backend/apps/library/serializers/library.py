@@ -1,6 +1,6 @@
 """Library read serializers.
 
-Port the legacy response schemas in ``backend/otix/schemas/media.py``. Every
+Port the legacy response schemas in ``old-backend/otix/schemas/media.py``. Every
 shape is field-listed explicitly (never ``__all__``) and timestamps render as
 the ISO strings the legacy JSON API returned, so ``response.data`` matches the
 wire format. Media-item summaries read ``_resolved_*`` asset/tmdb attributes and

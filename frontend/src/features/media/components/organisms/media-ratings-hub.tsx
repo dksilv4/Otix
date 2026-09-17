@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Star, Pencil, Award, Sparkles, ExternalLink, LogIn } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { useAuth } from '@/old-features/auth'
+import { useAuth } from '@auth/hooks/use-auth'
 import { useModal } from '@/lib/modals'
-import { DkDialog } from '@/old-features/ui/molecules/dialog'
+import { DkDialog } from '@ui/molecules/dialog'
 import { ReviewComposer } from '@/features/review/molecules/review-composer'
 import { reviewQueries, type ReviewOut } from '@/features/review/review-queries'
 import { ratingQueries, useUpsertRating, type MediaRatingOut } from '@/features/review/rating-queries'
-import { showXPToast } from '@/old-features/ui/atoms/xp-toast'
+import { showXPToast } from '@ui/atoms/xp-toast'
 import { cn } from '@/lib/utils'
 
 interface RatingsHubProps {

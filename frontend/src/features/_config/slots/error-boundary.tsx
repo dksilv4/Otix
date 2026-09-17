@@ -1,6 +1,6 @@
 // frontend/src/features/_config/slots/ErrorBoundary.tsx
 import { Component, type ReactNode } from 'react'
-import { showErrorToast } from '@/old-features/ui/molecules/toast'
+import { showErrorToast } from '@ui/molecules/toast'
 
 interface Props {
   children: ReactNode

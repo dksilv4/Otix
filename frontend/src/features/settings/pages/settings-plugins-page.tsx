@@ -8,7 +8,7 @@ import { useModal, SlidePanel } from '@/lib/modals'
 import { PluginConfigPanel } from '../components/organisms/settings-plugin-config-panel'
 import type { PluginInfo } from '@/features/settings/types/plugins'
 import { cn } from '@/lib/utils'
-import { DkSwitch } from '@/old-features/ui/atoms/switch'
+import { DkSwitch } from '@ui/atoms/switch'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 """Workout domain models: exercise catalog, workouts, and workout exercises.
 
-Ported from the legacy FastAPI ``backend/otix/domain/workout.py``. Exercises are
+Ported from the legacy FastAPI ``old-backend/otix/domain/workout.py``. Exercises are
 shared reference rows; a workout belongs to a user and groups exercises with a
 per-link ``sort_order`` and ``sets`` payload.
 """

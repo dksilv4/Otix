@@ -10,7 +10,7 @@ import type { PlexTrackInfo } from '@/lib/player/plex-audio-provider'
 import { AudioFeatureRow } from './media-music-audio-feature-row'
 import { MetaItem } from './media-music-meta-item'
 import { TrackRow } from './media-music-track-row'
-import { usePlexAlbumTracks, type PlexAlbumTrack } from '@/old-features/library/library-queries'
+import { usePlexAlbumTracks, type PlexAlbumTrack } from '@library/library-queries'
 
 interface MusicSectionProps {
  className?: string

@@ -1,6 +1,6 @@
 """Review / rating / interaction / episode-watched serializers.
 
-Response bodies mirror the legacy schemas in ``backend/otix/schemas/``
+Response bodies mirror the legacy schemas in ``old-backend/otix/schemas/``
 (``review.py``, ``media_rating.py``, ``interaction.py``,
 ``episode_interaction.py``). Request bodies are field-listed serializers so DRF
 enforces the legacy score/extra_data constraints.

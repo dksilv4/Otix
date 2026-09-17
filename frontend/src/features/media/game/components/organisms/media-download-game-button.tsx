@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { DkDialog } from '@/old-features/ui/molecules/dialog'
+import { DkDialog } from '@ui/molecules/dialog'
 import { IsoInstallerModal } from '@/features/launcher/components/organisms/iso-installer-modal'
 import { ServerGameSearchModal } from '@/features/downloads/molecules/server-game-search-modal'
 import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc, Server, Pause, X, AlertTriangle, ChevronDown } from 'lucide-react'

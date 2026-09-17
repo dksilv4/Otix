@@ -30,7 +30,7 @@ vi.mock('@tanstack/react-router', () => ({
   useLocation: () => ({ href: '/settings/integrations' }),
 }))
 
-vi.mock('@/old-features/ui/molecules/toast', () => ({
+vi.mock('@ui/molecules/toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }))
 
@@ -48,7 +48,7 @@ vi.mock('@/features/downloads/use-downloads', () => ({
   useDownloadConfig: () => ({ config: null, isLoading: false }),
 }))
 
-vi.mock('@/old-features/library/library-queries', () => ({
+vi.mock('@library/library-queries', () => ({
   usePlexLibraries: () => ({ data: [], isLoading: false, refetch: vi.fn() }),
   streamPlexLibrarySync: vi.fn(),
 }))

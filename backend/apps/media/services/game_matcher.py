@@ -1,6 +1,6 @@
 """Sync port of the legacy IGDB ``GameMatcher`` multi-phase pipeline.
 
-Mirrors ``backend/otix/services/game_matcher.py`` (sync, ORM): a store
+Mirrors ``old-backend/otix/services/game_matcher.py`` (sync, ORM): a store
 free-game / library reference is resolved to an Otix :class:`MediaItem` in four
 phases, each only processing references the previous phase left unmatched:
 

@@ -1,6 +1,6 @@
 """Unified proposal endpoints.
 
-Port of ``backend/otix/api/proposals/router.py``. Thin ``APIView`` subclasses:
+Port of ``old-backend/otix/api/proposals/router.py``. Thin ``APIView`` subclasses:
 GET/POST ``/proposals``, GET ``/proposals/{id}``, and the
 approve/reject/undo/vote state-machine actions. Status codes mirror legacy —
 create 201, review actions 200 with the proposal body, vote 200 with a

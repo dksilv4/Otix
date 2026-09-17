@@ -1,7 +1,7 @@
 """Search read serializers.
 
 Field-listed read shapes (never ``__all__``) mirroring the legacy FastAPI
-schemas in ``backend/otix/schemas/media.py``:
+schemas in ``old-backend/otix/schemas/media.py``:
 
 - ``MediaSummarySerializer``   -> legacy ``MediaItemSummary`` (title search rows)
 - ``TrackSearchSerializer``    -> legacy ``TrackSearchResult`` (album tracks)

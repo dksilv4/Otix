@@ -20,6 +20,8 @@ export interface ArrServiceInstance {
   seasonFolder?: boolean
   language_profile_id?: number
   languageProfileId?: number
+  hasApiKey?: boolean
+  has_api_key?: boolean
 }
 
 export function createArrInstance(
@@ -40,6 +42,7 @@ export function createArrInstance(
     series_type: partial.series_type || partial.seriesType || 'standard',
     season_folder: partial.season_folder ?? partial.seasonFolder ?? true,
     language_profile_id: partial.language_profile_id ?? partial.languageProfileId,
+    hasApiKey: partial.hasApiKey ?? partial.has_api_key,
   }
 }
 
@@ -64,7 +67,10 @@ export function normalizeArrInstances(
         seasonFolder?: boolean
         language_profile_id?: number
         languageProfileId?: number
+        hasApiKey?: boolean
+        has_api_key?: boolean
         enabled?: boolean
+        configured?: boolean
         instances?: ArrServiceInstance[]
       }
     | null
@@ -91,8 +97,27 @@ export function normalizeArrInstances(
         series_type: config?.series_type || config?.seriesType,
         season_folder: config?.season_folder ?? config?.seasonFolder,
         language_profile_id: config?.language_profile_id ?? config?.languageProfileId,
+        hasApiKey: config?.hasApiKey ?? config?.has_api_key,
       },
       defaultPort,
     ),
   ]
+}
+
+export function readyArrInstances(
+  config: Parameters<typeof normalizeArrInstances>[0],
+  defaultPort: number,
+): ArrServiceInstance[] {
+  if (!config) return []
+  const instances = normalizeArrInstances(config, defaultPort).filter((item) => item.enabled)
+  if (instances.length === 0) return []
+  const serviceReady = Boolean(
+    config.enabled ||
+      config.configured ||
+      config.hasApiKey ||
+      config.has_api_key ||
+      instances.some((item) => item.hasApiKey || item.has_api_key || item.api_key),
+  )
+  if (!serviceReady) return []
+  return instances.filter((item) => item.hasApiKey !== false)
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/old-features/ui/molecules/toast';
+import { useToast } from '@ui/molecules/toast';
 import {
   useProwlarrIndexers,
   useSaveServerProwlarrConfig,

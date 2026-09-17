@@ -1,7 +1,7 @@
 """A user's public reviews endpoint.
 
 Port of the legacy ``GET /users/{username}/reviews`` handler from
-``backend/otix/api/user/detail/router.py``. Public read with optional auth: an
+``old-backend/otix/api/user/detail/router.py``. Public read with optional auth: an
 authenticated author sees their own in-cooldown reviews; everyone else has them
 hidden.
 """

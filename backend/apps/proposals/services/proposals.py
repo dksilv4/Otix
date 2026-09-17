@@ -1,7 +1,7 @@
 """Unified proposal lifecycle as plain callables over the models.
 
 Port of the legacy ``ProposalsService`` + the registered ``match``/``edit``
-type handlers (``backend/otix/services/proposals_service.py`` and
+type handlers (``old-backend/otix/services/proposals_service.py`` and
 ``proposal_handlers/*``). State-machine rules, validation and side-effect
 semantics mirror that code; XP award / streak / notification / redis-cache
 steps are dropped because the greenfield has no XP/streak tables and no redis

@@ -12,7 +12,7 @@ import { ServerFileExplorer } from '../molecules/server-file-explorer';
 import { ServerSabnzbdSettingsModal } from '../molecules/server-sabnzbd-settings-modal';
 import { ServerGameSearchModal } from '../molecules/server-game-search-modal';
 import { useServerUsenetHistory, useServerUsenetQueue, useCancelServerQueueDownload } from '../use-server-usenet';
-import { DkButton } from '@/old-features/ui/atoms/button';
+import { DkButton } from '@ui/atoms/button';
 import { cn, formatBytes } from '@/lib/utils';
 import { isDesktop } from '@/lib/desktop/api';
 import './download-queue.scss';
@@ -454,8 +454,6 @@ export function DownloadQueuePage() {
         </div>
       )}
         </>
-      )}
-
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 """Friend-graph endpoints.
 
-Mirror the legacy ``backend/otix/api/user/friend/router.py`` status codes:
+Mirror the legacy ``old-backend/otix/api/user/friend/router.py`` status codes:
 send = 201 with a message body, accept/reject/remove = 200 with a message body,
 unknown friend on remove = 404 ``{"detail": "Friend not found"}``. List and
 status endpoints return the legacy body shapes directly (they are not paginated

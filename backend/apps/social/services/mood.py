@@ -1,6 +1,6 @@
 """Mood check-in domain logic.
 
-Port of the legacy ``backend/otix/api/user/mood/router.py`` helpers. A user has
+Port of the legacy ``old-backend/otix/api/user/mood/router.py`` helpers. A user has
 at most one row per UTC date (the model enforces this with a unique constraint),
 so submit and dismiss are both upserts against today's row. The legacy
 ``daily_mood_checkins_enabled`` user flag has no greenfield column, so the

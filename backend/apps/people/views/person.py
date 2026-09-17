@@ -4,7 +4,7 @@ Mirrors the accounts golden app: thin ``GenericAPIView``/``APIView`` subclasses
 that delegate request/response shape to serializers and any query/mutation logic
 to ``apps.people.services``.
 
-Status codes match the legacy FastAPI routers (``backend/otix/api/people/**``):
+Status codes match the legacy FastAPI routers (``old-backend/otix/api/people/**``):
 list/search/detail return 200, follow/unfollow return 200 with a body, and
 rating put/delete return 204 No Content.  Unknown ids are a 404 with legacy
 detail ``"Person not found"``.

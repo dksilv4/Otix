@@ -14,7 +14,7 @@ vi.mock('@/lib/api/client', () => ({
   },
 }))
 
-vi.mock('@/old-features/auth', () => ({
+vi.mock('@auth/hooks/use-auth', () => ({
   useAuth: () => ({ isAuthenticated: mockIsAuthenticated }),
 }))
 
@@ -27,7 +27,7 @@ vi.mock('@tanstack/react-router', () => ({
   useLocation: () => ({ href: '/media/show/123' }),
 }))
 
-vi.mock('@/old-features/ui/atoms/xp-toast', () => ({
+vi.mock('@ui/atoms/xp-toast', () => ({
   showXPToast: vi.fn(),
 }))
 

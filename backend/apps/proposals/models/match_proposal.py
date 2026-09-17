@@ -1,4 +1,4 @@
-"""Match proposals (legacy ``backend/otix/domain/match_proposal.py``).
+"""Match proposals (legacy ``old-backend/otix/domain/match_proposal.py``).
 
 An admin-reviewed proposal linking an external source game (store + store id)
 to a catalog :class:`media.MediaItem`. Source/target titles are denormalised

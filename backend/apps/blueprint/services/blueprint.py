@@ -3,7 +3,7 @@
 Views stay thin; list/detail response assembly and the create/update/delete/like/
 download mutations live here so their semantics are testable without HTTP. The
 service mirrors the legacy ``BlueprintService``
-(``backend/otix/services/blueprint_service.py``) for the routes under
+(``old-backend/otix/services/blueprint_service.py``) for the routes under
 ``/api/v1/blueprints``.
 
 Like the ported company/person areas, blueprint ids in the legacy API are

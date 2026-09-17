@@ -1,10 +1,7 @@
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '@auth/hooks/use-auth'
-import { useUserLists, useCreateList } from '@list/list-queries'
-import { ListCard } from '@list/molecules/list-card'
-import { ListComposer } from '@list/organisms/list-composer'
+import { useUserLists, useCreateList, ListCard, ListComposer, type UserListCreate } from '@list'
 import { PlusIcon, LibraryIcon } from 'lucide-react'
-import type { UserListCreate } from '@list/list-queries'
 import { useModal } from '@/lib/modals'
 
 export function ListIndexPage() {

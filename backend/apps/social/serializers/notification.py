@@ -1,7 +1,7 @@
 """Notification output shape (social domain).
 
 Mirrors the legacy ``NotificationOut`` fields from
-``backend/otix/schemas/notification.py``. The list response envelope
+``old-backend/otix/schemas/notification.py``. The list response envelope
 (``items``/``has_more``/``next_cursor``) is assembled by the view around this
 per-row serializer.
 """

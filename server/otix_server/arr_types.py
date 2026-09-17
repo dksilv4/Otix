@@ -454,6 +454,7 @@ class SonarrSeries(BaseModel):
     title: str
     year: Optional[int] = None
     tvdb_id: Optional[int] = None
+    tmdb_id: Optional[int] = None
     imdb_id: Optional[str] = None
     overview: Optional[str] = None
     monitored: bool = True
@@ -479,6 +480,8 @@ class ArrQueueRecord(BaseModel):
     indexer: Optional[str] = None
     output_path: Optional[str] = None
     error_message: Optional[str] = None
+    tmdb_id: Optional[int] = None
+    tvdb_id: Optional[int] = None
 
 
 class ArrQueueResponse(BaseModel):
@@ -501,8 +504,9 @@ class AddRadarrMovieRequest(BaseModel):
 
 
 class AddSonarrSeriesRequest(BaseModel):
-    title: str
-    tvdb_id: int
+    title: Optional[str] = None
+    tvdb_id: Optional[int] = None
+    tmdb_id: Optional[int] = None
     year: Optional[int] = None
     quality_profile_id: Optional[int] = None
     root_folder_path: Optional[str] = None
@@ -511,6 +515,12 @@ class AddSonarrSeriesRequest(BaseModel):
     series_type: Optional[str] = "standard"
     season_folder: bool = True
     instance_id: Optional[str] = None
+
+    @model_validator(mode="after")
+    def require_external_id(self) -> "AddSonarrSeriesRequest":
+        if self.tvdb_id is None and self.tmdb_id is None:
+            raise ValueError("tvdb_id or tmdb_id is required")
+        return self
 
 
 class ArrConnectionTestResult(BaseModel):

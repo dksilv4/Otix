@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { DkDialog } from '@/old-features/ui/molecules/dialog'
-import { DkButton } from '@/old-features/ui/atoms/button'
+import { DkDialog } from '@ui/molecules/dialog'
+import { DkButton } from '@ui/atoms/button'
 import type { ArrServiceInstance } from '../arr-instances'
 
 export function ArrInstanceSwitcher({
