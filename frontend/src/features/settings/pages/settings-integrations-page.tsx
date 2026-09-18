@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
@@ -7,6 +7,7 @@ import { DkButton } from '@ui/atoms/button'
 import { DkDropdown } from '@ui/atoms/dropdown'
 import { DkSwitch } from '@ui/atoms/switch'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
+import EpicIcon from '@/assets/provider-logos/epic.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import GoogleIcon from '@/assets/provider-logos/google.svg?react'
 import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
@@ -25,6 +26,7 @@ import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/serv
 import { ProwlarrIndexersPanel } from '@/features/downloads/molecules/prowlarr-indexers-panel'
 import { ServerRadarrSettingsModal } from '@/features/downloads/molecules/server-radarr-settings-modal'
 import { ServerSonarrSettingsModal } from '@/features/downloads/molecules/server-sonarr-settings-modal'
+import { EpicCodeModal } from '../components/organisms/epic-code-modal'
 import {
   useServerRadarrConfig,
   useServerRadarrMovies,
@@ -121,6 +123,14 @@ function extractIntegrationMessage(err: unknown): string {
   return 'Something went wrong. Please try again.'
 }
 
+function openBoundModal(
+  openModal: (component: ReactNode) => () => void,
+  render: (onClose: () => void) => ReactNode,
+) {
+  const closeRef = { current: () => {} }
+  closeRef.current = openModal(render(() => closeRef.current()))
+}
+
 function formatDaysAgo(unixTimestamp: number): string {
   const days = Math.floor((Date.now() / 1000 - unixTimestamp) / 86400)
   if (days <= 0) return 'Today'
@@ -131,6 +141,7 @@ function formatDaysAgo(unixTimestamp: number): string {
 
 const BRAND_COLORS: Record<string, string> = {
   steam: '#1a6bcc',
+  epic: '#2a2a2a',
   plex: '#e5a00d',
   tmdb: '#01b4e4',
   google: '#4285F4',
@@ -142,6 +153,7 @@ const BRAND_COLORS: Record<string, string> = {
 
 const BRAND_BG: Record<string, string> = {
   steam: 'bg-[#1a6bcc]/10',
+  epic: 'bg-white/10',
   plex: 'bg-[#e5a00d]/10',
   tmdb: 'bg-[#01b4e4]/10',
   google: 'bg-[#4285F4]/10',
@@ -164,6 +176,7 @@ function IntegrationCard({
   onToggle,
   onConnect,
   connecting,
+  connectDisabled,
   onDisconnect,
   disconnecting,
   children,
@@ -178,6 +191,7 @@ function IntegrationCard({
   onToggle: () => void
   onConnect?: () => void
   connecting?: boolean
+  connectDisabled?: boolean
   onDisconnect?: () => void
   disconnecting?: boolean
   children?: React.ReactNode
@@ -222,7 +236,7 @@ function IntegrationCard({
           <button
             type="button"
             onClick={onConnect}
-            disabled={connecting}
+            disabled={connecting || connectDisabled}
             className="shrink-0 inline-flex items-center justify-start gap-1.5 h-8 w-[90px] rounded-lg px-3 text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-all duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50"
           >
             <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
@@ -374,12 +388,6 @@ export function SettingsIntegrationsPage() {
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
-  const [scanning, setScanning] = useState(false)
-  const [scanResult, setScanResult] = useState<{ totalInSteam: number; matchedInOtix: number; resolved: number; synced: number; failed: number } | null>(null)
-  const [wishlistScanning, setWishlistScanning] = useState(false)
-  const [wishlistScanResult, setWishlistScanResult] = useState<{ total: number; matched: number; private?: boolean } | null>(null)
-  const [resolving, setResolving] = useState(false)
-  const [resolveResult, setResolveResult] = useState<{ resolved: number; synced: number; failed: number; total: number } | null>(null)
   const [plexConnecting, setPlexConnecting] = useState(false)
   const [plexDisconnecting, setPlexDisconnecting] = useState(false)
   const [plexSyncing, setPlexSyncing] = useState(false)
@@ -427,10 +435,27 @@ export function SettingsIntegrationsPage() {
   const [plexMessage, setPlexMessage] = useState('')
   const [plexError, setPlexError] = useState('')
   const [plexWatchlistSyncing, setPlexWatchlistSyncing] = useState(false)
-  const [plexWatchlistSyncResult, setPlexWatchlistSyncResult] = useState<{ total: number; matched: number; seeded: number } | null>(null)
+  const [plexWatchlistSyncResult, setPlexWatchlistSyncResult] = useState<{
+    total: number
+    matched: number
+    seeded: number
+  } | null>(null)
   const [steamConnected, setSteamConnected] = useState(Boolean(user?.steamId))
   const [steamId, setSteamId] = useState<string | null>(user?.steamId ?? null)
   const [steamProfile, setSteamProfile] = useState<SteamProfile | null>(null)
+  const [epicConnected, setEpicConnected] = useState(false)
+  const [epicDisplayName, setEpicDisplayName] = useState<string | null>(null)
+  const [epicAccountId, setEpicAccountId] = useState<string | null>(null)
+  const [epicConnecting, setEpicConnecting] = useState(false)
+  const [epicDisconnecting, setEpicDisconnecting] = useState(false)
+  const [epicScanning, setEpicScanning] = useState(false)
+  const [epicScanResult, setEpicScanResult] = useState<{
+    totalInEpic: number
+    matchedInOtix: number
+    failed: number
+  } | null>(null)
+  const [epicMessage, setEpicMessage] = useState('')
+  const [epicError, setEpicError] = useState('')
   const [plexConnected, setPlexConnected] = useState(Boolean(user?.plexId))
   const [plex, setPlex] = useState<PlexIntegration | null>(null)
   const [plexWatchHistoryEnabled, setPlexWatchHistoryEnabled] = useState(user?.plexWatchHistoryEnabled ?? false)
@@ -441,7 +466,11 @@ export function SettingsIntegrationsPage() {
   const [tmdbSyncDirection, setTmdbSyncDirection] = useState(user?.tmdbRatingSyncDirection ?? 'disabled')
   const [tmdbSyncing, setTmdbSyncing] = useState(false)
   const [tmdbWatchlistImporting, setTmdbWatchlistImporting] = useState(false)
-  const [tmdbSyncResult, setTmdbSyncResult] = useState<{ imported: number; exported: number; skipped: number } | null>(null)
+  const [tmdbSyncResult, setTmdbSyncResult] = useState<{
+    imported: number
+    exported: number
+    skipped: number
+  } | null>(null)
   const [tmdbWatchlistResult, setTmdbWatchlistResult] = useState<{ imported: number; skipped: number } | null>(null)
   const [tmdbConnecting, setTmdbConnecting] = useState(false)
   const [tmdbDisconnecting, setTmdbDisconnecting] = useState(false)
@@ -461,7 +490,12 @@ export function SettingsIntegrationsPage() {
   const [driveMessage, setDriveMessage] = useState('')
   const [driveError, setDriveError] = useState('')
   const [youtubeSyncing, setYoutubeSyncing] = useState(false)
-  const [youtubeSyncResult, setYoutubeSyncResult] = useState<{ total: number; musicVideos: number; matched: number; channelLinks: number } | null>(null)
+  const [youtubeSyncResult, setYoutubeSyncResult] = useState<{
+    total: number
+    musicVideos: number
+    matched: number
+    channelLinks: number
+  } | null>(null)
   const [youtubeProgress, setYoutubeProgress] = useState<YouTubeProgressState | null>(null)
   const [youtubeError, setYoutubeError] = useState('')
   const [youtubeMessage, setYoutubeMessage] = useState('')
@@ -470,56 +504,60 @@ export function SettingsIntegrationsPage() {
   const displayedSteamId = steamId ?? user?.steamId ?? null
   const isPlexConnected = plexConnected
   const isTmdbConnected = tmdbConnected
-  const { data: plexLibraries, isLoading: plexLibrariesLoading, refetch: refetchLibraries } = usePlexLibraries({ enabled: isPlexConnected })
+  const { data: plexLibraries, isLoading: plexLibrariesLoading, refetch: refetchLibraries } =
+    usePlexLibraries({ enabled: isPlexConnected })
 
   const { openModal } = useModal()
   const { data: gameServers = [] } = useGameServers()
   const activeServer = gameServers[0]
+  const hasOnlineNode = gameServers.some((s) => s.isOnline)
+  const isEpicConnected = epicConnected
 
   const openSabnzbdModal = () => {
-    const close = openModal(
+    openBoundModal(openModal, (onClose) => (
       <ServerSabnzbdSettingsModal
         serverId={activeServer?.id}
         serverName={activeServer?.name}
-        onClose={() => close()}
+        onClose={onClose}
       />
-    )
+    ))
   }
 
   const openProwlarrModal = () => {
-    const close = openModal(
+    openBoundModal(openModal, (onClose) => (
       <ServerProwlarrSettingsModal
         serverId={activeServer?.id}
         serverName={activeServer?.name}
-        onClose={() => close()}
+        onClose={onClose}
       />
-    )
+    ))
   }
 
   const openRadarrModal = () => {
-    const close = openModal(
+    openBoundModal(openModal, (onClose) => (
       <ServerRadarrSettingsModal
         serverId={activeServer?.id}
         serverName={activeServer?.name}
-        onClose={() => close()}
+        onClose={onClose}
       />
-    )
+    ))
   }
 
   const openSonarrModal = () => {
-    const close = openModal(
+    openBoundModal(openModal, (onClose) => (
       <ServerSonarrSettingsModal
         serverId={activeServer?.id}
         serverName={activeServer?.name}
-        onClose={() => close()}
+        onClose={onClose}
       />
-    )
+    ))
   }
 
   const { config: dlConfig } = useDownloadConfig(user?.id)
   const { data: usenetConfig } = useServerUsenetConfig(activeServer?.id)
   const isSabnzbdConfigured = Boolean(
-    (activeServer && usenetConfig?.sabnzbd?.host && Boolean(usenetConfig?.sabnzbd?.api_key || usenetConfig?.sabnzbd?.configured)) ||
+    (activeServer && usenetConfig?.sabnzbd?.host &&
+      Boolean(usenetConfig?.sabnzbd?.api_key || usenetConfig?.sabnzbd?.configured)) ||
     (dlConfig?.sabnzbdHost && Boolean(dlConfig?.sabnzbdApiKey))
   )
   const isProwlarrConfigured = Boolean(
@@ -585,8 +623,9 @@ export function SettingsIntegrationsPage() {
       setSyncedProwlarrIndexers(normalizeProwlarrIndexers(res))
       setProwlarrSyncMessage(res.message)
       await refetchProwlarrIndexers()
-    } catch (err: any) {
-      setProwlarrSyncMessage(`Sync failed: ${err.message || err}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setProwlarrSyncMessage(`Sync failed: ${message}`)
     }
   }
 
@@ -653,12 +692,38 @@ export function SettingsIntegrationsPage() {
     }
   }
 
+  const fetchEpicStatus = async () => {
+    try {
+      const { data } = await apiClient.get<{
+        connected?: boolean
+        displayName?: string | null
+        accountId?: string | null
+      }>('/integrations/epic/status')
+      setEpicConnected(Boolean(data.connected))
+      setEpicDisplayName(data.displayName ?? null)
+      setEpicAccountId(data.accountId ?? null)
+    } catch (err) {
+      setEpicConnected(false)
+      const msg = extractIntegrationMessage(err)
+      if (msg === 'Connect an Otix Server to link Epic.' || !gameServers.some((s) => s.isOnline)) {
+        setEpicError('Connect an Otix Server to link Epic.')
+      } else {
+        setEpicError(msg)
+      }
+    }
+  }
+
   useEffect(() => {
     if (authLoading) return
     queueMicrotask(() => {
-      if (isAuthenticated) fetchIntegrations()
+      if (isAuthenticated) {
+        fetchIntegrations()
+        fetchEpicStatus()
+      }
       else setLoading(false)
     })
+    // fetchIntegrations / fetchEpicStatus are stable enough for mount + auth changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, authLoading])
 
   // Re-fetch integrations when the window regains visibility — this catches
@@ -673,9 +738,11 @@ export function SettingsIntegrationsPage() {
       if (now - lastFetch < 30_000) return
       lastFetch = now
       fetchIntegrations()
+      fetchEpicStatus()
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated])
 
   const handleConnect = async () => {
@@ -687,6 +754,86 @@ export function SettingsIntegrationsPage() {
     } catch (err) {
       setConnecting(false)
       setSteamError(extractIntegrationMessage(err))
+    }
+  }
+
+  const handleEpicConnect = async () => {
+    setEpicConnecting(true)
+    setEpicError('')
+    try {
+      if (!hasOnlineNode) {
+        setEpicError('Connect an Otix Server to link Epic.')
+        return
+      }
+      const { data } = await apiClient.post('/auth/oauth/epic')
+      const authUrl = data.authUrl || data.auth_url
+      const state = data.state
+      const openOAuthWindow = window.desktopAPI?.plugin?.openOAuthWindow
+      if (isDesktop() && openOAuthWindow) {
+        const win = await openOAuthWindow(authUrl, 'id/api/redirect') as {
+          success?: boolean
+          code?: string
+          error?: string
+        }
+        if (!win?.success || !win.code) {
+          setEpicError((win?.error as string | undefined) || 'Login cancelled')
+          return
+        }
+        await apiClient.post('/auth/oauth/epic/callback', { code: win.code, state })
+        await fetchEpicStatus()
+        return
+      }
+      openExternal(authUrl)
+      openBoundModal(openModal, (onClose) => (
+        <EpicCodeModal
+          authUrl={authUrl}
+          state={state}
+          onClose={onClose}
+          onLinked={() => { void fetchEpicStatus() }}
+        />
+      ))
+    } catch (err) {
+      setEpicError(extractIntegrationMessage(err))
+    } finally {
+      setEpicConnecting(false)
+    }
+  }
+
+  const handleEpicDisconnect = async () => {
+    setEpicDisconnecting(true)
+    setEpicError('')
+    setEpicMessage('')
+    try {
+      await apiClient.delete('/auth/oauth/epic/disconnect')
+      setEpicConnected(false)
+      setEpicDisplayName(null)
+      setEpicAccountId(null)
+      setEpicMessage('Epic account unlinked.')
+    } catch (err) {
+      setEpicError(extractIntegrationMessage(err))
+    } finally {
+      setEpicDisconnecting(false)
+    }
+  }
+
+  const handleEpicScan = async () => {
+    setEpicScanning(true)
+    setEpicError('')
+    setEpicScanResult(null)
+    try {
+      const { data } = await apiClient.post<{
+        totalInEpic: number
+        matchedInOtix: number
+        failed: number
+      }>('/integrations/epic/scan')
+      setEpicScanResult(data)
+      let msg = `Found ${data.matchedInOtix} matches out of ${data.totalInEpic} Epic games.`
+      if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
+      setEpicMessage(msg)
+    } catch (err) {
+      setEpicError(extractIntegrationMessage(err))
+    } finally {
+      setEpicScanning(false)
     }
   }
 
@@ -955,7 +1102,9 @@ export function SettingsIntegrationsPage() {
                 },
               }))
               if (!animStateRef.current[key]) {
-                animStateRef.current[key] = { displayed: 0, real: 0, rate: 5, lastItems: 0, lastTime: performance.now() }
+                animStateRef.current[key] = {
+                  displayed: 0, real: 0, rate: 5, lastItems: 0, lastTime: performance.now(),
+                }
               }
               break
             }
@@ -972,7 +1121,9 @@ export function SettingsIntegrationsPage() {
                 },
               }))
               if (!animStateRef.current[key]) {
-                animStateRef.current[key] = { displayed: 0, real: 0, rate: 5, lastItems: 0, lastTime: performance.now() }
+                animStateRef.current[key] = {
+                  displayed: 0, real: 0, rate: 5, lastItems: 0, lastTime: performance.now(),
+                }
               }
               break
             }
@@ -1109,7 +1260,7 @@ export function SettingsIntegrationsPage() {
       },
     }))
     if (!animStateRef.current[key]) {
-      animStateRef.current[key] = { displayed: 0, real: 0, rate: 5, lastItems: 0, lastTime: performance.now() }
+      animStateRef.current[key] = { displayed: 0, real: 0, rate: 5, lastItems: 0, lastTime: 0 }
     }
 
     try {
@@ -1141,7 +1292,13 @@ export function SettingsIntegrationsPage() {
               s.lastItems = realValue
               s.lastTime = now
             } else {
-              animStateRef.current[key] = { displayed: Math.max(0, realValue - 5), real: realValue, rate: 5, lastItems: realValue, lastTime: now }
+              animStateRef.current[key] = {
+                displayed: Math.max(0, realValue - 5),
+                real: realValue,
+                rate: 5,
+                lastItems: realValue,
+                lastTime: now,
+              }
             }
             setPlexLibraryProgress((prev) => {
               const lib = prev[key]
@@ -1198,79 +1355,6 @@ export function SettingsIntegrationsPage() {
     }
   }
 
-  const handleScan = async () => {
-    setScanning(true)
-    setSteamError('')
-    setScanResult(null)
-    try {
-      // First scan hydrates the Otix catalog (runs the matcher for unmatched
-      // games), which can take a while on a fresh account — allow up to 5 min.
-      const { data } = await apiClient.post<{
-        totalInSteam: number
-        matchedInOtix: number
-        resolved: number
-        synced: number
-        failed: number
-      }>(
-        '/integrations/steam/scan',
-        undefined,
-        { timeout: 300_000 },
-      )
-      setScanResult(data)
-      let msg = `Found ${data.matchedInOtix} matches out of ${data.totalInSteam} Steam games.`
-      if (data.synced > 0) msg += ` Seeded ${data.synced} new Otix entries.`
-      if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
-      setSteamMessage(msg)
-    } catch (err) {
-      setSteamError(extractIntegrationMessage(err))
-    } finally {
-      setScanning(false)
-    }
-  }
-
-  const handleWishlistScan = async () => {
-    setWishlistScanning(true)
-    setSteamError('')
-    setWishlistScanResult(null)
-    try {
-      const { data } = await apiClient.post<{ total: number; matched: number; private?: boolean }>(
-        '/integrations/steam/wishlist/scan',
-      )
-      setWishlistScanResult(data)
-      if (data.private) {
-        setSteamError('Your Steam wishlist is private. Set your Steam privacy settings to Public to import your wishlist.')
-      } else {
-        setSteamMessage(`Found ${data.matched} wishlist matches out of ${data.total} items.`)
-      }
-    } catch (err) {
-      setSteamError(extractIntegrationMessage(err))
-    } finally {
-      setWishlistScanning(false)
-    }
-  }
-
-  const handleResolveUnmatched = async () => {
-    setResolving(true)
-    setSteamError('')
-    setResolveResult(null)
-    try {
-      const { data } = await apiClient.post<{ resolved: number; synced: number; failed: number; total: number }>(
-        '/integrations/steam/resolve-unmatched',
-      )
-      setResolveResult(data)
-      let msg = ''
-      if (data.resolved > 0) msg += `${data.resolved} linked, `
-      if (data.synced > 0) msg += `${data.synced} synced, `
-      if (data.failed > 0) msg += `${data.failed} failed, `
-      msg = msg.replace(/,\s*$/, '')
-      setSteamMessage(`Unmatched games resolved: ${msg || 'none found'}.`)
-    } catch (err) {
-      setSteamError(extractIntegrationMessage(err))
-    } finally {
-      setResolving(false)
-    }
-  }
-
   if (!isAuthenticated) {
     return (
       <div className="space-y-6">
@@ -1314,6 +1398,25 @@ export function SettingsIntegrationsPage() {
       connecting,
       onDisconnect: handleDisconnect,
       disconnecting,
+    },
+    {
+      id: 'epic',
+      name: 'Epic',
+      keywords: 'epic games store egs library launcher',
+      description: !hasOnlineNode && !isEpicConnected
+        ? 'Connect an Otix Server to link Epic.'
+        : isEpicConnected && epicDisplayName
+          ? `Linked as ${epicDisplayName}`
+          : 'Sign in with Epic Games to sync your game library.',
+      isConnected: isEpicConnected,
+      brandColor: BRAND_COLORS.epic,
+      brandBg: BRAND_BG.epic,
+      icon: EpicIcon,
+      onConnect: handleEpicConnect,
+      connecting: epicConnecting,
+      connectDisabled: !hasOnlineNode,
+      onDisconnect: handleEpicDisconnect,
+      disconnecting: epicDisconnecting,
     },
     {
       id: 'plex',
@@ -1495,6 +1598,7 @@ export function SettingsIntegrationsPage() {
                 onToggle={() => toggleExpand(i.id)}
                 onConnect={i.onConnect}
                 connecting={i.connecting}
+                connectDisabled={i.connectDisabled}
                 onDisconnect={i.onDisconnect}
                 disconnecting={i.disconnecting}
               >
@@ -1525,7 +1629,10 @@ export function SettingsIntegrationsPage() {
                     <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 text-xs text-white/70">
                         <FolderOpen className="h-4 w-4 text-sky-400 shrink-0" />
-                        <span>Game scanning, wishlist syncing, and auto-matching are managed under <strong>Library Settings</strong> as a Provider.</span>
+                        <span>
+                          Game scanning, wishlist syncing, and auto-matching are managed under
+                          {' '}<strong>Library Settings</strong> as a Provider.
+                        </span>
                       </div>
                       <Link
                         to="/settings/library"
@@ -1536,6 +1643,46 @@ export function SettingsIntegrationsPage() {
                     </div>
                     {steamMessage && <p className="px-5 py-2 text-xs text-green-400">{steamMessage}</p>}
                     {steamError && <p className="px-5 py-2 text-xs text-red-400">{steamError}</p>}
+                  </>
+                )}
+
+                {/* Epic content */}
+                {i.id === 'epic' && (
+                  <>
+                    <IntegrationProfile
+                      avatarAlt={epicDisplayName ?? 'Epic avatar'}
+                      name={epicDisplayName ?? 'Epic User'}
+                      detail={epicAccountId ? `Account ID: ${epicAccountId}` : 'Epic account linked'}
+                      brandBg={BRAND_BG.epic}
+                      icon={EpicIcon}
+                      brandColor={BRAND_COLORS.epic}
+                    />
+                    <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 text-xs text-white/70">
+                        <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
+                        <span>
+                          Game scanning and matching are also managed under
+                          {' '}<strong>Library Settings</strong> as a Provider.
+                        </span>
+                      </div>
+                      <Link
+                        to="/settings/library"
+                        className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+                      >
+                        Go to Library Settings &rarr;
+                      </Link>
+                    </div>
+                    <IntegrationAction
+                      label="Library Scan"
+                      description="Scan your Epic Games library"
+                      result={epicScanResult ? `${epicScanResult.matchedInOtix} matches out of ${epicScanResult.totalInEpic} Epic games` : null}
+                      buttonLabel={epicScanning ? 'Scanning...' : epicScanResult ? 'Re-scan' : 'Scan Library'}
+                      buttonIcon={RefreshCw}
+                      onPress={handleEpicScan}
+                      loading={epicScanning}
+                    />
+                    {epicMessage && <p className="px-5 py-2 text-xs text-green-400">{epicMessage}</p>}
+                    {epicError && <p className="px-5 py-2 text-xs text-red-400">{epicError}</p>}
                   </>
                 )}
 

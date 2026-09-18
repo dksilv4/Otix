@@ -8,12 +8,18 @@ import { SettingsIntegrationsPage } from '../pages/settings-integrations-page'
 // Mock API and auth
 vi.mock('@/lib/api/client', () => ({
   apiClient: {
-    get: vi.fn().mockResolvedValue({
-      data: {
-        providers: [],
-      },
+    get: vi.fn().mockImplementation((url: string) => {
+      if (String(url).includes('/integrations/epic/status')) {
+        return Promise.resolve({ data: { connected: false } })
+      }
+      return Promise.resolve({
+        data: {
+          providers: [],
+        },
+      })
     }),
     post: vi.fn().mockResolvedValue({ data: {} }),
+    delete: vi.fn().mockResolvedValue({ data: {} }),
   },
 }))
 
@@ -26,7 +32,7 @@ vi.mock('@/lib/providers/auth', () => ({
 }))
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
+  Link: ({ children, to }: { children?: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
   useLocation: () => ({ href: '/settings/integrations' }),
 }))
 
@@ -36,9 +42,9 @@ vi.mock('@ui/molecules/toast', () => ({
 
 // Mock downloads & servers hooks
 let mockGameServers: Array<{ id: number; name: string; primaryUrl: string; isOnline: boolean }> = []
-let mockUsenetConfig: any = null
-let mockRadarrConfig: any = null
-let mockSonarrConfig: any = null
+let mockUsenetConfig: Record<string, unknown> | null = null
+let mockRadarrConfig: Record<string, unknown> | null = null
+let mockSonarrConfig: Record<string, unknown> | null = null
 
 vi.mock('@/features/downloads/use-server-downloads', () => ({
   useGameServers: () => ({ data: mockGameServers, isLoading: false }),
@@ -334,6 +340,33 @@ describe('Settings Integrations Modals Regression Tests', () => {
       expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Prowlarr' })).toBeInTheDocument()
       expect(within(screen.getByRole('dialog')).getByText(/On Otix Node One/i)).toBeInTheDocument()
     })
+  })
+
+  it('disables Epic Connect and shows a hint when no Otix Server is online', async () => {
+    mockGameServers = []
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Epic')).toBeInTheDocument()
+    })
+
+    const card = screen.getByText('Epic').closest('.rounded-2xl')!
+    expect(within(card).getByRole('button', { name: /connect/i })).toBeDisabled()
+    expect(within(card).getByText('Connect an Otix Server to link Epic.')).toBeInTheDocument()
+  })
+
+  it('enables Epic Connect when an Otix Server is online', async () => {
+    mockGameServers = [
+      { id: 1, name: 'Homelab', primaryUrl: 'http://192.168.1.10:8000', isOnline: true },
+    ]
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Epic')).toBeInTheDocument()
+    })
+
+    const card = screen.getByText('Epic').closest('.rounded-2xl')!
+    expect(within(card).getByRole('button', { name: /connect/i })).toBeEnabled()
   })
 })
 
