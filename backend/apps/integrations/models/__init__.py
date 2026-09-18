@@ -5,10 +5,12 @@ One module per provider concern:
 - ``client``: ClientDevice (registered fetch-proxy devices)
 - ``plex``:   user Plex servers/libraries/scanned items
 - ``steam``:  user Steam owned games + wishlist
+- ``epic``:   user Epic owned games
 - ``youtube``: user YouTube liked videos
 """
 
 from apps.integrations.models.client import ClientDevice
+from apps.integrations.models.epic import UserEpicGame
 from apps.integrations.models.plex import (
     UserPlexItem,
     UserPlexLibrary,
@@ -25,6 +27,7 @@ __all__ = [
     "UserPlexItem",
     "UserPlexLibrary",
     "UserPlexServer",
+    "UserEpicGame",
     "UserSteamGame",
     "UserSteamWishlist",
     "UserYoutubeLikedVideo",
