@@ -11,7 +11,7 @@ from datetime import date, datetime
 
 from rest_framework import serializers
 
-from apps.integrations.models import UserSteamGame, UserYoutubeLikedVideo
+from apps.integrations.models import UserEpicGame, UserSteamGame, UserYoutubeLikedVideo
 from apps.library.models import UserGameServer, UserLocalGame
 from apps.library.services.summaries import build_media_item_summary
 from apps.media.models import MediaItem
@@ -20,7 +20,7 @@ from apps.media.models import MediaItem
 def _iso(value: date | datetime | None) -> str | None:
     if value is None:
         return None
-    if isinstance(value, (date, datetime)):
+    if isinstance(value, date | datetime):
         return value.isoformat()
     return value
 
@@ -53,6 +53,20 @@ class InstalledGameSerializer(serializers.Serializer):
                 getattr(media_item, "_resolved_logo_url", None) if media_item is not None else None
             ),
             "catalog_avg_rating": media_item.avg_rating if media_item is not None else None,
+        }
+
+
+class EpicUnmatchedGameSerializer(serializers.Serializer):
+    """One unmatched Epic row."""
+
+    def to_representation(self, game: UserEpicGame) -> dict:
+        return {
+            "id": game.id,
+            "app_name": game.app_name,
+            "epic_name": game.title,
+            "namespace": game.namespace,
+            "catalog_item_id": game.catalog_item_id,
+            "offer_id": game.offer_id,
         }
 
 

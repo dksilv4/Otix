@@ -1,5 +1,10 @@
 """Library domain read services, re-exported for convenient imports."""
 
+from apps.library.services.epic import (
+    get_epic_library,
+    get_epic_status,
+    get_unmatched_epic_games,
+)
 from apps.library.services.installed import get_installed_games
 from apps.library.services.plex import (
     PlexThumbError,
@@ -26,8 +31,11 @@ __all__ = [
     "UNKNOWN_TAB_DETAIL",
     "build_media_item_summary",
     "enrich_media_items",
+    "get_epic_library",
+    "get_epic_status",
     "get_installed_games",
     "get_library_tab",
+    "get_unmatched_epic_games",
     "get_plex_library",
     "get_plex_status",
     "get_plex_thumb_url",

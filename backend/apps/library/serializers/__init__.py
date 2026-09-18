@@ -1,6 +1,7 @@
 """Library API serializers, re-exported for convenient imports."""
 
 from apps.library.serializers.library import (
+    EpicUnmatchedGameSerializer,
     InstalledGameSerializer,
     MediaItemSummarySerializer,
     SteamUnmatchedGameSerializer,
@@ -11,6 +12,7 @@ from apps.library.serializers.library import (
 )
 
 __all__ = [
+    "EpicUnmatchedGameSerializer",
     "InstalledGameSerializer",
     "MediaItemSummarySerializer",
     "SteamUnmatchedGameSerializer",

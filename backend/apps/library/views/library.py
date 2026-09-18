@@ -1,4 +1,4 @@
-"""Library API views: installed/plex/steam/youtube/tab read surfaces.
+"""Library API views: installed/plex/steam/epic/youtube/tab read surfaces.
 
 All routes are authenticated (global ``IsAuthenticated`` default); thin APIView
 subclasses that delegate query work to ``apps.library.services`` and response
@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from apps.library import services
 from apps.library.serializers import (
+    EpicUnmatchedGameSerializer,
     InstalledGameSerializer,
     MediaItemSummarySerializer,
     SteamUnmatchedGameSerializer,
@@ -63,9 +64,7 @@ class InstalledGamesView(APIView):
         limit = _int_param(request, "limit", default=50, low=1, high=200)
         offset = _int_param(request, "offset", default=0, low=0, high=1_000_000)
         games, total = services.get_installed_games(request.user, limit, offset)
-        return Response(
-            {"games": InstalledGameSerializer(games, many=True).data, "total": total}
-        )
+        return Response({"games": InstalledGameSerializer(games, many=True).data, "total": total})
 
 
 class PlexLibraryView(APIView):
@@ -140,6 +139,46 @@ class SteamUnmatchedView(APIView):
         return Response(
             {
                 "items": SteamUnmatchedGameSerializer(rows, many=True).data,
+                "next_cursor": next_cursor,
+                "has_more": has_more,
+                "total": None,
+            }
+        )
+
+
+class EpicLibraryView(APIView):
+    """``GET /api/v1/library/epic`` — matched Epic games grid.
+
+    Unlike Steam, an unlinked user gets an empty list rather than 404; the
+    refresh token lives on the Otix Server node, not on ``User``.
+    """
+
+    def get(self, request: Request) -> Response:
+        limit = _int_param(request, "limit", default=48, low=1, high=100)
+        items, has_more, next_cursor = services.get_epic_library(
+            request.user, cursor=request.query_params.get("cursor"), limit=limit
+        )
+        return Response(_media_list_payload(items, has_more, next_cursor))
+
+
+class EpicStatusView(APIView):
+    """``GET /api/v1/library/epic/status`` — epic game count + last scanned."""
+
+    def get(self, request: Request) -> Response:
+        return Response(services.get_epic_status(request.user))
+
+
+class EpicUnmatchedView(APIView):
+    """``GET /api/v1/library/epic/unmatched`` — Epic rows with no Otix match."""
+
+    def get(self, request: Request) -> Response:
+        limit = _int_param(request, "limit", default=48, low=1, high=100)
+        rows, has_more, next_cursor = services.get_unmatched_epic_games(
+            request.user, cursor=request.query_params.get("cursor"), limit=limit
+        )
+        return Response(
+            {
+                "items": EpicUnmatchedGameSerializer(rows, many=True).data,
                 "next_cursor": next_cursor,
                 "has_more": has_more,
                 "total": None,
