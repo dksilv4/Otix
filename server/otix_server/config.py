@@ -34,6 +34,15 @@ from otix_server.usenet_types import UsenetConfig
 from otix_server.arr_types import RadarrConfig, SonarrConfig
 
 
+class DesktopSettings(BaseModel):
+    launch_on_startup: bool = False
+    minimize_to_tray: bool = False
+    close_to_tray: bool = False
+    always_on_top: bool = False
+    start_minimized: bool = False
+    games_download_path: str = ""
+
+
 class AppConfig(BaseModel):
     server: ServerSettings = Field(default_factory=ServerSettings)
     game_libraries: List[LibraryConfig] = Field(default_factory=list)
@@ -41,6 +50,7 @@ class AppConfig(BaseModel):
     usenet: UsenetConfig = Field(default_factory=UsenetConfig)
     radarr: RadarrConfig = Field(default_factory=RadarrConfig)
     sonarr: SonarrConfig = Field(default_factory=SonarrConfig)
+    desktop: DesktopSettings = Field(default_factory=DesktopSettings)
 
 
 

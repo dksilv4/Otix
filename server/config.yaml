@@ -3,9 +3,9 @@ server:
   port: 8090
   host: 0.0.0.0
   auth_token: otix_secret_token_abc123
-  registry_url: https://api.otix.io
+  registry_url: http://127.0.0.1:8000/api
   enable_upnp: false
-  enable_heartbeat: false
+  enable_heartbeat: true
   downloads_path: ./storage/downloads
 game_libraries:
 - name: PC Installers & ISOs
@@ -26,7 +26,7 @@ game_libraries:
   - .chd
   - .rvz
 - name: SABnzbd Completed Games
-  path: \\SERVER\Downloads\
+  path: /server/Downloads
   allowed_extensions:
   - .iso
   - .img
@@ -37,7 +37,18 @@ game_libraries:
   - .chd
   - .rvz
 - name: SABnzbd Completed Games (2)
-  path: \\SERVER\Games\
+  path: /server/Games
+  allowed_extensions:
+  - .iso
+  - .img
+  - .exe
+  - .zip
+  - .7z
+  - .rar
+  - .chd
+  - .rvz
+- name: Local Games
+  path: /games
   allowed_extensions:
   - .iso
   - .img
@@ -63,13 +74,13 @@ usenet:
     complete_dir: /Downloads/Complete
     local_complete_dir: ''
     remote_path: /Downloads
-    host_path: \\SERVER\Downloads
-    linked_library_path: \\SERVER\Downloads\
+    host_path: /server/Downloads
+    linked_library_path: /server/Downloads
     path_mappings:
     - remote_path: /Downloads
-      host_path: \\SERVER\Downloads
+      host_path: /server/Downloads
     - remote_path: /Games
-      host_path: \\SERVER\Games
+      host_path: /server/Games
   prowlarr:
     host: server.diogodasilva.com
     port: 443

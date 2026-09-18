@@ -13,7 +13,7 @@ import json
 import urllib.parse
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.accounts.models import OAuthState, User
@@ -60,7 +60,7 @@ def _store_state(*, key: str, pin_id: str, user_id: int | None = None) -> None:
 
 def _mock_plex(
     *,
-    pin_create=200,
+    pin_create=201,
     pin_get=200,
     approved=True,
     profile=200,
@@ -86,6 +86,7 @@ def _mock_plex(
     return patch.object(oauth_service, "_request", side_effect=fake_request)
 
 
+@override_settings(**PLEX_SETTINGS)
 class PlexLinkInitiateTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create_user(
@@ -108,9 +109,7 @@ class PlexLinkInitiateTests(TestCase):
         with _mock_plex():
             response = self._authed().post("/api/v1/auth/oauth/plex")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            sorted(response.data.keys()), ["auth_url", "pin_id", "state"]
-        )
+        self.assertEqual(sorted(response.data.keys()), ["auth_url", "pin_id", "state"])
         self.assertEqual(response.data["pin_id"], "pin-123")
         auth_url = response.data["auth_url"]
         self.assertTrue(auth_url.startswith("https://app.plex.tv/auth#?"))
@@ -119,6 +118,10 @@ class PlexLinkInitiateTests(TestCase):
         self.assertEqual(fragment["clientID"], "otix-web")
         self.assertEqual(fragment["context[device][product]"], "Otix")
         state = response.data["state"]
+        self.assertTrue(
+            fragment["forwardUrl"].startswith("http://localhost:5173/auth/callback/plex?"),
+            fragment["forwardUrl"],
+        )
         forward = dict(urllib.parse.parse_qsl(fragment["forwardUrl"].split("?", 1)[1]))
         self.assertEqual(forward["state"], state)
         row = OAuthState.objects.get(key=state)
@@ -138,15 +141,11 @@ class PlexLinkInitiateTests(TestCase):
         with _mock_plex(pin_create=500):
             response = self._authed().post("/api/v1/auth/oauth/plex")
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.data["detail"], "Unable to start Plex linking. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Unable to start Plex linking. Please try again.")
 
     def test_initiate_pin_missing_code_502(self) -> None:
         with _mock_plex(pin_create=200) as patcher:
-            patcher.side_effect = lambda *a, **k: _pin_create_reply(
-                id="pin-123", code=""
-            )
+            patcher.side_effect = lambda *a, **k: _pin_create_reply(id="pin-123", code="")
             response = self._authed().post("/api/v1/auth/oauth/plex")
         self.assertEqual(response.status_code, 502)
         self.assertEqual(
@@ -241,9 +240,7 @@ class PlexLinkCallbackTests(TestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.data["detail"], "Plex linking session expired. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Plex linking session expired. Please try again.")
 
     def test_callback_pin_mismatch_400(self) -> None:
         _store_state(key="plex-state-e", pin_id="pin-123", user_id=self.user.pk)
@@ -254,9 +251,7 @@ class PlexLinkCallbackTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.data["detail"], "Invalid Plex linking session. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Invalid Plex linking session. Please try again.")
 
     def test_callback_already_linked_400(self) -> None:
         self.user.plex_id = "9009"
@@ -328,9 +323,7 @@ class PlexLinkCallbackTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.data["detail"], "Unable to verify with Plex. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Unable to verify with Plex. Please try again.")
 
     def test_callback_unexpected_error_500(self) -> None:
         _store_state(key="plex-state-k", pin_id="pin-123", user_id=self.user.pk)
@@ -345,9 +338,7 @@ class PlexLinkCallbackTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(
-            response.data["detail"], "Failed to link Plex account. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Failed to link Plex account. Please try again.")
 
 
 class PlexDisconnectTests(TestCase):
@@ -377,9 +368,7 @@ class PlexDisconnectTests(TestCase):
         self.user.save()
         response = self._authed().delete("/api/v1/auth/oauth/plex/disconnect")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.data["message"], "Plex account unlinked successfully"
-        )
+        self.assertEqual(response.data["message"], "Plex account unlinked successfully")
         self.user.refresh_from_db()
         self.assertIsNone(self.user.plex_id)
         self.assertIsNone(self.user.plex_username)
@@ -401,9 +390,7 @@ class PlexLoginTests(TestCase):
         with _mock_plex():
             response = self.client.post("/api/v1/auth/plex/initiate")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            sorted(response.data.keys()), ["auth_url", "pin_id", "state"]
-        )
+        self.assertEqual(sorted(response.data.keys()), ["auth_url", "pin_id", "state"])
         auth_url = response.data["auth_url"]
         self.assertTrue(auth_url.startswith("https://app.plex.tv/auth#?"))
         state = response.data["state"]
@@ -415,9 +402,7 @@ class PlexLoginTests(TestCase):
         with _mock_plex(pin_create=500):
             response = self.client.post("/api/v1/auth/plex/initiate")
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.data["detail"], "Unable to start Plex login. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Unable to start Plex login. Please try again.")
 
     def test_login_initiate_unexpected_error_500(self) -> None:
         def boom(url, *, method="GET", form=None, headers=None, timeout=15.0):
@@ -426,9 +411,7 @@ class PlexLoginTests(TestCase):
         with patch.object(oauth_service, "_request", side_effect=boom):
             response = self.client.post("/api/v1/auth/plex/initiate")
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(
-            response.data["detail"], "Failed to start Plex login. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Failed to start Plex login. Please try again.")
 
     def test_login_callback_creates_user_and_session(self) -> None:
         _store_state(key="plex-login-a", pin_id="pin-123")
@@ -495,9 +478,7 @@ class PlexLoginTests(TestCase):
                 "/api/v1/auth/plex/callback", {"state": "bogus"}, format="json"
             )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.data["detail"], "Plex linking session expired. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Plex linking session expired. Please try again.")
 
     def test_login_callback_pin_mismatch_400(self) -> None:
         _store_state(key="plex-login-d", pin_id="pin-123")
@@ -508,9 +489,7 @@ class PlexLoginTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.data["detail"], "Invalid Plex linking session. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Invalid Plex linking session. Please try again.")
 
     def test_login_callback_unapproved_400(self) -> None:
         _store_state(key="plex-login-e", pin_id="pin-123")
@@ -539,6 +518,4 @@ class PlexLoginTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(
-            response.data["detail"], "Failed to sign in with Plex. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Failed to sign in with Plex. Please try again.")

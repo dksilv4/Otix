@@ -1,8 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { isDesktop, type RemoteDownloadProgress } from '@/lib/desktop/api'
 import type { GameServer, ServerGameFile, ServerGamesResponse } from './types'
+import {
+  pendingNodesToClaim,
+  pendingNodesToRefresh,
+  probeLocalGameNode,
+  type PendingNode,
+} from './pending-nodes'
 
 export type { GameServer, ServerGameFile, ServerGamesResponse }
 
@@ -15,15 +21,94 @@ export const serverKeys = {
 
 // ── Hooks: Server CRUD ──
 
-export function useGameServers() {
+export function useGameServers(options?: { enabled?: boolean; refetchInterval?: number | false }) {
   return useQuery<GameServer[]>({
     queryKey: serverKeys.lists(),
     queryFn: async () => {
       const { data } = await apiClient.get<GameServer[]>('/library/servers')
       return data || []
     },
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchInterval: options?.refetchInterval,
+    enabled: options?.enabled ?? true,
   })
+}
+
+function mapPendingRow(row: {
+  serverName?: string
+  server_name?: string
+  localUrl?: string
+  local_url?: string
+  authToken?: string
+  auth_token?: string
+}): PendingNode {
+  return {
+    serverName: row.serverName || row.server_name || 'Otix Game Server',
+    localUrl: row.localUrl || row.local_url || '',
+    authToken: row.authToken || row.auth_token || '',
+  }
+}
+
+export function useAutoClaimPendingServers(enabled: boolean) {
+  const { data: servers = [] } = useGameServers({ enabled, refetchInterval: 15_000 })
+  const createServer = useCreateGameServer()
+  const updateServer = useUpdateGameServer()
+  const claiming = useRef(false)
+
+  const pendingQuery = useQuery<PendingNode[]>({
+    queryKey: [...serverKeys.all, 'pending'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<Array<{
+        serverName?: string
+        server_name?: string
+        localUrl?: string
+        local_url?: string
+        authToken?: string
+        auth_token?: string
+      }>>('/library/servers/pending')
+      return (data || []).map(mapPendingRow)
+    },
+    enabled,
+    refetchInterval: 15_000,
+  })
+
+  const localProbe = useQuery({
+    queryKey: [...serverKeys.all, 'local-probe'],
+    queryFn: probeLocalGameNode,
+    enabled,
+    refetchInterval: 15_000,
+    retry: false,
+  })
+
+  useEffect(() => {
+    if (!enabled || claiming.current || createServer.isPending || updateServer.isPending) return
+    const pending = [
+      ...(pendingQuery.data || []),
+      ...(localProbe.data ? [localProbe.data] : []),
+    ]
+    const toRefresh = pendingNodesToRefresh(pending, servers)
+    const toClaim = pendingNodesToClaim(pending, servers)
+    if (!toRefresh.length && !toClaim.length) return
+    claiming.current = true
+    Promise.all([
+      ...toRefresh.map(({ id, node }) =>
+        updateServer.mutateAsync({
+          id,
+          auth_token: node.authToken,
+          name: node.serverName,
+        }),
+      ),
+      ...toClaim.map((node) =>
+        createServer.mutateAsync({
+          name: node.serverName,
+          local_url: node.localUrl,
+          auth_token: node.authToken || undefined,
+        }),
+      ),
+    ]).finally(() => {
+      claiming.current = false
+    })
+  }, [createServer, enabled, localProbe.data, pendingQuery.data, servers, updateServer])
 }
 
 export function useServerGames(options?: { refetchInterval?: number | false }) {
@@ -64,6 +149,26 @@ export function useCreateGameServer() {
       auth_token?: string
     }) => {
       const { data } = await apiClient.post<GameServer>('/library/servers', payload)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: serverKeys.all })
+    },
+  })
+}
+
+export function useUpdateGameServer() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: {
+      id: number
+      name?: string
+      local_url?: string
+      remote_url?: string
+      auth_token?: string
+    }) => {
+      const { id, ...body } = payload
+      const { data } = await apiClient.patch<GameServer>(`/library/servers/${id}`, body)
       return data
     },
     onSuccess: () => {

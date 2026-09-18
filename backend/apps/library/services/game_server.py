@@ -1,62 +1,252 @@
 """Game server service operations: connectivity probes, health checks, and metrics sync."""
 
+import os
 import time
+from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 import httpx
+from django.core.cache import cache
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.library.models import UserGameServer
 
+_LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
+PENDING_CACHE_KEY = "otix:pending-game-nodes"
+PENDING_TTL = 600
 
-def ping_server_sync(server: UserGameServer) -> dict:
-    """Probe server /api/v1/status or /api/v1/ping and update server model state."""
-    target_url = (server.primary_url or "").rstrip("/")
-    if not target_url:
-        server.is_online = False
-        server.save(update_fields=["is_online", "updated_at"])
-        return {"online": False, "error": "No server URL provided"}
 
-    headers = {}
-    if server.auth_token:
-        headers["Authorization"] = f"Bearer {server.auth_token}"
+def contact_urls(stored_url: str) -> list[str]:
+    """URLs to try when the API talks to an otix-server node.
 
-    start_t = time.perf_counter()
+    Browsers can reach ``http://127.0.0.1:8090`` on the host; the Django API
+    inside Docker cannot. When ``OTIX_SERVER_DOCKER_HOST`` is set (compose
+    uses ``storage-server``), loopback URLs are also tried on that hostname
+    and on ``host.docker.internal`` so a host-entered localhost URL still
+    probes the published storage node.
+    """
+    base = (stored_url or "").rstrip("/")
+    if not base:
+        return []
+    parsed = urlparse(base)
+    host = (parsed.hostname or "").lower()
+    if host not in _LOOPBACK_HOSTS:
+        return [base]
+    extras: list[str] = []
+    docker_host = (os.environ.get("OTIX_SERVER_DOCKER_HOST") or "").strip()
+    if docker_host:
+        extras.append(docker_host)
+    if docker_host or Path("/.dockerenv").exists():
+        extras.append("host.docker.internal")
+    rewritten: list[str] = []
+    for extra in extras:
+        netloc = f"{extra}:{parsed.port}" if parsed.port else extra
+        candidate = urlunparse(parsed._replace(netloc=netloc)).rstrip("/")
+        if candidate not in rewritten and candidate != base:
+            rewritten.append(candidate)
+    # Docker-reachable hosts first: 127.0.0.1 inside the API container is the
+    # API itself, so trying loopback first 502s every Radarr/Sonarr poll.
+    return [*rewritten, base]
+
+
+def _is_docker_bridge_host(host: str) -> bool:
+    if not host.startswith("172."):
+        return False
     try:
-        with httpx.Client(timeout=3.0) as client:
-            resp = client.get(f"{target_url}/api/v1/status", headers=headers)
-            latency_ms = int((time.perf_counter() - start_t) * 1000)
-            if resp.status_code == 200:
-                data = resp.json()
-                server.is_online = True
-                server.last_seen_at = timezone.now()
-                server.total_files = data.get("total_files", server.total_files)
-                server.storage_free_bytes = data.get("disk_free_bytes", server.storage_free_bytes)
-                server.storage_total_bytes = data.get(
-                    "disk_total_bytes", server.storage_total_bytes
-                )
-                server.save(
-                    update_fields=[
-                        "is_online",
-                        "last_seen_at",
-                        "total_files",
-                        "storage_free_bytes",
-                        "storage_total_bytes",
-                        "updated_at",
-                    ]
-                )
-                return {"online": True, "latency_ms": latency_ms, "status_data": data}
-            elif resp.status_code == 401:
-                server.is_online = False
-                server.save(update_fields=["is_online", "updated_at"])
-                return {"online": False, "error": "Unauthorized (invalid auth token)"}
-    except Exception as exc:
-        server.is_online = False
-        server.save(update_fields=["is_online", "updated_at"])
-        return {"online": False, "error": str(exc)}
+        second = int(host.split(".")[1])
+    except (IndexError, ValueError):
+        return False
+    return 16 <= second <= 31
 
+
+def browser_url_for_node(port: int, advertised: str | None) -> str:
+    """URL the Otix UI should store so the browser can reach a published port."""
+    if advertised:
+        parsed = urlparse(advertised)
+        host = (parsed.hostname or "").lower()
+        if host and host not in _LOOPBACK_HOSTS and not _is_docker_bridge_host(host):
+            return advertised.rstrip("/")
+        if parsed.port:
+            port = parsed.port
+    return f"http://127.0.0.1:{port}"
+
+
+def _strip_url(url: str | None) -> str:
+    return (url or "").rstrip("/")
+
+
+def heartbeat_identity_urls(node: dict) -> list[str]:
+    """URLs that identify the same node as a heartbeat (LAN, Docker, or localhost)."""
+    try:
+        port = int(node.get("port") or 8090)
+    except (TypeError, ValueError):
+        port = 8090
+    urls: list[str] = []
+    for raw in (node.get("local_url"), node.get("advertised_url")):
+        stripped = _strip_url(raw)
+        if stripped:
+            urls.append(stripped)
+    urls.extend([f"http://127.0.0.1:{port}", f"http://localhost:{port}"])
+    seen: set[str] = set()
+    unique: list[str] = []
+    for url in urls:
+        if url not in seen:
+            seen.add(url)
+            unique.append(url)
+    return unique
+
+
+def record_node_heartbeat(payload: dict) -> dict:
+    """Remember a node announcement until a signed-in user auto-connects it."""
+    try:
+        port = int(payload.get("port") or 8090)
+    except (TypeError, ValueError):
+        port = 8090
+    endpoints = payload.get("local_endpoints") or []
+    advertised = endpoints[0] if endpoints else ""
+    node = {
+        "server_name": (payload.get("server_name") or "Otix Game Server").strip(),
+        "local_url": browser_url_for_node(port, advertised),
+        "advertised_url": advertised,
+        "port": port,
+        "auth_token": payload.get("auth_token") or "",
+    }
+    nodes = [
+        row
+        for row in (cache.get(PENDING_CACHE_KEY) or [])
+        if row.get("local_url") != node["local_url"]
+    ]
+    nodes.append(node)
+    cache.set(PENDING_CACHE_KEY, nodes, PENDING_TTL)
+    return node
+
+
+def apply_node_heartbeat(payload: dict) -> dict:
+    """Record a pending node and relink any already-saved UserGameServer rows.
+
+    This is the original auto-connect path: a live node posting heartbeat marks
+    matching saved servers online and fills in the access token, including when
+    the user added ``http://127.0.0.1:8090`` and the node advertised a LAN IP.
+    """
+    node = record_node_heartbeat(payload)
+    urls = heartbeat_identity_urls(node)
+    token = node.get("auth_token") or ""
+    query = Q()
+    for url in urls:
+        query |= (
+            Q(local_url=url) | Q(local_url=f"{url}/") | Q(remote_url=url) | Q(remote_url=f"{url}/")
+        )
+    if token:
+        query |= Q(auth_token=token)
+    now = timezone.now()
+    for server in UserGameServer.objects.filter(query):
+        fields = ["is_online", "last_seen_at", "updated_at"]
+        server.is_online = True
+        server.last_seen_at = now
+        if token and server.auth_token != token:
+            server.auth_token = token
+            fields.append("auth_token")
+        name = (node.get("server_name") or "").strip()
+        if name and server.name != name:
+            server.name = name
+            fields.append("name")
+        server.save(update_fields=fields)
+    return node
+
+
+def list_pending_nodes() -> list[dict]:
+    return list(cache.get(PENDING_CACHE_KEY) or [])
+
+
+def list_pending_nodes_for(user) -> list[dict]:
+    """Pending heartbeats that this user has not already linked."""
+    if user is None or not getattr(user, "is_authenticated", False):
+        return []
+    nodes = list_pending_nodes()
+    if not nodes:
+        return []
+    servers = UserGameServer.objects.filter(user=user).only("local_url", "remote_url", "auth_token")
+    claimed_urls: set[str] = set()
+    claimed_tokens: set[str] = set()
+    for server in servers:
+        for url in (server.local_url, server.remote_url):
+            stripped = _strip_url(url)
+            if stripped:
+                claimed_urls.add(stripped)
+        if server.auth_token:
+            claimed_tokens.add(server.auth_token)
+    pending: list[dict] = []
+    for node in nodes:
+        token = node.get("auth_token") or ""
+        if token and token in claimed_tokens:
+            continue
+        if any(_strip_url(url) in claimed_urls for url in heartbeat_identity_urls(node)):
+            continue
+        pending.append(node)
+    return pending
+
+
+def _auth_headers(server: UserGameServer) -> dict[str, str]:
+    if not server.auth_token:
+        return {}
+    return {"Authorization": f"Bearer {server.auth_token}"}
+
+
+def _mark_offline(server: UserGameServer, error: str) -> dict:
     server.is_online = False
     server.save(update_fields=["is_online", "updated_at"])
-    return {"online": False, "error": f"HTTP {resp.status_code}"}
+    return {"online": False, "error": error}
+
+
+def ping_server_sync(server: UserGameServer) -> dict:
+    """Probe server /api/v1/status and update server model state."""
+    targets = contact_urls(server.primary_url)
+    if not targets:
+        return _mark_offline(server, "No server URL provided")
+
+    headers = _auth_headers(server)
+    start_t = time.perf_counter()
+    last_error = "No server URL provided"
+    resp = None
+    try:
+        with httpx.Client(timeout=3.0) as client:
+            for target_url in targets:
+                try:
+                    resp = client.get(f"{target_url}/api/v1/status", headers=headers)
+                except Exception as exc:
+                    last_error = str(exc)
+                    continue
+                latency_ms = int((time.perf_counter() - start_t) * 1000)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    server.is_online = True
+                    server.last_seen_at = timezone.now()
+                    server.total_files = data.get("total_files", server.total_files)
+                    server.storage_free_bytes = data.get(
+                        "disk_free_bytes", server.storage_free_bytes
+                    )
+                    server.storage_total_bytes = data.get(
+                        "disk_total_bytes", server.storage_total_bytes
+                    )
+                    server.save(
+                        update_fields=[
+                            "is_online",
+                            "last_seen_at",
+                            "total_files",
+                            "storage_free_bytes",
+                            "storage_total_bytes",
+                            "updated_at",
+                        ]
+                    )
+                    return {"online": True, "latency_ms": latency_ms, "status_data": data}
+                if resp.status_code == 401:
+                    return _mark_offline(server, "Unauthorized (invalid auth token)")
+                last_error = f"HTTP {resp.status_code}"
+    except Exception as exc:
+        return _mark_offline(server, str(exc))
+
+    return _mark_offline(server, last_error)
 
 
 def server_proxy_request(
@@ -68,30 +258,31 @@ def server_proxy_request(
     timeout: float = 6.0,
 ) -> tuple[int, dict | list]:
     """Generic helper to proxy requests to connected otix-server node."""
-    target_url = (server.primary_url or "").rstrip("/")
-    if not target_url:
+    targets = contact_urls(server.primary_url)
+    if not targets:
         return 400, {"error": "Server URL not configured"}
 
-    headers = {}
-    if server.auth_token:
-        headers["Authorization"] = f"Bearer {server.auth_token}"
-
-    try:
-        with httpx.Client(timeout=timeout) as client:
-            resp = client.request(
-                method=method,
-                url=f"{target_url}{path}",
-                params=params,
-                json=json,
-                headers=headers,
-            )
-            try:
-                data = resp.json()
-            except Exception:
-                data = {"detail": resp.text}
-            return resp.status_code, data
-    except Exception as exc:
-        return 502, {"detail": f"Failed to contact game server node: {exc}"}
+    headers = _auth_headers(server)
+    last_error: Exception | str = "Server URL not configured"
+    for target_url in targets:
+        try:
+            with httpx.Client(timeout=timeout) as client:
+                resp = client.request(
+                    method=method,
+                    url=f"{target_url}{path}",
+                    params=params,
+                    json=json,
+                    headers=headers,
+                )
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {"detail": resp.text}
+                return resp.status_code, data
+        except Exception as exc:
+            last_error = exc
+            continue
+    return 502, {"detail": f"Failed to contact game server node: {last_error}"}
 
 
 # Backward-compatible alias
@@ -508,6 +699,19 @@ def sonarr_get_history(
 # ── Epic (node-proxied OAuth + library scan) ────────────────────────────
 
 NO_EPIC_NODE = "Connect an Otix Server to link Epic."
+
+
+# ── Desktop Operations ──────────────────────────────────────────────────
+
+
+def desktop_get_settings(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/desktop/settings", timeout=6.0)
+
+
+def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    return usenet_proxy_request(
+        server, "POST", "/api/v1/desktop/settings", json=payload, timeout=10.0
+    )
 
 
 def pick_online_game_server(user) -> UserGameServer | None:

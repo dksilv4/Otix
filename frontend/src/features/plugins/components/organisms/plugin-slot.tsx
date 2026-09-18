@@ -3,6 +3,7 @@ import { Loader2, Gamepad2, RefreshCw, FolderOpen, Plus, X, LogOut, CheckCircle2
 import type { PluginAPI } from '@/features/plugins/api'
 import type { PluginInfo } from '@/features/plugins/types/plugins'
 import { batchMatchAndSave } from '@/features/plugins/utils/matching'
+import { PathInput } from '@/components/path-picker'
 import { ProviderLogo } from '@/features/settings/components/atoms/provider-logo'
 import { apiClient } from '@/lib/api/client'
 import { isDesktop } from '@/lib/desktop/api'
@@ -441,11 +442,6 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
     saveConfig(key, current)
   }
 
-  const browsePath = async (key: string, idx: number) => {
-    const dir = await (window as any).desktopAPI?.selectDirectory?.()
-    if (dir) updatePath(key, idx, dir)
-  }
-
   // ── Auth ──
 
   const loginFlow = async (): Promise<boolean> => {
@@ -831,20 +827,14 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
                 <div className="space-y-1.5">
                   {values.map((val, idx) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <input
-                        type="text"
+                      <PathInput
+                        compact
                         value={val}
-                        onChange={(e) => updatePath(field.key, idx, e.target.value)}
+                        onChange={(next) => updatePath(field.key, idx, next)}
                         placeholder={field.placeholder || `C:\\Games\\...`}
-                        className="flex-1 h-8.5 rounded-xl bg-white/5 px-3 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10 transition-colors"
+                        className="min-w-0 flex-1"
+                        inputClassName="h-8.5 rounded-xl bg-white/5 px-3 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10"
                       />
-                      <button
-                        onClick={() => browsePath(field.key, idx)}
-                        className="flex items-center justify-center h-8.5 w-8.5 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
-                        title="Browse folder"
-                      >
-                        <FolderOpen className="h-4 w-4" />
-                      </button>
                       <button
                         onClick={() => confirmRemovePath(field.key, idx)}
                         className="flex items-center justify-center h-8.5 w-8.5 rounded-xl text-white/40 hover:text-red-400 hover:bg-white/10 transition-all cursor-pointer"

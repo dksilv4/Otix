@@ -76,4 +76,4 @@ def catalog_drain() -> dict:
     """Backlog drain — run the oldest pending sync jobs through the engines,
     bounded by ``CATALOG_DRAIN_LIMIT``. Doubles as the periodic beat body the
     catalog-seed driver was designed for (inc 44)."""
-    return catalog_seed.run_pending_jobs(limit=settings.CATALOG_DRAIN_LIMIT)
+    return catalog_seed.drain_catalog(limit=settings.CATALOG_DRAIN_LIMIT)

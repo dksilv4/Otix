@@ -66,13 +66,13 @@ def _movie_raw(**overrides):
 
 class ScoreFromFlagsTests(TestCase):
     def test_flag_counts_match_legacy(self):
-        self.assertEqual(len(CORE_FLAGS), 7)
+        self.assertEqual(len(CORE_FLAGS), 6)
         self.assertEqual(len(RELATION_FLAGS), 10)
-        self.assertEqual(len(required_flags("movie")), 7 + 10 + 5)
-        self.assertEqual(len(required_flags("show")), 7 + 10 + 3)
-        self.assertEqual(len(required_flags("game")), 7 + 10 + 3)
-        self.assertEqual(len(required_flags("music")), 7 + 10)
-        self.assertEqual(len(required_flags("person")), 7 + 10)
+        self.assertEqual(len(required_flags("movie")), 6 + 10 + 5)
+        self.assertEqual(len(required_flags("show")), 6 + 10 + 3)
+        self.assertEqual(len(required_flags("game")), 6 + 10 + 3)
+        self.assertEqual(len(required_flags("music")), 6 + 10)
+        self.assertEqual(len(required_flags("person")), 6 + 10)
         self.assertEqual(len(TYPE_FLAG_GROUPS["movie"]), 5)
         self.assertEqual(len(TYPE_FLAG_GROUPS["show"]), 3)
         self.assertEqual(len(TYPE_FLAG_GROUPS["game"]), 3)
@@ -83,11 +83,11 @@ class ScoreFromFlagsTests(TestCase):
 
     def test_partial_fractions_round_to_three_decimals(self):
         flags = {flag: True for flag in required_flags("movie")}
-        # Turn off 11 of 22 → 0.5.
+        # Turn off 11 of 21 → 10/21 = 0.476.
         for flag in required_flags("movie")[:11]:
             flags[flag] = False
-        self.assertEqual(score_from_flags("movie", flags), 0.5)
-        # A fully-hydrated game (9 of 20 flags) → 0.45.
+        self.assertEqual(score_from_flags("movie", flags), 0.476)
+        # A fully-hydrated game (9 of 19 flags) → 0.474.
         game_flags = {flag: False for flag in required_flags("game")}
         for flag in (
             "has_overview",
@@ -101,7 +101,7 @@ class ScoreFromFlagsTests(TestCase):
             "has_companies",
         ):
             game_flags[flag] = True
-        self.assertEqual(score_from_flags("game", game_flags), 0.45)
+        self.assertEqual(score_from_flags("game", game_flags), 0.474)
 
     def test_unknown_media_type_uses_core_plus_relations(self):
         flags = {flag: True for flag in required_flags("person")}
@@ -152,9 +152,7 @@ class RecomputeCompletenessTests(TestCase):
 
     def test_igdb_full_hydration_outranks_minimal_seed(self):
         minimal = seed_game_from_igdb(_game_raw(), _IGDB_ID)
-        self.assertEqual(
-            MediaItem.objects.get(pk=minimal).completeness_score, 0.25
-        )
+        self.assertEqual(MediaItem.objects.get(pk=minimal).completeness_score, 0.263)
 
         full_raw = _game_raw(
             status=0,
@@ -172,9 +170,7 @@ class RecomputeCompletenessTests(TestCase):
             ],
         )
         seed_game_from_igdb(full_raw, _IGDB_ID)
-        self.assertEqual(
-            MediaItem.objects.get(pk=minimal).completeness_score, 0.45
-        )
+        self.assertEqual(MediaItem.objects.get(pk=minimal).completeness_score, 0.474)
 
     def test_admin_hydration_status_scores_from_the_same_flags(self):
         media_id = seed_movie_from_tmdb(_movie_raw())

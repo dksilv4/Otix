@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import html
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List, Optional
 from fastapi import (
@@ -107,9 +110,21 @@ from otix_server.epic import (
     status_payload,
     write_secrets,
 )
+from otix_server.heartbeat import announce_heartbeat
 
 
-app = FastAPI(title="Otix Standalone Game & Save Server", version="0.1.0")
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    cfg = get_app_config()
+    task = None
+    if cfg.server.enable_heartbeat:
+        task = asyncio.create_task(announce_heartbeat(cfg))
+    yield
+    if task:
+        task.cancel()
+
+
+app = FastAPI(title="Otix Standalone Game & Save Server", version="0.1.0", lifespan=_lifespan)
 
 _start_time = time.time()
 
@@ -117,7 +132,7 @@ _start_time = time.time()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Range", "Accept-Ranges", "Content-Length", "Content-Disposition"],
@@ -211,6 +226,7 @@ async def server_dashboard(indexer: StorageIndexer = Depends(get_indexer)):
     cfg = get_app_config()
     uptime = int(time.time() - _start_time)
     files = list(indexer.files_by_id.values())
+    token_attr = html.escape(cfg.server.auth_token or "", quote=True)
     files_rows = "".join(
         f"""
         <tr style="border-bottom: 1px solid #27272a;">
@@ -243,6 +259,9 @@ async def server_dashboard(indexer: StorageIndexer = Depends(get_indexer)):
         table {{ width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 13px; }}
         th {{ text-align: left; padding: 10px 12px; color: #71717a; border-bottom: 1px solid #27272a; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }}
         .hint {{ background: #18181b; border-left: 3px solid #10b981; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-top: 1.5rem; font-size: 12px; color: #a1a1aa; }}
+        .token-row {{ display: flex; gap: 8px; margin-top: 10px; align-items: center; }}
+        .token-row input {{ flex: 1; background: #09090b; border: 1px solid #27272a; color: #6ee7b7; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; padding: 8px 10px; border-radius: 8px; }}
+        .token-row button {{ background: #10b981; color: #000; border: 0; border-radius: 8px; padding: 8px 12px; font-size: 11px; font-weight: 700; cursor: pointer; }}
       </style>
     </head>
     <body>
@@ -269,7 +288,12 @@ async def server_dashboard(indexer: StorageIndexer = Depends(get_indexer)):
           </tbody>
         </table>
         <div class="hint">
-          <strong>Connect to Otix:</strong> Add this node in your Otix App at <a href="http://localhost:5173/settings/launcher" style="color: #10b981;">/settings/launcher</a> using URL <code>http://127.0.0.1:{cfg.server.port}</code> and your auth token.
+          <strong>Connect to Otix:</strong> In Otix go to <a href="http://localhost:5173/settings/launcher" style="color: #10b981;">Settings → Game Servers</a>, add URL <code>http://127.0.0.1:{cfg.server.port}</code>, and paste this access token.
+          <div class="token-row">
+            <input id="node-access-token" readonly value="{token_attr}" onclick="this.select()" />
+            <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('node-access-token').value); this.textContent='Copied';">Copy</button>
+          </div>
+          <p style="margin: 8px 0 0;">Paste this into Otix when connecting this node. Anyone on your LAN who can open this page can copy it.</p>
         </div>
       </div>
     </body>
@@ -1722,3 +1746,40 @@ async def get_sonarr_history(
         raise HTTPException(status_code=502, detail=f"Failed to fetch Sonarr history: {exc}")
 
 
+from otix_server.desktop_node import (
+    apply_desktop_settings,
+    get_desktop_settings_dict,
+)
+
+
+class DesktopSettingsPayload(BaseModel):
+    launchOnStartup: Optional[bool] = None
+    launch_on_startup: Optional[bool] = None
+    minimizeToTray: Optional[bool] = None
+    minimize_to_tray: Optional[bool] = None
+    closeToTray: Optional[bool] = None
+    close_to_tray: Optional[bool] = None
+    alwaysOnTop: Optional[bool] = None
+    always_on_top: Optional[bool] = None
+    startMinimized: Optional[bool] = None
+    start_minimized: Optional[bool] = None
+    gamesDownloadPath: Optional[str] = None
+    games_download_path: Optional[str] = None
+
+
+@app.get("/api/v1/desktop/settings")
+async def get_node_desktop_settings(_: bool = Depends(optional_token)):
+    """Get desktop settings and host OS support info for this node."""
+    cfg = get_app_config()
+    return get_desktop_settings_dict(cfg)
+
+
+@app.post("/api/v1/desktop/settings")
+async def update_node_desktop_settings(
+    payload: DesktopSettingsPayload,
+    _: None = Depends(verify_token),
+):
+    """Update desktop settings and sync OS autostart on Windows/Linux."""
+    cfg = get_app_config()
+    data = payload.model_dump(exclude_unset=True)
+    return apply_desktop_settings(cfg, data)

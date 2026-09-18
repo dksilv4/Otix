@@ -17,6 +17,12 @@
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-16s %s\n", $$1, $$2}'
 
+# ── Full dev lifecycle (one terminal) ────────────────────────────────────
+dev: ## Run all services (backend, arr, storage server, frontend) in one terminal
+	powershell -ExecutionPolicy Bypass -File ./run.ps1
+
+run: dev
+
 # ── Dev compose lifecycle ────────────────────────────────────────────────
 up: ## Start the dev stack (api/worker/beat/db/redis)
 	docker compose up -d

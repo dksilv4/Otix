@@ -5,6 +5,7 @@ import {
   getFormatBadgeColor,
   sortExplorerEntries,
   formatExplorerDate,
+  normalizeExplorerBrowse,
 } from '../server-explorer-utils';
 import type { ServerExplorerEntry } from '../server-explorer-types';
 
@@ -123,6 +124,69 @@ describe('Server File Explorer Utilities', () => {
       expect(filtered.map((e) => e.name)).toEqual(['Cyberpunk.iso']);
     });
   });
+
+  describe('normalizeExplorerBrowse', () => {
+    it('maps camelCase API payloads onto the explorer types', () => {
+      const browse = normalizeExplorerBrowse({
+        currentPath: '/app',
+        parentPath: '/',
+        isRoot: false,
+        activeDownloadPath: '/app/storage/downloads',
+        totalItems: 1,
+        diskFreeBytes: 10,
+        diskTotalBytes: 20,
+        entries: [
+          {
+            name: 'storage',
+            path: '/app/storage',
+            isDir: true,
+            size: 0,
+            extension: '',
+            formatCategory: 'folder',
+            modifiedAt: '2026-09-18T00:00:00Z',
+            isDownloadable: false,
+            isDownloadLocation: true,
+          },
+        ],
+      })
+
+      expect(browse.current_path).toBe('/app')
+      expect(browse.parent_path).toBe('/')
+      expect(browse.is_root).toBe(false)
+      expect(browse.active_download_path).toBe('/app/storage/downloads')
+      expect(browse.total_items).toBe(1)
+      expect(browse.disk_free_bytes).toBe(10)
+      expect(browse.disk_total_bytes).toBe(20)
+      expect(browse.entries).toEqual([
+        {
+          name: 'storage',
+          path: '/app/storage',
+          is_dir: true,
+          size: 0,
+          extension: '',
+          format_category: 'folder',
+          modified_at: '2026-09-18T00:00:00Z',
+          is_downloadable: false,
+          is_download_location: true,
+        },
+      ])
+    })
+
+    it('keeps snake_case payloads working', () => {
+      const browse = normalizeExplorerBrowse({
+        current_path: '/',
+        parent_path: null,
+        is_root: true,
+        active_download_path: '/downloads',
+        total_items: 0,
+        entries: [],
+      })
+
+      expect(browse.current_path).toBe('/')
+      expect(browse.is_root).toBe(true)
+      expect(browse.entries).toEqual([])
+    })
+  })
 
   describe('formatExplorerDate', () => {
     it('formats ISO timestamps to human-readable dates', () => {

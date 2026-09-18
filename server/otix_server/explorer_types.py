@@ -36,3 +36,7 @@ class SetDownloadPathRequest(BaseModel):
 class CreateFolderRequest(BaseModel):
     parent_path: str
     folder_name: str
+
+
+# Bind extra library folders into root listings (imported last to avoid cycles).
+from otix_server import explorer_bind as _explorer_bind  # noqa: E402,F401

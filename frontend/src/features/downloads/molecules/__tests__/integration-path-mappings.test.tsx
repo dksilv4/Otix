@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event'
 import React, { useState } from 'react'
 import { IntegrationPathMappings, type PathMappingRow } from '../integration-path-mappings'
 
+vi.mock('@/features/downloads/use-server-downloads', () => ({
+  useGameServers: () => ({ data: [], isLoading: false }),
+}))
+
 function Harness({
   initial = [{ remotePath: '', hostPath: '' }] as PathMappingRow[],
   folderError,
@@ -54,5 +58,13 @@ describe('IntegrationPathMappings', () => {
     await user.click(add)
     expect(screen.getByText('Mapping 2')).toBeInTheDocument()
     expect(screen.getByText(/Both paths must point to the same shared folder/i).className).toMatch(/pl-4/)
+  })
+
+  it('lets the user browse remote and local mapping folders', () => {
+    render(<Harness />)
+
+    expect(screen.getByLabelText('Remote path')).toBeInTheDocument()
+    expect(screen.getByLabelText('Local path')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Browse/i })).toHaveLength(2)
   })
 })

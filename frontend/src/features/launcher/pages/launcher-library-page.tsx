@@ -380,11 +380,11 @@ export function LauncherLibraryPage() {
               </p>
               {rawGames.length === 0 ? (
                 <button
-                  onClick={() => navigate({ to: '/settings/integrations' })}
+                  onClick={() => navigate({ to: '/settings/connections' })}
                   className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition-all active:scale-95 bg-white/[0.08] hover:bg-white/[0.14] border border-white/10"
                 >
                   <Settings size={12} />
-                  Open Integrations
+                  Open Connections
                 </button>
               ) : (
                 <button

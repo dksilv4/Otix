@@ -299,15 +299,15 @@ export function ServerArrSettingsModal({
       icon={isRadarr ? Film : Tv}
       badge={isRadarr ? 'Movies' : 'TV Series'}
       isLoading={isLoading}
-      appType={appType}
-      targetServerId={targetServerId}
-    >
-      {!targetServerId ? (
+      hasServer={Boolean(targetServerId)}
+      emptyServerState={
         <IntegrationEmptyServerState
-          title="Select a server node"
-          description={`Choose an active server node above to configure ${isRadarr ? 'Radarr' : 'Sonarr'}.`}
+          serviceName={isRadarr ? 'Radarr' : 'Sonarr'}
+          onClose={onClose}
         />
-      ) : (
+      }
+    >
+      {targetServerId ? (
         <ArrForm
           key={`${appType}-${targetServerId}`}
           appType={appType}
@@ -316,7 +316,7 @@ export function ServerArrSettingsModal({
           targetServerName={targetServerName}
           onClose={onClose}
         />
-      )}
+      ) : null}
     </ServerIntegrationModalShell>
   );
 }

@@ -130,50 +130,48 @@ class PlexWatchlistSyncSeedingTests(WatchlistSyncTestBase):
             resp = self._post()
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {"total": 3, "matched": 0, "seeded": 3})
-        # Only movie/show types seeded.
-        self.assertEqual(MediaItem.objects.count(), 3)
-        self.assertEqual(Movie.objects.count(), 2)
-        self.assertEqual(Show.objects.count(), 1)
-        self.assertEqual(MediaItem.objects.filter(media_type="movie").count(), 2)
-        self.assertEqual(MediaItem.objects.filter(media_type="show").count(), 1)
-        # Token travelled as a query param through the _request seam.
+        self.assertEqual(MediaItem.objects.count(), 0)
+        from apps.integrations.models import SyncJob
+
+        self.assertEqual(
+            set(SyncJob.objects.filter(status="pending").values_list("external_id", flat=True)),
+            {"157336", "155", "1396"},
+        )
         self.assertIn("X-Plex-Token=ptok", request.call_args.args[0])
 
-    def test_seeded_rows_carry_title_overview_release_and_external_ids(self):
+    def test_enqueues_canonical_jobs_without_creating_stubs(self):
         with self._stub(_payload(MOVIE_INTERSTELLAR)):
             self._post()
-        movie = MediaItem.objects.get(title="Interstellar")
-        self.assertEqual(movie.media_type, "movie")
-        self.assertEqual(movie.overview, MOVIE_INTERSTELLAR["summary"])
-        self.assertEqual(movie.release_date.isoformat(), "2014-11-05")
-        self.assertEqual(movie.slug, "interstellar-2014")
-        # 3 of 22 movie flags (overview + release date + external ids) → the
-        # score is recomputed from the stub graph, not the legacy 0.15 base.
-        self.assertAlmostEqual(movie.completeness_score, 0.136)
-        self.assertIsNotNone(movie.next_sync_at)
-        self.assertEqual(Movie.objects.get(media_item=movie).media_item_id, movie.pk)
+        self.assertEqual(MediaItem.objects.count(), 0)
+        from apps.integrations.models import SyncJob
 
-        ct = ContentType.objects.get_for_model(MediaItem)
-        rows = ExternalID.objects.filter(content_type=ct, object_id=movie.pk)
-        self.assertEqual({(r.provider, r.external_id, r.media_type) for r in rows}, {
-            ("plex", "plex://movie/5d7768dfc5b8e7d4001d", None),
-            ("tmdb", "157336", "movie"),
-            ("imdb", "tt0816692", "movie"),
-        })
+        job = SyncJob.objects.get(provider="tmdb", entity_type="movie", external_id="157336")
+        self.assertEqual(job.status, "pending")
+        self.assertEqual(job.priority, 1)
 
-    def test_watchlisted_interaction_and_count_column(self):
+    def test_watchlisted_interaction_when_catalog_already_exists(self):
+        existing = MediaItem.objects.create(
+            media_type="movie", title="Interstellar", slug="interstellar"
+        )
+        Movie.objects.create(media_item=existing)
+        ExternalID.objects.create(
+            content_type=ContentType.objects.get_for_model(MediaItem),
+            object_id=existing.pk,
+            provider="tmdb",
+            external_id="157336",
+            media_type="movie",
+        )
         with self._stub(_payload(MOVIE_INTERSTELLAR)):
             self._post()
-        movie = MediaItem.objects.get(title="Interstellar")
         interaction = UserMediaInteraction.objects.get(
-            user=self.user, media_item=movie, interaction_type="watchlisted"
+            user=self.user, media_item=existing, interaction_type="watchlisted"
         )
         self.assertEqual(
             interaction.extra_data,
             {"source": "plex", "added_at": "2020-09-13T12:26:40+00:00"},
         )
-        movie.refresh_from_db()
-        self.assertEqual(movie.watchlist_count, 1)
+        existing.refresh_from_db()
+        self.assertEqual(existing.watchlist_count, 1)
 
     def test_re_run_is_idempotent(self):
         body = _payload(MOVIE_INTERSTELLAR, MOVIE_BATMAN, SHOW_BREAKING_BAD)
@@ -181,14 +179,16 @@ class PlexWatchlistSyncSeedingTests(WatchlistSyncTestBase):
             first = self._post()
             second = self._post()
         self.assertEqual(first.json(), {"total": 3, "matched": 0, "seeded": 3})
-        self.assertEqual(second.json(), {"total": 3, "matched": 3, "seeded": 0})
-        self.assertEqual(MediaItem.objects.count(), 3)
-        self.assertEqual(ExternalID.objects.count(), 9)
+        self.assertEqual(second.json(), {"total": 3, "matched": 0, "seeded": 3})
+        self.assertEqual(MediaItem.objects.count(), 0)
+        from apps.integrations.models import SyncJob
+
+        self.assertEqual(SyncJob.objects.filter(status="pending").count(), 3)
         self.assertEqual(
             UserMediaInteraction.objects.filter(
                 user=self.user, interaction_type="watchlisted"
             ).count(),
-            3,
+            0,
         )
 
     def test_matches_existing_catalog_item_via_third_party_guid(self):

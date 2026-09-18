@@ -8,9 +8,12 @@ import { CommandPaletteMount } from "@/features/hub"
 import { ActivityModule } from "@activity/components/organisms/activity-panel"
 import { PanelProvider } from "@activity/providers/panel-context"
 import { NotificationsProvider } from "@/features/notifications/providers/notifications-provider"
+import { CatalogStreamProvider } from "@/features/media/providers/catalog-stream-provider"
 import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permissions"
 import { PluginPermissionModal } from "@/features/plugins/components/organisms/plugin-permission-modal"
 import { useModal } from "@/lib/modals"
+import { useAuth } from "@/lib/providers/auth"
+import { useAutoClaimPendingServers } from "@/features/downloads/use-server-downloads"
 
 const PIN_KEY = "otix_player_pinned"
 
@@ -26,6 +29,8 @@ export function RootLayout() {
   const isPinned = loadPinState()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const location = useLocation()
+  const { isAuthenticated } = useAuth()
+  useAutoClaimPendingServers(isAuthenticated)
 
   const handleToggleSidebar = useCallback(() => setIsSidebarOpen((prev) => !prev), [])
   const handleCloseSidebar = useCallback(() => setIsSidebarOpen(false), [])
@@ -69,6 +74,7 @@ export function RootLayout() {
       <ContextMenuProvider>
         <PanelProvider>
           <NotificationsProvider>
+            <CatalogStreamProvider>
             <NavShell isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={handleToggleSidebar}>
               <main className={isFullScreenPage ? "" : "pt-16 md:pt-20"}>
                 <Outlet />
@@ -77,6 +83,7 @@ export function RootLayout() {
 
             <XPToastContainer />
             <ActivityModule open={isSidebarOpen} onClose={handleCloseSidebar} />
+            </CatalogStreamProvider>
           </NotificationsProvider>
         </PanelProvider>
         <ContextMenuPortal />

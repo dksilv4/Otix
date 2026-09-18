@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  X,
   Server,
   RefreshCw,
   CheckCircle2,
@@ -8,6 +7,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DkButton } from '@ui/atoms/button';
+import { DkDialog } from '@ui/molecules/dialog';
 
 export interface ServerIntegrationModalShellProps {
   isOpen?: boolean;
@@ -19,6 +19,7 @@ export interface ServerIntegrationModalShellProps {
   brandColor?: string;
   brandBgClass?: string;
   maxWidthClass?: string;
+  badge?: React.ReactNode;
   isLoading?: boolean;
   loadingText?: string;
   hasServer?: boolean;
@@ -36,150 +37,77 @@ export function ServerIntegrationModalShell({
   brandColor,
   brandBgClass,
   maxWidthClass = 'max-w-xl',
+  badge,
   isLoading = false,
   loadingText = 'Loading current settings...',
   hasServer = true,
   emptyServerState,
   children,
 }: ServerIntegrationModalShellProps) {
-  const panelRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!isOpen) return
-    const previousOverflow = document.body.style.overflow
-    const previouslyFocused = document.activeElement as HTMLElement | null
-    document.body.style.overflow = 'hidden'
-    panelRef.current?.focus()
-
-    const focusableSelector =
-      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
-    const getFocusable = () => {
-      if (!panelRef.current) return [] as HTMLElement[]
-      return Array.from(panelRef.current.querySelectorAll<HTMLElement>(focusableSelector)).filter(
-        (el) => el.tabIndex !== -1 && !el.hasAttribute('disabled')
-      )
-    }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onClose()
-        return
-      }
-      if (e.key !== 'Tab') return
-      const focusable = getFocusable()
-      if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      const active = document.activeElement
-      if (e.shiftKey && active === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault()
-        first.focus()
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = previousOverflow
-      previouslyFocused?.focus()
-    }
-  }, [isOpen, onClose])
-
-  if (isOpen === false) return null;
-
   const titleId = 'integration-modal-title';
   const descriptionId = description ? 'integration-modal-description' : undefined;
 
   return (
-    <div
-      className={cn(
-        'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md',
-        isExiting ? 'animate-out fade-out duration-150' : 'animate-in fade-in duration-150'
-      )}
+    <DkDialog
+      open={isOpen !== false && !isExiting}
+      onOpenChange={(next) => {
+        if (!next) onClose()
+      }}
+      className={cn('max-h-[90vh] p-0 sm:p-0 flex flex-col overflow-hidden', maxWidthClass)}
     >
       <div
-        className="fixed inset-0 bg-transparent"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      <div
-        role="dialog"
-        aria-modal="true"
+        className="relative z-10 flex min-h-0 flex-1 flex-col"
+        role="document"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        tabIndex={-1}
-        ref={panelRef}
-        className={cn(
-          'relative z-10 flex max-h-[90vh] w-full flex-col overflow-hidden rounded-3xl text-white backdrop-blur-3xl',
-          isExiting ? 'animate-out fade-out zoom-out-95 duration-150' : 'animate-in fade-in zoom-in-95 duration-150',
-          maxWidthClass
-        )}
-        style={{
-          backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.78)',
-          boxShadow:
-            'inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 30px 60px -12px rgba(0, 0, 0, 0.85)',
-        }}
       >
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-center justify-between gap-3 px-4 pt-5 pb-2">
-            <div className="flex min-w-0 items-center gap-3">
-              <div
-                className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10',
-                  brandBgClass
-                )}
-                style={brandColor ? { color: brandColor } : undefined}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1 leading-tight">
-                <h2 id={titleId} className="text-lg font-bold leading-tight tracking-tight text-white">
-                  {title}
-                </h2>
-                {description && (
-                  <p id={descriptionId} className="mt-0 text-xs leading-tight text-white/60">
-                    {description}
-                  </p>
-                )}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="shrink-0 rounded-xl p-2 text-white/40 transition-all hover:bg-white/10 hover:text-white cursor-pointer"
-              aria-label="Close dialog"
-            >
-              <X className="h-4 w-4" />
-            </button>
+        <div className="flex shrink-0 items-center gap-3 px-4 pt-5 pb-2 pr-14">
+          <div
+            className={cn(
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10',
+              brandBgClass
+            )}
+            style={brandColor ? { color: brandColor } : undefined}
+          >
+            <Icon className="h-5 w-5" />
           </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center gap-2 p-12 text-xs text-white/60">
-              <RefreshCw
-                className="h-4 w-4 animate-spin"
-                style={brandColor ? { color: brandColor } : undefined}
-              />
-              <span>{loadingText}</span>
-            </div>
-          ) : !hasServer ? (
-            emptyServerState || (
-              <IntegrationEmptyServerState
-                serviceName={title}
-                onClose={onClose}
-              />
-            )
-          ) : (
-            children
-          )}
+          <div className="min-w-0 flex-1 leading-tight">
+            <h2 id={titleId} className="text-lg font-bold leading-tight tracking-tight text-white">
+              {title}
+            </h2>
+            {description && (
+              <p id={descriptionId} className="mt-0 text-xs leading-tight text-white/60">
+                {description}
+              </p>
+            )}
+            {badge ? (
+              <span className="mt-1 inline-flex rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/70">
+                {badge}
+              </span>
+            ) : null}
+          </div>
         </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 p-12 text-xs text-white/60">
+            <RefreshCw
+              className="h-4 w-4 animate-spin"
+              style={brandColor ? { color: brandColor } : undefined}
+            />
+            <span>{loadingText}</span>
+          </div>
+        ) : !hasServer ? (
+          emptyServerState || (
+            <IntegrationEmptyServerState
+              serviceName={title}
+              onClose={onClose}
+            />
+          )
+        ) : (
+          children
+        )}
       </div>
-    </div>
+    </DkDialog>
   );
 }
 
@@ -264,11 +192,15 @@ export function IntegrationStatusBadge({
 
 export function IntegrationEmptyServerState({
   serviceName,
+  title,
+  description,
   iconBgClass,
   buttonBgClass,
   onClose,
 }: {
-  serviceName: string;
+  serviceName?: string;
+  title?: string;
+  description?: string;
   iconBgClass?: string;
   buttonBgClass?: string;
   onClose?: () => void;
@@ -284,14 +216,14 @@ export function IntegrationEmptyServerState({
         <Server className="h-6 w-6" />
       </div>
       <p className="text-sm font-semibold text-white">
-        No Game Server Connected
+        {title || 'No Game Server Connected'}
       </p>
       <p className="max-w-sm text-xs text-white/60">
-        {serviceName} is managed through a self-hosted Otix Server or Game Server node.
-        Connect a server first to configure downloads.
+        {description ||
+          `${serviceName || 'This service'} is managed through a self-hosted Otix Server or Game Server node. Connect a server first to configure downloads.`}
       </p>
       <DkButton asChild size="md" className={cn('mt-2', buttonBgClass)}>
-        <a href="/settings/launcher" onClick={onClose}>
+        <a href="/settings/downloads" onClick={onClose}>
           Connect a game server
         </a>
       </DkButton>

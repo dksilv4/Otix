@@ -141,7 +141,7 @@ export function ForgeLauncherView() {
               <span>Library</span>
             </button>
             <button
-              onClick={() => navigate({ to: "/settings/launcher" })}
+              onClick={() => navigate({ to: '/settings/launcher' })}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-neutral-400 hover:text-white hover:bg-white/5 cursor-pointer transition-colors"
             >
               <Settings size={15} />

@@ -1,13 +1,9 @@
 // TODO: Review this file
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { isDesktop } from '@/lib/desktop'
-import { ACCESS_TOKEN_KEY } from '@/lib/config/config'
+import { ACCESS_TOKEN_KEY, API_BASE_URL } from '@/lib/config/config'
 import { refreshAccessToken } from './session-refresh'
 
-// ponytail: client needs different fallback logic than lib/config (desktop vs web)
-export const CLIENT_API_BASE_URL = isDesktop()
-  ? (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1')
-  : (import.meta.env.VITE_API_BASE_URL || '/api/v1')
+export const CLIENT_API_BASE_URL = API_BASE_URL
 const BASE_URL = CLIENT_API_BASE_URL
 
 // ── Case conversion utilities ────────────────────────────────────────
@@ -177,6 +173,12 @@ apiClient.interceptors.response.use(
     // was in flight. Retry with the new token instead of rotating again —
     // a second /auth/refresh would replay the old cookie and revoke the session.
     const currentToken = localStorage.getItem(ACCESS_TOKEN_KEY)
+    // Anonymous 401s (e.g. /library/servers on the public media page) must not
+    // attempt refresh — a failed refresh fires auth:sessionExpired, which
+    // queryClient.clear()s in-flight catalog fetches and leaves observers stuck.
+    if (!currentToken) {
+      return Promise.reject(error)
+    }
     const sentToken = readBearerToken(originalRequest.headers)
     if (currentToken && sentToken && currentToken !== sentToken) {
       if (originalRequest.headers) {

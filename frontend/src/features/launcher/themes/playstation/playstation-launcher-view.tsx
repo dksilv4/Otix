@@ -162,7 +162,7 @@ export function PlayStationLauncherView() {
           </button>
 
           <button
-            onClick={() => navigate({ to: "/settings/launcher" })}
+            onClick={() => navigate({ to: '/settings/launcher' })}
             className="text-white/40 hover:text-white transition-colors cursor-pointer p-1"
             title="Launcher Settings"
           >

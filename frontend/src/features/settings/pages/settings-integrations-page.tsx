@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
-import { Link, useLocation } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { connectTaskSseStream, type SseEvent } from '@/lib/api/sse-client'
@@ -11,11 +11,20 @@ import EpicIcon from '@/assets/provider-logos/epic.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import GoogleIcon from '@/assets/provider-logos/google.svg?react'
 import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
-import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
 import { openExternal } from '@/lib/utils/open-external'
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
-import { Loader2, Plus, Unlink, RefreshCw, Download, DownloadCloud, ChevronDown, Link2, Film, Tv, Music, FolderOpen, Search, Pause, Play, Check } from 'lucide-react'
+import { Loader2, RefreshCw, Download, DownloadCloud, Link2, Film, Tv, Music, FolderOpen, Search, Pause, Play, Check, HardDrive } from 'lucide-react'
+import { PlexStorageOptimizerModal } from '@/features/integrations/plex-storage'
+import { SectionHeader } from '../components/molecules/settings-section-header'
+import { SettingsCard } from '../components/molecules/settings-card'
+import { SettingsLockedState } from '../components/molecules/settings-locked-state'
+import {
+  IntegrationAction,
+  IntegrationCard,
+  IntegrationProfile,
+  IntegrationStats,
+} from '../components/organisms/settings-integration-card'
 import { usePlexLibraries, streamPlexLibrarySync } from '@library/library-queries'
 import type { PlexLibraryInfo } from '@library/library-queries'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
@@ -132,11 +141,16 @@ function openBoundModal(
 }
 
 function formatDaysAgo(unixTimestamp: number): string {
-  const days = Math.floor((Date.now() / 1000 - unixTimestamp) / 86400)
-  if (days <= 0) return 'Today'
-  if (days === 1) return '1d ago'
-  if (days <= 14) return `${days}d ago`
-  return ''
+  const seconds = Math.floor(Date.now() / 1000 - unixTimestamp)
+  if (isNaN(seconds) || seconds < 0) return 'today'
+  if (seconds < 60) return 'just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  const days = Math.floor(seconds / 86400)
+  if (days === 1) return 'yesterday'
+  if (days < 30) return `${days}d ago`
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`
+  return `${Math.floor(days / 365)}y ago`
 }
 
 const BRAND_COLORS: Record<string, string> = {
@@ -163,229 +177,11 @@ const BRAND_BG: Record<string, string> = {
   sonarr: 'bg-[#00c4df]/10',
 }
 
-// ── Integration card (iOS-style expandable) ──
-
-function IntegrationCard({
-  name,
-  description,
-  brandColor,
-  brandBg,
-  icon: Icon,
-  isConnected,
-  expanded,
-  onToggle,
-  onConnect,
-  connecting,
-  connectDisabled,
-  onDisconnect,
-  disconnecting,
-  children,
-}: {
-  name: string
-  description: string
-  brandColor: string
-  brandBg: string
-  icon: React.ComponentType<{ className?: string }>
-  isConnected: boolean
-  expanded: boolean
-  onToggle: () => void
-  onConnect?: () => void
-  connecting?: boolean
-  connectDisabled?: boolean
-  onDisconnect?: () => void
-  disconnecting?: boolean
-  children?: React.ReactNode
-}) {
-  return (
-    <div className="rounded-2xl overflow-hidden bg-white/5 backdrop-blur-xl">
-      {/* Header */}
-      <div
-        role={isConnected ? 'button' : undefined}
-        tabIndex={isConnected ? 0 : undefined}
-        onClick={isConnected ? onToggle : undefined}
-        onKeyDown={isConnected ? (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            onToggle()
-          }
-        } : undefined}
-        className={cn(
-          'flex w-full items-center gap-4 px-5 py-4 text-left transition-colors duration-150',
-          isConnected && 'cursor-pointer hover:bg-white/[0.03] active:bg-white/[0.03]',
-        )}
-      >
-        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', brandBg)} style={{ color: brandColor }}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold">{name}</p>
-            {isConnected && <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-green-500" />}
-          </div>
-          <p className="text-xs text-white/60 mt-0.5 truncate">{description}</p>
-        </div>
-        {isConnected ? (
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm">
-              <Check className="h-3.5 w-3.5" />
-              Connected
-            </span>
-            <ChevronDown className={cn('h-4 w-4 text-white/40 transition-transform duration-150', expanded && 'rotate-180')} />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onConnect}
-            disabled={connecting || connectDisabled}
-            className="shrink-0 inline-flex items-center justify-start gap-1.5 h-8 w-[90px] rounded-lg px-3 text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-all duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50"
-          >
-            <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-              {connecting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Plus className="h-3.5 w-3.5" />
-              )}
-            </span>
-            <span>Connect</span>
-          </button>
-        )}
-      </div>
-
-      {/* Expanded content */}
-      {isConnected && expanded && (
-        <div className="pt-1">
-          {children}
-          {onDisconnect && (
-            <div className="px-5 py-3">
-              <DkButton
-                size="sm"
-                variant="ghost"
-                onClick={onDisconnect}
-                loading={disconnecting}
-                leftIcon={Unlink}
-                loadingText={`Disconnecting…`}
-                className="w-full bg-red-500/10 text-red-400 shadow-none hover:bg-red-500/15"
-              >
-                Disconnect {name}
-              </DkButton>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Integration profile row ──
-
-function IntegrationProfile({
-  avatarUrl,
-  avatarAlt,
-  name,
-  detail,
-  brandColor,
-  brandBg,
-  icon: Icon,
-  meta,
-}: {
-  avatarUrl?: string | null
-  avatarAlt: string
-  name: string
-  detail: string
-  brandColor?: string
-  brandBg?: string
-  icon?: React.ComponentType<{ className?: string }>
-  meta?: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center gap-3 px-5 py-4">
-      {avatarUrl ? (
-        <img src={avatarUrl} alt={avatarAlt} className="h-10 w-10 rounded-xl object-cover ring-1 ring-white/10" />
-      ) : (
-        <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl bg-white/5', brandBg)} style={brandColor ? { color: brandColor } : undefined}>
-          {Icon && <Icon className="h-5 w-5" />}
-        </div>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium truncate">{name}</p>
-        <p className="text-xs text-white/60 truncate">{detail}</p>
-      </div>
-      {meta}
-    </div>
-  )
-}
-
-// ── Integration action row ──
-
-function IntegrationAction({
-  label,
-  description,
-  result,
-  buttonLabel,
-  buttonIcon: ButtonIcon,
-  onPress,
-  loading,
-  disabled,
-  progress,
-  children,
-  muted,
-}: {
-  label: string
-  description: string
-  result?: string | null
-  buttonLabel: string
-  buttonIcon?: React.ComponentType<{ className?: string }>
-  onPress: () => void
-  loading?: boolean
-  disabled?: boolean
-  progress?: React.ReactNode
-  children?: React.ReactNode
-  muted?: boolean
-}) {
-  return (
-    <div className={cn('flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4', muted && 'bg-white/[0.02]')}>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">{label}</p>
-          {progress}
-        </div>
-        <p className="mt-1 text-sm font-medium">{description}</p>
-        {result && <p className="text-xs text-white/60 mt-0.5">{result}</p>}
-        {children}
-      </div>
-      <DkButton
-        size="sm"
-        variant="ghost"
-        onClick={onPress}
-        loading={loading}
-        disabled={disabled}
-        leftIcon={ButtonIcon}
-        className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
-      >
-        {buttonLabel}
-      </DkButton>
-    </div>
-  )
-}
-
-// ── Integration stats row ──
-
-function IntegrationStats({ items }: { items: { label: string; value: string | number }[] }) {
-  return (
-    <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/60 px-5 py-3">
-      {items.map((item) => (
-        <span key={item.label}>
-          <strong className="text-white font-semibold">{item.value}</strong> {item.label}
-        </span>
-      ))}
-    </div>
-  )
-}
-
 export function SettingsIntegrationsPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
-  const location = useLocation()
-  const [loading, setLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [loading, setLoading] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [plexConnecting, setPlexConnecting] = useState(false)
@@ -394,41 +190,18 @@ export function SettingsIntegrationsPage() {
   const [plexSyncResult, setPlexSyncResult] = useState<PlexSyncResult | null>(null)
   const [discoveringPlex, setDiscoveringPlex] = useState(false)
   const [plexLibraryProgress, setPlexLibraryProgress] = useState<Record<string, PlexLibraryProgress>>({})
+  const [plexLibraryErrors, setPlexLibraryErrors] = useState<Record<string, string>>({})
   const [syncingLibraryIds, setSyncingLibraryIds] = useState<Set<string>>(new Set())
   const abortRef = useRef<AbortController | null>(null)
-  // Smooth progress animation — drives displayed count toward real server count at observed rate
-  const animStateRef = useRef<Record<string, {
-    displayed: number
-    real: number
-    rate: number
-    lastItems: number
-    lastTime: number
-  }>>({})
-  const [, setAnimTick] = useState(0)
-
-  // Smooth progress animation loop — runs on rAF, only triggers re-render when animating
+  // Sync user state once auth profile hydrates
   useEffect(() => {
-    let rafId: number
-    function tick() {
-      const anim = animStateRef.current
-      const keys = Object.keys(anim)
-      let anyChanged = false
-      for (let i = 0; i < keys.length; i++) {
-        const s = anim[keys[i]]
-        if (s.displayed >= s.real - 0.01) {
-          if (s.displayed !== s.real) s.displayed = s.real
-          continue
-        }
-        const step = Math.max(s.rate / 60, 0.1)
-        s.displayed = Math.min(s.displayed + step, s.real)
-        anyChanged = true
-      }
-      if (anyChanged) setAnimTick(t => t + 1)
-      rafId = requestAnimationFrame(tick)
+    if (user?.plexId !== undefined) {
+      setPlexConnected(Boolean(user.plexId))
     }
-    rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
-  }, [])
+    if (user?.plexWatchHistoryEnabled !== undefined) {
+      setPlexWatchHistoryEnabled(Boolean(user.plexWatchHistoryEnabled))
+    }
+  }, [user?.plexId, user?.plexWatchHistoryEnabled])
 
   const [steamMessage, setSteamMessage] = useState('')
   const [steamError, setSteamError] = useState('')
@@ -459,6 +232,7 @@ export function SettingsIntegrationsPage() {
   const [plexConnected, setPlexConnected] = useState(Boolean(user?.plexId))
   const [plex, setPlex] = useState<PlexIntegration | null>(null)
   const [plexWatchHistoryEnabled, setPlexWatchHistoryEnabled] = useState(user?.plexWatchHistoryEnabled ?? false)
+  const [plexStorageModalOpen, setPlexStorageModalOpen] = useState(false)
   const [tmdbConnected, setTmdbConnected] = useState(Boolean(user?.tmdbUsername))
   const [tmdbUsername, setTmdbUsername] = useState<string | null>(user?.tmdbUsername ?? null)
   const [tmdbAvatarUrl, setTmdbAvatarUrl] = useState<string | null>(user?.tmdbAvatarUrl ?? null)
@@ -508,10 +282,15 @@ export function SettingsIntegrationsPage() {
     usePlexLibraries({ enabled: isPlexConnected })
 
   const { openModal } = useModal()
-  const { data: gameServers = [] } = useGameServers()
+  const { data: gameServers = [] } = useGameServers({ enabled: isAuthenticated })
   const activeServer = gameServers[0]
   const hasOnlineNode = gameServers.some((s) => s.isOnline)
   const isEpicConnected = epicConnected
+  const arrServerId = isAuthenticated ? activeServer?.id : undefined
+  const radarrLiveId = expandedId === 'radarr' ? arrServerId : undefined
+  const sonarrLiveId = expandedId === 'sonarr' ? arrServerId : undefined
+  const sabnzbdLiveId = expandedId === 'sabnzbd' ? arrServerId : undefined
+  const prowlarrLiveId = expandedId === 'prowlarr' ? arrServerId : undefined
 
   const openSabnzbdModal = () => {
     openBoundModal(openModal, (onClose) => (
@@ -554,7 +333,7 @@ export function SettingsIntegrationsPage() {
   }
 
   const { config: dlConfig } = useDownloadConfig(user?.id)
-  const { data: usenetConfig } = useServerUsenetConfig(activeServer?.id)
+  const { data: usenetConfig } = useServerUsenetConfig(arrServerId)
   const isSabnzbdConfigured = Boolean(
     (activeServer && usenetConfig?.sabnzbd?.host &&
       Boolean(usenetConfig?.sabnzbd?.api_key || usenetConfig?.sabnzbd?.configured)) ||
@@ -567,12 +346,12 @@ export function SettingsIntegrationsPage() {
   )
 
   // ── Radarr + Sonarr managed via Otix Server node ──
-  const { data: radarrConfig } = useServerRadarrConfig(activeServer?.id)
-  const { data: sonarrConfig } = useServerSonarrConfig(activeServer?.id)
-  const { data: radarrMovies = [] } = useServerRadarrMovies(activeServer?.id)
-  const { data: sonarrSeries = [] } = useServerSonarrSeries(activeServer?.id)
-  const { data: radarrQueue } = useServerRadarrQueue(activeServer?.id, 1, 50, 4000)
-  const { data: sonarrQueue } = useServerSonarrQueue(activeServer?.id, 1, 50, 4000)
+  const { data: radarrConfig } = useServerRadarrConfig(arrServerId)
+  const { data: sonarrConfig } = useServerSonarrConfig(arrServerId)
+  const { data: radarrMovies = [] } = useServerRadarrMovies(radarrLiveId)
+  const { data: sonarrSeries = [] } = useServerSonarrSeries(sonarrLiveId)
+  const { data: radarrQueue } = useServerRadarrQueue(radarrLiveId, 1, 50, 4000)
+  const { data: sonarrQueue } = useServerSonarrQueue(sonarrLiveId, 1, 50, 4000)
 
   const isRadarrConfigured = Boolean(
     activeServer &&
@@ -587,7 +366,7 @@ export function SettingsIntegrationsPage() {
 
   // SABnzbd queue controls
   const { data: sabnzbdQueue, refetch: refetchQueue } = useServerUsenetQueue(
-    activeServer?.id,
+    sabnzbdLiveId,
     3000
   )
   const pauseSabnzbdMutation = usePauseSabnzbdQueue(activeServer?.id)
@@ -610,7 +389,7 @@ export function SettingsIntegrationsPage() {
   // Prowlarr indexer sync
   const [prowlarrSyncProtocol, setProwlarrSyncProtocol] = useState<'all' | 'torrent' | 'usenet'>('all')
   const { data: fetchedProwlarrIndexers = [], refetch: refetchProwlarrIndexers } = useProwlarrIndexers(
-    activeServer?.id
+    prowlarrLiveId
   )
   const syncProwlarrMutation = useSyncProwlarrIndexers(activeServer?.id)
   const [prowlarrSyncMessage, setProwlarrSyncMessage] = useState<string | null>(null)
@@ -629,8 +408,6 @@ export function SettingsIntegrationsPage() {
     }
   }
 
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
   const fetchIntegrations = async () => {
     try {
       const { data } = await apiClient.get('/auth/oauth')
@@ -649,7 +426,11 @@ export function SettingsIntegrationsPage() {
       if (plexProvider) {
         setPlexConnected(plexProvider.connected)
         setPlex(plexProvider)
+      } else {
+        setPlexConnected(false)
+        setPlex(null)
       }
+      setPlexConnecting(false)
       const tmdbProvider = (data.providers as Array<{
         name: string
         connected: boolean
@@ -838,18 +619,22 @@ export function SettingsIntegrationsPage() {
   }
 
   const handlePlexConnect = async () => {
+    if (plexConnecting) return
     setPlexConnecting(true)
     setPlexError('')
     try {
       const { data } = await apiClient.post('/auth/oauth/plex')
-      openExternal(data.authUrl)
+      openExternal(data.authUrl || data.auth_url)
     } catch (err) {
-      setPlexConnecting(false)
       setPlexError(extractIntegrationMessage(err))
+    } finally {
+      setPlexConnecting(false)
     }
   }
 
   const handlePlexDisconnect = async () => {
+    if (plexDisconnecting) return
+    abortRef.current?.abort()
     setPlexDisconnecting(true)
     setPlexError('')
     setPlexMessage('')
@@ -857,6 +642,10 @@ export function SettingsIntegrationsPage() {
       await apiClient.delete('/auth/oauth/plex/disconnect')
       setPlexConnected(false)
       setPlex(null)
+      setPlexLibraryProgress({})
+      setPlexLibraryErrors({})
+      setPlexSyncResult(null)
+      setPlexWatchlistSyncResult(null)
       setPlexMessage('Plex account unlinked.')
     } catch (err) {
       setPlexError(extractIntegrationMessage(err))
@@ -1063,17 +852,22 @@ export function SettingsIntegrationsPage() {
   }
 
   const handlePlexSync = async () => {
+    if (plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex) return
     abortRef.current?.abort()
     const abortController = new AbortController()
     abortRef.current = abortController
 
     setPlexSyncing(true)
     setPlexError('')
+    setPlexMessage('')
+    setPlexLibraryErrors({})
     setPlexSyncResult(null)
     setPlexLibraryProgress({})
-    animStateRef.current = {}
 
-    const progressKey = (server: string, library: string) => `${server}:${library}`
+    const progressKey = (server: string, library: string) => {
+      const match = plexLibraries?.find((l) => l.serverName === server && l.title === library)
+      return match ? String(match.id) : `${server}:${library}`
+    }
 
     try {
       const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
@@ -1101,11 +895,6 @@ export function SettingsIntegrationsPage() {
                   phase: 'pending',
                 },
               }))
-              if (!animStateRef.current[key]) {
-                animStateRef.current[key] = {
-                  displayed: 0, real: 0, rate: 5, lastItems: 0, lastTime: performance.now(),
-                }
-              }
               break
             }
             case 'syncing_library': {
@@ -1116,51 +905,26 @@ export function SettingsIntegrationsPage() {
                   serverName: event.serverName as string,
                   libraryName: event.libraryName as string,
                   itemsProcessed: 0,
-                  itemsTotal: event.itemsTotal as number,
+                  itemsTotal: (event.itemsTotal as number) || 0,
                   phase: 'syncing',
                 },
               }))
-              if (!animStateRef.current[key]) {
-                animStateRef.current[key] = {
-                  displayed: 0, real: 0, rate: 5, lastItems: 0, lastTime: performance.now(),
-                }
-              }
               break
             }
             case 'library_progress': {
               const key = progressKey(event.serverName as string, event.libraryName as string)
-              const realValue = event.itemsProcessed as number
-              const now = performance.now()
-              // Update rate tracking in the animation state
-              const s = animStateRef.current[key]
-              if (s) {
-                const deltaItems = realValue - s.lastItems
-                const deltaTime = now - s.lastTime
-                if (deltaItems > 0 && deltaTime > 30) {
-                  const instantRate = deltaItems / (deltaTime / 1000)
-                  s.rate = s.rate ? s.rate * 0.4 + instantRate * 0.6 : instantRate
-                }
-                s.real = realValue
-                s.lastItems = realValue
-                s.lastTime = now
-              } else {
-                animStateRef.current[key] = {
-                  displayed: Math.max(0, realValue - 5),
-                  real: realValue,
-                  rate: 5,
-                  lastItems: realValue,
-                  lastTime: now,
-                }
-              }
+              const realValue = (event.itemsProcessed as number) || 0
               setPlexLibraryProgress((prev) => {
                 const lib = prev[key]
-                if (!lib) return prev
                 return {
                   ...prev,
                   [key]: {
                     ...lib,
+                    serverName: event.serverName as string,
+                    libraryName: event.libraryName as string,
                     itemsProcessed: realValue,
-                    itemsTotal: event.itemsTotal as number,
+                    itemsTotal: (event.itemsTotal as number) || lib?.itemsTotal || realValue,
+                    phase: 'syncing',
                   },
                 }
               })
@@ -1168,17 +932,15 @@ export function SettingsIntegrationsPage() {
             }
             case 'library_complete': {
               const key = progressKey(event.serverName as string, event.libraryName as string)
-              const total = event.total as number
-              if (animStateRef.current[key]) {
-                animStateRef.current[key].real = total
-              }
+              const total = (event.total as number) || 0
               setPlexLibraryProgress((prev) => {
                 const lib = prev[key]
-                if (!lib) return prev
                 return {
                   ...prev,
                   [key]: {
                     ...lib,
+                    serverName: event.serverName as string,
+                    libraryName: event.libraryName as string,
                     itemsProcessed: total,
                     itemsTotal: total,
                     phase: 'complete' as const,
@@ -1192,9 +954,22 @@ export function SettingsIntegrationsPage() {
               setPlexMessage(
                 `Synced ${event.total} Plex items from ${event.libraries} libraries on ${event.servers} server(s). Seeded ${event.seeded} new catalog items.`,
               )
+              refetchLibraries()
+              setTimeout(() => {
+                setPlexLibraryProgress({})
+              }, 1500)
               break
             case 'error':
-              setPlexError(event.message as string)
+              setPlexError((event.message as string) || 'Plex sync encountered an error.')
+              setPlexLibraryProgress((prev) => {
+                const next = { ...prev }
+                for (const k of Object.keys(next)) {
+                  if (next[k].phase === 'syncing') {
+                    next[k] = { ...next[k], phase: 'failed' }
+                  }
+                }
+                return next
+              })
               break
           }
         },
@@ -1215,8 +990,10 @@ export function SettingsIntegrationsPage() {
   }, [])
 
   const handlePlexWatchlistSync = async () => {
+    if (plexWatchlistSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex) return
     setPlexWatchlistSyncing(true)
     setPlexError('')
+    setPlexMessage('')
     setPlexWatchlistSyncResult(null)
     try {
       const { data } = await apiClient.post<{ total: number; matched: number; seeded: number }>(
@@ -1232,11 +1009,22 @@ export function SettingsIntegrationsPage() {
   }
 
   const handleDiscoverLibraries = async () => {
+    if (discoveringPlex || plexSyncing || syncingLibraryIds.size > 0) return
     setDiscoveringPlex(true)
     setPlexError('')
+    setPlexMessage('')
     try {
-      await apiClient.get('/integrations/plex/servers')
+      const { data } = await apiClient.get<{ servers?: unknown[]; libraries?: unknown[]; unreachableServers?: string[] }>(
+        '/integrations/plex/servers',
+      )
       await refetchLibraries()
+      const libCount = data?.libraries?.length ?? 0
+      const serverCount = data?.servers?.length ?? 0
+      let msg = `Discovered ${libCount} librar${libCount === 1 ? 'y' : 'ies'} on ${serverCount} server(s).`
+      if (data?.unreachableServers?.length) {
+        msg += ` (${data.unreachableServers.join(', ')} unreachable)`
+      }
+      setPlexMessage(msg)
     } catch (err) {
       setPlexError(extractIntegrationMessage(err))
     } finally {
@@ -1245,23 +1033,25 @@ export function SettingsIntegrationsPage() {
   }
 
   const handleSyncLibrary = async (library: PlexLibraryInfo) => {
-    if (syncingLibraryIds.has(library.id)) return
+    const libIdStr = String(library.id)
+    if (syncingLibraryIds.has(library.id) || syncingLibraryIds.size > 0 || plexSyncing || discoveringPlex) return
     setSyncingLibraryIds((prev) => new Set(prev).add(library.id))
-    setPlexError('')
-    const key = `${library.serverName}:${library.title}`
+    setPlexLibraryErrors((prev) => {
+      const next = { ...prev }
+      delete next[libIdStr]
+      return next
+    })
+    setPlexMessage('')
     setPlexLibraryProgress((prev) => ({
       ...prev,
-      [key]: {
+      [libIdStr]: {
         serverName: library.serverName,
         libraryName: library.title,
         itemsProcessed: 0,
-        itemsTotal: 0,
-        phase: 'pending',
+        itemsTotal: library.itemCount || 0,
+        phase: 'syncing',
       },
     }))
-    if (!animStateRef.current[key]) {
-      animStateRef.current[key] = { displayed: 0, real: 0, rate: 5, lastItems: 0, lastTime: 0 }
-    }
 
     try {
       const result = await streamPlexLibrarySync(library.id, (event) => {
@@ -1269,65 +1059,58 @@ export function SettingsIntegrationsPage() {
           case 'syncing_library': {
             setPlexLibraryProgress((prev) => ({
               ...prev,
-              [key]: {
-                ...prev[key],
+              [libIdStr]: {
+                serverName: library.serverName,
+                libraryName: library.title,
                 phase: 'syncing',
-                itemsTotal: event.itemsTotal as number,
+                itemsProcessed: prev[libIdStr]?.itemsProcessed ?? 0,
+                itemsTotal: (event.itemsTotal as number) || (prev[libIdStr]?.itemsTotal ?? 0),
               },
             }))
             break
           }
           case 'library_progress': {
             const realValue = event.itemsProcessed as number
-            const now = performance.now()
-            const s = animStateRef.current[key]
-            if (s) {
-              const deltaItems = realValue - s.lastItems
-              const deltaTime = now - s.lastTime
-              if (deltaItems > 0 && deltaTime > 30) {
-                const instantRate = deltaItems / (deltaTime / 1000)
-                s.rate = s.rate ? s.rate * 0.4 + instantRate * 0.6 : instantRate
-              }
-              s.real = realValue
-              s.lastItems = realValue
-              s.lastTime = now
-            } else {
-              animStateRef.current[key] = {
-                displayed: Math.max(0, realValue - 5),
-                real: realValue,
-                rate: 5,
-                lastItems: realValue,
-                lastTime: now,
-              }
-            }
-            setPlexLibraryProgress((prev) => {
-              const lib = prev[key]
-              if (!lib) return prev
-              return { ...prev, [key]: { ...lib, itemsProcessed: realValue, itemsTotal: event.itemsTotal as number } }
-            })
+            setPlexLibraryProgress((prev) => ({
+              ...prev,
+              [libIdStr]: {
+                serverName: library.serverName,
+                libraryName: library.title,
+                phase: 'syncing',
+                itemsProcessed: realValue,
+                itemsTotal: (event.itemsTotal as number) || (prev[libIdStr]?.itemsTotal ?? realValue),
+              },
+            }))
             break
           }
           case 'library_complete': {
             const total = event.total as number
-            if (animStateRef.current[key]) {
-              animStateRef.current[key].real = total
-            }
-            setPlexLibraryProgress((prev) => {
-              const lib = prev[key]
-              if (!lib) return prev
-              return { ...prev, [key]: { ...lib, itemsProcessed: total, itemsTotal: total, phase: 'complete' as const } }
-            })
+            setPlexLibraryProgress((prev) => ({
+              ...prev,
+              [libIdStr]: {
+                serverName: library.serverName,
+                libraryName: library.title,
+                itemsProcessed: total,
+                itemsTotal: total,
+                phase: 'complete',
+              },
+            }))
             break
           }
         }
       })
       setPlexMessage(`Synced ${library.title}: ${result.matched} matched, ${result.seeded} seeded out of ${result.total} items.`)
+      await refetchLibraries()
     } catch (err) {
-      setPlexError(extractIntegrationMessage(err))
+      const msg = extractIntegrationMessage(err)
+      setPlexLibraryErrors((prev) => ({
+        ...prev,
+        [libIdStr]: msg,
+      }))
       setPlexLibraryProgress((prev) => {
-        const lib = prev[key]
-        if (!lib) return prev
-        return { ...prev, [key]: { ...lib, phase: 'failed' as const } }
+        const next = { ...prev }
+        delete next[libIdStr]
+        return next
       })
     } finally {
       setSyncingLibraryIds((prev) => {
@@ -1335,6 +1118,13 @@ export function SettingsIntegrationsPage() {
         next.delete(library.id)
         return next
       })
+      setTimeout(() => {
+        setPlexLibraryProgress((prev) => {
+          const next = { ...prev }
+          delete next[libIdStr]
+          return next
+        })
+      }, 1500)
     }
   }
 
@@ -1357,24 +1147,11 @@ export function SettingsIntegrationsPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="space-y-6">
-        <div className="rounded-2xl p-6 space-y-6" style={{ backgroundColor: 'var(--dk-surface-glass)' }}>
-          <div className="flex flex-col items-center gap-4 py-8 text-center">
-            <Link2 className="h-8 w-8 text-white/40" />
-            <div>
-              <p className="text-sm font-medium">Sign in required</p>
-              <p className="text-xs text-white/60 mt-1">Sign in to manage integrations.</p>
-            </div>
-            <Link
-              to="/auth/login"
-              search={{ redirect: location.href }}
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium rounded-xl px-5 py-2.5 text-sm bg-primary text-primary-foreground shadow-none transition-all duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dk-ring-color)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97]"
-            >
-              Sign In
-            </Link>
-          </div>
-        </div>
-      </div>
+      <SettingsLockedState
+        title="Sign in to manage connections"
+        description="Connect Steam, Plex, TMDb, YouTube, and download clients after you sign in."
+        icon={Link2}
+      />
     )
   }
 
@@ -1398,6 +1175,7 @@ export function SettingsIntegrationsPage() {
       connecting,
       onDisconnect: handleDisconnect,
       disconnecting,
+      error: steamError,
     },
     {
       id: 'epic',
@@ -1431,6 +1209,7 @@ export function SettingsIntegrationsPage() {
       connecting: plexConnecting,
       onDisconnect: handlePlexDisconnect,
       disconnecting: plexDisconnecting,
+      error: plexError,
     },
     {
       id: 'google',
@@ -1445,6 +1224,7 @@ export function SettingsIntegrationsPage() {
       connecting: googleConnecting,
       onDisconnect: handleGoogleDisconnect,
       disconnecting: googleDisconnecting,
+      error: googleError,
     },
     {
       id: 'google_drive',
@@ -1459,6 +1239,7 @@ export function SettingsIntegrationsPage() {
       connecting: driveConnecting,
       onDisconnect: handleDriveDisconnect,
       disconnecting: driveDisconnecting,
+      error: driveError,
     },
     {
       id: 'tmdb',
@@ -1473,6 +1254,7 @@ export function SettingsIntegrationsPage() {
       connecting: tmdbConnecting,
       onDisconnect: handleTmdbDisconnect,
       disconnecting: tmdbDisconnecting,
+      error: tmdbError,
     },
     {
       id: 'sabnzbd',
@@ -1557,12 +1339,14 @@ export function SettingsIntegrationsPage() {
     : integrationDefs)
 
   return (
-    <div id="settings-integrations-section" className="space-y-6">
-      <div className="rounded-2xl p-6 space-y-6" style={{ backgroundColor: 'var(--dk-surface-glass)' }}>
-        <div>
-          <h2 className="text-lg font-semibold">Integrations</h2>
-          <p className="text-sm text-white/60 mt-1">Connect your Otix account to other platforms.</p>
-        </div>
+    <div id="settings-connections-section" className="space-y-6">
+      <SettingsCard className="space-y-6">
+        <SectionHeader
+          variant="page"
+          icon={Link2}
+          title="Connections"
+          description="Connect Steam, Plex, TMDb, YouTube, and download clients."
+        />
         <div className="relative">
           <input
             type="text"
@@ -1601,6 +1385,7 @@ export function SettingsIntegrationsPage() {
                 connectDisabled={i.connectDisabled}
                 onDisconnect={i.onDisconnect}
                 disconnecting={i.disconnecting}
+                error={i.error}
               >
                 {/* Steam content */}
                 {i.id === 'steam' && (
@@ -1626,7 +1411,7 @@ export function SettingsIntegrationsPage() {
                         ...(steamProfile.personastate !== null && steamProfile.personastate !== undefined ? [{ label: 'status', value: personaStateLabel(steamProfile.personastate) }] : []),
                       ]} />
                     )}
-                    <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 text-xs text-white/70">
                         <FolderOpen className="h-4 w-4 text-sky-400 shrink-0" />
                         <span>
@@ -1716,6 +1501,7 @@ export function SettingsIntegrationsPage() {
                         variant="ghost"
                         onClick={handleDiscoverLibraries}
                         loading={discoveringPlex}
+                        disabled={discoveringPlex || plexSyncing || syncingLibraryIds.size > 0}
                         leftIcon={RefreshCw}
                         className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
                       >
@@ -1726,54 +1512,97 @@ export function SettingsIntegrationsPage() {
                     {plexLibraries && plexLibraries.length > 0 && (
                       <div className="px-5 py-2 space-y-2">
                         {plexLibraries.map((lib) => {
-                          const TypeIcon = lib.libraryType === 'movie' ? Film : lib.libraryType === 'show' ? Tv : Music
-                          const typeLabel = lib.libraryType === 'artist' ? 'Music' : lib.libraryType === 'movie' ? 'Movies' : 'TV Shows'
-                          const libKey = `${lib.serverName}:${lib.title}`
-                          const libProgress = plexLibraryProgress[libKey]
-                          const isSyncing = syncingLibraryIds.has(lib.id)
+                          const TypeIcon =
+                            lib.libraryType === 'movie' ? Film :
+                            lib.libraryType === 'show' ? Tv :
+                            lib.libraryType === 'artist' ? Music :
+                            FolderOpen
+                          const typeLabel =
+                            lib.libraryType === 'artist' ? 'Music' :
+                            lib.libraryType === 'movie' ? 'Movies' :
+                            lib.libraryType === 'show' ? 'TV Shows' :
+                            lib.libraryType === 'photo' ? 'Photos' : lib.libraryType
+                          const libIdStr = String(lib.id)
+                          const libProgress = plexLibraryProgress[libIdStr]
+                          const isSyncing = syncingLibraryIds.has(lib.id) || (plexSyncing && libProgress?.phase === 'syncing')
+                          const isComplete = libProgress?.phase === 'complete'
+                          const libError = plexLibraryErrors[libIdStr]
 
                           return (
-                            <div key={lib.id} className="flex items-center gap-3 rounded-xl p-3 bg-white/[0.03]">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium truncate">{lib.title}</span>
-                                  <span className="inline-flex items-center gap-1 text-xs text-white/60 shrink-0 bg-white/5 rounded-md px-1.5 py-0.5">
-                                    <TypeIcon className="h-3 w-3" />
-                                    {typeLabel}
-                                  </span>
+                            <div key={lib.id} className="flex flex-col gap-2 rounded-xl p-3 bg-white/[0.03]">
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium truncate">{lib.title}</span>
+                                    <span className="inline-flex items-center gap-1 text-xs text-white/60 shrink-0 bg-white/5 rounded-md px-1.5 py-0.5">
+                                      <TypeIcon className="h-3 w-3" />
+                                      {typeLabel}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
+                                    <span className="font-medium text-white/60">{lib.serverName}</span>
+                                    <span className="text-white/20">·</span>
+                                    <span>{lib.itemCount} items</span>
+                                    {lib.lastSyncedAt && (
+                                      <>
+                                        <span className="text-white/20">·</span>
+                                        <span>last synced {formatDaysAgo(Math.floor(new Date(lib.lastSyncedAt).getTime() / 1000))}</span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
-                                  <span className="font-medium text-white/60">{lib.serverName}</span>
-                                  <span className="text-white/20">·</span>
-                                  <span>{lib.itemCount} items</span>
-                                  {lib.lastSyncedAt && (
+                                <DkButton
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleSyncLibrary(lib)}
+                                  loading={isSyncing}
+                                  disabled={isSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
+                                  leftIcon={RefreshCw}
+                                  loadingText="Syncing"
+                                  className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
+                                >
+                                  Sync
+                                </DkButton>
+                              </div>
+
+                              {/* Progress bar: visible when actively syncing this library */}
+                              {isSyncing && libProgress && (
+                                <div className="space-y-1">
+                                  {libProgress.itemsTotal > 0 ? (
                                     <>
-                                      <span className="text-white/20">·</span>
-                                      <span>last synced {formatDaysAgo(Math.floor(new Date(lib.lastSyncedAt).getTime() / 1000)) || 'today'}</span>
+                                      <div className="overflow-hidden rounded-full h-1.5 w-full bg-white/10">
+                                        <div
+                                          className="rounded-full h-full bg-primary transition-all duration-150"
+                                          style={{ width: `${Math.min(100, Math.round((libProgress.itemsProcessed / libProgress.itemsTotal) * 100))}%` }}
+                                        />
+                                      </div>
+                                      <div className="flex justify-between text-[11px] text-white/40">
+                                        <span>Syncing items...</span>
+                                        <span>{libProgress.itemsProcessed} / {libProgress.itemsTotal}</span>
+                                      </div>
                                     </>
+                                  ) : (
+                                    <div className="flex justify-between text-[11px] text-white/40">
+                                      <span>Preparing sync...</span>
+                                    </div>
                                   )}
                                 </div>
-                                {libProgress && (
-                                  <div className="overflow-hidden rounded-full h-1.5 w-full bg-white/10 mt-1">
-                                    <div
-                                      className="rounded-full h-full bg-primary"
-                                      style={{ width: `${libProgress.itemsTotal > 0 ? (libProgress.itemsProcessed / libProgress.itemsTotal) * 100 : 0}%` }}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                              <DkButton
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleSyncLibrary(lib)}
-                                loading={isSyncing}
-                                disabled={isSyncing}
-                                leftIcon={RefreshCw}
-                                loadingText="Syncing"
-                                className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
-                              >
-                                Sync
-                              </DkButton>
+                              )}
+
+                              {/* Success state */}
+                              {isComplete && (
+                                <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
+                                  <Check className="h-3 w-3" />
+                                  <span>Sync complete</span>
+                                </div>
+                              )}
+
+                              {/* Individual library scan error */}
+                              {libError && (
+                                <div className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400">
+                                  {libError}
+                                </div>
+                              )}
                             </div>
                           )
                         })}
@@ -1781,9 +1610,38 @@ export function SettingsIntegrationsPage() {
                     )}
 
                     {/* Sync All */}
-                    <IntegrationAction label="Sync All Libraries" description="Sync all selected Plex libraries at once" result={plexSyncResult ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded` : null} buttonLabel={plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync All' : 'Sync All'} buttonIcon={RefreshCw} onPress={handlePlexSync} loading={plexSyncing} progress={Object.keys(plexLibraryProgress).length > 0 && <span className="text-xs text-primary">{Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length} libraries syncing</span>} muted />
+                    <IntegrationAction
+                      label="Sync All Libraries"
+                      description="Sync all selected Plex libraries at once"
+                      result={plexSyncResult ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded` : null}
+                      buttonLabel={plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync All' : 'Sync All'}
+                      buttonIcon={RefreshCw}
+                      onPress={handlePlexSync}
+                      loading={plexSyncing}
+                      disabled={plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex || !plexLibraries || plexLibraries.length === 0}
+                      progress={plexSyncing && Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length > 0 && <span className="text-xs text-primary">{Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length} libraries syncing</span>}
+                      muted
+                    />
 
-                    <IntegrationAction label="Watchlist Sync" description="Plex Watchlist" result={plexWatchlistSyncResult ? `${plexWatchlistSyncResult.matched} matches out of ${plexWatchlistSyncResult.total} watchlist items` : null} buttonLabel={plexWatchlistSyncing ? 'Syncing...' : plexWatchlistSyncResult ? 'Re-sync' : 'Sync Watchlist'} buttonIcon={RefreshCw} onPress={handlePlexWatchlistSync} loading={plexWatchlistSyncing} muted />
+                    <IntegrationAction
+                      label="Watchlist Sync"
+                      description="Plex Watchlist"
+                      result={plexWatchlistSyncResult ? `${plexWatchlistSyncResult.matched} matches out of ${plexWatchlistSyncResult.total} watchlist items` : null}
+                      buttonLabel={plexWatchlistSyncing ? 'Syncing...' : plexWatchlistSyncResult ? 'Re-sync' : 'Sync Watchlist'}
+                      buttonIcon={RefreshCw}
+                      onPress={handlePlexWatchlistSync}
+                      loading={plexWatchlistSyncing}
+                      disabled={plexWatchlistSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
+                      muted
+                    />
+
+                    <IntegrationAction
+                      label="Storage Optimizer"
+                      description="Analyze server disk space and discover opportunities to save storage from duplicates, legacy codecs, and unwatched items"
+                      buttonLabel="Open Optimizer"
+                      buttonIcon={HardDrive}
+                      onPress={() => setPlexStorageModalOpen(true)}
+                    />
                     <div className="flex items-center justify-between gap-4 px-5 py-3">
                       <div className="min-w-0">
                         <p className="text-sm font-medium">Watch History Sync</p>
@@ -1795,10 +1653,12 @@ export function SettingsIntegrationsPage() {
                         checked={plexWatchHistoryEnabled}
                         onCheckedChange={async (checked) => {
                           setPlexWatchHistoryEnabled(checked)
+                          setPlexError('')
                           try {
                             await apiClient.patch('/auth/me', { plex_watch_history_enabled: checked })
-                          } catch {
+                          } catch (err) {
                             setPlexWatchHistoryEnabled(!checked)
+                            setPlexError(extractIntegrationMessage(err))
                           }
                         }}
                       />
@@ -1811,7 +1671,7 @@ export function SettingsIntegrationsPage() {
                 {/* Google Drive content */}
                 {i.id === 'google_drive' && (
                   <>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-t border-white/5 text-xs text-white/60">
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 bg-white/[0.03] text-xs text-white/60">
                       <span>
                         {googleEmail ? (
                           <>Connected account: <span className="text-white/90 font-medium">{googleEmail}</span></>
@@ -1879,7 +1739,7 @@ export function SettingsIntegrationsPage() {
                 {/* SABnzbd content */}
                 {i.id === 'sabnzbd' && (
                   <>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 border-t border-white/5 bg-white/[0.02] text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs">
                       <span className="text-white/60">
                         {activeServer ? (
                           <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
@@ -1902,7 +1762,7 @@ export function SettingsIntegrationsPage() {
                         ...(sabnzbdQueue.time_left ? [{ label: 'time left', value: sabnzbdQueue.time_left }] : []),
                       ]} />
                     )}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 border-t border-white/5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 bg-white/[0.03]">
                       <div>
                         <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Queue Controls</p>
                         <p className="text-xs text-white/70 mt-0.5">
@@ -1935,7 +1795,7 @@ export function SettingsIntegrationsPage() {
                 {/* Prowlarr content */}
                 {i.id === 'prowlarr' && (
                   <>
-                    <div className="flex items-center justify-between px-5 py-2.5 border-t border-white/5 bg-white/[0.02] text-xs text-white/60">
+                    <div className="flex items-center justify-between px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
                       <span>
                         {activeServer ? (
                           <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
@@ -1969,7 +1829,7 @@ export function SettingsIntegrationsPage() {
                 {/* Radarr content */}
                 {i.id === 'radarr' && (
                   <>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 border-t border-white/5 bg-white/[0.02] text-xs text-white/60">
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
                       <span>
                         {activeServer ? (
                           <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
@@ -2000,7 +1860,7 @@ export function SettingsIntegrationsPage() {
                 {/* Sonarr content */}
                 {i.id === 'sonarr' && (
                   <>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 border-t border-white/5 bg-white/[0.02] text-xs text-white/60">
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
                       <span>
                         {activeServer ? (
                           <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
@@ -2031,7 +1891,14 @@ export function SettingsIntegrationsPage() {
             ))}
           </div>
         )}
-      </div>
+      </SettingsCard>
+
+      {plexStorageModalOpen && (
+        <PlexStorageOptimizerModal
+          open={plexStorageModalOpen}
+          onOpenChange={setPlexStorageModalOpen}
+        />
+      )}
     </div>
   )
 }

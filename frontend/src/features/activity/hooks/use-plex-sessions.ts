@@ -19,5 +19,6 @@ export function usePlexSessions() {
     staleTime: 10000,
     retry: false,
     enabled: plexEnabled && !!currentUser?.plexId,
+    meta: { suppressToast: true },
   })
 }

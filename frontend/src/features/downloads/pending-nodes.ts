@@ -1,0 +1,84 @@
+export interface PendingNode {
+  serverName: string
+  localUrl: string
+  authToken?: string
+}
+
+function normalizeHost(host: string): string {
+  if (host === 'localhost' || host === '::1') return '127.0.0.1'
+  return host
+}
+
+export function nodeUrlKey(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const port = parsed.port || (parsed.protocol === 'https:' ? '443' : '80')
+    return `${normalizeHost(parsed.hostname)}:${port}`
+  } catch {
+    return url.replace(/\/$/, '')
+  }
+}
+
+function knownKeys(servers: Array<{ primaryUrl?: string; localUrl?: string | null }>): Set<string> {
+  return new Set(
+    servers.flatMap((server) =>
+      [server.primaryUrl, server.localUrl].filter(Boolean).map((url) => nodeUrlKey(url as string)),
+    ),
+  )
+}
+
+export function pendingNodesToClaim(
+  pending: PendingNode[],
+  servers: Array<{ primaryUrl?: string; localUrl?: string | null }>,
+): PendingNode[] {
+  const known = knownKeys(servers)
+  return pending.filter((node) => Boolean(node.localUrl) && !known.has(nodeUrlKey(node.localUrl)))
+}
+
+export function pendingNodesToRefresh(
+  pending: PendingNode[],
+  servers: Array<{
+    id: number
+    primaryUrl?: string
+    localUrl?: string | null
+    authToken?: string | null
+  }>,
+): Array<{ id: number; node: PendingNode }> {
+  return pending.flatMap((node) => {
+    if (!node.localUrl || !node.authToken) return []
+    const key = nodeUrlKey(node.localUrl)
+    const match = servers.find((server) =>
+      [server.primaryUrl, server.localUrl].filter(Boolean).some((url) => nodeUrlKey(url as string) === key),
+    )
+    if (!match || match.authToken === node.authToken) return []
+    return [{ id: match.id, node }]
+  })
+}
+
+export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise<PendingNode | null> {
+  try {
+    const statusResp = await fetcher('http://127.0.0.1:8090/api/v1/status', {
+      signal: AbortSignal.timeout(2000),
+    })
+    if (!statusResp.ok) return null
+    const data = await statusResp.json()
+    let authToken = ''
+    try {
+      const home = await fetcher('http://127.0.0.1:8090/', { signal: AbortSignal.timeout(2000) })
+      if (home.ok) {
+        const html = await home.text()
+        const match = html.match(/id="node-access-token"[^>]*value="([^"]*)"/)
+        if (match?.[1]) authToken = match[1]
+      }
+    } catch {
+      // Token comes from heartbeat when the homepage cannot be read.
+    }
+    return {
+      serverName: data.server_name || data.serverName || 'Otix Game Server',
+      localUrl: 'http://127.0.0.1:8090',
+      authToken,
+    }
+  } catch {
+    return null
+  }
+}

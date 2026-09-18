@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react"
 
 export type LauncherThemeId =
   | "classic"
@@ -163,10 +163,27 @@ export function LauncherThemeProvider({ children }: { children: React.ReactNode 
     return DEFAULT_THEME
   })
 
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY) as LauncherThemeId | null
+        if (stored && LAUNCHER_THEMES.some((t) => t.id === stored)) {
+          setCurrentThemeState(stored)
+        }
+      } catch {}
+    }
+
+    window.addEventListener('storage', handleSync)
+    return () => {
+      window.removeEventListener('storage', handleSync)
+    }
+  }, [])
+
   const setTheme = useCallback((theme: LauncherThemeId) => {
     setCurrentThemeState(theme)
     try {
       localStorage.setItem(STORAGE_KEY, theme)
+      window.dispatchEvent(new Event('storage'))
     } catch {
       // ignore
     }

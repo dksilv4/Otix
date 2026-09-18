@@ -17,7 +17,19 @@ from apps.library.serializers import (
     UserGameServerCreateSerializer,
     UserGameServerSerializer,
 )
+from apps.library.services.download_history import (
+    apply_history_slots,
+    apply_queue_progress,
+    list_download_history,
+    mark_download_cancelled,
+    proxy_download_payload,
+    record_queued_download,
+)
 from apps.library.services.game_server import (
+    apply_node_heartbeat,
+    contact_urls,
+    desktop_get_settings,
+    desktop_save_settings,
     downloads_add,
     downloads_cancel,
     downloads_history,
@@ -26,9 +38,37 @@ from apps.library.services.game_server import (
     explorer_browse,
     explorer_create_folder,
     explorer_set_download_path,
+    list_pending_nodes_for,
     ping_server_sync,
     provider_list,
     provider_test,
+    prowlarr_get_indexers,
+    prowlarr_sync_indexers,
+    radarr_add_movie,
+    radarr_delete_queue,
+    radarr_get_config,
+    radarr_get_history,
+    radarr_get_movies,
+    radarr_get_quality_profiles,
+    radarr_get_queue,
+    radarr_get_root_folders,
+    radarr_lookup,
+    radarr_save_config,
+    radarr_test,
+    sabnzbd_pause_queue,
+    sabnzbd_resume_queue,
+    scan_game_libraries,
+    sonarr_add_series,
+    sonarr_delete_queue,
+    sonarr_get_config,
+    sonarr_get_history,
+    sonarr_get_quality_profiles,
+    sonarr_get_queue,
+    sonarr_get_root_folders,
+    sonarr_get_series,
+    sonarr_lookup,
+    sonarr_save_config,
+    sonarr_test,
     usenet_delete_queue,
     usenet_download,
     usenet_get_config,
@@ -38,41 +78,6 @@ from apps.library.services.game_server import (
     usenet_search,
     usenet_test_prowlarr,
     usenet_test_sabnzbd,
-    prowlarr_get_indexers,
-    prowlarr_sync_indexers,
-    sabnzbd_pause_queue,
-    sabnzbd_resume_queue,
-    scan_game_libraries,
-    radarr_get_config,
-    radarr_save_config,
-    radarr_test,
-    radarr_get_root_folders,
-    radarr_get_quality_profiles,
-    radarr_get_movies,
-    radarr_lookup,
-    radarr_add_movie,
-    radarr_get_queue,
-    radarr_delete_queue,
-    radarr_get_history,
-    sonarr_get_config,
-    sonarr_save_config,
-    sonarr_test,
-    sonarr_get_root_folders,
-    sonarr_get_quality_profiles,
-    sonarr_get_series,
-    sonarr_lookup,
-    sonarr_add_series,
-    sonarr_get_queue,
-    sonarr_delete_queue,
-    sonarr_get_history,
-)
-from apps.library.services.download_history import (
-    apply_history_slots,
-    apply_queue_progress,
-    list_download_history,
-    mark_download_cancelled,
-    proxy_download_payload,
-    record_queued_download,
 )
 from apps.library.services.server_catalog import match_files_to_catalog, unmatched_scan_titles
 from apps.search.services.search import enqueue_prehydrate_titles
@@ -124,10 +129,29 @@ class GameServerListCreateView(APIView):
         serializer = UserGameServerCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         server = serializer.save(user=request.user)
-        # Attempt initial probe
-        ping_server_sync(server)
+        result = ping_server_sync(server)
         server.refresh_from_db()
-        return Response(UserGameServerSerializer(server).data, status=status.HTTP_201_CREATED)
+        payload = UserGameServerSerializer(server).data
+        payload["connect_error"] = None if result.get("online") else result.get("error")
+        return Response(payload, status=status.HTTP_201_CREATED)
+
+
+class GameServerHeartbeatView(APIView):
+    """``POST /api/v1/servers/heartbeat`` — otix-server announces itself (no auth)."""
+
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request) -> Response:
+        apply_node_heartbeat(request.data if isinstance(request.data, dict) else {})
+        return Response({"status": "ok"})
+
+
+class GameServerPendingView(APIView):
+    """``GET /api/v1/library/servers/pending`` — nodes that heartbeated but are not claimed."""
+
+    def get(self, request: Request) -> Response:
+        return Response(list_pending_nodes_for(request.user))
 
 
 class GameServerDetailView(APIView):
@@ -167,10 +191,12 @@ class GameServerPingView(APIView):
 
         result = ping_server_sync(server)
         server.refresh_from_db()
-        return Response({
-            **result,
-            "server": UserGameServerSerializer(server).data,
-        })
+        return Response(
+            {
+                **result,
+                "server": UserGameServerSerializer(server).data,
+            }
+        )
 
 
 class GameServerFilesView(APIView):
@@ -182,16 +208,19 @@ class GameServerFilesView(APIView):
         errors = []
 
         for s in servers:
-            target_url = (s.primary_url or "").rstrip("/")
-            if not target_url:
+            public_url = (s.primary_url or "").rstrip("/")
+            if not public_url:
                 continue
             headers = {}
             if s.auth_token:
                 headers["Authorization"] = f"Bearer {s.auth_token}"
 
-            try:
-                with httpx.Client(timeout=4.0) as client:
-                    resp = client.get(f"{target_url}/api/v1/files", headers=headers)
+            last_error = None
+            fetched = False
+            for target_url in contact_urls(public_url):
+                try:
+                    with httpx.Client(timeout=4.0) as client:
+                        resp = client.get(f"{target_url}/api/v1/files", headers=headers)
                     if resp.status_code == 200:
                         raw_files = resp.json()
                         for f in raw_files:
@@ -199,28 +228,39 @@ class GameServerFilesView(APIView):
                             relative_path = f.get("relative_path") or ""
                             filepath = f.get("filepath") or ""
                             if not relative_path and filepath:
-                                parts = [part for part in Path(filepath).parts if part not in ("/", "\\")]
-                                relative_path = "/".join(parts[-2:]) if len(parts) >= 2 else Path(filepath).name
-                            files_out.append({
-                                "server_id": s.id,
-                                "server_name": s.name,
-                                "server_url": target_url,
-                                "file_id": file_id,
-                                "filename": f.get("filename"),
-                                "filesize": f.get("filesize", 0),
-                                "extension": f.get("extension", ""),
-                                "format_category": f.get("format_category", "installer"),
-                                "game_title": f.get("game_title", ""),
-                                "relative_path": relative_path,
-                                "filepath": filepath,
-                                "library_name": f.get("library_name", "Default"),
-                                "modified_at": f.get("modified_at"),
-                                "download_url": f"{target_url}/api/v1/files/{file_id}/download",
-                            })
-                    else:
-                        errors.append({"server_id": s.id, "error": f"HTTP {resp.status_code}"})
-            except Exception as err:
-                errors.append({"server_id": s.id, "error": str(err)})
+                                parts = [
+                                    part for part in Path(filepath).parts if part not in ("/", "\\")
+                                ]
+                                relative_path = (
+                                    "/".join(parts[-2:]) if len(parts) >= 2 else Path(filepath).name
+                                )
+                            files_out.append(
+                                {
+                                    "server_id": s.id,
+                                    "server_name": s.name,
+                                    "server_url": public_url,
+                                    "file_id": file_id,
+                                    "filename": f.get("filename"),
+                                    "filesize": f.get("filesize", 0),
+                                    "extension": f.get("extension", ""),
+                                    "format_category": f.get("format_category", "installer"),
+                                    "game_title": f.get("game_title", ""),
+                                    "relative_path": relative_path,
+                                    "filepath": filepath,
+                                    "library_name": f.get("library_name", "Default"),
+                                    "modified_at": f.get("modified_at"),
+                                    "download_url": f"{public_url}/api/v1/files/{file_id}/download",
+                                }
+                            )
+                        fetched = True
+                        break
+                    last_error = f"HTTP {resp.status_code}"
+                    if resp.status_code == 401:
+                        break
+                except Exception as err:
+                    last_error = str(err)
+            if not fetched:
+                errors.append({"server_id": s.id, "error": last_error or "Unreachable"})
 
         # Enrich files with catalog matches (updates resolve to the parent game)
         match_files_to_catalog(files_out)
@@ -228,11 +268,13 @@ class GameServerFilesView(APIView):
         for file in files_out:
             file.pop("filepath", None)
 
-        return Response({
-            "servers": UserGameServerSerializer(servers, many=True).data,
-            "files": files_out,
-            "errors": errors if errors else None,
-        })
+        return Response(
+            {
+                "servers": UserGameServerSerializer(servers, many=True).data,
+                "files": files_out,
+                "errors": errors if errors else None,
+            }
+        )
 
 
 class GameServerExplorerBrowseView(APIView):
@@ -250,7 +292,7 @@ class GameServerExplorerBrowseView(APIView):
 
 
 class GameServerExplorerSetPathView(APIView):
-    """``POST /api/v1/library/servers/{server_id}/explorer/set-download-path`` — assign server download folder."""
+    """Assign the server download folder via explorer/set-download-path."""
 
     def post(self, request: Request, server_id: int) -> Response:
         try:
@@ -275,7 +317,7 @@ class GameServerExplorerSetPathView(APIView):
 
 
 class GameServerExplorerCreateFolderView(APIView):
-    """``POST /api/v1/library/servers/{server_id}/explorer/create-folder`` — create subfolder on server."""
+    """Create a subfolder on the server via explorer/create-folder."""
 
     permission_classes = (AllowAny,)
 
@@ -284,9 +326,13 @@ class GameServerExplorerCreateFolderView(APIView):
         parent_path = request.data.get("parent_path", "")
         folder_name = request.data.get("folder_name", "")
         if not folder_name:
-            return Response({"detail": "folder_name is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "folder_name is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
-        status_code, data = explorer_create_folder(server, parent_path=parent_path, folder_name=folder_name)
+        status_code, data = explorer_create_folder(
+            server, parent_path=parent_path, folder_name=folder_name
+        )
         return Response(data, status=status_code)
 
 
@@ -309,7 +355,7 @@ class GameServerUsenetConfigView(APIView):
 
 
 class GameServerUsenetTestSabnzbdView(APIView):
-    """``POST /api/v1/library/servers/{server_id}/usenet/test-sabnzbd`` — test connection to SABnzbd."""
+    """Test the server's SABnzbd connection."""
 
     permission_classes = (AllowAny,)
 
@@ -320,7 +366,7 @@ class GameServerUsenetTestSabnzbdView(APIView):
 
 
 class GameServerUsenetTestProwlarrView(APIView):
-    """``POST /api/v1/library/servers/{server_id}/usenet/test-prowlarr`` — test connection to Prowlarr."""
+    """Test the server's Prowlarr connection."""
 
     permission_classes = (AllowAny,)
 
@@ -331,7 +377,7 @@ class GameServerUsenetTestProwlarrView(APIView):
 
 
 class GameServerUsenetSearchView(APIView):
-    """``GET /api/v1/library/servers/{server_id}/usenet/search`` — search Prowlarr indexers for games."""
+    """Search Prowlarr indexers for games."""
 
     permission_classes = (AllowAny,)
 
@@ -354,7 +400,9 @@ class GameServerUsenetDownloadView(APIView):
         payload = request.data if isinstance(request.data, dict) else {}
         status_code, data = usenet_download(server, proxy_download_payload(payload))
         if status_code < 300:
-            _track_download_history(record_queued_download, server, payload, data, user=request.user)
+            _track_download_history(
+                record_queued_download, server, payload, data, user=request.user
+            )
         return Response(data, status=status_code)
 
 
@@ -397,7 +445,7 @@ class GameServerUsenetHistoryView(APIView):
 
 
 class GameServerProvidersView(APIView):
-    """``GET /api/v1/library/servers/{server_id}/providers`` — list registered providers & active selection."""
+    """List registered providers and the active selection."""
 
     permission_classes = (AllowAny,)
 
@@ -408,7 +456,7 @@ class GameServerProvidersView(APIView):
 
 
 class GameServerProviderTestView(APIView):
-    """``POST /api/v1/library/servers/{server_id}/providers/{provider_type}/{name}/test`` — test connectivity."""
+    """Test connectivity for a named provider."""
 
     permission_classes = (AllowAny,)
 
@@ -419,7 +467,7 @@ class GameServerProviderTestView(APIView):
 
 
 class GameServerDownloadsSearchView(APIView):
-    """``GET /api/v1/library/servers/{server_id}/downloads/search`` — search across active search providers."""
+    """Search across the server's active download providers."""
 
     permission_classes = (AllowAny,)
 
@@ -434,7 +482,7 @@ class GameServerDownloadsSearchView(APIView):
 
 
 class GameServerDownloadsAddView(APIView):
-    """``POST /api/v1/library/servers/{server_id}/downloads/add`` — send release download to active downloader."""
+    """Send a release download to the active downloader."""
 
     permission_classes = (AllowAny,)
 
@@ -442,16 +490,18 @@ class GameServerDownloadsAddView(APIView):
         server = _get_server_or_404(request, server_id)
         downloader = request.query_params.get("downloader")
         payload = request.data if isinstance(request.data, dict) else {}
-        status_code, data = downloads_add(server, proxy_download_payload(payload), downloader=downloader)
+        status_code, data = downloads_add(
+            server, proxy_download_payload(payload), downloader=downloader
+        )
         if status_code < 300:
-            _track_download_history(record_queued_download, server, payload, data, user=request.user)
+            _track_download_history(
+                record_queued_download, server, payload, data, user=request.user
+            )
         return Response(data, status=status_code)
 
 
 class GameServerDownloadsQueueView(APIView):
-    """``GET /api/v1/library/servers/{server_id}/downloads/queue`` — get download queue.
-    ``DELETE /api/v1/library/servers/{server_id}/downloads/queue/{download_id}`` — cancel queue item.
-    """
+    """Get or cancel items in the server download queue."""
 
     permission_classes = (AllowAny,)
 
@@ -473,7 +523,7 @@ class GameServerDownloadsQueueView(APIView):
 
 
 class GameServerDownloadsHistoryView(APIView):
-    """``GET /api/v1/library/servers/{server_id}/downloads/history`` — persisted download history."""
+    """Return persisted download history for the server."""
 
     permission_classes = (AllowAny,)
 
@@ -504,19 +554,21 @@ class GameServerProwlarrIndexersView(APIView):
 
 
 class GameServerProwlarrSyncView(APIView):
-    """``POST /api/v1/library/servers/{server_id}/prowlarr/sync`` — trigger Prowlarr indexer sync."""
+    """Trigger a Prowlarr indexer sync on the server."""
 
     permission_classes = (AllowAny,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        protocol = request.query_params.get("protocol") or (request.data.get("protocol") if isinstance(request.data, dict) else None)
+        protocol = request.query_params.get("protocol") or (
+            request.data.get("protocol") if isinstance(request.data, dict) else None
+        )
         status_code, data = prowlarr_sync_indexers(server, protocol=protocol)
         return Response(data, status=status_code)
 
 
 class GameServerSabnzbdQueueControlView(APIView):
-    """``POST /api/v1/library/servers/{server_id}/sabnzbd/queue/{action}`` — pause/resume SABnzbd queue."""
+    """Pause or resume the SABnzbd download queue."""
 
     permission_classes = (AllowAny,)
 
@@ -527,7 +579,9 @@ class GameServerSabnzbdQueueControlView(APIView):
         elif action == "resume":
             status_code, data = sabnzbd_resume_queue(server)
         else:
-            return Response({"detail": f"Unknown action '{action}'"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": f"Unknown action '{action}'"}, status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(data, status=status_code)
 
 
@@ -543,6 +597,7 @@ class GameServerScanView(APIView):
 
 
 # ── Radarr Views ────────────────────────────────────────────────────────
+
 
 class GameServerRadarrConfigView(APIView):
     """``GET /api/v1/library/servers/{server_id}/radarr/config`` — get Radarr config.
@@ -585,13 +640,15 @@ class GameServerRadarrRootFoldersView(APIView):
 
 
 class GameServerRadarrQualityProfilesView(APIView):
-    """``GET /api/v1/library/servers/{server_id}/radarr/qualityprofiles`` — list quality profiles."""
+    """List Radarr quality profiles for the server."""
 
     permission_classes = (AllowAny,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = radarr_get_quality_profiles(server, instance_id=_arr_instance_id(request))
+        status_code, data = radarr_get_quality_profiles(
+            server, instance_id=_arr_instance_id(request)
+        )
         return Response(data, status=status_code)
 
 
@@ -645,7 +702,9 @@ class GameServerRadarrQueueView(APIView):
 
     def delete(self, request: Request, server_id: int, queue_id: str) -> Response:
         server = _get_server_or_404(request, server_id)
-        remove_from_client = request.query_params.get("remove_from_client", "true").lower() == "true"
+        remove_from_client = (
+            request.query_params.get("remove_from_client", "true").lower() == "true"
+        )
         blocklist = request.query_params.get("blocklist", "false").lower() == "true"
         status_code, data = radarr_delete_queue(
             server,
@@ -673,6 +732,7 @@ class GameServerRadarrHistoryView(APIView):
 
 
 # ── Sonarr Views ────────────────────────────────────────────────────────
+
 
 class GameServerSonarrConfigView(APIView):
     """``GET /api/v1/library/servers/{server_id}/sonarr/config`` — get Sonarr config.
@@ -715,13 +775,15 @@ class GameServerSonarrRootFoldersView(APIView):
 
 
 class GameServerSonarrQualityProfilesView(APIView):
-    """``GET /api/v1/library/servers/{server_id}/sonarr/qualityprofiles`` — list quality profiles."""
+    """List Sonarr quality profiles for the server."""
 
     permission_classes = (AllowAny,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = sonarr_get_quality_profiles(server, instance_id=_arr_instance_id(request))
+        status_code, data = sonarr_get_quality_profiles(
+            server, instance_id=_arr_instance_id(request)
+        )
         return Response(data, status=status_code)
 
 
@@ -775,7 +837,9 @@ class GameServerSonarrQueueView(APIView):
 
     def delete(self, request: Request, server_id: int, queue_id: str) -> Response:
         server = _get_server_or_404(request, server_id)
-        remove_from_client = request.query_params.get("remove_from_client", "true").lower() == "true"
+        remove_from_client = (
+            request.query_params.get("remove_from_client", "true").lower() == "true"
+        )
         blocklist = request.query_params.get("blocklist", "false").lower() == "true"
         status_code, data = sonarr_delete_queue(
             server,
@@ -802,4 +866,19 @@ class GameServerSonarrHistoryView(APIView):
         return Response(data, status=status_code)
 
 
+class GameServerDesktopView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/desktop`` — get node desktop settings.
+    ``POST /api/v1/library/servers/{server_id}/desktop`` — update node desktop settings.
+    """
 
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = desktop_get_settings(server)
+        return Response(data, status=status_code)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = desktop_save_settings(server, request.data)
+        return Response(data, status=status_code)

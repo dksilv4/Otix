@@ -15,6 +15,12 @@ from apps.integrations.views.plex import (
     PlexStreamView,
     PlexWatchlistSyncView,
 )
+from apps.integrations.views.plex_storage import (
+    PlexStorageRecommendationsView,
+    PlexStorageRefreshView,
+    PlexStorageServersView,
+    PlexStorageSummaryView,
+)
 from apps.integrations.views.steam import (
     SteamLibraryScanView,
     SteamOwnedAppIdsView,
@@ -39,6 +45,10 @@ __all__ = [
     "PlexLibrariesView",
     "PlexServersView",
     "PlexSessionsView",
+    "PlexStorageRecommendationsView",
+    "PlexStorageRefreshView",
+    "PlexStorageServersView",
+    "PlexStorageSummaryView",
     "PlexStreamView",
     "PlexSyncStreamView",
     "PlexSyncView",

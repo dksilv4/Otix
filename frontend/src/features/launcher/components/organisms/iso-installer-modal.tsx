@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DkButton } from "@ui/atoms/button";
 import { hasDesktopAPI, getScanPaths, markGameInstalled } from "@/features/launcher/data/storage";
+import { usePickFolder } from "@/components/path-picker";
 import { useInstallProgress } from "@/features/launcher/data/install-store";
 import type {
   LocalGame,
@@ -71,6 +72,7 @@ export function IsoInstallerModal({
   const [isoPath, setIsoPath] = useState("");
   const [targetDir, setTargetDir] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { pick: pickFolder } = usePickFolder({ target: 'local' });
 
   const {
     installs,
@@ -125,20 +127,18 @@ export function IsoInstallerModal({
   }, []);
 
   const handleSelectTargetDir = useCallback(async () => {
-    if (hasDesktopAPI()) {
-      try {
-        const dir = await window.desktopAPI!.selectDirectory();
-        if (dir) {
-          // Append game title so user picks the library root, not the game folder
-          const title = deriveGameTitle(isoPath);
-          const clean = title.replace(/[<>:"|?*]/g, "").trim();
-          setTargetDir(clean ? `${dir}/${clean}` : dir);
-        }
-      } catch {
-        setError("Failed to select install directory");
+    try {
+      const dir = await pickFolder();
+      if (dir) {
+        // Append game title so user picks the library root, not the game folder
+        const title = deriveGameTitle(isoPath);
+        const clean = title.replace(/[<>:"|?*]/g, "").trim();
+        setTargetDir(clean ? `${dir}/${clean}` : dir);
       }
+    } catch {
+      setError("Failed to select install directory");
     }
-  }, [isoPath, deriveGameTitle]);
+  }, [isoPath, deriveGameTitle, pickFolder]);
 
   const handleInstall = useCallback(async () => {
     if (!isoPath || !targetDir) return;

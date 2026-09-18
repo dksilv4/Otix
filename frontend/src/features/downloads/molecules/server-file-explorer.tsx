@@ -238,10 +238,10 @@ export function ServerFileExplorer({
         <Server className="h-8 w-8 text-muted-foreground/40 mx-auto" />
         <h3 className="text-sm font-semibold text-foreground">No Game Servers Connected</h3>
         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-          Connect your self-hosted Otix server node in Launcher Settings to browse and manage its download storage.
+          Connect your self-hosted Otix server node in Downloads settings to browse and manage its download storage.
         </p>
         <a
-          href="/settings/launcher"
+          href="/settings/downloads"
           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
         >
           Connect Server

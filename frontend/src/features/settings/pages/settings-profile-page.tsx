@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useLocation } from '@tanstack/react-router'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useModal } from '@/lib/modals'
 import { useAuth } from '@/lib/providers/auth'
@@ -14,6 +13,7 @@ import { CropModal } from '../components/molecules/crop-modal'
 import { User, Pencil, Shield, Link2, Image } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
+import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { useSettingsSaveBar } from '../context/settings-save-context'
 
 const BIO_MAX_LENGTH = 250
@@ -338,7 +338,6 @@ function AssetEditor({
 export function SettingsProfilePage() {
   const { user, isAuthenticated, refreshUser } = useAuth()
   const queryClient = useQueryClient()
-  const location = useLocation()
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '')
   const [backgroundUrl, setBackgroundUrl] = useState(user?.backgroundUrl ?? '')
   const [bio, setBio] = useState(user?.bio ?? '')
@@ -498,32 +497,14 @@ export function SettingsProfilePage() {
 
   if (!isAuthenticated || !user) {
     return (
-      <SettingsCard className="p-8 sm:p-10 text-center space-y-5 max-w-xl mx-auto my-8">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <User className="h-7 w-7" />
-        </div>
-        <div className="space-y-1.5">
-          <h3 className="text-lg font-bold text-white tracking-tight">Unlock Your Otix Profile</h3>
-          <p className="text-xs text-white/60 leading-relaxed max-w-md mx-auto">
-            Create an account to customize your profile, set avatar and background banners, choose privacy levels, and share your favorite media collections.
-          </p>
-        </div>
-        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link
-            to="/auth/register"
-            className="w-full sm:w-auto inline-flex items-center justify-center font-semibold rounded-xl px-6 py-2.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md active:scale-[0.98]"
-          >
-            Create Free Account
-          </Link>
-          <Link
-            to="/auth/login"
-            search={{ redirect: location.href }}
-            className="w-full sm:w-auto inline-flex items-center justify-center font-medium rounded-xl px-5 py-2.5 text-sm bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-          >
-            Sign In
-          </Link>
-        </div>
-      </SettingsCard>
+      <SettingsLockedState
+        title="Unlock Your Otix Profile"
+        description="Create an account to customize your profile, set avatar and background banners, choose privacy levels, and share your favorite media collections."
+        icon={User}
+        primaryLabel="Sign In"
+        secondaryLabel="Create Free Account"
+        secondaryTo="/auth/register"
+      />
     )
   }
 
@@ -545,6 +526,12 @@ export function SettingsProfilePage() {
 
   return (
     <div id="settings-profile-section" className="space-y-5">
+      <SectionHeader
+        variant="page"
+        icon={User}
+        title="Profile"
+        description="Public avatar, cover, bio, and privacy."
+      />
 
       {/* Cover + Profile — cover fills the whole card */}
       <div

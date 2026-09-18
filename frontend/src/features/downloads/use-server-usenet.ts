@@ -176,6 +176,7 @@ export function useServerUsenetQueue(serverId?: number, pollingIntervalMs: numbe
     refetchInterval: pollingIntervalMs,
     refetchIntervalInBackground: true,
     staleTime: 2000,
+    meta: { suppressToast: true },
   });
 }
 

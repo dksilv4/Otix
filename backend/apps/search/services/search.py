@@ -128,7 +128,9 @@ def _should_backfill(q: str) -> bool:
     return True
 
 
-def _placeholder_game_summary(*, item_id: str, title: str, slug: str, poster_url: str | None) -> dict:
+def _placeholder_game_summary(
+    *, item_id: str, title: str, slug: str, poster_url: str | None
+) -> dict:
     return {
         "id": item_id,
         "media_type": "game",
@@ -173,28 +175,13 @@ def _enqueue_igdb_imports(igdb_ids: list[str]) -> bool:
     """Queue missing IGDB games for ingest. Skip inline eager runs (test settings)."""
     if not igdb_ids:
         return False
-    from apps.integrations.models import SyncJob
-    from apps.integrations.services.sync import enqueue_sync_job
-    from apps.integrations.tasks import run_sync_job
+    from apps.integrations.services.catalog_seed import ensure_catalog_job
 
     pending = False
     for gid in igdb_ids:
-        if SyncJob.objects.filter(
-            provider="igdb",
-            entity_type="game",
-            external_id=gid,
-            status__in=("pending", "running"),
-        ).exists():
+        job = ensure_catalog_job("igdb", "game", gid, priority=1, dispatch=True)
+        if job is not None:
             pending = True
-            continue
-        job = enqueue_sync_job(provider="igdb", entity_type="game", external_id=gid)
-        pending = True
-        if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
-            continue
-        try:
-            run_sync_job.delay(job.pk)
-        except Exception:  # noqa: BLE001 - search must still return catalog hits
-            logger.exception("could not enqueue igdb backfill for %s", gid)
     return pending
 
 
@@ -230,7 +217,13 @@ def _igdb_game_backfill(
     if not force and existing_count >= threshold:
         return [], False
 
-    from apps.media.services.igdb import IGDBError, IGDBNotConfigured, IGDBProvider, configured, cover_url
+    from apps.media.services.igdb import (
+        IGDBError,
+        IGDBNotConfigured,
+        IGDBProvider,
+        configured,
+        cover_url,
+    )
 
     if not configured():
         return [], False

@@ -128,8 +128,8 @@ class SeedGameFromIgdbTests(TestCase):
         self.assertEqual(media.overview, _game_raw()["storyline"])
         self.assertEqual(str(media.release_date), "2020-09-17")
         # Recompute at the seed tail: overview/poster/release_date/external_ids/
-        # assets satisfied = 5/20 flags.
-        self.assertEqual(media.completeness_score, 0.25)
+        # assets satisfied = 5/19 flags.
+        self.assertEqual(media.completeness_score, 0.263)
         self.assertIsNotNone(media.next_sync_at)
 
         Game.objects.get(media_item_id=media_id)
@@ -154,13 +154,12 @@ class SeedGameFromIgdbTests(TestCase):
         self.assertEqual(Game.objects.count(), 1)
         self.assertEqual(ExternalID.objects.filter(provider="igdb").count(), 1)
 
-    def test_same_slug_merges_instead_of_duplicating(self):
+    def test_distinct_igdb_ids_stay_separate_even_with_the_same_slug(self):
         first = seed_game_from_igdb(_game_raw(), IGDB_ID)
-        merged = seed_game_from_igdb(_game_raw(id=999999, summary="A sequel refresh"), 999999)
-        self.assertEqual(merged, first)
-        self.assertEqual(MediaItem.objects.filter(media_type="game").count(), 1)
-        self.assertEqual(Game.objects.count(), 1)
-        # Second igdb id attaches to the same media row (mirrors GameMatcher).
+        other = seed_game_from_igdb(_game_raw(id=999999, summary="A sequel refresh"), 999999)
+        self.assertNotEqual(other, first)
+        self.assertEqual(MediaItem.objects.filter(media_type="game").count(), 2)
+        self.assertEqual(Game.objects.count(), 2)
         self.assertEqual(
             set(ExternalID.objects.filter(provider="igdb").values_list("external_id", flat=True)),
             {"119133", "999999"},
@@ -543,9 +542,7 @@ class HydrateGameFromIgdbTests(TestCase):
         urls = set(backdrops.values_list("url", flat=True))
         self.assertFalse(any("ar03" in url for url in urls))
         # The surviving rows carry the artwork's real dimensions.
-        self.assertEqual(
-            {(b.width, b.height) for b in backdrops}, {(3840, 2160), (1920, 1080)}
-        )
+        self.assertEqual({(b.width, b.height) for b in backdrops}, {(3840, 2160), (1920, 1080)})
         self.assertFalse(
             MediaAsset.objects.filter(
                 media_item_id=media_id, asset_type="backdrop", url__contains="ar03"

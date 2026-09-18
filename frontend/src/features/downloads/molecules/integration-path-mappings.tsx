@@ -1,6 +1,6 @@
 import React from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import { DkInput } from '@ui/atoms/input'
+import { PathInput } from '@/components/path-picker'
 import { cn } from '@/lib/utils'
 
 export interface PathMappingRow {
@@ -59,28 +59,30 @@ export function IntegrationPathMappings({
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <DkInput
+            <PathInput
               id={`remote-path-${index}`}
               label="Remote path"
               placeholder="e.g. /downloads/complete"
               value={mapping.remotePath}
-              onChange={(e) =>
+              target="server"
+              onChange={(remotePath) =>
                 onChange(
                   mappings.map((item, i) =>
-                    i === index ? { ...item, remotePath: e.target.value, linked: false, error: '' } : item
+                    i === index ? { ...item, remotePath, linked: false, error: '' } : item
                   )
                 )
               }
             />
-            <DkInput
+            <PathInput
               id={`host-path-${index}`}
               label="Local path"
               placeholder="Same as remote path when left empty"
               value={mapping.hostPath}
-              onChange={(e) =>
+              target="local"
+              onChange={(hostPath) =>
                 onChange(
                   mappings.map((item, i) =>
-                    i === index ? { ...item, hostPath: e.target.value, linked: false, error: '' } : item
+                    i === index ? { ...item, hostPath, linked: false, error: '' } : item
                   )
                 )
               }

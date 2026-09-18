@@ -102,6 +102,9 @@ describe('Library Query Hooks', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 3000 })
     expect(result.current.data).toEqual({ total: 20, matched: 10, seeded: 5, servers: 1, libraries: 2 })
+    const calledUrls = vi.mocked(fetch).mock.calls.map((call) => String(call[0]))
+    expect(calledUrls[0]).toMatch(/\/integrations\/plex\/sync$/)
+    expect(calledUrls.join(' ')).not.toMatch(/localhost:8000|otix\.app/)
   })
 
 

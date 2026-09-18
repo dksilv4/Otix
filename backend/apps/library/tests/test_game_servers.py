@@ -25,7 +25,7 @@ class GameServersApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), [])
 
-    @mock.patch("apps.library.views.game_servers.httpx.Client")
+    @mock.patch("apps.library.services.game_server.httpx.Client")
     def test_create_and_list_server(self, mock_client_cls):
         mock_client = mock.MagicMock()
         mock_resp = mock.MagicMock()
@@ -58,7 +58,9 @@ class GameServersApiTests(TestCase):
         self.assertEqual(list_res.status_code, 200)
         self.assertEqual(len(list_res.json()), 1)
 
-    def test_patch_and_delete_server(self):
+    @mock.patch("apps.library.services.game_server.ping_server_sync")
+    def test_patch_and_delete_server(self, mock_ping):
+        mock_ping.return_value = {"online": True}
         server = UserGameServer.objects.create(
             user=self.user,
             name="Old Server",
@@ -116,7 +118,7 @@ class GameServersApiTests(TestCase):
                 "format_category": "installer",
                 "game_title": "Portal",
                 "library_name": "PC Games",
-            }
+            },
         ]
         mock_client.get.return_value = mock_resp
         mock_client.__enter__.return_value = mock_client
@@ -127,7 +129,9 @@ class GameServersApiTests(TestCase):
         data = res.json()
         self.assertEqual(len(data["files"]), 2)
         hl2 = next(f for f in data["files"] if f["file_id"] == "file_abc123")
-        self.assertEqual(hl2["download_url"], "http://192.168.1.50:8000/api/v1/files/file_abc123/download")
+        self.assertEqual(
+            hl2["download_url"], "http://192.168.1.50:8000/api/v1/files/file_abc123/download"
+        )
         self.assertIsNotNone(hl2["catalog_item"])
         self.assertEqual(hl2["catalog_item"]["id"], str(media.id))
         self.assertEqual(hl2["catalog_item"]["slug"], "half-life-2")
@@ -234,8 +238,24 @@ class GameServersApiTests(TestCase):
         mock_resp.json.return_value = {
             "active_downloader": "sabnzbd",
             "active_search_provider": "prowlarr",
-            "downloaders": [{"name": "sabnzbd", "display_name": "SABnzbd", "protocol": "usenet", "is_active": True, "configured": True}],
-            "search_providers": [{"name": "prowlarr", "display_name": "Prowlarr", "protocol": "usenet", "is_active": True, "configured": True}],
+            "downloaders": [
+                {
+                    "name": "sabnzbd",
+                    "display_name": "SABnzbd",
+                    "protocol": "usenet",
+                    "is_active": True,
+                    "configured": True,
+                }
+            ],
+            "search_providers": [
+                {
+                    "name": "prowlarr",
+                    "display_name": "Prowlarr",
+                    "protocol": "usenet",
+                    "is_active": True,
+                    "configured": True,
+                }
+            ],
         }
         mock_client.request.return_value = mock_resp
 
@@ -245,7 +265,9 @@ class GameServersApiTests(TestCase):
 
         # 2. Test provider connectivity
         mock_resp.json.return_value = {"ok": True, "version": "4.3.2", "message": "Connected"}
-        res = self.client.post(f"/api/v1/library/servers/{server.id}/providers/downloader/sabnzbd/test")
+        res = self.client.post(
+            f"/api/v1/library/servers/{server.id}/providers/downloader/sabnzbd/test"
+        )
         self.assertEqual(res.status_code, 200)
         self.assertTrue(res.json()["ok"])
 
@@ -260,13 +282,19 @@ class GameServersApiTests(TestCase):
                 "protocol": "usenet",
             }
         ]
-        res = self.client.get(f"/api/v1/library/servers/{server.id}/downloads/search?query=Elden+Ring")
+        res = self.client.get(
+            f"/api/v1/library/servers/{server.id}/downloads/search?query=Elden+Ring"
+        )
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.json()), 1)
         self.assertEqual(res.json()[0]["title"], "Elden Ring Deluxe")
 
         # 4. Add download
-        mock_resp.json.return_value = {"status": "queued", "nzo_id": "SABnzbd_nzo_456", "title": "Elden Ring Deluxe"}
+        mock_resp.json.return_value = {
+            "status": "queued",
+            "nzo_id": "SABnzbd_nzo_456",
+            "title": "Elden Ring Deluxe",
+        }
         res = self.client.post(
             f"/api/v1/library/servers/{server.id}/downloads/add",
             {"title": "Elden Ring Deluxe", "download_url": "https://prowlarr.local/nzb/123"},
@@ -280,7 +308,18 @@ class GameServersApiTests(TestCase):
             "status": "Downloading",
             "speed": "25.4 MB/s",
             "time_left": "00:15:30",
-            "items": [{"nzo_id": "SABnzbd_nzo_456", "filename": "Elden Ring Deluxe", "percentage": 45, "size_mb": 50000, "size_left_mb": 27500, "speed": "25.4 MB/s", "time_left": "00:15:30", "status": "Downloading"}],
+            "items": [
+                {
+                    "nzo_id": "SABnzbd_nzo_456",
+                    "filename": "Elden Ring Deluxe",
+                    "percentage": 45,
+                    "size_mb": 50000,
+                    "size_left_mb": 27500,
+                    "speed": "25.4 MB/s",
+                    "time_left": "00:15:30",
+                    "status": "Downloading",
+                }
+            ],
         }
         res = self.client.get(f"/api/v1/library/servers/{server.id}/downloads/queue")
         self.assertEqual(res.status_code, 200)
@@ -288,7 +327,9 @@ class GameServersApiTests(TestCase):
 
         # 6. Delete queue item
         mock_resp.json.return_value = {"status": "deleted", "download_id": "SABnzbd_nzo_456"}
-        res = self.client.delete(f"/api/v1/library/servers/{server.id}/downloads/queue/SABnzbd_nzo_456")
+        res = self.client.delete(
+            f"/api/v1/library/servers/{server.id}/downloads/queue/SABnzbd_nzo_456"
+        )
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["status"], "deleted")
 
@@ -424,14 +465,23 @@ class GameServersApiTests(TestCase):
         mock_client_cls.return_value = mock_client
 
         # 1. Radarr Config
-        mock_resp.json.return_value = {"enabled": True, "host": "127.0.0.1", "port": 7878, "configured": True}
+        mock_resp.json.return_value = {
+            "enabled": True,
+            "host": "127.0.0.1",
+            "port": 7878,
+            "configured": True,
+        }
         mock_client.request.return_value = mock_resp
         res = self.client.get(f"/api/v1/library/servers/{server.id}/radarr/config")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["port"], 7878)
 
         # 2. Radarr Test
-        mock_resp.json.return_value = {"ok": True, "version": "5.4.2", "message": "Connected to Radarr v5.4.2"}
+        mock_resp.json.return_value = {
+            "ok": True,
+            "version": "5.4.2",
+            "message": "Connected to Radarr v5.4.2",
+        }
         res = self.client.post(
             f"/api/v1/library/servers/{server.id}/radarr/test",
             {"host": "127.0.0.1", "port": 7878, "api_key": "test_key"},
@@ -441,7 +491,9 @@ class GameServersApiTests(TestCase):
         self.assertTrue(res.json()["ok"])
 
         # 3. Radarr Movies
-        mock_resp.json.return_value = [{"id": 1, "title": "Dune", "tmdb_id": 438631, "monitored": True}]
+        mock_resp.json.return_value = [
+            {"id": 1, "title": "Dune", "tmdb_id": 438631, "monitored": True}
+        ]
         res = self.client.get(f"/api/v1/library/servers/{server.id}/radarr/movies")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.json()), 1)
@@ -464,13 +516,22 @@ class GameServersApiTests(TestCase):
         self.assertEqual(res.json()["status"], "deleted")
 
         # 6. Sonarr Config
-        mock_resp.json.return_value = {"enabled": True, "host": "127.0.0.1", "port": 8989, "configured": True}
+        mock_resp.json.return_value = {
+            "enabled": True,
+            "host": "127.0.0.1",
+            "port": 8989,
+            "configured": True,
+        }
         res = self.client.get(f"/api/v1/library/servers/{server.id}/sonarr/config")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["port"], 8989)
 
         # 7. Sonarr Test
-        mock_resp.json.return_value = {"ok": True, "version": "4.0.0", "message": "Connected to Sonarr v4.0.0"}
+        mock_resp.json.return_value = {
+            "ok": True,
+            "version": "4.0.0",
+            "message": "Connected to Sonarr v4.0.0",
+        }
         res = self.client.post(
             f"/api/v1/library/servers/{server.id}/sonarr/test",
             {"host": "127.0.0.1", "port": 8989, "api_key": "test_key"},

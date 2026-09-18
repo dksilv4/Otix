@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { SettingsIntegrationsPage } from '../pages/settings-integrations-page'
+import { apiClient } from '@/lib/api/client'
 
 // Mock API and auth
 vi.mock('@/lib/api/client', () => ({
@@ -32,8 +32,8 @@ vi.mock('@/lib/providers/auth', () => ({
 }))
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to }: { children?: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
-  useLocation: () => ({ href: '/settings/integrations' }),
+  Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
+  useLocation: () => ({ href: '/settings/connections' }),
 }))
 
 vi.mock('@ui/molecules/toast', () => ({
@@ -94,6 +94,11 @@ vi.mock('@/features/downloads/use-server-usenet', () => ({
 describe('Settings Integrations Modals Regression Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        providers: [],
+      },
+    })
     mockGameServers = []
     mockUsenetConfig = null
     mockRadarrConfig = null
@@ -120,6 +125,16 @@ describe('Settings Integrations Modals Regression Tests', () => {
     })
   })
 
+  it('renders connection cards immediately even if oauth status never returns', () => {
+    vi.mocked(apiClient.get).mockReturnValue(new Promise(() => {}))
+
+    renderPage()
+
+    expect(screen.queryByText('Loading integrations...')).not.toBeInTheDocument()
+    expect(screen.getByText('Steam')).toBeInTheDocument()
+    expect(screen.getByText('Plex')).toBeInTheDocument()
+  })
+
   it('opens SABnzbd modal via modal framework even when no server is connected', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -128,7 +143,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
       expect(screen.getByText('SABnzbd')).toBeInTheDocument()
     })
 
-    const card = screen.getByText('SABnzbd').closest('.rounded-2xl')!
+    const card = screen.getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
     const connectBtn = within(card).getByRole('button', { name: /connect/i })
     await user.click(connectBtn)
 
@@ -147,7 +162,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
       expect(screen.getByText('Prowlarr')).toBeInTheDocument()
     })
 
-    const card = screen.getByText('Prowlarr').closest('.rounded-2xl')!
+    const card = screen.getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
     const connectBtn = within(card).getByRole('button', { name: /connect/i })
     await user.click(connectBtn)
 
@@ -165,7 +180,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
       expect(screen.getByText('Radarr')).toBeInTheDocument()
     })
 
-    const card = screen.getByText('Radarr').closest('.rounded-2xl')!
+    const card = screen.getByText('Radarr').closest('.rounded-2xl') as HTMLElement
     const connectBtn = within(card).getByRole('button', { name: /connect/i })
     await user.click(connectBtn)
 
@@ -183,7 +198,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
       expect(screen.getByText('Sonarr')).toBeInTheDocument()
     })
 
-    const card = screen.getByText('Sonarr').closest('.rounded-2xl')!
+    const card = screen.getByText('Sonarr').closest('.rounded-2xl') as HTMLElement
     const connectBtn = within(card).getByRole('button', { name: /connect/i })
     await user.click(connectBtn)
 
@@ -204,7 +219,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
       expect(screen.getByText('SABnzbd')).toBeInTheDocument()
     })
 
-    const card = screen.getByText('SABnzbd').closest('.rounded-2xl')!
+    const card = screen.getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
     const connectBtn = within(card).getByRole('button', { name: /connect/i })
     await user.click(connectBtn)
 
@@ -236,7 +251,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     })
 
     // Click on SABnzbd card header to expand it
-    const sabnzbdCard = screen.getByText('SABnzbd').closest('.rounded-2xl')!
+    const sabnzbdCard = screen.getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
     const sabHeader = within(sabnzbdCard).getByRole('button')
     await user.click(sabHeader)
 
@@ -266,10 +281,10 @@ describe('Settings Integrations Modals Regression Tests', () => {
       expect(screen.getByText('Prowlarr')).toBeInTheDocument()
     })
 
-    const prowlarrCard = screen.getByText('Prowlarr').closest('.rounded-2xl')!
+    const prowlarrCard = screen.getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
     await user.click(within(prowlarrCard).getByRole('button'))
 
-    const protocolGroup = await within(prowlarrCard).findByRole('group', { name: /Protocol/i })
+    const protocolGroup = await within(prowlarrCard).findByRole('group', { name: /Protocol/i }) as HTMLElement
     expect(within(protocolGroup).queryByRole('button', { name: /^Sync$/i })).not.toBeInTheDocument()
     const syncBtn = within(prowlarrCard).getByRole('button', { name: /^Sync$/i })
     expect(syncBtn.className).toMatch(/bg-rose-500/)
@@ -300,7 +315,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     })
 
     // Test Radarr modal with server connected
-    const radarrCard = screen.getByText('Radarr').closest('.rounded-2xl')!
+    const radarrCard = screen.getByText('Radarr').closest('.rounded-2xl') as HTMLElement
     const radarrConnectBtn = within(radarrCard).getByRole('button', { name: /connect/i })
     await user.click(radarrConnectBtn)
 
@@ -316,7 +331,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     })
 
     // Test Sonarr modal with server connected
-    const sonarrCard = screen.getByText('Sonarr').closest('.rounded-2xl')!
+    const sonarrCard = screen.getByText('Sonarr').closest('.rounded-2xl') as HTMLElement
     const sonarrConnectBtn = within(sonarrCard).getByRole('button', { name: /connect/i })
     await user.click(sonarrConnectBtn)
 
@@ -332,7 +347,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     })
 
     // Test Prowlarr modal with server connected
-    const prowlarrCard = screen.getByText('Prowlarr').closest('.rounded-2xl')!
+    const prowlarrCard = screen.getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
     const prowlarrConnectBtn = within(prowlarrCard).getByRole('button', { name: /connect/i })
     await user.click(prowlarrConnectBtn)
 

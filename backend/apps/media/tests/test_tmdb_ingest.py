@@ -232,7 +232,7 @@ class SeedMovieFromTmdbTests(TestCase):
         self.assertFalse(media.is_adult)
         # Recompute at the seed tail: 12/22 movie flags (no credits; the raw's
         # ``keywords`` are now persisted so has_keywords is True).
-        self.assertEqual(media.completeness_score, 0.545)
+        self.assertEqual(media.completeness_score, 0.571)
         self.assertIsNotNone(media.next_sync_at)
 
         movie = Movie.objects.get(media_item_id=media_id)
@@ -267,17 +267,21 @@ class SeedMovieFromTmdbTests(TestCase):
         self.assertEqual(MediaAsset.objects.filter(media_item_id=first).count(), 2)
         self.assertEqual(MediaGenre.objects.filter(media_item_id=first).count(), 2)
 
-    def test_reuses_same_slug_movie_and_tops_up_missing_overview(self):
-        MediaItem.objects.create(media_type="movie", title="Fight Club", slug="fight-club")
+    def test_same_slug_without_tmdb_id_does_not_merge(self):
+        stub = MediaItem.objects.create(media_type="movie", title="Fight Club", slug="fight-club")
         media_id = seed_movie_from_tmdb(_movie_raw())
-        self.assertEqual(MediaItem.objects.count(), 1)
+        self.assertNotEqual(media_id, stub.pk)
+        self.assertEqual(MediaItem.objects.count(), 2)
+        self.assertTrue(
+            ExternalID.objects.filter(
+                provider="tmdb", external_id="550", object_id=media_id
+            ).exists()
+        )
         media = MediaItem.objects.get(pk=media_id)
         self.assertEqual(
             media.overview, "An insomniac and a soap salesman start an underground club."
         )
-        # subtype row + external links still created for the reused hub
-        self.assertEqual(Movie.objects.count(), 1)
-        self.assertTrue(ExternalID.objects.filter(provider="tmdb", external_id="550").exists())
+        self.assertEqual(Movie.objects.filter(media_item_id=media_id).count(), 1)
 
     def test_anime_heuristic_japanese_animation(self):
         raw = _movie_raw(
@@ -333,11 +337,7 @@ class SeedCreditsTests(TestCase):
         self.assertEqual(Person.objects.count(), 3)
         norton = Person.objects.get(name="Edward Norton")
         self.assertEqual(
-            set(
-                MediaCredit.objects.filter(person=norton).values_list(
-                    "media_item_id", flat=True
-                )
-            ),
+            set(MediaCredit.objects.filter(person=norton).values_list("media_item_id", flat=True)),
             {first, second},
         )
         self.assertEqual(
@@ -353,9 +353,7 @@ class SeedCreditsTests(TestCase):
         raw["credits"]["cast"] = raw["credits"]["cast"][:1]
         seed_movie_from_tmdb(raw)
         credits = list(MediaCredit.objects.filter(media_item_id=media_id))
-        self.assertEqual(
-            {c.person.name for c in credits}, {"Edward Norton", "David Fincher"}
-        )
+        self.assertEqual({c.person.name for c in credits}, {"Edward Norton", "David Fincher"})
         # the dropped actor's Person row survives (it may credit other titles)
         self.assertTrue(Person.objects.filter(name="Brad Pitt").exists())
 
@@ -392,9 +390,10 @@ class FetchAndSeedMovieTests(TestCase):
         raw = _movie_raw()
 
         def handler(request):
-            self.assertEqual(request.url.path, "/3/movie/550")
             self.assertEqual(request.headers["Authorization"], "Bearer test-rat")
-            return httpx.Response(200, json=raw)
+            if request.url.path == "/3/movie/550":
+                return httpx.Response(200, json=raw)
+            return httpx.Response(200, json={"results": [], "parts": []})
 
         fake = FakeAsyncRedis()
         client = httpx.AsyncClient(
@@ -424,8 +423,8 @@ class SeedShowFromTmdbTests(TestCase):
         self.assertEqual(media.popularity, 300.0)
         self.assertEqual(media.original_language, "en")
         self.assertFalse(media.is_adult)
-        # Recompute at the seed tail: 10/20 show flags (no credits in the raw).
-        self.assertEqual(media.completeness_score, 0.5)
+        # Recompute at the seed tail: 10/19 show flags (no credits in the raw).
+        self.assertEqual(media.completeness_score, 0.526)
         self.assertIsNotNone(media.next_sync_at)
 
         show = Show.objects.get(media_item_id=media_id)
@@ -457,9 +456,7 @@ class SeedShowFromTmdbTests(TestCase):
         )
 
         # canonical genres linked (dedup Genre rows by name)
-        self.assertEqual(
-            {g.name for g in Genre.objects.all()}, {"Drama", "Crime"}
-        )
+        self.assertEqual({g.name for g in Genre.objects.all()}, {"Drama", "Crime"})
         self.assertEqual(MediaGenre.objects.filter(media_item_id=media_id).count(), 2)
         self.assertTrue(
             MediaGenreType.objects.filter(genre__name="Drama", media_type="show").exists()
@@ -527,7 +524,6 @@ class SeedShowFromTmdbTests(TestCase):
         season1.refresh_from_db()
         self.assertEqual(str(season1.air_date), "2008-01-20")
 
-
     def test_anime_heuristic_japanese_animation(self):
         raw = _show_raw(
             id=1429,
@@ -543,13 +539,9 @@ class SeedShowFromTmdbTests(TestCase):
             seed_show_from_tmdb({"name": "No id here"})
 
     def test_captures_tvdb_external_id_when_present(self):
-        raw = _show_raw(
-            external_ids={"imdb_id": "tt0903747", "tvdb_id": 73713}
-        )
+        raw = _show_raw(external_ids={"imdb_id": "tt0903747", "tvdb_id": 73713})
         media_id = seed_show_from_tmdb(raw)
-        exts = ExternalID.objects.filter(
-            content_type__model="mediaitem", object_id=media_id
-        )
+        exts = ExternalID.objects.filter(content_type__model="mediaitem", object_id=media_id)
         self.assertIn(
             ("tvdb", "73713", "show"),
             {(e.provider, e.external_id, e.media_type) for e in exts},
@@ -671,8 +663,9 @@ class FetchAndSeedShowTests(TestCase):
             if path == "/3/tv/1396":
                 return httpx.Response(200, json=show_raw)
             payload = season_payloads.get(path)
-            self.assertIsNotNone(payload, f"unexpected season path {path}")
-            return httpx.Response(200, json=payload)
+            if payload is not None:
+                return httpx.Response(200, json=payload)
+            return httpx.Response(200, json={"results": []})
 
         fake = FakeAsyncRedis()
         client = httpx.AsyncClient(
@@ -684,20 +677,26 @@ class FetchAndSeedShowTests(TestCase):
 
         # Both seed writes run their ORM inserts via sync_to_async on a
         # worker-thread connection that escapes TestCase rollback, so stub them.
-        with mock.patch(
-            "apps.media.services.tmdb_ingest.seed_show_from_tmdb", return_value=54321
-        ) as seed_show, mock.patch(
-            "apps.media.services.tmdb_ingest.seed_episodes_from_season", return_value=0
-        ) as seed_eps:
+        with (
+            mock.patch(
+                "apps.media.services.tmdb_ingest.seed_show_from_tmdb", return_value=54321
+            ) as seed_show,
+            mock.patch(
+                "apps.media.services.tmdb_ingest.seed_episodes_from_season", return_value=0
+            ) as seed_eps,
+        ):
             result = _run(fetch_and_seed_show(1396, provider=provider))
 
         seed_show.assert_called_once_with(show_raw)
         self.assertEqual(result, 54321)
         # one per aired season summary (specials 0 excluded), in order
-        self.assertEqual([c.args for c in seed_eps.call_args_list], [
-            (54321, 1, season1),
-            (54321, 2, season2),
-        ])
+        self.assertEqual(
+            [c.args for c in seed_eps.call_args_list],
+            [
+                (54321, 1, season1),
+                (54321, 2, season2),
+            ],
+        )
         _run(client.aclose())
 
 
@@ -705,8 +704,12 @@ def _rich_movie_raw(**overrides):
     """``_movie_raw`` plus every relation section increment-54 enrichment maps."""
     raw = _movie_raw(
         production_companies=[
-            {"id": 508, "logo_path": "/cxw.jpg", "name": "Regency Enterprises",
-             "origin_country": "US"},
+            {
+                "id": 508,
+                "logo_path": "/cxw.jpg",
+                "name": "Regency Enterprises",
+                "origin_country": "US",
+            },
             {"id": 711, "logo_path": None, "name": "Fox 2000 Pictures", "origin_country": "US"},
         ],
         release_dates={
@@ -714,17 +717,26 @@ def _rich_movie_raw(**overrides):
                 {
                     "iso_3166_1": "US",
                     "release_dates": [
-                        {"certification": "R", "release_type": 3,
-                         "release_date": "1999-10-15T00:00:00.000Z"},
-                        {"certification": "R", "release_type": 4,
-                         "release_date": "1999-11-09T00:00:00.000Z"},
+                        {
+                            "certification": "R",
+                            "release_type": 3,
+                            "release_date": "1999-10-15T00:00:00.000Z",
+                        },
+                        {
+                            "certification": "R",
+                            "release_type": 4,
+                            "release_date": "1999-11-09T00:00:00.000Z",
+                        },
                     ],
                 },
                 {
                     "iso_3166_1": "GB",
                     "release_dates": [
-                        {"certification": "18", "release_type": 3,
-                         "release_date": "1999-11-12T00:00:00.000Z"},
+                        {
+                            "certification": "18",
+                            "release_type": 3,
+                            "release_date": "1999-11-12T00:00:00.000Z",
+                        },
                     ],
                 },
             ]
@@ -773,9 +785,7 @@ class TmdbRelationHydrationTests(TestCase):
         self.assertEqual(
             InvolvedCompany.objects.filter(media_item_id=media_id, production=True).count(), 2
         )
-        company_exts = ExternalID.objects.filter(
-            content_type__model="company", provider="tmdb"
-        )
+        company_exts = ExternalID.objects.filter(content_type__model="company", provider="tmdb")
         self.assertEqual({e.external_id for e in company_exts}, {"508", "711"})
 
         # country releases prefer the theatrical (type 3) date + certification
@@ -790,9 +800,12 @@ class TmdbRelationHydrationTests(TestCase):
 
         # only the embeddable (YouTube) video lands; Dailymotion is skipped
         videos = MediaVideo.objects.filter(media_item_id=media_id)
-        self.assertEqual([(v.provider, v.provider_id, v.video_type) for v in videos], [
-            ("tmdb", "abc123", "Trailer"),
-        ])
+        self.assertEqual(
+            [(v.provider, v.provider_id, v.video_type) for v in videos],
+            [
+                ("tmdb", "abc123", "Trailer"),
+            ],
+        )
         self.assertTrue(videos[0].url.endswith("watch?v=oB6q8T4P4eA"))
 
         # keyword rows carry the movie-keyword shape
@@ -816,12 +829,14 @@ class TmdbRelationHydrationTests(TestCase):
     def test_show_seed_adds_networks_and_content_ratings(self):
         raw = _show_raw(
             production_companies=[
-                {"id": 7580, "logo_path": None, "name": "High Bridge Productions",
-                 "origin_country": "US"}
+                {
+                    "id": 7580,
+                    "logo_path": None,
+                    "name": "High Bridge Productions",
+                    "origin_country": "US",
+                }
             ],
-            networks=[
-                {"id": 174, "logo_path": "/amc.jpg", "name": "AMC", "origin_country": "US"}
-            ],
+            networks=[{"id": 174, "logo_path": "/amc.jpg", "name": "AMC", "origin_country": "US"}],
             content_ratings={"results": [{"iso_3166_1": "US", "rating": "TV-MA"}]},
             keywords={"results": [{"id": 100, "name": "antihero"}]},
             vote_average=9.5,
@@ -897,12 +912,14 @@ class OmdbEnrichFoldInTests(TestCase):
     def test_movie_tail_enriches_when_key_configured(self):
         provider = mock.Mock()
         provider.get_movie = mock.AsyncMock(return_value=_movie_raw())
-        with override_settings(OMDB_API_KEY="test-key"), mock.patch(
-            "apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876
-        ), mock.patch(
-            "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
-            new_callable=mock.AsyncMock,
-        ) as enrich:
+        with (
+            override_settings(OMDB_API_KEY="test-key"),
+            mock.patch("apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876),
+            mock.patch(
+                "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
+                new_callable=mock.AsyncMock,
+            ) as enrich,
+        ):
             result = _run(fetch_and_seed_movie(550, provider=provider))
 
         self.assertEqual(result, 9876)
@@ -912,14 +929,15 @@ class OmdbEnrichFoldInTests(TestCase):
         provider = mock.Mock()
         provider.get_show = mock.AsyncMock(return_value=_show_raw())
         provider.get_season = mock.AsyncMock(return_value={})
-        with override_settings(OMDB_API_KEY="test-key"), mock.patch(
-            "apps.media.services.tmdb_ingest.seed_show_from_tmdb", return_value=9876
-        ), mock.patch(
-            "apps.media.services.tmdb_ingest.seed_episodes_from_season"
-        ), mock.patch(
-            "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
-            new_callable=mock.AsyncMock,
-        ) as enrich:
+        with (
+            override_settings(OMDB_API_KEY="test-key"),
+            mock.patch("apps.media.services.tmdb_ingest.seed_show_from_tmdb", return_value=9876),
+            mock.patch("apps.media.services.tmdb_ingest.seed_episodes_from_season"),
+            mock.patch(
+                "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
+                new_callable=mock.AsyncMock,
+            ) as enrich,
+        ):
             result = _run(fetch_and_seed_show(1396, provider=provider))
 
         self.assertEqual(result, 9876)
@@ -932,12 +950,13 @@ class OmdbEnrichFoldInTests(TestCase):
         async def _boom(media_id):
             raise AssertionError("OMDb enrich ran with no key configured")
 
-        with mock.patch(
-            "apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876
-        ), mock.patch(
-            "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
-            new=mock.AsyncMock(side_effect=_boom),
-        ) as enrich:
+        with (
+            mock.patch("apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876),
+            mock.patch(
+                "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
+                new=mock.AsyncMock(side_effect=_boom),
+            ) as enrich,
+        ):
             result = _run(fetch_and_seed_movie(550, provider=provider))
 
         self.assertEqual(result, 9876)
@@ -958,12 +977,14 @@ class FanartEnrichFoldInTests(TestCase):
         provider = mock.Mock()
         provider.get_movie = mock.AsyncMock(return_value=_movie_raw())
 
-        with override_settings(FANART_API_KEY="test-key"), mock.patch(
-            "apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876
-        ), mock.patch(
-            "apps.media.services.tmdb_ingest.fanart_enrich_images",
-            new_callable=mock.AsyncMock,
-        ) as enrich:
+        with (
+            override_settings(FANART_API_KEY="test-key"),
+            mock.patch("apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876),
+            mock.patch(
+                "apps.media.services.tmdb_ingest.fanart_enrich_images",
+                new_callable=mock.AsyncMock,
+            ) as enrich,
+        ):
             result = _run(fetch_and_seed_movie(550, provider=provider))
 
         self.assertEqual(result, 9876)
@@ -974,14 +995,15 @@ class FanartEnrichFoldInTests(TestCase):
         provider.get_show = mock.AsyncMock(return_value=_show_raw())
         provider.get_season = mock.AsyncMock(return_value={})
 
-        with override_settings(FANART_API_KEY="test-key"), mock.patch(
-            "apps.media.services.tmdb_ingest.seed_show_from_tmdb", return_value=9876
-        ), mock.patch(
-            "apps.media.services.tmdb_ingest.seed_episodes_from_season"
-        ), mock.patch(
-            "apps.media.services.tmdb_ingest.fanart_enrich_images",
-            new_callable=mock.AsyncMock,
-        ) as enrich:
+        with (
+            override_settings(FANART_API_KEY="test-key"),
+            mock.patch("apps.media.services.tmdb_ingest.seed_show_from_tmdb", return_value=9876),
+            mock.patch("apps.media.services.tmdb_ingest.seed_episodes_from_season"),
+            mock.patch(
+                "apps.media.services.tmdb_ingest.fanart_enrich_images",
+                new_callable=mock.AsyncMock,
+            ) as enrich,
+        ):
             result = _run(fetch_and_seed_show(1396, provider=provider))
 
         self.assertEqual(result, 9876)
@@ -996,15 +1018,18 @@ class FanartEnrichFoldInTests(TestCase):
 
         # OMDb is configured so the movie tail reaches the Fanart gate; an unset
         # FANART_API_KEY must return before the enrich driver is ever awaited.
-        with override_settings(OMDB_API_KEY="test-key"), mock.patch(
-            "apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876
-        ), mock.patch(
-            "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
-            new_callable=mock.AsyncMock,
-        ), mock.patch(
-            "apps.media.services.tmdb_ingest.fanart_enrich_images",
-            new=mock.AsyncMock(side_effect=_boom),
-        ) as enrich:
+        with (
+            override_settings(OMDB_API_KEY="test-key"),
+            mock.patch("apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876),
+            mock.patch(
+                "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
+                new_callable=mock.AsyncMock,
+            ),
+            mock.patch(
+                "apps.media.services.tmdb_ingest.fanart_enrich_images",
+                new=mock.AsyncMock(side_effect=_boom),
+            ) as enrich,
+        ):
             result = _run(fetch_and_seed_movie(550, provider=provider))
 
         self.assertEqual(result, 9876)

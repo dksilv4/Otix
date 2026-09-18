@@ -250,7 +250,7 @@ export function DownloadQueuePage() {
             </button>
           )}
           <a
-            href="/settings/launcher"
+            href="/settings/downloads"
             className="text-[11px] text-muted-foreground hover:text-foreground hover:underline ml-1 font-medium"
           >
             Settings

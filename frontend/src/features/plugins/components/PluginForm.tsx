@@ -1,9 +1,10 @@
 import { useId, useMemo, useState } from 'react'
-import { Eye, EyeOff, FolderOpen, GripVertical, Plus, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, GripVertical, Plus, Trash2 } from 'lucide-react'
 import type { PluginAPI } from '@/features/plugins/api'
 import type { PluginConfigField } from '@/features/plugins/types/plugins'
 import { Button, Field, Input, Select, Switch } from '@/features/plugins/ui'
 import { InstancesEditor } from '@/features/plugins/components/organisms/instances-editor'
+import { PathInput } from '@/components/path-picker'
 import { cn } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ function isVisible(field: PluginConfigField, values: Record<string, unknown>): b
   const current = values[cond.field]
   if (cond.equals !== undefined) return current === cond.equals
   if (cond.not !== undefined) return current !== cond.not
-  if (cond.truthy !== undefined) return cond.truthy ? Boolean(current) : !Boolean(current)
+  if (cond.truthy !== undefined) return cond.truthy ? Boolean(current) : !current
   return true
 }
 
@@ -297,10 +298,6 @@ function PathListEditor({
   }
   const remove = (idx: number) => onChange(paths.filter((_, i) => i !== idx))
   const add = () => onChange([...paths, ''])
-  const browse = async (idx: number) => {
-    const dir = await (window as any).desktopAPI?.selectDirectory?.()
-    if (dir) update(idx, dir)
-  }
 
   return (
     <Field label={field.label} description={field.description} error={error} required={field.required}>
@@ -308,23 +305,13 @@ function PathListEditor({
         {paths.length === 0 && <p className="text-xs text-white/30 italic">No paths configured</p>}
         {paths.map((path, idx) => (
           <div key={idx} className="flex items-center gap-2">
-            <Input
-              type="text"
+            <PathInput
+              compact
               value={path}
               placeholder={field.placeholder || '/path/to/games'}
-              invalid={!!error}
-              onChange={(e) => update(idx, e.target.value)}
+              onChange={(next) => update(idx, next)}
+              className="min-w-0 flex-1"
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => browse(idx)}
-              className="shrink-0 h-9 w-9 p-0"
-              title="Browse folder"
-            >
-              <FolderOpen className="h-4 w-4" />
-            </Button>
             <Button
               type="button"
               variant="ghost"

@@ -1,12 +1,19 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Link, Outlet, useLocation } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
-import { ChevronDown, Shield, X, Lock, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { ChevronDown, Shield, X, Lock, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
 import { useAuth } from '@/lib/providers/auth'
 import { DkAvatar } from '@ui/atoms/avatar'
 import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
-import { NAV_ITEMS, DESKTOP_SECTIONS, getNavItems } from '../constants'
+import {
+  NAV_GROUPS,
+  DESKTOP_SECTIONS,
+  getNavItems,
+  matchNavItem,
+  rememberSettingsSection,
+  type NavItem,
+} from '../constants'
 import { SettingsSaveProvider } from '../context/settings-save-context'
 import { SettingsSaveBar } from '../components/molecules/settings-save-bar'
 import { usePluginTabs } from '@/features/_config/slots'
@@ -18,48 +25,122 @@ function getInitialCollapsed(): boolean {
   return localStorage.getItem(SETTINGS_SIDEBAR_COLLAPSED_KEY) === 'true'
 }
 
+function SettingsNavGroups({
+  items,
+  activeSection,
+  collapsed,
+  user,
+  onNavigate,
+}: {
+  items: NavItem[]
+  activeSection: string
+  collapsed?: boolean
+  user: { isAdmin?: boolean } | null | undefined
+  onNavigate?: () => void
+}) {
+  const navLinkClass = (isActive: boolean) =>
+    cn(
+      'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200',
+      isActive ? 'bg-white/10 text-white shadow-sm font-semibold' : 'text-white/50 hover:text-white hover:bg-white/5',
+    )
+
+  const groups = NAV_GROUPS.filter((group) => items.some((item) => item.group === group.id))
+
+  return (
+    <>
+      {groups.map((group, idx) => {
+        const groupItems = items.filter((item) => item.group === group.id)
+        return (
+          <div key={group.id}>
+            {!collapsed ? (
+              <div className={cn('mb-1', idx > 0 && 'mt-3 pt-2')}>
+                <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-white/40 flex items-center justify-between">
+                  <span>{group.label}</span>
+                  {group.id === 'account' && !user && (
+                    <span className="text-[9px] lowercase font-normal px-1.5 py-0.5 rounded bg-white/10 text-white/60">
+                      sign in
+                    </span>
+                  )}
+                </span>
+              </div>
+            ) : (
+              idx > 0 && <div className="my-1.5 h-px w-8 bg-white/10 shrink-0 mx-auto" />
+            )}
+            {groupItems.map((item) => {
+              const Icon = item.icon
+              const isActive = activeSection === item.id
+              const showLock = item.requiresAuth && !user
+              return (
+                <Link
+                  key={item.id}
+                  to={`/settings/${item.id}`}
+                  data-active={isActive || undefined}
+                  title={collapsed ? `${item.label}${showLock ? ' (Requires Sign In)' : ''}` : undefined}
+                  onClick={onNavigate}
+                  className={cn(
+                    navLinkClass(isActive),
+                    collapsed && 'justify-center px-0 py-2.5 w-10 h-10 rounded-xl relative',
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {showLock && <Lock className="h-3 w-3 text-white/30 shrink-0" />}
+                    </>
+                  )}
+                  {collapsed && showLock && (
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400/80" />
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 function SettingsLayoutInner() {
   const location = useLocation()
   const { user } = useAuth()
   const desktop = isDesktop()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState<boolean>(getInitialCollapsed)
+  const [searchQuery, setSearchQuery] = useState('')
   const navRef = useRef<HTMLDivElement>(null)
 
-  const activeSection = location.pathname.replace('/settings/', '').split('/')[0] || 'overview'
+  const settingsPath = location.pathname.replace(/\/+$/, '')
+  const activeSection =
+    settingsPath === '/settings' ? 'appearance' : settingsPath.replace(/^\/settings\//, '').split('/')[0] || 'appearance'
   const { tabs: pluginTabs } = usePluginTabs()
   const filteredNav = getNavItems(pluginTabs)
     .filter((i) => !DESKTOP_SECTIONS.has(i.id) || desktop)
     .filter((i) => !i.adminOnly || user?.isAdmin)
 
-  // Listen for sidebar collapse changes from other components (e.g. Appearance page)
+  const searchedNav = useMemo(
+    () => filteredNav.filter((item) => matchNavItem(item, searchQuery)),
+    [filteredNav, searchQuery],
+  )
+
   useEffect(() => {
-    const handleCollapseChange = () => {
-      setCollapsed(getInitialCollapsed())
-    }
-    window.addEventListener('settings-sidebar-collapse-changed', handleCollapseChange)
-    return () => window.removeEventListener('settings-sidebar-collapse-changed', handleCollapseChange)
-  }, [])
+    rememberSettingsSection(activeSection)
+  }, [activeSection])
 
   const toggleCollapsed = () => {
     const next = !collapsed
     setCollapsed(next)
     localStorage.setItem(SETTINGS_SIDEBAR_COLLAPSED_KEY, String(next))
-    window.dispatchEvent(new Event('settings-sidebar-collapse-changed'))
   }
 
-  // Auto-scroll active nav item into view (sidebar overflow)
   useEffect(() => {
     if (!navRef.current) return
     const active = navRef.current.querySelector('[data-active="true"]') as HTMLElement | null
     active?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [activeSection])
 
-  const navLinkClass = (isActive: boolean) =>
-    cn(
-      'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200',
-      isActive ? 'bg-white/10 text-white shadow-sm font-semibold' : 'text-white/50 hover:text-white hover:bg-white/5',
-    )
+  const activeLabel = filteredNav.find((i) => i.id === activeSection)?.label || 'Settings'
 
   return (
     <div id="settings-layout" className="relative h-screen w-full overflow-hidden">
@@ -67,7 +148,6 @@ function SettingsLayoutInner() {
         <title>Settings - Otix</title>
       </Helmet>
 
-      {/* Page transition keyframes */}
       <style>{`
         @keyframes settings-enter {
           from { opacity: 0; transform: translateY(6px); }
@@ -75,12 +155,11 @@ function SettingsLayoutInner() {
         }
       `}</style>
 
-      {/* ===== Mobile overlay ===== */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col sm:hidden"
           style={{
-            backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.85)',
+            backgroundColor: 'var(--dk-surface-base)',
             backdropFilter: 'blur(40px)',
             WebkitBackdropFilter: 'blur(40px)',
           }}
@@ -88,6 +167,7 @@ function SettingsLayoutInner() {
           <div className="flex items-center justify-between px-6 pt-6 pb-2">
             <h1 className="text-lg font-bold">Settings</h1>
             <button
+              type="button"
               onClick={() => setMobileOpen(false)}
               className="flex h-8 w-8 items-center justify-center rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-colors"
             >
@@ -95,63 +175,26 @@ function SettingsLayoutInner() {
             </button>
           </div>
 
-          <nav className="flex-1 space-y-1 px-4 py-4 overflow-y-auto">
-            {/* Preferences Group */}
-            <div className="mb-1">
-              <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-white/40">
-                Preferences
-              </span>
+          <div className="px-4 pb-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search settings..."
+                className="w-full rounded-xl bg-white/5 pl-9 pr-3 py-2 text-sm text-white placeholder-white/40 outline-none"
+              />
             </div>
-            {filteredNav
-              .filter((i) => i.group === 'preferences')
-              .map((item) => {
-                const Icon = item.icon
-                const isActive = activeSection === item.id
-                return (
-                  <Link
-                    key={item.id}
-                    to={`/settings/${item.id}`}
-                    data-active={isActive || undefined}
-                    onClick={() => setMobileOpen(false)}
-                    className={navLinkClass(isActive)}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="flex-1">{item.label}</span>
-                  </Link>
-                )
-              })}
+          </div>
 
-            {/* Account Group */}
-            <div className="mt-4 mb-1 pt-3">
-              <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-white/40 flex items-center justify-between">
-                <span>Account</span>
-                {!user && (
-                  <span className="text-[9px] lowercase font-normal px-1.5 py-0.5 rounded bg-white/10 text-white/60">
-                    sign in
-                  </span>
-                )}
-              </span>
-            </div>
-            {filteredNav
-              .filter((i) => i.group === 'account')
-              .map((item) => {
-                const Icon = item.icon
-                const isActive = activeSection === item.id
-                const showLock = item.requiresAuth && !user
-                return (
-                  <Link
-                    key={item.id}
-                    to={`/settings/${item.id}`}
-                    data-active={isActive || undefined}
-                    onClick={() => setMobileOpen(false)}
-                    className={navLinkClass(isActive)}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="flex-1">{item.label}</span>
-                    {showLock && <Lock className="h-3 w-3 text-white/30 shrink-0" />}
-                  </Link>
-                )
-              })}
+          <nav className="flex-1 space-y-1 px-4 py-4 overflow-y-auto">
+            <SettingsNavGroups
+              items={searchedNav}
+              activeSection={activeSection}
+              user={user}
+              onNavigate={() => setMobileOpen(false)}
+            />
           </nav>
 
           {user && (
@@ -171,9 +214,7 @@ function SettingsLayoutInner() {
         </div>
       )}
 
-      {/* ===== Desktop layout ===== */}
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 px-2 sm:px-4 lg:px-6 h-full">
-        {/* Sidebar */}
         <aside
           id="settings-sidebar"
           className={cn(
@@ -184,12 +225,11 @@ function SettingsLayoutInner() {
         >
           <div
             className={cn(
-              'glass-card flex flex-col h-full pt-6 pb-5 transition-all duration-300',
+              'flex flex-col h-full pt-6 pb-5 transition-all duration-300 rounded-3xl shadow-xl shadow-black/30 backdrop-blur-xl',
               collapsed ? 'px-2 items-center' : 'px-5',
             )}
-            style={{ backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.3)' }}
+            style={{ backgroundColor: 'var(--dk-surface-base)' }}
           >
-            {/* Header with collapse button */}
             <div className={cn('flex items-center mb-5 w-full', collapsed ? 'justify-center' : 'justify-between')}>
               {!collapsed && <h1 className="text-lg font-bold">Settings</h1>}
               <button
@@ -203,87 +243,24 @@ function SettingsLayoutInner() {
               </button>
             </div>
 
+            {!collapsed && (
+              <div className="relative mb-4 w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full rounded-xl bg-white/5 pl-9 pr-3 py-2 text-xs text-white placeholder-white/40 outline-none"
+                />
+              </div>
+            )}
+
             <nav
               ref={navRef}
               className={cn('flex flex-col gap-1 flex-1 overflow-y-auto pr-1 w-full', collapsed && 'items-center')}
             >
-              {/* Preferences Group */}
-              {!collapsed ? (
-                <div className="mb-1">
-                  <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-white/40">
-                    Preferences
-                  </span>
-                </div>
-              ) : null}
-
-              {filteredNav
-                .filter((i) => i.group === 'preferences')
-                .map((item) => {
-                  const Icon = item.icon
-                  const isActive = activeSection === item.id
-                  return (
-                    <Link
-                      key={item.id}
-                      to={`/settings/${item.id}`}
-                      data-active={isActive || undefined}
-                      title={collapsed ? item.label : undefined}
-                      className={cn(
-                        navLinkClass(isActive),
-                        collapsed && 'justify-center px-0 py-2.5 w-10 h-10 rounded-xl',
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
-                    </Link>
-                  )
-                })}
-
-              {/* Account Group */}
-              {!collapsed ? (
-                <div className="mt-4 mb-1 pt-3">
-                  <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-white/40 flex items-center justify-between">
-                    <span>Account</span>
-                    {!user && (
-                      <span className="text-[9px] lowercase font-normal px-1.5 py-0.5 rounded bg-white/10 text-white/60">
-                        sign in
-                      </span>
-                    )}
-                  </span>
-                </div>
-              ) : (
-                <div className="my-2 h-px w-8 bg-white/10 shrink-0" />
-              )}
-
-              {filteredNav
-                .filter((i) => i.group === 'account')
-                .map((item) => {
-                  const Icon = item.icon
-                  const isActive = activeSection === item.id
-                  const showLock = item.requiresAuth && !user
-                  return (
-                    <Link
-                      key={item.id}
-                      to={`/settings/${item.id}`}
-                      data-active={isActive || undefined}
-                      title={collapsed ? `${item.label}${showLock ? ' (Requires Sign In)' : ''}` : undefined}
-                      className={cn(
-                        navLinkClass(isActive),
-                        collapsed && 'justify-center px-0 py-2.5 w-10 h-10 rounded-xl relative',
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && (
-                        <>
-                          <span className="flex-1 truncate">{item.label}</span>
-                          {showLock && <Lock className="h-3 w-3 text-white/30 shrink-0" />}
-                        </>
-                      )}
-                      {collapsed && showLock && (
-                        <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400/80" />
-                      )}
-                    </Link>
-                  )
-                })}
+              <SettingsNavGroups items={searchedNav} activeSection={activeSection} collapsed={collapsed} user={user} />
             </nav>
 
             {user && (
@@ -309,7 +286,6 @@ function SettingsLayoutInner() {
           </div>
         </aside>
 
-        {/* Mobile nav trigger + Content */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0 h-full">
           <main id="settings-content" className="flex-1 min-w-0 overflow-y-auto scroll-smooth">
             <div
@@ -321,11 +297,12 @@ function SettingsLayoutInner() {
               style={{ animation: 'settings-enter 0.2s ease-out' }}
             >
               <button
+                type="button"
                 onClick={() => setMobileOpen(true)}
                 className="sm:hidden flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors self-start mb-4 px-2 py-1"
               >
                 <ChevronDown className="h-4 w-4 rotate-90" />
-                {NAV_ITEMS.find((i) => i.id === activeSection)?.label || 'Settings'}
+                {activeLabel}
               </button>
               <Outlet />
             </div>

@@ -19,6 +19,7 @@ import type { LocalGame, Game } from '@/features/launcher/types'
 
 // Module-level set — survives remounts, runs once per app session
 const _hydrated = new Set<string>()
+const _inflight = new Set<string>()
 let _serverPersistSig = ''
 let _prehydrateSig = ''
 let _autoMatchSig = ''
@@ -130,6 +131,8 @@ async function hydrateGame(
 ): Promise<void> {
   const mediaId = g.otixMediaId || g.data?.id
   if (!mediaId || mediaId === 'undefined' || mediaId === 'null') return
+  if (_hydrated.has(g.id) || _inflight.has(g.id)) return
+  _inflight.add(g.id)
   try {
     const { data } = await apiClient.get<Record<string, unknown>>(`/media/game/${mediaId}`)
     patchLocalGame(queryClient, applyHydratedGame(g, data))
@@ -154,6 +157,8 @@ async function hydrateGame(
     _hydrated.add(g.id)
   } catch {
     // Network error or 404 — skip silently so a later session can retry
+  } finally {
+    _inflight.delete(g.id)
   }
 }
 
@@ -193,9 +198,6 @@ export function useHydrateLocalGames(): void {
         _prehydrateSig = prehydrateSig
         try {
           await apiClient.post('/search/prehydrate', { titles: foundTitles })
-          window.setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: serverKeys.games() })
-          }, 8000)
         } catch {
           _prehydrateSig = ''
         }
@@ -223,7 +225,7 @@ export function useHydrateLocalGames(): void {
       const toHydrate: LocalGame[] = []
       for (const g of [...newlyMatched, ...merged]) {
         if (seen.has(g.id)) continue
-        if (!(g.otixMediaId || g.data?.id) || !needsHydration(g) || _hydrated.has(g.id)) continue
+        if (!(g.otixMediaId || g.data?.id) || !needsHydration(g) || _hydrated.has(g.id) || _inflight.has(g.id)) continue
         seen.add(g.id)
         toHydrate.push(g)
       }

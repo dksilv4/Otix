@@ -80,6 +80,7 @@ export interface GameServer {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  connectError?: string | null;
 }
 
 export interface ServerGameFile {

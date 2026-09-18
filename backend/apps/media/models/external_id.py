@@ -32,6 +32,8 @@ class ExternalID(TimestampedModel):
     external_id = models.CharField(max_length=100)
     media_type = models.CharField(max_length=10, null=True, blank=True)
     is_adult = models.BooleanField(default=False)
+    content_hash = models.CharField(max_length=64, null=True, blank=True)
+    hash_match_count = models.IntegerField(default=0, db_default=0)
     # Providers whose id was confirmed by at least this many humans.
     confirmed_by = models.JSONField(default=list, blank=True)
 

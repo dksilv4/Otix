@@ -32,10 +32,8 @@ from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
-from django.utils import timezone as dj_timezone
-from django.utils.text import slugify
 
-from apps.media.models import ExternalID, Game, MediaAsset, MediaItem
+from apps.media.models import ExternalID, MediaAsset, MediaItem
 from apps.media.services.catalog import attach_media_urls
 from apps.media.services.igdb import (
     _PLATFORM_NORMALIZATION as PLATFORM_NORMALIZATION,
@@ -59,8 +57,7 @@ _MATCH_IGDB_FUZZY = "igdb_fuzzy"
 # Rich search shape the matcher asks IGDB for (adds involved companies so the
 # developer-overlap scorer can run; not the deferred full GAME_FIELDS fetch).
 IGDB_SEARCH_FIELDS = (
-    "id,name,slug,cover.image_id,first_release_date,platforms.name,"
-    "involved_companies.company.name"
+    "id,name,slug,cover.image_id,first_release_date,platforms.name,involved_companies.company.name"
 )
 IGDB_SEARCH_LIMIT = 20
 
@@ -160,9 +157,26 @@ def _strip_edition_markers(raw: str) -> str:
 
 
 _ROMAN_NUMERALS: dict[str, int] = {
-    "i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7,
-    "viii": 8, "ix": 9, "x": 10, "xi": 11, "xii": 12, "xiii": 13, "xiv": 14,
-    "xv": 15, "xvi": 16, "xvii": 17, "xviii": 18, "xix": 19, "xx": 20,
+    "i": 1,
+    "ii": 2,
+    "iii": 3,
+    "iv": 4,
+    "v": 5,
+    "vi": 6,
+    "vii": 7,
+    "viii": 8,
+    "ix": 9,
+    "x": 10,
+    "xi": 11,
+    "xii": 12,
+    "xiii": 13,
+    "xiv": 14,
+    "xv": 15,
+    "xvi": 16,
+    "xvii": 17,
+    "xviii": 18,
+    "xix": 19,
+    "xx": 20,
 }
 
 
@@ -253,7 +267,7 @@ def _igdb_search_query(raw: str) -> str:
 
 def _ts_to_date(ts: Any) -> date | None:
     """Convert an IGDB unix-seconds timestamp to a UTC ``date``."""
-    if isinstance(ts, (int, float)):
+    if isinstance(ts, int | float):
         try:
             return datetime.fromtimestamp(float(ts), tz=UTC).date()
         except (ValueError, OSError, OverflowError):
@@ -295,10 +309,29 @@ def _different_franchise_entry(req_title: str, candidate_title: str) -> bool:
 
 
 _EDITION_WORDS = {
-    "edition", "deluxe", "goty", "ultimate", "complete", "definitive", "enhanced",
-    "remastered", "collector", "pack", "bundle", "season", "pass", "dlc",
-    "expansion", "director", "cut", "hd", "redux", "anniversary", "special",
-    "gold", "platinum",
+    "edition",
+    "deluxe",
+    "goty",
+    "ultimate",
+    "complete",
+    "definitive",
+    "enhanced",
+    "remastered",
+    "collector",
+    "pack",
+    "bundle",
+    "season",
+    "pass",
+    "dlc",
+    "expansion",
+    "director",
+    "cut",
+    "hd",
+    "redux",
+    "anniversary",
+    "special",
+    "gold",
+    "platinum",
 }
 
 
@@ -337,9 +370,21 @@ def _titles_compatible(req_title: str, candidate_title: str) -> bool:
     if len_ratio > 2.0:
         longer = " ".join(req_words if len(req_words) > len(cand_words) else cand_words)
         markers = (
-            "edition", "deluxe", "goty", "game of the year", "remastered", "complete",
-            "definitive", "enhanced", "ultimate", "collector", "season pass", "dlc",
-            "expansion", "pack", "bundle",
+            "edition",
+            "deluxe",
+            "goty",
+            "game of the year",
+            "remastered",
+            "complete",
+            "definitive",
+            "enhanced",
+            "ultimate",
+            "collector",
+            "season pass",
+            "dlc",
+            "expansion",
+            "pack",
+            "bundle",
         )
         if not any(marker in longer for marker in markers):
             return False
@@ -709,26 +754,15 @@ class GameMatcher:
             )
             return
 
-        try:
-            raw = provider.get_game(igdb_id, IGDB_SEARCH_FIELDS)
-        except Exception:
-            logger.exception("IGDB get_game failed", extra={"igdb_id": igdb_id})
-            return
-        if not raw:
-            return
+        from apps.integrations.services.catalog_seed import ensure_catalog_job
 
-        media_id = self._seed_game_from_igdb(
-            raw, igdb_id, request_external_ids=request.external_ids
-        )
+        ensure_catalog_job("igdb", "game", igdb_id_str, priority=1, dispatch=False)
         all_candidates[idx].append(
             MatchCandidate(
-                media_item_id=media_id,
-                title=raw.get("name") or request.title,
-                poster_url=cover_url(raw.get("cover")),
-                release_year=release_year_from_ts(raw.get("first_release_date")),
-                platforms=sorted(_igdb_platform_slugs(raw.get("platforms"))),
+                title=request.title,
                 confidence=0.90,
                 match_type=_MATCH_IGDB_CROSSREF,
+                needs_import=True,
                 provider="igdb",
                 provider_id=igdb_id_str,
             )
@@ -762,10 +796,8 @@ class GameMatcher:
         }
 
         for idx, result in results.items():
-            igdb_id = result["igdb_id"]
             igdb_id_str = result["igdb_id_str"]
             is_exact = result["is_exact"]
-            raw = result["best"]
             existing = ext_by_id.get(igdb_id_str)
             if existing is not None and existing.object_id:
                 media = MediaItem.objects.filter(pk=existing.object_id).first()
@@ -785,18 +817,19 @@ class GameMatcher:
                     )
                 )
                 continue
-            media_id = self._seed_game_from_igdb(
-                raw, igdb_id, request_external_ids=requests[idx].external_ids
-            )
+            from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+            if is_exact:
+                ensure_catalog_job("igdb", "game", igdb_id_str, priority=1, dispatch=False)
             all_candidates[idx].append(
                 MatchCandidate(
-                    media_item_id=media_id,
                     title=result["title"],
                     poster_url=result["poster"],
                     release_year=result["release_year"],
                     platforms=result["platforms"],
                     confidence=0.90 if is_exact else 0.70,
                     match_type=_MATCH_IGDB_SEARCH if is_exact else _MATCH_IGDB_FUZZY,
+                    needs_import=True,
                     provider="igdb",
                     provider_id=igdb_id_str,
                 )
@@ -894,7 +927,7 @@ class GameMatcher:
 
             if request.release_year is not None:
                 ts = candidate.get("first_release_date")
-                if isinstance(ts, (int, float)):
+                if isinstance(ts, int | float):
                     year = release_year_from_ts(ts)
                     if year is not None and abs(year - request.release_year) <= 1:
                         score += 10
@@ -953,7 +986,10 @@ class GameMatcher:
             return None
         best = candidates[0]
         if best.needs_import:
-            if best.confidence >= 0.90 and best.match_type == _MATCH_IGDB_SEARCH:
+            if best.confidence >= 0.90 and best.match_type in (
+                _MATCH_IGDB_SEARCH,
+                _MATCH_IGDB_CROSSREF,
+            ):
                 return best
             return None
         if best.match_type == _MATCH_DIRECT:
@@ -977,59 +1013,21 @@ class GameMatcher:
         media_type: str = "game",
         request_external_ids: list[ExternalIDRef] | None = None,
     ) -> int:
-        """Create a minimal MediaItem + Game + ExternalIDs (+ poster asset).
+        """Seed via the IGDB ingest engine (ExternalID identity, no slug merge)."""
+        from apps.media.services.identity import attach_external_id
+        from apps.media.services.igdb_ingest import seed_game_from_igdb
 
-        Returns the media_item id; reuses an existing row when the IGDB id is
-        already mapped or a same-slug catalog title exists (cross-provider dedup).
-        """
-        content_type = _media_content_type()
-        igdb_id_str = str(igdb_id)
-        existing_ext = ExternalID.objects.filter(
-            content_type=content_type, provider="igdb", external_id=igdb_id_str
-        ).first()
-        if existing_ext is not None and existing_ext.object_id:
-            return existing_ext.object_id
-
-        title = (raw.get("name") or "Unknown Game").strip() or "Unknown Game"
-        overview = raw.get("storyline") or raw.get("summary")
-        poster_url = cover_url(raw.get("cover"))
-        raw_slug = (raw.get("slug") or "").strip()
-        base_slug = raw_slug if raw_slug else slugify(title)
-        slug = re.sub(r"[^a-z0-9]+", "-", base_slug.lower()).strip("-")[:200] or slugify("game")
-        release_date = _ts_to_date(raw.get("first_release_date"))
-
-        media = MediaItem.objects.filter(media_type=media_type, slug=slug).first()
-        if media is not None:
-            media_id = media.pk
-            if media.overview is None and overview:
-                media.overview = overview
-                media.save(update_fields=("overview", "updated_at"))
-            Game.objects.get_or_create(media_item_id=media_id)
-            if poster_url:
-                _upsert_poster_asset(media, poster_url)
-        else:
-            media = MediaItem.objects.create(
-                media_type=media_type,
-                title=title,
-                slug=slug,
-                overview=overview,
-                release_date=release_date,
-                completeness_score=0.15,
-                next_sync_at=dj_timezone.now(),
-            )
-            media_id = media.pk
-            Game.objects.create(media_item_id=media_id)
-            if poster_url:
-                _upsert_poster_asset(media, poster_url)
-
-        _upsert_external(content_type, media_id, "igdb", igdb_id_str, media_type)
+        media_id = seed_game_from_igdb(raw, igdb_id)
         for ref in request_external_ids or []:
             src = getattr(ref, "source", None) or (ref["source"] if isinstance(ref, dict) else None)
             ext_value = getattr(ref, "id", None) or (ref["id"] if isinstance(ref, dict) else None)
             if src and ext_value is not None:
-                _upsert_external(content_type, media_id, str(src), str(ext_value), media_type)
+                media_id = attach_external_id(media_id, str(src), str(ext_value), media_type)
         logger.info(
-            "seeded game from IGDB igdb_id=%s otix_id=%s title=%s", igdb_id, media_id, title
+            "seeded game from IGDB igdb_id=%s otix_id=%s title=%s",
+            igdb_id,
+            media_id,
+            raw.get("name"),
         )
         return media_id
 
@@ -1057,14 +1055,11 @@ class GameMatcher:
 
         provider = self._igdb()
         igdb_id: int | None = None
-        raw: dict[str, Any] | None = None
 
         if store == "epic" and offer_id:
             try:
                 epic_to_igdb = provider.lookup_epic_ids([offer_id])
                 igdb_id = epic_to_igdb.get(offer_id)
-                if igdb_id is not None:
-                    raw = provider.get_game(igdb_id, IGDB_SEARCH_FIELDS)
             except Exception:
                 logger.exception("free game epic cross-ref failed", extra={"offer_id": offer_id})
 
@@ -1080,15 +1075,26 @@ class GameMatcher:
             for candidate in candidates:
                 if _comparison_key(candidate.get("name") or "") == target:
                     igdb_id = candidate.get("id")
-                    raw = candidate
                     break
 
-        if igdb_id is None or raw is None:
+        if igdb_id is None:
             return None
 
+        from apps.integrations.services.catalog_seed import ensure_catalog_job
+        from apps.media.services.identity import attach_external_id, find_media_id
+
+        mapped = find_media_id("igdb", str(igdb_id), "game")
+        if mapped is None:
+            ensure_catalog_job("igdb", "game", str(igdb_id), priority=1, dispatch=False)
+            return None
         refs: list[ExternalIDRef] = [ExternalIDRef(source=store, id=external_id)]
         if store == "epic" and offer_id:
             refs.append(ExternalIDRef(source="epic", id=offer_id))
         if namespace:
             refs.append(ExternalIDRef(source="epic_namespace", id=namespace))
-        return self._seed_game_from_igdb(raw, igdb_id, request_external_ids=refs)
+        for ref in refs:
+            src = getattr(ref, "source", None)
+            ext_value = getattr(ref, "id", None)
+            if src and ext_value is not None:
+                mapped = attach_external_id(mapped, str(src), str(ext_value), "game")
+        return mapped

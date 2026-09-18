@@ -42,7 +42,6 @@ from typing import TYPE_CHECKING, Any
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.utils import timezone as dj_timezone
 from django.utils.text import slugify
 
 from apps.company.models import Company, InvolvedCompany
@@ -59,6 +58,7 @@ from apps.media.models import (
     Show,
 )
 from apps.media.models.genre import Genre, Keyword, MediaGenre, MediaGenreType, MediaKeyword
+from apps.media.services.catalog_lifecycle import finish_catalog_seed, payload_hash_matches
 from apps.media.services.completeness import recompute_completeness
 from apps.media.services.fanart_ingest import fanart_enrich_images
 from apps.media.services.omdb_ingest import omdb_enrich_ratings
@@ -108,9 +108,7 @@ def _genre_names(raw: dict[str, Any]) -> list[str]:
     return [str(g["name"]) for g in raw.get("genres", []) if g.get("name")]
 
 
-def _upsert_genres(
-    media: MediaItem, names: list[str], media_type: str = GENRE_MEDIA_TYPE
-) -> None:
+def _upsert_genres(media: MediaItem, names: list[str], media_type: str = GENRE_MEDIA_TYPE) -> None:
     """Link canonical ``Genre`` rows to *media* (dedup by name/slug)."""
     for name in names:
         genre, _ = Genre.objects.get_or_create(name=name, defaults={"slug": slugify(name)})
@@ -511,30 +509,28 @@ def _hydrate_relations(media: MediaItem, raw: dict[str, Any]) -> None:
 
 
 def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
-    """Create (or reuse) a minimal MediaItem+Movie from TMDB movie detail.
+    """Create (or reuse) a MediaItem+Movie from TMDB movie detail.
 
-    Returns the media_item id. Reuses an existing row when the TMDB id is
-    already mapped or a same-slug ``movie`` catalog title exists (cross-provider
-    dedup), then tops up missing overview/poster so re-seeds never duplicate.
+    Identity is the TMDB ExternalID only — a same-slug title is a different
+    row until it holds this tmdb id.
     """
-    content_type = _media_content_type()
+    from apps.media.services.identity import attach_external_id, find_media_id
+
     tmdb_id = raw.get("id")
     if tmdb_id is None:
         raise ValueError("TMDB movie detail missing 'id'")
 
-    existing = ExternalID.objects.filter(
-        content_type=content_type, provider="tmdb", external_id=str(tmdb_id), media_type="movie"
-    ).first()
-    if existing is not None and existing.object_id:
-        media = MediaItem.objects.filter(pk=existing.object_id, media_type="movie").first()
+    existing_id = find_media_id("tmdb", str(tmdb_id), "movie")
+    if existing_id is not None:
+        media = MediaItem.objects.filter(pk=existing_id, media_type="movie").first()
         if media is not None:
-            # A known title is not re-seeded (movie fields are static), but its
-            # credit snapshot + relation enrichment still refresh on a re-sync
-            # like the show path (how pre-1.1 minimal rows grow their data).
             _upsert_credits(media, raw)
             _hydrate_relations(media, raw)
-            recompute_completeness(media)
-        return existing.object_id
+            _attach_tmdb_crosswalk(media.pk, raw, "movie")
+            finish_catalog_seed(
+                media, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=False
+            )
+        return existing_id
 
     title = (raw.get("title") or raw.get("name") or "Unknown Movie").strip() or "Unknown Movie"
     overview = raw.get("overview")
@@ -543,49 +539,55 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
     slug = re.sub(r"[^a-z0-9]+", "-", slugify(title)).strip("-")[:200] or slugify("untitled")
     release_date = _parse_date(raw.get("release_date") or raw.get("first_air_date"))
 
-    media = MediaItem.objects.filter(media_type="movie", slug=slug).first()
-    if media is not None:
-        media_id = media.pk
-        Movie.objects.get_or_create(media_item_id=media_id)
-        if media.overview is None and overview:
-            media.overview = overview
-            media.save(update_fields=("overview", "updated_at"))
-        _upsert_asset(media, poster_url, "poster", 100)
-        _upsert_asset(media, backdrop_url, "backdrop", 100)
-    else:
-        media = MediaItem.objects.create(
-            media_type="movie",
-            title=title,
-            overview=overview,
-            slug=slug,
-            release_date=release_date,
-            popularity=raw.get("popularity") or 0.0,
-            original_language=raw.get("original_language"),
-            is_adult=bool(raw.get("adult", False)),
-            completeness_score=0.15,
-            next_sync_at=dj_timezone.now(),
+    media = MediaItem.objects.create(
+        media_type="movie",
+        title=title,
+        overview=overview,
+        slug=slug,
+        release_date=release_date,
+        popularity=raw.get("popularity") or 0.0,
+        original_language=raw.get("original_language"),
+        is_adult=bool(raw.get("adult", False)),
+        completeness_score=0.15,
+    )
+    media_id = attach_external_id(media.pk, "tmdb", str(tmdb_id), "movie")
+    if media_id != media.pk:
+        winner = MediaItem.objects.get(pk=media_id)
+        _upsert_credits(winner, raw)
+        _hydrate_relations(winner, raw)
+        recompute_completeness(winner)
+        _attach_tmdb_crosswalk(media_id, raw, "movie")
+        finish_catalog_seed(
+            winner, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=False
         )
-        media_id = media.pk
-        Movie.objects.create(
-            media_item_id=media_id,
-            runtime=raw.get("runtime"),
-            budget=raw.get("budget"),
-            revenue=raw.get("revenue"),
-            tagline=raw.get("tagline"),
-            is_anime=_is_anime(raw),
-        )
-        _upsert_asset(media, poster_url, "poster", 100)
-        _upsert_asset(media, backdrop_url, "backdrop", 100)
-
+        return media_id
+    Movie.objects.create(
+        media_item_id=media_id,
+        runtime=raw.get("runtime"),
+        budget=raw.get("budget"),
+        revenue=raw.get("revenue"),
+        tagline=raw.get("tagline"),
+        is_anime=_is_anime(raw),
+    )
+    _upsert_asset(media, poster_url, "poster", 100)
+    _upsert_asset(media, backdrop_url, "backdrop", 100)
     _upsert_credits(media, raw)
     _upsert_genres(media, _genre_names(raw))
-    _upsert_external(content_type, media_id, "tmdb", str(tmdb_id))
+    _attach_tmdb_crosswalk(media_id, raw, "movie")
+    _hydrate_relations(media, raw)
+    finish_catalog_seed(media, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=False)
+    return media_id
+
+
+def _attach_tmdb_crosswalk(media_id: int, raw: dict[str, Any], media_type: str) -> None:
+    from apps.media.services.identity import attach_external_id
+
     imdb_id = raw.get("imdb_id") or (raw.get("external_ids") or {}).get("imdb_id")
     if imdb_id:
-        _upsert_external(content_type, media_id, "imdb", str(imdb_id))
-    _hydrate_relations(media, raw)
-    recompute_completeness(media)
-    return media_id
+        attach_external_id(media_id, "imdb", str(imdb_id), media_type)
+    tvdb_id = (raw.get("external_ids") or {}).get("tvdb_id")
+    if tvdb_id:
+        attach_external_id(media_id, "tvdb", str(tvdb_id), media_type)
 
 
 def _upsert_seasons(show_pk: int, raw: dict[str, Any]) -> None:
@@ -617,16 +619,11 @@ def _upsert_seasons(show_pk: int, raw: dict[str, Any]) -> None:
 def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
     """Create (or refresh) a MediaItem+Show+Season-summary set from TV detail.
 
-    Returns the media_item id. The row is resolved by TMDB mapping first (an
-    existing tmdb ``show`` ExternalID — which survives a title change), else a
-    same-slug ``show`` catalog title (so cross-provider stubs like Plex shows
-    get filled in). Unlike movie seeding there is no early-out on a known id:
-    a re-sync of a continuing series must refresh the Show's growth-prone fields
-    (status, air dates, anime flag, season/episode counts) and upsert newly aired
-    season summaries, while every row is idempotent (get_or_create) so repeats
-    never duplicate.
+    Identity is the TMDB ExternalID only. A re-sync of a continuing series
+    refreshes growth-prone fields and upserts newly aired season summaries.
     """
-    content_type = _media_content_type()
+    from apps.media.services.identity import attach_external_id, find_media_id
+
     tmdb_id = raw.get("id")
     if tmdb_id is None:
         raise ValueError("TMDB show detail missing 'id'")
@@ -640,18 +637,8 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
     last_air_date = _parse_date(raw.get("last_air_date"))
     status = raw.get("status")
 
-    mapped = ExternalID.objects.filter(
-        content_type=content_type,
-        provider="tmdb",
-        external_id=str(tmdb_id),
-        media_type="show",
-    ).first()
-    media = None
-    if mapped is not None and mapped.object_id:
-        media = MediaItem.objects.filter(pk=mapped.object_id, media_type="show").first()
-    if media is None:
-        media = MediaItem.objects.filter(media_type="show", slug=slug).first()
-
+    media_id = find_media_id("tmdb", str(tmdb_id), "show")
+    media = MediaItem.objects.filter(pk=media_id, media_type="show").first() if media_id else None
     if media is None:
         media = MediaItem.objects.create(
             media_type="show",
@@ -663,8 +650,10 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
             original_language=raw.get("original_language"),
             is_adult=bool(raw.get("adult", False)),
             completeness_score=0.15,
-            next_sync_at=dj_timezone.now(),
         )
+        media_id = attach_external_id(media.pk, "tmdb", str(tmdb_id), "show")
+        if media_id != media.pk:
+            media = MediaItem.objects.get(pk=media_id)
     elif media.overview is None and overview:
         media.overview = overview
         media.save(update_fields=("overview", "updated_at"))
@@ -692,21 +681,14 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
     _upsert_credits(media, raw)
     _upsert_seasons(media_id, raw)
     _upsert_genres(media, _genre_names(raw), media_type="show")
-    _upsert_external(content_type, media_id, "tmdb", str(tmdb_id), media_type="show")
-    imdb_id = raw.get("imdb_id") or (raw.get("external_ids") or {}).get("imdb_id")
-    if imdb_id:
-        _upsert_external(content_type, media_id, "imdb", str(imdb_id), media_type="show")
-    tvdb_id = (raw.get("external_ids") or {}).get("tvdb_id")
-    if tvdb_id:
-        _upsert_external(content_type, media_id, "tvdb", str(tvdb_id), media_type="show")
+    attach_external_id(media_id, "tmdb", str(tmdb_id), "show")
+    _attach_tmdb_crosswalk(media_id, raw, "show")
     _hydrate_relations(media, raw)
-    recompute_completeness(media)
+    finish_catalog_seed(media, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=False)
     return media_id
 
 
-def seed_episodes_from_season(
-    show_id: int, season_number: int, season_raw: dict[str, Any]
-) -> int:
+def seed_episodes_from_season(show_id: int, season_number: int, season_raw: dict[str, Any]) -> int:
     """Seed a season's Episode rows from a ``/tv/{id}/season/{n}`` payload.
 
     Idempotent (``get_or_create`` keyed on season + episode_number); returns how
@@ -786,23 +768,29 @@ async def _wikidata_distributor_enrich_after_seed(media_id: int) -> None:
         pass
 
 
-async def fetch_and_seed_movie(tmdb_id: int, *, provider: TMDBProvider | None = None) -> int:
+async def fetch_and_seed_movie(
+    tmdb_id: int, *, provider: TMDBProvider | None = None, force: bool = False
+) -> int:
     """Fetch TMDB movie detail through a provider client, then seed it."""
     if provider is None:
         from core.providers.tmdb import TMDBProvider
 
         provider = TMDBProvider()
     raw = await provider.get_movie(tmdb_id)
-    # The ORM write must leave the async context (Django's sync-ORM-in-async
-    # guard); sync_to_async runs it in a worker thread.
+    skipped = await _skip_fresh_tmdb(raw, tmdb_id, "movie", force=force)
+    if skipped is not None:
+        return skipped
     media_id = await sync_to_async(seed_movie_from_tmdb)(raw)
     await _omdb_enrich_after_seed(media_id)
     await _fanart_enrich_after_seed(media_id)
     await _wikidata_distributor_enrich_after_seed(media_id)
+    await _enqueue_related_tmdb(raw, "movie", provider)
     return media_id
 
 
-async def fetch_and_seed_show(tmdb_id: int, *, provider: TMDBProvider | None = None) -> int:
+async def fetch_and_seed_show(
+    tmdb_id: int, *, provider: TMDBProvider | None = None, force: bool = False
+) -> int:
     """Fetch TMDB TV detail through a provider client, then seed it.
 
     Also hydrates per-season episodes: after the base Show (and its Season
@@ -816,6 +804,9 @@ async def fetch_and_seed_show(tmdb_id: int, *, provider: TMDBProvider | None = N
 
         provider = TMDBProvider()
     raw = await provider.get_show(tmdb_id)
+    skipped = await _skip_fresh_tmdb(raw, tmdb_id, "show", force=force)
+    if skipped is not None:
+        return skipped
     media_id = await sync_to_async(seed_show_from_tmdb)(raw)
     for season_data in raw.get("seasons", []) or []:
         number = season_data.get("season_number")
@@ -826,4 +817,63 @@ async def fetch_and_seed_show(tmdb_id: int, *, provider: TMDBProvider | None = N
     await _omdb_enrich_after_seed(media_id)
     await _fanart_enrich_after_seed(media_id)
     await _wikidata_distributor_enrich_after_seed(media_id)
+    await _enqueue_related_tmdb(raw, "show", provider)
     return media_id
+
+
+async def _skip_fresh_tmdb(
+    raw: dict[str, Any], tmdb_id: int, media_type: str, *, force: bool
+) -> int | None:
+    if force:
+        return None
+    from apps.media.services.identity import find_media_id
+
+    media_id = await sync_to_async(find_media_id)("tmdb", str(tmdb_id), media_type)
+    if media_id is None:
+        return None
+    matches = await sync_to_async(payload_hash_matches)(
+        media_id, "tmdb", str(tmdb_id), media_type, raw
+    )
+    if not matches:
+        return None
+
+    def _stamp() -> int:
+        media = MediaItem.objects.get(pk=media_id)
+        finish_catalog_seed(
+            media, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=True
+        )
+        return media.pk
+
+    return await sync_to_async(_stamp)()
+
+
+async def _enqueue_related_tmdb(
+    raw: dict[str, Any], media_type: str, provider: TMDBProvider
+) -> None:
+    from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+    ids: list[str] = []
+    collection = raw.get("belongs_to_collection") or {}
+    cid = collection.get("id") if isinstance(collection, dict) else None
+    if cid and media_type == "movie":
+        try:
+            col = await provider.get_collection(int(cid))
+        except Exception:  # noqa: BLE001
+            col = {}
+        for part in col.get("parts") or []:
+            if isinstance(part, dict) and part.get("id"):
+                ids.append(str(part["id"]))
+    similar_fn = provider.get_movie_similar if media_type == "movie" else provider.get_show_similar
+    try:
+        similar = await similar_fn(int(raw["id"]))
+    except Exception:  # noqa: BLE001
+        similar = {}
+    for row in (similar.get("results") or [])[:12]:
+        if isinstance(row, dict) and row.get("id"):
+            ids.append(str(row["id"]))
+    seen: set[str] = set()
+    for ext in ids:
+        if ext in seen or str(raw.get("id")) == ext:
+            continue
+        seen.add(ext)
+        await sync_to_async(ensure_catalog_job)("tmdb", media_type, ext, priority=2, dispatch=False)

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Gamepad2, Loader2, Library, CheckCircle2, AlertCircle, Sparkles, FolderOpen, Search, X, Monitor, Filter, RefreshCw, Link2, ArrowUpDown } from 'lucide-react'
+import { Gamepad2, Loader2, CheckCircle2, Sparkles, FolderOpen, Search, X, RefreshCw, ArrowUpDown, FolderPlus, Trash2 } from 'lucide-react'
 import { PluginSlot } from '@/features/plugins/components/organisms/plugin-slot'
 import { getPluginAPI, type PluginAPI } from '@/features/plugins/api'
 import { DkDropdown } from '@ui/atoms/dropdown'
+import { DkButton } from '@ui/atoms/button'
 import { ProviderLogo } from '../components/atoms/provider-logo'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
@@ -13,6 +14,10 @@ import { useModal } from '@/lib/modals'
 import { isDesktop } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
+import { usePickFolder } from '@/components/path-picker'
+import { useToast } from '@ui/molecules/toast'
+import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
+import { ProposalsPage } from '@/features/proposals/pages/proposals-page'
 
 type ItemFilter = 'all' | 'games' | 'dlcs' | 'expansions' | 'demos' | 'betas' | 'mods' | 'soundtracks' | 'matched' | 'candidates' | 'unmatched'
 type SortKey = 'title' | 'recent' | 'playtime' | 'platform' | 'status'
@@ -190,18 +195,39 @@ export function SettingsLibraryPage() {
   const [platformFilter, setPlatformFilter] = useState<string>('')
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
-  const [providersModalOpen, setProvidersModalOpen] = useState(false)
+  const [scanPaths, setScanPaths] = useState<string[]>([])
+  const [isScanning, setIsScanning] = useState(false)
 
   const api = (window as any).desktopAPI
   const { openModal } = useModal()
+  const { toast } = useToast()
+  const { pick: pickFolder } = usePickFolder({ target: 'local' })
+  useSettingsHashScroll()
 
-  // Load plugin API
+  // Load plugin API & scan paths
   useEffect(() => {
     const pApi = getPluginAPI()
     setPluginApi(pApi)
     const t = setTimeout(() => setLoading(false), 150)
     return () => clearTimeout(t)
   }, [])
+
+  useEffect(() => {
+    if (api?.getScanPaths) {
+      api.getScanPaths().then((paths: any[]) => {
+        if (Array.isArray(paths)) {
+          const mapped = paths.filter((p) => p.type === 'game').map((p) => p.path)
+          setScanPaths(mapped)
+          try { localStorage.setItem('otix:scan-paths', JSON.stringify(mapped)) } catch {}
+        }
+      }).catch(() => {})
+    } else {
+      try {
+        const stored = localStorage.getItem('otix:scan-paths')
+        if (stored) setScanPaths(JSON.parse(stored))
+      } catch {}
+    }
+  }, [api])
 
   // Fetch all games: local disk scan (desktop) + backend Steam library (matched + unmatched).
   const fetchGames = useCallback(async () => {
@@ -219,7 +245,6 @@ export function SettingsLibraryPage() {
     fetchGames()
   }, [fetchGames])
 
-  // Listen for scanned games updates
   useEffect(() => {
     const handleUpdated = () => fetchGames()
     window.addEventListener('scanned-games-updated', handleUpdated)
@@ -229,6 +254,78 @@ export function SettingsLibraryPage() {
       unsub?.()
     }
   }, [api, fetchGames])
+
+  const handleAddScanFolder = async () => {
+    try {
+      const dir = await pickFolder()
+      if (!dir) return
+      if (api?.getScanPaths && api?.saveScanPaths) {
+        const existing = await api.getScanPaths()
+        await api.saveScanPaths([...existing, { path: dir, type: 'game' }])
+      }
+      setScanPaths((prev) => {
+        const next = [...prev, dir]
+        try { localStorage.setItem('otix:scan-paths', JSON.stringify(next)) } catch {}
+        return next
+      })
+      toast({
+        title: 'Library Path Added',
+        description: `Added ${dir} to game scan paths.`,
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to add folder path.',
+        variant: 'error',
+      })
+    }
+  }
+
+  const handleRemoveScanFolder = async (pathToRemove: string) => {
+    try {
+      if (api?.getScanPaths && api?.saveScanPaths) {
+        const existing = await api.getScanPaths()
+        const updated = existing.filter((p: any) => p.path !== pathToRemove)
+        await api.saveScanPaths(updated)
+      }
+      setScanPaths((prev) => {
+        const next = prev.filter((p) => p !== pathToRemove)
+        try { localStorage.setItem('otix:scan-paths', JSON.stringify(next)) } catch {}
+        return next
+      })
+      toast({
+        title: 'Library Path Removed',
+        description: `Removed ${pathToRemove}.`,
+        variant: 'default',
+      })
+    } catch {}
+  }
+
+  const handleTriggerScan = async () => {
+    try {
+      setIsScanning(true)
+      if (api?.scanPaths) {
+        await api.scanPaths(scanPaths, [])
+      } else {
+        await apiClient.post('/scan').catch(() => {})
+      }
+      await fetchGames()
+      toast({
+        title: 'Scan Finished',
+        description: 'Updated your library with detected games and files.',
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Scan Error',
+        description: 'Failed to scan library paths.',
+        variant: 'error',
+      })
+    } finally {
+      setIsScanning(false)
+    }
+  }
 
   // Helper to determine game type slug
   const getGameType = (g: any): string => {
@@ -370,7 +467,7 @@ export function SettingsLibraryPage() {
         }
         cmp = getTimestamp(a) - getTimestamp(b)
       } else if (sortKey === 'playtime') {
-        const getPlaytime = (g: any) => g.steamPlaytimeForever ?? g.playtimeMinutes ?? (g.playtimeHours ? g.playtimeHours * 60 : 0) ?? 0
+        const getPlaytime = (g: any) => g.steamPlaytimeForever ?? g.playtimeMinutes ?? (g.playtimeHours ? g.playtimeHours * 60 : 0)
         cmp = getPlaytime(a) - getPlaytime(b)
       } else if (sortKey === 'platform') {
         const aPlat = (a.platform || a.providerName || '').toLowerCase()
@@ -417,14 +514,15 @@ export function SettingsLibraryPage() {
 
   return (
     <div id="settings-library-section" className="space-y-6">
-      {/* Header */}
-      <SettingsCard>
-        <SectionHeader
-          title="Games & Local Media Library"
-          description="Manage scanned game titles, DLCs, expansions, demos, betas, mods, soundtracks, and auto-matching."
-        />
+      <SectionHeader
+        variant="page"
+        icon={Gamepad2}
+        title="Library"
+        description="Manage scanned game titles, matching, and match proposals."
+      />
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+      <SettingsCard>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           {/* Stats Bar */}
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1.5 text-white">
@@ -450,33 +548,90 @@ export function SettingsLibraryPage() {
             )}
           </div>
 
-          <button
-            onClick={() => setProvidersModalOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors self-start sm:self-auto cursor-pointer"
+          <DkButton
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              const close = openModal(
+                <DkDialog
+                  open
+                  onOpenChange={(next) => {
+                    if (!next) close()
+                  }}
+                  title="Library Providers"
+                  description="Configure scanner paths and platform integration providers."
+                  className="max-w-4xl"
+                >
+                  <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1 pt-1 pb-1">
+                    {pluginApi && <PluginSlot location="library:scan" pluginApi={pluginApi} />}
+                  </div>
+                </DkDialog>,
+              )
+            }}
           >
             <FolderOpen className="h-3.5 w-3.5" />
             Manage Providers
-          </button>
+          </DkButton>
+        </div>
+      </SettingsCard>
+
+      {/* Local Game Scan Paths */}
+      <SettingsCard>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-white">Local Library Scan Paths</h3>
+            <p className="text-xs text-white/50 mt-0.5">
+              Directories where Otix monitors and scans for installed games and executables.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <DkButton size="sm" variant="ghost" onClick={handleAddScanFolder}>
+              <FolderPlus className="h-3.5 w-3.5" />
+              Add Folder
+            </DkButton>
+            <DkButton size="sm" onClick={handleTriggerScan} disabled={isScanning} loading={isScanning}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              {isScanning ? 'Scanning...' : 'Scan Now'}
+            </DkButton>
+          </div>
+        </div>
+
+        <div className="space-y-1.5 pt-3">
+          {scanPaths.length > 0 ? (
+            scanPaths.map((p, idx) => (
+              <div
+                key={idx}
+                className="px-3 py-2 rounded-xl bg-white/[0.04] text-xs font-mono text-white/70 flex items-center justify-between gap-2"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <FolderOpen size={14} className="text-primary shrink-0" />
+                  <span className="truncate">{p}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveScanFolder(p)}
+                  className="h-6 w-6 flex items-center justify-center rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 cursor-pointer"
+                  title="Remove folder"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="px-3 py-3 rounded-xl bg-white/[0.03] text-xs text-white/40 text-center">
+              Standard Steam, Epic, and GOG libraries are automatically detected. Click "Add Folder" to specify additional directories.
+            </div>
+          )}
         </div>
       </SettingsCard>
 
       {/* Pinned free games — always visible regardless of sort/filter */}
       <SettingsFreeGamesSection />
 
-      {/* ===== PROVIDERS & SCANNERS MODAL ===== */}
-      <DkDialog
-        open={providersModalOpen}
-        onOpenChange={setProvidersModalOpen}
-        title="Library Providers"
-        description="Configure scanner paths and platform integration providers."
-        className="max-w-4xl"
-      >
-        <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1 pt-1 pb-1">
-          {pluginApi && (
-            <PluginSlot location="library:scan" pluginApi={pluginApi} />
-          )}
-        </div>
-      </DkDialog>
+      <div id="proposals" className="scroll-mt-28">
+        <ProposalsPage />
+      </div>
 
       {/* Library Games List */}
       <SettingsCard>
@@ -613,7 +768,7 @@ export function SettingsLibraryPage() {
                       {game.title}
                     </p>
                     <div className="flex flex-wrap items-center gap-1.5 mt-1 min-w-0">
-                      <div title={game.platform || game.providerName || 'PC'} className="flex items-center justify-center p-1 rounded-md bg-white/5 border border-white/10 shrink-0">
+                      <div title={game.platform || game.providerName || 'PC'} className="flex items-center justify-center p-1 rounded-md bg-white/5 shrink-0">
                         <ProviderLogo platform={game.platform || game.providerName || 'pc'} className="h-3.5 w-3.5" />
                       </div>
                       {(gt === 'dlc_addon' || game.isDlc) && (

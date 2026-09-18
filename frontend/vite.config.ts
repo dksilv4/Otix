@@ -31,15 +31,20 @@ export default defineConfig({
     },
   },
   server: {
-    host: '127.0.0.1',
+    host: process.env.VITE_HOST || '0.0.0.0',
     port: 5173,
+    watch: {
+      usePolling: process.env.VITE_USE_POLLING === 'true',
+    },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
+        timeout: 0,
+        proxyTimeout: 0,
       },
       '/media': {
-        target: 'http://127.0.0.1:8000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
         bypass: (req) => {
           // Browser navigations send Accept: text/html — serve index.html so the SPA handles routing

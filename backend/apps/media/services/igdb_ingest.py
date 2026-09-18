@@ -35,7 +35,6 @@ from typing import TYPE_CHECKING, Any
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.company.models import Company, InvolvedCompany
@@ -54,6 +53,8 @@ from apps.media.models import (
     MediaVideo,
     Platform,
 )
+from apps.media.services.catalog_lifecycle import finish_catalog_seed, payload_hash_matches
+from apps.media.services.catalog_link import attach_igdb_store_ids
 from apps.media.services.completeness import recompute_completeness
 from apps.media.services.igdb import _PLATFORM_NORMALIZATION, cover_url
 
@@ -80,7 +81,8 @@ GAME_HYDRATION_FIELDS = (
     "involved_companies.porting,involved_companies.supporting,"
     "involved_companies.company.name,involved_companies.company.slug,"
     "aggregated_rating,aggregated_rating_count,rating,rating_count,"
-    "external_games.external_game_source,external_games.uid"
+    "external_games.external_game_source,external_games.uid,"
+    "similar_games"
 )
 
 # IGDB game ``status`` categories (returned as an int) -> the release_status text.
@@ -127,9 +129,10 @@ def _game_type_label(raw: dict[str, Any]) -> str | None:
     if isinstance(cat_raw, str):
         cat_raw = cat_raw.strip()
         return cat_raw or None
-    if isinstance(cat_raw, (int, float)) and not isinstance(cat_raw, bool):
+    if isinstance(cat_raw, int | float) and not isinstance(cat_raw, bool):
         return _IGDB_GAME_TYPE.get(int(cat_raw))
     return None
+
 
 # IGDB game_mode names that imply other players (anything else is single-player).
 _MULTIPLAYER_MODES = {
@@ -293,12 +296,8 @@ def _upsert_game_image_assets(
             continue
         width = entry.get("width")
         height = entry.get("height")
-        w = int(width) if isinstance(width, (int, float)) and width > 0 else None
-        h = (
-            int(height)
-            if isinstance(height, (int, float)) and height > 0
-            else None
-        )
+        w = int(width) if isinstance(width, int | float) and width > 0 else None
+        h = int(height) if isinstance(height, int | float) and height > 0 else None
         if min_aspect is not None and (w is None or h is None or w / h < min_aspect):
             continue
         url = _image_url(entry.get("image_id"), size)
@@ -343,8 +342,8 @@ def _upsert_game_artworks(media: MediaItem, raw_artworks: Any) -> None:
 
         width = entry.get("width")
         height = entry.get("height")
-        w = int(width) if isinstance(width, (int, float)) and width > 0 else None
-        h = int(height) if isinstance(height, (int, float)) and height > 0 else None
+        w = int(width) if isinstance(width, int | float) and width > 0 else None
+        h = int(height) if isinstance(height, int | float) and height > 0 else None
         aspect = (w / h) if (w is not None and h is not None and h > 0) else None
 
         image_type = entry.get("image_type")
@@ -419,15 +418,12 @@ def _upsert_game_artworks(media: MediaItem, raw_artworks: Any) -> None:
             continue
 
         # 3. Cover check: alternative/historical/square covers in artworks
-        is_cover = (
-            image_type in _COVER_IMAGE_TYPES
-            or (
-                image_type is None
-                and artwork_type is None
-                and alpha is not True
-                and aspect is not None
-                and aspect < 1.0
-            )
+        is_cover = image_type in _COVER_IMAGE_TYPES or (
+            image_type is None
+            and artwork_type is None
+            and alpha is not True
+            and aspect is not None
+            and aspect < 1.0
         )
         if is_cover:
             if image_type == 9:
@@ -510,8 +506,8 @@ def _upsert_game_additional_covers(
             continue
         width = entry.get("width")
         height = entry.get("height")
-        w = int(width) if isinstance(width, (int, float)) and width > 0 else None
-        h = int(height) if isinstance(height, (int, float)) and height > 0 else None
+        w = int(width) if isinstance(width, int | float) and width > 0 else None
+        h = int(height) if isinstance(height, int | float) and height > 0 else None
         image_type = entry.get("image_type")
         if image_type == 9:
             label = "historical"
@@ -589,23 +585,14 @@ def _upsert_game_age_ratings(media: MediaItem, raw_ratings: Any) -> None:
 def seed_game_from_igdb(raw: dict[str, Any], igdb_id: int) -> int:
     """Map an IGDB game lookup onto a MediaItem + Game, hydrate it; return its pk.
 
-    Idempotent: an igdb ``ExternalID`` resolves to its media row (a mapped
-    re-seed is a refresh that grows a previously-minimal row); otherwise a
-    same-slug ``game`` title is reused (cross-provider dedup, mirroring the
-    GameMatcher); otherwise a fresh hub + subtype row is created. Every path then
-    runs the add-only full-hydration pass (``_hydrate_game``), so repeated seeds
-    never duplicate vocab/company links and missing subtype fields are topped up.
+    Identity is the IGDB ExternalID only — two games that share a slug (DLC vs
+    main) stay separate rows.
     """
+    from apps.media.services.identity import attach_external_id, find_media_id
+
     igdb_id_str = str(igdb_id)
-    existing = ExternalID.objects.filter(
-        content_type=_media_ct(),
-        provider="igdb",
-        external_id=igdb_id_str,
-        media_type="game",
-    ).first()
-    media = None
-    if existing is not None and existing.object_id:
-        media = MediaItem.objects.filter(pk=existing.object_id).first()
+    existing_id = find_media_id("igdb", igdb_id_str, "game")
+    media = MediaItem.objects.filter(pk=existing_id).first() if existing_id else None
 
     if media is None:
         title = (raw.get("name") or "Unknown Game").strip() or "Unknown Game"
@@ -613,29 +600,32 @@ def seed_game_from_igdb(raw: dict[str, Any], igdb_id: int) -> int:
         poster_url = cover_url(raw.get("cover"))
         slug = _game_slug(raw, title)
         release_date = _ts_to_date(raw.get("first_release_date"))
-        media = MediaItem.objects.filter(media_type="game", slug=slug).first()
-        if media is None:
-            media = MediaItem.objects.create(
-                media_type="game",
-                title=title,
-                slug=slug,
-                overview=overview,
-                release_date=release_date,
-                completeness_score=0.15,
-                next_sync_at=timezone.now(),
-            )
-        elif media.overview is None and overview:
-            media.overview = overview
-            media.save(update_fields=("overview", "updated_at"))
+        media = MediaItem.objects.create(
+            media_type="game",
+            title=title,
+            slug=slug,
+            overview=overview,
+            release_date=release_date,
+            completeness_score=0.15,
+        )
+        media_id = attach_external_id(media.pk, "igdb", igdb_id_str, "game")
+        if media_id != media.pk:
+            media = MediaItem.objects.get(pk=media_id)
+        else:
+            if poster_url:
+                _upsert_poster_asset(media, poster_url)
+    else:
+        media_id = media.pk
+        poster_url = cover_url(raw.get("cover"))
         if poster_url:
             _upsert_poster_asset(media, poster_url)
-        _upsert_external(media.pk, igdb_id_str)
 
     game, _ = Game.objects.get_or_create(media_item_id=media.pk)
     _hydrate_game(media, game, raw)
     _top_up_media_popularity(media, raw)
     top_up_game_ratings(media, raw)
-    recompute_completeness(media)
+    attach_igdb_store_ids(media.pk, raw)
+    finish_catalog_seed(media, raw, provider="igdb", external_id=str(igdb_id), hash_matched=False)
     return media.pk
 
 
@@ -748,14 +738,8 @@ def _hydrate_game(media: MediaItem, game: Game, raw: dict[str, Any]) -> None:
     )
     _upsert_game_artworks(media, raw.get("artworks"))
     primary_cover = raw.get("cover")
-    primary_cover_id = (
-        primary_cover.get("image_id")
-        if isinstance(primary_cover, dict)
-        else None
-    )
-    _upsert_game_additional_covers(
-        media, raw.get("all_covers"), primary_cover_id
-    )
+    primary_cover_id = primary_cover.get("image_id") if isinstance(primary_cover, dict) else None
+    _upsert_game_additional_covers(media, raw.get("all_covers"), primary_cover_id)
     _upsert_game_videos(media, raw.get("videos"))
     _upsert_game_age_ratings(media, raw.get("age_rating_details"))
     _apply_game_growth(game, raw)
@@ -906,7 +890,9 @@ def _official_website(websites: Any) -> str | None:
     return urls[0]
 
 
-async def fetch_and_seed_game(igdb_id: int, *, provider: IGDBProvider | None = None) -> int:
+async def fetch_and_seed_game(
+    igdb_id: int, *, provider: IGDBProvider | None = None, force: bool = False
+) -> int:
     """Fetch an IGDB game through the async client, then seed it."""
     if provider is None:
         from core.providers.igdb import IGDBProvider  # local: avoid eager client build
@@ -915,6 +901,10 @@ async def fetch_and_seed_game(igdb_id: int, *, provider: IGDBProvider | None = N
     raw = await provider.get_game(igdb_id, GAME_HYDRATION_FIELDS)
     if not raw:
         raise ValueError(f"IGDB returned no game for id {igdb_id}")
+    if not force:
+        skipped = await _skip_fresh_igdb(raw, igdb_id)
+        if skipped is not None:
+            return skipped
     # ``age_ratings`` comes back as an id list; resolve the org/label rows through
     # a separate /age_ratings fetch (best-effort: a sub-fetch failure shouldn't
     # abort an otherwise successful seed, mirroring the legacy hydrator).
@@ -936,4 +926,45 @@ async def fetch_and_seed_game(igdb_id: int, *, provider: IGDBProvider | None = N
         pass
     media_id = await sync_to_async(seed_game_from_igdb)(raw, igdb_id)
     await _steamgrid_enrich_after_seed(media_id, _steam_app_id(raw))
+    await _enqueue_related_igdb(raw)
     return media_id
+
+
+async def _skip_fresh_igdb(raw: dict[str, Any], igdb_id: int) -> int | None:
+    from apps.media.services.identity import find_media_id
+
+    media_id = await sync_to_async(find_media_id)("igdb", str(igdb_id), "game")
+    if media_id is None:
+        return None
+    matches = await sync_to_async(payload_hash_matches)(media_id, "igdb", str(igdb_id), "game", raw)
+    if not matches:
+        return None
+
+    def _stamp() -> int:
+        media = MediaItem.objects.get(pk=media_id)
+        finish_catalog_seed(
+            media, raw, provider="igdb", external_id=str(igdb_id), hash_matched=True
+        )
+        return media.pk
+
+    return await sync_to_async(_stamp)()
+
+
+async def _enqueue_related_igdb(raw: dict[str, Any]) -> None:
+    from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+    similar = raw.get("similar_games") or []
+    seen: set[str] = set()
+    self_id = str(raw.get("id") or "")
+    for entry in similar[:12]:
+        if isinstance(entry, dict):
+            gid = entry.get("id")
+        else:
+            gid = entry
+        if gid is None:
+            continue
+        ext = str(gid)
+        if ext in seen or ext == self_id:
+            continue
+        seen.add(ext)
+        await sync_to_async(ensure_catalog_job)("igdb", "game", ext, priority=2, dispatch=False)

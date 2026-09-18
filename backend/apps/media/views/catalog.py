@@ -55,6 +55,18 @@ class MediaListView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
+def _enqueue_detail_rehydrate(item: MediaItem) -> None:
+    from apps.integrations.services.catalog_seed import ensure_catalog_job
+    from apps.media.services.catalog_lifecycle import canonical_external_id
+    from apps.media.services.identity import CANONICAL_PROVIDER
+
+    provider = CANONICAL_PROVIDER.get(item.media_type)
+    ext = canonical_external_id(item)
+    if not provider or not ext:
+        return
+    ensure_catalog_job(provider, item.media_type, ext, priority=0)
+
+
 class GenreListView(APIView):
     """``GET /media/genres?media_type=...`` — genre vocabulary (public)."""
 
@@ -105,7 +117,20 @@ class MediaDetailView(APIView):
         theme = request.query_params.get("theme")
         context = theme if theme in ("dark", "light") else "general"
         catalog_service.enrich_summaries([item], request.user, context)
+        _enqueue_detail_rehydrate(item)
         return Response(MediaItemDetailSerializer(item).data)
+
+
+class CatalogStreamView(APIView):
+    """``GET /media/stream`` — catalog ``media.updated`` / ``media.merged`` SSE."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        from apps.media.services.catalog_events import CATALOG_CHANNEL
+        from core import sse as sse_lib
+
+        return sse_lib.sse_response(CATALOG_CHANNEL)
 
 
 class SimilarMediaView(APIView):
@@ -153,11 +178,7 @@ class MediaAssetsView(APIView):
     def get(self, request, media_type: str, media_id: int) -> Response:
         if not getattr(request.user, "is_staff", False):
             raise PermissionDenied("Admin privileges required")
-        item = (
-            MediaItem.objects.filter(pk=media_id)
-            .prefetch_related("assets")
-            .first()
-        )
+        item = MediaItem.objects.filter(pk=media_id).prefetch_related("assets").first()
         if item is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
         # Materialized textless twins exist only to back a textless pick; the

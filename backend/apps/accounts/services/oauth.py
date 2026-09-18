@@ -606,7 +606,7 @@ def _create_plex_pin(start_error: str, invalid_error: str) -> tuple[str, str]:
         )
     except OAuthProviderError:
         raise OAuthFlowError(502, start_error) from None
-    if status != 200:
+    if status < 200 or status >= 300:
         raise OAuthFlowError(502, start_error)
     body = _parse_json(raw)
     pin_id = body.get("id")
@@ -636,7 +636,7 @@ def build_plex_link_url(user_id: int) -> tuple[str, str, str]:
     )
     state = secrets.token_urlsafe(32)
     OAuthState.objects.create(key=state, payload={"v": "1", "pin_id": pin_id, "user_id": user_id})
-    callback = f"{_frontend_base()}/auth/plex/connect/callback"
+    callback = _callback_url("plex")
     return _plex_auth_url(code, state, callback), state, pin_id
 
 
@@ -1372,15 +1372,9 @@ def user_integrations_payload(user: User) -> dict:
 def oauth_providers_payload(user: User) -> list[dict]:
     """Five-provider list body for GET /auth/oauth (IntegrationsResponse).
 
-    Every provider object carries the full declared field set (nulls where
-    unset), mirroring FastAPI's un-omitted ``response_model`` serialization.
+    Local user columns only — never Steam/TMDB HTTP. Live player summaries
+    and TMDb tallies belong on dedicated refresh endpoints, not page load.
     """
-    try:
-        backfill_tmdb_avatar(user)
-    except OAuthProviderError:
-        pass
-    tmdb_stats = tmdb_stats_for_user(user)
-    steam_profile = steam_profile_for_user(user)
     tmdb_avatar_url = _gravatar_url(user.tmdb_avatar_hash)
 
     def row(overrides: dict) -> dict:
@@ -1410,7 +1404,7 @@ def oauth_providers_payload(user: User) -> list[dict]:
                 "name": "steam",
                 "connected": user.steam_id is not None,
                 "steam_id": user.steam_id,
-                "steam_profile": steam_profile,
+                "steam_profile": None,
             }
         ),
         row(
@@ -1429,7 +1423,7 @@ def oauth_providers_payload(user: User) -> list[dict]:
                 "connected": user.tmdb_session_id is not None,
                 "tmdb_username": user.tmdb_username,
                 "tmdb_avatar_url": tmdb_avatar_url,
-                "tmdb_stats": tmdb_stats,
+                "tmdb_stats": None,
                 "tmdb_rating_sync_direction": user.tmdb_rating_sync_direction,
             }
         ),

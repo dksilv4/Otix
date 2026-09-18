@@ -136,9 +136,7 @@ class TMDbLinkInitiateTests(TestCase):
             mock_request.side_effect = oauth_service.OAuthProviderError("refused")
             response = self._authed().post("/api/v1/auth/oauth/tmdb")
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.data["detail"], "Unable to start TMDb linking. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Unable to start TMDb linking. Please try again.")
 
     @override_settings(**TMDB_SETTINGS)
     def test_initiate_token_rejected_502(self) -> None:
@@ -167,9 +165,7 @@ class TMDbLinkRedirectTests(TestCase):
                 {"state": "tmdb-redir-a", "request_token": REQUEST_TOKEN, "approved": "true"},
             )
         self.assertEqual(response.status_code, 303)
-        query = dict(
-            urllib.parse.parse_qsl(urllib.parse.urlsplit(response.url).query)
-        )
+        query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(response.url).query))
         self.assertEqual(query, {"tmdb_link": "success"})
         self.assertTrue(response.url.startswith("http://localhost:5173/?"))
         self.user.refresh_from_db()
@@ -180,9 +176,7 @@ class TMDbLinkRedirectTests(TestCase):
 
     @override_settings(**TMDB_SETTINGS)
     def test_redirect_cancelled(self) -> None:
-        response = self.client.get(
-            "/api/v1/auth/oauth/tmdb/redirect", {"approved": "false"}
-        )
+        response = self.client.get("/api/v1/auth/oauth/tmdb/redirect", {"approved": "false"})
         self.assertEqual(response.status_code, 303)
         self.assertIn("tmdb_link=error", response.url)
         self.assertIn("message=", response.url)
@@ -287,9 +281,7 @@ class TMDbLinkCallbackTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.data["detail"], "TMDb linking session expired. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "TMDb linking session expired. Please try again.")
 
     @override_settings(**TMDB_SETTINGS)
     def test_callback_request_token_mismatch_400(self) -> None:
@@ -301,9 +293,7 @@ class TMDbLinkCallbackTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.data["detail"], "Invalid TMDb linking session. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Invalid TMDb linking session. Please try again.")
 
     @override_settings(**TMDB_SETTINGS)
     def test_callback_already_linked_400(self) -> None:
@@ -371,9 +361,7 @@ class TMDbLinkCallbackTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(
-            response.data["detail"], "Failed to link TMDb account. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Failed to link TMDb account. Please try again.")
 
 
 class TMDbDisconnectTests(TestCase):
@@ -449,9 +437,7 @@ class TMDbLoginInitiateTests(TestCase):
             mock_request.side_effect = oauth_service.OAuthProviderError("refused")
             response = APIClient().post("/api/v1/auth/tmdb/initiate")
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.data["detail"], "Unable to start TMDb login. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Unable to start TMDb login. Please try again.")
 
     @override_settings(**TMDB_SETTINGS)
     def test_initiate_unexpected_error_500(self) -> None:
@@ -459,9 +445,7 @@ class TMDbLoginInitiateTests(TestCase):
             mock_request.side_effect = ValueError("boom")
             response = APIClient().post("/api/v1/auth/tmdb/initiate")
         self.assertEqual(response.status_code, 500)
-        self.assertEqual(
-            response.data["detail"], "Failed to start TMDb login. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Failed to start TMDb login. Please try again.")
 
 
 class TMDbLoginCallbackTests(TestCase):
@@ -530,9 +514,7 @@ class TMDbLoginCallbackTests(TestCase):
             "/api/v1/auth/tmdb/callback", {"state": "", "request_token": ""}, format="json"
         )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.data["detail"], "Missing state or request_token parameter."
-        )
+        self.assertEqual(response.data["detail"], "Missing state or request_token parameter.")
 
     @override_settings(**TMDB_SETTINGS)
     def test_callback_bad_state_400(self) -> None:
@@ -543,9 +525,7 @@ class TMDbLoginCallbackTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.data["detail"], "TMDb linking session expired. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "TMDb linking session expired. Please try again.")
 
 
 class MeIntegrationsViewTests(TestCase):
@@ -572,9 +552,7 @@ class MeIntegrationsViewTests(TestCase):
         self.user.plex_id = "plex-1"
         self.user.google_id = "g-1"
         self.user.drive_refresh_token = "drv-rt"
-        self.user.save(
-            update_fields=("steam_id", "plex_id", "google_id", "drive_refresh_token")
-        )
+        self.user.save(update_fields=("steam_id", "plex_id", "google_id", "drive_refresh_token"))
         response = self._authed().get("/api/v1/auth/me/integrations")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -605,9 +583,7 @@ class MeIntegrationsViewTests(TestCase):
         self.user.tmdb_account_id = ACCOUNT_ID
         self.user.tmdb_username = "tmdbuser"
         self.user.tmdb_avatar_hash = "hash123"
-        self.user.save(
-            update_fields=("tmdb_account_id", "tmdb_username", "tmdb_avatar_hash")
-        )
+        self.user.save(update_fields=("tmdb_account_id", "tmdb_username", "tmdb_avatar_hash"))
         response = self._authed().get("/api/v1/auth/me/integrations")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["tmdb_account_id"], ACCOUNT_ID)
@@ -702,6 +678,29 @@ class OAuthProvidersViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         for provider in response.data["providers"]:
             self.assertFalse(provider["connected"])
+
+    @override_settings(
+        FRONTEND_BASE_URL="http://localhost:5173",
+        STEAM_API_KEY="test-steam-key",
+        TMDB_API_KEY="test-tmdb-key",
+        TMDB_RAT="test-tmdb-rat",
+    )
+    def test_providers_payload_does_not_call_live_provider_http(self) -> None:
+        self.user.steam_id = "76561197960435530"
+        self.user.tmdb_session_id = SESSION_ID
+        self.user.tmdb_account_id = ACCOUNT_ID
+        self.user.tmdb_username = "tmdbuser"
+        self.user.save(
+            update_fields=("steam_id", "tmdb_session_id", "tmdb_account_id", "tmdb_username")
+        )
+        with patch.object(oauth_service, "_request") as mock_request:
+            mock_request.return_value = (200, "{}")
+            response = self._authed().get("/api/v1/auth/oauth")
+        mock_request.assert_not_called()
+        self.assertEqual(response.status_code, 200)
+        by_name = {p["name"]: p for p in response.data["providers"]}
+        self.assertTrue(by_name["steam"]["connected"])
+        self.assertTrue(by_name["tmdb"]["connected"])
 
     def test_unauthed_401(self) -> None:
         response = APIClient().get("/api/v1/auth/oauth")

@@ -33,6 +33,7 @@ from __future__ import annotations
 import asyncio
 import gzip
 import json
+import logging
 import os
 import tempfile
 from collections.abc import Iterable, Iterator
@@ -42,7 +43,10 @@ from typing import Any
 
 import httpx
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError, transaction
+from django.utils import timezone as dj_timezone
 
 from apps.integrations.models import SyncJob
 from apps.integrations.services.sync import execute_sync_job
@@ -50,6 +54,8 @@ from apps.media.models import ExternalID, MediaItem
 from apps.proposals.models import TMDBDeletedID
 from core.providers.igdb import IGDBProvider
 from core.providers.tmdb import TMDBProvider
+
+logger = logging.getLogger(__name__)
 
 # Popular-list fetcher per supported TMDB media kind (maps onto the SyncJob
 # ``entity_type`` the tmdb engine dispatches on).
@@ -135,6 +141,165 @@ def enqueue_seed_jobs(
     return jobs
 
 
+_MUSIC_ENTITY_TYPES = frozenset({"music", "album"})
+_MUSIC_PROVIDERS = frozenset({"musicbrainz"})
+_HYDRATED_TYPES = ("movie", "show", "game")
+
+
+def ensure_catalog_job(
+    provider: str,
+    entity_type: str,
+    external_id: str,
+    *,
+    priority: int = 5,
+    force: bool = False,
+    dispatch: bool | None = None,
+) -> SyncJob | None:
+    """Enqueue (or bump) one live seed/rehydrate job for a canonical provider id.
+
+    Already-mapped ids are allowed (rehydrate). Music is rejected. A live
+    pending/running job is unique; a worse priority is bumped. P0 jobs are
+    dispatched immediately unless *dispatch* is False.
+    """
+    if entity_type in _MUSIC_ENTITY_TYPES or provider in _MUSIC_PROVIDERS:
+        return None
+    if entity_type not in _HYDRATED_TYPES:
+        return None
+    ext = str(external_id).strip()
+    if not provider or not ext:
+        return None
+    if not force and _fresh_enough(provider, entity_type, ext):
+        return None
+
+    live = (
+        SyncJob.objects.filter(
+            provider=provider,
+            entity_type=entity_type,
+            external_id=ext,
+            status__in=("pending", "running"),
+        )
+        .order_by("pk")
+        .first()
+    )
+    if live is not None:
+        if live.status == "pending" and live.priority > priority:
+            live.priority = priority
+            if force:
+                live.phase = "force"
+            live.save(update_fields=("priority", "phase"))
+        if dispatch is True or (
+            dispatch is None and live.priority <= 0 and live.status == "pending"
+        ):
+            _dispatch_job(live)
+        return live
+
+    job = SyncJob(
+        provider=provider,
+        entity_type=entity_type,
+        external_id=ext,
+        status="pending",
+        phase="force" if force else "core",
+        is_bulk=False,
+        priority=priority,
+    )
+    try:
+        with transaction.atomic():
+            job.save()
+    except IntegrityError:
+        return ensure_catalog_job(
+            provider, entity_type, ext, priority=priority, force=force, dispatch=dispatch
+        )
+    if dispatch is True or (dispatch is None and priority <= 0):
+        _dispatch_job(job)
+    return job
+
+
+def _fresh_enough(provider: str, entity_type: str, external_id: str) -> bool:
+    from apps.media.services.completeness import COMPLETE_THRESHOLD
+    from apps.media.services.identity import find_media_id
+
+    media_id = find_media_id(provider, external_id, entity_type)
+    if media_id is None:
+        return False
+    media = MediaItem.objects.filter(pk=media_id).only("completeness_score", "next_sync_at").first()
+    if media is None:
+        return False
+    if float(media.completeness_score or 0) < COMPLETE_THRESHOLD:
+        return False
+    if media.next_sync_at is None or media.next_sync_at <= dj_timezone.now():
+        return False
+    return True
+
+
+def _dispatch_job(job: SyncJob) -> None:
+    if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+        return
+    try:
+        from apps.integrations.tasks import run_sync_job
+
+        run_sync_job.delay(job.pk)
+    except Exception:  # noqa: BLE001 - enqueue must survive a down worker
+        logger.exception("could not dispatch catalog job pk=%s", job.pk)
+
+
+def enqueue_due_and_incomplete(*, limit: int = 200) -> dict[str, int]:
+    """Enqueue rehydrate jobs for incomplete or due movie/show/game rows."""
+    from apps.media.services.completeness import COMPLETE_THRESHOLD
+    from apps.media.services.identity import CANONICAL_PROVIDER
+
+    now = dj_timezone.now()
+    qs = (
+        MediaItem.objects.filter(media_type__in=_HYDRATED_TYPES)
+        .filter(models_q_due_or_incomplete(now, COMPLETE_THRESHOLD))
+        .order_by("next_sync_at", "pk")[:limit]
+    )
+    enqueued = 0
+    skipped = 0
+    for media in qs:
+        provider = CANONICAL_PROVIDER.get(media.media_type)
+        if not provider:
+            skipped += 1
+            continue
+        ext = (
+            ExternalID.objects.filter(
+                content_type=_media_ct(),
+                object_id=media.pk,
+                provider=provider,
+                media_type=media.media_type,
+            )
+            .values_list("external_id", flat=True)
+            .first()
+        )
+        if not ext:
+            skipped += 1
+            continue
+        job = ensure_catalog_job(provider, media.media_type, ext, priority=4, dispatch=False)
+        if job is not None:
+            enqueued += 1
+        else:
+            skipped += 1
+    return {"enqueued": enqueued, "skipped": skipped, "scanned": enqueued + skipped}
+
+
+def models_q_due_or_incomplete(now, threshold):
+    from django.db.models import Q
+
+    return (
+        Q(completeness_score__lt=threshold)
+        | Q(next_sync_at__isnull=True)
+        | Q(next_sync_at__lte=now)
+    )
+
+
+def drain_catalog(*, limit: int | None = None, rehydrate_limit: int | None = None) -> dict:
+    """Enqueue due/incomplete rows, then drain pending jobs by priority."""
+    rehydrate = enqueue_due_and_incomplete(
+        limit=rehydrate_limit if rehydrate_limit is not None else settings.CATALOG_REHYDRATE_LIMIT
+    )
+    drain = run_pending_jobs(limit=limit if limit is not None else settings.CATALOG_DRAIN_LIMIT)
+    return {"rehydrate": rehydrate, "drain": drain}
+
+
 def run_pending_jobs(
     *,
     provider: str | None = None,
@@ -149,7 +314,12 @@ def run_pending_jobs(
     ``provider``/``entity_type`` narrow the drain. Returns a summary with the
     per-job outcomes so callers can surface progress.
     """
-    qs = SyncJob.objects.filter(status="pending").order_by("created_at", "pk")
+    qs = (
+        SyncJob.objects.filter(status="pending")
+        .exclude(entity_type__in=_MUSIC_ENTITY_TYPES)
+        .exclude(provider__in=_MUSIC_PROVIDERS)
+        .order_by("priority", "created_at", "pk")
+    )
     if provider is not None:
         qs = qs.filter(provider=provider)
     if entity_type is not None:

@@ -323,7 +323,7 @@ export const mediaQueries = {
       enabled: !!id,
       retry: 3,
       staleTime: 1000 * 60 * 10,
-      gcTime: 1000 * 60 * 30,
+      gcTime: 1000 * 60 * 60 * 24,
     }),
 
   list: (opts?: {

@@ -36,22 +36,14 @@ import logging
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.utils import timezone
-from django.utils.text import slugify
 
 from apps.integrations.models import SyncJob, UserPlexItem, UserPlexLibrary
 from apps.integrations.services import plex as _plex
 from apps.integrations.services.plex_watchlist import (
     _dt_from_plex,
-    _find_media_id,
-    _media_content_type,
-    _parse_plex_date,
-    _upsert_external,
     extract_guids,
 )
 from apps.integrations.services.sync import register_sync_engine
-from apps.media.models import Album, MediaItem, Movie, Show
-from apps.media.services.completeness import recompute_completeness
 from apps.media.services.interaction import set_interaction
 from core import progress as progress_lib
 
@@ -93,75 +85,75 @@ def _match_or_seed(
     plex_guid: str | None,
     *,
     child_count: int | None = None,
-) -> tuple[int, bool]:
-    """Resolve a Plex item to a ``MediaItem`` id, seeding a stub subtype if new.
+) -> tuple[int | None, bool]:
+    """Resolve a Plex item to a catalog hub. Never creates a stub MediaItem.
 
-    Returns ``(media_item_id, was_matched)`` — True when the item resolved to an
-    existing catalog entry (recorded plex guid, then third-party guids), False
-    when a new stub row was created. Mirrors the watchlist seed helper but also
-    creates the ``Album`` subtype for music.
+    Returns ``(media_item_id, was_matched)``. Unmatched items stay ``None`` and
+    enqueue a catalog job when a canonical tmdb/igdb id can be resolved.
     """
-    media_ct = _media_content_type()
+    from apps.media.services.catalog_resolve import resolve_or_enqueue
+    from apps.media.services.identity import attach_external_id, find_media_id_any
+
+    if media_type == "music":
+        return None, False
+
+    ids = dict(guids)
     if plex_guid:
-        media_id = _find_media_id(media_ct, "plex", plex_guid, media_type=None)
-        if media_id is not None:
-            return media_id, True
+        ids["plex"] = plex_guid
+    found = find_media_id_any(ids, media_type)
+    if found is not None:
+        if plex_guid:
+            attach_external_id(found, "plex", plex_guid, None)
+        for provider, external_id in guids.items():
+            attach_external_id(found, provider, str(external_id), media_type)
+        return found, True
 
-    for provider, external_id in guids.items():
-        media_id = _find_media_id(media_ct, provider, external_id, media_type=media_type)
-        if media_id is not None:
-            if plex_guid:
-                _upsert_external(media_ct, media_id, "plex", plex_guid, None)
-            return media_id, True
-
-    title = str(item.get("title") or "Untitled").strip()
     year = item.get("year")
-    slug = slugify(f"{title}-{year}") if year else slugify(title)
-    media = MediaItem.objects.create(
-        media_type=media_type,
-        title=title,
-        slug=slug or slugify(media_type),
-        overview=item.get("summary"),
-        release_date=_parse_plex_date(item.get("originallyAvailableAt")),
-        completeness_score=0.15,
-        next_sync_at=timezone.now(),
+    try:
+        year_int = int(year) if year is not None else None
+    except (TypeError, ValueError):
+        year_int = None
+    media_id = resolve_or_enqueue(
+        media_type,
+        ids=ids,
+        title=str(item.get("title") or "").strip() or None,
+        year=year_int,
+        priority=1,
     )
-    if media_type == "movie":
-        Movie.objects.create(media_item=media)
-    elif media_type == "music":
-        Album.objects.create(media_item=media, track_count=child_count or 0)
-    else:
-        Show.objects.create(media_item=media)
-    for provider, external_id in guids.items():
-        _upsert_external(media_ct, media.pk, provider, external_id, media_type)
-    if plex_guid:
-        _upsert_external(media_ct, media.pk, "plex", plex_guid, None)
-    # The stub's 0.15 create-time base is a placeholder, not its graph truth.
-    recompute_completeness(media)
-    return media.pk, False
+    if media_id is not None:
+        if plex_guid:
+            attach_external_id(media_id, "plex", plex_guid, None)
+        return media_id, True
+    return None, False
 
 
-def _page_json(url: str, token: str) -> dict | None:
-    """GET one Plex page, returning parsed JSON (``None`` on any failure)."""
+def _page_json(url: str, token: str, extra_headers: dict | None = None) -> dict | None:
+    """GET one Plex page, returning parsed JSON (``None`` on any failure).
+
+    Paged ``/all`` responses are often ``206 Partial Content``; discovery already
+    treats any 2xx as success, so this leaf must too.
+    """
+    headers = {**_plex._plex_headers(), **(extra_headers or {})}
     try:
         status, raw = _plex._request(
             _plex._with_token(url, token),
-            headers=_plex._plex_headers(),
+            headers=headers,
             timeout=60.0,
         )
     except Exception:  # noqa: BLE001 - a fetch failure just skips the library
+        logger.warning("plex library page request failed url=%s", url, exc_info=True)
         return None
-    if status != 200:
+    if status < 200 or status >= 300:
+        logger.warning("plex library page unexpected status=%s url=%s", status, url)
         return None
     try:
         return json.loads(raw)
     except ValueError:
+        logger.warning("plex library page non-json status=%s url=%s", status, url)
         return None
 
 
-def _fetch_library_items(
-    user, server, library, token: str
-) -> list[dict] | None:
+def _fetch_library_items(user, server, library, token: str) -> list[dict] | None:
     """Fetch one library's movie/show/music items via paged section ``/all``."""
     if not token or not server.base_url:
         return None
@@ -175,7 +167,14 @@ def _fetch_library_items(
             f"&X-Plex-Container-Start={offset}"
             f"&X-Plex-Container-Size={_PLEX_PAGE_SIZE}"
         )
-        data = _page_json(url, token)
+        data = _page_json(
+            url,
+            token,
+            extra_headers={
+                "X-Plex-Container-Start": str(offset),
+                "X-Plex-Container-Size": str(_PLEX_PAGE_SIZE),
+            },
+        )
         if data is None:
             return None
         container = data.get("MediaContainer", data)
@@ -253,6 +252,12 @@ def _sync_library(user, server, library, token: str, emit) -> dict:
     """Scan one library: seed/match items, upsert rows, write interactions."""
     items = _fetch_library_items(user, server, library, token)
     if items is None:
+        logger.warning(
+            "failed to fetch plex library items server=%s library=%s section=%s",
+            server.name,
+            library.title,
+            library.section_key,
+        )
         return {"total": 0, "matched": 0, "seeded": 0}
 
     emit(
@@ -282,10 +287,29 @@ def _sync_library(user, server, library, token: str, emit) -> dict:
             )
             if was_matched:
                 matched += 1
-            else:
-                seeded += 1
+            elif media_item_id is None and media_type != "music":
+                # Canonical id was resolved (or not). Count enqueued-or-unmatched
+                # as "seeded" only when a live catalog job exists for this title.
+                from apps.integrations.models import SyncJob
+                from apps.media.services.catalog_resolve import resolve_canonical_id
+
+                ids = dict(guids)
+                if plex_guid:
+                    ids["plex"] = plex_guid
+                ref = resolve_canonical_id(media_type, ids=ids)
+                if (
+                    ref is not None
+                    and SyncJob.objects.filter(
+                        provider=ref.provider,
+                        entity_type=ref.entity_type,
+                        external_id=ref.external_id,
+                        status__in=("pending", "running"),
+                    ).exists()
+                ):
+                    seeded += 1
             _upsert_item(user, server, library, item, media_type, media_item_id, guids)
-            _apply_interactions(user, item, media_type, media_item_id)
+            if media_item_id is not None:
+                _apply_interactions(user, item, media_type, media_item_id)
             if (i + 1) % 5 == 0:
                 emit(
                     "library_progress",

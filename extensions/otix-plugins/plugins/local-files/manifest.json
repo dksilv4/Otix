@@ -8,12 +8,12 @@
   "permissions": ["worker:filesystem", "storage:local"],
   "config": {
     "scanDirectories": {
-      "type": "list",
+      "type": "path-list",
       "label": "Scan Directories",
       "description": "Directories to scan for game executables and Steam manifests"
     },
     "isoDirectories": {
-      "type": "list",
+      "type": "path-list",
       "label": "ISO Directories",
       "description": "Directories to scan for ISO game files"
     }

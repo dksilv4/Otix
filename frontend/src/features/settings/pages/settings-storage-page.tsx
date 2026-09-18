@@ -1,10 +1,9 @@
-import { useState, type ComponentType, type ReactNode } from 'react'
+import { useState, type ComponentType } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { Link, useLocation } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
-import { formatBytes, cn } from '@/lib/utils'
+import { formatBytes } from '@/lib/utils'
 import { DkCheckbox } from '@ui/atoms/checkbox'
 import { DkInput } from '@ui/atoms/input'
 import { DkSelect } from '@ui/atoms/select'
@@ -21,8 +20,15 @@ import {
   Loader2,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Trash2,
 } from 'lucide-react'
+import PlexIcon from '@/assets/provider-logos/plex.svg?react'
+import { DkButton } from '@ui/atoms/button'
+import {
+  PlexStorageOptimizerModal,
+  usePlexStorageSummary,
+} from '@/features/integrations/plex-storage'
 import {
   ASSET_TYPE_OPTIONS,
   type ArtworkSettingsPatch,
@@ -35,30 +41,14 @@ import {
 } from '@/features/media/hooks/use-media-admin-settings'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
+import { SettingsRow } from '../components/molecules/settings-row'
+import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 
 interface StorageStats {
   mediaDir: string
   downloadedCount: number
   downloadedBytes: number
   disk: { total: number; used: number; free: number }
-}
-
-/** Visible glass surface for a settings section — distinct from the page
- * background so stacked sections don't blur together (SettingsCard's 0.18
- * alpha reads as no background). Used on this page only. */
-function Panel({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <section
-      className={cn('rounded-2xl p-5 sm:p-6', className)}
-      style={{
-        backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.42)',
-        boxShadow:
-          'inset 0 1px 0 0 rgba(255,255,255,0.06), 0 12px 32px -18px rgba(0,0,0,0.5)',
-      }}
-    >
-      {children}
-    </section>
-  )
 }
 
 function Metric({
@@ -86,43 +76,6 @@ function Metric({
   )
 }
 
-function AccessBlock({ signedOut }: { signedOut: boolean }) {
-  const location = useLocation()
-  return (
-    <SettingsCard className="p-8 sm:p-10 text-center space-y-5 max-w-xl mx-auto my-8">
-      <div
-        className={cn(
-          'mx-auto flex h-14 w-14 items-center justify-center rounded-2xl',
-          signedOut ? 'bg-primary/10 text-primary' : 'bg-amber-400/10 text-amber-400',
-        )}
-      >
-        {signedOut ? <ShieldCheck className="h-7 w-7" /> : <ShieldAlert className="h-7 w-7" />}
-      </div>
-      <div className="space-y-1.5">
-        <h3 className="text-lg font-bold text-white tracking-tight">
-          {signedOut ? 'Sign in to view storage' : 'Admin access required'}
-        </h3>
-        <p className="text-xs text-white/60 leading-relaxed max-w-md mx-auto">
-          {signedOut
-            ? 'Downloaded-library usage is only visible to signed-in admins.'
-            : 'Only server admins can inspect the locally downloaded media library and disk usage.'}
-        </p>
-      </div>
-      {signedOut && (
-        <div className="pt-2">
-          <Link
-            to="/auth/login"
-            search={{ redirect: location.href }}
-            className="inline-flex items-center justify-center font-semibold rounded-xl px-6 py-2.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md active:scale-[0.98]"
-          >
-            Sign In
-          </Link>
-        </div>
-      )}
-    </SettingsCard>
-  )
-}
-
 const SWEEP_INTERVAL_OPTIONS = [
   { value: '1', label: 'Every 1 minute' },
   { value: '5', label: 'Every 5 minutes' },
@@ -146,23 +99,17 @@ function ToggleRow({
   onCheckedChange: (checked: boolean) => void
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2.5">
-      <div className="min-w-0">
-        <p className="text-sm font-bold text-white">{title}</p>
-        <p className="mt-0.5 text-xs leading-relaxed text-white/40">{description}</p>
-      </div>
-      <DkSwitch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
-    </div>
+    <SettingsRow
+      label={title}
+      description={description}
+      disabled={disabled}
+      action={<DkSwitch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />}
+    />
   )
 }
 
 function SubHeading({ title, description }: { title: string; description?: string }) {
-  return (
-    <div className="mb-4">
-      <h4 className="text-[11px] font-semibold uppercase tracking-widest text-white/40">{title}</h4>
-      {description && <p className="mt-1 text-xs leading-relaxed text-white/40">{description}</p>}
-    </div>
-  )
+  return <SectionHeader title={title} description={description} />
 }
 
 /** Auto-mirror sub-settings: fetch/discover/local-game triggers, sweep rate,
@@ -194,10 +141,10 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
 
   if (isLoading) {
     return (
-      <Panel className="flex items-center justify-center gap-3 py-10 text-white/50">
+      <SettingsCard tone="raised" className="flex items-center justify-center gap-3 py-10 text-white/50">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-xs">Loading artwork settings…</span>
-      </Panel>
+      </SettingsCard>
     )
   }
   if (!settings) return null
@@ -251,7 +198,7 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
 
   return (
     <>
-      <Panel>
+      <SettingsCard tone="raised">
         <SectionHeader
           icon={Download}
           title="Automatic downloads"
@@ -308,7 +255,7 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
           </div>
         </div>
 
-        <div className="mt-5 border-t border-white/[0.07] pt-5">
+        <div className="mt-5 pt-5">
           <SubHeading
             title="Artwork types"
             description="Which artwork a downloaded title gets. Already-downloaded files are kept even if a type is unchecked."
@@ -325,9 +272,9 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
             ))}
           </div>
         </div>
-      </Panel>
+      </SettingsCard>
 
-      <Panel>
+      <SettingsCard tone="raised">
         <SectionHeader
           icon={Gauge}
           title="Download guardrails"
@@ -386,7 +333,7 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
         )}
 
         {overBudget && (
-          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-300/90">
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-300/90">
             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
               Stored artwork is over its {mirror.maxGb} GB budget. New auto-downloads replace the
@@ -397,7 +344,7 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
         )}
 
         {capPaused && (
-          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-300/90">
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-300/90">
             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
             <p>
               Downloads are paused — only {formatBytes(settings.disk.free)} free, below your{' '}
@@ -405,7 +352,7 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
             </p>
           </div>
         )}
-      </Panel>
+      </SettingsCard>
     </>
   )
 }
@@ -427,9 +374,28 @@ export function SettingsStoragePage() {
   const setMirroring = useSetMirroring()
   const purge = usePurgeAssets()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [plexOptimizerOpen, setPlexOptimizerOpen] = useState(false)
+  const { data: plexStorage } = usePlexStorageSummary(null, { enabled: admin })
 
-  if (!isAuthenticated || !user) return <AccessBlock signedOut />
-  if (!user.isAdmin) return <AccessBlock signedOut={false} />
+  if (!isAuthenticated || !user) {
+    return (
+      <SettingsLockedState
+        title="Sign in to view storage"
+        description="Downloaded-library usage is only visible to signed-in admins."
+        icon={ShieldCheck}
+      />
+    )
+  }
+  if (!user.isAdmin) {
+    return (
+      <SettingsLockedState
+        title="Admin access required"
+        description="Only server admins can inspect the locally downloaded media library and disk usage."
+        icon={ShieldAlert}
+        action={<span />}
+      />
+    )
+  }
 
   const disk = data?.disk
   const usedPct = disk && disk.total > 0 ? Math.min(100, (disk.used / disk.total) * 100) : 0
@@ -478,21 +444,21 @@ export function SettingsStoragePage() {
       />
 
       {isLoading && (
-        <Panel className="flex items-center justify-center gap-3 py-14 text-white/50">
+        <SettingsCard tone="raised" className="flex items-center justify-center gap-3 py-14 text-white/50">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span className="text-sm">Loading storage usage…</span>
-        </Panel>
+        </SettingsCard>
       )}
 
       {error && (
-        <Panel className="text-sm text-red-400/90 bg-red-400/5 py-6 text-center">
+        <SettingsCard tone="raised" className="text-sm text-red-400/90 bg-red-400/5 py-6 text-center">
           Could not load storage usage. The media admin API may be unreachable.
-        </Panel>
+        </SettingsCard>
       )}
 
       {data && !isLoading && (
         <>
-          <Panel>
+          <SettingsCard tone="raised">
             <SectionHeader
               icon={Download}
               title="Download artwork to this server"
@@ -513,7 +479,7 @@ export function SettingsStoragePage() {
               }
             />
             {mirroring.isSuccess && !mirroringEnabled && (
-              <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-300/90">
+              <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-300/90">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>
                   Mirroring is paused. The{' '}
@@ -539,7 +505,7 @@ export function SettingsStoragePage() {
               />
             </div>
 
-            <div className="mt-5 border-t border-white/[0.07] pt-5">
+            <div className="mt-5 pt-5">
               <div className="mb-2 flex items-center justify-between text-[11px] text-white/50">
                 <span className="font-semibold uppercase tracking-widest">Volume usage</span>
                 <span className="tabular-nums">
@@ -591,9 +557,55 @@ export function SettingsStoragePage() {
                 {purge.isPending ? 'Deleting…' : 'Delete all'}
               </button>
             </div>
-          </Panel>
+          </SettingsCard>
 
           <AutoMirrorControls masterEnabled={mirroringEnabled} />
+
+          <SettingsCard tone="raised">
+            <SectionHeader
+              icon={HardDrive}
+              title="Plex Media Servers Storage"
+              description="Analyze connected Plex servers to find duplicate versions, legacy codecs suitable for transcode, and unwatched dead weight."
+              action={
+                <DkButton
+                  size="sm"
+                  onClick={() => setPlexOptimizerOpen(true)}
+                  leftIcon={Sparkles}
+                  className="bg-primary/10 text-primary shadow-none hover:bg-primary/15"
+                >
+                  Open Optimizer
+                </DkButton>
+              }
+            />
+
+            {plexStorage ? (
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Metric
+                  icon={HardDrive}
+                  label="Plex media scanned"
+                  value={formatBytes(plexStorage.totalBytes ?? plexStorage.total_bytes ?? 0)}
+                  hint={`${plexStorage.totalItems ?? plexStorage.total_items ?? 0} items · ${plexStorage.totalFiles ?? plexStorage.total_files ?? 0} files`}
+                />
+                <Metric
+                  icon={Sparkles}
+                  label="Potential savings"
+                  value={`Up to ${formatBytes(plexStorage.potentialSavingsBytes ?? plexStorage.potential_savings_bytes ?? 0)}`}
+                  hint="Reclaimable from duplicates, transcode & dead weight"
+                />
+              </div>
+            ) : (
+              <div className="mt-3 text-xs text-white/50">
+                Launch the optimizer to inspect connected servers and view actionable savings.
+              </div>
+            )}
+          </SettingsCard>
+
+          {plexOptimizerOpen && (
+            <PlexStorageOptimizerModal
+              open={plexOptimizerOpen}
+              onOpenChange={setPlexOptimizerOpen}
+            />
+          )}
 
           <DkDialog
             open={confirmOpen}

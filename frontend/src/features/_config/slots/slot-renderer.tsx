@@ -30,6 +30,7 @@ import { ErrorCard } from './error-card'
 import { validateWidget } from './widget-catalog'
 import type { SlotContribution, SlotWidget } from './types'
 import { Alert, Badge, Button, EmptyState, Field, Input, Progress, Select, Switch } from '@/features/plugins/ui'
+import { PathInput } from '@/components/path-picker'
 import { cn } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1003,20 +1004,19 @@ function PathListField({
   }
   const remove = (idx: number) => onChange(value.filter((_, i) => i !== idx))
   const add = () => onChange([...value, ''])
-  const browse = async (idx: number) => {
-    const dir = await (window as any).desktopAPI?.selectDirectory?.()
-    if (dir) update(idx, dir)
-  }
 
   return (
     <Field label={field.label} description={field.description} required={field.required}>
       <div className="space-y-1.5">
         {value.map((path, idx) => (
           <div key={idx} className="flex items-center gap-2">
-            <Input value={path} placeholder={field.placeholder || '/path/to/games'} onChange={(e) => update(idx, e.target.value)} />
-            <Button type="button" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0" onClick={() => browse(idx)}>
-              <FolderOpen className="h-4 w-4" />
-            </Button>
+            <PathInput
+              compact
+              value={path}
+              placeholder={field.placeholder || '/path/to/games'}
+              onChange={(next) => update(idx, next)}
+              className="min-w-0 flex-1"
+            />
             <Button type="button" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-white/30 hover:text-red-400" onClick={() => remove(idx)}>
               <Trash2 className="h-4 w-4" />
             </Button>

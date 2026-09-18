@@ -31,13 +31,13 @@ from apps.integrations.services import catalog_seed
 from apps.integrations.tasks import catalog_daily_tmdb, catalog_drain
 
 _EXPORT_TEXT = (
-    '[\n'
+    "[\n"
     '{"id": 11, "original_title": "One"},\n'
     '{"id": 12, "original_title": "Two"},\n'
-    'not-json,\n'
+    "not-json,\n"
     '{"id": "x", "original_title": "Bad"},\n'
     '{"id": 13, "original_title": "Three"}\n'
-    ']'
+    "]"
 )
 
 
@@ -68,9 +68,7 @@ class IterExportIdsTests(TestCase):
     def test_limit_stops_the_walk(self):
         path = _write_export_file()
         try:
-            self.assertEqual(
-                list(catalog_seed.iter_export_ids(path, limit=2)), ["11", "12"]
-            )
+            self.assertEqual(list(catalog_seed.iter_export_ids(path, limit=2)), ["11", "12"])
         finally:
             path.unlink(missing_ok=True)
 
@@ -87,15 +85,11 @@ class DownloadTmdBExportTests(TestCase):
             return httpx.Response(200, content=_export_gzip_bytes())
 
         dates = ("01_02_2026", "01_01_2026")
-        with mock.patch.object(
-            catalog_seed, "_export_dates", return_value=dates
-        ):
+        with mock.patch.object(catalog_seed, "_export_dates", return_value=dates):
             client = self._client_for(handler)
             try:
                 path = _run(
-                    catalog_seed.download_tmdb_export(
-                        "movie_ids", client=client, api_key="k"
-                    )
+                    catalog_seed.download_tmdb_export("movie_ids", client=client, api_key="k")
                 )
             finally:
                 _run(client.aclose())
@@ -115,9 +109,7 @@ class DownloadTmdBExportTests(TestCase):
             content = _export_gzip_bytes() if status == 200 else b""
             return httpx.Response(status, content=content)
 
-        with mock.patch.object(
-            catalog_seed, "_export_dates", return_value=dates
-        ):
+        with mock.patch.object(catalog_seed, "_export_dates", return_value=dates):
             client = self._client_for(handler)
             try:
                 path = _run(catalog_seed.download_tmdb_export("movie_ids", client=client))
@@ -135,9 +127,7 @@ class DownloadTmdBExportTests(TestCase):
 
     def test_no_published_export_returns_none(self):
         dates = ("01_02_2026", "01_01_2026")
-        with mock.patch.object(
-            catalog_seed, "_export_dates", return_value=dates
-        ):
+        with mock.patch.object(catalog_seed, "_export_dates", return_value=dates):
             client = self._client_for(lambda request: httpx.Response(404))
             try:
                 path = _run(catalog_seed.download_tmdb_export("movie_ids", client=client))
@@ -160,11 +150,13 @@ class DownloadTmdBExportTests(TestCase):
 class EnqueueTmdBDailyTests(TestCase):
     def test_streams_ids_into_enqueue_in_bounded_batches(self):
         path = _write_export_file()
-        with mock.patch.object(
-            catalog_seed, "download_tmdb_export", new=mock.AsyncMock(return_value=path)
-        ), mock.patch.object(
-            catalog_seed, "_ENQUEUE_BATCH_SIZE", 2
-        ), mock.patch.object(catalog_seed, "enqueue_seed_jobs") as enqueue:
+        with (
+            mock.patch.object(
+                catalog_seed, "download_tmdb_export", new=mock.AsyncMock(return_value=path)
+            ),
+            mock.patch.object(catalog_seed, "_ENQUEUE_BATCH_SIZE", 2),
+            mock.patch.object(catalog_seed, "enqueue_seed_jobs") as enqueue,
+        ):
             enqueue.side_effect = lambda *, external_ids, **kw: [
                 mock.Mock(external_id=i) for i in external_ids
             ]
@@ -183,9 +175,12 @@ class EnqueueTmdBDailyTests(TestCase):
         self.assertFalse(path.exists())
 
     def test_unavailable_export_is_reported_not_raised(self):
-        with mock.patch.object(
-            catalog_seed, "download_tmdb_export", new=mock.AsyncMock(return_value=None)
-        ), mock.patch.object(catalog_seed, "enqueue_seed_jobs") as enqueue:
+        with (
+            mock.patch.object(
+                catalog_seed, "download_tmdb_export", new=mock.AsyncMock(return_value=None)
+            ),
+            mock.patch.object(catalog_seed, "enqueue_seed_jobs") as enqueue,
+        ):
             summary = _run(catalog_seed.enqueue_tmdb_daily("movie", limit=5))
 
         self.assertEqual(summary["export"], "unavailable")
@@ -194,9 +189,7 @@ class EnqueueTmdBDailyTests(TestCase):
         enqueue.assert_not_called()
 
     def test_unsupported_entity_type_raises(self):
-        with mock.patch.object(
-            catalog_seed, "download_tmdb_export", new=mock.AsyncMock()
-        ):
+        with mock.patch.object(catalog_seed, "download_tmdb_export", new=mock.AsyncMock()):
             with self.assertRaises(ValueError):
                 _run(catalog_seed.enqueue_tmdb_daily("game"))
 
@@ -208,18 +201,19 @@ class RunDailyTmdBImportTests(TestCase):
             "show": {"entity_type": "show", "discovered": 1, "enqueued": 0},
         }
         deletions = {"movie": {"deleted": 0}, "show": {"deleted": 0}}
-        with mock.patch.object(
-            catalog_seed,
-            "enqueue_tmdb_daily",
-            new=mock.AsyncMock(side_effect=lambda entity_type, **kw: summaries[entity_type]),
-        ) as enqueue, mock.patch.object(
-            catalog_seed, "run_tmdb_deletion_scan", return_value=deletions
-        ) as deletion_scan:
+        with (
+            mock.patch.object(
+                catalog_seed,
+                "enqueue_tmdb_daily",
+                new=mock.AsyncMock(side_effect=lambda entity_type, **kw: summaries[entity_type]),
+            ) as enqueue,
+            mock.patch.object(
+                catalog_seed, "run_tmdb_deletion_scan", return_value=deletions
+            ) as deletion_scan,
+        ):
             result = catalog_seed.run_daily_tmdb_import(limit=10)
 
-        self.assertEqual(
-            [c.args[0] for c in enqueue.await_args_list], ["movie", "show"]
-        )
+        self.assertEqual([c.args[0] for c in enqueue.await_args_list], ["movie", "show"])
         for c in enqueue.await_args_list:
             self.assertEqual(c.kwargs["limit"], 10)
         deletion_scan.assert_called_once_with()
@@ -250,12 +244,12 @@ class CatalogBeatTaskTests(TestCase):
     def test_drain_runs_pending_jobs_bounded(self):
         drain = {"ran": 4, "succeeded": 4, "failed": 0, "skipped": 0}
         with mock.patch.object(
-            catalog_seed, "run_pending_jobs", return_value=drain
+            catalog_seed, "drain_catalog", return_value={"drain": drain}
         ) as drainer:
             with override_settings(CATALOG_DRAIN_LIMIT=77):
                 result = catalog_drain()
         drainer.assert_called_once_with(limit=77)
-        self.assertEqual(result, drain)
+        self.assertEqual(result, {"drain": drain})
 
     def test_beat_schedule_targets_the_two_tasks(self):
         schedule = settings.CELERY_BEAT_SCHEDULE
@@ -281,11 +275,12 @@ class CatalogSeedDailyCommandTests(TestCase):
             "external_ids": ["1", "2"],
         }
         drain = {"ran": 1, "succeeded": 1, "failed": 0, "skipped": 0}
-        with mock.patch.object(
-            catalog_seed, "enqueue_tmdb_daily", new=mock.AsyncMock(return_value=summary)
-        ) as enqueue, mock.patch.object(
-            catalog_seed, "run_pending_jobs", return_value=drain
-        ) as drain_jobs:
+        with (
+            mock.patch.object(
+                catalog_seed, "enqueue_tmdb_daily", new=mock.AsyncMock(return_value=summary)
+            ) as enqueue,
+            mock.patch.object(catalog_seed, "run_pending_jobs", return_value=drain) as drain_jobs,
+        ):
             call_command(
                 "catalog_seed", kind="show", source="daily", limit=0, drain=True, stdout=out
             )

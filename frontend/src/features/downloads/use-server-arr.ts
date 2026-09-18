@@ -195,6 +195,7 @@ export function useServerRadarrQueue(serverId?: number, page: number = 1, pageSi
     enabled: !!serverId,
     refetchInterval: pollingIntervalMs,
     staleTime: 3000,
+    meta: { suppressToast: true },
   });
 }
 
@@ -381,6 +382,7 @@ export function useServerSonarrQueue(serverId?: number, page: number = 1, pageSi
     enabled: !!serverId,
     refetchInterval: pollingIntervalMs,
     staleTime: 3000,
+    meta: { suppressToast: true },
   });
 }
 

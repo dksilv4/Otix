@@ -219,7 +219,7 @@ export function ModernHeader({
 
         {/* Settings button */}
         <button
-          onClick={() => navigate({ to: "/settings/launcher" })}
+          onClick={() => navigate({ to: '/settings/launcher' })}
           title="Launcher Settings"
           className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.06] transition-colors cursor-pointer"
         >

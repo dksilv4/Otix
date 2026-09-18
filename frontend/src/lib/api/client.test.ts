@@ -123,6 +123,7 @@ describe('apiClient', () => {
 
   it('triggers token refresh flow on 401 error', async () => {
     const { apiClient } = await import('./client')
+    localStorage.setItem('otix-access-token', 'expired-token')
     let requestCount = 0
     const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
       requestCount++
@@ -153,8 +154,54 @@ describe('apiClient', () => {
     expect(localStorage.getItem('otix-access-token')).toBe('new-token-999')
   })
 
+  it('does not refresh or expire the session when a 401 arrives with no access token', async () => {
+    const { apiClient } = await import('./client')
+    let sessionExpiredDispatched = false
+    window.addEventListener('auth:sessionExpired', () => {
+      sessionExpiredDispatched = true
+    })
+
+    let refreshCalls = 0
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+      if (config.url?.includes('/auth/refresh')) {
+        refreshCalls++
+        const err = new Error('Refresh failed') as unknown as {
+          response: { status: number; headers: Record<string, string>; data: string; config: InternalAxiosRequestConfig }
+          config: InternalAxiosRequestConfig
+        }
+        err.response = {
+          status: 401,
+          headers: {},
+          data: 'No refresh token provided',
+          config,
+        }
+        err.config = config
+        throw err
+      }
+      const err = new Error('Unauthorized') as unknown as {
+        response: { status: number; headers: Record<string, string>; data: string; config: InternalAxiosRequestConfig }
+        config: InternalAxiosRequestConfig
+      }
+      err.response = {
+        status: 401,
+        headers: {},
+        data: 'Authentication credentials were not provided.',
+        config,
+      }
+      err.config = config
+      throw err
+    }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
+
+    await expect(apiClient.get('/library/servers')).rejects.toMatchObject({ response: { status: 401 } })
+    expect(refreshCalls).toBe(0)
+    expect(sessionExpiredDispatched).toBe(false)
+  })
+
   it('handles token refresh failure', async () => {
     const { apiClient } = await import('./client')
+    localStorage.setItem('otix-access-token', 'expired-token')
     let sessionExpiredDispatched = false
     window.addEventListener('auth:sessionExpired', () => {
       sessionExpiredDispatched = true
@@ -314,7 +361,7 @@ describe('apiClient', () => {
 
     await expect(apiClient.get('/first')).rejects.toThrow()
     expect(refreshCalls).toBe(1)
-    await expect(apiClient.get('/second')).rejects.toThrow('Session expired')
+    await expect(apiClient.get('/second')).rejects.toMatchObject({ response: { status: 401 } })
     expect(refreshCalls).toBe(1)
 
     resetAuthRefreshState()

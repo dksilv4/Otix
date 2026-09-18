@@ -4,11 +4,10 @@ import type { AnyRoute } from '@tanstack/react-router'
 import { PluginSettingsPage } from '@/features/plugins/components/PluginSettingsPage'
 import { PluginSettingsTabRoute } from '@/features/plugins/components/PluginSettingsTabRoute'
 import type { PluginSettingsTab } from '@/features/_config/slots'
+import { DEFAULT_SETTINGS_SECTION, DESKTOP_SECTIONS, getLastSettingsSection, NAV_ITEMS } from './constants'
+import { isDesktop } from '@/lib/desktop/api'
+import { SettingsLayout } from './pages/settings-layout'
 
-const SettingsLayout = lazy(() => import('./pages/settings-layout').then((m) => ({ default: m.SettingsLayout })))
-const SettingsOverviewPage = lazy(() =>
-  import('./pages/settings-overview-page').then((m) => ({ default: m.SettingsOverviewPage })),
-)
 const SettingsProfilePage = lazy(() =>
   import('./pages/settings-profile-page').then((m) => ({ default: m.SettingsProfilePage })),
 )
@@ -18,11 +17,14 @@ const SettingsAccountPage = lazy(() =>
 const SettingsAppearancePage = lazy(() =>
   import('./pages/settings-appearance-page').then((m) => ({ default: m.SettingsAppearancePage })),
 )
+const SettingsLauncherPage = lazy(() =>
+  import('./pages/settings-launcher-page').then((m) => ({ default: m.SettingsLauncherPage })),
+)
+const SettingsDesktopPage = lazy(() =>
+  import('./pages/settings-desktop-page').then((m) => ({ default: m.SettingsDesktopPage })),
+)
 const SettingsNotificationsPage = lazy(() =>
   import('./pages/settings-notifications-page').then((m) => ({ default: m.SettingsNotificationsPage })),
-)
-const SettingsGeneralPage = lazy(() =>
-  import('./pages/settings-general-page').then((m) => ({ default: m.SettingsGeneralPage })),
 )
 const SettingsIntegrationsPage = lazy(() =>
   import('./pages/settings-integrations-page').then((m) => ({ default: m.SettingsIntegrationsPage })),
@@ -30,46 +32,95 @@ const SettingsIntegrationsPage = lazy(() =>
 const SettingsStoragePage = lazy(() =>
   import('./pages/settings-storage-page').then((m) => ({ default: m.SettingsStoragePage })),
 )
-
 const SettingsLibraryPage = lazy(() =>
   import('./pages/settings-library-page').then((m) => ({ default: m.SettingsLibraryPage })),
-)
-const SettingsLauncherPage = lazy(() =>
-  import('./pages/settings-launcher-page').then((m) => ({ default: m.SettingsLauncherPage })),
-)
-const SettingsDesktopPage = lazy(() =>
-  import('./pages/settings-desktop-page').then((m) => ({ default: m.SettingsDesktopPage })),
 )
 const SettingsPluginsPage = lazy(() =>
   import('@/features/plugins/pages/plugins-page').then((m) => ({ default: m.SettingsPluginsPage })),
 )
-const SettingsScannedGamesPage = lazy(() =>
-  import('./pages/settings-scanned-games-page').then((m) => ({ default: m.SettingsScannedGamesPage })),
-)
-const ProposalsPage = lazy(() =>
-  import('@/features/proposals/pages/proposals-page').then((m) => ({ default: m.ProposalsPage })),
-)
 const SettingsDownloadsPage = lazy(() =>
   import('./pages/settings-downloads-page').then((m) => ({ default: m.SettingsDownloadsPage })),
 )
+
+function resolveSettingsHome(): string {
+  const allowed = new Set(
+    NAV_ITEMS.filter((item) => !item.adminOnly).map((item) => item.id),
+  )
+  const last = getLastSettingsSection(allowed)
+  return `/settings/${allowed.has(last) ? last : DEFAULT_SETTINGS_SECTION}`
+}
 
 export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSettingsTab[]) {
   const settingsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/settings',
     component: SettingsLayout,
+    beforeLoad: ({ location }) => {
+      const rest = location.pathname.replace(/^\/settings\/?/, '')
+      if (!rest) {
+        throw redirect({ to: resolveSettingsHome() })
+      }
+    },
   })
 
   const settingsIndexRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/',
-    component: SettingsOverviewPage,
+    beforeLoad: () => {
+      throw redirect({ to: resolveSettingsHome() })
+    },
   })
 
-  const settingsOverviewRoute = createRoute({
+  const settingsOverviewRedirect = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/overview',
-    component: SettingsOverviewPage,
+    beforeLoad: () => {
+      throw redirect({ to: resolveSettingsHome() })
+    },
+  })
+
+  const settingsGeneralRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/general',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/appearance', hash: 'general' })
+    },
+  })
+
+  const settingsDesktopRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/desktop',
+    component: SettingsDesktopPage,
+  })
+
+  const settingsLauncherRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/launcher',
+    component: SettingsLauncherPage,
+  })
+
+  const settingsIntegrationsRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/integrations',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/connections' })
+    },
+  })
+
+  const settingsProposalsRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/proposals',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/library', hash: 'proposals' })
+    },
+  })
+
+  const settingsAdminProposalsRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/admin/proposals',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/library', hash: 'proposals' })
+    },
   })
 
   const settingsProfileRoute = createRoute({
@@ -90,55 +141,22 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsAppearancePage,
   })
 
-  const settingsGeneralRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/general',
-    component: SettingsGeneralPage,
-  })
-
   const settingsNotificationsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/notifications',
     component: SettingsNotificationsPage,
   })
 
-  const settingsIntegrationsRoute = createRoute({
+  const settingsConnectionsRoute = createRoute({
     getParentRoute: () => settingsRoute,
-    path: '/integrations',
+    path: '/connections',
     component: SettingsIntegrationsPage,
-  })
-
-  const settingsScannedGamesRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/matching/games',
-    component: SettingsScannedGamesPage,
-  })
-
-  const settingsProposalsRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/proposals',
-    component: ProposalsPage,
-  })
-
-  // Redirect old paths to the new /settings/proposals
-  const settingsAdminProposalsRedirect = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/admin/proposals',
-    beforeLoad: () => {
-      throw redirect({ to: '/settings/proposals' })
-    },
   })
 
   const settingsLibraryRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/library',
     component: SettingsLibraryPage,
-  })
-
-  const settingsDesktopRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/desktop',
-    component: SettingsDesktopPage,
   })
 
   const settingsPluginsRoute = createRoute({
@@ -151,12 +169,6 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/storage',
     component: SettingsStoragePage,
-  })
-
-  const settingsLauncherRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/launcher',
-    component: SettingsLauncherPage,
   })
 
   const settingsDownloadsRoute = createRoute({
@@ -173,8 +185,6 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     }),
   )
 
-  // Dynamic plugin settings tab: /settings/<tabId> resolves the tab at render
-  // time from the plugin manager (so enabling/disabling a plugin updates it).
   const pluginSettingsTabRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '$tabId',
@@ -182,25 +192,26 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
   })
 
   return [
-    settingsRoute,
-    settingsIndexRoute,
-    settingsOverviewRoute,
-    settingsProfileRoute,
-    settingsAccountRoute,
-    settingsGeneralRoute,
-    settingsAppearanceRoute,
-    settingsNotificationsRoute,
-    settingsIntegrationsRoute,
-    settingsScannedGamesRoute,
-    settingsAdminProposalsRedirect,
-    settingsProposalsRoute,
-    settingsLibraryRoute,
-    settingsDesktopRoute,
-    settingsLauncherRoute,
-    settingsDownloadsRoute,
-    settingsPluginsRoute,
-    settingsStorageRoute,
-    ...pluginRoutes,
-    pluginSettingsTabRoute,
+    settingsRoute.addChildren([
+      settingsIndexRoute,
+      settingsOverviewRedirect,
+      settingsGeneralRedirect,
+      settingsDesktopRoute,
+      settingsIntegrationsRedirect,
+      settingsAdminProposalsRedirect,
+      settingsProposalsRedirect,
+      settingsProfileRoute,
+      settingsAccountRoute,
+      settingsAppearanceRoute,
+      settingsLauncherRoute,
+      settingsNotificationsRoute,
+      settingsConnectionsRoute,
+      settingsLibraryRoute,
+      settingsDownloadsRoute,
+      settingsPluginsRoute,
+      settingsStorageRoute,
+      ...pluginRoutes,
+      pluginSettingsTabRoute,
+    ]),
   ]
 }

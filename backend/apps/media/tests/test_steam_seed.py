@@ -33,10 +33,16 @@ class PickSteamAppTests(SimpleTestCase):
 
 class CleanScanTitleTests(SimpleTestCase):
     def test_strips_early_build_and_scene_tags(self):
-        self.assertEqual(clean_scan_title("Hollow Knight Silksong Early Build"), "Hollow Knight Silksong")
-        self.assertEqual(clean_scan_title("High On Life High On Knife Razor1911"), "High On Life High On Knife")
+        self.assertEqual(
+            clean_scan_title("Hollow Knight Silksong Early Build"), "Hollow Knight Silksong"
+        )
+        self.assertEqual(
+            clean_scan_title("High On Life High On Knife Razor1911"), "High On Life High On Knife"
+        )
         self.assertEqual(clean_scan_title("Lords Of The Fallen 2023"), "Lords Of The Fallen")
-        self.assertEqual(clean_scan_title("Marvels Spiderman Miles Morales"), "Marvels spider man Miles Morales")
+        self.assertEqual(
+            clean_scan_title("Marvels Spiderman Miles Morales"), "Marvels spider man Miles Morales"
+        )
 
     def test_skips_installers_and_redists(self):
         self.assertFalse(should_seed_title("setup"))
@@ -71,15 +77,24 @@ class SeedGamesFromTitlesTests(TestCase):
             "release_date": {"date": "10 Oct, 2007"},
         }
         result = seed_games_from_titles(["Portal"], delay=0)
-        self.assertEqual(result["created"], ["Portal"])
-        item = MediaItem.objects.get(title="Portal")
-        self.assertEqual(item.overview, "The cake is a lie.")
-        self.assertTrue(item.assets.filter(asset_type="poster").exists())
-        self.assertTrue(
-            ExternalID.objects.filter(provider="steam", external_id="400", object_id=item.pk).exists()
-        )
+        self.assertEqual(result["created"], [])
+        self.assertEqual(result["unmatched"], ["Portal"])
+        self.assertEqual(MediaItem.objects.count(), 0)
+        from apps.integrations.models import SyncJob
+
+        self.assertFalse(SyncJob.objects.filter(provider="igdb").exists())
 
     def test_reuses_existing_steam_external_id(self):
+        media = MediaItem.objects.create(media_type="game", title="Portal", slug="portal")
+        from django.contrib.contenttypes.models import ContentType
+
+        ExternalID.objects.create(
+            content_type=ContentType.objects.get_for_model(MediaItem),
+            object_id=media.pk,
+            provider="steam",
+            external_id="400",
+            media_type="game",
+        )
         first = seed_game_from_steam_app("Portal", 400)
         again = seed_game_from_steam_app("Portal", 400)
         self.assertEqual(first.pk, again.pk)

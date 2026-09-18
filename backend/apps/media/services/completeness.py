@@ -10,12 +10,10 @@ seeded row reads its truthful score rather than the arbitrary ``0.15`` base the
 create path stamps; the admin panel scores live from the same functions so the
 two can never drift.
 
-Embeddings are deferred from the schema, so ``has_embedding`` is always False.
-Game ingest has produced screenshot/backdrop assets, videos and age-rating
-``MediaRelease`` rows since increment 55, so those flags now read True for a fully
-hydrated game. Flags for a media type's inapplicable subtype columns (e.g.
-``has_runtime`` on a game) are returned as ``None`` to keep the admin payload
-shape stable.
+Embeddings are deferred from the schema and are not part of the required
+flag set, so a fully hydrated movie/show/game can reach score 1.0. Flags for a
+media type's inapplicable subtype columns (e.g. ``has_runtime`` on a game) are
+returned as ``None`` to keep the admin payload shape stable.
 """
 
 from __future__ import annotations
@@ -34,7 +32,6 @@ CORE_FLAGS = [
     "has_logo",
     "has_textless_poster",
     "has_release_date",
-    "has_embedding",
 ]
 
 RELATION_FLAGS = [
@@ -94,7 +91,6 @@ def completeness_flags(media_item: MediaItem) -> dict[str, bool | None]:
             media_item.assets.filter(asset_type="textless_poster").exists()
         ),
         "has_release_date": media_item.release_date is not None,
-        "has_embedding": False,  # embedding vector deferred from the schema
         "has_original_language": media_item.original_language is not None,
         "has_genres": media_item.media_genres.exists(),
         "has_credits": media_item.credits.exists(),
@@ -132,6 +128,14 @@ def _subtype_bool(media_item: MediaItem, accessor: str, field: str) -> bool:
     except (AttributeError, ObjectDoesNotExist):
         return False
     return bool(getattr(subtype, field, None))
+
+
+COMPLETE_THRESHOLD = 0.85
+
+
+def is_complete(media_item: MediaItem) -> bool:
+    """True when the stored score meets the type-agnostic hydration threshold."""
+    return float(media_item.completeness_score or 0) >= COMPLETE_THRESHOLD
 
 
 def recompute_completeness(media_item: MediaItem) -> float:

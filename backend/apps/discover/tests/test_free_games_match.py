@@ -130,9 +130,7 @@ class FreeGamesMatchTests(TestCase):
 
     def test_unmatched_non_epic_returns_no_match(self):
         _catalog_game("Something Else")
-        resp = self.post(
-            [{"store": "steam", "external_id": "999", "title": "Nothing Here"}]
-        )
+        resp = self.post([{"store": "steam", "external_id": "999", "title": "Nothing Here"}])
         item = resp.json()["items"][0]
         self.assertFalse(item["matched"])
         self.assertIsNone(item["media_item"])
@@ -154,19 +152,15 @@ class FreeGamesMatchTests(TestCase):
                 games=[PORTAL_RAW],
             ),
         ):
-            resp = self.post(
-                [{"store": "epic", "external_id": "abc123", "title": "Portal"}]
-            )
+            resp = self.post([{"store": "epic", "external_id": "abc123", "title": "Portal"}])
         self.assertEqual(resp.status_code, 200)
         item = resp.json()["items"][0]
-        self.assertTrue(item["matched"])
-        self.assertEqual(item["media_item"]["media_type"], "game")
-        self.assertEqual(item["media_item"]["title"], "Portal")
-        media = MediaItem.objects.get(pk=item["media_item"]["id"])
-        self.assertEqual(media.title, "Portal")
-        self.assertTrue(Game.objects.filter(media_item_id=media.pk).exists())
-        providers = set(
-            ExternalID.objects.filter(object_id=media.pk).values_list("provider", flat=True)
+        self.assertFalse(item["matched"])
+        self.assertIsNone(item["media_item"])
+        from apps.integrations.models import SyncJob
+
+        self.assertTrue(
+            SyncJob.objects.filter(
+                provider="igdb", entity_type="game", external_id="12345"
+            ).exists()
         )
-        self.assertIn("igdb", providers)
-        self.assertIn("epic", providers)

@@ -57,8 +57,8 @@ _client.use({
 })
 
 // Intercept fetch to convert JSON responses to camelCase
-const _origFetch = _client['fetch'] as (req: Request) => Promise<Response>
-_client['fetch'] = async (req: Request) => {
+const _origFetch = (_client as any)['fetch'] as (req: Request) => Promise<Response>
+;(_client as any)['fetch'] = async (req: Request) => {
   const res = await _origFetch(req)
   const ct = res.headers.get('content-type') || ''
   if (!ct.includes('application/json')) return res

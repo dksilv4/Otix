@@ -125,7 +125,7 @@ export function CandidateReviewModal({ game, onClose, isExiting, onMatchResolved
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className={'relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-3xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col ' + (visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4')}>
         {/* Header */}
-        <div className="flex items-center gap-2.5 px-6 py-4 border-b border-white/[0.06] shrink-0">
+        <div className="flex items-center gap-2.5 px-6 py-4 shrink-0">
           {isMatched ? <CheckCircle2 size={16} className="text-green-500" /> : candidateCount > 0 ? <Sparkles size={16} className="text-yellow-500" /> : <Gamepad2 size={16} className="text-white/40" />}
           <h2 className="text-sm font-bold text-white truncate flex-1">
             {isMatched ? 'Matched Game' : candidateCount > 0 ? `Review Candidates (${candidateCount})` : 'Game Details'}
@@ -135,7 +135,7 @@ export function CandidateReviewModal({ game, onClose, isExiting, onMatchResolved
         </div>
 
         {/* Poster row */}
-        <div className="flex gap-4 px-6 py-4 border-b border-white/[0.04] shrink-0">
+        <div className="flex gap-4 px-6 py-4 shrink-0">
           <div className="flex-1 space-y-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30">{launcherName}</p>
             <div className="aspect-[2/3] rounded-xl overflow-hidden bg-white/5 w-full">
@@ -156,7 +156,7 @@ export function CandidateReviewModal({ game, onClose, isExiting, onMatchResolved
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-0.5">
           {rows.map(([label, scanned, match], i) => {
             return (
-              <div key={i} className="flex items-start gap-3 py-2 border-b border-white/[0.02] text-xs">
+              <div key={i} className="flex items-start gap-3 py-2 text-xs">
                 <span className="text-white/30 font-medium w-20 shrink-0 text-right">{label}</span>
                 <span className={`flex-1 min-w-0 break-words text-right ${scanned ? 'text-white/70' : 'text-white/15'}`}>
                   {scanned || '—'}
@@ -176,7 +176,7 @@ export function CandidateReviewModal({ game, onClose, isExiting, onMatchResolved
 
         {/* Candidate slideshow nav */}
         {!isMatched && candidateCount > 1 && (
-          <div className="flex items-center justify-between px-6 py-3 border-t border-white/[0.04] shrink-0">
+          <div className="flex items-center justify-between px-6 py-3 shrink-0">
             <button onClick={() => setSelectedIdx(i => Math.max(0, i - 1))} disabled={selectedIdx === 0}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-white/50 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-20 disabled:cursor-not-allowed">
               <ChevronLeft size={14} /> Previous
@@ -193,9 +193,9 @@ export function CandidateReviewModal({ game, onClose, isExiting, onMatchResolved
 
         {/* Auth/error + action buttons */}
         {(actionError || !isMatched) && (
-          <div className="px-6 py-3 border-t border-white/[0.04] shrink-0 space-y-2">
+          <div className="px-6 py-3 shrink-0 space-y-2">
             {actionError && (
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/10 text-xs text-red-400">
                 <AlertCircle size={14} className="shrink-0" />
                 <span className="flex-1">{actionError}</span>
                 {!isAuthenticated && <a href="/login" className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 font-medium hover:bg-blue-500/30 transition-colors"><LogIn size={12} /> Sign In</a>}
@@ -205,7 +205,7 @@ export function CandidateReviewModal({ game, onClose, isExiting, onMatchResolved
             {!isMatched && candidateCount > 0 && (
               <>
                 {!isAuthenticated ? (
-                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 text-xs text-amber-400">
                     <LogIn size={14} className="shrink-0" />
                     <span className="flex-1">Sign in to confirm matches</span>
                     <a href="/login" className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 font-medium hover:bg-blue-500/30 transition-colors">Sign In</a>

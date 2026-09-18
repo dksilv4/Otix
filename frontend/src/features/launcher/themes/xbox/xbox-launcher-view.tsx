@@ -152,7 +152,7 @@ export function XboxLauncherView() {
           </div>
 
           <button
-            onClick={() => navigate({ to: "/settings/launcher" })}
+            onClick={() => navigate({ to: '/settings/launcher' })}
             className="p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
             title="Settings"
           >

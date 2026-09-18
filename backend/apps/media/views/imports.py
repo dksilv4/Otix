@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
@@ -38,12 +36,21 @@ def _empty_match(game) -> dict:
 
 
 class RehydrateView(APIView):
-    """``POST /media/{media_id}/rehydrate`` — admin; enqueues in legacy."""
+    """``POST /media/{media_id}/rehydrate`` — admin; enqueues a P0 catalog job."""
 
     def post(self, request, media_id: int) -> Response:
         _require_admin(request.user)
-        _media_or_404(media_id)
-        return Response({"task_id": str(uuid.uuid4())})
+        item = _media_or_404(media_id)
+        from apps.integrations.services.catalog_seed import ensure_catalog_job
+        from apps.media.services.catalog_lifecycle import canonical_external_id
+        from apps.media.services.identity import CANONICAL_PROVIDER
+
+        provider = CANONICAL_PROVIDER.get(item.media_type)
+        ext = canonical_external_id(item)
+        if not provider or not ext:
+            raise ValidationError("Media item has no canonical catalog id")
+        job = ensure_catalog_job(provider, item.media_type, ext, priority=0, force=True)
+        return Response({"task_id": str(job.pk) if job is not None else ""})
 
 
 class RehydrateStreamView(APIView):

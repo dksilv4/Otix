@@ -1,6 +1,7 @@
 """Library API views, re-exported for convenient imports."""
 
 from apps.library.views.game_servers import (
+    GameServerDesktopView,
     GameServerDetailView,
     GameServerDownloadsAddView,
     GameServerDownloadsHistoryView,
@@ -10,7 +11,9 @@ from apps.library.views.game_servers import (
     GameServerExplorerCreateFolderView,
     GameServerExplorerSetPathView,
     GameServerFilesView,
+    GameServerHeartbeatView,
     GameServerListCreateView,
+    GameServerPendingView,
     GameServerPingView,
     GameServerProvidersView,
     GameServerProviderTestView,
@@ -68,7 +71,9 @@ __all__ = [
     "GameServerExplorerCreateFolderView",
     "GameServerExplorerSetPathView",
     "GameServerFilesView",
+    "GameServerHeartbeatView",
     "GameServerListCreateView",
+    "GameServerPendingView",
     "GameServerPingView",
     "GameServerProvidersView",
     "GameServerProviderTestView",
@@ -99,6 +104,7 @@ __all__ = [
     "GameServerSonarrLookupView",
     "GameServerSonarrQueueView",
     "GameServerSonarrHistoryView",
+    "GameServerDesktopView",
     "InstalledGamesView",
     "EpicLibraryView",
     "EpicStatusView",

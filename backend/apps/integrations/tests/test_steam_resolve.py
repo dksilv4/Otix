@@ -83,9 +83,7 @@ class SteamResolveUnmatchedTests(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
 
     def _unmatched(self, app_id: int, name: str) -> UserSteamGame:
-        return UserSteamGame.objects.create(
-            user=self.user, steam_app_id=app_id, name=name
-        )
+        return UserSteamGame.objects.create(user=self.user, steam_app_id=app_id, name=name)
 
     def post(self):
         return self.client.post(URL, {}, format="json")
@@ -120,9 +118,7 @@ class SteamResolveUnmatchedTests(TestCase):
             resp = self.post()
         request.assert_not_called()  # phase-1 direct match, no IGDB needed
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(
-            resp.json(), {"resolved": 1, "synced": 0, "failed": 0, "total": 1}
-        )
+        self.assertEqual(resp.json(), {"resolved": 1, "synced": 0, "failed": 0, "total": 1})
         row = UserSteamGame.objects.get(user=self.user, steam_app_id=440)
         self.assertEqual(row.media_item_id, media.pk)
 
@@ -138,31 +134,24 @@ class SteamResolveUnmatchedTests(TestCase):
         ):
             resp = self.post()
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(
-            resp.json(), {"resolved": 0, "synced": 1, "failed": 0, "total": 1}
-        )
+        self.assertEqual(resp.json(), {"resolved": 0, "synced": 1, "failed": 0, "total": 1})
         row = UserSteamGame.objects.get(user=self.user, steam_app_id=440)
-        self.assertIsNotNone(row.media_item_id)
-        media = MediaItem.objects.get(pk=row.media_item_id)
-        self.assertEqual(media.title, "Portal")
-        self.assertTrue(Game.objects.filter(media_item_id=media.pk).exists())
-        providers = set(
-            ExternalID.objects.filter(object_id=media.pk).values_list("provider", flat=True)
+        self.assertIsNone(row.media_item_id)
+        from apps.integrations.models import SyncJob
+
+        self.assertTrue(
+            SyncJob.objects.filter(
+                provider="igdb", entity_type="game", external_id="12345"
+            ).exists()
         )
-        self.assertIn("igdb", providers)
-        self.assertIn("steam", providers)
 
     @override_settings(**IGDB_SETTINGS)
     def test_no_igdb_hit_counts_failed(self):
         self._unmatched(730, "Counter-Strike 2")
-        with mock.patch(
-            IGDB_REQUEST, side_effect=_fake_igdb(external_games=[], games=[])
-        ):
+        with mock.patch(IGDB_REQUEST, side_effect=_fake_igdb(external_games=[], games=[])):
             resp = self.post()
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(
-            resp.json(), {"resolved": 0, "synced": 0, "failed": 1, "total": 1}
-        )
+        self.assertEqual(resp.json(), {"resolved": 0, "synced": 0, "failed": 1, "total": 1})
         row = UserSteamGame.objects.get(user=self.user, steam_app_id=730)
         self.assertIsNone(row.media_item_id)
 
@@ -190,6 +179,4 @@ class SteamResolveUnmatchedTests(TestCase):
         )
         resp = self.post()
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(
-            resp.json(), {"resolved": 0, "synced": 0, "failed": 0, "total": 0}
-        )
+        self.assertEqual(resp.json(), {"resolved": 0, "synced": 0, "failed": 0, "total": 0})

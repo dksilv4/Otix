@@ -1,0 +1,212 @@
+import type { ReactNode } from 'react'
+import { Check, ChevronDown, Plus, Unlink } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { DkButton } from '@ui/atoms/button'
+
+export function IntegrationCard({
+  name,
+  description,
+  brandColor,
+  brandBg,
+  icon: Icon,
+  isConnected,
+  expanded,
+  onToggle,
+  onConnect,
+  connecting,
+  onDisconnect,
+  disconnecting,
+  error,
+  children,
+}: {
+  name: string
+  description: string
+  brandColor: string
+  brandBg: string
+  icon: React.ComponentType<{ className?: string }>
+  isConnected: boolean
+  expanded: boolean
+  onToggle: () => void
+  onConnect?: () => void
+  connecting?: boolean
+  onDisconnect?: () => void
+  disconnecting?: boolean
+  error?: string
+  children?: ReactNode
+}) {
+  return (
+    <div
+      className="rounded-2xl overflow-hidden shadow-lg shadow-black/20 backdrop-blur-xl"
+      style={{ backgroundColor: 'var(--dk-surface-base)' }}
+    >
+      <div
+        role={isConnected ? 'button' : undefined}
+        tabIndex={isConnected ? 0 : undefined}
+        onClick={isConnected ? onToggle : undefined}
+        onKeyDown={
+          isConnected
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onToggle()
+                }
+              }
+            : undefined
+        }
+        className={cn(
+          'flex w-full items-center gap-4 px-5 py-4 text-left transition-colors duration-150',
+          isConnected && 'cursor-pointer hover:bg-white/[0.03] active:bg-white/[0.03]',
+        )}
+      >
+        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', brandBg)} style={{ color: brandColor }}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold">{name}</p>
+            {isConnected && <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-green-500" />}
+          </div>
+          <p className="text-xs text-white/60 mt-0.5 truncate">{description}</p>
+        </div>
+        {isConnected ? (
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-400 shadow-sm">
+              <Check className="h-3.5 w-3.5" />
+              Connected
+            </span>
+            <ChevronDown className={cn('h-4 w-4 text-white/40 transition-transform duration-150', expanded && 'rotate-180')} />
+          </div>
+        ) : (
+          <DkButton size="sm" onClick={onConnect} loading={connecting} leftIcon={Plus} className="shrink-0 w-[90px]">
+            Connect
+          </DkButton>
+        )}
+      </div>
+      {error && !isConnected && <p className="px-5 pb-3 text-xs text-red-400">{error}</p>}
+
+      {isConnected && expanded && (
+        <div className="pt-1">
+          {children}
+          {onDisconnect && (
+            <div className="px-5 py-3">
+              <DkButton
+                size="sm"
+                variant="ghost"
+                onClick={onDisconnect}
+                loading={disconnecting}
+                leftIcon={Unlink}
+                loadingText="Disconnecting…"
+                className="w-full bg-red-500/10 text-red-400 shadow-none hover:bg-red-500/15"
+              >
+                Disconnect {name}
+              </DkButton>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function IntegrationProfile({
+  avatarUrl,
+  avatarAlt,
+  name,
+  detail,
+  brandColor,
+  brandBg,
+  icon: Icon,
+  meta,
+}: {
+  avatarUrl?: string | null
+  avatarAlt: string
+  name: string
+  detail: string
+  brandColor?: string
+  brandBg?: string
+  icon?: React.ComponentType<{ className?: string }>
+  meta?: ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-3 px-5 py-4">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt={avatarAlt} className="h-10 w-10 rounded-xl object-cover ring-1 ring-white/10" />
+      ) : (
+        <div
+          className={cn('flex h-10 w-10 items-center justify-center rounded-xl bg-white/5', brandBg)}
+          style={brandColor ? { color: brandColor } : undefined}
+        >
+          {Icon && <Icon className="h-5 w-5" />}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium truncate">{name}</p>
+        <p className="text-xs text-white/60 truncate">{detail}</p>
+      </div>
+      {meta}
+    </div>
+  )
+}
+
+export function IntegrationAction({
+  label,
+  description,
+  result,
+  buttonLabel,
+  buttonIcon: ButtonIcon,
+  onPress,
+  loading,
+  disabled,
+  progress,
+  children,
+  muted,
+}: {
+  label: string
+  description: string
+  result?: string | null
+  buttonLabel: string
+  buttonIcon?: React.ComponentType<{ className?: string }>
+  onPress: () => void
+  loading?: boolean
+  disabled?: boolean
+  progress?: ReactNode
+  children?: ReactNode
+  muted?: boolean
+}) {
+  return (
+    <div className={cn('flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4', muted && 'bg-white/[0.02]')}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">{label}</p>
+          {progress}
+        </div>
+        <p className="mt-1 text-sm font-medium">{description}</p>
+        {result && <p className="text-xs text-white/60 mt-0.5">{result}</p>}
+        {children}
+      </div>
+      <DkButton
+        size="sm"
+        variant="ghost"
+        onClick={onPress}
+        loading={loading}
+        disabled={disabled}
+        leftIcon={ButtonIcon}
+        className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
+      >
+        {buttonLabel}
+      </DkButton>
+    </div>
+  )
+}
+
+export function IntegrationStats({ items }: { items: { label: string; value: string | number }[] }) {
+  return (
+    <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/60 px-5 py-3">
+      {items.map((item) => (
+        <span key={item.label}>
+          <strong className="text-white font-semibold">{item.value}</strong> {item.label}
+        </span>
+      ))}
+    </div>
+  )
+}

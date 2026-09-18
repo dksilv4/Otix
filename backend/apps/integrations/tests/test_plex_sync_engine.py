@@ -82,6 +82,8 @@ class PlexSyncEngineTests(TestCase):
         )
 
         self.fake = FakeRedis()
+        self.section_status = 200
+        self.last_headers: dict = {}
         patchers = [
             mock.patch("core.progress.get_client", return_value=self.fake),
             mock.patch(
@@ -101,12 +103,10 @@ class PlexSyncEngineTests(TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    @staticmethod
-    def _fake_section_request(url, *, method="GET", headers=None, timeout=15.0):
-        payload = {
-            "MediaContainer": {"totalSize": 1, "Metadata": [dict(_MOVIE_ITEM)]}
-        }
-        return 200, json.dumps(payload)
+    def _fake_section_request(self, url, *, method="GET", headers=None, timeout=15.0):
+        self.last_headers = headers or {}
+        payload = {"MediaContainer": {"totalSize": 1, "Metadata": [dict(_MOVIE_ITEM)]}}
+        return self.section_status, json.dumps(payload)
 
     def job(self, entity_type="user", external_id=None):
         return SyncJob.objects.create(
@@ -128,29 +128,17 @@ class PlexSyncEngineTests(TestCase):
         self.assertEqual(outcome["status"], "success")
         self.assertEqual(
             {k: outcome[k] for k in ("servers", "libraries", "total", "matched", "seeded")},
-            {"servers": 1, "libraries": 1, "total": 1, "matched": 0, "seeded": 1},
+            {"servers": 1, "libraries": 1, "total": 1, "matched": 0, "seeded": 0},
         )
         self.assertEqual(job.status, "completed")
-
-        media = MediaItem.objects.get(title="The Matrix")
-        self.assertEqual(media.media_type, "movie")
-        self.assertTrue(Movie.objects.filter(media_item=media).exists())
-        # 3 of 22 movie flags (overview + release date + external ids) — the
-        # stub is recomputed at seed, not stamped with the legacy 0.15 base.
-        self.assertAlmostEqual(media.completeness_score, 0.136)
-        self.assertEqual(media.watched_count, 1)
-        self.assertTrue(
-            UserMediaInteraction.objects.filter(
-                user=self.user, media_item=media, interaction_type="watched"
-            ).exists()
-        )
+        self.assertEqual(MediaItem.objects.count(), 0)
         item = UserPlexItem.objects.get(server=self.server, rating_key="101")
-        self.assertEqual(item.media_item_id, media.id)
+        self.assertIsNone(item.media_item_id)
         self.assertTrue(item.viewed)
+        self.assertFalse(UserMediaInteraction.objects.exists())
 
         types = [
-            json.loads(msg)["type"]
-            for msg in self.fake.published_on(f"plex:sync:{job.pk}:events")
+            json.loads(msg)["type"] for msg in self.fake.published_on(f"plex:sync:{job.pk}:events")
         ]
         self.assertEqual(
             types,
@@ -187,8 +175,8 @@ class PlexSyncEngineTests(TestCase):
         # Second run finds the plex-guid ExternalID seeded by the first run, so
         # the item is matched rather than seeded again — no duplicates.
         self.assertEqual(outcome["seeded"], 0)
-        self.assertEqual(outcome["matched"], 1)
-        self.assertEqual(MediaItem.objects.filter(title="The Matrix").count(), 1)
+        self.assertEqual(outcome["matched"], 0)
+        self.assertEqual(MediaItem.objects.filter(title="The Matrix").count(), 0)
         self.assertEqual(UserPlexItem.objects.count(), 1)
 
     def test_single_library_job_uses_stored_server_row(self):
@@ -199,7 +187,7 @@ class PlexSyncEngineTests(TestCase):
         self.assertEqual(outcome["status"], "success")
         self.assertEqual(outcome["servers"], 1)
         self.assertEqual(outcome["libraries"], 1)
-        self.assertEqual(outcome["seeded"], 1)
+        self.assertEqual(outcome["seeded"], 0)
         self.assertEqual(job.status, "completed")
 
     def test_library_not_found_aborts(self):
@@ -227,3 +215,19 @@ class PlexSyncEngineTests(TestCase):
         self.assertEqual(frame["message"], NO_PLEX_TOKEN_ERROR)
         stored = progress_lib.RedisProgress("plex:sync").get_stored_result(job.pk)
         self.assertEqual(stored["error"], NO_PLEX_TOKEN_ERROR)
+
+    def test_library_page_accepts_partial_content(self):
+        """Plex paged /all often returns 206; discovery already treats 2xx as OK."""
+        self.section_status = 206
+        job = self.job()
+        outcome = run_sync_job.delay(job.pk).get()
+
+        self.assertEqual(outcome["status"], "success")
+        self.assertEqual(outcome["total"], 1)
+        self.assertEqual(UserPlexItem.objects.count(), 1)
+
+    def test_library_fetch_sends_container_headers(self):
+        run_sync_job.delay(self.job().pk).get()
+
+        self.assertEqual(str(self.last_headers.get("X-Plex-Container-Size")), "200")
+        self.assertEqual(str(self.last_headers.get("X-Plex-Container-Start")), "0")

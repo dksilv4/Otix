@@ -10,3 +10,12 @@ Rules:
 
 - Always use the existing modal framework that is already established in the codebase to create new modals and user interfaces. Do not create new modal styles or frameworks.
 
+## API casing
+
+Django and Otix Server speak **snake_case**. The web `apiClient` (`frontend/src/lib/api/client.ts`) converts automatically via axios interceptors:
+
+- **Requests:** camelCase JSON bodies and query params → snake_case (except `FormData`)
+- **Responses (and error bodies):** snake_case JSON → camelCase
+
+Frontend code must read and write camelCase (`displayName`, `authUrl`, `totalInEpic`). Do not dual-read snake_case on `apiClient` results. This conversion does **not** apply to Django↔node proxy payloads, SSE/`fetch` unless those helpers also convert, or Python.
+

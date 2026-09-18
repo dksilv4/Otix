@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from '@tanstack/react-router'
-import { Bell, Lock } from 'lucide-react'
+import { Bell, Lock, Volume2, Monitor } from 'lucide-react'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
@@ -11,6 +10,9 @@ import type { NotificationType } from '@/features/notifications/types'
 import { getTypeConfig } from '@/features/notifications/registry'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { SectionHeader } from '../components/molecules/settings-section-header'
+import { SettingsRow } from '../components/molecules/settings-row'
+import { SettingsLockedState } from '../components/molecules/settings-locked-state'
+import { DkButton } from '@ui/atoms/button'
 
 const LOCAL_PREFS_KEY = 'otix:local-notification-preferences'
 
@@ -120,78 +122,84 @@ export function SettingsNotificationsPage() {
 
   return (
     <div id="settings-notifications-section" className="space-y-5">
-      {/* Delivery Channels (Local & Device Settings) */}
-      <SettingsCard className="space-y-4">
+      <SectionHeader
+        variant="page"
+        icon={Bell}
+        title="Notifications"
+        description="Delivery channels, quiet hours, and per-category alerts."
+      />
+
+      <SettingsCard className="space-y-3">
         <SectionHeader
           title="Delivery Channels"
           description="Configure how local notifications sound and display on this device."
         />
 
-        {isDesktop() && (
-          <div className="flex items-center justify-between gap-4 py-1 min-h-[44px]">
-            <div>
-              <span className="text-sm font-medium text-white">Desktop notifications</span>
-              <p className="text-xs text-white/40">Native OS notifications via Electron</p>
-            </div>
+        <SettingsRow
+          icon={<Monitor className="h-5 w-5" />}
+          label="Desktop notifications"
+          description="Native OS notifications and system alerts"
+          action={
             <DkSwitch
               checked={preferences._desktop_enabled !== false}
               onCheckedChange={(c) => handleToggle('_desktop_enabled', c)}
             />
-          </div>
-        )}
+          }
+        />
 
         {typeof Notification !== 'undefined' && (
-          <div className="flex items-center justify-between gap-4 py-1 min-h-[44px]">
-            <div>
-              <span className="text-sm font-medium text-white">Browser notifications</span>
-              <p className="text-xs text-white/40">
-                {Notification.permission === 'granted'
-                  ? 'Permission granted'
-                  : Notification.permission === 'denied'
-                    ? 'Permission denied — update browser settings'
-                    : 'Click to request permission'}
-              </p>
-            </div>
-            <DkSwitch
-              checked={preferences._web_enabled !== false}
-              onCheckedChange={(c) => handleToggle('_web_enabled', c)}
-            />
-          </div>
+          <SettingsRow
+            label="Browser notifications"
+            description={
+              Notification.permission === 'granted'
+                ? 'Permission granted'
+                : Notification.permission === 'denied'
+                  ? 'Permission denied — update browser settings'
+                  : 'Click to request permission'
+            }
+            action={
+              <DkSwitch
+                checked={preferences._web_enabled !== false}
+                onCheckedChange={(c) => handleToggle('_web_enabled', c)}
+              />
+            }
+          />
         )}
 
         {push.supported && (
-          <div className="flex items-center justify-between gap-4 py-1 min-h-[44px]">
-            <div>
-              <span className="text-sm font-medium text-white">Push notifications</span>
-              <p className="text-xs text-white/40">
-                {push.subscribed
-                  ? 'Active — works when tab is closed'
-                  : push.registering
-                    ? 'Registering...'
-                    : 'Off'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => push.subscribed ? push.unsubscribe() : push.register()}
-              disabled={push.registering}
-              className="rounded-lg px-3.5 py-1.5 text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer disabled:opacity-50"
-            >
-              {push.subscribed ? 'Disable' : 'Enable'}
-            </button>
-          </div>
+          <SettingsRow
+            label="Push notifications"
+            description={
+              push.subscribed
+                ? 'Active — works when tab is closed'
+                : push.registering
+                  ? 'Registering...'
+                  : 'Off'
+            }
+            action={
+              <DkButton
+                size="sm"
+                variant="ghost"
+                onClick={() => (push.subscribed ? push.unsubscribe() : push.register())}
+                disabled={push.registering}
+              >
+                {push.subscribed ? 'Disable' : 'Enable'}
+              </DkButton>
+            }
+          />
         )}
 
-        <div className="flex items-center justify-between gap-4 py-1 min-h-[44px]">
-          <div>
-            <span className="text-sm font-medium text-white">Notification sound</span>
-            <p className="text-xs text-white/40">Play a chime on new notifications</p>
-          </div>
-          <DkSwitch
-            checked={preferences._sound_enabled === true}
-            onCheckedChange={(c) => handleToggle('_sound_enabled', c)}
-          />
-        </div>
+        <SettingsRow
+          icon={<Volume2 className="h-5 w-5" />}
+          label="Notification sound"
+          description="Play a chime on new notifications"
+          action={
+            <DkSwitch
+              checked={preferences._sound_enabled === true}
+              onCheckedChange={(c) => handleToggle('_sound_enabled', c)}
+            />
+          }
+        />
       </SettingsCard>
 
       {/* Quiet Hours (Local & Device Settings) */}
@@ -241,26 +249,11 @@ export function SettingsNotificationsPage() {
 
       {/* Account Notifications Header / Guest Banner */}
       {!user ? (
-        <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-primary/10 via-white/5 to-white/5 backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/20 text-primary">
-              <Lock className="h-6 w-6" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-white">Social & Follow Notifications</h4>
-              <p className="text-xs text-white/60 mt-0.5 max-w-md">
-                Sign in to customize social activity alerts, friend requests, list invitations, and watchlist releases across all your devices.
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/auth/login"
-            className="shrink-0 inline-flex items-center gap-2 font-semibold rounded-xl px-5 py-2.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md active:scale-[0.98]"
-          >
-            <Bell className="h-3.5 w-3.5" />
-            <span>Sign In to Sync</span>
-          </Link>
-        </div>
+        <SettingsLockedState
+          title="Social & Follow Notifications"
+          description="Sign in to customize social activity alerts, friend requests, list invitations, and watchlist releases across all your devices."
+          icon={Lock}
+        />
       ) : (
         /* Per-type toggles for authenticated users */
         CATEGORIES.map((category) => (
@@ -273,19 +266,17 @@ export function SettingsNotificationsPage() {
               {category.types.map((type) => {
                 const config = getTypeConfig(type)
                 return (
-                  <div
+                  <SettingsRow
                     key={type}
-                    className="flex items-center justify-between gap-4 py-1 min-h-[40px]"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <config.icon className={cn('h-4.5 w-4.5', config.color)} />
-                      <span className="text-sm font-medium text-white/90">{config.label}</span>
-                    </div>
-                    <DkSwitch
-                      checked={preferences[type] !== false}
-                      onCheckedChange={(checked) => handleToggle(type, checked)}
-                    />
-                  </div>
+                    icon={<config.icon className={cn('h-4.5 w-4.5', config.color)} />}
+                    label={config.label}
+                    action={
+                      <DkSwitch
+                        checked={preferences[type] !== false}
+                        onCheckedChange={(checked) => handleToggle(type, checked)}
+                      />
+                    }
+                  />
                 )
               })}
             </div>

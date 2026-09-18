@@ -195,7 +195,7 @@ export const userQueries = {
         return {
           users: Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : [],
           total: data?.total ?? (Array.isArray(data?.users) ? data.users.length : 0),
-        } as UserSearchListResponse
+        } as unknown as UserSearchListResponse
       },
       enabled: query.length > 0,
       staleTime: 1000 * 60 * 5,

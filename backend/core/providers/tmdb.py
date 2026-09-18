@@ -44,7 +44,6 @@ def get_http_client() -> httpx.AsyncClient:
     return _shared_client
 
 
-
 class TMDBProvider(BaseProvider):
     BASE_URL = "https://api.themoviedb.org/3"
 
@@ -301,13 +300,37 @@ class TMDBProvider(BaseProvider):
         )
         return response.json()
 
-    async def search_company(
-        self, query: str, page: int = 1
+    async def search_movie(
+        self,
+        query: str,
+        *,
+        year: int | None = None,
+        page: int = 1,
+        language: str = "en-US",
     ) -> dict[str, JSONValue]:
+        params: dict[str, str | int] = {"query": query, "page": page, "language": language}
+        if year is not None:
+            params["year"] = int(year)
+        response = await self._get("/search/movie", params=params)
+        return response.json()
+
+    async def search_tv(
+        self,
+        query: str,
+        *,
+        first_air_date_year: int | None = None,
+        page: int = 1,
+        language: str = "en-US",
+    ) -> dict[str, JSONValue]:
+        params: dict[str, str | int] = {"query": query, "page": page, "language": language}
+        if first_air_date_year is not None:
+            params["first_air_date_year"] = int(first_air_date_year)
+        response = await self._get("/search/tv", params=params)
+        return response.json()
+
+    async def search_company(self, query: str, page: int = 1) -> dict[str, JSONValue]:
         """Search production companies by name (``/search/company``)."""
-        response = await self._get(
-            "/search/company", params={"query": query, "page": page}
-        )
+        response = await self._get("/search/company", params={"query": query, "page": page})
         return response.json()
 
     async def find_by_external_id(

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 interface SettingsRowProps {
-  icon: ReactNode
+  icon?: ReactNode
   label: string
   description?: string
   action: ReactNode
@@ -12,7 +12,7 @@ interface SettingsRowProps {
 
 /**
  * Standardized settings toggle/action row.
- * Icon + label/description on the left, action (switch/button/dropdown) on the right.
+ * Optional icon + label/description on the left, action (switch/button/dropdown) on the right.
  */
 export function SettingsRow({ icon, label, description, action, disabled, className }: SettingsRowProps) {
   return (
@@ -23,14 +23,16 @@ export function SettingsRow({ icon, label, description, action, disabled, classN
         className,
       )}
       style={{
-        backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.12)',
-        boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
+        backgroundColor: 'var(--dk-surface-raised)',
+        boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.04)',
       }}
     >
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          {icon}
-        </div>
+        {icon ? (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            {icon}
+          </div>
+        ) : null}
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-white">{label}</p>
           {description && <p className="truncate text-xs text-white/50 mt-0.5">{description}</p>}

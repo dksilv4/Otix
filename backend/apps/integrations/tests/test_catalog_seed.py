@@ -81,9 +81,7 @@ class _FakeAsyncRedis:
 
 class EnqueueSeedJobsTests(TestCase):
     def test_creates_one_pending_job_per_unseen_external_id(self):
-        jobs = enqueue_seed_jobs(
-            provider="tmdb", entity_type="movie", external_ids=["550", "999"]
-        )
+        jobs = enqueue_seed_jobs(provider="tmdb", entity_type="movie", external_ids=["550", "999"])
         self.assertEqual(sorted(j.external_id for j in jobs), ["550", "999"])
         self.assertEqual(SyncJob.objects.filter(status="pending").count(), 2)
         for job in jobs:
@@ -93,9 +91,7 @@ class EnqueueSeedJobsTests(TestCase):
             self.assertEqual(job.phase, "core")
 
     def test_skips_external_ids_already_mapped_to_a_catalog_row(self):
-        media = MediaItem.objects.create(
-            media_type="movie", title="Fight Club", slug="fight-club"
-        )
+        media = MediaItem.objects.create(media_type="movie", title="Fight Club", slug="fight-club")
         ExternalID.objects.create(
             content_type=ContentType.objects.get_for_model(MediaItem),
             object_id=media.pk,
@@ -103,9 +99,7 @@ class EnqueueSeedJobsTests(TestCase):
             external_id="550",
             media_type="movie",
         )
-        jobs = enqueue_seed_jobs(
-            provider="tmdb", entity_type="movie", external_ids=["550", "999"]
-        )
+        jobs = enqueue_seed_jobs(provider="tmdb", entity_type="movie", external_ids=["550", "999"])
         self.assertEqual([j.external_id for j in jobs], ["999"])
         self.assertEqual(SyncJob.objects.count(), 1)
 
@@ -116,9 +110,7 @@ class EnqueueSeedJobsTests(TestCase):
         SyncJob.objects.create(
             provider="tmdb", entity_type="movie", external_id="6", status="running"
         )
-        jobs = enqueue_seed_jobs(
-            provider="tmdb", entity_type="movie", external_ids=["6", "7", "8"]
-        )
+        jobs = enqueue_seed_jobs(provider="tmdb", entity_type="movie", external_ids=["6", "7", "8"])
         self.assertEqual([j.external_id for j in jobs], ["8"])
         self.assertEqual(SyncJob.objects.count(), 3)
 
@@ -126,9 +118,7 @@ class EnqueueSeedJobsTests(TestCase):
         SyncJob.objects.create(
             provider="tmdb", entity_type="movie", external_id="9", status="completed"
         )
-        jobs = enqueue_seed_jobs(
-            provider="tmdb", entity_type="movie", external_ids=["9"]
-        )
+        jobs = enqueue_seed_jobs(provider="tmdb", entity_type="movie", external_ids=["9"])
         self.assertEqual([j.external_id for j in jobs], ["9"])
         self.assertEqual(SyncJob.objects.count(), 2)
 
@@ -140,9 +130,7 @@ class EnqueueSeedJobsTests(TestCase):
         self.assertEqual(SyncJob.objects.count(), 2)
 
     def test_all_blank_input_enqueues_nothing(self):
-        jobs = enqueue_seed_jobs(
-            provider="tmdb", entity_type="movie", external_ids=["", "  "]
-        )
+        jobs = enqueue_seed_jobs(provider="tmdb", entity_type="movie", external_ids=["", "  "])
         self.assertEqual(jobs, [])
         self.assertEqual(SyncJob.objects.count(), 0)
 
@@ -160,6 +148,74 @@ class EnqueueSeedJobsTests(TestCase):
         self.assertEqual(len(jobs), 1)
         self.assertFalse(jobs[0].is_bulk)
         self.assertEqual(jobs[0].parent_id, parent.pk)
+
+
+class EnsureCatalogJobTests(TestCase):
+    def test_rejects_music(self):
+        from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+        self.assertIsNone(ensure_catalog_job("musicbrainz", "album", "mbid"))
+        self.assertIsNone(ensure_catalog_job("tmdb", "music", "1"))
+        self.assertEqual(SyncJob.objects.count(), 0)
+
+    def test_creates_a_live_job_for_an_unmapped_id(self):
+        from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+        job = ensure_catalog_job("tmdb", "movie", "550", priority=1, dispatch=False)
+        self.assertIsNotNone(job)
+        self.assertEqual(job.status, "pending")
+        self.assertEqual(job.priority, 1)
+
+    def test_rehydrate_is_allowed_for_mapped_ids_when_due(self):
+        from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+        media = MediaItem.objects.create(
+            media_type="movie", title="Fight Club", slug="fight-club", completeness_score=0.2
+        )
+        ExternalID.objects.create(
+            content_type=ContentType.objects.get_for_model(MediaItem),
+            object_id=media.pk,
+            provider="tmdb",
+            external_id="550",
+            media_type="movie",
+        )
+        job = ensure_catalog_job("tmdb", "movie", "550", priority=4, dispatch=False)
+        self.assertIsNotNone(job)
+        self.assertEqual(SyncJob.objects.filter(external_id="550").count(), 1)
+
+    def test_fresh_complete_row_is_a_noop(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+        media = MediaItem.objects.create(
+            media_type="movie",
+            title="Fight Club",
+            slug="fight-club",
+            completeness_score=0.9,
+            next_sync_at=timezone.now() + timedelta(days=7),
+        )
+        ExternalID.objects.create(
+            content_type=ContentType.objects.get_for_model(MediaItem),
+            object_id=media.pk,
+            provider="tmdb",
+            external_id="550",
+            media_type="movie",
+        )
+        self.assertIsNone(ensure_catalog_job("tmdb", "movie", "550", dispatch=False))
+        self.assertEqual(SyncJob.objects.count(), 0)
+
+    def test_bumps_priority_on_an_existing_live_job(self):
+        from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+        first = ensure_catalog_job("tmdb", "movie", "550", priority=5, dispatch=False)
+        second = ensure_catalog_job("tmdb", "movie", "550", priority=0, dispatch=False)
+        self.assertEqual(first.pk, second.pk)
+        first.refresh_from_db()
+        self.assertEqual(first.priority, 0)
+        self.assertEqual(SyncJob.objects.count(), 1)
 
 
 class RunPendingJobsTests(TestCase):
@@ -188,9 +244,23 @@ class RunPendingJobsTests(TestCase):
         self.assertEqual(summary["succeeded"], 2)
         self.assertEqual(summary["failed"], 0)
         self.assertEqual(drained, [first.pk, second.pk])
-        self.assertEqual(
-            SyncJob.objects.filter(external_id="3", status="pending").exists(), True
+        self.assertEqual(SyncJob.objects.filter(external_id="3", status="pending").exists(), True)
+
+    def test_drains_higher_priority_first(self):
+        low = SyncJob.objects.create(
+            provider="tmdb", entity_type="movie", external_id="1", status="pending", priority=5
         )
+        high = SyncJob.objects.create(
+            provider="tmdb", entity_type="movie", external_id="2", status="pending", priority=0
+        )
+        drained = []
+        with mock.patch(
+            "apps.integrations.services.catalog_seed.execute_sync_job",
+            side_effect=lambda pk: drained.append(pk) or {"status": "success"},
+        ):
+            run_pending_jobs(limit=1)
+        self.assertEqual(drained, [high.pk])
+        self.assertTrue(SyncJob.objects.filter(pk=low.pk, status="pending").exists())
 
     def test_entity_type_filter_narrows_the_drain(self):
         movie = SyncJob.objects.create(
@@ -229,6 +299,70 @@ class RunPendingJobsTests(TestCase):
         self.assertEqual(summary["failed"], 1)
         self.assertEqual(summary["skipped"], 1)
         self.assertEqual(summary["succeeded"], 0)
+
+    def test_skips_music_jobs(self):
+        SyncJob.objects.create(
+            provider="musicbrainz", entity_type="album", external_id="mbid", status="pending"
+        )
+        movie = SyncJob.objects.create(
+            provider="tmdb", entity_type="movie", external_id="1", status="pending"
+        )
+        drained = []
+        with mock.patch(
+            "apps.integrations.services.catalog_seed.execute_sync_job",
+            side_effect=lambda pk: drained.append(pk) or {"status": "success"},
+        ):
+            summary = run_pending_jobs()
+        self.assertEqual(summary["ran"], 1)
+        self.assertEqual(drained, [movie.pk])
+
+
+class EnqueueDueAndIncompleteTests(TestCase):
+    def test_enqueues_incomplete_mapped_movie(self):
+        from apps.integrations.services.catalog_seed import enqueue_due_and_incomplete
+
+        media = MediaItem.objects.create(
+            media_type="movie", title="Fight Club", slug="fight-club", completeness_score=0.2
+        )
+        ExternalID.objects.create(
+            content_type=ContentType.objects.get_for_model(MediaItem),
+            object_id=media.pk,
+            provider="tmdb",
+            external_id="550",
+            media_type="movie",
+        )
+        summary = enqueue_due_and_incomplete(limit=10)
+        self.assertEqual(summary["enqueued"], 1)
+        job = SyncJob.objects.get(external_id="550")
+        self.assertEqual(job.priority, 4)
+        self.assertEqual(job.provider, "tmdb")
+
+    def test_skips_title_only_orphans(self):
+        from apps.integrations.services.catalog_seed import enqueue_due_and_incomplete
+
+        MediaItem.objects.create(
+            media_type="movie", title="Stub", slug="stub", completeness_score=0.15
+        )
+        summary = enqueue_due_and_incomplete(limit=10)
+        self.assertEqual(SyncJob.objects.count(), 0)
+        self.assertEqual(summary["skipped"], 1)
+
+    def test_skips_music_rows(self):
+        from apps.integrations.services.catalog_seed import enqueue_due_and_incomplete
+
+        media = MediaItem.objects.create(
+            media_type="music", title="An Album", slug="an-album", completeness_score=0.1
+        )
+        ExternalID.objects.create(
+            content_type=ContentType.objects.get_for_model(MediaItem),
+            object_id=media.pk,
+            provider="musicbrainz",
+            external_id="mbid",
+            media_type="music",
+        )
+        summary = enqueue_due_and_incomplete(limit=10)
+        self.assertEqual(summary["enqueued"], 0)
+        self.assertEqual(SyncJob.objects.count(), 0)
 
 
 class EnqueueTmdbPopularTests(TestCase):
@@ -329,11 +463,12 @@ class CatalogSeedCommandTests(TestCase):
             "external_ids": ["1", "2"],
         }
         drain = {"ran": 1, "succeeded": 1, "failed": 0, "skipped": 0}
-        with mock.patch.object(
-            catalog_seed, "enqueue_tmdb_popular", new=mock.AsyncMock(return_value=summary)
-        ) as enqueue, mock.patch.object(
-            catalog_seed, "run_pending_jobs", return_value=drain
-        ) as drain_jobs:
+        with (
+            mock.patch.object(
+                catalog_seed, "enqueue_tmdb_popular", new=mock.AsyncMock(return_value=summary)
+            ) as enqueue,
+            mock.patch.object(catalog_seed, "run_pending_jobs", return_value=drain) as drain_jobs,
+        ):
             call_command("catalog_seed", kind="movie", limit=5, drain=True, stdout=out)
 
         enqueue.assert_awaited_once_with("movie", limit=5)

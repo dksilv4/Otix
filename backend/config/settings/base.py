@@ -315,9 +315,7 @@ FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:
-    EMAIL_BACKEND = os.environ.get(
-        "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
-    )
+    EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 
 # ---------------------------------------------------------------------------
 # Celery — broker/backend + the catalog-maintenance beat schedule (below).
@@ -337,6 +335,7 @@ CATALOG_DAILY_TMDB_LIMIT = os.environ.get("CATALOG_DAILY_TMDB_LIMIT")
 if CATALOG_DAILY_TMDB_LIMIT is not None:
     CATALOG_DAILY_TMDB_LIMIT = int(CATALOG_DAILY_TMDB_LIMIT)
 CATALOG_DRAIN_LIMIT = int(os.environ.get("CATALOG_DRAIN_LIMIT", "200"))
+CATALOG_REHYDRATE_LIMIT = int(os.environ.get("CATALOG_REHYDRATE_LIMIT", "200"))
 
 # Auto artwork mirroring: MIRROR_SWEEP_LIMIT is the default per-run sweep cap
 # (the one-shot ``mirror_artwork`` command + the DB ``mirror_sweep_limit``
@@ -392,18 +391,14 @@ PLUGINS_ROOT = os.environ.get("PLUGINS_ROOT", str(BASE_DIR / "plugin-root"))
 # host resolves a plugin's folder from either root; ``plugins_scan`` seeds these
 # as system rows (auto-enabled, never disabled/uninstalled — the Nextcloud
 # shipped-apps analog).
-BUNDLED_PLUGINS_ROOT = os.environ.get(
-    "BUNDLED_PLUGINS_ROOT", str(BASE_DIR / "bundled_plugins")
-)
+BUNDLED_PLUGINS_ROOT = os.environ.get("BUNDLED_PLUGINS_ROOT", str(BASE_DIR / "bundled_plugins"))
 
 # Internal control API the plugin host serves on localhost; the Django API talks
 # to the host (never imports plugin code) using this shared secret. Bind stays
 # loopback-only.
 PLUGIN_HOST_BIND = os.environ.get("PLUGIN_HOST_BIND", "127.0.0.1")
 PLUGIN_HOST_PORT = int(os.environ.get("PLUGIN_HOST_PORT", "8347"))
-PLUGIN_HOST_SECRET = os.environ.get(
-    "PLUGIN_HOST_SECRET", "dev-plugin-host-secret-change-me"
-)
+PLUGIN_HOST_SECRET = os.environ.get("PLUGIN_HOST_SECRET", "dev-plugin-host-secret-change-me")
 
 # Plugin lifecycle events: when non-empty, the host publishes plugin.loaded /
 # unloaded / error onto this Redis URL + channel as JSON. Fail-open — a down or
@@ -462,4 +457,3 @@ UPLOAD_DIR = os.environ.get("UPLOAD_DIR", str(BASE_DIR / "uploads"))
 # Locally mirrored artwork (admin "download images"): MediaAsset copies written
 # under MEDIA_DIR/assets and served from /api/v1/assets/<name>.
 MEDIA_DIR = os.environ.get("OTIX_MEDIA_DIR", str(BASE_DIR / "media"))
-

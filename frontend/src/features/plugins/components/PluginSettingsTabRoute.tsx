@@ -1,7 +1,7 @@
 // Resolves /settings/<tabId> to a plugin settings tab (declared in the
 // plugin manifest under settings.tabs). Static settings routes win over this
 // dynamic sibling; unknown ids render a benign empty state or helpful fallback.
-import { useParams, Link } from '@tanstack/react-router'
+import { useParams, Link, Navigate } from '@tanstack/react-router'
 import { Download, DownloadCloud, Server, Puzzle, Check, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePluginTabs } from '@/features/_config/slots'
@@ -14,6 +14,15 @@ import { ServerSonarrSettingsModal } from '@/features/downloads/molecules/server
 import { useServerRadarrConfig, useServerSonarrConfig } from '@/features/downloads/use-server-arr'
 import { PluginSettingsPage } from './PluginSettingsPage'
 import { useModal } from '@/lib/modals'
+
+const LEGACY_SETTINGS_TABS: Record<string, { to: string; hash?: string }> = {
+  overview: { to: '/settings/appearance' },
+  general: { to: '/settings/appearance', hash: 'general' },
+  desktop: { to: '/settings/desktop' },
+  launcher: { to: '/settings/launcher' },
+  integrations: { to: '/settings/connections' },
+  proposals: { to: '/settings/library', hash: 'proposals' },
+}
 
 export function PluginSettingsTabRoute() {
   const { tabId } = useParams({ from: '/settings/$tabId' })
@@ -41,6 +50,11 @@ export function PluginSettingsTabRoute() {
     sonarrConfig?.host &&
     Boolean(sonarrConfig?.apiKey || sonarrConfig?.api_key || sonarrConfig?.configured)
   )
+
+  const legacy = tabId ? LEGACY_SETTINGS_TABS[tabId] : undefined
+  if (legacy) {
+    return <Navigate to={legacy.to} hash={legacy.hash} replace />
+  }
 
   if (isLoading) return null
   if (!tab) {
@@ -194,11 +208,11 @@ export function PluginSettingsTabRoute() {
             Downloads Queue
           </Link>
           <Link
-            to="/settings/launcher"
+            to="/settings/connections"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 text-white/80 font-medium text-sm hover:bg-white/10 transition-colors"
           >
             <Server className="h-4 w-4" />
-            Game Servers
+            Connections
           </Link>
         </div>
       </div>

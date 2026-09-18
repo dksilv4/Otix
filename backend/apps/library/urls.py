@@ -12,6 +12,7 @@ from apps.library.views import (
     EpicLibraryView,
     EpicStatusView,
     EpicUnmatchedView,
+    GameServerDesktopView,
     GameServerDetailView,
     GameServerDownloadsAddView,
     GameServerDownloadsHistoryView,
@@ -22,6 +23,7 @@ from apps.library.views import (
     GameServerExplorerSetPathView,
     GameServerFilesView,
     GameServerListCreateView,
+    GameServerPendingView,
     GameServerPingView,
     GameServerProvidersView,
     GameServerProviderTestView,
@@ -69,6 +71,7 @@ app_name = "library"
 urlpatterns = [
     path("installed", InstalledGamesView.as_view(), name="library-installed"),
     path("servers", GameServerListCreateView.as_view(), name="library-servers"),
+    path("servers/pending", GameServerPendingView.as_view(), name="library-servers-pending"),
     path("servers/<int:server_id>", GameServerDetailView.as_view(), name="library-server-detail"),
     path("servers/<int:server_id>/ping", GameServerPingView.as_view(), name="library-server-ping"),
     path(
@@ -271,6 +274,11 @@ urlpatterns = [
         "servers/<int:server_id>/sonarr/history",
         GameServerSonarrHistoryView.as_view(),
         name="library-server-sonarr-history",
+    ),
+    path(
+        "servers/<int:server_id>/desktop",
+        GameServerDesktopView.as_view(),
+        name="library-server-desktop",
     ),
     path("server-games", GameServerFilesView.as_view(), name="library-server-games"),
     path("plex", PlexLibraryView.as_view(), name="library-plex"),

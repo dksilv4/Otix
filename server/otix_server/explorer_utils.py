@@ -41,10 +41,67 @@ def is_safe_folder_name(name: str) -> bool:
     return True
 
 
+def _is_inside(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def external_library_roots(library_paths: list[str], server_root: Path) -> list[Path]:
+    """Top-level folders for libraries that live outside the node working tree.
+
+    ``/server/Games`` and ``/server/Downloads`` collapse to ``/server``.
+    ``/games`` stays ``/games``. Paths already under the node root are skipped.
+    """
+    root = server_root.resolve()
+    seen: set[str] = set()
+    extra: list[Path] = []
+    for raw in library_paths:
+        folder = Path(raw)
+        if not folder.exists():
+            continue
+        if not folder.is_dir():
+            folder = folder.parent
+        current = folder.resolve()
+        if _is_inside(current, root):
+            continue
+        while True:
+            parent = current.parent
+            if parent == current:
+                break
+            if _is_inside(root, parent) or parent == root.parent:
+                break
+            current = parent
+        if not current.is_dir():
+            continue
+        key = str(current)
+        if key in seen:
+            continue
+        seen.add(key)
+        extra.append(current)
+    return extra
+
+
+def _folder_entry(path: Path, is_download_location: bool = False) -> ExplorerEntry:
+    return ExplorerEntry(
+        name=path.name or str(path),
+        path=str(path),
+        is_dir=True,
+        size=0,
+        extension="",
+        format_category="folder",
+        is_downloadable=False,
+        is_download_location=is_download_location,
+    )
+
+
 def inspect_directory(
     target_path: Path,
     active_download_path: str = "",
     server_root: Path | None = None,
+    extra_library_paths: list[str] | None = None,
 ) -> ExplorerBrowseResponse:
     """Inspect and index directory contents for the Otix Server File Explorer."""
     root = (server_root or Path.cwd()).resolve()
@@ -120,6 +177,13 @@ def inspect_directory(
                     continue
     except PermissionError as err:
         raise PermissionError(f"Permission denied accessing directory: {resolved_target}") from err
+
+    if is_root and extra_library_paths:
+        existing = {Path(entry.path).resolve() for entry in entries}
+        for extra in external_library_roots(extra_library_paths, root):
+            if extra in existing:
+                continue
+            entries.append(_folder_entry(extra))
 
     # Sort entries: directories first alphabetically, then files alphabetically
     entries.sort(key=lambda e: (0 if e.is_dir else 1, e.name.lower()))

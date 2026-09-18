@@ -10,11 +10,10 @@ from pathlib import Path
 
 import httpx
 from django.contrib.contenttypes.models import ContentType
-from django.utils.text import slugify
 
 from apps.library.models import UserGameServer
 from apps.library.services.server_catalog import match_files_to_catalog, unmatched_scan_titles
-from apps.media.models import ExternalID, Game, MediaAsset, MediaItem
+from apps.media.models import ExternalID, MediaItem
 from apps.media.services.game_matcher import _comparison_key, _igdb_search_query
 
 logger = logging.getLogger(__name__)
@@ -33,10 +32,23 @@ _NOISE_TAG = re.compile(
 )
 _YEAR_TAIL = re.compile(r"\s+(?:19|20)\d{2}$")
 _SKIP_TITLES = {
-    "setup", "install", "installer", "launcher", "dx", "ereg", "easyinfo", "speed",
-    "dowser", "crashpad handler", "unitycrashhandler64", "steam api64 rne",
-    "foundrybugreporter", "foundryrestarter", "epiconlineservicesinstaller",
-    "vc redist", "vcredist",
+    "setup",
+    "install",
+    "installer",
+    "launcher",
+    "dx",
+    "ereg",
+    "easyinfo",
+    "speed",
+    "dowser",
+    "crashpad handler",
+    "unitycrashhandler64",
+    "steam api64 rne",
+    "foundrybugreporter",
+    "foundryrestarter",
+    "epiconlineservicesinstaller",
+    "vc redist",
+    "vcredist",
 }
 
 
@@ -50,7 +62,9 @@ def steam_asset_urls(appid: int) -> list[tuple[str, str, int]]:
 
 
 def _steam_get(url: str, params: dict | None = None) -> dict | list | None:
-    with httpx.Client(timeout=20.0, headers={"User-Agent": _STEAM_UA}, follow_redirects=True) as client:
+    with httpx.Client(
+        timeout=20.0, headers={"User-Agent": _STEAM_UA}, follow_redirects=True
+    ) as client:
         response = client.get(url, params=params)
         if response.status_code != 200:
             logger.warning("steam GET failed status=%s url=%s", response.status_code, url)
@@ -181,61 +195,31 @@ def _mapped_steam_ids() -> set[str]:
     )
 
 
-def _unique_slug(title: str, appid: int) -> str:
-    base = slugify(title)[:180] or f"steam-{appid}"
-    slug = base
-    if not MediaItem.objects.filter(slug=slug).exists():
-        return slug
-    slug = f"{base}-{appid}"
-    n = 2
-    while MediaItem.objects.filter(slug=slug).exists():
-        slug = f"{base}-{appid}-{n}"
-        n += 1
-    return slug
+def seed_game_from_steam_app(
+    title: str, appid: int, details: dict | None = None
+) -> MediaItem | None:
+    """Resolve a Steam app to a catalog game. Never creates a Steam-only hub.
 
+    If IGDB already maps this steam id, return that row (and attach steam).
+    Otherwise enqueue ``ensure_catalog_job`` for the igdb id and return None.
+    """
+    from apps.media.services.catalog_resolve import resolve_or_enqueue
+    from apps.media.services.identity import attach_external_id, find_media_id
 
-def seed_game_from_steam_app(title: str, appid: int, details: dict | None = None) -> MediaItem:
-    content_type = ContentType.objects.get_for_model(MediaItem)
-    existing = ExternalID.objects.filter(
-        content_type=content_type, provider="steam", external_id=str(appid), media_type="game"
-    ).first()
-    if existing is not None and existing.object_id:
-        item = MediaItem.objects.filter(pk=existing.object_id).first()
-        if item is not None:
-            return item
+    existing = find_media_id("steam", str(appid), "game")
+    if existing is not None:
+        return MediaItem.objects.filter(pk=existing).first()
 
-    catalog_title = str((details or {}).get("name") or title).strip() or title
-    overview = _plain_text((details or {}).get("short_description"))
-    release_raw = None
-    release = (details or {}).get("release_date")
-    if isinstance(release, dict):
-        release_raw = release.get("date")
-    release_date = parse_steam_release_date(release_raw if isinstance(release_raw, str) else None)
-    media = MediaItem.objects.create(
-        media_type="game",
-        title=catalog_title,
-        slug=_unique_slug(catalog_title, appid),
-        overview=overview,
-        release_date=release_date,
-        completeness_score=0.55,
-        is_adult=bool((details or {}).get("is_adult")),
+    media_id = resolve_or_enqueue(
+        "game",
+        ids={"steam": str(appid)},
+        title=title,
+        priority=1,
     )
-    Game.objects.get_or_create(media_item=media, defaults={"game_type": "main_game", "release_status": "released"})
-    for asset_type, url, score in steam_asset_urls(appid):
-        MediaAsset.objects.get_or_create(
-            media_item=media,
-            asset_type=asset_type,
-            url=url,
-            defaults={"label": "official", "provider": "steam", "score": score, "selected_context": "general"},
-        )
-    ExternalID.objects.get_or_create(
-        content_type=content_type,
-        provider="steam",
-        external_id=str(appid),
-        media_type="game",
-        defaults={"object_id": media.pk},
-    )
-    return media
+    if media_id is None:
+        return None
+    attach_external_id(media_id, "steam", str(appid), "game")
+    return MediaItem.objects.filter(pk=media_id).first()
 
 
 def _pause(delay: float) -> None:
@@ -291,6 +275,10 @@ def seed_games_from_titles(
             continue
         details = fetch_steam_appdetails(appid) if fetch_details else None
         item = seed_game_from_steam_app(title, appid, details)
+        if item is None:
+            unmatched.append(original)
+            _pause(delay)
+            continue
         created.append(item.title)
         existing_keys.add(seed_key(item.title))
         mapped_steam.add(str(appid))

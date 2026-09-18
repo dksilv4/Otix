@@ -1,5 +1,5 @@
 // TODO: Review this file
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { infiniteQueryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api/client"
 import { API_BASE_URL, ACCESS_TOKEN_KEY } from "@/lib/config"
 import { connectTaskSseStream, createSseStream, type SseEvent } from "@/lib/api/sse-client"
@@ -60,8 +60,8 @@ export const TAB_LABELS: Record<LibraryTab, string> = {
   games: "Games",
 }
 
-export function useLibraryTab(tab: LibraryTab, extraParams?: Record<string, string>) {
-  return useInfiniteQuery({
+export function libraryTabQueryOptions(tab: LibraryTab, extraParams?: Record<string, string>) {
+  return infiniteQueryOptions({
     queryKey: libraryKeys.tab(tab, extraParams),
     queryFn: async ({ pageParam }: { pageParam: string | null }) => {
       const params: Record<string, string> = { limit: "48", ...extraParams }
@@ -84,8 +84,13 @@ export function useLibraryTab(tab: LibraryTab, extraParams?: Record<string, stri
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
     staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 60 * 24,
     meta: { suppressToast: true },
   })
+}
+
+export function useLibraryTab(tab: LibraryTab, extraParams?: Record<string, string>) {
+  return useInfiniteQuery(libraryTabQueryOptions(tab, extraParams))
 }
 
 export function useSteamLibraryScan() {

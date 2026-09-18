@@ -1,11 +1,15 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { discoverKeys } from './discover-keys'
+import { freshUnlessEmpty, retainUnlessEmpty } from '@/lib/query/empty-cache'
 import type { MediaItemSummary, SeasonSummary } from '@media/queries/media-queries'
 import type { PersonalizedSection } from '../types'
 
 const TWO_HOURS = 1000 * 60 * 60 * 2
 const ONE_DAY = 1000 * 60 * 60 * 24
+
+export const discoverStaleTime = freshUnlessEmpty(TWO_HOURS)
+const discoverGcTime = retainUnlessEmpty(ONE_DAY)
 
 export interface DiscoverListResponse {
   items: MediaItemSummary[]
@@ -40,8 +44,8 @@ export const discoverQueries = {
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '',
-      staleTime: TWO_HOURS,
-      gcTime: ONE_DAY,
+      staleTime: discoverStaleTime,
+      gcTime: discoverGcTime,
     }),
 
   // New Seasons surfaces each show's latest Season as the rail item, so the
@@ -61,8 +65,8 @@ export const discoverQueries = {
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '',
-      staleTime: TWO_HOURS,
-      gcTime: ONE_DAY,
+      staleTime: discoverStaleTime,
+      gcTime: discoverGcTime,
     }),
 
   hero: () =>
@@ -76,8 +80,8 @@ export const discoverQueries = {
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '',
-      staleTime: TWO_HOURS,
-      gcTime: ONE_DAY,
+      staleTime: discoverStaleTime,
+      gcTime: discoverGcTime,
     }),
 
   sections: () =>
@@ -87,8 +91,8 @@ export const discoverQueries = {
         const { data } = await apiClient.get<{ sections: PersonalizedSection[] }>('/discover/sections')
         return data.sections
       },
-      staleTime: TWO_HOURS,
-      gcTime: ONE_DAY,
+      staleTime: discoverStaleTime,
+      gcTime: discoverGcTime,
     }),
 
 }

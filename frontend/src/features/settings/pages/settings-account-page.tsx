@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { DkButton } from '@ui/atoms/button'
@@ -9,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { Check, Shield, ShieldAlert, Loader2, Monitor } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
+import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { useSettingsSaveBar } from '../context/settings-save-context'
 
 interface SessionInfo {
@@ -550,7 +550,6 @@ export function SettingsAccountPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [verificationState, setVerificationState] = useState<'idle' | 'sending' | 'sent'>('idle')
-  const location = useLocation()
 
   useEffect(() => {
     if (!user) return
@@ -605,37 +604,25 @@ export function SettingsAccountPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="rounded-3xl p-10 text-center space-y-5 bg-white/5 backdrop-blur-xl shadow-2xl max-w-xl mx-auto my-8">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <Shield className="h-7 w-7" />
-        </div>
-        <div className="space-y-1.5">
-          <h3 className="text-lg font-bold text-white tracking-tight">Otix Account & Security</h3>
-          <p className="text-xs text-white/60 leading-relaxed max-w-md mx-auto">
-            Sign in to manage account security, email preferences, two-factor authentication, and connected devices.
-          </p>
-        </div>
-        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link
-            to="/auth/register"
-            className="w-full sm:w-auto inline-flex items-center justify-center font-semibold rounded-xl px-6 py-2.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md active:scale-[0.98]"
-          >
-            Create Free Account
-          </Link>
-          <Link
-            to="/auth/login"
-            search={{ redirect: location.href }}
-            className="w-full sm:w-auto inline-flex items-center justify-center font-medium rounded-xl px-5 py-2.5 text-sm bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
-          >
-            Sign In
-          </Link>
-        </div>
-      </div>
+      <SettingsLockedState
+        title="Otix Account & Security"
+        description="Sign in to manage account security, email preferences, two-factor authentication, and connected devices."
+        icon={Shield}
+        primaryLabel="Sign In"
+        secondaryLabel="Create Free Account"
+        secondaryTo="/auth/register"
+      />
     )
   }
 
   return (
     <div id="settings-account-section" className="space-y-5">
+      <SectionHeader
+        variant="page"
+        icon={Shield}
+        title="Security"
+        description="Credentials, two-factor authentication, and active sessions."
+      />
       <SettingsCard>
         <SectionHeader title="Identity" description="Your core account details." />
 

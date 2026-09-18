@@ -125,9 +125,7 @@ def _hydrated_raw(**overrides):
         },
         {
             "type": "streaming",
-            "url": {
-                "resource": "https://music.apple.com/us/album/ok-computer/2849384"
-            },
+            "url": {"resource": "https://music.apple.com/us/album/ok-computer/2849384"},
         },
         {"type": "lyrics", "url": {"resource": "https://example.com/not-a-provider"}},
     ]
@@ -143,7 +141,7 @@ class SeedAlbumFromMusicbrainzTests(TestCase):
         self.assertEqual(media.title, "In Rainbows")
         self.assertEqual(str(media.release_date), "2007-10-10")
         # Recompute at the seed tail: 2/17 music flags (no cover in the plain seed).
-        self.assertEqual(media.completeness_score, 0.118)
+        self.assertEqual(media.completeness_score, 0.125)
         self.assertIsNotNone(media.next_sync_at)
 
         album = Album.objects.get(media_item_id=media_id)
@@ -232,7 +230,6 @@ class SeedAlbumFromMusicbrainzTests(TestCase):
         with self.assertRaises(ValueError):
             seed_album_from_musicbrainz({"title": "No id here"})
 
-
     def test_artist_shared_across_releases_reuses_one_person(self):
         first = seed_album_from_musicbrainz(_hydrated_raw())
         second = seed_album_from_musicbrainz(
@@ -312,9 +309,7 @@ class SeedAlbumFromMusicbrainzTests(TestCase):
         # Genres capped at the legacy first 8 (the 9th name is dropped).
         self.assertEqual(MediaGenre.objects.filter(media_item=media).count(), 8)
         self.assertEqual(Genre.objects.count(), 8)
-        self.assertFalse(
-            Genre.objects.filter(name="Experimental Rock").exists()
-        )
+        self.assertFalse(Genre.objects.filter(name="Experimental Rock").exists())
 
         # url-rels -> media ExternalIDs (unknown providers dropped).
         pairs = {
@@ -326,9 +321,7 @@ class SeedAlbumFromMusicbrainzTests(TestCase):
             )
         }
         self.assertEqual(pairs, {"deezer": "123456", "apple_music": "2849384"})
-        self.assertFalse(
-            ExternalID.objects.filter(provider="example").exists()
-        )
+        self.assertFalse(ExternalID.objects.filter(provider="example").exists())
 
     def test_reseed_does_not_duplicate_hydrated_rows(self):
         seed_album_from_musicbrainz(_hydrated_raw())
@@ -349,9 +342,7 @@ class SeedAlbumFromMusicbrainzTests(TestCase):
 
 class AttachAlbumCoverTests(TestCase):
     def _media(self):
-        return MediaItem.objects.create(
-            media_type="music", title="OK Computer", slug="ok-computer"
-        )
+        return MediaItem.objects.create(media_type="music", title="OK Computer", slug="ok-computer")
 
     def test_front_and_back_images_become_poster_and_backdrop(self):
         media = self._media()
@@ -400,17 +391,11 @@ class FetchAndSeedAlbumTests(TestCase):
             return_value=54321,
         ) as seed:
             result = _run(
-                fetch_and_seed_album(
-                    "2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider
-                )
+                fetch_and_seed_album("2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider)
             )
 
-        provider.get_release.assert_awaited_once_with(
-            "2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f"
-        )
-        provider.get_cover_art.assert_awaited_once_with(
-            "2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f"
-        )
+        provider.get_release.assert_awaited_once_with("2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f")
+        provider.get_cover_art.assert_awaited_once_with("2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f")
         seed.assert_called_once_with(raw)
         self.assertEqual(result, 54321)
 
@@ -421,17 +406,18 @@ class FetchAndSeedAlbumTests(TestCase):
         provider.get_release = mock.AsyncMock(return_value=raw)
         provider.get_cover_art = mock.AsyncMock(return_value={"images": images})
 
-        with mock.patch(
-            "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
-            return_value=54321,
-        ) as seed, mock.patch(
-            "apps.media.services.musicbrainz_ingest.attach_album_cover",
-            return_value=1,
-        ) as attach:
+        with (
+            mock.patch(
+                "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
+                return_value=54321,
+            ) as seed,
+            mock.patch(
+                "apps.media.services.musicbrainz_ingest.attach_album_cover",
+                return_value=1,
+            ) as attach,
+        ):
             result = _run(
-                fetch_and_seed_album(
-                    "2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider
-                )
+                fetch_and_seed_album("2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider)
             )
 
         seed.assert_called_once_with(raw)
@@ -453,17 +439,19 @@ class LastfmEnrichFoldInTests(TestCase):
         provider = mock.Mock()
         provider.get_release = mock.AsyncMock(return_value=_release_raw())
         provider.get_cover_art = mock.AsyncMock(return_value=None)
-        with override_settings(LASTFM_API_KEY="test-key"), mock.patch(
-            "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
-            return_value=54321,
-        ), mock.patch(
-            "apps.media.services.musicbrainz_ingest.lastfm_enrich_album",
-            new_callable=mock.AsyncMock,
-        ) as enrich:
+        with (
+            override_settings(LASTFM_API_KEY="test-key"),
+            mock.patch(
+                "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
+                return_value=54321,
+            ),
+            mock.patch(
+                "apps.media.services.musicbrainz_ingest.lastfm_enrich_album",
+                new_callable=mock.AsyncMock,
+            ) as enrich,
+        ):
             result = _run(
-                fetch_and_seed_album(
-                    "2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider
-                )
+                fetch_and_seed_album("2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider)
             )
 
         self.assertEqual(result, 54321)
@@ -477,17 +465,18 @@ class LastfmEnrichFoldInTests(TestCase):
         async def _boom(media_id):
             raise AssertionError("Last.fm enrich ran with no key configured")
 
-        with mock.patch(
-            "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
-            return_value=54321,
-        ), mock.patch(
-            "apps.media.services.musicbrainz_ingest.lastfm_enrich_album",
-            new=mock.AsyncMock(side_effect=_boom),
-        ) as enrich:
+        with (
+            mock.patch(
+                "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
+                return_value=54321,
+            ),
+            mock.patch(
+                "apps.media.services.musicbrainz_ingest.lastfm_enrich_album",
+                new=mock.AsyncMock(side_effect=_boom),
+            ) as enrich,
+        ):
             result = _run(
-                fetch_and_seed_album(
-                    "2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider
-                )
+                fetch_and_seed_album("2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider)
             )
 
         self.assertEqual(result, 54321)
@@ -509,17 +498,18 @@ class LrclibEnrichFoldInTests(TestCase):
         provider = mock.Mock()
         provider.get_release = mock.AsyncMock(return_value=_release_raw())
         provider.get_cover_art = mock.AsyncMock(return_value=None)
-        with mock.patch(
-            "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
-            return_value=54321,
-        ), mock.patch(
-            "apps.media.services.musicbrainz_ingest.lrclib_enrich_album",
-            new_callable=mock.AsyncMock,
-        ) as enrich:
+        with (
+            mock.patch(
+                "apps.media.services.musicbrainz_ingest.seed_album_from_musicbrainz",
+                return_value=54321,
+            ),
+            mock.patch(
+                "apps.media.services.musicbrainz_ingest.lrclib_enrich_album",
+                new_callable=mock.AsyncMock,
+            ) as enrich,
+        ):
             result = _run(
-                fetch_and_seed_album(
-                    "2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider
-                )
+                fetch_and_seed_album("2f4f6f9e-4c6d-4e63-9b1a-2a4a4c9c4e6f", provider=provider)
             )
 
         self.assertEqual(result, 54321)

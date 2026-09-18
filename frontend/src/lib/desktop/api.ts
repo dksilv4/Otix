@@ -12,9 +12,6 @@ export interface DesktopSettingsData {
   closeToTray: boolean;
   alwaysOnTop: boolean;
   startMinimized: boolean;
-  aiAddonEnabled: boolean;
-  aiModelStatus: AiModelStatus;
-  aiSystemPrompt: string;
   gamesDownloadPath?: string;
 }
 

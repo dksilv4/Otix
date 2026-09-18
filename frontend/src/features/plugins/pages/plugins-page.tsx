@@ -22,6 +22,9 @@ import {
 import type { PluginInfo } from '@/features/plugins/types/plugins'
 import { cn } from '@/lib/utils'
 import { DkSwitch } from '@ui/atoms/switch'
+import { SettingsCard } from '@/features/settings/components/molecules/settings-card'
+import { SectionHeader } from '@/features/settings/components/molecules/settings-section-header'
+import { SettingsLockedState } from '@/features/settings/components/molecules/settings-locked-state'
 
 // ── Topology Graph ─────────────────────────────────────────────────────────────
 
@@ -243,14 +246,13 @@ function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
               className="w-[36px] h-[36px] rounded-lg shadow-sm flex items-center justify-center transition-transform hover:scale-110 cursor-default"
               style={{
                 backgroundColor: n.status === 'error' ? 'rgba(239,68,68,0.2)' : `${n.color}18`,
-                border: `1.5px solid ${n.color}44`,
               }}
             >
               <span className="text-[10px] font-bold" style={{ color: n.color }}>
                 {n.name.slice(0, 2).toUpperCase()}
               </span>
             </div>
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 rounded-lg bg-gray-900 border border-white/[0.06] text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 rounded-lg bg-gray-900 text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
               {n.name}
             </div>
           </div>
@@ -283,17 +285,17 @@ function HeroBanner({ plugins }: { plugins: PluginInfo[] }) {
   const hasActive = connectedPlugins.length > 0 || enabledPlugins.length > 0
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent border border-white/[0.06]">
-      <div className="flex items-center gap-10 px-8 py-10">
+    <SettingsCard className="bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent overflow-hidden">
+      <div className="flex items-center gap-10">
         <div className="flex-1 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-4">
             <Puzzle className="h-3 w-3" />
             {hasActive ? `${connectedPlugins.length} connected, ${enabledPlugins.length} enabled` : 'Plugin Ecosystem'}
           </div>
-          <h1 className="text-3xl font-bold text-white leading-tight tracking-tight">
+          <h2 className="text-lg font-bold text-white leading-tight tracking-tight">
             {hasActive ? 'Your plugin ecosystem' : 'Powerful connections for better results'}
-          </h1>
-          <p className="mt-3 text-base text-white/50 leading-relaxed max-w-lg">
+          </h2>
+          <p className="mt-2 text-sm text-white/50 leading-relaxed max-w-lg">
             {hasActive
               ? `You have ${connectedPlugins.length} plugin${connectedPlugins.length === 1 ? '' : 's'} connected and ${enabledPlugins.length} running.`
               : 'Connect your favorite services and extend Otix with community-built plugins. Automate workflows, sync your library, and unlock new capabilities.'}
@@ -304,7 +306,7 @@ function HeroBanner({ plugins }: { plugins: PluginInfo[] }) {
           <PluginTopologyGraph enabledPlugins={plugins.filter((p) => p.status === 'enabled')} />
         </div>
       </div>
-    </div>
+    </SettingsCard>
   )
 }
 
@@ -337,7 +339,7 @@ function InstalledPluginRow({
 
   return (
     <div
-      className="flex items-center gap-4 rounded-xl border border-white/[0.04] px-4 py-3 transition-colors duration-150 hover:bg-white/[0.04]"
+      className="flex items-center gap-4 rounded-xl px-4 py-3 transition-colors duration-150 hover:bg-white/[0.04]"
       style={{ backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.12)' }}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -436,7 +438,7 @@ function DependencyWarningModal({
           {dependents.map((d) => (
             <li
               key={d.id}
-              className="flex items-center gap-2 rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2 text-sm text-white/70"
+              className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2 text-sm text-white/70"
             >
               <AlertTriangle className="h-3.5 w-3.5 text-amber-400/70 shrink-0" />
               {d.name}
@@ -655,21 +657,12 @@ export function SettingsPluginsPage() {
 
   if (!api) {
     return (
-      <div className="space-y-6">
-        <div
-          className="rounded-2xl p-6"
-          style={{ backgroundColor: 'var(--dk-surface-base)', boxShadow: 'var(--dk-shadow-md)' }}
-        >
-          <div className="mb-5">
-            <h2 className="text-lg font-semibold text-white">Plugins</h2>
-            <p className="mt-1 text-sm text-white/50">Extend Otix with community-built plugins.</p>
-          </div>
-          <div className="flex items-center justify-center py-8 text-sm text-white/40">
-            <Puzzle className="h-5 w-5 mr-2" />
-            Plugins are only available in the Otix desktop app.
-          </div>
-        </div>
-      </div>
+      <SettingsLockedState
+        title="Plugins"
+        description="Plugins are only available in the Otix desktop app."
+        icon={Puzzle}
+        action={<span />}
+      />
     )
   }
 
@@ -698,13 +691,13 @@ export function SettingsPluginsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search plugins..."
-            className="w-full h-10 rounded-xl bg-white/[0.04] border border-white/[0.06] pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/30 focus:border-primary/30 focus:bg-white/[0.06] transition-all"
+            className="w-full h-10 rounded-xl bg-white/[0.04] pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/30 focus:ring-2 focus:ring-primary/30 focus:bg-white/[0.06] transition-all"
           />
         </div>
       </div>
 
       {error && (
-        <div className="flex items-start gap-3 rounded-xl p-4 bg-red-500/5 border border-red-500/10">
+        <div className="flex items-start gap-3 rounded-xl p-4 bg-red-500/5">
           <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-red-300">Error</p>
@@ -727,10 +720,12 @@ export function SettingsPluginsPage() {
       {hasAnyInstalled ? (
         <section>
           <div className="mb-5 flex flex-wrap items-center gap-3">
-            <h2 className="text-lg font-semibold text-white">Installed Plugins</h2>
-            <span className="text-xs text-white/30 bg-white/5 rounded-full px-2 py-0.5">{installedPlugins.length}</span>
+          <SectionHeader
+            title="Installed Plugins"
+            description={`${installedPlugins.length} installed`}
+          />
 
-            <div className="ml-auto flex items-center gap-1 rounded-xl border border-white/[0.06] bg-white/[0.03] p-1">
+            <div className="ml-auto flex items-center gap-1 rounded-xl bg-white/[0.03] p-1">
               {STATUS_FILTERS.map((f) => {
                 const active = statusFilter === f.id
                 return (
@@ -761,7 +756,7 @@ export function SettingsPluginsPage() {
           </div>
 
           {visibleInstalled.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-white/[0.04] py-14 text-center">
+            <div className="flex flex-col items-center justify-center rounded-xl py-14 text-center">
               <Puzzle className="h-9 w-9 text-white/15 mb-3" />
               <p className="text-sm text-white/50">No plugins match your search or filters</p>
               {(statusFilter !== 'all' || searchQuery) && (

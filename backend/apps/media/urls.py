@@ -11,11 +11,11 @@ never shadowed by ``<media_id>``.
 
 from django.urls import path
 
-from apps.search.views import ProvidersView, SuggestionsView
 from apps.media.views import (
     ArtworkSelectionView,
     ArtworkSettingsView,
     AssetMirrorView,
+    CatalogStreamView,
     CertificationListView,
     ClaimView,
     CompanyLookupView,
@@ -56,12 +56,14 @@ from apps.media.views import (
     SyncLocalGamesView,
     TextlessPickView,
 )
+from apps.search.views import ProvidersView, SuggestionsView
 
 app_name = "media"
 
 urlpatterns = [
     # Literal catalog browse / admin routes (must precede <int:media_id> paths).
     path("", MediaListView.as_view(), name="media-list"),
+    path("stream", CatalogStreamView.as_view(), name="media-stream"),
     path("genres", GenreListView.as_view(), name="genre-list"),
     path("suggestions", SuggestionsView.as_view(), name="media-suggestions"),
     path("search-providers", ProvidersView.as_view(), name="media-search-providers"),

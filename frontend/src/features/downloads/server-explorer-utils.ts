@@ -1,6 +1,51 @@
 /** Utility functions for the Otix Server File Explorer. */
 
-import type { FormatCategory, ServerExplorerEntry, ServerPathBreadcrumb } from './server-explorer-types';
+import type {
+  FormatCategory,
+  ServerExplorerBrowseResult,
+  ServerExplorerEntry,
+  ServerPathBreadcrumb,
+} from './server-explorer-types';
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+}
+
+function pickValue(value: Record<string, unknown>, camel: string, snake: string): unknown {
+  return value[camel] ?? value[snake]
+}
+
+function normalizeExplorerEntry(raw: unknown): ServerExplorerEntry {
+  const entry = asRecord(raw)
+  const format = pickValue(entry, 'formatCategory', 'format_category')
+  return {
+    name: String(entry.name ?? ''),
+    path: String(entry.path ?? ''),
+    is_dir: Boolean(pickValue(entry, 'isDir', 'is_dir')),
+    size: Number(entry.size ?? 0) || 0,
+    extension: String(entry.extension ?? ''),
+    format_category: (typeof format === 'string' ? format : 'file') as FormatCategory,
+    modified_at: (pickValue(entry, 'modifiedAt', 'modified_at') as string | null | undefined) ?? null,
+    is_downloadable: Boolean(pickValue(entry, 'isDownloadable', 'is_downloadable')),
+    is_download_location: Boolean(pickValue(entry, 'isDownloadLocation', 'is_download_location')),
+  }
+}
+
+/** Map explorer payloads from camelCase (apiClient) or snake_case onto typed fields. */
+export function normalizeExplorerBrowse(raw: unknown): ServerExplorerBrowseResult {
+  const data = asRecord(raw)
+  const entries = Array.isArray(data.entries) ? data.entries : []
+  return {
+    current_path: String(pickValue(data, 'currentPath', 'current_path') ?? '/'),
+    parent_path: (pickValue(data, 'parentPath', 'parent_path') as string | null | undefined) ?? null,
+    is_root: Boolean(pickValue(data, 'isRoot', 'is_root')),
+    entries: entries.map(normalizeExplorerEntry),
+    active_download_path: String(pickValue(data, 'activeDownloadPath', 'active_download_path') ?? ''),
+    total_items: Number(pickValue(data, 'totalItems', 'total_items') ?? entries.length) || 0,
+    disk_free_bytes: (pickValue(data, 'diskFreeBytes', 'disk_free_bytes') as number | null | undefined) ?? null,
+    disk_total_bytes: (pickValue(data, 'diskTotalBytes', 'disk_total_bytes') as number | null | undefined) ?? null,
+  }
+}
 
 /** Split a path into navigation breadcrumbs supporting Windows and POSIX separators. */
 export function parseBreadcrumbs(fullPath: string): ServerPathBreadcrumb[] {

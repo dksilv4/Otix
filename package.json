@@ -1,6 +1,16 @@
 {
+  "name": "otix",
+  "private": true,
+  "scripts": {
+    "dev": "powershell -ExecutionPolicy Bypass -File ./run.ps1",
+    "dev:bash": "bash ./run.sh",
+    "start": "powershell -ExecutionPolicy Bypass -File ./run.ps1"
+  },
   "dependencies": {
     "headroom-ai": "^0.22.4",
     "ps-list": "^7.2.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.4"
   }
 }

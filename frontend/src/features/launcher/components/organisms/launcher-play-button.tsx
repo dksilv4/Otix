@@ -41,7 +41,7 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
   if (g.id === OTIX_DEFAULT_GAME_ID) {
     return (
       <button
-        onClick={() => navigate({ to: '/settings/launcher' })}
+        onClick={() => navigate({ to: '/settings/library' })}
         className="h-10 px-6 bg-cyan-400 hover:bg-cyan-300 text-neutral-950 font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:shadow-[0_0_30px_rgba(34,211,238,0.55)] active:scale-95 shrink-0"
       >
         <FolderOpen size={16} className="stroke-[2.5]" /> Scan Library

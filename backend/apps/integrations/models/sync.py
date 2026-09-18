@@ -43,6 +43,13 @@ class SyncJob(BaseModel):
 
     class Meta(BaseModel.Meta):
         db_table = "sync_jobs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["provider", "entity_type", "external_id"],
+                condition=models.Q(status__in=("pending", "running")),
+                name="uq_sync_job_live_identity",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.provider}:{self.entity_type}:{self.external_id} ({self.status})"

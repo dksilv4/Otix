@@ -37,7 +37,7 @@ export function LauncherScanWidget({ id }: { id?: string }) {
     }
   }, [toast])
 
-  const goToSettings = useCallback(() => navigate({ to: '/settings/launcher' }), [navigate])
+  const goToSettings = useCallback(() => navigate({ to: '/settings/library' }), [navigate])
   const goToLibrary = useCallback(() => navigate({ to: '/launcher/library' }), [navigate])
 
   return (

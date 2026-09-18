@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { serverKeys } from './use-server-downloads';
+import { normalizeExplorerBrowse } from './server-explorer-utils';
 import type {
   CreateServerFolderPayload,
   ServerExplorerBrowseResult,
@@ -26,7 +27,7 @@ export function useServerExplorer(serverId?: number, path?: string) {
         `/library/servers/${serverId}/explorer`,
         { params },
       );
-      return data;
+      return normalizeExplorerBrowse(data);
     },
     enabled: !!serverId,
     staleTime: 10_000,

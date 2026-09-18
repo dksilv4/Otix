@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import React from 'react'
 import { SettingsLibraryPage } from '../pages/settings-library-page'
 
 // Mock dependencies
@@ -16,6 +15,22 @@ vi.mock('@/lib/api/client', () => ({
   apiClient: {
     get: vi.fn(() => Promise.resolve({ data: { items: [], hasMore: false } })),
   },
+}))
+
+vi.mock('@/components/path-picker', () => ({
+  usePickFolder: () => ({ pick: vi.fn().mockResolvedValue(null) }),
+}))
+
+vi.mock('@ui/molecules/toast', () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}))
+
+vi.mock('../hooks/use-settings-hash-scroll', () => ({
+  useSettingsHashScroll: () => {},
+}))
+
+vi.mock('@/features/proposals/pages/proposals-page', () => ({
+  ProposalsPage: () => <div>Match Proposals</div>,
 }))
 
 describe('SettingsLibraryPage Sort Feature', () => {

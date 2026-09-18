@@ -251,7 +251,7 @@ export function SwitchLauncherView() {
         </button>
 
         <button
-          onClick={() => navigate({ to: "/settings/launcher" })}
+          onClick={() => navigate({ to: '/settings/launcher' })}
           title="System Settings"
           className="flex flex-col items-center gap-1 text-white/60 hover:text-white transition-colors cursor-pointer group"
         >

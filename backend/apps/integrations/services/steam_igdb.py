@@ -134,6 +134,17 @@ def resolve_unmatched_steam_games(user) -> ResolverResult:
                 result.resolved += 1
             else:
                 result.synced += 1
+        elif auto is not None and auto.provider_id:
+            from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+            ensure_catalog_job(
+                auto.provider or "igdb",
+                "game",
+                str(auto.provider_id),
+                priority=1,
+                dispatch=False,
+            )
+            result.synced += 1
         else:
             result.failed += 1
 

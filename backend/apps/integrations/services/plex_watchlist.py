@@ -19,12 +19,9 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
-from django.utils import timezone
-from django.utils.text import slugify
 
 from apps.integrations.services import plex as _plex
-from apps.media.models import ExternalID, MediaItem, Movie, Show
-from apps.media.services.completeness import recompute_completeness
+from apps.media.models import ExternalID, MediaItem
 from apps.media.services.interaction import set_interaction
 
 logger = logging.getLogger(__name__)
@@ -133,49 +130,43 @@ def _upsert_external(
 
 def _find_or_seed_media(
     media_ct, item: dict, media_type: str, plex_guid: str | None, guids: dict[str, str]
-) -> tuple[int, bool]:
-    """Resolve a Plex movie/show to a ``MediaItem`` id, seeding a stub if new.
+) -> tuple[int | None, bool]:
+    """Resolve a Plex movie/show to a catalog hub. Never creates a stub.
 
-    Returns ``(media_item_id, was_matched)``: True when an existing catalog
-    entry was resolved (via the recorded plex guid, then third-party guids),
-    False when a stub was created.
+    Returns ``(media_item_id, was_matched)``. Unmatched items enqueue a catalog
+    job when a canonical tmdb id can be resolved.
     """
+    from apps.media.services.catalog_resolve import resolve_or_enqueue
+    from apps.media.services.identity import attach_external_id, find_media_id_any
+
+    ids = dict(guids)
     if plex_guid:
-        media_id = _find_media_id(media_ct, "plex", plex_guid, media_type=None)
-        if media_id is not None:
-            return media_id, True
+        ids["plex"] = plex_guid
+    found = find_media_id_any(ids, media_type)
+    if found is not None:
+        if plex_guid:
+            attach_external_id(found, "plex", plex_guid, None)
+        for provider, external_id in guids.items():
+            attach_external_id(found, provider, str(external_id), media_type)
+        return found, True
 
-    for provider, external_id in guids.items():
-        media_id = _find_media_id(media_ct, provider, external_id, media_type=media_type)
-        if media_id is not None:
-            # Record the plex guid so later syncs resolve directly.
-            if plex_guid:
-                _upsert_external(media_ct, media_id, "plex", plex_guid, None)
-            return media_id, True
-
-    title = str(item.get("title") or "Untitled").strip()
     year = item.get("year")
-    slug = slugify(f"{title}-{year}") if year else slugify(title)
-    media = MediaItem.objects.create(
-        media_type=media_type,
-        title=title,
-        slug=slug or slugify(media_type),
-        overview=item.get("summary"),
-        release_date=_parse_plex_date(item.get("originallyAvailableAt")),
-        completeness_score=0.15,
-        next_sync_at=timezone.now(),
+    try:
+        year_int = int(year) if year is not None else None
+    except (TypeError, ValueError):
+        year_int = None
+    media_id = resolve_or_enqueue(
+        media_type,
+        ids=ids,
+        title=str(item.get("title") or "").strip() or None,
+        year=year_int,
+        priority=1,
     )
-    if media_type == "movie":
-        Movie.objects.create(media_item=media)
-    else:
-        Show.objects.create(media_item=media)
-    if plex_guid:
-        _upsert_external(media_ct, media.pk, "plex", plex_guid, None)
-    for provider, external_id in guids.items():
-        _upsert_external(media_ct, media.pk, provider, external_id, media_type)
-    # The stub's 0.15 create-time base is a placeholder, not its graph truth.
-    recompute_completeness(media)
-    return media.pk, False
+    if media_id is not None:
+        if plex_guid:
+            attach_external_id(media_id, "plex", plex_guid, None)
+        return media_id, True
+    return None, False
 
 
 def sync_plex_watchlist(user) -> dict:
@@ -220,8 +211,26 @@ def sync_plex_watchlist(user) -> dict:
         if was_matched:
             matched += 1
         else:
-            seeded += 1
+            from apps.integrations.models import SyncJob
+            from apps.media.services.catalog_resolve import resolve_canonical_id
 
+            ids = dict(guids)
+            if plex_guid:
+                ids["plex"] = plex_guid
+            ref = resolve_canonical_id(media_type, ids=ids)
+            if (
+                ref is not None
+                and SyncJob.objects.filter(
+                    provider=ref.provider,
+                    entity_type=ref.entity_type,
+                    external_id=ref.external_id,
+                    status__in=("pending", "running"),
+                ).exists()
+            ):
+                seeded += 1
+
+        if media_item_id is None:
+            continue
         added_at = _dt_from_plex(item.get("addedAt"))
         extra_data: dict[str, Any] = {"source": "plex"}
         if added_at is not None:

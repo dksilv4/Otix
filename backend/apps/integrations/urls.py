@@ -15,6 +15,10 @@ from apps.integrations.views import (
     PlexLibrariesView,
     PlexServersView,
     PlexSessionsView,
+    PlexStorageRecommendationsView,
+    PlexStorageRefreshView,
+    PlexStorageServersView,
+    PlexStorageSummaryView,
     PlexStreamView,
     PlexSyncStreamView,
     PlexSyncView,
@@ -33,6 +37,15 @@ from apps.integrations.views import (
 app_name = "integrations"
 
 urlpatterns = [
+    # Plex storage optimization & analysis.
+    path("plex/storage/servers", PlexStorageServersView.as_view(), name="plex-storage-servers"),
+    path("plex/storage/summary", PlexStorageSummaryView.as_view(), name="plex-storage-summary"),
+    path(
+        "plex/storage/recommendations",
+        PlexStorageRecommendationsView.as_view(),
+        name="plex-storage-recommendations",
+    ),
+    path("plex/storage/refresh", PlexStorageRefreshView.as_view(), name="plex-storage-refresh"),
     # Plex read/library-state surface.
     path("plex/servers", PlexServersView.as_view(), name="plex-servers"),
     path("plex/libraries", PlexLibrariesView.as_view(), name="plex-libraries"),

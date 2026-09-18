@@ -170,7 +170,7 @@ export function GlassLauncherView() {
             </div>
 
             <button
-              onClick={() => navigate({ to: "/settings/launcher" })}
+              onClick={() => navigate({ to: '/settings/launcher' })}
               className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
             >
               <Settings size={16} />

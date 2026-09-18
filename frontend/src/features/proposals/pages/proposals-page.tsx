@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { Loader2, CheckCircle2, XCircle, Gamepad2, ExternalLink, Star, ArrowRight } from 'lucide-react'
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
 import { isDesktop } from '@/lib/desktop/api'
+import { DkButton } from '@ui/atoms/button'
+import { SettingsCard } from '@/features/settings/components/molecules/settings-card'
+import { SectionHeader } from '@/features/settings/components/molecules/settings-section-header'
 
 interface Proposal {
   id: string
@@ -55,7 +58,6 @@ export function ProposalsPage() {
       if (token) headers['Authorization'] = `Bearer ${token}`
 
       const base = getApiBase()
-      // Fetch filtered + total counts in parallel
       const [filteredRes, totalRes] = await Promise.all([
         fetch(`${base}/media/admin/match-proposals?status=${filter}&limit=100`, { headers }),
         fetch(`${base}/media/admin/match-proposals?status=pending&limit=1`, { headers }).catch(() => null),
@@ -101,30 +103,33 @@ export function ProposalsPage() {
   }
 
   return (
-    <div id="proposals-page" className="px-4 py-2 min-h-full">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h1 className="text-lg font-semibold text-white">Match Proposals</h1>
-          <p className="text-sm text-white/50">
-            {stats.total} total · {proposals.length} {filter}
-          </p>
-        </div>
-        <div className="flex gap-1">
-          {['pending', 'approved', 'rejected'].map((f) => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
-                filter === f ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/60'
-              }`}>
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
+    <SettingsCard>
+      <SectionHeader
+        title="Match Proposals"
+        description={`${stats.total} total · ${proposals.length} ${filter}`}
+        action={
+          <div className="flex gap-1">
+            {['pending', 'approved', 'rejected'].map((f) => (
+              <DkButton
+                key={f}
+                size="sm"
+                variant={filter === f ? 'primary' : 'ghost'}
+                onClick={() => setFilter(f)}
+                className="capitalize"
+              >
+                {f}
+              </DkButton>
+            ))}
+          </div>
+        }
+      />
 
       {error && (
-        <div className="rounded-xl p-4 mb-4 bg-red-500/5 border border-red-500/10">
+        <div className="rounded-xl p-4 mb-4 bg-red-500/5">
           <p className="text-xs text-red-400">{error}</p>
-          <button onClick={fetchProposals} className="text-xs text-red-300 underline mt-1">Retry</button>
+          <DkButton size="sm" variant="ghost" onClick={fetchProposals} className="mt-1 text-red-300">
+            Retry
+          </DkButton>
         </div>
       )}
 
@@ -144,9 +149,8 @@ export function ProposalsPage() {
 
       <div className="space-y-3">
         {proposals.map((p) => (
-          <div key={p.id} className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4 hover:bg-white/[0.03] transition-colors">
+          <div key={p.id} className="rounded-xl bg-white/[0.03] p-4">
             <div className="flex items-stretch gap-4">
-              {/* Source game (left) */}
               <div className="flex-1 min-w-0 flex flex-col items-center gap-2">
                 <div className="w-24 h-32 shrink-0 rounded-lg overflow-hidden bg-white/5">
                   {p.poster_url
@@ -162,7 +166,6 @@ export function ProposalsPage() {
                 </div>
               </div>
 
-              {/* Arrow + confidence */}
               <div className="shrink-0 flex flex-col items-center justify-center gap-1.5">
                 <div className={`text-center px-2 py-1 rounded-lg ${confidenceColor(p.otix_confidence)}`}>
                   <p className="text-sm font-bold">{Math.round(p.otix_confidence * 100)}%</p>
@@ -171,7 +174,6 @@ export function ProposalsPage() {
                 <ArrowRight className="h-4 w-4 text-white/20" />
               </div>
 
-              {/* Otix match (right) */}
               <div className="flex-1 min-w-0 flex flex-col items-center gap-2">
                 <div className="w-24 h-32 shrink-0 rounded-lg overflow-hidden bg-white/5">
                   {p.otix_poster_url
@@ -193,18 +195,17 @@ export function ProposalsPage() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="shrink-0 flex items-center gap-2">
                 {p.status === 'pending' && (
                   <>
-                    <button onClick={() => handleAction(p.id, 'approve')} disabled={!!acting}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-500/15 text-green-400 text-xs font-semibold hover:bg-green-500/25 transition-colors disabled:opacity-30">
+                    <DkButton size="sm" onClick={() => handleAction(p.id, 'approve')} disabled={!!acting}
+                      className="bg-green-500/15 text-green-400 hover:bg-green-500/25">
                       <CheckCircle2 className="h-4 w-4" /> Accept
-                    </button>
-                    <button onClick={() => handleAction(p.id, 'reject')} disabled={!!acting}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30">
+                    </DkButton>
+                    <DkButton size="sm" variant="ghost" onClick={() => handleAction(p.id, 'reject')} disabled={!!acting}
+                      className="text-white/30 hover:text-red-400 hover:bg-red-500/10">
                       <XCircle className="h-4 w-4" />
-                    </button>
+                    </DkButton>
                   </>
                 )}
                 {p.status === 'approved' && (
@@ -222,6 +223,6 @@ export function ProposalsPage() {
           </div>
         ))}
       </div>
-    </div>
+    </SettingsCard>
   )
 }

@@ -70,6 +70,11 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       REDIS_URL: redis://redis:6379/1
       ENABLE_RELOAD: "true"
+      # Loopback storage URLs entered in the UI (127.0.0.1:8090) are rewritten
+      # to this compose hostname so the API container can reach otix-server.
+      OTIX_SERVER_DOCKER_HOST: storage-server
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     command: bash entrypoints/start-api.sh
     depends_on:
       db:
@@ -177,7 +182,60 @@ services:
     depends_on:
       - api
 
+  storage-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./server:/app
+      # Host folders visible in the node file browser.
+      # D:\Games → /games
+      # \\SERVER\Games → /server/Games
+      # \\SERVER\Downloads → /server/Downloads
+      - ${OTIX_NODE_GAMES:-D:/Games}:/games
+      - server_games:/server/Games
+      - server_downloads:/server/Downloads
+    environment:
+      ENABLE_RELOAD: "true"
+      CONFIG_PATH: /app/config.yaml
+      OTIX_REGISTRY_URL: http://api:8000/api
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    environment:
+      VITE_API_PROXY_TARGET: http://api:8000
+      VITE_USE_POLLING: "true"
+      VITE_HOST: "0.0.0.0"
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   pgdata_django:
   redis_data:
   bot_logs:
+  frontend_node_modules:
+  server_games:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//SERVER/Games"
+      o: "guest,noperm,vers=3.0,iocharset=utf8"
+  server_downloads:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//SERVER/Downloads"
+      o: "guest,noperm,vers=3.0,iocharset=utf8"

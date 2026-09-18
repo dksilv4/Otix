@@ -159,7 +159,7 @@ export function MinimalLauncherView() {
         <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs text-neutral-500">
           <span>{user?.username || (isAuthenticated ? "Player" : "Guest")}</span>
           <button
-            onClick={() => navigate({ to: "/settings/launcher" })}
+            onClick={() => navigate({ to: '/settings/launcher' })}
             className="hover:text-white transition-colors cursor-pointer"
           >
             Settings

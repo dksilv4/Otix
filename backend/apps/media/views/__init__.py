@@ -1,6 +1,7 @@
 """Media API views, re-exported for convenient imports."""
 
 from apps.media.views.catalog import (
+    CatalogStreamView,
     CertificationListView,
     CompanyLookupView,
     GenreListView,
@@ -61,6 +62,7 @@ __all__ = [
     "ArtworkSettingsView",
     "AssetFileView",
     "AssetMirrorView",
+    "CatalogStreamView",
     "CertificationListView",
     "ClaimView",
     "CompanyLookupView",

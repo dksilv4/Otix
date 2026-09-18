@@ -78,9 +78,7 @@ class MediaApiTests(TestCase):
     def test_list_is_public_and_paginated(self) -> None:
         response = self.client.get("/api/v1/media/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            set(response.data.keys()), {"count", "next", "previous", "results"}
-        )
+        self.assertEqual(set(response.data.keys()), {"count", "next", "previous", "results"})
         self.assertEqual(response.data["count"], 2)
         keys = set(response.data["results"][0].keys())
         self.assertLessEqual(DETAIL_SUMMARY_KEYS, keys)
@@ -112,9 +110,7 @@ class MediaApiTests(TestCase):
         )
         self.assertEqual(similar.status_code, 200)
         self.assertIn("items", similar.data)
-        recs = self.client.get(
-            f"/api/v1/media/movie/{self.movie_item.pk}/recommendations"
-        )
+        recs = self.client.get(f"/api/v1/media/movie/{self.movie_item.pk}/recommendations")
         self.assertEqual(recs.status_code, 200)
         self.assertIn("items", recs.data)
 
@@ -205,9 +201,7 @@ class MediaApiTests(TestCase):
         state = self.auth_client.get(f"{base}/episode-interactions")
         self.assertEqual(state.status_code, 200)
         self.assertIn("episodes", state.data)
-        marked = self.auth_client.put(
-            f"{base}/episodes/{self.episode.pk}/watched", format="json"
-        )
+        marked = self.auth_client.put(f"{base}/episodes/{self.episode.pk}/watched", format="json")
         self.assertEqual(marked.status_code, 200)
         self.assertEqual(marked.data["interaction"]["watched"], True)
         self.assertEqual(marked.data["show_progress"]["watched_episodes"], 1)
@@ -267,9 +261,7 @@ class MediaApiTests(TestCase):
             base, {"changes": {"overview": "Admin fix."}}, format="json"
         )
         admin_proposal_id = admin_created.data["id"]
-        undone = self.staff_client.post(
-            f"{base}/{admin_proposal_id}/undo", format="json"
-        )
+        undone = self.staff_client.post(f"{base}/{admin_proposal_id}/undo", format="json")
         self.assertEqual(undone.status_code, 200)
         self.assertEqual(undone.data["status"], "pending")
 
@@ -289,9 +281,7 @@ class MediaApiTests(TestCase):
         )
         self.assertEqual(proposed.status_code, 200)
         self.assertTrue(proposed.data["success"])
-        listed = self.auth_client.get(
-            "/api/v1/media/admin/match-proposals", {"status": "pending"}
-        )
+        listed = self.auth_client.get("/api/v1/media/admin/match-proposals", {"status": "pending"})
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.data["total"], 1)
         proposal_id = listed.data["proposals"][0]["id"]
@@ -373,3 +363,10 @@ class MediaApiTests(TestCase):
         ok = self.staff_client.post(path)
         self.assertEqual(ok.status_code, 200)
         self.assertIn("task_id", ok.data)
+
+    def test_catalog_stream_requires_auth_and_is_sse(self) -> None:
+        anon = self.client.get("/api/v1/media/stream")
+        self.assertEqual(anon.status_code, 401)
+        ok = self.auth_client.get("/api/v1/media/stream")
+        self.assertEqual(ok.status_code, 200)
+        self.assertEqual(ok.headers["Content-Type"], "text/event-stream")

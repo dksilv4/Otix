@@ -1,12 +1,12 @@
 import { lazy } from 'react'
 import { createRoute } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
+import { mediaQueries } from '@media/queries/media-queries'
 
 const LauncherHomePage = lazy(() => import('./pages/launcher-home-page').then(m => ({ default: m.LauncherHomePage })))
 const LauncherGamePage = lazy(() => import('./pages/launcher-game-page').then(m => ({ default: m.LauncherGamePage })))
 const LauncherSlidePicker = lazy(() => import('./components/molecules/launcher-slide-picker').then(m => ({ default: m.LauncherSlidePicker })))
 const LauncherLibraryPage = lazy(() => import('./pages/launcher-library-page').then(m => ({ default: m.LauncherLibraryPage })))
-
 export function createLauncherRoutes(rootRoute: AnyRoute) {
   const launcherLayoutRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -30,6 +30,12 @@ export function createLauncherRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => launcherLayoutRoute,
     path: '/$gameId',
     component: LauncherGamePage,
+    loader: ({ context, params }) => {
+      if (!/^\d+$/.test(params.gameId)) return
+      return context.queryClient.ensureQueryData(
+        mediaQueries.detail('game', params.gameId),
+      )
+    },
   })
 
   return [launcherLayoutRoute, launcherIndexRoute, launcherLibraryRoute, launcherGameRoute]
