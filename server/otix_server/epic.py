@@ -219,6 +219,27 @@ def fetch_library_items(access_token: str, *, request: RequestFn | None = None) 
     return items
 
 
+def complete_scan(storage_dir: Path, *, request: RequestFn | None = None) -> list[dict]:
+    secrets = read_secrets(storage_dir)
+    if not secrets or not secrets.get("refresh_token"):
+        raise EpicAuthError(400, "No Epic account linked")
+    try:
+        tokens = refresh_access(secrets["refresh_token"], request=request)
+    except EpicAuthError as exc:
+        if exc.detail == "Reconnect Epic":
+            delete_secrets(storage_dir)
+        raise
+    if tokens["refresh_token"] != secrets["refresh_token"]:
+        write_secrets(
+            storage_dir,
+            account_id=secrets["account_id"],
+            display_name=secrets["display_name"],
+            refresh_token=tokens["refresh_token"],
+        )
+    records = fetch_library_items(tokens["access_token"], request=request)
+    return normalize_games(records)
+
+
 def normalize_games(records: list[dict]) -> list[dict]:
     seen: set[str] = set()
     games: list[dict] = []

@@ -98,6 +98,15 @@ from otix_server.providers import (
     SabnzbdDownloader,
     ProwlarrSearchProvider,
 )
+from otix_server.epic import (
+    EpicAuthError,
+    complete_scan,
+    delete_secrets,
+    exchange_code,
+    parse_authorization_code,
+    status_payload,
+    write_secrets,
+)
 
 
 app = FastAPI(title="Otix Standalone Game & Save Server", version="0.1.0")
@@ -164,6 +173,10 @@ def get_saves_manager() -> SaveCloudManager:
         cfg = get_app_config()
         _saves_manager = SaveCloudManager(cfg.saves.storage_path, cfg.saves.max_snapshots_per_game)
     return _saves_manager
+
+
+def _epic_storage_dir() -> Path:
+    return Path(get_app_config().saves.storage_path).resolve().parent
 
 
 def verify_token(authorization: Optional[str] = Header(None), token: Optional[str] = Query(None)):
@@ -346,6 +359,42 @@ async def trigger_library_scan(indexer: StorageIndexer = Depends(get_indexer), _
     """Force re-scan of all game libraries."""
     files = indexer.scan_all()
     return {"status": "scanned", "total_files": len(files)}
+
+
+@app.get("/api/v1/epic/status")
+async def epic_status(_: None = Depends(verify_token)):
+    return status_payload(_epic_storage_dir())
+
+
+@app.post("/api/v1/epic/auth")
+async def epic_auth(payload: dict, _: None = Depends(verify_token)):
+    try:
+        code = parse_authorization_code(str(payload.get("code") or ""))
+        tokens = exchange_code(code)
+        write_secrets(
+            _epic_storage_dir(),
+            account_id=tokens["account_id"],
+            display_name=tokens["display_name"],
+            refresh_token=tokens["refresh_token"],
+        )
+        return status_payload(_epic_storage_dir())
+    except EpicAuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.delete("/api/v1/epic/auth")
+async def epic_disconnect(_: None = Depends(verify_token)):
+    delete_secrets(_epic_storage_dir())
+    return {"connected": False, "account_id": None, "display_name": None}
+
+
+@app.post("/api/v1/epic/scan")
+async def epic_scan(_: None = Depends(verify_token)):
+    try:
+        games = complete_scan(_epic_storage_dir())
+        return {"games": games}
+    except EpicAuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @app.get("/api/v1/files", response_model=List[HostedFile])
