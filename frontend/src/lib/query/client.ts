@@ -9,6 +9,23 @@ import { isEmptyQueryData } from './empty-cache'
 
 const CACHE_BUSTER = 'v4'
 const STORAGE_KEY = `otix_query_cache_${CACHE_BUSTER}`
+const CACHE_RESTORE_BUDGET_MS = 250
+
+function withBudget<T>(promise: Promise<T>, ms: number): Promise<T | undefined> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => resolve(undefined), ms)
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      },
+      () => {
+        window.clearTimeout(timer)
+        resolve(undefined)
+      },
+    )
+  })
+}
 
 function createElectronPersister(): Persister {
   let _cache: PersistedClient | undefined
@@ -19,9 +36,13 @@ function createElectronPersister(): Persister {
       _cache = client
       const api = getDesktopAPI()
       if (api?.cacheSave) {
-        api.cacheSave(client).catch(() => {})
+        api.cacheSave(client).catch(() => undefined)
       } else {
-        try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(client)) } catch {}
+        try {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(client))
+        } catch {
+          // Quota or private-mode storage can throw.
+        }
       }
     },
     async restoreClient() {
@@ -34,7 +55,7 @@ function createElectronPersister(): Persister {
             return _cache
           })
           .catch(() => undefined)
-        const disk = await _load
+        const disk = await withBudget(_load, CACHE_RESTORE_BUDGET_MS)
         if (disk) return disk
       }
       try {
@@ -45,7 +66,11 @@ function createElectronPersister(): Persister {
     },
     removeClient() {
       _cache = undefined
-      try { window.localStorage.removeItem(STORAGE_KEY) } catch {}
+      try {
+        window.localStorage.removeItem(STORAGE_KEY)
+      } catch {
+        // Ignore storage failures while clearing the cache.
+      }
     },
   }
 }

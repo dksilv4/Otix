@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect, forwardRef, useMemo } from 'react'
 import { ArrowRight, Search, X } from 'lucide-react'
 
-const MEDIA_TYPE_REGEX = /^\/(movie|show|game|music)\b/
+const MEDIA_TYPE_REGEX = /^\/(movie|show|game)\b/
 
 const MEDIA_TYPE_LABEL: Record<string, string> = {
   movie: 'Movie',
   show: 'TV Show',
   game: 'Game',
-  music: 'Music',
   people: 'Artist',
   users: 'User',
 }
@@ -16,7 +15,6 @@ const MEDIA_TYPE_CLASS: Record<string, string> = {
   movie: 'text-rose-400 bg-rose-400/10 border-rose-400/20',
   show: 'text-violet-400 bg-violet-400/10 border-violet-400/20',
   game: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-  music: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
   people: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
   users: 'text-teal-400 bg-teal-400/10 border-teal-400/20',
 }
@@ -41,7 +39,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
   onChange,
   onSubmit,
   onFocus,
-  placeholder = 'Search movies, shows, games, music...',
+  placeholder = 'Search movies, shows, games...',
   disabled = false,
   debounceMs = 300,
   showSubmitWhenEmpty = false,

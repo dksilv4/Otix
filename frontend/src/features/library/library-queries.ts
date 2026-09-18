@@ -312,8 +312,8 @@ export interface WishlistListResponse {
   hasMore: boolean
 }
 
-export function useSteamWishlist() {
-  return useInfiniteQuery({
+export function steamWishlistOptions() {
+  return infiniteQueryOptions({
     queryKey: libraryKeys.tab("wishlist"),
     queryFn: async ({ pageParam }: { pageParam: string | null }) => {
       const params: Record<string, string> = { limit: "48" }
@@ -326,6 +326,10 @@ export function useSteamWishlist() {
     staleTime: 1000 * 60 * 2,
     meta: { suppressToast: true },
   })
+}
+
+export function useSteamWishlist() {
+  return useInfiniteQuery(steamWishlistOptions())
 }
 
 export function useSteamWishlistScan() {
@@ -350,7 +354,19 @@ function cleanupStaleMediaRef(mediaId: string) {
   const games = getLocalGamesCache()
   const updated = games.map((g) => {
     if (g.data?.id === mediaId || g.matchSuggestion?.id === mediaId) {
-      const { otixMediaId, otixMediaTitle, otixMediaSlug, otixPosterUrl, otixTextlessPosterUrl, otixLogoUrl, otixMatchSuggestion, otixConfidence, otixClaimed, otixMatchVerified, ...rest } = g
+      const {
+        otixMediaId: _otixMediaId,
+        otixMediaTitle: _otixMediaTitle,
+        otixMediaSlug: _otixMediaSlug,
+        otixPosterUrl: _otixPosterUrl,
+        otixTextlessPosterUrl: _otixTextlessPosterUrl,
+        otixLogoUrl: _otixLogoUrl,
+        otixMatchSuggestion: _otixMatchSuggestion,
+        otixConfidence: _otixConfidence,
+        otixClaimed: _otixClaimed,
+        otixMatchVerified: _otixMatchVerified,
+        ...rest
+      } = g
       return rest as typeof g
     }
     return g

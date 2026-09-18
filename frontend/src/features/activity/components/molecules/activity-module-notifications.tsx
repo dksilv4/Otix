@@ -1,7 +1,7 @@
 import { BellRing } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '@/lib/providers/auth'
+import { useAuth, useHasSession } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { DkAvatar } from '@ui/atoms/avatar'
 import { notificationQueries } from '@/features/notifications/queries'
@@ -15,19 +15,20 @@ import { formatTimeAgo } from '@/lib/utils'
 /** Notifications panel section showing friend requests, list invitations, and unread alerts. */
 export function ActivityModuleNotifications({ onClose }: { onClose: () => void }) {
   const { user: currentUser, isAuthenticated } = useAuth()
+  const hasSession = useHasSession()
   const queryClient = useQueryClient()
   const markRead = useMarkRead()
   const markAllRead = useMarkAllRead()
 
   const { data: unreadData } = useQuery({
     ...notificationQueries.unreadCount(),
-    enabled: isAuthenticated,
+    enabled: hasSession,
     refetchInterval: 30000,
   })
 
   const { data: listData } = useQuery({
     ...notificationQueries.list(),
-    enabled: isAuthenticated,
+    enabled: hasSession,
     refetchInterval: 30000,
   })
 

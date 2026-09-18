@@ -12,6 +12,8 @@ interface MediaSectionProps {
   language?: string
   isAnime?: boolean
   platform?: string
+  /** Start the list request immediately instead of waiting for the rail to enter view. */
+  eager?: boolean
 }
 
 export const MediaSection = memo(function MediaSection({
@@ -22,6 +24,7 @@ export const MediaSection = memo(function MediaSection({
   language,
   isAnime,
   platform,
+  eager = false,
 }: MediaSectionProps) {
   const { ref, items, showSkeleton, isEmpty } = useSectionFetch({
     id: '',
@@ -34,7 +37,7 @@ export const MediaSection = memo(function MediaSection({
     platform: platform ?? null,
     isPersonalized: false,
     reason: null,
-  })
+  }, eager)
 
   if (isEmpty) return null
 

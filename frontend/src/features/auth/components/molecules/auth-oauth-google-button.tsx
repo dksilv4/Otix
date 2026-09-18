@@ -1,4 +1,4 @@
-import {OAuthButton} from '@/features/auth'
+import { OAuthButton } from './auth-oauth-button'
 import GoogleIcon from '@/assets/provider-logos/google.svg?react'
 import {openExternal} from '@/lib/utils/open-external'
 import {apiClient} from '@/lib/api/client'

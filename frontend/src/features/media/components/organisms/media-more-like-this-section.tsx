@@ -30,9 +30,10 @@ export function MoreLikeThisSection({
   )
 
   const { data: recommendationsData, isLoading: recommendationsLoading } =
-    useQuery(
-      mediaQueries.recommendations(mediaType, mediaId, { limit: 20 }),
-    )
+    useQuery({
+      ...mediaQueries.recommendations(mediaType, mediaId, { limit: 20 }),
+      enabled: isAuthenticated && activeTab === 'forYou',
+    })
 
   const similarItems = Array.isArray(similarData?.items)
     ? similarData.items
@@ -46,8 +47,7 @@ export function MoreLikeThisSection({
       : []
 
   const hasSimilar = similarLoading || similarItems.length > 0
-  const hasForYou =
-    isAuthenticated && (recommendationsLoading || forYouItems.length > 0)
+  const hasForYou = isAuthenticated
 
   // Nothing to show at all
   if (!hasSimilar && !hasForYou) return null
@@ -57,9 +57,9 @@ export function MoreLikeThisSection({
   if (hasForYou) availableTabs.push({ key: 'forYou', label: 'For You' })
 
   // If the active tab lost its data, fall back to the first available
-  const resolvedTab = availableTabs.find((t) => t.key === activeTab)
-    ? activeTab
-    : availableTabs[0].key
+  const resolvedTab = availableTabs.find((t) => t.key === activeTab)?.key
+    ?? availableTabs[0]?.key
+    ?? 'similar'
 
   const isLoading =
     resolvedTab === 'similar' ? similarLoading : recommendationsLoading

@@ -15,7 +15,6 @@ export const TYPE_OPTIONS: { value: TypeValue; label: string }[] = [
   { value: 'movie', label: 'Movies' },
   { value: 'show', label: 'Shows' },
   { value: 'game', label: 'Games' },
-  { value: 'music', label: 'Music' },
   { value: 'person', label: 'People' },
   { value: 'user', label: 'Users' },
 ]

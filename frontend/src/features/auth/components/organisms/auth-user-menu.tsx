@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
 import { LogOut, User, Shield } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '@auth'
+import { useAuth } from '@auth/hooks/use-auth'
 import { DkAvatar } from '@ui/atoms/avatar'
 import { usePanelContext } from '@activity/providers/panel-context'
 

@@ -25,3 +25,11 @@ export const API_BASE_URL = resolveApiBaseUrl()
 
 // Local Storage Keys
 export const ACCESS_TOKEN_KEY = 'otix-access-token'
+
+export function hasAccessToken(): boolean {
+  try {
+    return Boolean(localStorage.getItem(ACCESS_TOKEN_KEY))
+  } catch {
+    return false
+  }
+}

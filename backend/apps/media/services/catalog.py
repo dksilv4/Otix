@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import date
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Avg, Count, Exists, OuterRef, Q
 from django.db.models.query import QuerySet
 
@@ -19,6 +20,22 @@ from apps.media.models import ExternalID, Genre, MediaAsset, MediaItem, MediaRel
 from apps.media.services.interaction import attach_user_interactions
 
 _User = AbstractBaseUser | AnonymousUser | None
+
+# Card/hero images. A local copy of any of these means discover can paint
+# from /api/v1/assets without waiting on a provider CDN.
+LOCAL_CARD_ASSET_TYPES = ("poster", "textless_poster", "backdrop")
+
+
+def local_artwork_exists(media_item_outerref=None):
+    """Exists() of a mirrored poster/backdrop on the referenced media item."""
+    media_item_id = media_item_outerref if media_item_outerref is not None else OuterRef("pk")
+    return Exists(
+        MediaAsset.objects.filter(
+            media_item_id=media_item_id,
+            asset_type__in=LOCAL_CARD_ASSET_TYPES,
+            local_name__isnull=False,
+        ).exclude(local_name="")
+    )
 
 
 def media_item_or_none(media_id: int) -> MediaItem | None:
@@ -123,13 +140,15 @@ def attach_media_urls(items: list[MediaItem], context: str = "general") -> None:
 
 
 def external_ids_for(
-    items: list[MediaItem], providers=("tmdb", "igdb")
+    items: list[MediaItem], providers=("tmdb", "igdb", "tvdb", "imdb")
 ) -> dict[int, dict[str, str]]:
     """Resolve provider external ids for a batch of media items."""
     ids = [item.id for item in items]
     if not ids:
         return {}
+    content_type = ContentType.objects.get_for_model(MediaItem)
     rows = ExternalID.objects.filter(
+        content_type=content_type,
         object_id__in=ids,
         provider__in=providers,
     ).values_list("object_id", "provider", "external_id")
@@ -140,11 +159,13 @@ def external_ids_for(
 
 
 def enrich_summaries(items: list[MediaItem], user: _User, context: str = "general") -> None:
-    """Attach image urls, tmdb_id and per-user interaction state to items."""
+    """Attach image urls, external ids and per-user interaction state to items."""
     attach_media_urls(items, context)
     ext_map = external_ids_for(items)
     for item in items:
         item.tmdb_id = ext_map.get(item.id, {}).get("tmdb")
+        item.tvdb_id = ext_map.get(item.id, {}).get("tvdb")
+        item.imdb_id = ext_map.get(item.id, {}).get("imdb")
         item.user_interactions = None
         _attach_summary_derived(item)
     if user is not None and user.is_authenticated:
@@ -228,6 +249,7 @@ def list_media(
     date_from: date | None = None,
     date_to: date | None = None,
     main_games_only: bool = False,
+    prefer_local: bool = False,
 ) -> QuerySet:
     """Paginated catalog browse (legacy ``MediaService.list_media``).
 
@@ -239,8 +261,10 @@ def list_media(
     ``release_date``. ``main_games_only`` restricts games to their stored
     ``main_game`` type so DLC/expansions never rank in curated rails. Rating
     sorts (``rating``/``rating_count``) drop rows that carry no score, since a
-    null score has no business ranking. Embedding-dependent features are not
-    represented (schema defers vectors).
+    null score has no business ranking. ``prefer_local`` ranks titles whose
+    poster/backdrop is already mirrored to disk ahead of remote-only rows so
+    discover can paint from ``/api/v1/assets``. Embedding-dependent features
+    are not represented (schema defers vectors).
     """
     qs = MediaItem.objects.all()
     if media_type:
@@ -308,11 +332,15 @@ def list_media(
             qs = qs.filter(rating_count__gte=_MIN_GAME_RATING_VOTES)
     elif sort_field == "rating_count":
         qs = qs.filter(rating_count__gt=0)
+    order: list[str] = []
+    if prefer_local:
+        qs = qs.annotate(_has_local=local_artwork_exists())
+        order.append("-_has_local")
     if sort_field:
-        qs = qs.order_by(f"{direction}{sort_field}", "-popularity", "id")
+        order.extend([f"{direction}{sort_field}", "-popularity", "id"])
     else:
-        qs = qs.order_by("-popularity", "id")
-    return qs.distinct()
+        order.extend(["-popularity", "id"])
+    return qs.order_by(*order).distinct()
 
 
 def media_detail_queryset(media_id: int) -> MediaItem | None:
@@ -403,9 +431,11 @@ def similar_items(media_id: int, media_type: str | None, limit: int) -> list[Med
         qs = qs.filter(media_type=source.media_type)
     if genre_ids:
         qs = qs.filter(media_genres__genre_id__in=genre_ids).annotate(
-            shared=Count("media_genres__genre", filter=Q(media_genres__genre_id__in=genre_ids))
+            shared=Count("media_genres__genre", filter=Q(media_genres__genre_id__in=genre_ids)),
+            _has_local=local_artwork_exists(),
         )
-        qs = qs.order_by("-shared", "-popularity")
+        qs = qs.order_by("-_has_local", "-shared", "-popularity")
     else:
-        qs = qs.order_by("-popularity")
+        qs = qs.annotate(_has_local=local_artwork_exists())
+        qs = qs.order_by("-_has_local", "-popularity")
     return list(qs.distinct()[:limit])

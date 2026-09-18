@@ -1,4 +1,4 @@
-import {OAuthButton} from '@/features/auth'
+import { OAuthButton } from './auth-oauth-button'
 import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
 import {openExternal} from '@/lib/utils/open-external'
 import {apiClient} from '@/lib/api/client'

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { apiClient } from '@/lib/api/client'
+import { useHasSession } from '@/lib/providers/auth'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import type {
   RequestInstance,
@@ -30,7 +31,8 @@ export function useMediaDetailPluginActions(
 ) {
   // Radarr/other source services need the real TMDB id, not the internal ULID.
   const requestId = tmdbId || mediaId
-  const { data: servers = [] } = useGameServers()
+  const hasSession = useHasSession()
+  const { data: servers = [] } = useGameServers({ enabled: enabled && hasSession })
   const activeServer = servers.find((s) => s.isOnline || s.isActive) || servers[0]
 
   const [widgets, setWidgets] = useState<RequestWidget[]>([])

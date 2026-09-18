@@ -8,6 +8,8 @@ token is present (legacy ``get_optional_user``). Logic lives in
 
 from __future__ import annotations
 
+import logging
+
 from rest_framework import permissions
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -25,7 +27,52 @@ from apps.media.services import assets as assets_service
 from apps.media.services import catalog as catalog_service
 from core.pagination import DefaultPagination
 
+logger = logging.getLogger(__name__)
+
 MEDIA_ITEM_NOT_FOUND = "Media item not found"
+
+
+def resolve_media_pk(media_type: str, media_id: str | int) -> int | None:
+    raw = str(media_id)
+    if raw.isdigit():
+        return int(raw)
+    provider = None
+    ext_id = None
+    if raw.startswith("tmdb:movie:"):
+        provider = "tmdb"
+        media_type = "movie"
+        ext_id = raw.split("tmdb:movie:")[1]
+    elif raw.startswith("tmdb:show:"):
+        provider = "tmdb"
+        media_type = "show"
+        ext_id = raw.split("tmdb:show:")[1]
+    elif raw.startswith("igdb:"):
+        provider = "igdb"
+        media_type = "game"
+        ext_id = raw.split("igdb:")[1]
+    elif raw.startswith("steamgrid:"):
+        provider = "steamgrid"
+        media_type = "game"
+        ext_id = raw.split("steamgrid:")[1]
+
+    if not provider or not ext_id:
+        return None
+
+    from apps.media.services.identity import find_media_id
+
+    found = find_media_id(provider, ext_id, media_type)
+    if found is not None:
+        return found
+    from apps.integrations.services.catalog_seed import ensure_catalog_job
+    from apps.integrations.services.sync import execute_sync_job
+
+    job = ensure_catalog_job(provider, media_type, ext_id, priority=0, dispatch=False)
+    if job is not None:
+        try:
+            execute_sync_job(job.pk)
+        except Exception:
+            logger.exception("On-demand sync failed for %s:%s", provider, ext_id)
+    return find_media_id(provider, ext_id, media_type)
 
 
 class MediaListView(APIView):
@@ -110,8 +157,11 @@ class MediaDetailView(APIView):
 
     permission_classes = (permissions.AllowAny,)
 
-    def get(self, request, media_type: str, media_id: int) -> Response:
-        item = catalog_service.media_detail_queryset(media_id)
+    def get(self, request, media_type: str, media_id: str | int) -> Response:
+        pk = resolve_media_pk(media_type, media_id)
+        if pk is None:
+            raise NotFound(MEDIA_ITEM_NOT_FOUND)
+        item = catalog_service.media_detail_queryset(pk)
         if item is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
         theme = request.query_params.get("theme")
@@ -138,13 +188,16 @@ class SimilarMediaView(APIView):
 
     permission_classes = (permissions.AllowAny,)
 
-    def get(self, request, media_type: str, media_id: int) -> Response:
+    def get(self, request, media_type: str, media_id: str | int) -> Response:
         filter_type = request.query_params.get("media_type")
         try:
             limit = int(request.query_params.get("limit", 20))
         except ValueError:
             raise ValidationError("limit must be an integer") from None
-        items = catalog_service.similar_items(media_id, filter_type, min(limit, 50))
+        pk = resolve_media_pk(media_type, media_id)
+        if pk is None:
+            return Response([])
+        items = catalog_service.similar_items(pk, filter_type, min(limit, 50))
         catalog_service.enrich_summaries(items, request.user)
         return Response(_summary_list_payload(items))
 
@@ -159,15 +212,18 @@ class RecommendationView(APIView):
 
     permission_classes = (permissions.AllowAny,)
 
-    def get(self, request, media_type: str, media_id: int) -> Response:
+    def get(self, request, media_type: str, media_id: str | int) -> Response:
         try:
             limit = int(request.query_params.get("limit", 20))
         except ValueError:
             raise ValidationError("limit must be an integer") from None
-        source_type = catalog_service.media_type_or_none(media_id)
+        pk = resolve_media_pk(media_type, media_id)
+        if pk is None:
+            raise NotFound(MEDIA_ITEM_NOT_FOUND)
+        source_type = catalog_service.media_type_or_none(pk)
         if source_type is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
-        items = catalog_service.similar_items(media_id, source_type, min(limit, 50))
+        items = catalog_service.similar_items(pk, source_type, min(limit, 50))
         catalog_service.enrich_summaries(items, request.user)
         return Response(_summary_list_payload(items))
 

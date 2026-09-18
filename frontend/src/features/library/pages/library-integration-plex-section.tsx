@@ -14,7 +14,7 @@ export function LibraryIntegrationPlexSection() {
     }
   }, [authLoading, user?.plexId, navigate])
 
-  if (authLoading) return null
+  if (authLoading) return <PlexTabContent />
   if (!user?.plexId) return null
 
   return <PlexTabContent />

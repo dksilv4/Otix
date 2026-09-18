@@ -1,5 +1,5 @@
 import { queryOptions, infiniteQueryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api/client'
+import { apiClient, getResolvedTheme } from '@/lib/api/client'
 import type { UserInteractionState } from '@/features/interaction/interaction-queries'
 import { mediaKeys, type SearchParams } from './media-keys'
 
@@ -72,6 +72,8 @@ export interface MediaItemDetail {
   overallRating?: number | null
   overallRatingSource?: string | null
   tmdbId?: string | null
+  tvdbId?: string | null
+  imdbId?: string | null
   likeCount: number
   watchlistCount: number
   watchedCount: number
@@ -308,15 +310,16 @@ export interface StructuredSearchResponse {
   tracksCount: number
   peopleCount: number
   usersCount: number
+  backfillPending?: boolean
 }
 
 export const mediaQueries = {
-  detail: (mediaType: string, id: string, theme?: 'dark' | 'light') =>
+  detail: (mediaType: string, id: string) =>
     queryOptions({
-      queryKey: mediaKeys.detail(mediaType, id, theme),
+      queryKey: mediaKeys.detail(mediaType, id),
       queryFn: async () => {
         const { data } = await apiClient.get<MediaItemDetail>(`/media/${mediaType}/${id}`, {
-          params: theme ? { theme } : undefined,
+          params: { theme: getResolvedTheme() },
         })
         return data
       },

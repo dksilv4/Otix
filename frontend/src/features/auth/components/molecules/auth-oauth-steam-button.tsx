@@ -1,4 +1,4 @@
-import {OAuthButton} from '@/features/auth'
+import { OAuthButton } from './auth-oauth-button'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
 import {isDesktop} from '@/lib/desktop/api'
 import {openExternal} from '@/lib/utils/open-external'

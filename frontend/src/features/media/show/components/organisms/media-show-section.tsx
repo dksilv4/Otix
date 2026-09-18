@@ -6,6 +6,7 @@ import { SeasonProgressBar } from "./media-show-season-progress-bar"
 import { EpisodeModal } from "./media-show-episode-modal"
 import { useQuery } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
+import { useAuth } from '@auth/hooks/use-auth'
 import { mediaQueries, formatDate, formatRuntime, getPreferredSeason, useMediaParams, type SeasonOut } from "@media"
 import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched } from "@/features/interaction/episode-interaction-queries"
 import { useModal } from "@/lib/modals"
@@ -19,6 +20,7 @@ export function ShowSection({
   className,
 }: ShowSectionProps = {}) {
   const { mediaType, mediaId } = useMediaParams()
+  const { isAuthenticated } = useAuth()
   const { openModal } = useModal()
   // ?season=N deep link (discover season rails) — parsed by the route's
   // validateSearch, so it survives hard refresh/share.
@@ -28,23 +30,23 @@ export function ShowSection({
   const { data } = useQuery(mediaQueries.detail('show', mediaId))
   const show = data?.show
 
-  const episodeInteractionsQuery = useEpisodeInteractions(mediaType, mediaId, { enabled: !!show })
+  const episodeInteractionsQuery = useEpisodeInteractions(mediaType, mediaId, {
+    enabled: !!show && isAuthenticated,
+  })
   const toggleEpisodeWatched = useToggleEpisodeWatched(mediaType, mediaId)
   const markSeasonWatched = useMarkSeasonWatched(mediaType, mediaId)
-
-  if (!show) return null
 
   const episodeInteractions = episodeInteractionsQuery.data?.episodes
   const onToggleEpisodeWatched = (episodeId: string, active: boolean) =>
     toggleEpisodeWatched.mutate({ episodeId, active })
   const onMarkSeasonWatched = (seasonNumber: number, active: boolean) =>
     markSeasonWatched.mutate({ seasonNumber, active })
- const seasons = useMemo(() => {
- if (!Array.isArray(show.seasons) || show.seasons.length === 0) return []
- return [...show.seasons]
-   .filter((s) => s && (s.seasonNumber !== 0 || (Array.isArray(s.episodes) && s.episodes.length > 0) || (s.episodeCount ?? 0) > 0))
-   .sort((a, b) => a.seasonNumber - b.seasonNumber)
- }, [show.seasons])
+  const seasons = useMemo(() => {
+    if (!Array.isArray(show?.seasons) || show.seasons.length === 0) return []
+    return [...show.seasons]
+      .filter((s) => s && (s.seasonNumber !== 0 || (Array.isArray(s.episodes) && s.episodes.length > 0) || (s.episodeCount ?? 0) > 0))
+      .sort((a, b) => a.seasonNumber - b.seasonNumber)
+  }, [show])
 
  const [selectedSeasonNum, setSelectedSeasonNum] = useState<number>(() =>
    seasons.some((s) => s.seasonNumber === requestedSeasonNum)
@@ -114,6 +116,8 @@ export function ShowSection({
  },
  [episodeInteractions],
  )
+
+  if (!show) return null
 
   if (seasons.length === 0) {
     return (

@@ -42,6 +42,30 @@ export function matchLookupByTmdb(items: unknown, tmdbId: string | number): ArrL
   return exact || records[0] || null
 }
 
+export function matchLookupByTvdbOrTmdb(
+  items: unknown,
+  tvdbId?: string | number | null,
+  tmdbId?: string | number | null,
+): ArrLookupItem | null {
+  const list = Array.isArray(items) ? items : items && typeof items === 'object' ? [items] : []
+  const records = list.filter((item): item is ArrLookupItem => !!item && typeof item === 'object')
+  if (records.length === 0) return null
+
+  if (tvdbId != null && tvdbId !== '') {
+    const wantedTvdb = String(tvdbId)
+    const exactTvdb = records.find((item) => String(pick(item, 'tvdbId', 'tvdb_id') ?? '') === wantedTvdb)
+    if (exactTvdb) return exactTvdb
+  }
+
+  if (tmdbId != null && tmdbId !== '') {
+    const wantedTmdb = String(tmdbId)
+    const exactTmdb = records.find((item) => String(pick(item, 'tmdbId', 'tmdb_id') ?? '') === wantedTmdb)
+    if (exactTmdb) return exactTmdb
+  }
+
+  return records[0] || null
+}
+
 export function libraryIdFromLookup(item: ArrLookupItem | null): number | null {
   const id = asNumber(pick(item, 'id'))
   return id && id > 0 ? id : null

@@ -87,6 +87,12 @@ def _item(
     return item
 
 
+def _mirror(item: MediaItem, asset_type: str = "textless_poster") -> None:
+    MediaAsset.objects.filter(media_item=item, asset_type=asset_type).update(
+        local_name=f"{item.pk}-{asset_type}.png"
+    )
+
+
 def _list_url(media_type: str, list_type: str) -> str:
     return f"/api/v1/discover/{media_type}/{list_type}"
 
@@ -140,6 +146,17 @@ class DiscoverApiTests(TestCase):
         clamped = self.client.get("/api/v1/discover/hero", {"limit": 0})
         self.assertEqual(len(clamped.data["items"]), 1)
 
+    def test_hero_prefers_locally_mirrored_artwork(self) -> None:
+        _item("Remote-Hit", popularity=100)
+        local = _item("Local-Copy", popularity=1)
+        _mirror(local)
+        titles = [
+            item["title"]
+            for item in self.client.get("/api/v1/discover/hero", {"limit": 2}).data["items"]
+        ]
+        self.assertEqual(titles[0], "Local-Copy")
+        self.assertIn("Remote-Hit", titles)
+
     # ── validation ───────────────────────────────────────────────────
     def test_list_type_validates_media_type(self) -> None:
         response = self.client.get(_list_url("album", "popular"))
@@ -162,6 +179,16 @@ class DiscoverApiTests(TestCase):
         self.assertEqual(response.data["has_more"], False)
         self.assertIsNone(response.data["next_cursor"])
         self.assertEqual(response.data["items"][0]["id"], top.pk)
+
+    def test_popular_prefers_locally_mirrored_artwork(self) -> None:
+        _item("Remote-Popular", popularity=90)
+        local = _item("Local-Quiet", popularity=1)
+        _mirror(local)
+        titles = [
+            item["title"] for item in self.client.get(_list_url("movie", "popular")).data["items"]
+        ]
+        self.assertEqual(titles[0], "Local-Quiet")
+        self.assertIn("Remote-Popular", titles)
 
     def test_top_rated_sorts_rating_desc(self) -> None:
         high = _item("High-Rating", popularity=1, avg_rating=9.5)
@@ -494,6 +521,24 @@ class TrendingShowsSeasonTests(TestCase):
         _make_show("Aired-Newer", seasons=[(4, _days(-5))])
         titles = [i["show_title"] for i in self._feed()]
         self.assertEqual(titles, ["Aired-Newer", "Aired-Older", "Announced-Soon", "Announced-Far"])
+
+    def test_prefers_seasons_with_locally_mirrored_show_artwork(self) -> None:
+        _make_show(
+            "Remote-Show",
+            seasons=[(1, _days(-5))],
+            assets=("poster", "textless_poster"),
+        )
+        local = _make_show(
+            "Local-Show",
+            seasons=[(1, _days(-40))],
+            assets=("poster", "textless_poster"),
+        )
+        MediaAsset.objects.filter(media_item=local.media_item, asset_type="poster").update(
+            local_name="local-poster.png"
+        )
+        titles = [i["show_title"] for i in self._feed()]
+        self.assertEqual(titles[0], "Local-Show")
+        self.assertIn("Remote-Show", titles)
 
     def test_season_without_poster_falls_back_to_show_art(self) -> None:
         show = _make_show(

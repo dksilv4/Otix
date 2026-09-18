@@ -92,7 +92,7 @@ export const apiClient = axios.create({
 // ── Request interceptor — camelCase → snake_case + auth token ─────────
 
 // Viewer's resolved UI theme so the backend can pick logos that contrast with it.
-function getResolvedTheme(): 'light' | 'dark' {
+export function getResolvedTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'dark'
   const stored = localStorage.getItem('otix-theme')
   if (stored === 'light' || stored === 'dark') return stored

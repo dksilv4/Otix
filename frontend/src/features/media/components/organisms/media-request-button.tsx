@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { ArrowDownToLine, Check, ChevronDown, Clock, Loader2, Server, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { showToast } from '@ui/molecules/toast'
 import { useRequestMedia } from '../../hooks/use-request-media'
 import type { RequestInstance } from './plugin-detail-actions'
+import { MediaRequestConfirmModal } from './media-request-confirm-modal'
 
 function requestableInstances(instances: RequestInstance[]) {
   return instances.filter((item) => item.status === 'not_exists' || item.status === 'error')
@@ -15,6 +15,8 @@ export function RequestMediaButton() {
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const menuId = useId()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [targetInstanceId, setTargetInstanceId] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -36,21 +38,9 @@ export function RequestMediaButton() {
 
   if (state.hidden) return null
 
-  const runRequest = async (instanceId?: string) => {
-    try {
-      await state.handleRequest(instanceId)
-      showToast({
-        title: `${state.requestLabel.replace('Request ', '')} requested`,
-        description: `Sent to ${state.activeServerName}`,
-        variant: 'success',
-      })
-    } catch (err) {
-      showToast({
-        title: 'Request failed',
-        description: err instanceof Error ? err.message : 'Could not send this title to your server',
-        variant: 'error',
-      })
-    }
+  const openConfirm = (instanceId?: string) => {
+    setTargetInstanceId(instanceId)
+    setConfirmOpen(true)
   }
 
   if (state.queueItem) {
@@ -130,77 +120,93 @@ export function RequestMediaButton() {
   if (singleTarget) {
     const target = targets[0]
     return (
-      <button
-        type="button"
-        onClick={() => runRequest(target?.id)}
-        disabled={busy || !target}
-        className="inline-flex items-center gap-2 rounded-full bg-blue-500 hover:bg-blue-400 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
-        title={`Request on ${state.activeServerName}`}
-      >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
-        <span>{busy ? 'Requesting…' : label}</span>
-      </button>
+      <>
+        <button
+          type="button"
+          onClick={() => openConfirm(target?.id)}
+          disabled={busy || !target}
+          className="inline-flex items-center gap-2 rounded-full bg-blue-500 hover:bg-blue-400 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+          title={`Request on ${state.activeServerName}`}
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
+          <span>{busy ? 'Requesting…' : label}</span>
+        </button>
+        <MediaRequestConfirmModal
+          open={confirmOpen}
+          onClose={() => setConfirmOpen(false)}
+          state={state}
+          initialInstanceId={targetInstanceId}
+        />
+      </>
     )
   }
 
   return (
-    <div
-      ref={menuRef}
-      className="relative inline-flex overflow-visible rounded-full shadow-lg shadow-blue-500/25"
-    >
-      <button
-        type="button"
-        onClick={() => runRequest(targets[0]?.id)}
-        disabled={busy}
-        className="inline-flex items-center gap-2 rounded-l-full bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-400 transition-all duration-200 cursor-pointer disabled:opacity-50"
+    <>
+      <div
+        ref={menuRef}
+        className="relative inline-flex overflow-visible rounded-full shadow-lg shadow-blue-500/25"
       >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
-        <span>{busy ? 'Requesting…' : label}</span>
-      </button>
-      <button
-        ref={menuButtonRef}
-        type="button"
-        onClick={() => setMenuOpen((open) => !open)}
-        aria-label="Show request options"
-        aria-haspopup="menu"
-        aria-expanded={menuOpen}
-        aria-controls={menuId}
-        className="inline-flex items-center justify-center rounded-r-full border-l border-white/20 bg-blue-500 px-2.5 py-2.5 text-white hover:bg-blue-400 transition-all cursor-pointer"
-      >
-        <ChevronDown className={cn('h-4 w-4 transition-transform', menuOpen && 'rotate-180')} />
-      </button>
-      {menuOpen && (
-        <div
-          id={menuId}
-          role="menu"
-          aria-label="Request options"
-          className="absolute left-0 top-full z-50 mt-2 min-w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#16181d]/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl"
+        <button
+          type="button"
+          onClick={() => openConfirm(targets[0]?.id)}
+          disabled={busy}
+          className="inline-flex items-center gap-2 rounded-l-full bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-400 transition-all duration-200 cursor-pointer disabled:opacity-50"
         >
-          <p className="px-3 pb-1.5 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
-            {state.mediaType === 'movie' ? 'Radarr' : 'Sonarr'} instances
-          </p>
-          {targets.map((instance) => (
-            <button
-              key={instance.id}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setMenuOpen(false)
-                void runRequest(instance.id)
-              }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/[0.08] hover:text-white cursor-pointer"
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-400/10">
-                <Server className="h-4 w-4 text-blue-400" />
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className="font-medium text-white truncate">{instance.name}</span>
-                <span className="text-xs text-white/40">Request on this instance</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
+          <span>{busy ? 'Requesting…' : label}</span>
+        </button>
+        <button
+          ref={menuButtonRef}
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label="Show request options"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          aria-controls={menuId}
+          className="inline-flex items-center justify-center rounded-r-full border-l border-white/20 bg-blue-500 px-2.5 py-2.5 text-white hover:bg-blue-400 transition-all cursor-pointer"
+        >
+          <ChevronDown className={cn('h-4 w-4 transition-transform', menuOpen && 'rotate-180')} />
+        </button>
+        {menuOpen && (
+          <div
+            id={menuId}
+            role="menu"
+            aria-label="Request options"
+            className="absolute left-0 top-full z-50 mt-2 min-w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#16181d]/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl"
+          >
+            <p className="px-3 pb-1.5 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
+              {state.mediaType === 'movie' ? 'Radarr' : 'Sonarr'} instances
+            </p>
+            {targets.map((instance) => (
+              <button
+                key={instance.id}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false)
+                  openConfirm(instance.id)
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/[0.08] hover:text-white cursor-pointer"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-400/10">
+                  <Server className="h-4 w-4 text-blue-400" />
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="font-medium text-white truncate">{instance.name}</span>
+                  <span className="text-xs text-white/40">Request on this instance</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <MediaRequestConfirmModal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        state={state}
+        initialInstanceId={targetInstanceId}
+      />
+    </>
   )
 }

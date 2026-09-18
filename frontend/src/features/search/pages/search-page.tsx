@@ -12,9 +12,9 @@ export function SearchPage() {
   const search = useSearch({ from: '/search' })
   const navigate = useNavigate({ from: '/search' })
 
-  const urlQ = search.q ?? ''
-  const urlType = (search.type ?? 'all') as TypeValue
-  const urlSort = (search.sort ?? '') as SortValue
+  const urlQ = search?.q ?? ''
+  const urlType = (search?.type ?? 'all') as TypeValue
+  const urlSort = (search?.sort ?? '') as SortValue
 
   // Local input state for responsive typing
   const [inputValue, setInputValue] = useState(urlQ)
@@ -85,7 +85,7 @@ export function SearchPage() {
         <title>Search - Otix</title>
         <meta
           name="description"
-          content="Search movies, shows, games, and music on Otix."
+          content="Search movies, shows, and games on Otix."
         />
       </Helmet>
 
@@ -102,7 +102,7 @@ export function SearchPage() {
               value={inputValue}
               onChange={handleInputChange}
               onSubmit={handleSubmit}
-              placeholder="Search movies, shows, games, music..."
+              placeholder="Search movies, shows, games..."
             />
           </div>
         </div>

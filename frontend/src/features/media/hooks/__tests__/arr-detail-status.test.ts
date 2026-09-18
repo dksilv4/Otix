@@ -7,6 +7,7 @@ import {
   makeServerArrInstanceId,
   matchArrQueueItem,
   matchLookupByTmdb,
+  matchLookupByTvdbOrTmdb,
   parseServerArrInstanceId,
   queueProgress,
   radarrStatusFromLookup,
@@ -38,6 +39,18 @@ describe('arr detail helpers', () => {
     )
     expect(match?.title).toBe('Inception')
     expect(lookupTmdbTerm(27205)).toBe('tmdb:27205')
+  })
+
+  it('matches Sonarr lookup rows by TVDB id before falling back to TMDB', () => {
+    const rows = [
+      { title: 'Wrong Show', tvdbId: 99999, tmdbId: 255064 },
+      { title: 'The Darwin Incident', tvdbId: 450282, tmdbId: null },
+    ]
+    const byTvdb = matchLookupByTvdbOrTmdb(rows, '450282', '255064')
+    expect(byTvdb?.title).toBe('The Darwin Incident')
+
+    const byTmdb = matchLookupByTvdbOrTmdb(rows, null, '255064')
+    expect(byTmdb?.title).toBe('Wrong Show')
   })
 
   it('maps Radarr lookup status from library id and hasFile', () => {

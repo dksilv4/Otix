@@ -107,8 +107,8 @@ sonarr:
   url_base: /sonarr/main
   api_key: e98f5a0dcaef46f5ab41a0d9854dc7f4
   use_ssl: true
-  quality_profile_id: null
-  root_folder_path: ''
+  quality_profile_id: 5
+  root_folder_path: /Media/Shows
   series_type: standard
   season_folder: true
   language_profile_id: null

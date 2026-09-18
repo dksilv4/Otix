@@ -14,7 +14,7 @@ export function LibraryIntegrationYoutubeSection() {
     }
   }, [authLoading, user?.googleId, navigate])
 
-  if (authLoading) return null
+  if (authLoading) return <YoutubeTabContent />
   if (!user?.googleId) return null
 
   return <YoutubeTabContent />

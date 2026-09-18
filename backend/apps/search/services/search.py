@@ -10,6 +10,8 @@ typeahead may include ``igdb:{id}`` placeholders until that ingest lands.
 
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 import logging
 import re
 
@@ -18,6 +20,7 @@ from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.db.models import Case, IntegerField, QuerySet, Value, When
+from django.utils.text import slugify
 
 from apps.company.models import Company
 from apps.media.models import ExternalID, MediaItem, Track
@@ -28,7 +31,6 @@ from apps.search.serializers import (
     MediaSummarySerializer,
     PersonSearchResultSerializer,
     ProviderResultSerializer,
-    TrackSearchSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,7 +55,7 @@ PREHYDRATE_CACHE_TTL = 6 * 60 * 60
 
 def _media_base(q: str, media_type: str | None) -> QuerySet[MediaItem]:
     """Filtered hub rows for a title search (vector search lands later)."""
-    qs = MediaItem.objects.filter(title__icontains=q)
+    qs = MediaItem.objects.filter(title__icontains=q).exclude(media_type="music")
     if media_type:
         qs = qs.filter(media_type=media_type)
     if EXCLUDE_ADULT:
@@ -95,13 +97,8 @@ def _search_media_rows(
 
 
 def _search_track_rows(q: str, limit: int = 20) -> list[Track]:
-    """Album-track title matches for music search."""
-    return list(
-        Track.objects.filter(title__icontains=q)
-        .select_related("album__media_item")
-        .prefetch_related("album__media_item__assets")
-        .order_by("title", "id")[:limit]
-    )
+    """Music is excluded from search."""
+    return []
 
 
 def _search_people(q: str, limit: int = 10) -> list[Person]:
@@ -126,6 +123,32 @@ def _should_backfill(q: str) -> bool:
     if re.search(r"[^aeiou\s]{8,}", stripped, re.IGNORECASE):
         return False
     return True
+
+
+TMDB_POSTER_BASE = "https://image.tmdb.org/t/p/w500"
+TMDB_BACKDROP_BASE = "https://image.tmdb.org/t/p/original"
+
+
+def _run_async(coro_fn):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro_fn()).result()
+    return asyncio.run(coro_fn())
+
+
+def _tmdb_configured() -> bool:
+    return bool(getattr(settings, "TMDB_RAT", None) or getattr(settings, "TMDB_API_KEY", None))
+
+
+def _steamgrid_configured() -> bool:
+    return bool(
+        getattr(settings, "STEAMGRID_API_KEY", None)
+        or getattr(settings, "STEAM_GRID_API_KEY", None)
+    )
 
 
 def _placeholder_game_summary(
@@ -158,6 +181,47 @@ def _placeholder_game_summary(
     }
 
 
+def _placeholder_media_summary(
+    *,
+    item_id: str,
+    media_type: str,
+    title: str,
+    slug: str,
+    tmdb_id: str | None = None,
+    poster_url: str | None = None,
+    backdrop_url: str | None = None,
+    release_date: str | None = None,
+    overview: str | None = None,
+    avg_rating: float | None = None,
+) -> dict:
+    return {
+        "id": item_id,
+        "media_type": media_type,
+        "title": title,
+        "slug": slug or "",
+        "tmdb_id": tmdb_id,
+        "poster_url": poster_url,
+        "backdrop_url": backdrop_url,
+        "logo_url": None,
+        "icon_url": None,
+        "release_date": release_date,
+        "overview": overview,
+        "popularity": 0,
+        "avg_rating": round(avg_rating, 1) if avg_rating is not None else None,
+        "rating_count": 0,
+        "overall_rating": None,
+        "overall_rating_source": None,
+        "like_count": 0,
+        "watchlist_count": 0,
+        "watched_count": 0,
+        "played_count": 0,
+        "started_count": 0,
+        "listened_count": 0,
+        "view_count": 0,
+        "is_adult": False,
+    }
+
+
 def _igdb_mapped(igdb_ids: list[str]) -> dict[str, int]:
     if not igdb_ids:
         return {}
@@ -167,6 +231,19 @@ def _igdb_mapped(igdb_ids: list[str]) -> dict[str, int]:
         provider="igdb",
         media_type="game",
         external_id__in=igdb_ids,
+    )
+    return {row.external_id: row.object_id for row in rows if row.object_id}
+
+
+def _tmdb_mapped(tmdb_ids: list[str], media_type: str) -> dict[str, int]:
+    if not tmdb_ids:
+        return {}
+    ct = ContentType.objects.get_for_model(MediaItem)
+    rows = ExternalID.objects.filter(
+        content_type=ct,
+        provider="tmdb",
+        media_type=media_type,
+        external_id__in=tmdb_ids,
     )
     return {row.external_id: row.object_id for row in rows if row.object_id}
 
@@ -185,14 +262,236 @@ def _enqueue_igdb_imports(igdb_ids: list[str]) -> bool:
     return pending
 
 
-def _igdb_backfill_pending() -> bool:
+def _enqueue_tmdb_imports(tmdb_ids: list[str], media_type: str) -> bool:
+    if not tmdb_ids:
+        return False
+    from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+    pending = False
+    for tid in tmdb_ids:
+        job = ensure_catalog_job("tmdb", media_type, str(tid), priority=1, dispatch=True)
+        if job is not None:
+            pending = True
+    return pending
+
+
+def _any_backfill_pending(media_type: str | None = None) -> bool:
     from apps.integrations.models import SyncJob
 
-    return SyncJob.objects.filter(
-        provider="igdb",
-        entity_type="game",
-        status__in=("pending", "running"),
-    ).exists()
+    qs = SyncJob.objects.filter(status__in=("pending", "running"))
+    if media_type == "game":
+        qs = qs.filter(provider__in=("igdb", "steamgrid"), entity_type="game")
+    elif media_type in ("movie", "show"):
+        qs = qs.filter(provider="tmdb", entity_type=media_type)
+    else:
+        qs = qs.filter(provider__in=("tmdb", "igdb", "steamgrid"))
+    return qs.exists()
+
+
+def _igdb_backfill_pending() -> bool:
+    return _any_backfill_pending("game")
+
+
+async def _fetch_tmdb_movies(q: str, limit: int = 12) -> list[dict]:
+    from core.providers.tmdb import TMDBProvider
+
+    provider = TMDBProvider()
+    payload = await provider.search_movie(q)
+    return list(payload.get("results") or [])[:limit]
+
+
+async def _fetch_tmdb_shows(q: str, limit: int = 12) -> list[dict]:
+    from core.providers.tmdb import TMDBProvider
+
+    provider = TMDBProvider()
+    payload = await provider.search_tv(q)
+    return list(payload.get("results") or [])[:limit]
+
+
+async def _fetch_steamgrid_games(q: str, limit: int = 12) -> list[dict]:
+    if not _steamgrid_configured():
+        return []
+    try:
+        from core.providers.steamgrid import SteamGridDBProvider
+
+        provider = SteamGridDBProvider()
+        games = await provider.search_games(q)
+        results = []
+        for g in (games or [])[:limit]:
+            gid = g.get("id")
+            if not gid:
+                continue
+            grids = await provider.get_grids(int(gid), dimensions="600x900")
+            if not grids:
+                grids = await provider.get_grids(int(gid))
+            poster = grids[0].get("url") if grids and isinstance(grids, list) else None
+            results.append(
+                {
+                    "id": gid,
+                    "name": g.get("name"),
+                    "poster_url": poster,
+                }
+            )
+        return results
+    except Exception:
+        logger.exception("steamgrid search games failed q=%s", q)
+        return []
+
+
+def _tmdb_movie_backfill(
+    q: str,
+    *,
+    existing_count: int = 0,
+    existing_ids: set[str] | None = None,
+    limit: int = 12,
+    threshold: int = BACKFILL_THRESHOLD,
+    force: bool = False,
+) -> tuple[list[dict], bool]:
+    if not _should_backfill(q):
+        return [], False
+    if not force and existing_count >= threshold:
+        return [], False
+    if not _tmdb_configured():
+        return [], False
+
+    try:
+        raw = _run_async(lambda: _fetch_tmdb_movies(q, limit=limit))
+    except Exception:
+        logger.exception("tmdb movie search backfill failed q=%s", q)
+        return [], False
+
+    tmdb_ids = [str(m["id"]) for m in raw if m.get("id") is not None]
+    mapped = _tmdb_mapped(tmdb_ids, "movie")
+    catalog_rows = {
+        item.pk: item
+        for item in MediaItem.objects.filter(pk__in=mapped.values()).prefetch_related(
+            "assets", "external_ids"
+        )
+    }
+    extras: list[dict] = []
+    missing: list[str] = []
+    seen = set(existing_ids or set())
+
+    for movie in raw:
+        raw_id = str(movie.get("id") or "")
+        if not raw_id:
+            continue
+        pk = mapped.get(raw_id)
+        if pk:
+            sid = str(pk)
+            if sid in seen:
+                continue
+            media = catalog_rows.get(pk)
+            if media is not None:
+                extras.extend(dict(row) for row in MediaSummarySerializer([media], many=True).data)
+                seen.add(sid)
+                continue
+        missing.append(raw_id)
+        placeholder_id = f"tmdb:movie:{raw_id}"
+        if placeholder_id in seen:
+            continue
+        title = str(movie.get("title") or q)
+        poster_path = movie.get("poster_path")
+        backdrop_path = movie.get("backdrop_path")
+        poster_url = f"{TMDB_POSTER_BASE}{poster_path}" if poster_path else None
+        backdrop_url = f"{TMDB_BACKDROP_BASE}{backdrop_path}" if backdrop_path else None
+
+        extras.append(
+            _placeholder_media_summary(
+                item_id=placeholder_id,
+                media_type="movie",
+                title=title,
+                slug=slugify(title),
+                tmdb_id=raw_id,
+                poster_url=poster_url,
+                backdrop_url=backdrop_url,
+                release_date=movie.get("release_date") or None,
+                overview=movie.get("overview"),
+                avg_rating=movie.get("vote_average"),
+            )
+        )
+        seen.add(placeholder_id)
+
+    pending = _enqueue_tmdb_imports(missing, "movie")
+    return extras, pending
+
+
+def _tmdb_show_backfill(
+    q: str,
+    *,
+    existing_count: int = 0,
+    existing_ids: set[str] | None = None,
+    limit: int = 12,
+    threshold: int = BACKFILL_THRESHOLD,
+    force: bool = False,
+) -> tuple[list[dict], bool]:
+    if not _should_backfill(q):
+        return [], False
+    if not force and existing_count >= threshold:
+        return [], False
+    if not _tmdb_configured():
+        return [], False
+
+    try:
+        raw = _run_async(lambda: _fetch_tmdb_shows(q, limit=limit))
+    except Exception:
+        logger.exception("tmdb show search backfill failed q=%s", q)
+        return [], False
+
+    tmdb_ids = [str(s["id"]) for s in raw if s.get("id") is not None]
+    mapped = _tmdb_mapped(tmdb_ids, "show")
+    catalog_rows = {
+        item.pk: item
+        for item in MediaItem.objects.filter(pk__in=mapped.values()).prefetch_related(
+            "assets", "external_ids"
+        )
+    }
+    extras: list[dict] = []
+    missing: list[str] = []
+    seen = set(existing_ids or set())
+
+    for show in raw:
+        raw_id = str(show.get("id") or "")
+        if not raw_id:
+            continue
+        pk = mapped.get(raw_id)
+        if pk:
+            sid = str(pk)
+            if sid in seen:
+                continue
+            media = catalog_rows.get(pk)
+            if media is not None:
+                extras.extend(dict(row) for row in MediaSummarySerializer([media], many=True).data)
+                seen.add(sid)
+                continue
+        missing.append(raw_id)
+        placeholder_id = f"tmdb:show:{raw_id}"
+        if placeholder_id in seen:
+            continue
+        name = str(show.get("name") or q)
+        poster_path = show.get("poster_path")
+        backdrop_path = show.get("backdrop_path")
+        poster_url = f"{TMDB_POSTER_BASE}{poster_path}" if poster_path else None
+        backdrop_url = f"{TMDB_BACKDROP_BASE}{backdrop_path}" if backdrop_path else None
+
+        extras.append(
+            _placeholder_media_summary(
+                item_id=placeholder_id,
+                media_type="show",
+                title=name,
+                slug=slugify(name),
+                tmdb_id=raw_id,
+                poster_url=poster_url,
+                backdrop_url=backdrop_url,
+                release_date=show.get("first_air_date") or None,
+                overview=show.get("overview"),
+                avg_rating=show.get("vote_average"),
+            )
+        )
+        seen.add(placeholder_id)
+
+    pending = _enqueue_tmdb_imports(missing, "show")
+    return extras, pending
 
 
 def _igdb_game_backfill(
@@ -205,13 +504,7 @@ def _igdb_game_backfill(
     threshold: int,
     force: bool = False,
 ) -> tuple[list[dict], bool]:
-    """Search IGDB when the catalog is sparse; enqueue missing games for ingest.
-
-    Already-imported IGDB hits are returned as catalog summaries even when the
-    local title search missed them. Unimported hits are placeholders
-    (``igdb:{id}``) when ``include_placeholders`` is set so typeahead can show
-    provider results immediately.
-    """
+    """Search IGDB when the catalog is sparse; enqueue missing games for ingest."""
     if not _should_backfill(q):
         return [], False
     if not force and existing_count >= threshold:
@@ -225,58 +518,77 @@ def _igdb_game_backfill(
         cover_url,
     )
 
-    if not configured():
-        return [], False
-    try:
-        raw = IGDBProvider().search_games(q, limit=limit, fields="id,name,slug,cover.image_id")
-    except (IGDBNotConfigured, IGDBError):
-        logger.warning("igdb search backfill skipped q=%s", q, exc_info=True)
-        return [], False
-    except Exception:  # noqa: BLE001 - provider outage must not fail search
-        logger.exception("igdb search backfill failed q=%s", q)
-        return [], False
-
-    igdb_ids = [str(game["id"]) for game in raw if game.get("id") is not None]
-    mapped = _igdb_mapped(igdb_ids)
-    catalog_rows = {
-        item.pk: item
-        for item in MediaItem.objects.filter(pk__in=mapped.values()).prefetch_related(
-            "assets", "external_ids"
-        )
-    }
     extras: list[dict] = []
     missing: list[str] = []
     seen = set(existing_ids)
-    for game in raw:
-        gid = str(game.get("id") or "")
-        if not gid:
-            continue
-        pk = mapped.get(gid)
-        if pk:
-            sid = str(pk)
-            if sid in seen:
+
+    if configured():
+        try:
+            raw = IGDBProvider().search_games(q, limit=limit, fields="id,name,slug,cover.image_id")
+            igdb_ids = [str(game["id"]) for game in raw if game.get("id") is not None]
+            mapped = _igdb_mapped(igdb_ids)
+            catalog_rows = {
+                item.pk: item
+                for item in MediaItem.objects.filter(pk__in=mapped.values()).prefetch_related(
+                    "assets", "external_ids"
+                )
+            }
+            for game in raw:
+                gid = str(game.get("id") or "")
+                if not gid:
+                    continue
+                pk = mapped.get(gid)
+                if pk:
+                    sid = str(pk)
+                    if sid in seen:
+                        continue
+                    media = catalog_rows.get(pk)
+                    if media is None:
+                        continue
+                    extras.extend(
+                        dict(row) for row in MediaSummarySerializer([media], many=True).data
+                    )
+                    seen.add(sid)
+                    continue
+                missing.append(gid)
+                if not include_placeholders:
+                    continue
+                placeholder_id = f"{IGDB_ID_PREFIX}{gid}"
+                if placeholder_id in seen:
+                    continue
+                extras.append(
+                    _placeholder_game_summary(
+                        item_id=placeholder_id,
+                        title=game.get("name") or q,
+                        slug=game.get("slug") or "",
+                        poster_url=cover_url(game.get("cover")),
+                    )
+                )
+                seen.add(placeholder_id)
+        except (IGDBNotConfigured, IGDBError):
+            logger.warning("igdb search backfill skipped q=%s", q, exc_info=True)
+        except Exception:  # noqa: BLE001 - provider outage must not fail search
+            logger.exception("igdb search backfill failed q=%s", q)
+
+    # Fall back to / augment with SteamGridDB when IGDB is missing or yields no results
+    if (not extras or len(extras) < limit) and _steamgrid_configured():
+        sg_games = _run_async(lambda: _fetch_steamgrid_games(q, limit=limit - len(extras)))
+        for sg in sg_games:
+            sg_id = str(sg["id"])
+            placeholder_id = f"steamgrid:{sg_id}"
+            if placeholder_id in seen:
                 continue
-            media = catalog_rows.get(pk)
-            if media is None:
-                continue
-            extras.extend(dict(row) for row in MediaSummarySerializer([media], many=True).data)
-            seen.add(sid)
-            continue
-        missing.append(gid)
-        if not include_placeholders:
-            continue
-        placeholder_id = f"{IGDB_ID_PREFIX}{gid}"
-        if placeholder_id in seen:
-            continue
-        extras.append(
-            _placeholder_game_summary(
-                item_id=placeholder_id,
-                title=game.get("name") or q,
-                slug=game.get("slug") or "",
-                poster_url=cover_url(game.get("cover")),
+            title = sg.get("name") or q
+            extras.append(
+                _placeholder_game_summary(
+                    item_id=placeholder_id,
+                    title=title,
+                    slug=slugify(title),
+                    poster_url=sg.get("poster_url"),
+                )
             )
-        )
-        seen.add(placeholder_id)
+            seen.add(placeholder_id)
+
     pending = _enqueue_igdb_imports(missing)
     return extras, pending
 
@@ -349,26 +661,81 @@ def search_media_payload(
     include_external: bool = False,
 ) -> dict:
     """Legacy ``MediaItemListResponse`` shape for ``GET /search``."""
+    if media_type == "music":
+        return {
+            "items": [],
+            "tracks": [],
+            "has_more": False,
+            "total": 0,
+            "backfill_pending": False,
+            "next_cursor": None,
+        }
+
     rows, total, has_more = _search_media_rows(q, media_type, sort_by, page, page_size)
-    tracks: list[Track] = []
-    if page == 1 and media_type in (None, "music"):
-        tracks = _search_track_rows(q)
     items = [dict(row) for row in MediaSummarySerializer(rows, many=True).data]
     backfill_pending = False
-    if page == 1 and media_type == "game":
-        extras, pending = _igdb_game_backfill(
-            q,
-            existing_count=total or 0,
-            existing_ids={str(item["id"]) for item in items},
-            limit=12,
-            include_placeholders=include_external,
-            threshold=BACKFILL_THRESHOLD,
-        )
-        items.extend(extras)
-        backfill_pending = pending or _igdb_backfill_pending()
+
+    if page == 1:
+        existing_ids = {str(item["id"]) for item in items}
+        current_count = total or len(items)
+
+        if media_type == "game":
+            extras, pending = _igdb_game_backfill(
+                q,
+                existing_count=current_count,
+                existing_ids=existing_ids,
+                limit=page_size,
+                include_placeholders=True,
+                threshold=BACKFILL_THRESHOLD,
+                force=(current_count == 0),
+            )
+            items.extend(extras)
+            backfill_pending = pending
+        elif media_type == "movie":
+            extras, pending = _tmdb_movie_backfill(
+                q,
+                existing_count=current_count,
+                existing_ids=existing_ids,
+                limit=page_size,
+                threshold=BACKFILL_THRESHOLD,
+                force=(current_count == 0),
+            )
+            items.extend(extras)
+            backfill_pending = pending
+        elif media_type in ("show", "tv"):
+            extras, pending = _tmdb_show_backfill(
+                q,
+                existing_count=current_count,
+                existing_ids=existing_ids,
+                limit=page_size,
+                threshold=BACKFILL_THRESHOLD,
+                force=(current_count == 0),
+            )
+            items.extend(extras)
+            backfill_pending = pending
+        elif media_type is None:
+            if current_count == 0:
+                m_extras, m_pending = _tmdb_movie_backfill(q, limit=8, force=True)
+                s_extras, s_pending = _tmdb_show_backfill(q, limit=8, force=True)
+                g_extras, g_pending = _igdb_game_backfill(
+                    q,
+                    existing_count=0,
+                    existing_ids=existing_ids,
+                    limit=8,
+                    include_placeholders=True,
+                    threshold=BACKFILL_THRESHOLD,
+                    force=True,
+                )
+                items.extend(m_extras + s_extras + g_extras)
+                backfill_pending = m_pending or s_pending or g_pending
+
+        backfill_pending = backfill_pending or _any_backfill_pending(media_type)
+        if current_count == 0 and items:
+            total = len(items)
+
     return {
         "items": items,
-        "tracks": TrackSearchSerializer(tracks, many=True).data,
+        "tracks": [],
         "has_more": has_more,
         "total": total,
         "backfill_pending": backfill_pending,
@@ -382,6 +749,8 @@ def suggestions_payload(q: str, media_type: str | None, limit: int) -> list[dict
     Game typeahead backfills from IGDB when the catalog is sparse so Match can
     show provider hits before ingest finishes (``id`` is ``igdb:{id}``).
     """
+    if media_type == "music":
+        return []
     rows, total, _has_more = _search_media_rows(q, media_type, None, 1, limit)
     items = [dict(row) for row in MediaSummarySerializer(rows, many=True).data]
     if media_type == "game":
@@ -391,6 +760,26 @@ def suggestions_payload(q: str, media_type: str | None, limit: int) -> list[dict
             existing_ids={str(item["id"]) for item in items},
             limit=limit,
             include_placeholders=True,
+            threshold=SUGGESTIONS_BACKFILL_THRESHOLD,
+        )
+        items.extend(extras)
+        items = items[:limit]
+    elif media_type == "movie":
+        extras, _pending = _tmdb_movie_backfill(
+            q,
+            existing_count=total or 0,
+            existing_ids={str(item["id"]) for item in items},
+            limit=limit,
+            threshold=SUGGESTIONS_BACKFILL_THRESHOLD,
+        )
+        items.extend(extras)
+        items = items[:limit]
+    elif media_type in ("show", "tv"):
+        extras, _pending = _tmdb_show_backfill(
+            q,
+            existing_count=total or 0,
+            existing_ids={str(item["id"]) for item in items},
+            limit=limit,
             threshold=SUGGESTIONS_BACKFILL_THRESHOLD,
         )
         items.extend(extras)
@@ -412,14 +801,22 @@ def companies_payload(q: str, limit: int) -> dict:
 def poll_payload(q: str, media_type: str | None, known_ids: str, page_size: int) -> dict:
     """Legacy ``MediaItemListResponse`` for ``GET /search/poll``.
 
-    Returns catalog matches not already in ``known_ids``. While IGDB ingest
-    jobs are still pending, ``backfill_pending`` stays true so the client keeps
-    polling.
+    Returns catalog matches not already in ``known_ids``. While ingest jobs are
+    still pending, ``backfill_pending`` stays true so the client keeps polling.
     """
+    if media_type == "music":
+        return {
+            "items": [],
+            "tracks": [],
+            "has_more": False,
+            "total": 0,
+            "backfill_pending": False,
+            "next_cursor": None,
+        }
     rows, total, _has_more = _search_media_rows(q, media_type, None, 1, page_size)
     known = {token for token in (known_ids or "").split(",") if token}
     fresh = [item for item in rows if str(item.id) not in known]
-    pending = media_type in (None, "game") and _igdb_backfill_pending()
+    pending = _any_backfill_pending(media_type)
     return {
         "items": MediaSummarySerializer(fresh, many=True).data,
         "tracks": [],
@@ -493,29 +890,62 @@ def grouped_payload(q: str, media_type_limit: int) -> dict:
 
     Media rows are grouped per type with per-group totals; people are matched by
     name. Users are always empty (the accounts.User model lacks the xp/bio/level
-    columns the legacy user search needs) and tracks/albums are title matches.
+    columns the legacy user search needs). Music and tracks are excluded.
     """
     grouped: dict[str, list[MediaItem]] = {}
     counts: dict[str, int] = {}
-    for media_type in ("movie", "show", "game", "music"):
+    for media_type in ("movie", "show", "game"):
         rows, total, _has_more = _search_media_rows(q, media_type, None, 1, media_type_limit)
         grouped[media_type] = rows
         counts[media_type] = total or 0
 
-    tracks = _search_track_rows(q)
-    tracks_total = Track.objects.filter(title__icontains=q).count()
     people = _search_people(q)
     people_total = Person.objects.filter(name__icontains=q).count()
 
-    movie_data = MediaSummarySerializer(grouped["movie"], many=True).data
-    show_data = MediaSummarySerializer(grouped["show"], many=True).data
-    game_data = MediaSummarySerializer(grouped["game"], many=True).data
-    music_data = MediaSummarySerializer(grouped["music"], many=True).data
-    track_data = TrackSearchSerializer(tracks, many=True).data
-    people_data = PersonSearchResultSerializer(people, many=True).data
-    media_data = movie_data + show_data + game_data + music_data
+    backfill_pending = False
 
-    total = sum(counts.values()) + tracks_total + people_total
+    # Movies backfill
+    if counts["movie"] == 0:
+        m_extras, m_pending = _tmdb_movie_backfill(q, limit=media_type_limit, force=True)
+        movie_data = m_extras
+        counts["movie"] = len(movie_data)
+        backfill_pending = backfill_pending or m_pending
+    else:
+        movie_data = [dict(r) for r in MediaSummarySerializer(grouped["movie"], many=True).data]
+
+    # Shows backfill
+    if counts["show"] == 0:
+        s_extras, s_pending = _tmdb_show_backfill(q, limit=media_type_limit, force=True)
+        show_data = s_extras
+        counts["show"] = len(show_data)
+        backfill_pending = backfill_pending or s_pending
+    else:
+        show_data = [dict(r) for r in MediaSummarySerializer(grouped["show"], many=True).data]
+
+    # Games backfill
+    if counts["game"] == 0:
+        g_extras, g_pending = _igdb_game_backfill(
+            q,
+            existing_count=0,
+            existing_ids=set(),
+            limit=media_type_limit,
+            include_placeholders=True,
+            force=True,
+        )
+        game_data = g_extras
+        counts["game"] = len(game_data)
+        backfill_pending = backfill_pending or g_pending
+    else:
+        game_data = [dict(r) for r in MediaSummarySerializer(grouped["game"], many=True).data]
+
+    music_data: list[dict] = []
+    track_data: list[dict] = []
+    people_data = PersonSearchResultSerializer(people, many=True).data
+    media_data = movie_data + show_data + game_data
+
+    backfill_pending = backfill_pending or _any_backfill_pending()
+    total = sum(counts.values()) + people_total
+
     return {
         "best_results": _best_results(q, media_data, people_data, track_data),
         "movies": movie_data,
@@ -529,10 +959,11 @@ def grouped_payload(q: str, media_type_limit: int) -> dict:
         "movies_count": counts["movie"],
         "shows_count": counts["show"],
         "games_count": counts["game"],
-        "music_count": counts["music"],
-        "tracks_count": tracks_total,
+        "music_count": 0,
+        "tracks_count": 0,
         "people_count": people_total,
         "users_count": 0,
+        "backfill_pending": backfill_pending,
     }
 
 
@@ -575,13 +1006,16 @@ def providers_payload(query: str, limit: int) -> dict:
     }
 
 
-def steamgrid_payload() -> dict:
-    """Legacy empty ``SteamGridSearchResponse`` for ``POST /search/steamgrid``.
-
-    SteamGridDB is a third-party provider (future integration work); the empty
-    contract mirrors the legacy response when the provider call fails.
-    """
-    return {"items": []}
+def steamgrid_payload(query: str | None = None) -> dict:
+    """Search SteamGridDB for games/artwork."""
+    if not query:
+        return {"items": []}
+    try:
+        raw = _run_async(lambda: _fetch_steamgrid_games(query, limit=12))
+        return {"items": raw}
+    except Exception:
+        logger.exception("steamgrid search failed query=%s", query)
+        return {"items": []}
 
 
 def log_search(

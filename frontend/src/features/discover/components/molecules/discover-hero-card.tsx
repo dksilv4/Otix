@@ -90,6 +90,9 @@ export function HeroCard({
               alt={item.title}
               className="w-full h-full object-cover"
               draggable={false}
+              loading={isActive ? 'eager' : 'lazy'}
+              fetchPriority={isActive ? 'high' : 'low'}
+              decoding="async"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-muted">

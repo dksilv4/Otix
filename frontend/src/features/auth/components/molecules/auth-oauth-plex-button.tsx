@@ -1,4 +1,4 @@
-import {OAuthButton} from '@/features/auth'
+import { OAuthButton } from './auth-oauth-button'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import {openExternal} from '@/lib/utils/open-external'
 import {apiClient} from '@/lib/api/client'

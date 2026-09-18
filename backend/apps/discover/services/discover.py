@@ -78,17 +78,25 @@ def _date_filter(name: str | None) -> tuple[date | None, date | None]:
 def hero_items(*, exclude_adult: bool, limit: int) -> list[MediaItem]:
     """A shuffled, artwork-backed slice of the catalog (legacy hero pool).
 
-    Pulls a pool of ``min(limit * 4, 50)`` items that all have usable artwork,
-    shuffles it for variety, and returns the first ``limit``.
+    Pulls a pool of ``min(limit * 4, 50)`` items that all have usable artwork.
+    Titles whose poster/backdrop is already mirrored locally lead, then the
+    remainder; each group is shuffled so the hero still rotates.
     """
     import random
 
     pool_size = min(limit * 4, 50)
     pool = list(
-        catalog_service.list_media(has_artwork=True, exclude_adult=exclude_adult)[:pool_size]
+        catalog_service.list_media(
+            has_artwork=True,
+            exclude_adult=exclude_adult,
+            prefer_local=True,
+        )[:pool_size]
     )
-    random.shuffle(pool)
-    return pool[:limit]
+    local = [item for item in pool if getattr(item, "_has_local", False)]
+    remote = [item for item in pool if not getattr(item, "_has_local", False)]
+    random.shuffle(local)
+    random.shuffle(remote)
+    return (local + remote)[:limit]
 
 
 def list_feed(
@@ -138,6 +146,7 @@ def list_feed(
         date_from=date_from,
         date_to=date_to,
         exclude_adult=exclude_adult,
+        prefer_local=True,
     )
 
 
@@ -188,13 +197,17 @@ def trending_seasons(
         qs = qs.filter(show__is_anime=is_anime)
     if exclude_adult:
         qs = qs.filter(show__media_item__is_adult=False)
+    qs = qs.annotate(
+        _has_local=catalog_service.local_artwork_exists(OuterRef("show_id")),
+    )
     seasons = list(qs.select_related("show__media_item").distinct())
 
-    def _sort_key(season: Season) -> tuple[int, int]:
+    def _sort_key(season: Season) -> tuple[int, int, int]:
+        local_rank = 0 if getattr(season, "_has_local", False) else 1
         days_to_premiere = (season.air_date - today).days
         if days_to_premiere <= 0:
-            return (0, -days_to_premiere)  # aired, newest first
-        return (1, days_to_premiere)  # future, soonest first
+            return (local_rank, 0, -days_to_premiere)  # aired, newest first
+        return (local_rank, 1, days_to_premiere)  # future, soonest first
 
     seasons.sort(key=_sort_key)
     return seasons

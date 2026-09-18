@@ -9,41 +9,36 @@ import { useDeepLink } from '@auth/hooks/use-deep-link'
 
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
 
+async function fetchAuthenticatedUser(): Promise<User | null> {
+  try {
+    const [meRes, intRes] = await Promise.all([
+      apiClient.get('/auth/me'),
+      apiClient.get('/auth/me/integrations').catch(() => null),
+    ])
+    const user = meRes.data as User
+    if (intRes?.data) Object.assign(user, intRes.data)
+    return user
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    if (status === 401 || status === 403) {
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+      window.desktopAPI?.plugin?.setAuthToken(null)
+    }
+    return null
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(() => !!localStorage.getItem(ACCESS_TOKEN_KEY))
   const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null)
-
-  async function mergeIntegrations(user: User): Promise<void> {
-    try {
-      const intRes = await apiClient.get('/auth/me/integrations')
-      Object.assign(user, intRes.data)
-    } catch {
-      // Non-critical — user still has core profile
-    }
-  }
-
-  async function loadUser(): Promise<User | null> {
-    try {
-      const meRes = await apiClient.get('/auth/me')
-      const user = meRes.data as User
-      await mergeIntegrations(user)
-      return user
-    } catch (error: any) {
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        localStorage.removeItem(ACCESS_TOKEN_KEY)
-        window.desktopAPI?.plugin?.setAuthToken(null)
-      }
-      return null
-    }
-  }
 
   // Initialize auth state — runs once on mount
   useEffect(() => {
     const token = localStorage.getItem(ACCESS_TOKEN_KEY)
     if (!token) return
     window.desktopAPI?.plugin?.setAuthToken(token)
-    loadUser().then((user) => {
+    fetchAuthenticatedUser().then((user) => {
       setUser(user)
       setIsLoading(false)
     })
@@ -68,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(ACCESS_TOKEN_KEY, data.params.accessToken)
           window.desktopAPI?.plugin?.setAuthToken(data.params.accessToken)
           resetAuthRefreshState()
-          loadUser().then((loaded) => {
+          fetchAuthenticatedUser().then((loaded) => {
             setUser(loaded)
             if (loaded) emitOtixEvent('otix:user:login', { userId: loaded.id })
           })
@@ -94,11 +89,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken!)
     window.desktopAPI?.plugin?.setAuthToken(data.accessToken!)
     resetAuthRefreshState()
-    const me = await apiClient.get('/auth/me')
-    const user = me.data as User
-    await mergeIntegrations(user)
+    const user = await fetchAuthenticatedUser()
     setUser(user)
-    emitOtixEvent('otix:user:login', { userId: user.id })
+    if (user) emitOtixEvent('otix:user:login', { userId: user.id })
     return data
   }, [])
 
@@ -113,11 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.desktopAPI?.plugin?.setAuthToken(res.data.accessToken)
     resetAuthRefreshState()
     setTwoFactorChallenge(null)
-    const me = await apiClient.get('/auth/me')
-    const user = me.data as User
-    await mergeIntegrations(user)
+    const user = await fetchAuthenticatedUser()
     setUser(user)
-    emitOtixEvent('otix:user:login', { userId: user.id })
+    if (user) emitOtixEvent('otix:user:login', { userId: user.id })
   }, [twoFactorChallenge])
 
   const cancelTwoFactor = useCallback(() => {
@@ -129,11 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
     window.desktopAPI?.plugin?.setAuthToken(res.data.accessToken)
     resetAuthRefreshState()
-    const me = await apiClient.get('/auth/me')
-    const user = me.data as User
-    await mergeIntegrations(user)
+    const user = await fetchAuthenticatedUser()
     setUser(user)
-    emitOtixEvent('otix:user:login', { userId: user.id })
+    if (user) emitOtixEvent('otix:user:login', { userId: user.id })
   }, [])
 
   const logout = useCallback(async () => {
@@ -154,10 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user])
 
   const refreshUser = useCallback(async () => {
-    const me = await apiClient.get('/auth/me')
-    const user = me.data as User
-    await mergeIntegrations(user)
-    setUser(user)
+    setUser(await fetchAuthenticatedUser())
   }, [])
 
   const contextValue = useMemo(() => ({

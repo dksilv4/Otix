@@ -2,7 +2,9 @@ import { lazy } from 'react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
-import { libraryTabQueryOptions, type LibraryTab } from './library-queries'
+import { libraryTabQueryOptions, steamWishlistOptions, type LibraryTab } from './library-queries'
+import { userListsOptions } from '@/features/list/list-queries'
+import { ACCESS_TOKEN_KEY } from '@/lib/config'
 
 const LibraryLayout = lazy(() => import('./pages/library-layout').then(m => ({ default: m.LibraryLayout })))
 
@@ -20,9 +22,11 @@ const LibraryIntegrationYoutubeSection = lazy(() => import('./pages/library-inte
 const LibraryWishlistPage = lazy(() => import('./pages/library-wishlist-page').then(m => ({ default: m.LibraryWishlistPage })))
 const LibraryListsPage = lazy(() => import('./pages/library-lists-page').then(m => ({ default: m.LibraryListsPage })))
 
-function libraryTabLoader(tab: LibraryTab) {
-  return ({ context }: { context: { queryClient: QueryClient } }) =>
-    context.queryClient.ensureInfiniteQueryData(libraryTabQueryOptions(tab))
+function libraryTabLoader(tab: LibraryTab, chunk: () => Promise<unknown>) {
+  return ({ context }: { context: { queryClient: QueryClient } }) => {
+    void chunk()
+    void context.queryClient.prefetchInfiniteQuery(libraryTabQueryOptions(tab))
+  }
 }
 
 export function createLibraryRoutes(rootRoute: AnyRoute) {
@@ -30,6 +34,9 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => rootRoute,
     path: '/library',
     component: LibraryLayout,
+    loader: () => {
+      void import('./pages/library-layout')
+    },
   })
 
   const libraryIndexRoute = createRoute({
@@ -44,82 +51,101 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/overview',
     component: LibraryOverviewPage,
-    loader: libraryTabLoader('overview'),
+    loader: ({ context }: { context: { queryClient: QueryClient } }) => {
+      void import('./pages/library-overview-page')
+      if (localStorage.getItem(ACCESS_TOKEN_KEY)) {
+        void context.queryClient.prefetchQuery(userListsOptions())
+      }
+    },
   })
+
+  const coreTabChunk = () => import('./pages/library-core-tab-pages')
 
   const libraryWatchlistRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/watchlist',
     component: LibraryWatchlistPage,
-    loader: libraryTabLoader('watchlist'),
+    loader: libraryTabLoader('watchlist', coreTabChunk),
   })
 
   const libraryLikeRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/like',
     component: LibraryLikePage,
-    loader: libraryTabLoader('like'),
+    loader: libraryTabLoader('like', coreTabChunk),
   })
 
   const libraryWatchedRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/watched',
     component: LibraryWatchedPage,
-    loader: libraryTabLoader('watched'),
+    loader: libraryTabLoader('watched', coreTabChunk),
   })
 
   const libraryPlayedRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/played',
     component: LibraryPlayedPage,
-    loader: libraryTabLoader('played'),
+    loader: libraryTabLoader('played', coreTabChunk),
   })
 
   const libraryListenedRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/listened',
     component: LibraryListenedPage,
-    loader: libraryTabLoader('listened'),
+    loader: libraryTabLoader('listened', coreTabChunk),
   })
 
   const libraryOwnedRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/owned',
     component: LibraryOwnedPage,
-    loader: libraryTabLoader('owned'),
+    loader: libraryTabLoader('owned', coreTabChunk),
   })
 
   const librarySteamRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/steam',
     component: LibraryIntegrationSteamSection,
-    loader: libraryTabLoader('steam'),
+    loader: libraryTabLoader('steam', () => import('./pages/library-integration-steam-section')),
   })
 
   const libraryPlexRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/plex',
     component: LibraryIntegrationPlexSection,
-    loader: libraryTabLoader('plex'),
+    loader: libraryTabLoader('plex', () => import('./pages/library-integration-plex-section')),
   })
 
   const libraryYoutubeRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/youtube',
     component: LibraryIntegrationYoutubeSection,
-    loader: libraryTabLoader('youtube'),
+    loader: libraryTabLoader('youtube', () => import('./pages/library-integration-youtube-section')),
   })
 
   const libraryWishlistRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/wishlist',
     component: LibraryWishlistPage,
+    loader: ({ context }: { context: { queryClient: QueryClient } }) => {
+      void import('./pages/library-wishlist-page')
+      if (localStorage.getItem(ACCESS_TOKEN_KEY)) {
+        void context.queryClient.prefetchInfiniteQuery(steamWishlistOptions())
+      }
+    },
   })
 
   const libraryListsRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/lists',
     component: LibraryListsPage,
+    loader: ({ context }: { context: { queryClient: QueryClient } }) => {
+      void import('./pages/library-lists-page')
+      if (localStorage.getItem(ACCESS_TOKEN_KEY)) {
+        void context.queryClient.prefetchQuery(userListsOptions())
+      }
+    },
   })
 
   return [

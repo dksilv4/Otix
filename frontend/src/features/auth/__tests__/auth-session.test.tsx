@@ -90,6 +90,8 @@ describe('auth session', () => {
 
     expect(result.current.isAuthenticated).toBe(true)
     expect(result.current.user).toEqual(mockUser)
+    expect(mockGet).toHaveBeenCalledWith('/auth/me')
+    expect(mockGet).toHaveBeenCalledWith('/auth/me/integrations')
     expect(mockPost).toHaveBeenCalledWith('/auth/login', {
       identity: 'test@example.com',
       password: 'password123',

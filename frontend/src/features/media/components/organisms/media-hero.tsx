@@ -1,5 +1,4 @@
-import { useRef } from 'react'
-import { Link } from '@tanstack/react-router'
+import { lazy, Suspense, useRef } from 'react'
 import { Badge } from '@ui/atoms/badge'
 import { MEDIA_TYPE_LABEL } from '@/constants/media'
 import {
@@ -17,7 +16,6 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { useTheme } from '@/lib/providers/theme'
 import { useAuth } from '@auth/hooks/use-auth'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { useModal } from '@/lib/modals'
@@ -37,14 +35,13 @@ import {
 } from '@media'
 import { AdminActionsMenu } from '@/features/admin'
 import { AddToListButton } from '@list'
-import { MediaDetailPluginButtons } from './plugin-detail-actions'
-import { useMediaDetailPluginActions } from '@/features/media/hooks/use-media-detail-plugin-actions'
-import { DownloadGameButton } from '@/features/media/game/components/organisms/media-download-game-button'
-import { RequestMediaButton } from './media-request-button'
-import { useRequestMedia } from '@/features/media/hooks/use-request-media'
 import { useToggleInteraction, useUserInteractions } from '@/features/interaction/interaction-queries'
 import { showXPToast } from '@ui/atoms/xp-toast'
 import { cn } from '@/lib/utils'
+
+const MediaHeroLibraryActions = lazy(() =>
+  import('./media-hero-library-actions').then((m) => ({ default: m.MediaHeroLibraryActions })),
+)
 
 interface MediaHeroProps {
   className?: string
@@ -55,12 +52,9 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
   const { mediaType, mediaId } = useMediaParams()
   const { user, isAuthenticated } = useAuth()
   const { openModal } = useModal()
-  const { resolvedTheme } = useTheme()
   const closeTrailerRef = useRef<(() => void) | null>(null)
 
-  const { data: detail } = useQuery(mediaQueries.detail(mediaType, mediaId, resolvedTheme))
-  const pluginActions = useMediaDetailPluginActions(mediaType, mediaId, detail?.tmdbId, Boolean(detail))
-  const requestMedia = useRequestMedia()
+  const { data: detail } = useQuery(mediaQueries.detail(mediaType, mediaId))
 
   const { data: userInteractions } = useUserInteractions(mediaType, mediaId, {
     enabled: isAuthenticated,
@@ -79,7 +73,6 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
     releaseDate,
     originalLanguage,
     isAdult,
-    genres = [],
   } = detail
 
   const isAnime = detail.movie?.isAnime || detail.show?.isAnime || false
@@ -138,10 +131,8 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
 
   const handleToggle = (type: 'liked' | 'watchlisted' | 'watched' | 'played' | 'listened') => {
     if (!isAuthenticated) return
-    let active = false
-    if (type === 'liked') active = !isLiked
-    else if (type === 'watchlisted') active = !isWatchlisted
-    else active = !isWatched
+    const active =
+      type === 'liked' ? !isLiked : type === 'watchlisted' ? !isWatchlisted : !isWatched
 
     toggleInteraction.mutate({ type, active })
     if (active) {
@@ -155,7 +146,7 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
   const watchedLabel =
     mediaType === 'game' ? 'Played' : mediaType === 'music' ? 'Listened' : 'Watched'
 
-  const hasPlayWidgets = pluginActions.playWidgets.length > 0
+  const trailerIsPrimary = !isAuthenticated
 
   return (
     <header id="media-hero" className={`relative min-h-[46vh] lg:min-h-[50vh] pb-6 ${className}`}>
@@ -165,6 +156,9 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
           <img
             src={backdropSrc(heroBackdrop)}
             alt=""
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
             className="h-full w-full object-cover brightness-[0.40] contrast-[1.08] saturate-[1.1]"
             style={{
               objectPosition: 'center 22%',
@@ -191,6 +185,9 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
               <img
                 src={posterUrl || undefined}
                 alt={`${title} poster`}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
                 className={`w-full object-cover ${mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]'}`}
                 onError={(e) => {
                   ;(e.target as HTMLImageElement).style.display = 'none'
@@ -307,22 +304,11 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
 
             {/* ── Action Command Row with Icon-Based Action Cluster ── */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2">
-              {mediaType === 'game' && <DownloadGameButton />}
-              {(mediaType === 'movie' || mediaType === 'show') && <RequestMediaButton />}
-
-              {/* PRIMARY ACTION: Plugin Play (e.g. Plex) */}
-              {hasPlayWidgets ? (
-                <div className="shadow-lg shadow-amber-500/10">
-                  <MediaDetailPluginButtons
-                    widgets={[]}
-                    playWidgets={pluginActions.playWidgets}
-                    requesting={pluginActions.requesting}
-                    onRequest={pluginActions.handleRequest}
-                    onPlay={pluginActions.handlePlay}
-                    variant="pill"
-                  />
-                </div>
-              ) : null}
+              {isAuthenticated && (
+                <Suspense fallback={null}>
+                  <MediaHeroLibraryActions />
+                </Suspense>
+              )}
 
               {/* TRAILER BUTTON (Icon-based) */}
               {trailer && (
@@ -331,7 +317,7 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
                   onClick={openTrailer}
                   className={cn(
                     'group relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95 shadow-lg',
-                    !hasPlayWidgets
+                    trailerIsPrimary
                       ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30 ring-1 ring-red-400/40'
                       : 'bg-white/[0.12] hover:bg-white/[0.18] text-white backdrop-blur-xl',
                   )}
@@ -340,18 +326,6 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
                 >
                   <Play className="h-4 w-4 fill-current translate-x-[0.5px]" />
                 </button>
-              )}
-
-              {/* Request Plugin Action Buttons (Radarr / Sonarr) — desktop fallback */}
-              {requestMedia.hidden && pluginActions.widgets.length > 0 && (
-                <MediaDetailPluginButtons
-                  widgets={pluginActions.widgets}
-                  playWidgets={[]}
-                  requesting={pluginActions.requesting}
-                  onRequest={pluginActions.handleRequest}
-                  onPlay={pluginActions.handlePlay}
-                  variant="pill"
-                />
               )}
 
               {/* ── Secondary Icon-Based Interaction Cluster ── */}

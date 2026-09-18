@@ -1,4 +1,4 @@
-import {OAuthButton} from '@/features/auth'
+import { OAuthButton } from './auth-oauth-button'
 import SpotifyIcon from '@/assets/provider-logos/spotify.svg?react'
 import {openExternal} from '@/lib/utils/open-external'
 import {apiClient} from '@/lib/api/client'

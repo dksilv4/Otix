@@ -61,7 +61,9 @@ export default defineConfig({
         manualChunks(id: string) {
           if (id.includes('node_modules/three')) return 'three'
           if (id.includes('node_modules/framer-motion')) return 'framer-motion'
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) return 'react'
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'react'
+          if (id.includes('node_modules/@tanstack')) return 'tanstack'
+          if (id.includes('node_modules/axios')) return 'axios'
         },
       },
     },

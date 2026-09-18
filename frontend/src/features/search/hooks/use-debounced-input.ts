@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 
-const MEDIA_TYPE_REGEX = /^\/(movie|show|game|music)\s*/
+const MEDIA_TYPE_REGEX = /^\/(movie|show|game)\s*/
 
 export function useDebouncedInput(
   value: string,
@@ -22,7 +22,7 @@ export function useDebouncedInput(
 
   const parsedType = useMemo(() => {
     const match = inputValue.match(MEDIA_TYPE_REGEX)
-    return match ? match[1] as 'movie' | 'show' | 'game' | 'music' | null : null
+    return match ? match[1] as 'movie' | 'show' | 'game' | null : null
   }, [inputValue])
 
   const displayValue = inputValue.replace(MEDIA_TYPE_REGEX, '')

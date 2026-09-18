@@ -18,10 +18,10 @@ repos:
     hooks:
       - id: frontend-lint
         name: ESLint (frontend)
-        entry: bash -c 'cd frontend && npx eslint --fix --no-warn-ignored src/'
+        entry: bash -c 'cd frontend && mapped=(); for f in "$@"; do mapped+=("${f#frontend/}"); done; npx eslint --fix --no-warn-ignored "${mapped[@]}"' --
         language: system
         files: ^frontend/src/.*\.(ts|tsx)$
-        pass_filenames: false
+        pass_filenames: true
 
       - id: version-check
         name: Version bump required

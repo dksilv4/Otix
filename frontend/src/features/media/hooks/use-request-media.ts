@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { useHasSession } from '@/lib/providers/auth'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import {
   arrKeys,
@@ -28,6 +29,7 @@ import {
   makeServerArrInstanceId,
   matchArrQueueItem,
   matchLookupByTmdb,
+  matchLookupByTvdbOrTmdb,
   parseServerArrInstanceId,
   queueProgress,
   radarrStatusFromLookup,
@@ -43,11 +45,21 @@ export const requestMediaKeys = {
     [...requestMediaKeys.all, serverId, mediaType, tmdbId] as const,
 }
 
+export interface RequestMediaOptions {
+  instanceId?: string
+  qualityProfileId?: number
+  rootFolderPath?: string
+  searchNow?: boolean
+  monitored?: boolean
+}
+
 export interface RequestMediaState {
   hidden: boolean
   loading: boolean
   mediaType: 'movie' | 'show'
   mediaTitle: string
+  mediaYear?: number
+  posterUrl?: string | null
   requestLabel: string
   instances: RequestInstance[]
   widgets: RequestWidget[]
@@ -56,7 +68,8 @@ export interface RequestMediaState {
   queueItem: ServerArrQueueItem | null
   queuePercent: number
   activeServerName: string
-  handleRequest: (instanceId?: string) => Promise<void>
+  serverId?: number
+  handleRequest: (opts?: string | RequestMediaOptions) => Promise<void>
   handleCancelQueue: () => void
 }
 
@@ -78,6 +91,7 @@ async function lookupOnInstance(
 
 export function useRequestMedia(): RequestMediaState {
   const { mediaType: rawType, mediaId } = useMediaParams()
+  const hasSession = useHasSession()
   const enabled = isArrMediaType(rawType)
   const mediaType: 'movie' | 'show' = rawType === 'show' ? 'show' : 'movie'
   const { data: detail } = useQuery({
@@ -85,10 +99,11 @@ export function useRequestMedia(): RequestMediaState {
     enabled: enabled && Boolean(mediaId),
   })
   const tmdbId = detail?.tmdbId || ''
+  const tvdbId = detail?.tvdbId || ''
   const mediaTitle = detail?.title || ''
   const year = yearFromReleaseDate(detail?.releaseDate)
 
-  const { data: servers = [] } = useGameServers()
+  const { data: servers = [] } = useGameServers({ enabled: enabled && hasSession })
   const activeServer = servers.find((server) => server.isActive) || servers[0] || null
   const isMovie = enabled && mediaType === 'movie'
   const isShow = enabled && mediaType === 'show'
@@ -103,17 +118,21 @@ export function useRequestMedia(): RequestMediaState {
   const hasArr = enabled && Boolean(serverId) && instances.length > 0
 
   const statusQuery = useQuery({
-    queryKey: requestMediaKeys.status(serverId, mediaType, String(tmdbId)),
+    queryKey: requestMediaKeys.status(serverId, mediaType, String(tmdbId || tvdbId)),
     queryFn: async () => {
-      if (!serverId || !tmdbId) return [] as RequestInstance[]
-      const term = lookupTmdbTerm(tmdbId)
+      if (!serverId || (!tmdbId && !tvdbId)) return [] as RequestInstance[]
+      const term = isMovie
+        ? lookupTmdbTerm(tmdbId)
+        : (tvdbId ? `tvdb:${tvdbId}` : lookupTmdbTerm(tmdbId))
       return Promise.all(
         instances.map(async (instance) => {
           const id = makeServerArrInstanceId(serverId, instance.id)
           const name = instanceLabel(activeServer?.name || 'Server', instance.name, isMovie ? 'Radarr' : 'Sonarr')
           try {
             const results = await lookupOnInstance(serverId, kind, term, instance.id)
-            const match = matchLookupByTmdb(results, tmdbId)
+            const match = isMovie
+              ? matchLookupByTmdb(results, tmdbId)
+              : matchLookupByTvdbOrTmdb(results, tvdbId, tmdbId)
             const status = isMovie ? radarrStatusFromLookup(match) : sonarrStatusFromLookup(match)
             const file = isMovie ? fileFromRadarrLookup(match) : fileFromSonarrLookup(match)
             return toRequestInstance(id, name, status, file)
@@ -123,7 +142,7 @@ export function useRequestMedia(): RequestMediaState {
         }),
       )
     },
-    enabled: hasArr && Boolean(tmdbId),
+    enabled: hasArr && Boolean(tmdbId || tvdbId),
     staleTime: 15_000,
   })
 
@@ -154,10 +173,11 @@ export function useRequestMedia(): RequestMediaState {
     ]
   }, [isMovie, mediaType, requestable, tmdbId])
 
-  const handleRequest = async (instanceId?: string) => {
-    if (!serverId || !tmdbId) return
+  const handleRequest = async (opts?: string | RequestMediaOptions) => {
+    if (!serverId || (!tmdbId && !tvdbId)) return
+    const options: RequestMediaOptions = typeof opts === 'string' ? { instanceId: opts } : (opts || {})
     const target =
-      requestable.find((item) => item.id === instanceId) ||
+      requestable.find((item) => item.id === options.instanceId) ||
       requestable.find((item) => item.status === 'not_exists' || item.status === 'error') ||
       requestable[0]
     if (!target) return
@@ -169,21 +189,26 @@ export function useRequestMedia(): RequestMediaState {
           title: mediaTitle || String(tmdbId),
           tmdb_id: Number(tmdbId),
           year,
-          monitored: true,
-          search_for_movie: true,
+          monitored: options.monitored ?? true,
+          search_for_movie: options.searchNow ?? true,
+          quality_profile_id: options.qualityProfileId,
+          root_folder_path: options.rootFolderPath,
           instance_id: parsed.arrInstanceId,
         })
       } else {
         await addSeries.mutateAsync({
           title: mediaTitle || undefined,
-          tmdb_id: Number(tmdbId),
+          tvdb_id: tvdbId ? Number(tvdbId) : undefined,
+          tmdb_id: tmdbId ? Number(tmdbId) : undefined,
           year,
-          monitored: true,
-          search_for_missing_episodes: true,
+          monitored: options.monitored ?? true,
+          search_for_missing_episodes: options.searchNow ?? true,
+          quality_profile_id: options.qualityProfileId,
+          root_folder_path: options.rootFolderPath,
           instance_id: parsed.arrInstanceId,
         })
       }
-      await queryClient.invalidateQueries({ queryKey: requestMediaKeys.status(serverId, mediaType, String(tmdbId)) })
+      await queryClient.invalidateQueries({ queryKey: requestMediaKeys.status(serverId, mediaType, String(tmdbId || tvdbId)) })
       await queryClient.invalidateQueries({ queryKey: isMovie ? arrKeys.radarr.queue(serverId) : arrKeys.sonarr.queue(serverId) })
     } catch (err) {
       throw new Error(arrRequestErrorMessage(err, `Failed to request ${isMovie ? 'movie' : 'show'}`))
@@ -203,6 +228,8 @@ export function useRequestMedia(): RequestMediaState {
     loading: Boolean(configLoading || (hasArr && statusQuery.isLoading)),
     mediaType,
     mediaTitle,
+    mediaYear: year,
+    posterUrl: detail?.posterUrl || null,
     requestLabel: isMovie ? 'Request Movie' : 'Request Show',
     instances: requestable,
     widgets,
@@ -213,6 +240,7 @@ export function useRequestMedia(): RequestMediaState {
     queueItem,
     queuePercent: queueProgress(queueItem),
     activeServerName: activeServer?.name || 'Server',
+    serverId,
     handleRequest,
     handleCancelQueue,
   }

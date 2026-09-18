@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Shield, ArrowRight, ArrowLeft, Loader2, Check } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useAuth } from '@auth'
+import { useAuth } from '@auth/hooks/use-auth'
 import { extractErrorMessage } from '@auth/utils'
 
 interface TwoFactorChallengeProps {

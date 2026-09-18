@@ -8,8 +8,6 @@ import { showXPToast } from '@ui/atoms/xp-toast'
 import type { MediaItemDetail } from '@media'
 import { formatYear, primaryTrailer } from '@media'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
-import { useMediaDetailPluginActions } from '@/features/media/hooks/use-media-detail-plugin-actions'
-import { MediaDetailPluginButtons } from './plugin-detail-actions'
 import { useNavPillsVisibility } from '@/features/navigation'
 import { cn } from '@/lib/utils'
 
@@ -33,13 +31,6 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
   const { showLeft, showRight } = useNavPillsVisibility()
   const { openModal } = useModal()
   const closeTrailerRef = useRef<(() => void) | null>(null)
-
-  const pluginActions = useMediaDetailPluginActions(
-    mediaType,
-    detail.id,
-    detail.tmdbId,
-    Boolean(detail),
-  )
 
   const { data: userInteractions } = useUserInteractions(mediaType, detail.id, {
     enabled: isAuthenticated,
@@ -85,6 +76,7 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
     }
   }, [showLeft, showRight])
 
+   
   useEffect(() => {
     updatePlacement()
     window.addEventListener('resize', updatePlacement, { passive: true })
@@ -95,6 +87,7 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
       clearInterval(interval)
     }
   }, [updatePlacement])
+   
 
   const interactions = userInteractions ?? detail.userInteractions ?? {}
   const isLiked = Boolean(interactions.liked)
@@ -105,10 +98,8 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
 
   const handleToggle = (type: 'liked' | 'watchlisted' | 'watched' | 'played' | 'listened') => {
     if (!isAuthenticated) return
-    let active = false
-    if (type === 'liked') active = !isLiked
-    else if (type === 'watchlisted') active = !isWatchlisted
-    else active = !isWatched
+    const active =
+      type === 'liked' ? !isLiked : type === 'watchlisted' ? !isWatchlisted : !isWatched
 
     toggleInteraction.mutate({ type, active })
     if (active) {
@@ -136,7 +127,6 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
   }
 
   const year = formatYear(detail.releaseDate)
-  const hasPlayWidgets = pluginActions.playWidgets.length > 0
 
   // Position styles based on layout mode
   const getContainerStyles = (): React.CSSProperties => {
@@ -213,19 +203,8 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
           </div>
         )}
 
-        {/* Primary Action: Plugin Play or Trailer */}
-        {hasPlayWidgets ? (
-          <div className="scale-90 origin-right shrink-0">
-            <MediaDetailPluginButtons
-              widgets={[]}
-              playWidgets={pluginActions.playWidgets}
-              requesting={pluginActions.requesting}
-              onRequest={pluginActions.handleRequest}
-              onPlay={pluginActions.handlePlay}
-              variant="pill"
-            />
-          </div>
-        ) : trailer ? (
+        {/* Primary Action: Trailer (Plex play lives on the hero for signed-in users) */}
+        {trailer ? (
           <button
             type="button"
             onClick={openTrailer}

@@ -1,18 +1,18 @@
 import { Helmet } from 'react-helmet-async'
 import { CheckCheck } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { useAuth } from '@/lib/providers/auth'
+import { useHasSession } from '@/lib/providers/auth'
 import { notificationQueries } from '../queries'
 import { useMarkAllRead } from '../hooks/use-mark-all-read'
 import { NotificationList } from '../components/organisms/notification-list'
 
 export function NotificationsPage() {
-  const { isAuthenticated } = useAuth()
+  const hasSession = useHasSession()
   const markAllRead = useMarkAllRead()
 
   const { data: unreadData } = useQuery({
     ...notificationQueries.unreadCount(),
-    enabled: isAuthenticated,
+    enabled: hasSession,
   })
   const unreadCount = unreadData?.count ?? 0
 

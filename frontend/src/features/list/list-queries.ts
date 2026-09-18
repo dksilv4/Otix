@@ -1,5 +1,6 @@
 // TODO: Review this file
 import {
+  queryOptions,
   useQuery,
   useMutation,
   useQueryClient,
@@ -98,8 +99,8 @@ export interface RankHistoryOut {
 
 // ── Queries ────────────────────────────────────────────
 
-export function useUserLists() {
-  return useQuery({
+export function userListsOptions() {
+  return queryOptions({
     queryKey: listKeys.mine(),
     queryFn: async () => {
       const { data } = await apiClient.get<any>("/list/mine")
@@ -108,6 +109,10 @@ export function useUserLists() {
     staleTime: 1000 * 60 * 2,
     meta: { suppressToast: true },
   })
+}
+
+export function useUserLists() {
+  return useQuery(userListsOptions())
 }
 
 export function usePublicLists() {
@@ -126,8 +131,8 @@ export function usePublicLists() {
   })
 }
 
-export function useListDetail(listId: string) {
-  return useQuery({
+export function listDetailOptions(listId: string) {
+  return queryOptions({
     queryKey: listKeys.detail(listId),
     queryFn: async () => {
       const { data } = await apiClient.get<UserListDetailOut>("/list/" + listId)
@@ -139,6 +144,10 @@ export function useListDetail(listId: string) {
     enabled: !!listId,
     staleTime: 1000 * 60 * 2,
   })
+}
+
+export function useListDetail(listId: string) {
+  return useQuery(listDetailOptions(listId))
 }
 
 // ── Mutations ──────────────────────────────────────────

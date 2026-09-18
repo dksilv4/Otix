@@ -27,6 +27,22 @@ export default defineConfig([
         ignoreTemplateLiterals: true,
         ignoreRegExpLiterals: true,
       }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+      }],
+      'preserve-caught-error': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['**/router.tsx', '**/*.router.ts'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])

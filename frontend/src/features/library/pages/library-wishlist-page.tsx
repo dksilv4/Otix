@@ -14,7 +14,9 @@ export function LibraryWishlistPage() {
     }
   }, [authLoading, user?.steamId, navigate])
 
-  if (authLoading) return null
+  if (authLoading) {
+    return <WishlistTabContent />
+  }
   if (!user?.steamId) return null
 
   return <WishlistTabContent />

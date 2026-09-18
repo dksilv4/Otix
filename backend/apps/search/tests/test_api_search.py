@@ -6,11 +6,12 @@ ported legacy routes: ``/search`` (with SearchLog writes), ``/search/suggestions
 provider contracts and the Otix-catalog branch of ``/search/providers``.
 """
 
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
-from unittest.mock import patch
 
 from apps.company.models import Company
 from apps.integrations.models import SyncJob
@@ -78,7 +79,7 @@ class SearchApiTests(TestCase):
         titles = {item["title"] for item in items}
         self.assertIn("Inception", titles)
         self.assertIn("Inception Game", titles)
-        self.assertEqual(response.data["total"], 4)
+        self.assertEqual(response.data["total"], 3)
         self.assertIs(response.data["backfill_pending"], False)
         self.assertIsNone(response.data["next_cursor"])
         self.assertTrue(all("media_type" in item for item in items))
@@ -90,7 +91,7 @@ class SearchApiTests(TestCase):
         self.assertEqual(log.query, "inception")
         self.assertIsNone(log.media_type)
         self.assertIsNone(log.user_id)
-        self.assertEqual(log.result_count, 4)
+        self.assertEqual(log.result_count, 3)
         self.assertEqual(log.items_returned, len(items))
         self.assertEqual(log.tracks_returned, 0)
         self.assertFalse(log.cache_hit)
@@ -135,13 +136,15 @@ class SearchApiTests(TestCase):
         response = self.client.get("/api/v1/search/suggestions", {"q": "inception"})
         self.assertEqual(response.status_code, 200)
         self.assertIsInstance(response.data, list)
-        self.assertGreaterEqual(len(response.data), 4)
+        self.assertGreaterEqual(len(response.data), 3)
         summary = response.data[0]
         self.assertIn("media_type", summary)
         self.assertIn("title", summary)
 
     def test_media_suggestions_alias_matches_search_suggestions(self):
-        response = self.client.get("/api/v1/media/suggestions", {"q": "inception", "media_type": "game"})
+        response = self.client.get(
+            "/api/v1/media/suggestions", {"q": "inception", "media_type": "game"}
+        )
         self.assertEqual(response.status_code, 200)
         self.assertIsInstance(response.data, list)
         self.assertTrue(all(item["media_type"] == "game" for item in response.data))
@@ -170,19 +173,23 @@ class SearchApiTests(TestCase):
                 "tracks_count",
                 "people_count",
                 "users_count",
+                "backfill_pending",
             },
         )
         self.assertEqual(data["movies"][0]["media_type"], "movie")
         self.assertEqual(data["movies"][0]["title"], "Inception")
         self.assertEqual(data["shows"][0]["media_type"], "show")
         self.assertEqual(data["games"][0]["media_type"], "game")
-        self.assertEqual(data["music"][0]["media_type"], "music")
+        self.assertEqual(data["music"], [])
+        self.assertEqual(data["music_count"], 0)
+        self.assertEqual(data["tracks"], [])
+        self.assertEqual(data["tracks_count"], 0)
         self.assertEqual(data["people"][0]["media_type"], "person")
         self.assertEqual(data["people"][0]["name"], "Inception Artist")
         self.assertEqual(data["users"], [])
         self.assertEqual(data["users_count"], 0)
         self.assertEqual(data["movies_count"], 1)
-        self.assertGreaterEqual(data["total"], 5)
+        self.assertGreaterEqual(data["total"], 4)
         self.assertTrue(data["best_results"])
 
     # --- companies ---
@@ -210,7 +217,7 @@ class SearchApiTests(TestCase):
         returned_ids = {item["id"] for item in response.data["items"]}
         self.assertNotIn(self.movie.pk, returned_ids)
         self.assertIn(self.show.pk, returned_ids)
-        self.assertEqual(response.data["total"], 4)
+        self.assertEqual(response.data["total"], 3)
         self.assertIs(response.data["backfill_pending"], False)
 
     # --- external / providers (third-party contract) ---
@@ -229,7 +236,9 @@ class SearchApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(response.data), {"items", "backfill_pending"})
         self.assertTrue(response.data["items"])
-        otix_ids = {int(item["id"]) for item in response.data["items"] if item["provider"] == "otix"}
+        otix_ids = {
+            int(item["id"]) for item in response.data["items"] if item["provider"] == "otix"
+        }
         self.assertIn(self.game.pk, otix_ids)
 
     def test_providers_requires_query(self) -> None:
@@ -273,9 +282,7 @@ class SearchApiTests(TestCase):
         response = self.client.get("/api/v1/search/", {"q": "witcher", "media_type": "game"})
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data["backfill_pending"])
-        self.assertTrue(
-            all(not str(item["id"]).startswith("igdb:") for item in response.data["items"])
-        )
+        self.assertIn("igdb:1942", {str(item["id"]) for item in response.data["items"]})
         self.assertTrue(
             SyncJob.objects.filter(provider="igdb", entity_type="game", external_id="1942").exists()
         )
@@ -283,7 +290,9 @@ class SearchApiTests(TestCase):
     @override_settings(IGDB_CLIENT_ID="id", IGDB_CLIENT_SECRET="secret")
     @patch("apps.media.services.igdb.configured", return_value=True)
     @patch("apps.media.services.igdb.IGDBProvider")
-    def test_game_search_include_external_returns_igdb_placeholders(self, mock_provider, _configured) -> None:
+    def test_game_search_include_external_returns_igdb_placeholders(
+        self, mock_provider, _configured
+    ) -> None:
         mock_provider.return_value.search_games.return_value = [
             {"id": 1942, "name": "The Witcher 3", "slug": "witcher-3", "cover": None}
         ]

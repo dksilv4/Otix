@@ -2,7 +2,7 @@ import { useState, useRef, type FormEvent } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Loader2, Check, ArrowRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '@auth'
+import { useAuth } from '@auth/hooks/use-auth'
 import { PasswordField } from '@auth/components/molecules/auth-password-field'
 import { extractErrorMessage } from '@auth/utils'
 

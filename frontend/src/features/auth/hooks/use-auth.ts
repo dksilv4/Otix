@@ -8,3 +8,9 @@ export function useAuth(): AuthState {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
 }
+
+/** True while a session token is being verified or a user is already loaded. */
+export function useHasSession(): boolean {
+  const { isAuthenticated, isLoading } = useAuth()
+  return isAuthenticated || isLoading
+}

@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Sparkles, ArrowRight } from 'lucide-react'
-import { useAuth } from '@auth'
+import { useAuth } from '@auth/hooks/use-auth'
 
 interface GuestCtaBannerProps {
   title?: string

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, lazy, Suspense } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '@auth/hooks/use-auth'
@@ -11,36 +11,64 @@ import { RatingsHub } from '../components/organisms/media-ratings-hub'
 import { WhereToWatch } from '../components/organisms/media-where-to-watch'
 import { MediaSpecsCard } from '../components/organisms/media-specs-card'
 import { CastCrew } from '../components/organisms/media-cast-crew'
-import { MediaDetailPluginLibraryStatus } from '../components/organisms/plugin-detail-actions'
-import { useMediaDetailPluginActions } from '../hooks/use-media-detail-plugin-actions'
-import { useRequestMedia } from '../hooks/use-request-media'
 import { SignInCTA } from '../components/organisms/media-signin-cta'
 
-import { ShowSection } from '@media/show/components/organisms/media-show-section'
-import { GameSection } from '@media/game/components/organisms/media-game-section'
-import { GameTabBar } from '@media/game/components/molecules/media-game-tab-bar'
-import { BlueprintVault, type ParsedBlueprint } from '@media/game/components/organisms/media-game-blueprint-vault'
-import { BlueprintCommunity } from '@media/game/components/organisms/media-game-blueprint-community'
-import { BlueprintDetail } from '@media/game/components/organisms/media-game-blueprint-detail'
-import { MusicSection } from '@media/music/components/organisms/media-music-section'
-import { ArtistAlbumsSection } from '@media/music/components/organisms/media-artist-albums-section'
-import { MoreLikeThisSection } from '../components/organisms/media-more-like-this-section'
-import { CollectionSection } from '../components/organisms/media-collection-section'
-import { ReviewsListSection } from '@/features/review/organisms/reviews-list-section'
+import type { ParsedBlueprint } from '@media/game/components/organisms/media-game-blueprint-vault'
+
+const ShowSection = lazy(() =>
+  import('@media/show/components/organisms/media-show-section').then((m) => ({ default: m.ShowSection })),
+)
+const MoreLikeThisSection = lazy(() =>
+  import('../components/organisms/media-more-like-this-section').then((m) => ({ default: m.MoreLikeThisSection })),
+)
+const CollectionSection = lazy(() =>
+  import('../components/organisms/media-collection-section').then((m) => ({ default: m.CollectionSection })),
+)
+const ReviewsListSection = lazy(() =>
+  import('@/features/review/organisms/reviews-list-section').then((m) => ({ default: m.ReviewsListSection })),
+)
+const MediaDetailLibraryPanel = lazy(() =>
+  import('../components/organisms/media-detail-library-panel').then((m) => ({ default: m.MediaDetailLibraryPanel })),
+)
+const GameSection = lazy(() =>
+  import('@media/game/components/organisms/media-game-section').then((m) => ({ default: m.GameSection })),
+)
+const GameTabBar = lazy(() =>
+  import('@media/game/components/molecules/media-game-tab-bar').then((m) => ({ default: m.GameTabBar })),
+)
+const BlueprintVault = lazy(() =>
+  import('@media/game/components/organisms/media-game-blueprint-vault').then((m) => ({ default: m.BlueprintVault })),
+)
+const BlueprintCommunity = lazy(() =>
+  import('@media/game/components/organisms/media-game-blueprint-community').then((m) => ({
+    default: m.BlueprintCommunity,
+  })),
+)
+const BlueprintDetail = lazy(() =>
+  import('@media/game/components/organisms/media-game-blueprint-detail').then((m) => ({ default: m.BlueprintDetail })),
+)
+const MusicSection = lazy(() =>
+  import('@media/music/components/organisms/media-music-section').then((m) => ({ default: m.MusicSection })),
+)
+const ArtistAlbumsSection = lazy(() =>
+  import('@media/music/components/organisms/media-artist-albums-section').then((m) => ({
+    default: m.ArtistAlbumsSection,
+  })),
+)
 import { DeferredSection } from '@ui/molecules/deferred-section'
 import { SectionSkeleton } from '../components/organisms/media-detail-section-skeleton'
 import { DetailSkeleton } from '../components/organisms/media-detail-skeleton'
 import { ErrorState } from '../components/organisms/media-detail-error-state'
 
+import { mediaQueries } from '../queries/media-queries'
 import {
   formatYear,
   isGame,
   isMusic,
   isShow,
-  mediaQueries,
   mediaTypeFromParam,
   seoDescription,
-} from '@media'
+} from '../utils'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 
 export function MediaDetailPage() {
@@ -86,16 +114,6 @@ export function MediaDetailPage() {
   const { data: detail, isError, isPending, isFetching } = useQuery(
     mediaQueries.detail(mediaType, mediaId),
   )
-  const pluginActions = useMediaDetailPluginActions(
-    mediaType,
-    mediaId,
-    detail?.tmdbId,
-    Boolean(detail),
-  )
-  const requestMedia = useRequestMedia()
-  const libraryWidgets = requestMedia.hidden ? pluginActions.widgets : requestMedia.widgets
-  const hasLibraryStatus = requestMedia.hidden ? pluginActions.hasLibraryStatus : requestMedia.hasLibraryStatus
-
   if (!mediaId || isPending) return <DetailSkeleton />
   if (isError || !detail) {
     if (isFetching) return <DetailSkeleton />
@@ -150,14 +168,18 @@ export function MediaDetailPage() {
         {/* ── TV SHOWS: ELEVATE EPISODES & SEASONS BROWSER FRONT-AND-CENTER ── */}
         {isShow(detail) && (
           <section className="glass-card p-6 sm:p-7 space-y-5">
-            <ShowSection />
+            <Suspense fallback={<SectionSkeleton height={220} />}>
+              <ShowSection />
+            </Suspense>
           </section>
         )}
 
         {/* ── MUSIC: ELEVATE TRACKLIST & ALBUM AUDIO DIRECTLY BENEATH HERO ── */}
         {isMusic(detail) && (
           <section className="glass-card p-6 sm:p-7 space-y-5">
-            <MusicSection />
+            <Suspense fallback={<SectionSkeleton height={220} />}>
+              <MusicSection />
+            </Suspense>
           </section>
         )}
 
@@ -178,59 +200,61 @@ export function MediaDetailPage() {
             {/* Games: Blueprints, Vault & Community */}
             {isGame(detail) && (
               <div className="glass-card p-6 sm:p-7 space-y-6">
-                <GameTabBar
-                  gameExternalId={gameExternalId || ''}
-                  activeTab={activeGameTab}
-                  onTabChange={setActiveGameTab}
-                  onTabsLoaded={setPluginTabs}
-                />
-                {activeGameTab === 'info' && <GameSection />}
-                {activeGameTab !== 'info' && (
-                  <>
-                    <div className="flex items-center gap-1 border-b border-white/[0.08] pb-1">
-                      <button
-                        onClick={() => setBlueprintSubTab('vault')}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'vault'
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:text-white hover:bg-white/5'
-                          }`}
-                      >
-                        Vault
-                      </button>
-                      <button
-                        onClick={() => setBlueprintSubTab('community')}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'community'
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:text-white hover:bg-white/5'
-                          }`}
-                      >
-                        Community
-                      </button>
-                    </div>
-                    {blueprintSubTab === 'vault' ? (
-                      <BlueprintVault
-                        pluginId={pluginIdForTab(activeGameTab)}
-                        onViewDetail={(bp) => setDetailBlueprint(bp)}
-                      />
-                    ) : (
-                      <BlueprintCommunity
-                        pluginId={pluginIdForTab(activeGameTab)}
-                        onViewDetail={(bp) => setDetailBlueprint(bp)}
-                      />
-                    )}
-                  </>
-                )}
-                {detailBlueprint && (
-                  <BlueprintDetail
-                    blueprint={detailBlueprint}
-                    onClose={() => setDetailBlueprint(null)}
-                    onCopy={(raw) => navigator.clipboard.writeText(raw)}
-                    onDelete={(id) => {
-                      handleDeleteBlueprint(id)
-                      setDetailBlueprint(null)
-                    }}
+                <Suspense fallback={<SectionSkeleton height={220} />}>
+                  <GameTabBar
+                    gameExternalId={gameExternalId || ''}
+                    activeTab={activeGameTab}
+                    onTabChange={setActiveGameTab}
+                    onTabsLoaded={setPluginTabs}
                   />
-                )}
+                  {activeGameTab === 'info' && <GameSection />}
+                  {activeGameTab !== 'info' && (
+                    <>
+                      <div className="flex items-center gap-1 border-b border-white/[0.08] pb-1">
+                        <button
+                          onClick={() => setBlueprintSubTab('vault')}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'vault'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                            }`}
+                        >
+                          Vault
+                        </button>
+                        <button
+                          onClick={() => setBlueprintSubTab('community')}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'community'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                            }`}
+                        >
+                          Community
+                        </button>
+                      </div>
+                      {blueprintSubTab === 'vault' ? (
+                        <BlueprintVault
+                          pluginId={pluginIdForTab(activeGameTab)}
+                          onViewDetail={(bp) => setDetailBlueprint(bp)}
+                        />
+                      ) : (
+                        <BlueprintCommunity
+                          pluginId={pluginIdForTab(activeGameTab)}
+                          onViewDetail={(bp) => setDetailBlueprint(bp)}
+                        />
+                      )}
+                    </>
+                  )}
+                  {detailBlueprint && (
+                    <BlueprintDetail
+                      blueprint={detailBlueprint}
+                      onClose={() => setDetailBlueprint(null)}
+                      onCopy={(raw) => navigator.clipboard.writeText(raw)}
+                      onDelete={(id) => {
+                        handleDeleteBlueprint(id)
+                        setDetailBlueprint(null)
+                      }}
+                    />
+                  )}
+                </Suspense>
               </div>
             )}
 
@@ -240,14 +264,18 @@ export function MediaDetailPage() {
             {/* Franchise / Movie Collections */}
             {detail.collection && (
               <div className="glass-card p-6 sm:p-7">
-                <CollectionSection />
+                <Suspense fallback={<SectionSkeleton height={180} />}>
+                  <CollectionSection />
+                </Suspense>
               </div>
             )}
 
             {/* Music Artist Discography */}
             {isMusic(detail) && (
               <div>
-                <ArtistAlbumsSection />
+                <Suspense fallback={<SectionSkeleton height={180} />}>
+                  <ArtistAlbumsSection />
+                </Suspense>
               </div>
             )}
           </div>
@@ -273,14 +301,14 @@ export function MediaDetailPage() {
             <MediaSpecsCard detail={detail} />
 
             {/* Library / Server Status (Plex / Radarr / Sonarr) */}
-            {hasLibraryStatus && (
-              <div className="glass-card p-5 sm:p-6 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
-                  <h3 className="text-sm font-semibold tracking-tight">Library Server Status</h3>
-                </div>
-                <MediaDetailPluginLibraryStatus widgets={libraryWidgets} />
-              </div>
+            {isAuthenticated && (
+              <Suspense fallback={null}>
+                <MediaDetailLibraryPanel
+                  mediaType={mediaType}
+                  mediaId={mediaId}
+                  tmdbId={detail.tmdbId}
+                />
+              </Suspense>
             )}
           </div>
         </div>
@@ -288,15 +316,21 @@ export function MediaDetailPage() {
         {/* ── Community Reviews Section (On top of More Like This to fill empty space) ── */}
         <DeferredSection fallback={<SectionSkeleton height={260} />} rootMargin="400px 0px">
           <div className="glass-card p-6 sm:p-8">
-            <ReviewsListSection mediaType={displayType} mediaId={detail.id} />
+            <Suspense fallback={<SectionSkeleton height={260} />}>
+              <ReviewsListSection mediaType={displayType} mediaId={detail.id} />
+            </Suspense>
           </div>
         </DeferredSection>
       </main>
 
       {/* ── True Viewport-to-Viewport More Like This Section (Edge-to-Edge, No Masking) ── */}
-      <section className="relative z-10 w-full mt-12 mb-6">
-        <MoreLikeThisSection className="[mask-image:none] [-webkit-mask-image:none]" />
-      </section>
+      <DeferredSection fallback={<SectionSkeleton height={220} />} rootMargin="480px 0px">
+        <section className="relative z-10 w-full mt-12 mb-6">
+          <Suspense fallback={<SectionSkeleton height={220} />}>
+            <MoreLikeThisSection className="[mask-image:none] [-webkit-mask-image:none]" />
+          </Suspense>
+        </section>
+      </DeferredSection>
     </div>
   )
 }

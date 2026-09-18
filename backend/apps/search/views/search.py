@@ -182,7 +182,7 @@ class SteamGridView(APIView):
     def post(self, request: Request) -> Response:
         body = SteamGridSearchRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)
-        return Response(services.steamgrid_payload())
+        return Response(services.steamgrid_payload(query=body.validated_data["query"]))
 
 
 class PrehydrateView(APIView):

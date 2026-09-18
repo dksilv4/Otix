@@ -1,4 +1,4 @@
-import { useAuth } from '@/lib/providers/auth'
+import { useAuth, useHasSession } from '@/lib/providers/auth'
 import { useNotifications } from '../../hooks/use-notifications'
 import { useMarkRead } from '../../hooks/use-mark-read'
 import { NotificationCard } from '../molecules/notification-card'
@@ -10,7 +10,8 @@ import { apiClient } from '@/lib/api/client'
 import { useQueryClient } from '@tanstack/react-query'
 
 export function NotificationList() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const hasSession = useHasSession()
   const markRead = useMarkRead()
   const { allItems, isLoading, isFetchingNextPage, lastItemRef } = useNotifications()
   const queryClient = useQueryClient()
@@ -36,9 +37,8 @@ export function NotificationList() {
     },
   }
 
+  if (authLoading || (hasSession && isLoading)) return <NotificationSkeleton />
   if (!isAuthenticated) return <NotificationGuest />
-
-  if (isLoading) return <NotificationSkeleton />
 
   const notifications = Array.isArray(allItems) ? allItems.filter((n) => n && n.id) : []
   if (notifications.length === 0) return <NotificationEmpty />

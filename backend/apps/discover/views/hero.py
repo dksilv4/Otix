@@ -15,9 +15,8 @@ from apps.media.services import catalog as catalog_service
 class DiscoverHeroView(APIView):
     """GET /discover/hero — public, optional user.
 
-    Returns a random subset of catalog items that all have usable artwork
-    (mirrors the legacy hero pool: ``min(limit * 4, 50)`` candidates, shuffled,
-    sliced to ``limit``, capped at 20).
+    A shuffled, artwork-backed slice of the catalog. Locally mirrored titles
+    lead so the hero can paint from ``/api/v1/assets``; each group is shuffled.
     """
 
     permission_classes = (permissions.AllowAny,)

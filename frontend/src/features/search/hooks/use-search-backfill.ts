@@ -33,21 +33,27 @@ export function useSearchBackfill(
     if (newItems.length === 0) return
     newItems.forEach((item) => polledIdsRef.current.add(item.id))
 
-    queryClient.setQueryData<InfiniteData<{ items: typeof pollData.items }>>(
-      mediaKeys.search({
-        query,
-        type: searchType,
-        sortBy,
-      }),
-      (prev) => {
-        if (!prev) return prev
-        const firstPage = prev.pages[0]
-        const existingItems = Array.isArray(firstPage?.items) ? firstPage.items : []
-        return {
-          ...prev,
-          pages: [{ ...firstPage, items: [...newItems, ...existingItems] }, ...prev.pages.slice(1)],
-        }
-      },
-    )
-  }, [pollData, query, searchType, sortBy, queryClient])
+    if (type === 'all') {
+      void queryClient.invalidateQueries({
+        queryKey: ['media', 'search', 'structured', query],
+      })
+    } else {
+      queryClient.setQueryData<InfiniteData<{ items: typeof pollData.items }>>(
+        mediaKeys.search({
+          query,
+          type: searchType,
+          sortBy,
+        }),
+        (prev) => {
+          if (!prev) return prev
+          const firstPage = prev.pages[0]
+          const existingItems = Array.isArray(firstPage?.items) ? firstPage.items : []
+          return {
+            ...prev,
+            pages: [{ ...firstPage, items: [...newItems, ...existingItems] }, ...prev.pages.slice(1)],
+          }
+        },
+      )
+    }
+  }, [pollData, query, type, searchType, sortBy, queryClient])
 }

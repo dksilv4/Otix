@@ -158,7 +158,7 @@ urlpatterns = [
     ),
     # media_type-scoped detail + sub-resources.
     path(
-        "<str:media_type>/<int:media_id>",
+        "<str:media_type>/<str:media_id>",
         MediaDetailView.as_view(),
         name="media-detail",
     ),
@@ -168,12 +168,12 @@ urlpatterns = [
         name="media-assets",
     ),
     path(
-        "<str:media_type>/<int:media_id>/similar",
+        "<str:media_type>/<str:media_id>/similar",
         SimilarMediaView.as_view(),
         name="media-similar",
     ),
     path(
-        "<str:media_type>/<int:media_id>/recommendations",
+        "<str:media_type>/<str:media_id>/recommendations",
         RecommendationView.as_view(),
         name="media-recommendations",
     ),
@@ -188,7 +188,7 @@ urlpatterns = [
         name="media-review",
     ),
     path(
-        "<str:media_type>/<int:media_id>/reviews",
+        "<str:media_type>/<str:media_id>/reviews",
         ReviewListView.as_view(),
         name="media-reviews",
     ),

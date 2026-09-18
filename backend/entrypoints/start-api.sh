@@ -26,8 +26,11 @@ fi
 
 # --reload lets bind-mounted source changes take effect without a container
 # restart. Off by default (prod); the dev compose sets ENABLE_RELOAD.
+# Graceful shutdown must be bounded: SSE and Vite keep-alive connections
+# otherwise leave uvicorn stuck on "Waiting for connections to close", and
+# every subsequent request (including public media detail) hangs.
 if [ "${ENABLE_RELOAD:-0}" = "1" ] || [ "${ENABLE_RELOAD:-0}" = "true" ]; then
-  reload_flag="--reload"
+  reload_flag="--reload --timeout-graceful-shutdown 2"
 else
   reload_flag=""
 fi

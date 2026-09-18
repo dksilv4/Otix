@@ -57,6 +57,26 @@ def _get_client_timeout() -> httpx.Timeout:
     return httpx.Timeout(15.0, connect=10.0)
 
 
+def _format_arr_error_response(resp: httpx.Response) -> str:
+    try:
+        data = resp.json()
+        if isinstance(data, list):
+            messages = [
+                item.get("errorMessage")
+                for item in data
+                if isinstance(item, dict) and item.get("errorMessage")
+            ]
+            if messages:
+                return "; ".join(messages)
+        elif isinstance(data, dict):
+            msg = data.get("message") or data.get("error") or data.get("detail")
+            if msg:
+                return str(msg)
+    except Exception:
+        pass
+    return resp.text or str(resp.status_code)
+
+
 # ── Radarr Client Functions ─────────────────────────────────────────────
 
 def test_radarr_connection(config: RadarrConfig | RadarrInstance) -> ArrConnectionTestResult:
@@ -184,14 +204,20 @@ def add_radarr_movie(config: RadarrConfig, payload: Dict[str, Any]) -> Dict[str,
     if not root_folder:
         raise ValueError("No Radarr root folder path configured")
 
+    quality_profile = (
+        payload.get("quality_profile_id")
+        or payload.get("qualityProfileId")
+        or config.quality_profile_id
+    )
+    if not quality_profile:
+        profiles = fetch_radarr_quality_profiles(config)
+        quality_profile = profiles[0].id if profiles else 1
+
     final_payload = {
         "title": payload.get("title"),
         "tmdbId": payload.get("tmdb_id") or payload.get("tmdbId"),
         "year": payload.get("year"),
-        "qualityProfileId": payload.get("quality_profile_id")
-        or payload.get("qualityProfileId")
-        or config.quality_profile_id
-        or 1,
+        "qualityProfileId": quality_profile,
         "rootFolderPath": root_folder,
         "monitored": payload.get("monitored", True),
         "minimumAvailability": payload.get("minimum_availability")
@@ -207,7 +233,9 @@ def add_radarr_movie(config: RadarrConfig, payload: Dict[str, Any]) -> Dict[str,
 
     with httpx.Client(timeout=_get_client_timeout(), verify=False) as client:
         resp = client.post(url, headers=headers, json=final_payload)
-        resp.raise_for_status()
+        if resp.is_error:
+            err_msg = _format_arr_error_response(resp)
+            raise ValueError(f"Radarr rejected movie request: {err_msg}")
         return resp.json()
 
 
@@ -450,14 +478,20 @@ def add_sonarr_series(config: SonarrConfig, payload: Dict[str, Any]) -> Dict[str
     if not root_folder:
         raise ValueError("No Sonarr root folder path configured")
 
+    quality_profile = (
+        payload.get("quality_profile_id")
+        or payload.get("qualityProfileId")
+        or config.quality_profile_id
+    )
+    if not quality_profile:
+        profiles = fetch_sonarr_quality_profiles(config)
+        quality_profile = profiles[0].id if profiles else 1
+
     final_payload = {
         "title": resolved["title"],
         "tvdbId": resolved["tvdb_id"],
         "year": resolved["year"],
-        "qualityProfileId": payload.get("quality_profile_id")
-        or payload.get("qualityProfileId")
-        or config.quality_profile_id
-        or 1,
+        "qualityProfileId": quality_profile,
         "rootFolderPath": root_folder,
         "monitored": payload.get("monitored", True),
         "seasonFolder": payload.get("season_folder", True)
@@ -479,7 +513,9 @@ def add_sonarr_series(config: SonarrConfig, payload: Dict[str, Any]) -> Dict[str
 
     with httpx.Client(timeout=_get_client_timeout(), verify=False) as client:
         resp = client.post(url, headers=headers, json=final_payload)
-        resp.raise_for_status()
+        if resp.is_error:
+            err_msg = _format_arr_error_response(resp)
+            raise ValueError(f"Sonarr rejected series request: {err_msg}")
         return resp.json()
 
 

@@ -47,3 +47,8 @@ desktop/nul
 
 # Isolated git worktrees
 .worktrees/
+/server/storage
+/backend/graphify-out
+/server/otix_server/__pycache__
+/backend/graphify-out
+/backend/graphify-out

@@ -18,10 +18,8 @@ export interface ListParams {
 
 export const mediaKeys = {
   all: () => ['media'] as const,
-  detail: (mediaType: string, id: string, theme?: 'dark' | 'light') =>
-    theme
-      ? [...mediaKeys.all(), 'detail', mediaType, id, theme]
-      : [...mediaKeys.all(), 'detail', mediaType, id],
+  detail: (mediaType: string, id: string) =>
+    [...mediaKeys.all(), 'detail', mediaType, id] as const,
   list: (type?: string, opts?: Omit<ListParams, 'type'>) =>
     [...mediaKeys.all(), 'list', type ?? 'all', opts] as const,
   infiniteList: (type?: string, opts?: Omit<ListParams, 'type'>) =>

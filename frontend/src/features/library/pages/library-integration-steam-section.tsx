@@ -14,8 +14,7 @@ export function LibraryIntegrationSteamSection() {
     }
   }, [authLoading, user?.steamId, navigate])
 
-  if (authLoading) return null
-  if (!user?.steamId) return null
+  if (!authLoading && !user?.steamId) return null
 
   const platformDef = getPlatform("steam")
   if (!platformDef) return null

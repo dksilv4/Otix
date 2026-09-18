@@ -104,6 +104,12 @@ class MediaApiTests(TestCase):
         self.assertEqual(missing.status_code, 404)
         self.assertEqual(missing.data["detail"], "Media item not found")
 
+    def test_detail_resolves_external_id(self) -> None:
+        res = self.client.get("/api/v1/media/movie/tmdb:movie:438631")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["id"], self.movie_item.pk)
+        self.assertEqual(res.data["title"], "Dune")
+
     def test_similar_and_recommendations_public(self) -> None:
         similar = self.client.get(
             f"/api/v1/media/movie/{self.movie_item.pk}/similar", {"media_type": "movie"}

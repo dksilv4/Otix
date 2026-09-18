@@ -4,8 +4,7 @@ import type { AnyRoute } from '@tanstack/react-router'
 import { PluginSettingsPage } from '@/features/plugins/components/PluginSettingsPage'
 import { PluginSettingsTabRoute } from '@/features/plugins/components/PluginSettingsTabRoute'
 import type { PluginSettingsTab } from '@/features/_config/slots'
-import { DEFAULT_SETTINGS_SECTION, DESKTOP_SECTIONS, getLastSettingsSection, NAV_ITEMS } from './constants'
-import { isDesktop } from '@/lib/desktop/api'
+import { DEFAULT_SETTINGS_SECTION, getLastSettingsSection, NAV_ITEMS } from './constants'
 import { SettingsLayout } from './pages/settings-layout'
 
 const SettingsProfilePage = lazy(() =>
@@ -41,6 +40,12 @@ const SettingsPluginsPage = lazy(() =>
 const SettingsDownloadsPage = lazy(() =>
   import('./pages/settings-downloads-page').then((m) => ({ default: m.SettingsDownloadsPage })),
 )
+
+function preload(load: () => Promise<unknown>) {
+  return () => {
+    void load()
+  }
+}
 
 function resolveSettingsHome(): string {
   const allowed = new Set(
@@ -91,12 +96,14 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/desktop',
     component: SettingsDesktopPage,
+    loader: preload(() => import('./pages/settings-desktop-page')),
   })
 
   const settingsLauncherRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/launcher',
     component: SettingsLauncherPage,
+    loader: preload(() => import('./pages/settings-launcher-page')),
   })
 
   const settingsIntegrationsRedirect = createRoute({
@@ -127,54 +134,63 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/profile',
     component: SettingsProfilePage,
+    loader: preload(() => import('./pages/settings-profile-page')),
   })
 
   const settingsAccountRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/account',
     component: SettingsAccountPage,
+    loader: preload(() => import('./pages/settings-account-page')),
   })
 
   const settingsAppearanceRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/appearance',
     component: SettingsAppearancePage,
+    loader: preload(() => import('./pages/settings-appearance-page')),
   })
 
   const settingsNotificationsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/notifications',
     component: SettingsNotificationsPage,
+    loader: preload(() => import('./pages/settings-notifications-page')),
   })
 
   const settingsConnectionsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/connections',
     component: SettingsIntegrationsPage,
+    loader: preload(() => import('./pages/settings-integrations-page')),
   })
 
   const settingsLibraryRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/library',
     component: SettingsLibraryPage,
+    loader: preload(() => import('./pages/settings-library-page')),
   })
 
   const settingsPluginsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/plugins',
     component: SettingsPluginsPage,
+    loader: preload(() => import('@/features/plugins/pages/plugins-page')),
   })
 
   const settingsStorageRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/storage',
     component: SettingsStoragePage,
+    loader: preload(() => import('./pages/settings-storage-page')),
   })
 
   const settingsDownloadsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/downloads',
     component: SettingsDownloadsPage,
+    loader: preload(() => import('./pages/settings-downloads-page')),
   })
 
   const pluginRoutes = (pluginTabs || []).map((tab) =>
