@@ -10,6 +10,7 @@ from otix_server.epic import (
     normalize_games,
     parse_authorization_code,
     read_secrets,
+    refresh_access,
     status_payload,
     write_secrets,
 )
@@ -49,6 +50,35 @@ class SecretsTests(unittest.TestCase):
         write_secrets(self.dir, account_id="acc", display_name="Diogo", refresh_token="secret-rt")
         delete_secrets(self.dir)
         self.assertEqual(status_payload(self.dir)["connected"], False)
+
+
+class RefreshAccessTests(unittest.TestCase):
+    def test_invalid_grant_reconnects(self):
+        def request(method, url, **kwargs):
+            return 400, {"error": "invalid_grant"}
+
+        with self.assertRaises(EpicAuthError) as ctx:
+            refresh_access("rt", request=request)
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertEqual(ctx.exception.detail, "Reconnect Epic")
+
+    def test_server_error_does_not_reconnect(self):
+        def request(method, url, **kwargs):
+            return 500, {}
+
+        with self.assertRaises(EpicAuthError) as ctx:
+            refresh_access("rt", request=request)
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertNotEqual(ctx.exception.detail, "Reconnect Epic")
+
+    def test_missing_tokens_does_not_reconnect(self):
+        def request(method, url, **kwargs):
+            return 200, {"access_token": "at"}
+
+        with self.assertRaises(EpicAuthError) as ctx:
+            refresh_access("rt", request=request)
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertNotEqual(ctx.exception.detail, "Reconnect Epic")
 
 
 class NormalizeTests(unittest.TestCase):

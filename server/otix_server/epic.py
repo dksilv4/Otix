@@ -177,11 +177,11 @@ def refresh_access(refresh_token: str, *, request: RequestFn | None = None) -> d
     if error in ("invalid_grant", "invalid_refresh_token"):
         raise EpicAuthError(400, "Reconnect Epic")
     if status != 200:
-        raise EpicAuthError(400, "Reconnect Epic")
+        raise EpicAuthError(500, "Failed to scan Epic library. Please try again.")
     access_token = body.get("access_token")
     new_refresh_token = body.get("refresh_token")
     if not access_token or not new_refresh_token:
-        raise EpicAuthError(400, "Reconnect Epic")
+        raise EpicAuthError(500, "Failed to scan Epic library. Please try again.")
     return {
         "access_token": str(access_token),
         "refresh_token": str(new_refresh_token),
