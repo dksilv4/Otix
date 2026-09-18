@@ -44,3 +44,6 @@ desktop/nul
 /graphify-out/
 /frontend/graphify-out/
 /backend/.fastembed_cache
+
+# Isolated git worktrees
+.worktrees/
