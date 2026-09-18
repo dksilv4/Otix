@@ -19,6 +19,9 @@ from apps.accounts.views.auth_session import (
     SessionsView,
 )
 from apps.accounts.views.oauth import (
+    EpicDisconnectView,
+    EpicLinkCallbackView,
+    EpicLinkInitiateView,
     GoogleDisconnectView,
     GoogleDriveDisconnectView,
     GoogleDriveLinkCallbackView,
@@ -53,6 +56,9 @@ from apps.accounts.views.user_profile import UserDetailView, UserSearchView
 
 __all__ = [
     "ContinueWatchingView",
+    "EpicDisconnectView",
+    "EpicLinkCallbackView",
+    "EpicLinkInitiateView",
     "ForgotPasswordView",
     "GoogleDisconnectView",
     "GoogleDriveDisconnectView",

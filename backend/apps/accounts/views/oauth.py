@@ -35,6 +35,12 @@ from apps.accounts.services import oauth as oauth_service
 from apps.accounts.services import sessions as session_service
 from apps.accounts.services.cookies import set_refresh_cookie
 from apps.accounts.services.oauth import OAuthFlowError
+from apps.library.services.game_server import (
+    NO_EPIC_NODE,
+    pick_online_game_server,
+    proxy_epic_auth,
+    proxy_epic_disconnect,
+)
 
 
 class GoogleLinkInitiateView(GenericAPIView):
@@ -132,9 +138,7 @@ class GoogleDriveLinkCallbackView(GenericAPIView):
                 {"detail": "Failed to link Google Drive. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        return Response(
-            {"message": "Google Drive linked successfully"}, status=status.HTTP_200_OK
-        )
+        return Response({"message": "Google Drive linked successfully"}, status=status.HTTP_200_OK)
 
 
 class GoogleDriveDisconnectView(GenericAPIView):
@@ -190,9 +194,7 @@ class PlexLinkCallbackView(GenericAPIView):
                 {"detail": "Failed to link Plex account. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        return Response(
-            {"message": "Plex account linked successfully"}, status=status.HTTP_200_OK
-        )
+        return Response({"message": "Plex account linked successfully"}, status=status.HTTP_200_OK)
 
 
 class PlexDisconnectView(GenericAPIView):
@@ -313,9 +315,7 @@ class SteamLinkInitiateView(GenericAPIView):
             )
         source = request.data.get("source") if request.data else None
         try:
-            auth_url, state = oauth_service.build_steam_link_url(
-                source, user_id=request.user.pk
-            )
+            auth_url, state = oauth_service.build_steam_link_url(source, user_id=request.user.pk)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
@@ -333,15 +333,11 @@ class SteamLinkCallbackView(GenericAPIView):
         params = serializer.validated_data["params"]
         raw_query = serializer.validated_data["raw_query"]
         try:
-            steam_id, state_user_id = oauth_service.validate_steam_link_callback(
-                params, raw_query
-            )
+            steam_id, state_user_id = oauth_service.validate_steam_link_callback(params, raw_query)
             oauth_service.link_steam_to_user(request.user, steam_id, state_user_id)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
-        return Response(
-            {"message": "Steam account linked successfully"}, status=status.HTTP_200_OK
-        )
+        return Response({"message": "Steam account linked successfully"}, status=status.HTTP_200_OK)
 
 
 class SteamDisconnectView(GenericAPIView):
@@ -404,9 +400,7 @@ class TMDbLinkInitiateView(GenericAPIView):
             )
         redirect_url = request.build_absolute_uri(reverse("accounts:oauth-tmdb-redirect"))
         try:
-            auth_url, state = oauth_service.build_tmdb_link_url(
-                request.user.pk, redirect_url
-            )
+            auth_url, state = oauth_service.build_tmdb_link_url(request.user.pk, redirect_url)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
@@ -466,9 +460,7 @@ class TMDbLinkCallbackView(GenericAPIView):
                 {"detail": "Failed to link TMDb account. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        return Response(
-            {"message": "TMDb account linked successfully"}, status=status.HTTP_200_OK
-        )
+        return Response({"message": "TMDb account linked successfully"}, status=status.HTTP_200_OK)
 
 
 class TMDbDisconnectView(GenericAPIView):
@@ -532,6 +524,55 @@ class TMDbLoginCallbackView(GenericAPIView):
         )
         set_refresh_cookie(response, refresh)
         return response
+
+
+class EpicLinkInitiateView(GenericAPIView):
+    """POST /oauth/epic — start the Epic link flow via the user's Otix Server."""
+
+    def post(self, request, *args, **kwargs):
+        if pick_online_game_server(request.user) is None:
+            return Response({"detail": NO_EPIC_NODE}, status=status.HTTP_400_BAD_REQUEST)
+        auth_url, state = oauth_service.build_epic_link_url(user_id=request.user.pk)
+        return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
+
+
+class EpicLinkCallbackView(GenericAPIView):
+    """POST /oauth/epic/callback — proxy the authorization code to the node."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = OAuthCallbackSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.validated_data["code"]
+        state = serializer.validated_data["state"]
+        payload = oauth_service.consume_epic_link_state(state, user_id=request.user.pk)
+        if payload is None:
+            return Response(
+                {"detail": "Epic linking session expired. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        server = pick_online_game_server(request.user)
+        if server is None:
+            return Response({"detail": NO_EPIC_NODE}, status=status.HTTP_400_BAD_REQUEST)
+        status_code, data = proxy_epic_auth(server, code)
+        if isinstance(data, dict):
+            data.pop("refresh_token", None)
+        return Response(data, status=status_code)
+
+
+class EpicDisconnectView(GenericAPIView):
+    """DELETE /oauth/epic/disconnect — unlink Epic on the user's Otix Server."""
+
+    def delete(self, request, *args, **kwargs):
+        server = pick_online_game_server(request.user)
+        if server is None:
+            return Response({"detail": NO_EPIC_NODE}, status=status.HTTP_400_BAD_REQUEST)
+        proxy_epic_disconnect(server)
+        return Response(
+            {"message": "Epic account unlinked successfully"}, status=status.HTTP_200_OK
+        )
 
 
 class OAuthProvidersView(GenericAPIView):

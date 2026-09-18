@@ -102,6 +102,7 @@ class OAuthFlowError(Exception):
 
 # ── Low-level helpers ─────────────────────────────────────────────────────
 
+
 def _request(
     url: str,
     *,
@@ -166,6 +167,7 @@ def _login_callback_url(provider: str) -> str:
 
 # ── Single-use state ──────────────────────────────────────────────────────
 
+
 def _store_state(flow: str, *, user_id: int | None) -> tuple[str, str]:
     """Persist one flow state; returns the ``state`` value + PKCE verifier."""
     state = secrets.token_urlsafe(32)
@@ -191,6 +193,7 @@ def _consume_state(state: str, *, ttl_seconds: int = OAUTH_STATE_TTL_SECONDS) ->
 
 
 # ── Auth-URL builders (link initiate) ─────────────────────────────────────
+
 
 def _require_google_configured(detail: str) -> None:
     client_id, client_secret = _google_credentials()
@@ -233,12 +236,11 @@ def build_google_drive_link_url(user_id: int) -> tuple[str, str]:
 def build_google_login_url() -> tuple[str, str]:
     """Google login initiate (no owning user) -> ``{auth_url, state}``."""
     _require_google_configured("Google authentication is not configured.")
-    return _authorization_url(
-        GOOGLE_LOGIN_FLOW, "google", callback=_login_callback_url("google")
-    )
+    return _authorization_url(GOOGLE_LOGIN_FLOW, "google", callback=_login_callback_url("google"))
 
 
 # ── Callback: code -> tokens -> profile -> user columns ──────────────────
+
 
 def _resolve_callback_user(payload: dict, request_user) -> User:
     if request_user is not None and request_user.is_authenticated:
@@ -317,12 +319,8 @@ def link_google_to_user(request_user, code: str, state: str) -> None:
         raise OAuthFlowError(400, "Google account already linked")
     tokens = _exchange_code(code, payload.get("verifier", ""), "google")
     profile = _fetch_google_profile(tokens["access_token"])
-    if (
-        User.objects.filter(google_id=profile["sub"]).exclude(pk=user.pk).exists()
-    ):
-        raise OAuthFlowError(
-            409, "This Google account is already linked to another Otix account."
-        )
+    if User.objects.filter(google_id=profile["sub"]).exclude(pk=user.pk).exists():
+        raise OAuthFlowError(409, "This Google account is already linked to another Otix account.")
     user.google_id = profile["sub"]
     user.google_email = profile.get("email")
     user.google_name = profile.get("name")
@@ -353,6 +351,7 @@ def link_google_drive_to_user(request_user, code: str, state: str) -> None:
 
 # ── Google login family (find-or-create, no owning user) ──────────────────
 
+
 def find_or_create_google_user(
     google_id: str,
     *,
@@ -369,9 +368,7 @@ def find_or_create_google_user(
         if not existing.is_active:
             raise OAuthFlowError(403, "Account is deactivated")
         return existing
-    base = re.sub(r"[^A-Za-z0-9_-]", "", name.split("@")[0] if "@" in name else name)[
-        :64
-    ]
+    base = re.sub(r"[^A-Za-z0-9_-]", "", name.split("@")[0] if "@" in name else name)[:64]
     if not base:
         base = f"google_{google_id[:8]}"
     candidate, suffix = base, 2
@@ -423,6 +420,7 @@ def authenticate_google_login(code: str, state: str) -> User:
 
 # ── Disconnect ────────────────────────────────────────────────────────────
 
+
 def unlink_google_from_user(user: User) -> None:
     if user.google_id is None:
         raise OAuthFlowError(400, "No Google account linked")
@@ -440,6 +438,7 @@ def unlink_google_drive_from_user(user: User) -> None:
 
 
 # ── google/token: cached access or silent refresh ─────────────────────────
+
 
 def _quietly_unlink(user: User, columns: tuple[str, ...], provider: str) -> None:
     for column in columns:
@@ -576,6 +575,7 @@ def get_user_google_drive_access_token(user: User) -> str | None:
 
 # ── Plex (public PIN auth; link + login) ─────────────────────────────────
 
+
 def _plex_headers() -> dict[str, str]:
     """Common Plex.tv headers: the PIN/user API identifies the calling client."""
     return {
@@ -635,9 +635,7 @@ def build_plex_link_url(user_id: int) -> tuple[str, str, str]:
         "Plex returned an invalid linking response. Please try again.",
     )
     state = secrets.token_urlsafe(32)
-    OAuthState.objects.create(
-        key=state, payload={"v": "1", "pin_id": pin_id, "user_id": user_id}
-    )
+    OAuthState.objects.create(key=state, payload={"v": "1", "pin_id": pin_id, "user_id": user_id})
     callback = f"{_frontend_base()}/auth/plex/connect/callback"
     return _plex_auth_url(code, state, callback), state, pin_id
 
@@ -649,9 +647,7 @@ def build_plex_login_url() -> tuple[str, str, str]:
         "Plex returned an invalid response. Please try again.",
     )
     state = secrets.token_urlsafe(32)
-    OAuthState.objects.create(
-        key=state, payload={"v": "1", "pin_id": pin_id, "flow": "login"}
-    )
+    OAuthState.objects.create(key=state, payload={"v": "1", "pin_id": pin_id, "flow": "login"})
     callback = f"{_frontend_base()}/auth/callback/plex-login"
     return _plex_auth_url(code, state, callback), state, pin_id
 
@@ -659,9 +655,7 @@ def build_plex_login_url() -> tuple[str, str, str]:
 def _get_plex_pin_auth_token(pin_id: str) -> str | None:
     """One-shot poll of the PIN; ``None`` when Plex has not yet approved it."""
     try:
-        status, raw = _request(
-            f"{_plex_tv_base()}/api/v2/pins/{pin_id}", headers=_plex_headers()
-        )
+        status, raw = _request(f"{_plex_tv_base()}/api/v2/pins/{pin_id}", headers=_plex_headers())
     except OAuthProviderError:
         raise OAuthFlowError(502, "Unable to verify with Plex. Please try again.") from None
     if status != 200:
@@ -706,15 +700,11 @@ def link_plex_to_user(request_user, state: str, pin_id: str | None) -> None:
         raise OAuthFlowError(400, "Plex account already linked")
     token = _get_plex_pin_auth_token(str(stored_pin))
     if token is None:
-        raise OAuthFlowError(
-            400, "Plex has not approved this link yet. Please finish signing in."
-        )
+        raise OAuthFlowError(400, "Plex has not approved this link yet. Please finish signing in.")
     profile = _get_plex_user_info(token)
     plex_id = _plex_identity(profile)
     if User.objects.filter(plex_id=plex_id).exclude(pk=user.pk).exists():
-        raise OAuthFlowError(
-            409, "This Plex account is already linked to another Otix account."
-        )
+        raise OAuthFlowError(409, "This Plex account is already linked to another Otix account.")
     user.plex_id = plex_id
     user.plex_username = profile.get("username") or profile.get("title")
     user.plex_email = profile.get("email")
@@ -913,9 +903,7 @@ def _validate_openid_response(params: dict, raw_query: str | None) -> str:
     """Replay the Steam OpenID response and return the steam64 id."""
     flat = _steam_flat_params(params, raw_query)
     if flat.get("openid.mode") != "id_res":
-        raise OAuthFlowError(
-            400, "Invalid Steam response: missing or incorrect openid.mode"
-        )
+        raise OAuthFlowError(400, "Invalid Steam response: missing or incorrect openid.mode")
     validation_body = _steam_validation_body(params, raw_query)
     try:
         _, text = _request(
@@ -927,9 +915,7 @@ def _validate_openid_response(params: dict, raw_query: str | None) -> str:
     except OAuthProviderError:
         raise OAuthFlowError(502, "Unable to verify with Steam. Please try again.") from None
     if "is_valid:true" not in text:
-        raise OAuthFlowError(
-            400, "Steam rejected the authentication. Please try signing in again."
-        )
+        raise OAuthFlowError(400, "Steam rejected the authentication. Please try signing in again.")
     match = STEAM_ID_RE.search(flat.get("openid.claimed_id", ""))
     if not match:
         raise OAuthFlowError(400, "Invalid Steam identity in callback. Please try again.")
@@ -1012,9 +998,7 @@ def find_or_create_steam_user(steam_id: str) -> User:
     )
 
 
-def link_steam_to_user(
-    request_user, steam_id: str, state_user_id: int | None
-) -> None:
+def link_steam_to_user(request_user, steam_id: str, state_user_id: int | None) -> None:
     """Bind ``steam_id`` to an authed user or the state's recorded owner."""
     resolved_user = None
     if request_user is not None and request_user.is_authenticated:
@@ -1025,21 +1009,16 @@ def link_steam_to_user(
         except (User.DoesNotExist, TypeError, ValueError):
             resolved_user = None
     if resolved_user is None:
-        raise OAuthFlowError(
-            401, "Authentication required. Please sign in and try again."
-        )
+        raise OAuthFlowError(401, "Authentication required. Please sign in and try again.")
     if resolved_user.steam_id == steam_id:
         return  # Already linked to this same account
     if resolved_user.steam_id is not None:
         raise OAuthFlowError(
             409,
-            "Your account is already linked to a different Steam account. "
-            "Unlink it first.",
+            "Your account is already linked to a different Steam account. Unlink it first.",
         )
     if User.objects.filter(steam_id=steam_id).exists():
-        raise OAuthFlowError(
-            409, "This Steam account is already linked to another Otix account."
-        )
+        raise OAuthFlowError(409, "This Steam account is already linked to another Otix account.")
     resolved_user.steam_id = steam_id
     resolved_user.save(update_fields=("steam_id",))
 
@@ -1128,14 +1107,10 @@ def _tmdb_fetch_request_token(start_error: str) -> str:
 def build_tmdb_link_url(user_id: int, redirect_url: str) -> tuple[str, str]:
     """TMDb connect initiate -> ``(auth_url, state)``; user links server-side."""
     state = secrets.token_urlsafe(32)
-    request_token = _tmdb_fetch_request_token(
-        "Unable to start TMDb linking. Please try again."
-    )
+    request_token = _tmdb_fetch_request_token("Unable to start TMDb linking. Please try again.")
     _store_tmdb_state(state, request_token, link=True, user_id=user_id)
     separator = "&" if "?" in redirect_url else "?"
-    redirect_to = urllib.parse.quote(
-        f"{redirect_url}{separator}state={state}", safe=""
-    )
+    redirect_to = urllib.parse.quote(f"{redirect_url}{separator}state={state}", safe="")
     return f"{TMDB_AUTH_BASE}/{request_token}?redirect_to={redirect_to}", state
 
 
@@ -1175,9 +1150,7 @@ def _tmdb_account(session_id: str) -> dict | None:
     """Fetch the TMDb account profile; ``None`` on any failure (caller decides)."""
     api_key = _tmdb_api_key()
     try:
-        _, raw = _request(
-            f"{TMDB_API_BASE}/account?api_key={api_key}&session_id={session_id}"
-        )
+        _, raw = _request(f"{TMDB_API_BASE}/account?api_key={api_key}&session_id={session_id}")
         return _parse_json(raw)
     except OAuthProviderError:
         return None
@@ -1188,18 +1161,14 @@ def _tmdb_link_account(
 ) -> None:
     """Guard + write the tmdb_* columns after session creation."""
     if User.objects.exclude(pk=user.pk).filter(tmdb_session_id=session_id).exists():
-        raise OAuthFlowError(
-            409, "This TMDb account is already linked to another Otix account."
-        )
+        raise OAuthFlowError(409, "This TMDb account is already linked to another Otix account.")
     if account is None:
         raise OAuthFlowError(502, "Unable to fetch TMDb account details. Please try again.")
     account_id = account.get("id")
     if not account_id:
         raise OAuthFlowError(502, "TMDb returned an invalid account profile. Please try again.")
     if User.objects.exclude(pk=user.pk).filter(tmdb_account_id=int(account_id)).exists():
-        raise OAuthFlowError(
-            409, "This TMDb account is already linked to another Otix account."
-        )
+        raise OAuthFlowError(409, "This TMDb account is already linked to another Otix account.")
     user.tmdb_session_id = session_id
     user.tmdb_account_id = int(account_id)
     user.tmdb_username = account.get("username") or account.get("name")
@@ -1260,9 +1229,7 @@ def unlink_tmdb_from_user(user: User) -> None:
     )
 
 
-def find_or_create_tmdb_user(
-    session_id: str, account_id: int, username: str = ""
-) -> User:
+def find_or_create_tmdb_user(session_id: str, account_id: int, username: str = "") -> User:
     """Return the Otix account owning ``account_id``, creating it on first login."""
     existing = User.objects.filter(tmdb_account_id=account_id).first()
     if existing is not None:
@@ -1301,6 +1268,7 @@ def authenticate_tmdb_login(state: str, request_token: str | None) -> User:
 
 
 # ── OAuth aggregate reads (GET /auth/oauth + GET /auth/me/integrations) ──
+
 
 def _gravatar_url(avatar_hash: str | None) -> str | None:
     if not avatar_hash:
@@ -1486,3 +1454,36 @@ def oauth_providers_payload(user: User) -> list[dict]:
 def frontend_base() -> str:
     """Public accessor for the configured frontend origin (redirect targets)."""
     return _frontend_base()
+
+
+# ── Epic link (login URL only; token exchange lives on the Otix Server) ──
+
+EPIC_CLIENT_ID = "34a02cf8f4414e29b15921876da36f9a"
+EPIC_OAUTH_FLOW = "epic-link"
+
+
+def build_epic_link_url(*, user_id: int) -> tuple[str, str]:
+    """Epic link initiate -> ``(auth_url, state)``. No Epic HTTP from Django."""
+    state = secrets.token_urlsafe(32)
+    OAuthState.objects.create(
+        key=state, payload={"v": "1", "flow": EPIC_OAUTH_FLOW, "user_id": user_id}
+    )
+    redirect = (
+        f"https://www.epicgames.com/id/api/redirect?clientId={EPIC_CLIENT_ID}&responseType=code"
+    )
+    auth_url = "https://www.epicgames.com/id/login?redirectUrl=" + urllib.parse.quote(
+        redirect, safe=""
+    )
+    return auth_url, state
+
+
+def consume_epic_link_state(state: str, *, user_id: int) -> dict | None:
+    """Read+delete an epic-link state; ``None`` when absent, expired, or mismatched."""
+    payload = _consume_state(state)
+    if payload is None:
+        return None
+    if payload.get("flow") != EPIC_OAUTH_FLOW:
+        return None
+    if payload.get("user_id") != user_id:
+        return None
+    return payload

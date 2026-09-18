@@ -8,6 +8,9 @@ precede any parameterised sibling.
 from django.urls import path
 
 from apps.accounts.views import (
+    EpicDisconnectView,
+    EpicLinkCallbackView,
+    EpicLinkInitiateView,
     ForgotPasswordView,
     GoogleDisconnectView,
     GoogleDriveDisconnectView,
@@ -115,6 +118,14 @@ urlpatterns = [
     path("oauth/steam", SteamLinkInitiateView.as_view(), name="oauth-steam"),
     path("oauth/steam/callback", SteamLinkCallbackView.as_view(), name="oauth-steam-callback"),
     path("oauth/steam/disconnect", SteamDisconnectView.as_view(), name="oauth-steam-disconnect"),
+    # Epic link surface (node-proxied; no User columns, not a login provider).
+    path("oauth/epic", EpicLinkInitiateView.as_view(), name="oauth-epic"),
+    path("oauth/epic/callback", EpicLinkCallbackView.as_view(), name="oauth-epic-callback"),
+    path(
+        "oauth/epic/disconnect",
+        EpicDisconnectView.as_view(),
+        name="oauth-epic-disconnect",
+    ),
     # TMDb link surface (connect).
     path("oauth/tmdb", TMDbLinkInitiateView.as_view(), name="oauth-tmdb"),
     path("oauth/tmdb/callback", TMDbLinkCallbackView.as_view(), name="oauth-tmdb-callback"),

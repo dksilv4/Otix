@@ -30,16 +30,20 @@ def ping_server_sync(server: UserGameServer) -> dict:
                 server.is_online = True
                 server.last_seen_at = timezone.now()
                 server.total_files = data.get("total_files", server.total_files)
-                server.storage_free_bytes = data.get(
-                    "disk_free_bytes", server.storage_free_bytes
-                )
+                server.storage_free_bytes = data.get("disk_free_bytes", server.storage_free_bytes)
                 server.storage_total_bytes = data.get(
                     "disk_total_bytes", server.storage_total_bytes
                 )
-                server.save(update_fields=[
-                    "is_online", "last_seen_at", "total_files",
-                    "storage_free_bytes", "storage_total_bytes", "updated_at"
-                ])
+                server.save(
+                    update_fields=[
+                        "is_online",
+                        "last_seen_at",
+                        "total_files",
+                        "storage_free_bytes",
+                        "storage_total_bytes",
+                        "updated_at",
+                    ]
+                )
                 return {"online": True, "latency_ms": latency_ms, "status_data": data}
             elif resp.status_code == 401:
                 server.is_online = False
@@ -97,7 +101,9 @@ usenet_proxy_request = server_proxy_request
 def explorer_browse(server: UserGameServer, path: str | None = None) -> tuple[int, dict | list]:
     """Proxy directory browse request to connected otix-server node."""
     params = {"path": path} if path else None
-    return server_proxy_request(server, "GET", "/api/v1/explorer/browse", params=params, timeout=6.0)
+    return server_proxy_request(
+        server, "GET", "/api/v1/explorer/browse", params=params, timeout=6.0
+    )
 
 
 def explorer_set_download_path(
@@ -112,7 +118,9 @@ def explorer_set_download_path(
         "create_if_missing": create_if_missing,
         "add_as_library": add_as_library,
     }
-    return server_proxy_request(server, "POST", "/api/v1/explorer/set-download-path", json=payload, timeout=8.0)
+    return server_proxy_request(
+        server, "POST", "/api/v1/explorer/set-download-path", json=payload, timeout=8.0
+    )
 
 
 def explorer_create_folder(
@@ -125,7 +133,9 @@ def explorer_create_folder(
         "parent_path": parent_path,
         "folder_name": folder_name,
     }
-    return server_proxy_request(server, "POST", "/api/v1/explorer/create-folder", json=payload, timeout=6.0)
+    return server_proxy_request(
+        server, "POST", "/api/v1/explorer/create-folder", json=payload, timeout=6.0
+    )
 
 
 # ── Usenet (SABnzbd & Prowlarr) Operations ──────────────────────────────
@@ -148,11 +158,15 @@ def usenet_test_prowlarr(server: UserGameServer, payload: dict) -> tuple[int, di
 
 
 def usenet_search(server: UserGameServer, query: str) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "GET", "/api/v1/usenet/search", params={"query": query}, timeout=30.0)
+    return usenet_proxy_request(
+        server, "GET", "/api/v1/usenet/search", params={"query": query}, timeout=30.0
+    )
 
 
 def usenet_download(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "POST", "/api/v1/usenet/download", json=payload, timeout=60.0)
+    return usenet_proxy_request(
+        server, "POST", "/api/v1/usenet/download", json=payload, timeout=60.0
+    )
 
 
 def usenet_get_queue(server: UserGameServer) -> tuple[int, dict | list]:
@@ -175,6 +189,7 @@ def usenet_delete_queue(server: UserGameServer, nzo_id: str) -> tuple[int, dict 
 
 # ── Modular Provider & Download Operations ──────────────────────────────
 
+
 def provider_list(server: UserGameServer) -> tuple[int, dict | list]:
     """List registered downloaders and search providers configured on the server node."""
     return usenet_proxy_request(server, "GET", "/api/v1/providers")
@@ -185,50 +200,78 @@ def provider_test(server: UserGameServer, provider_type: str, name: str) -> tupl
     return usenet_proxy_request(server, "POST", f"/api/v1/providers/{provider_type}/{name}/test")
 
 
-def downloads_search(server: UserGameServer, query: str, provider: str | None = None) -> tuple[int, dict | list]:
+def downloads_search(
+    server: UserGameServer, query: str, provider: str | None = None
+) -> tuple[int, dict | list]:
     """Search game releases across registered search providers (Prowlarr, etc)."""
     params = {"query": query}
     if provider:
         params["provider"] = provider
-    return usenet_proxy_request(server, "GET", "/api/v1/downloads/search", params=params, timeout=30.0)
+    return usenet_proxy_request(
+        server, "GET", "/api/v1/downloads/search", params=params, timeout=30.0
+    )
 
 
-def downloads_add(server: UserGameServer, payload: dict, downloader: str | None = None) -> tuple[int, dict | list]:
+def downloads_add(
+    server: UserGameServer, payload: dict, downloader: str | None = None
+) -> tuple[int, dict | list]:
     """Dispatch a release download to the target or active downloader (SABnzbd, etc)."""
     params = {"downloader": downloader} if downloader else None
-    return usenet_proxy_request(server, "POST", "/api/v1/downloads/add", params=params, json=payload, timeout=10.0)
+    return usenet_proxy_request(
+        server, "POST", "/api/v1/downloads/add", params=params, json=payload, timeout=10.0
+    )
 
 
-def downloads_queue(server: UserGameServer, downloader: str | None = None) -> tuple[int, dict | list]:
+def downloads_queue(
+    server: UserGameServer, downloader: str | None = None
+) -> tuple[int, dict | list]:
     """Fetch live download queue from the downloader."""
     params = {"downloader": downloader} if downloader else None
-    return usenet_proxy_request(server, "GET", "/api/v1/downloads/queue", params=params, timeout=4.0)
+    return usenet_proxy_request(
+        server, "GET", "/api/v1/downloads/queue", params=params, timeout=4.0
+    )
 
 
-def downloads_history(server: UserGameServer, downloader: str | None = None, limit: int = 50) -> tuple[int, dict | list]:
+def downloads_history(
+    server: UserGameServer, downloader: str | None = None, limit: int = 50
+) -> tuple[int, dict | list]:
     """Fetch completed and failed downloads from the downloader."""
     params: dict = {"limit": limit}
     if downloader:
         params["downloader"] = downloader
-    return usenet_proxy_request(server, "GET", "/api/v1/downloads/history", params=params, timeout=6.0)
+    return usenet_proxy_request(
+        server, "GET", "/api/v1/downloads/history", params=params, timeout=6.0
+    )
 
 
-def downloads_cancel(server: UserGameServer, download_id: str, downloader: str | None = None) -> tuple[int, dict | list]:
+def downloads_cancel(
+    server: UserGameServer, download_id: str, downloader: str | None = None
+) -> tuple[int, dict | list]:
     """Cancel or remove an item from the download queue."""
     params = {"downloader": downloader} if downloader else None
-    return usenet_proxy_request(server, "DELETE", f"/api/v1/downloads/queue/{download_id}", params=params, timeout=5.0)
+    return usenet_proxy_request(
+        server, "DELETE", f"/api/v1/downloads/queue/{download_id}", params=params, timeout=5.0
+    )
 
 
-def prowlarr_get_indexers(server: UserGameServer, protocol: str | None = None) -> tuple[int, dict | list]:
+def prowlarr_get_indexers(
+    server: UserGameServer, protocol: str | None = None
+) -> tuple[int, dict | list]:
     """Fetch indexers from Prowlarr on the game server node."""
     params = {"protocol": protocol} if protocol else None
-    return usenet_proxy_request(server, "GET", "/api/v1/prowlarr/indexers", params=params, timeout=10.0)
+    return usenet_proxy_request(
+        server, "GET", "/api/v1/prowlarr/indexers", params=params, timeout=10.0
+    )
 
 
-def prowlarr_sync_indexers(server: UserGameServer, protocol: str | None = None) -> tuple[int, dict | list]:
+def prowlarr_sync_indexers(
+    server: UserGameServer, protocol: str | None = None
+) -> tuple[int, dict | list]:
     """Trigger ApplicationIndexerSync in Prowlarr on the game server node."""
     params = {"protocol": protocol} if protocol else None
-    return usenet_proxy_request(server, "POST", "/api/v1/prowlarr/sync", params=params, timeout=15.0)
+    return usenet_proxy_request(
+        server, "POST", "/api/v1/prowlarr/sync", params=params, timeout=15.0
+    )
 
 
 def sabnzbd_pause_queue(server: UserGameServer) -> tuple[int, dict | list]:
@@ -248,6 +291,7 @@ def scan_game_libraries(server: UserGameServer) -> tuple[int, dict | list]:
 
 # ── Radarr Operations ───────────────────────────────────────────────────
 
+
 def _instance_params(params: dict | None, instance_id: str | None) -> dict | None:
     if instance_id:
         merged = dict(params or {})
@@ -265,30 +309,56 @@ def radarr_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict
 
 
 def radarr_test(server: UserGameServer, payload: dict | None = None) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "POST", "/api/v1/radarr/test", json=payload or {}, timeout=15.0)
-
-
-def radarr_get_root_folders(server: UserGameServer, instance_id: str | None = None) -> tuple[int, dict | list]:
     return usenet_proxy_request(
-        server, "GET", "/api/v1/radarr/rootfolders", params=_instance_params(None, instance_id), timeout=10.0
+        server, "POST", "/api/v1/radarr/test", json=payload or {}, timeout=15.0
     )
 
 
-def radarr_get_quality_profiles(server: UserGameServer, instance_id: str | None = None) -> tuple[int, dict | list]:
+def radarr_get_root_folders(
+    server: UserGameServer, instance_id: str | None = None
+) -> tuple[int, dict | list]:
     return usenet_proxy_request(
-        server, "GET", "/api/v1/radarr/qualityprofiles", params=_instance_params(None, instance_id), timeout=10.0
+        server,
+        "GET",
+        "/api/v1/radarr/rootfolders",
+        params=_instance_params(None, instance_id),
+        timeout=10.0,
     )
 
 
-def radarr_get_movies(server: UserGameServer, instance_id: str | None = None) -> tuple[int, dict | list]:
+def radarr_get_quality_profiles(
+    server: UserGameServer, instance_id: str | None = None
+) -> tuple[int, dict | list]:
     return usenet_proxy_request(
-        server, "GET", "/api/v1/radarr/movies", params=_instance_params(None, instance_id), timeout=20.0
+        server,
+        "GET",
+        "/api/v1/radarr/qualityprofiles",
+        params=_instance_params(None, instance_id),
+        timeout=10.0,
     )
 
 
-def radarr_lookup(server: UserGameServer, term: str, instance_id: str | None = None) -> tuple[int, dict | list]:
+def radarr_get_movies(
+    server: UserGameServer, instance_id: str | None = None
+) -> tuple[int, dict | list]:
     return usenet_proxy_request(
-        server, "GET", "/api/v1/radarr/lookup", params=_instance_params({"term": term}, instance_id), timeout=15.0
+        server,
+        "GET",
+        "/api/v1/radarr/movies",
+        params=_instance_params(None, instance_id),
+        timeout=20.0,
+    )
+
+
+def radarr_lookup(
+    server: UserGameServer, term: str, instance_id: str | None = None
+) -> tuple[int, dict | list]:
+    return usenet_proxy_request(
+        server,
+        "GET",
+        "/api/v1/radarr/lookup",
+        params=_instance_params({"term": term}, instance_id),
+        timeout=15.0,
     )
 
 
@@ -311,20 +381,28 @@ def radarr_delete_queue(
     instance_id: str | None = None,
 ) -> tuple[int, dict | list]:
     params = _instance_params(
-        {"remove_from_client": str(remove_from_client).lower(), "blocklist": str(blocklist).lower()},
+        {
+            "remove_from_client": str(remove_from_client).lower(),
+            "blocklist": str(blocklist).lower(),
+        },
         instance_id,
     )
-    return usenet_proxy_request(server, "DELETE", f"/api/v1/radarr/queue/{queue_id}", params=params, timeout=10.0)
+    return usenet_proxy_request(
+        server, "DELETE", f"/api/v1/radarr/queue/{queue_id}", params=params, timeout=10.0
+    )
 
 
 def radarr_get_history(
     server: UserGameServer, page: int = 1, page_size: int = 50, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
     params = _instance_params({"page": page, "page_size": page_size}, instance_id)
-    return usenet_proxy_request(server, "GET", "/api/v1/radarr/history", params=params, timeout=10.0)
+    return usenet_proxy_request(
+        server, "GET", "/api/v1/radarr/history", params=params, timeout=10.0
+    )
 
 
 # ── Sonarr Operations ───────────────────────────────────────────────────
+
 
 def sonarr_get_config(server: UserGameServer) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "GET", "/api/v1/sonarr/config", timeout=6.0)
@@ -335,30 +413,56 @@ def sonarr_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict
 
 
 def sonarr_test(server: UserGameServer, payload: dict | None = None) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "POST", "/api/v1/sonarr/test", json=payload or {}, timeout=15.0)
-
-
-def sonarr_get_root_folders(server: UserGameServer, instance_id: str | None = None) -> tuple[int, dict | list]:
     return usenet_proxy_request(
-        server, "GET", "/api/v1/sonarr/rootfolders", params=_instance_params(None, instance_id), timeout=10.0
+        server, "POST", "/api/v1/sonarr/test", json=payload or {}, timeout=15.0
     )
 
 
-def sonarr_get_quality_profiles(server: UserGameServer, instance_id: str | None = None) -> tuple[int, dict | list]:
+def sonarr_get_root_folders(
+    server: UserGameServer, instance_id: str | None = None
+) -> tuple[int, dict | list]:
     return usenet_proxy_request(
-        server, "GET", "/api/v1/sonarr/qualityprofiles", params=_instance_params(None, instance_id), timeout=10.0
+        server,
+        "GET",
+        "/api/v1/sonarr/rootfolders",
+        params=_instance_params(None, instance_id),
+        timeout=10.0,
     )
 
 
-def sonarr_get_series(server: UserGameServer, instance_id: str | None = None) -> tuple[int, dict | list]:
+def sonarr_get_quality_profiles(
+    server: UserGameServer, instance_id: str | None = None
+) -> tuple[int, dict | list]:
     return usenet_proxy_request(
-        server, "GET", "/api/v1/sonarr/series", params=_instance_params(None, instance_id), timeout=20.0
+        server,
+        "GET",
+        "/api/v1/sonarr/qualityprofiles",
+        params=_instance_params(None, instance_id),
+        timeout=10.0,
     )
 
 
-def sonarr_lookup(server: UserGameServer, term: str, instance_id: str | None = None) -> tuple[int, dict | list]:
+def sonarr_get_series(
+    server: UserGameServer, instance_id: str | None = None
+) -> tuple[int, dict | list]:
     return usenet_proxy_request(
-        server, "GET", "/api/v1/sonarr/lookup", params=_instance_params({"term": term}, instance_id), timeout=15.0
+        server,
+        "GET",
+        "/api/v1/sonarr/series",
+        params=_instance_params(None, instance_id),
+        timeout=20.0,
+    )
+
+
+def sonarr_lookup(
+    server: UserGameServer, term: str, instance_id: str | None = None
+) -> tuple[int, dict | list]:
+    return usenet_proxy_request(
+        server,
+        "GET",
+        "/api/v1/sonarr/lookup",
+        params=_instance_params({"term": term}, instance_id),
+        timeout=15.0,
     )
 
 
@@ -381,18 +485,53 @@ def sonarr_delete_queue(
     instance_id: str | None = None,
 ) -> tuple[int, dict | list]:
     params = _instance_params(
-        {"remove_from_client": str(remove_from_client).lower(), "blocklist": str(blocklist).lower()},
+        {
+            "remove_from_client": str(remove_from_client).lower(),
+            "blocklist": str(blocklist).lower(),
+        },
         instance_id,
     )
-    return usenet_proxy_request(server, "DELETE", f"/api/v1/sonarr/queue/{queue_id}", params=params, timeout=10.0)
+    return usenet_proxy_request(
+        server, "DELETE", f"/api/v1/sonarr/queue/{queue_id}", params=params, timeout=10.0
+    )
 
 
 def sonarr_get_history(
     server: UserGameServer, page: int = 1, page_size: int = 50, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
     params = _instance_params({"page": page, "page_size": page_size}, instance_id)
-    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/history", params=params, timeout=10.0)
+    return usenet_proxy_request(
+        server, "GET", "/api/v1/sonarr/history", params=params, timeout=10.0
+    )
 
 
+# ── Epic (node-proxied OAuth + library scan) ────────────────────────────
+
+NO_EPIC_NODE = "Connect an Otix Server to link Epic."
 
 
+def pick_online_game_server(user) -> UserGameServer | None:
+    """Return the user's most recently seen online, active Otix Server, if any."""
+    return (
+        UserGameServer.objects.filter(user=user, is_active=True, is_online=True)
+        .order_by("-last_seen_at", "-id")
+        .first()
+    )
+
+
+def proxy_epic_auth(server: UserGameServer, code: str) -> tuple[int, dict]:
+    return server_proxy_request(
+        server, "POST", "/api/v1/epic/auth", json={"code": code}, timeout=20.0
+    )
+
+
+def proxy_epic_status(server: UserGameServer) -> tuple[int, dict]:
+    return server_proxy_request(server, "GET", "/api/v1/epic/status")
+
+
+def proxy_epic_scan(server: UserGameServer) -> tuple[int, dict]:
+    return server_proxy_request(server, "POST", "/api/v1/epic/scan", timeout=60.0)
+
+
+def proxy_epic_disconnect(server: UserGameServer) -> tuple[int, dict]:
+    return server_proxy_request(server, "DELETE", "/api/v1/epic/auth")
