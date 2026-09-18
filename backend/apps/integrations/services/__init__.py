@@ -1,5 +1,6 @@
 """Integrations domain services, re-exported for convenient imports."""
 
+from apps.integrations.services.epic import scan_epic_library
 from apps.integrations.services.plex import (
     DISCOVER_UNEXPECTED,
     PlexAlbumTracksFetchError,
@@ -54,6 +55,7 @@ __all__ = [
     "import_tmdb_watchlist",
     "register_sync_engine",
     "resolve_unmatched_steam_games",
+    "scan_epic_library",
     "scan_steam_library",
     "scan_steam_wishlist",
     "sync_plex_watchlist",

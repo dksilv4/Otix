@@ -1,5 +1,6 @@
 """Integrations API views, re-exported for convenient imports."""
 
+from apps.integrations.views.epic import EpicLibraryScanView, EpicStatusView
 from apps.integrations.views.fetch import (
     FetchDeviceView,
     FetchRequestStreamView,
@@ -43,6 +44,8 @@ __all__ = [
     "PlexSyncView",
     "PlexWatchlistSyncView",
     "PlexWebhookView",
+    "EpicLibraryScanView",
+    "EpicStatusView",
     "SteamLibraryScanView",
     "SteamOwnedAppIdsView",
     "SteamResolveUnmatchedView",

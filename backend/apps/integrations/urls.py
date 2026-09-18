@@ -8,6 +8,8 @@ precede any parameterised sibling.
 from django.urls import path
 
 from apps.integrations.views import (
+    EpicLibraryScanView,
+    EpicStatusView,
     PlexAlbumTracksView,
     PlexConnectInfoView,
     PlexLibrariesView,
@@ -79,6 +81,9 @@ urlpatterns = [
         SteamResolveUnmatchedView.as_view(),
         name="steam-resolve-unmatched",
     ),
+    # Epic status + scan (token lives on the Otix Server node).
+    path("epic/status", EpicStatusView.as_view(), name="epic-status"),
+    path("epic/scan", EpicLibraryScanView.as_view(), name="epic-scan"),
     # TMDb account sync (ratings both ways + watchlist import).
     path(
         "tmdb/rating-sync",

@@ -1,6 +1,6 @@
 [project]
 name = "otix"
-version = "0.1.2"
+version = "0.1.3"
 description = "Django + DRF rewrite of the Otix media library/tracking platform backend."
 readme = "README.md"
 requires-python = ">=3.12"
