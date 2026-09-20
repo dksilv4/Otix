@@ -32,6 +32,9 @@ RUN uv sync --frozen --no-dev --no-install-project && uv cache clean
 # override it with their own `celery -A config` commands.
 COPY . /app
 
+# Collect static files for Django admin and DRF browsable API into staticfiles/
+RUN DJANGO_SETTINGS_MODULE=config.settings.test python manage.py collectstatic --noinput
+
 EXPOSE 8000
 
 CMD ["bash", "entrypoints/start-api.sh"]

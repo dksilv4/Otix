@@ -37,9 +37,6 @@ const SettingsLibraryPage = lazy(() =>
 const SettingsPluginsPage = lazy(() =>
   import('@/features/plugins/pages/plugins-page').then((m) => ({ default: m.SettingsPluginsPage })),
 )
-const SettingsDownloadsPage = lazy(() =>
-  import('./pages/settings-downloads-page').then((m) => ({ default: m.SettingsDownloadsPage })),
-)
 
 function preload(load: () => Promise<unknown>) {
   return () => {
@@ -118,7 +115,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/proposals',
     beforeLoad: () => {
-      throw redirect({ to: '/settings/library', hash: 'proposals' })
+      throw redirect({ to: '/settings/library', hash: 'library' })
     },
   })
 
@@ -126,7 +123,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/admin/proposals',
     beforeLoad: () => {
-      throw redirect({ to: '/settings/library', hash: 'proposals' })
+      throw redirect({ to: '/settings/library', hash: 'library' })
     },
   })
 
@@ -186,11 +183,12 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     loader: preload(() => import('./pages/settings-storage-page')),
   })
 
-  const settingsDownloadsRoute = createRoute({
+  const settingsDownloadsRedirect = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/downloads',
-    component: SettingsDownloadsPage,
-    loader: preload(() => import('./pages/settings-downloads-page')),
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/library', hash: 'downloads' })
+    },
   })
 
   const pluginRoutes = (pluginTabs || []).map((tab) =>
@@ -223,7 +221,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       settingsNotificationsRoute,
       settingsConnectionsRoute,
       settingsLibraryRoute,
-      settingsDownloadsRoute,
+      settingsDownloadsRedirect,
       settingsPluginsRoute,
       settingsStorageRoute,
       ...pluginRoutes,

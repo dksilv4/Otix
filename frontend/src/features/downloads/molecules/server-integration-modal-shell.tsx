@@ -223,7 +223,7 @@ export function IntegrationEmptyServerState({
           `${serviceName || 'This service'} is managed through a self-hosted Otix Server or Game Server node. Connect a server first to configure downloads.`}
       </p>
       <DkButton asChild size="md" className={cn('mt-2', buttonBgClass)}>
-        <a href="/settings/downloads" onClick={onClose}>
+        <a href="/settings/library#downloads" onClick={onClose}>
           Connect a game server
         </a>
       </DkButton>

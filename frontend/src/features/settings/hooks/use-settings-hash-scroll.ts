@@ -14,7 +14,7 @@ export function useSettingsHashScroll() {
     const hash = (location?.hash || (typeof window !== 'undefined' ? window.location.hash : '') || '').replace(/^#/, '')
     if (!hash) return
     const frame = requestAnimationFrame(() => {
-      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      document.getElementById(hash)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
     })
     return () => cancelAnimationFrame(frame)
   }, [location?.hash, location?.pathname])

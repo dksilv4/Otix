@@ -13,6 +13,7 @@ export interface DesktopSettingsData {
   alwaysOnTop: boolean;
   startMinimized: boolean;
   gamesDownloadPath?: string;
+  scanOnLaunch?: boolean;
 }
 
 export interface DiskInfo {
@@ -250,6 +251,10 @@ export interface DesktopAPI {
   downloadsRemoteGetActive(): Promise<RemoteDownloadProgress[]>
   onRemoteDownloadProgress(cb: (progress: RemoteDownloadProgress) => void): () => void
   onRemoteDownloadCompleted(cb: (data: { downloadId: string; finalPath: string; gameTitle: string }) => void): () => void
+
+  // Desktop app settings (tray, startup, games download path, …)
+  getDesktopSettings(): Promise<DesktopSettingsData>
+  setDesktopSettings(partial: Partial<DesktopSettingsData>): Promise<DesktopSettingsData>
 
   // ISO install (legacy)
   installGame(isoPath: string, targetDir: string, gameTitle: string): Promise<Record<string, unknown>>

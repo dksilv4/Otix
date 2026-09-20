@@ -1,6 +1,20 @@
 import { createPortal } from 'react-dom'
-import { isValidElement, cloneElement } from 'react'
+import { isValidElement, cloneElement, Component, type ReactNode } from 'react'
 import { useModal } from './modal-context'
+
+class ModalErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: unknown) {
+    console.error('Modal failed to render:', error)
+  }
+  render() {
+    if (this.state.hasError) return null
+    return this.props.children
+  }
+}
 
 export function ModalRoot() {
   const { modals } = useModal()
@@ -15,7 +29,11 @@ export function ModalRoot() {
           })
         : m.component
 
-      return <div key={m.id}>{child}</div>
+      return (
+        <ModalErrorBoundary key={m.id}>
+          <div>{child}</div>
+        </ModalErrorBoundary>
+      )
     }),
     document.body,
   )

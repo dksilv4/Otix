@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, type KeyboardEvent } from 'react'
 import { FolderOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePickFolder } from './use-pick-folder'
@@ -7,6 +7,7 @@ import type { FolderPickTarget } from './strategy'
 export function PathInput({
   value,
   onChange,
+  onCommit,
   label,
   placeholder,
   hint,
@@ -19,6 +20,8 @@ export function PathInput({
 }: {
   value: string
   onChange: (value: string) => void
+  /** Called when the user browses to a folder or presses Enter to confirm a typed path. */
+  onCommit?: (value: string) => void
   label?: string
   placeholder?: string
   hint?: string
@@ -36,7 +39,18 @@ export function PathInput({
 
   const handleBrowse = async () => {
     const dir = await pick()
-    if (dir) onChange(dir)
+    if (!dir) return
+    onChange(dir)
+    onCommit?.(dir)
+  }
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter') return
+    event.preventDefault()
+    const next = event.currentTarget.value.trim()
+    if (!next) return
+    onChange(next)
+    onCommit?.(next)
   }
 
   return (
@@ -53,6 +67,7 @@ export function PathInput({
           value={value}
           placeholder={placeholder}
           onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleKeyDown}
           className={cn(
             'h-9 min-w-0 flex-1 rounded-xl bg-white/5 px-3 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10',
             inputClassName,
@@ -65,12 +80,10 @@ export function PathInput({
           title={browseTitle}
           aria-label="Browse"
           className={cn(
-            'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 text-xs font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40',
-            compact ? 'h-9 w-9 p-0' : 'h-9 px-3',
+            'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40',
           )}
         >
           <FolderOpen className="h-4 w-4" />
-          {!compact && <span>Browse</span>}
         </button>
       </div>
       {hint && <p className="text-[11px] text-white/50">{hint}</p>}

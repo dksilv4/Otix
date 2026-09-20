@@ -29,10 +29,25 @@ function knownKeys(servers: Array<{ primaryUrl?: string; localUrl?: string | nul
 
 export function pendingNodesToClaim(
   pending: PendingNode[],
-  servers: Array<{ primaryUrl?: string; localUrl?: string | null }>,
+  servers: Array<{ primaryUrl?: string; localUrl?: string | null; authToken?: string | null }>,
 ): PendingNode[] {
   const known = knownKeys(servers)
-  return pending.filter((node) => Boolean(node.localUrl) && !known.has(nodeUrlKey(node.localUrl)))
+  const knownTokens = new Set(
+    servers.map((server) => server.authToken).filter((token): token is string => Boolean(token)),
+  )
+  const seenKeys = new Set<string>()
+  const seenTokens = new Set<string>()
+  const unique: PendingNode[] = []
+  for (const node of pending) {
+    if (!node.localUrl) continue
+    const key = nodeUrlKey(node.localUrl)
+    if (known.has(key) || seenKeys.has(key)) continue
+    if (node.authToken && (knownTokens.has(node.authToken) || seenTokens.has(node.authToken))) continue
+    seenKeys.add(key)
+    if (node.authToken) seenTokens.add(node.authToken)
+    unique.push(node)
+  }
+  return unique
 }
 
 export function pendingNodesToRefresh(

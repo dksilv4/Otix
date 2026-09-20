@@ -59,6 +59,84 @@ class GameServersApiTests(TestCase):
         self.assertEqual(len(list_res.json()), 1)
 
     @mock.patch("apps.library.services.game_server.ping_server_sync")
+    def test_create_same_node_twice_updates_instead_of_duplicating(self, mock_ping):
+        mock_ping.return_value = {"online": True}
+        payload = {
+            "name": "DK Game Storage Server",
+            "local_url": "http://127.0.0.1:8090",
+            "auth_token": "otix_secret_token_abc123",
+        }
+        first = self.client.post("/api/v1/library/servers", payload, format="json")
+        second = self.client.post(
+            "/api/v1/library/servers",
+            {**payload, "local_url": "http://localhost:8090"},
+            format="json",
+        )
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(first.json()["id"], second.json()["id"])
+        self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 1)
+
+    @mock.patch("apps.library.services.game_server.ping_server_sync")
+    def test_create_same_token_from_lan_and_loopback_is_one_server(self, mock_ping):
+        mock_ping.return_value = {"online": True}
+        token = "otix_secret_token_abc123"
+        first = self.client.post(
+            "/api/v1/library/servers",
+            {
+                "name": "DK Game Storage Server",
+                "local_url": "http://192.168.1.50:8090",
+                "auth_token": token,
+            },
+            format="json",
+        )
+        second = self.client.post(
+            "/api/v1/library/servers",
+            {
+                "name": "DK Game Storage Server",
+                "local_url": "http://127.0.0.1:8090",
+                "auth_token": token,
+            },
+            format="json",
+        )
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 1)
+
+    def test_list_collapses_duplicate_servers(self):
+        for _ in range(4):
+            UserGameServer.objects.create(
+                user=self.user,
+                name="DK Game Storage Server",
+                local_url="http://127.0.0.1:8090",
+                auth_token="otix_secret_token_abc123",
+            )
+        list_res = self.client.get("/api/v1/library/servers")
+        self.assertEqual(list_res.status_code, 200)
+        rows = list_res.json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["name"], "DK Game Storage Server")
+        self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 1)
+
+    def test_list_does_not_collapse_distinct_servers(self):
+        UserGameServer.objects.create(
+            user=self.user,
+            name="Home NAS",
+            local_url="http://192.168.1.50:8090",
+            auth_token="home-token",
+        )
+        UserGameServer.objects.create(
+            user=self.user,
+            name="Office NAS",
+            local_url="http://10.0.0.8:8090",
+            auth_token="office-token",
+        )
+        list_res = self.client.get("/api/v1/library/servers")
+        self.assertEqual(list_res.status_code, 200)
+        self.assertEqual(len(list_res.json()), 2)
+        self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 2)
+
+    @mock.patch("apps.library.services.game_server.ping_server_sync")
     def test_patch_and_delete_server(self, mock_ping):
         mock_ping.return_value = {"online": True}
         server = UserGameServer.objects.create(

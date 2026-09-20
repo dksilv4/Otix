@@ -114,4 +114,29 @@ describe('PathInput', () => {
     await user.click(screen.getByRole('button', { name: /Use this folder/i }))
     expect(screen.getByLabelText('Library path')).toHaveValue('/mnt/games')
   })
+
+  it('commits on browse when onCommit is provided', async () => {
+    const user = userEvent.setup()
+    const onCommit = vi.fn()
+    const selectDirectory = vi.fn().mockResolvedValue('D:\\Games')
+    ;(window as any).desktopAPI = { selectDirectory }
+    clearDesktopAPICache()
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    function CommitHarness() {
+      const [value, setValue] = useState('')
+      return (
+        <QueryClientProvider client={queryClient}>
+          <ModalProvider>
+            <PathInput label="Library path" value={value} onChange={setValue} onCommit={onCommit} />
+            <ModalRoot />
+          </ModalProvider>
+        </QueryClientProvider>
+      )
+    }
+
+    render(<CommitHarness />)
+    await user.click(screen.getByRole('button', { name: /Browse/i }))
+    expect(onCommit).toHaveBeenCalledWith('D:\\Games')
+  })
 })

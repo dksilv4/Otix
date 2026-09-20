@@ -4,7 +4,12 @@
   "scripts": {
     "dev": "powershell -ExecutionPolicy Bypass -File ./run.ps1",
     "dev:bash": "bash ./run.sh",
-    "start": "powershell -ExecutionPolicy Bypass -File ./run.ps1"
+    "start": "powershell -ExecutionPolicy Bypass -File ./run.ps1",
+    "build:frontend": "npm --prefix frontend run build",
+    "package:frontend": "npm --prefix frontend run package:dist",
+    "build:images": "make build-images",
+    "prod:up": "make prod-up",
+    "prod:down": "make prod-down"
   },
   "dependencies": {
     "headroom-ai": "^0.22.4",

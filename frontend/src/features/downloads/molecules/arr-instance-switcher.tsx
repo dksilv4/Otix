@@ -88,7 +88,6 @@ export function ArrInstanceSwitcher({
         }}
         title={pendingDelete ? `Delete ${pendingDelete.name}?` : 'Delete instance?'}
         description="This removes the instance from this form. Save to persist the change."
-        showAmbient={false}
       >
         <div className="mt-5 flex items-center justify-end gap-3">
           <DkButton type="button" variant="ghost" size="md" onClick={() => setPendingDelete(null)}>

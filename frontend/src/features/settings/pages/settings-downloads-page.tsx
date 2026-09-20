@@ -1,172 +1,59 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@/lib/providers/auth'
+import React, { useState } from 'react'
 import { DkButton } from '@ui/atoms/button'
-import { DkSwitch } from '@ui/atoms/switch'
-import { useDownloadConfig, useDownloads } from '@/features/downloads/use-downloads'
 import {
-  Loader2,
-  CheckCircle2,
-  XCircle,
   Plus,
   Trash2,
-  Clock,
-  ArchiveX,
   DownloadCloud,
-  Search,
   Server,
   Radio,
   ExternalLink,
   HardDrive,
+  Star,
 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
-import { isDesktop } from '@/lib/desktop/api'
+import { useModal } from '@/lib/modals'
 import {
   useGameServers,
   useCreateGameServer,
   useDeleteGameServer,
   usePingGameServer,
+  useUpdateGameServer,
 } from '@/features/downloads/use-server-downloads'
-import { ServerFileExplorer } from '@/features/downloads/molecules/server-file-explorer'
-import { PathInput } from '@/components/path-picker'
+import { ServerFileExplorerModal } from '@/features/downloads/molecules/server-file-explorer-modal'
 import { useToast } from '@ui/molecules/toast'
-import { Link } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
+import { ManageDownloadersModal } from '@/features/downloads/molecules/manage-downloaders-modal'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
-import { SettingsRow } from '../components/molecules/settings-row'
-import { useSettingsSaveBar } from '../context/settings-save-context'
 
-const NAMING_PRESETS = [
-  { id: 'standard', label: 'Standard', template: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}' },
-  { id: 'simple',   label: 'Simple',   template: '{Title}/{OriginalName}.{ext}' },
-]
+export interface SettingsDownloadsPageProps {
+  embedded?: boolean
+}
 
-const TOKEN_DOCS = [
-  '{Title}        — Clean game title (e.g. "Stellar Blade")',
-  '{CleanTitle}   — cleanGameTitle() fallback',
-  '{Year}        — Release year (e.g. "2024")',
-  '{Edition}     — Edition tag (e.g. "GOTY Edition")',
-  '{Platform}    — Platform hint (e.g. "PC", "Multi")',
-  '{ReleaseGroup}— Scene release group (e.g. "ElAmigos")',
-  '{Version}     — Version number (e.g. "1.03")',
-  '{OriginalName}— Raw download folder name',
-  '{MediaType}   — "ISO", "PC", or "Update"',
-  '{ext}         — File extension (auto-filled)',
-]
-
-export function SettingsDownloadsPage() {
-  const desktop = isDesktop()
-  const { user } = useAuth()
+export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPageProps = {}) {
+  const { openModal } = useModal()
   const { toast } = useToast()
-  const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
-  const { downloads: downloadHistory, cancelDownload } = useDownloads(user?.id)
-
-  const [downloadPath, setDownloadPath] = useState('')
-  const [postProcessEnabled, setPostProcessEnabled] = useState(true)
-  const [autoSearch, setAutoSearch] = useState(false)
-  const [intervalHours, setIntervalHours] = useState(12)
-  const [allowHypervisor, setAllowHypervisor] = useState(false)
-  const [autoOrganizeEnabled, setAutoOrganizeEnabled] = useState(false)
-  const [namingTemplate, setNamingTemplate] = useState(NAMING_PRESETS[0].template)
-  const [presetId, setPresetId] = useState('standard')
+  const navigate = useNavigate()
   const { data: gameServers = [] } = useGameServers()
   const createServerMutation = useCreateGameServer()
   const deleteServerMutation = useDeleteGameServer()
   const pingServerMutation = usePingGameServer()
+  const updateServerMutation = useUpdateGameServer()
 
   const [showAddServer, setShowAddServer] = useState(false)
   const [serverName, setServerName] = useState('')
   const [serverUrl, setServerUrl] = useState('')
   const [serverToken, setServerToken] = useState('')
   const [serverSubmitting, setServerSubmitting] = useState(false)
-  const [exploringServerId, setExploringServerId] = useState<number | null>(null)
 
-  const [gamesDownloadPath, setGamesDownloadPath] = useState<string>(() => {
-    try {
-      return localStorage.getItem('otix:games-download-dir') || ''
-    } catch {
-      return ''
-    }
-  })
-
-  useEffect(() => {
-    const rawApi = (window as any).desktopAPI
-    if (rawApi?.getDesktopSettings) {
-      rawApi.getDesktopSettings().then((ds: any) => {
-        if (ds?.gamesDownloadPath) {
-          setGamesDownloadPath(ds.gamesDownloadPath)
-          try {
-            localStorage.setItem('otix:games-download-dir', ds.gamesDownloadPath)
-          } catch {}
-        }
-      }).catch(() => {})
-    }
-  }, [])
-
-  useEffect(() => {
-    if (dlConfig) {
-      setDownloadPath(dlConfig.downloadPath ?? '')
-      setPostProcessEnabled(dlConfig.postProcessEnabled ?? true)
-      setAutoSearch(dlConfig.autoSearchWishlist ?? false)
-      setIntervalHours(dlConfig.wishlistIntervalHours ?? 12)
-      setAllowHypervisor(dlConfig.allowHypervisor ?? false)
-      setAutoOrganizeEnabled((dlConfig as any).autoOrganizeEnabled ?? false)
-      setNamingTemplate((dlConfig as any).namingTemplate ?? NAMING_PRESETS[0].template)
-    }
-  }, [dlConfig])
-
-  const [pathMappings, setPathMappings] = useState<any[]>([])
-  const [newSourcePath, setNewSourcePath] = useState('')
-  const [newDestPath, setNewDestPath] = useState('')
-
-  const fetchPathMappings = useCallback(async () => {
-    if (dlConfig && window.desktopAPI) {
-      try {
-        const mappings = await window.desktopAPI.downloadsGetPathMappings(dlConfig.id)
-        setPathMappings(mappings)
-      } catch (err) {
-        console.error('Failed to fetch path mappings:', err)
-      }
-    }
-  }, [dlConfig])
-
-  useEffect(() => {
-    fetchPathMappings()
-  }, [fetchPathMappings])
-
-  const handleAddPathMapping = async () => {
-    if (!dlConfig || !window.desktopAPI || !newSourcePath || !newDestPath) return
-    try {
-      await window.desktopAPI.downloadsAddPathMapping(dlConfig.id, newSourcePath, newDestPath)
-      setNewSourcePath('')
-      setNewDestPath('')
-      await fetchPathMappings()
-    } catch (err) {
-      console.error('Failed to add path mapping:', err)
-    }
-  }
-
-  const handleRemovePathMapping = async (id: string) => {
-    if (!window.desktopAPI) return
-    try {
-      await window.desktopAPI.downloadsRemovePathMapping(id)
-      await fetchPathMappings()
-    } catch (err) {
-      console.error('Failed to remove path mapping:', err)
-    }
-  }
-
-  const handleSave = async () => {
-    if (!user) return
-    await saveConfig({
-      userId: user.id,
-      downloadPath: downloadPath || null,
-      postProcessEnabled,
-      autoSearchWishlist: autoSearch,
-      wishlistIntervalHours: intervalHours,
-      allowHypervisor,
-      autoOrganizeEnabled,
-      namingTemplate: namingTemplate || null,
-    } as any)
+  const openServerExplorer = (server: { id: number; name: string }) => {
+    const close = openModal(
+      <ServerFileExplorerModal
+        initialServerId={server.id}
+        serverName={server.name}
+        onClose={() => close()}
+      />,
+    )
   }
 
   const handleAddServer = async (e: React.FormEvent) => {
@@ -232,7 +119,7 @@ export function SettingsDownloadsPage() {
       if (res?.online) {
         toast({
           title: 'Server Online',
-          description: `Ping: ${res.latency_ms}ms · ${res.server?.total_files ?? 0} games indexed.`,
+          description: `Ping: ${res.latency_ms ?? res.latencyMs}ms · ${res.server?.total_files ?? res.server?.totalFiles ?? 0} games indexed.`,
           variant: 'success',
         })
       } else {
@@ -251,69 +138,61 @@ export function SettingsDownloadsPage() {
     }
   }
 
-  const handleSaveGamesFolder = async (pathVal: string) => {
-    const clean = pathVal.trim()
-    setGamesDownloadPath(clean)
+  const handleSetPrimary = async (id: number) => {
     try {
-      localStorage.setItem('otix:games-download-dir', clean)
-    } catch {}
-    const rawApi = (window as any).desktopAPI
-    if (rawApi?.setDesktopSettings) {
-      await rawApi.setDesktopSettings({ gamesDownloadPath: clean }).catch(() => {})
+      await Promise.all(
+        gameServers.map((server) =>
+          updateServerMutation.mutateAsync({
+            id: server.id,
+            is_active: server.id === id,
+          }),
+        ),
+      )
+      toast({
+        title: 'Primary server updated',
+        description: 'Downloads and browse actions will prefer this node.',
+        variant: 'success',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Could not set primary',
+        description: err.message || 'Try again.',
+        variant: 'error',
+      })
     }
-    toast({
-      title: 'Games Save Folder Saved',
-      description: clean ? `Target folder: ${clean}` : 'Reset to default download location.',
-      variant: 'success',
-    })
   }
 
-  const hasChanges = Boolean(
-    dlConfig &&
-      (downloadPath !== (dlConfig.downloadPath ?? '') ||
-        postProcessEnabled !== (dlConfig.postProcessEnabled ?? true) ||
-        autoSearch !== (dlConfig.autoSearchWishlist ?? false) ||
-        intervalHours !== (dlConfig.wishlistIntervalHours ?? 12) ||
-        allowHypervisor !== (dlConfig.allowHypervisor ?? false) ||
-        autoOrganizeEnabled !== ((dlConfig as any).autoOrganizeEnabled ?? false) ||
-        namingTemplate !== ((dlConfig as any).namingTemplate ?? NAMING_PRESETS[0].template)),
-  )
-
-  const handleDiscard = () => {
-    if (!dlConfig) return
-    setDownloadPath(dlConfig.downloadPath ?? '')
-    setPostProcessEnabled(dlConfig.postProcessEnabled ?? true)
-    setAutoSearch(dlConfig.autoSearchWishlist ?? false)
-    setIntervalHours(dlConfig.wishlistIntervalHours ?? 12)
-    setAllowHypervisor(dlConfig.allowHypervisor ?? false)
-    setAutoOrganizeEnabled((dlConfig as any).autoOrganizeEnabled ?? false)
-    setNamingTemplate((dlConfig as any).namingTemplate ?? NAMING_PRESETS[0].template)
+  const openManageDownloadersModal = () => {
+    const close = openModal(<ManageDownloadersModal onClose={() => close()} />)
   }
-
-  useSettingsSaveBar({
-    hasChanges,
-    onSave: handleSave,
-    onDiscard: handleDiscard,
-    label: 'Save Downloads',
-  })
 
   return (
-    <div id="settings-downloads-section" className="space-y-6">
-      <SectionHeader
-        variant="page"
-        icon={DownloadCloud}
-        title="Downloads"
-        description="Game servers, local save paths, and organization rules. Linked download clients live under Connections."
-      />
+    <div id="downloads" className="space-y-6 scroll-mt-28">
+      {!embedded && (
+        <SettingsCard>
+          <SectionHeader
+            variant="page"
+            icon={DownloadCloud}
+            title="Downloads"
+            description="Game servers and download clients."
+          />
+        </SettingsCard>
+      )}
 
       <SettingsCard>
         <SectionHeader
-          title="Downloader clients"
-          description="SABnzbd, Prowlarr, Radarr, and Sonarr are configured on the Connections page."
+          title="Download clients"
+          description="SABnzbd and related clients are configured on Connections."
           action={
-            <DkButton asChild size="sm" variant="ghost">
-              <Link to="/settings/connections">Open Connections</Link>
-            </DkButton>
+            <div className="flex items-center gap-2">
+              <DkButton size="sm" variant="ghost" onClick={openManageDownloadersModal}>
+                <DownloadCloud className="h-3.5 w-3.5" />
+                Manage Downloaders
+              </DkButton>
+              <DkButton size="sm" variant="ghost" onClick={() => navigate({ to: '/settings/connections' })}>
+                Open Connections
+              </DkButton>
+            </div>
           }
         />
       </SettingsCard>
@@ -321,7 +200,7 @@ export function SettingsDownloadsPage() {
       <SettingsCard className="space-y-4">
         <SectionHeader
           title="Remote Game Servers"
-          description="Connect self-hosted otix-server nodes or NAS storage to host your game library."
+          description="Connect self-hosted otix-server nodes. Set one as primary for downloads and browsing."
           action={
             <DkButton size="sm" variant="ghost" onClick={() => setShowAddServer(!showAddServer)}>
               <Plus size={14} />
@@ -330,7 +209,6 @@ export function SettingsDownloadsPage() {
           }
         />
 
-        {/* Add Server Form */}
         {showAddServer && (
           <form onSubmit={handleAddServer} className="p-4 rounded-xl bg-white/[0.04] space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -375,7 +253,7 @@ export function SettingsDownloadsPage() {
                 className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               <p className="mt-1.5 text-[11px] text-white/40 leading-relaxed">
-                Open the node in a browser, copy its access token, then paste it here. Files and downloads will not work without it.
+                Open the node in a browser, copy its access token, then paste it here.
                 {serverUrl.trim() ? (
                   <>
                     {' '}
@@ -411,43 +289,44 @@ export function SettingsDownloadsPage() {
           </form>
         )}
 
-        {/* Servers List */}
         <div className="space-y-2">
           {gameServers.length > 0 ? (
             gameServers.map((server) => (
               <React.Fragment key={server.id}>
-                <div
-                  className="p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3">
+                <div className="p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center shrink-0">
                       <Server size={18} className="text-white/80" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-white">{server.name}</span>
+                        {server.isActive && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary">
+                            <Star size={10} />
+                            Primary
+                          </span>
+                        )}
                         <span
                           className={cn(
                             'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
                             server.isOnline
                               ? 'bg-emerald-500/10 text-emerald-400'
-                              : 'bg-rose-500/10 text-rose-400'
+                              : 'bg-rose-500/10 text-rose-400',
                           )}
                         >
                           <span
                             className={cn(
                               'w-1.5 h-1.5 rounded-full',
-                              server.isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
+                              server.isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400',
                             )}
                           />
                           {server.isOnline ? 'Online' : 'Offline'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-white/40 mt-0.5">
-                        <span className="font-mono text-white/60">{server.primaryUrl}</span>
-                        {server.totalFiles > 0 && (
-                          <span>· {server.totalFiles} games</span>
-                        )}
+                      <div className="flex items-center gap-3 text-xs text-white/40 mt-0.5 flex-wrap">
+                        <span className="font-mono text-white/60 truncate">{server.primaryUrl}</span>
+                        {server.totalFiles > 0 && <span>· {server.totalFiles} games</span>}
                         {server.storageFreeBytes > 0 && (
                           <span>· {formatBytes(server.storageFreeBytes)} free</span>
                         )}
@@ -455,20 +334,26 @@ export function SettingsDownloadsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-center">
+                  <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+                    {!server.isActive && (
+                      <button
+                        type="button"
+                        onClick={() => handleSetPrimary(server.id)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors"
+                        title="Set as primary"
+                      >
+                        <Star size={12} />
+                        <span>Set primary</span>
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setExploringServerId(exploringServerId === server.id ? null : server.id)}
-                      className={cn(
-                        'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
-                        exploringServerId === server.id
-                          ? 'bg-primary text-black font-bold shadow-sm'
-                          : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white'
-                      )}
-                      title="Explore Server Storage & Download Folder"
+                      onClick={() => openServerExplorer(server)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-colors"
+                      title="Explore Server Storage"
                     >
                       <HardDrive size={12} />
-                      <span>{exploringServerId === server.id ? 'Close' : 'Explore Files'}</span>
+                      <span>Explore</span>
                     </button>
                     <button
                       type="button"
@@ -489,258 +374,22 @@ export function SettingsDownloadsPage() {
                     </button>
                   </div>
                 </div>
-
-                {exploringServerId === server.id && (
-                  <div className="mt-2 rounded-2xl overflow-hidden bg-black/40 shadow-xl">
-                    <ServerFileExplorer
-                      initialServerId={server.id}
-                      onClose={() => setExploringServerId(null)}
-                    />
-                  </div>
-                )}
               </React.Fragment>
             ))
           ) : (
             <div className="p-4 rounded-xl bg-white/[0.03] text-center space-y-1">
               <p className="text-xs text-white/50 font-medium">No game servers connected</p>
               <p className="text-[11px] text-white/30 max-w-sm mx-auto">
-                Run <span className="font-mono text-white/50">otix-server start</span> on your NAS, Unraid, or PC, then connect it here to access your game installers from any client.
+                Run <span className="font-mono text-white/50">otix-server start</span> on your NAS,
+                Unraid, or PC. Live nodes are auto-claimed when you are signed in, or connect one
+                manually above.
               </p>
             </div>
           )}
         </div>
       </SettingsCard>
-
-      <SettingsCard className="space-y-4">
-        <SectionHeader
-          title="Local Games Save Location"
-          description="Where games, installers, and packages downloaded through Otix will be stored locally."
-        />
-
-        <div className="space-y-4 pt-1">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
-            <PathInput
-              label="Assigned Save Directory"
-              placeholder={desktop ? "e.g. D:\\Games or /Volumes/Games (Default: ~/Downloads/Games)" : "e.g. /path/to/my/games"}
-              value={gamesDownloadPath}
-              onChange={setGamesDownloadPath}
-              target="local"
-              className="min-w-0 flex-1"
-            />
-            <DkButton
-              type="button"
-              onClick={() => handleSaveGamesFolder(gamesDownloadPath)}
-              className="shrink-0 h-9"
-            >
-              Save Location
-            </DkButton>
-          </div>
-
-          <p className="text-[11px] text-white/40">
-            If left blank, Otix will default to your system Downloads folder.
-          </p>
-        </div>
-      </SettingsCard>
-
-      <SettingsCard className="space-y-4">
-        <SectionHeader title="Default Directory Mapping" />
-        <div>
-          <PathInput
-            label="ISO Library Path"
-            value={downloadPath}
-            onChange={setDownloadPath}
-            placeholder="e.g. /app/storage/installers"
-            target="server"
-            hint="Where Otix moves completed ISO files. Browse lists folders on the connected game server node."
-          />
-        </div>
-        <SettingsRow
-          label="Post-process after download"
-          description="Automatically find and move ISOs to library"
-          action={<DkSwitch checked={postProcessEnabled} onCheckedChange={setPostProcessEnabled} />}
-        />
-      </SettingsCard>
-
-      <SettingsCard className="space-y-4">
-        <SectionHeader
-          title="Custom Path Mappings"
-          description="Map multiple remote download folders to local paths."
-        />
-
-        {pathMappings.length > 0 ? (
-          <div className="space-y-1.5 overflow-y-auto pr-1" style={{ maxHeight: '150px' }}>
-            {pathMappings.map((m) => (
-              <div key={m.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg text-xs"
-                style={{ backgroundColor: 'var(--dk-surface-raised)' }}>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="truncate font-mono text-[11px] text-white/70"><span className="font-semibold text-white/75">Remote:</span> {m.sourcePath}</p>
-                  <p className="truncate font-mono text-[11px] text-white/70"><span className="font-semibold text-white/75">Local:</span> {m.destPath}</p>
-                </div>
-                <DkButton size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0 text-white/60 hover:text-red-400" onClick={() => handleRemovePathMapping(m.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </DkButton>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs italic py-1 text-white/50">No custom path mappings defined.</p>
-        )}
-
-        <div className="flex items-center gap-2 p-2 rounded-xl"
-          style={{ backgroundColor: 'color-mix(in srgb, var(--dk-surface-raised) 15%, transparent)' }}>
-          <PathInput
-            compact
-            value={newSourcePath}
-            onChange={setNewSourcePath}
-            placeholder="Remote Source (e.g. /downloads/...)"
-            target="server"
-            className="min-w-0 flex-1"
-            inputClassName="h-8 rounded-lg px-2 text-xs outline-none"
-          />
-          <span className="text-xs text-white/40">&rarr;</span>
-          <PathInput
-            compact
-            value={newDestPath}
-            onChange={setNewDestPath}
-            placeholder="Local Destination (e.g. \NAS\...)"
-            target="local"
-            className="min-w-0 flex-1"
-            inputClassName="h-8 rounded-lg px-2 text-xs outline-none"
-          />
-          <DkButton size="sm" variant="ghost" className="h-8 w-8 p-0 shrink-0 shadow-none hover:bg-primary/10 hover:text-primary" onClick={handleAddPathMapping} disabled={!newSourcePath || !newDestPath}>
-            <Plus className="h-4 w-4" />
-          </DkButton>
-        </div>
-      </SettingsCard>
-
-      <SettingsCard className="space-y-3">
-        <SectionHeader title="Auto-Search" />
-        <SettingsRow
-          icon={<Search className="h-5 w-5" />}
-          label="Auto-search wishlist"
-          description={`Scan wishlist every ${intervalHours}h for new downloads`}
-          action={<DkSwitch checked={autoSearch} onCheckedChange={setAutoSearch} />}
-        />
-        {autoSearch && (
-          <div>
-            <label className="text-xs font-medium text-white/60">Interval (hours)</label>
-            <input
-              type="number" value={intervalHours}
-              onChange={e => setIntervalHours(parseInt(e.target.value) || 12)}
-              min={1} max={168}
-              className="mt-1 h-9 rounded-lg px-3 text-sm outline-none text-white/80 focus:ring-2 focus:ring-primary/40"
-              style={{ backgroundColor: 'var(--dk-surface-raised)', width: '120px' }}
-            />
-          </div>
-        )}
-      </SettingsCard>
-
-      <SettingsCard>
-        <SettingsRow
-          label="Allow hypervisor-tagged releases"
-          description="Include releases tagged with HV/hypervisor/vm markers. Disabled by default — these often require VM setup."
-          action={<DkSwitch checked={allowHypervisor} onCheckedChange={setAllowHypervisor} />}
-        />
-      </SettingsCard>
-
-      {/* Download History */}
-      {downloadHistory.length > 0 && (
-        <SettingsCard className="overflow-hidden">
-          <SectionHeader title="Download History" />
-          <div className="divide-y divide-white/10 overflow-y-auto" style={{ maxHeight: '16rem' }}>
-            {downloadHistory.map((dl) => (
-              <div key={dl.id} className="flex items-center gap-3 px-5 py-3 text-xs">
-                <div className="shrink-0">
-                  {dl.status === 'downloading' ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  ) : dl.status === 'completed' ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-400" />
-                  ) : dl.status === 'failed' ? (
-                    <XCircle className="h-4 w-4 text-red-400" />
-                  ) : dl.status === 'deleted' ? (
-                    <ArchiveX className="h-4 w-4 text-white/60" />
-                  ) : (
-                    <Clock className="h-4 w-4 text-amber-400" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{dl.nzbName ?? dl.mediaItemTitle ?? 'Unknown'}</p>
-                  <p className="mt-0.5 text-white/60">
-                    {dl.status}
-                    {dl.nzbSize != null && ` · ${(dl.nzbSize / 1073741824).toFixed(1)} GB`}
-                    {dl.percentage != null && dl.status === 'downloading' && ` · ${dl.percentage}%`}
-                  </p>
-                </div>
-                <DkButton
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 p-0 shrink-0 text-white/60 hover:text-red-400"
-                  onClick={() => cancelDownload(dl.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </DkButton>
-              </div>
-            ))}
-          </div>
-        </SettingsCard>
-      )}
-
-      <SettingsCard className="space-y-4">
-        <SectionHeader
-          title="Organization"
-          description="Control how downloaded games are automatically renamed and organized."
-        />
-
-        <SettingsRow
-          label="Auto-Organize"
-          description="Automatically rename and sort downloaded games into organized folders."
-          action={<DkSwitch checked={autoOrganizeEnabled} onCheckedChange={setAutoOrganizeEnabled} />}
-        />
-
-        {/* Naming template */}
-        <div>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {NAMING_PRESETS.map((p: { id: string; label: string; template: string }) => (
-              <DkButton
-                key={p.id}
-                size="sm"
-                variant={presetId === p.id ? 'primary' : 'ghost'}
-                onClick={() => {
-                  setPresetId(p.id)
-                  setNamingTemplate(p.template)
-                }}
-              >
-                {p.label}
-              </DkButton>
-            ))}
-            <DkButton
-              size="sm"
-              variant={presetId === 'custom' ? 'primary' : 'ghost'}
-              onClick={() => setPresetId('custom')}
-            >
-              Custom
-            </DkButton>
-          </div>
-          <input
-            type="text"
-            value={namingTemplate}
-            onChange={(e) => { setNamingTemplate(e.target.value); setPresetId('custom') }}
-            className="w-full text-sm text-white outline-none h-9 rounded-xl bg-white/5 px-3 shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-150 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.3)] placeholder:text-white/30"
-          />
-          <div className="mt-3">
-            <details className="group">
-              <summary className="cursor-pointer text-[11px] font-medium text-white/40 hover:text-white/60 transition-colors">
-                Available tokens
-              </summary>
-              <div className="mt-2 space-y-1">
-                {TOKEN_DOCS.map((doc: string) => (
-                  <p key={doc} className="text-[11px] font-mono text-white/30">{doc}</p>
-                ))}
-              </div>
-            </details>
-          </div>
-        </div>
-      </SettingsCard>
     </div>
   )
 }
+
+export { SettingsDownloadsPage as SettingsDownloadsSection }

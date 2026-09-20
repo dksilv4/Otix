@@ -14,6 +14,7 @@ export function IntegrationCard({
   onToggle,
   onConnect,
   connecting,
+  connectDisabled,
   onDisconnect,
   disconnecting,
   error,
@@ -29,6 +30,7 @@ export function IntegrationCard({
   onToggle: () => void
   onConnect?: () => void
   connecting?: boolean
+  connectDisabled?: boolean
   onDisconnect?: () => void
   disconnecting?: boolean
   error?: string
@@ -77,7 +79,14 @@ export function IntegrationCard({
             <ChevronDown className={cn('h-4 w-4 text-white/40 transition-transform duration-150', expanded && 'rotate-180')} />
           </div>
         ) : (
-          <DkButton size="sm" onClick={onConnect} loading={connecting} leftIcon={Plus} className="shrink-0 w-[90px]">
+          <DkButton
+            size="sm"
+            onClick={onConnect}
+            loading={connecting}
+            disabled={connectDisabled}
+            leftIcon={Plus}
+            className="shrink-0 w-[90px]"
+          >
             Connect
           </DkButton>
         )}

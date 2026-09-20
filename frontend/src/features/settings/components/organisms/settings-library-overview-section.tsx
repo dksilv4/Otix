@@ -1,0 +1,343 @@
+import { useEffect, useState, type ComponentType, type ReactNode } from 'react'
+import {
+  ArrowRight,
+  CheckCircle2,
+  FolderOpen,
+  Gamepad2,
+  HardDrive,
+  Server,
+  Sparkles,
+  Wand2,
+} from 'lucide-react'
+import { useAuth } from '@/lib/providers/auth'
+import { useDownloadConfig } from '@/features/downloads/use-downloads'
+import { useGameServers } from '@/features/downloads/use-server-downloads'
+import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
+import { cn } from '@/lib/utils'
+import { SettingsCard } from '../molecules/settings-card'
+import { SectionHeader } from '../molecules/settings-section-header'
+import type { LibrarySettingsTab } from './settings-library-tabs'
+
+export interface LibraryOverviewStats {
+  total: number
+  matched: number
+  candidates: number
+  unmatched: number
+  loading?: boolean
+}
+
+export interface SettingsLibraryOverviewSectionProps {
+  stats: LibraryOverviewStats
+  onNavigate: (tab: Exclude<LibrarySettingsTab, 'overview'>) => void
+}
+
+function Metric({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  tone = 'default',
+}: {
+  icon: ComponentType<{ className?: string }>
+  label: string
+  value: ReactNode
+  hint?: string
+  tone?: 'default' | 'success' | 'warn' | 'muted'
+}) {
+  const toneClass =
+    tone === 'success'
+      ? 'text-emerald-400'
+      : tone === 'warn'
+        ? 'text-sky-400'
+        : tone === 'muted'
+          ? 'text-white/50'
+          : 'text-primary'
+
+  return (
+    <div className="flex items-start gap-2.5 min-w-0">
+      <div className={cn('mt-0.5 shrink-0', toneClass)}>
+        <Icon className="h-3.5 w-3.5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] uppercase tracking-wider text-white/40 font-semibold">{label}</p>
+        <p className="text-sm font-semibold text-white truncate">{value}</p>
+        {hint && <p className="text-[11px] text-white/40 mt-0.5 truncate">{hint}</p>}
+      </div>
+    </div>
+  )
+}
+
+function OverviewNavCard({
+  title,
+  description,
+  icon: Icon,
+  onClick,
+  children,
+}: {
+  title: string
+  description: string
+  icon: ComponentType<{ className?: string }>
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Open ${title} settings`}
+      className="group text-left w-full rounded-2xl sm:rounded-3xl p-5 sm:p-6 backdrop-blur-xl transition-all duration-200 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      style={{
+        backgroundColor: 'var(--dk-surface-base)',
+        boxShadow:
+          'inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 10px 30px -10px rgba(0, 0, 0, 0.5)',
+      }}
+    >
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Icon className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-white tracking-tight">{title}</h3>
+            <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{description}</p>
+          </div>
+        </div>
+        <ArrowRight className="h-4 w-4 text-white/30 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-white/5">{children}</div>
+    </button>
+  )
+}
+
+export function SettingsLibraryOverviewSection({
+  stats,
+  onNavigate,
+}: SettingsLibraryOverviewSectionProps) {
+  const desktop = isDesktop()
+  let user: { id?: string | number } | null = null
+  try {
+    user = useAuth()?.user ?? null
+  } catch {
+    // Tests without AuthProvider
+  }
+
+  const { config: dlConfig, isLoading: configLoading } = useDownloadConfig(user?.id)
+  const { data: gameServers = [], isLoading: serversLoading } = useGameServers()
+
+  const [scanPathCount, setScanPathCount] = useState(0)
+  const [gamesDownloadPath, setGamesDownloadPath] = useState('')
+  const [pathsLoading, setPathsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      setPathsLoading(true)
+      const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+
+      let paths: Array<{ path?: string; type?: string }> = []
+      if (api?.getScanPaths) {
+        try {
+          const raw = await api.getScanPaths()
+          if (Array.isArray(raw)) paths = raw
+        } catch {
+          // fall through to localStorage
+        }
+      }
+
+      if (paths.length === 0) {
+        try {
+          const games = JSON.parse(localStorage.getItem('otix:scan-paths') || '[]')
+          const isos = JSON.parse(localStorage.getItem('otix:iso-scan-paths') || '[]')
+          paths = [
+            ...(Array.isArray(games) ? games.map((p: string) => ({ path: p, type: 'game' })) : []),
+            ...(Array.isArray(isos) ? isos.map((p: string) => ({ path: p, type: 'iso' })) : []),
+          ]
+        } catch {
+          paths = []
+        }
+      }
+
+      let downloadPath = ''
+      if (api?.getDesktopSettings) {
+        try {
+          const ds = await api.getDesktopSettings()
+          downloadPath = ds?.gamesDownloadPath || ''
+        } catch {
+          // ignore
+        }
+      }
+      if (!downloadPath) {
+        try {
+          downloadPath = localStorage.getItem('otix:games-download-dir') || ''
+        } catch {
+          downloadPath = ''
+        }
+      }
+
+      if (!cancelled) {
+        setScanPathCount(paths.filter((p) => p.path).length)
+        setGamesDownloadPath(downloadPath)
+        setPathsLoading(false)
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const onlineServers = gameServers.filter((s: any) => s.isOnline).length
+  const primaryServer = gameServers.find((s: any) => s.isPrimary)
+
+  const organizeFlags = [
+    dlConfig?.autoSearchWishlist && 'Wishlist search',
+    dlConfig?.postProcessEnabled && 'Post-process',
+    dlConfig?.autoOrganizeEnabled && 'Auto-organize',
+  ].filter(Boolean) as string[]
+
+  return (
+    <div id="overview" className="space-y-6 scroll-mt-28">
+      <SettingsCard className="space-y-3">
+        <SectionHeader
+          title="Overview"
+          description="A quick look at your library, storage paths, game servers, and automation."
+        />
+        <p className="text-xs text-white/45 leading-relaxed max-w-2xl">
+          Jump into a section to configure it. Destinations, scan folders, matching, and download
+          clients all live under this page.
+        </p>
+      </SettingsCard>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <OverviewNavCard
+          title="Library"
+          description="Match titles, review candidates, and manage providers."
+          icon={Gamepad2}
+          onClick={() => onNavigate('library')}
+        >
+          <Metric
+            icon={HardDrive}
+            label="Items"
+            value={stats.loading ? '…' : stats.total}
+            hint={stats.loading ? 'Loading catalog' : 'In your library'}
+          />
+          <Metric
+            icon={CheckCircle2}
+            label="Matched"
+            value={stats.loading ? '…' : stats.matched}
+            tone="success"
+            hint={
+              stats.loading
+                ? undefined
+                : stats.candidates > 0
+                  ? `${stats.candidates} need review`
+                  : `${stats.unmatched} unmatched`
+            }
+          />
+          {stats.candidates > 0 && !stats.loading && (
+            <Metric
+              icon={Sparkles}
+              label="Need review"
+              value={stats.candidates}
+              tone="warn"
+              hint="Open Library to resolve"
+            />
+          )}
+        </OverviewNavCard>
+
+        <OverviewNavCard
+          title="Paths"
+          description="Download destinations and folders Otix scans."
+          icon={FolderOpen}
+          onClick={() => onNavigate('paths')}
+        >
+          <Metric
+            icon={FolderOpen}
+            label="Scan folders"
+            value={pathsLoading ? '…' : scanPathCount}
+            hint={pathsLoading ? 'Loading' : scanPathCount === 0 ? 'None configured yet' : 'Monitored folders'}
+          />
+          <Metric
+            icon={HardDrive}
+            label="Games folder"
+            value={
+              pathsLoading
+                ? '…'
+                : gamesDownloadPath
+                  ? gamesDownloadPath
+                  : desktop
+                    ? 'System default'
+                    : 'Not set'
+            }
+            tone={gamesDownloadPath ? 'success' : 'muted'}
+            hint={dlConfig?.downloadPath ? `ISOs: ${dlConfig.downloadPath}` : 'ISO destination optional'}
+          />
+        </OverviewNavCard>
+
+        <OverviewNavCard
+          title="Downloads"
+          description="Remote game servers and download clients."
+          icon={Server}
+          onClick={() => onNavigate('downloads')}
+        >
+          <Metric
+            icon={Server}
+            label="Game servers"
+            value={serversLoading ? '…' : gameServers.length}
+            hint={
+              serversLoading
+                ? 'Loading'
+                : gameServers.length === 0
+                  ? 'None linked'
+                  : `${onlineServers} online`
+            }
+            tone={onlineServers > 0 ? 'success' : gameServers.length > 0 ? 'warn' : 'muted'}
+          />
+          <Metric
+            icon={CheckCircle2}
+            label="Primary"
+            value={primaryServer?.name || (gameServers.length ? 'Not set' : '—')}
+            tone={primaryServer ? 'success' : 'muted'}
+            hint="Used for remote downloads"
+          />
+        </OverviewNavCard>
+
+        <OverviewNavCard
+          title="Organize"
+          description="Wishlist scanning, post-processing, and naming."
+          icon={Wand2}
+          onClick={() => onNavigate('organize')}
+        >
+          <Metric
+            icon={Wand2}
+            label="Automation"
+            value={
+              configLoading
+                ? '…'
+                : organizeFlags.length > 0
+                  ? `${organizeFlags.length} enabled`
+                  : 'All off'
+            }
+            tone={organizeFlags.length > 0 ? 'success' : 'muted'}
+            hint={organizeFlags.length > 0 ? organizeFlags.join(' · ') : 'Turn on from Organize'}
+          />
+          <Metric
+            icon={Sparkles}
+            label="Naming"
+            value={
+              configLoading
+                ? '…'
+                : dlConfig?.autoOrganizeEnabled
+                  ? 'Auto-organize on'
+                  : 'Manual'
+            }
+            tone={dlConfig?.autoOrganizeEnabled ? 'success' : 'muted'}
+            hint={dlConfig?.preferredRepackers ? `Prefer ${dlConfig.preferredRepackers}` : 'Repackers optional'}
+          />
+        </OverviewNavCard>
+      </div>
+    </div>
+  )
+}

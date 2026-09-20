@@ -27,6 +27,7 @@ from apps.library.services.download_history import (
 )
 from apps.library.services.game_server import (
     apply_node_heartbeat,
+    collapse_duplicate_game_servers,
     contact_urls,
     desktop_get_settings,
     desktop_save_settings,
@@ -38,6 +39,7 @@ from apps.library.services.game_server import (
     explorer_browse,
     explorer_create_folder,
     explorer_set_download_path,
+    link_or_create_game_server,
     list_pending_nodes_for,
     ping_server_sync,
     provider_list,
@@ -122,18 +124,22 @@ class GameServerListCreateView(APIView):
     """
 
     def get(self, request: Request) -> Response:
+        collapse_duplicate_game_servers(request.user)
         servers = UserGameServer.objects.filter(user=request.user)
         return Response(UserGameServerSerializer(servers, many=True).data)
 
     def post(self, request: Request) -> Response:
         serializer = UserGameServerCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        server = serializer.save(user=request.user)
+        server, created = link_or_create_game_server(request.user, serializer.validated_data)
         result = ping_server_sync(server)
         server.refresh_from_db()
         payload = UserGameServerSerializer(server).data
         payload["connect_error"] = None if result.get("online") else result.get("error")
-        return Response(payload, status=status.HTTP_201_CREATED)
+        return Response(
+            payload,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
 
 
 class GameServerHeartbeatView(APIView):

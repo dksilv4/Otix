@@ -362,10 +362,10 @@ describe('Settings Integrations Modals Regression Tests', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('Epic')).toBeInTheDocument()
+      expect(screen.getByText('Epic Games')).toBeInTheDocument()
     })
 
-    const card = screen.getByText('Epic').closest('.rounded-2xl')!
+    const card = screen.getByText('Epic Games').closest('.rounded-2xl')!
     expect(within(card).getByRole('button', { name: /connect/i })).toBeDisabled()
     expect(within(card).getByText('Connect an Otix Server to link Epic.')).toBeInTheDocument()
   })
@@ -377,10 +377,10 @@ describe('Settings Integrations Modals Regression Tests', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('Epic')).toBeInTheDocument()
+      expect(screen.getByText('Epic Games')).toBeInTheDocument()
     })
 
-    const card = screen.getByText('Epic').closest('.rounded-2xl')!
+    const card = screen.getByText('Epic Games').closest('.rounded-2xl')!
     expect(within(card).getByRole('button', { name: /connect/i })).toBeEnabled()
   })
 })

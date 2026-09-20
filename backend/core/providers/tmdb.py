@@ -31,15 +31,15 @@ _shared_client_loop_id: int | None = None
 def get_http_client() -> httpx.AsyncClient:
     """Return a process-shared AsyncClient bound to the TMDB base URL."""
     global _shared_client, _shared_client_loop_id
+    headers = {"Accept": "application/json"}
+    if settings.TMDB_RAT:
+        headers["Authorization"] = f"Bearer {settings.TMDB_RAT}"
     _shared_client, _shared_client_loop_id = resolve_shared_http_client(
         _shared_client,
         _shared_client_loop_id,
         base_url=TMDBProvider.BASE_URL,
         timeout=settings.TMDB_REQUEST_TIMEOUT_SECONDS,
-        headers={
-            "Authorization": f"Bearer {settings.TMDB_RAT}",
-            "Accept": "application/json",
-        },
+        headers=headers,
     )
     return _shared_client
 

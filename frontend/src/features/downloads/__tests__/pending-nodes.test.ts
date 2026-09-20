@@ -37,6 +37,34 @@ describe('pendingNodesToClaim', () => {
       ),
     ).toEqual([])
   })
+
+  it('claims a heartbeat and local probe of the same node only once', () => {
+    expect(
+      pendingNodesToClaim(
+        [
+          { serverName: 'DK Game Storage Server', localUrl: 'http://127.0.0.1:8090', authToken: 'tok' },
+          { serverName: 'DK Game Storage Server', localUrl: 'http://127.0.0.1:8090', authToken: 'tok' },
+        ],
+        [],
+      ),
+    ).toEqual([
+      { serverName: 'DK Game Storage Server', localUrl: 'http://127.0.0.1:8090', authToken: 'tok' },
+    ])
+  })
+
+  it('treats the same access token as the same node even when URLs differ', () => {
+    expect(
+      pendingNodesToClaim(
+        [
+          { serverName: 'DK Game Storage Server', localUrl: 'http://192.168.1.50:8090', authToken: 'tok' },
+          { serverName: 'DK Game Storage Server', localUrl: 'http://127.0.0.1:8090', authToken: 'tok' },
+        ],
+        [],
+      ),
+    ).toEqual([
+      { serverName: 'DK Game Storage Server', localUrl: 'http://192.168.1.50:8090', authToken: 'tok' },
+    ])
+  })
 })
 
 describe('pendingNodesToRefresh', () => {

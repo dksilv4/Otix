@@ -8,7 +8,7 @@ import { useDownloads } from '../use-downloads';
 import { useRemoteDownloads, useServerGames } from '../use-server-downloads';
 import { DownloadCard } from '../molecules/download-card';
 import { RemoteDownloadCard } from '../molecules/remote-download-card';
-import { ServerFileExplorer } from '../molecules/server-file-explorer';
+import { ServerFileExplorerModal } from '../molecules/server-file-explorer-modal';
 import { ServerSabnzbdSettingsModal } from '../molecules/server-sabnzbd-settings-modal';
 import { ServerGameSearchModal } from '../molecules/server-game-search-modal';
 import { useServerUsenetHistory, useServerUsenetQueue, useCancelServerQueueDownload } from '../use-server-usenet';
@@ -32,11 +32,21 @@ export function DownloadQueuePage() {
     cancelDownload: cancelRemoteDownload,
   } = useRemoteDownloads();
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'deleted'>('all');
-  const [viewTab, setViewTab] = useState<'queue' | 'explorer'>('queue');
   const { openModal } = useModal();
 
   const activeServer = serverData?.servers?.[0];
   const activeServerId = activeServer?.id;
+
+  const openServerExplorer = () => {
+    const close = openModal(
+      <ServerFileExplorerModal
+        initialServerId={activeServerId}
+        serverName={activeServer?.name}
+        onClose={() => close()}
+      />,
+    );
+  };
+
   const { data: usenetQueueData, refetch: refetchUsenetQueue } = useServerUsenetQueue(activeServerId);
   const { data: usenetHistory = [] } = useServerUsenetHistory(activeServerId);
   const cancelUsenetDownloadMutation = useCancelServerQueueDownload(activeServerId);
@@ -176,53 +186,27 @@ export function DownloadQueuePage() {
       </div>
 
 
-      {/* View Switcher: Queue vs Server Storage Explorer */}
+      {/* Queue toolbar */}
       <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
-        <button
-          onClick={() => setViewTab('queue')}
-          className={cn(
-            'flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors',
-            viewTab === 'queue'
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-          )}
-        >
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-primary text-primary-foreground shadow-sm">
           <Download className="h-3.5 w-3.5" />
           <span>Downloads Queue</span>
           {activeCount > 0 && (
-            <span
-              className={cn(
-                'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
-                viewTab === 'queue'
-                  ? 'bg-black/25 text-primary-foreground'
-                  : 'bg-primary/20 text-primary'
-              )}
-            >
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-black/25 text-primary-foreground">
               {activeCount}
             </span>
           )}
-        </button>
+        </div>
 
         {hasGameServers && (
           <button
-            onClick={() => setViewTab('explorer')}
-            className={cn(
-              'flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors',
-              viewTab === 'explorer'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-            )}
+            type="button"
+            onClick={openServerExplorer}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
           >
             <HardDrive className="h-3.5 w-3.5" />
-            <span>Server Storage & Explorer</span>
-            <span
-              className={cn(
-                'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
-                viewTab === 'explorer'
-                  ? 'bg-black/25 text-primary-foreground'
-                  : 'bg-muted text-muted-foreground'
-              )}
-            >
+            <span>Server Storage</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-muted text-muted-foreground">
               {serverData?.servers?.length || 1}
             </span>
           </button>
@@ -239,10 +223,10 @@ export function DownloadQueuePage() {
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {hasGameServers && viewTab === 'queue' && (
+          {hasGameServers && (
             <button
               type="button"
-              onClick={() => setViewTab('explorer')}
+              onClick={openServerExplorer}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[11px] font-semibold border border-primary/25 transition-colors"
             >
               <HardDrive className="h-3 w-3" />
@@ -250,7 +234,7 @@ export function DownloadQueuePage() {
             </button>
           )}
           <a
-            href="/settings/downloads"
+            href="/settings/library#downloads"
             className="text-[11px] text-muted-foreground hover:text-foreground hover:underline ml-1 font-medium"
           >
             Settings
@@ -258,11 +242,6 @@ export function DownloadQueuePage() {
         </div>
       </div>
 
-      {/* Explorer Tab Content */}
-      {viewTab === 'explorer' ? (
-        <ServerFileExplorer className="mb-6" />
-      ) : (
-        <>
           {/* ── Active Server SABnzbd Usenet Queue ── */}
           {hasGameServers && usenetQueueData && usenetQueueData.items.length > 0 && (
             <div className="mb-5 p-4 rounded-2xl bg-card border border-primary/30 shadow-md space-y-3">
@@ -452,8 +431,6 @@ export function DownloadQueuePage() {
             />
           ))}
         </div>
-      )}
-        </>
       )}
     </div>
   );

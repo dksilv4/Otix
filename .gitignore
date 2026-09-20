@@ -39,6 +39,8 @@ desktop/nul
 
 # Build output
 /desktop/release/
+otix-frontend-dist.tar.gz
+*.tar.gz
 
 # Regenerated graphify knowledge-graph output (do not version)
 /graphify-out/

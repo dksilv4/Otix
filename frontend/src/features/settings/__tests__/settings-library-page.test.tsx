@@ -33,6 +33,28 @@ vi.mock('@/features/proposals/pages/proposals-page', () => ({
   ProposalsPage: () => <div>Match Proposals</div>,
 }))
 
+vi.mock('../pages/settings-downloads-page', () => ({
+  SettingsDownloadsSection: () => <div data-testid="settings-downloads-section">Downloads Section</div>,
+}))
+
+vi.mock('../components/organisms/settings-paths-section', () => ({
+  SettingsPathsSection: () => <div data-testid="settings-paths-section">Paths Section</div>,
+}))
+
+vi.mock('../components/organisms/settings-organize-section', () => ({
+  SettingsOrganizeSection: () => <div data-testid="settings-organize-section">Organize Section</div>,
+}))
+
+vi.mock('../components/organisms/settings-library-overview-section', () => ({
+  SettingsLibraryOverviewSection: () => <div data-testid="settings-library-overview">Overview</div>,
+}))
+
+vi.mock('@tanstack/react-router', () => ({
+  useLocation: () => ({ hash: 'library', pathname: '/settings/library' }),
+  useNavigate: () => vi.fn(),
+}))
+
+
 describe('SettingsLibraryPage Sort Feature', () => {
   const mockGames = [
     {

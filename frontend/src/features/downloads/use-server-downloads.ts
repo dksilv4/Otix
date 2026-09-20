@@ -4,6 +4,7 @@ import { apiClient } from '@/lib/api/client'
 import { isDesktop, type RemoteDownloadProgress } from '@/lib/desktop/api'
 import type { GameServer, ServerGameFile, ServerGamesResponse } from './types'
 import {
+  nodeUrlKey,
   pendingNodesToClaim,
   pendingNodesToRefresh,
   probeLocalGameNode,
@@ -49,11 +50,21 @@ function mapPendingRow(row: {
   }
 }
 
+const inFlightClaimKeys = new Set<string>()
+
+function claimKeysFor(node: PendingNode): string[] {
+  const keys = [nodeUrlKey(node.localUrl)]
+  if (node.authToken) keys.push(`token:${node.authToken}`)
+  return keys
+}
+
 export function useAutoClaimPendingServers(enabled: boolean) {
   const { data: servers = [] } = useGameServers({ enabled, refetchInterval: 15_000 })
   const createServer = useCreateGameServer()
   const updateServer = useUpdateGameServer()
   const claiming = useRef(false)
+  const createMutateAsync = createServer.mutateAsync
+  const updateMutateAsync = updateServer.mutateAsync
 
   const pendingQuery = useQuery<PendingNode[]>({
     queryKey: [...serverKeys.all, 'pending'],
@@ -81,34 +92,51 @@ export function useAutoClaimPendingServers(enabled: boolean) {
   })
 
   useEffect(() => {
-    if (!enabled || claiming.current || createServer.isPending || updateServer.isPending) return
+    if (!enabled || claiming.current) return
+    for (const server of servers) {
+      for (const url of [server.primaryUrl, server.localUrl]) {
+        if (url) inFlightClaimKeys.delete(nodeUrlKey(url))
+      }
+      if (server.authToken) inFlightClaimKeys.delete(`token:${server.authToken}`)
+    }
     const pending = [
       ...(pendingQuery.data || []),
       ...(localProbe.data ? [localProbe.data] : []),
     ]
     const toRefresh = pendingNodesToRefresh(pending, servers)
-    const toClaim = pendingNodesToClaim(pending, servers)
+    const toClaim = pendingNodesToClaim(pending, servers).filter((node) =>
+      claimKeysFor(node).every((key) => !inFlightClaimKeys.has(key)),
+    )
     if (!toRefresh.length && !toClaim.length) return
     claiming.current = true
+    for (const node of toClaim) {
+      for (const key of claimKeysFor(node)) inFlightClaimKeys.add(key)
+    }
     Promise.all([
       ...toRefresh.map(({ id, node }) =>
-        updateServer.mutateAsync({
+        updateMutateAsync({
           id,
           auth_token: node.authToken,
           name: node.serverName,
         }),
       ),
       ...toClaim.map((node) =>
-        createServer.mutateAsync({
+        createMutateAsync({
           name: node.serverName,
           local_url: node.localUrl,
           auth_token: node.authToken || undefined,
         }),
       ),
-    ]).finally(() => {
-      claiming.current = false
-    })
-  }, [createServer, enabled, localProbe.data, pendingQuery.data, servers, updateServer])
+    ])
+      .catch(() => {
+        for (const node of toClaim) {
+          for (const key of claimKeysFor(node)) inFlightClaimKeys.delete(key)
+        }
+      })
+      .finally(() => {
+        claiming.current = false
+      })
+  }, [createMutateAsync, enabled, localProbe.data, pendingQuery.data, servers, updateMutateAsync])
 }
 
 export function useServerGames(options?: { refetchInterval?: number | false }) {
@@ -166,6 +194,7 @@ export function useUpdateGameServer() {
       local_url?: string
       remote_url?: string
       auth_token?: string
+      is_active?: boolean
     }) => {
       const { id, ...body } = payload
       const { data } = await apiClient.patch<GameServer>(`/library/servers/${id}`, body)

@@ -155,7 +155,7 @@ function formatDaysAgo(unixTimestamp: number): string {
 
 const BRAND_COLORS: Record<string, string> = {
   steam: '#1a6bcc',
-  epic: '#2a2a2a',
+  epic: '#ffffff',
   plex: '#e5a00d',
   tmdb: '#01b4e4',
   google: '#4285F4',
@@ -589,7 +589,7 @@ export function SettingsIntegrationsPage() {
       setEpicConnected(false)
       setEpicDisplayName(null)
       setEpicAccountId(null)
-      setEpicMessage('Epic account unlinked.')
+      setEpicMessage('Epic Games account unlinked.')
     } catch (err) {
       setEpicError(extractIntegrationMessage(err))
     } finally {
@@ -1179,7 +1179,7 @@ export function SettingsIntegrationsPage() {
     },
     {
       id: 'epic',
-      name: 'Epic',
+      name: 'Epic Games',
       keywords: 'epic games store egs library launcher',
       description: !hasOnlineNode && !isEpicConnected
         ? 'Connect an Otix Server to link Epic.'
@@ -1435,9 +1435,9 @@ export function SettingsIntegrationsPage() {
                 {i.id === 'epic' && (
                   <>
                     <IntegrationProfile
-                      avatarAlt={epicDisplayName ?? 'Epic avatar'}
-                      name={epicDisplayName ?? 'Epic User'}
-                      detail={epicAccountId ? `Account ID: ${epicAccountId}` : 'Epic account linked'}
+                      avatarAlt={epicDisplayName ?? 'Epic Games avatar'}
+                      name={epicDisplayName ?? 'Epic Games User'}
+                      detail={epicAccountId ? `Account ID: ${epicAccountId}` : 'Epic Games account linked'}
                       brandBg={BRAND_BG.epic}
                       icon={EpicIcon}
                       brandColor={BRAND_COLORS.epic}

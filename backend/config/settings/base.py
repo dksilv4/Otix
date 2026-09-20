@@ -336,6 +336,8 @@ if CATALOG_DAILY_TMDB_LIMIT is not None:
     CATALOG_DAILY_TMDB_LIMIT = int(CATALOG_DAILY_TMDB_LIMIT)
 CATALOG_DRAIN_LIMIT = int(os.environ.get("CATALOG_DRAIN_LIMIT", "200"))
 CATALOG_REHYDRATE_LIMIT = int(os.environ.get("CATALOG_REHYDRATE_LIMIT", "200"))
+CATALOG_POPULAR_SEED_LIMIT = int(os.environ.get("CATALOG_POPULAR_SEED_LIMIT", "50"))
+CATALOG_UPDATED_SYNC_LIMIT = int(os.environ.get("CATALOG_UPDATED_SYNC_LIMIT", "50"))
 
 # Auto artwork mirroring: MIRROR_SWEEP_LIMIT is the default per-run sweep cap
 # (the one-shot ``mirror_artwork`` command + the DB ``mirror_sweep_limit``
@@ -347,6 +349,14 @@ CELERY_BEAT_SCHEDULE = {
     "catalog-daily-tmdb-import": {
         "task": "integrations.catalog_daily_tmdb",
         "schedule": crontab(hour=3, minute=7),
+    },
+    "catalog-popular-seed": {
+        "task": "integrations.catalog_seed_popular",
+        "schedule": crontab(minute=0),
+    },
+    "catalog-updated-sync": {
+        "task": "integrations.catalog_sync_updated",
+        "schedule": crontab(minute=30),
     },
     "catalog-backlog-drain": {
         "task": "integrations.catalog_drain",

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Gamepad2, Loader2, CheckCircle2, Sparkles, FolderOpen, Search, X, RefreshCw, ArrowUpDown, FolderPlus, Trash2 } from 'lucide-react'
+import { Gamepad2, Loader2, CheckCircle2, Sparkles, FolderOpen, Search, X, ArrowUpDown, HardDrive } from 'lucide-react'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import { PluginSlot } from '@/features/plugins/components/organisms/plugin-slot'
 import { getPluginAPI, type PluginAPI } from '@/features/plugins/api'
 import { DkDropdown } from '@ui/atoms/dropdown'
@@ -8,15 +9,19 @@ import { ProviderLogo } from '../components/atoms/provider-logo'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { CandidateReviewModal } from '../components/organisms/settings-candidate-review-modal'
-import { SettingsFreeGamesSection } from '../components/organisms/settings-free-games-section'
+import { SettingsPathsSection } from '../components/organisms/settings-paths-section'
+import { SettingsLibraryOverviewSection } from '../components/organisms/settings-library-overview-section'
+import {
+  SettingsLibraryTabs,
+  resolveLibrarySettingsTab,
+  type LibrarySettingsTab,
+} from '../components/organisms/settings-library-tabs'
+import { SettingsOrganizeSection } from '../components/organisms/settings-organize-section'
+import { SettingsDownloadsSection } from './settings-downloads-page'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useModal } from '@/lib/modals'
-import { isDesktop } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
-import { usePickFolder } from '@/components/path-picker'
-import { useToast } from '@ui/molecules/toast'
-import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
 import { ProposalsPage } from '@/features/proposals/pages/proposals-page'
 
 type ItemFilter = 'all' | 'games' | 'dlcs' | 'expansions' | 'demos' | 'betas' | 'mods' | 'soundtracks' | 'matched' | 'candidates' | 'unmatched'
@@ -81,6 +86,43 @@ function mapSteamUnmatched(item: any): any {
     steamPlaytime2weeks: item.steamPlaytime2weeks,
     steamRtimeLastPlayed: item.steamRtimeLastPlayed,
     isSteam: true,
+  }
+}
+
+// Map a matched Epic MediaItemSummary to the page's local-game shape.
+function mapEpicMatched(item: any): any {
+  return {
+    id: `epic-${item.id}`,
+    title: item.title,
+    posterUrl: item.posterUrl || item.textlessPosterUrl || item.iconUrl || null,
+    localIconUrl: item.iconUrl || null,
+    iconUrl: item.iconUrl || null,
+    otixMediaId: item.id,
+    platform: 'epic',
+    providerName: 'epic',
+    gameType: 'main_game',
+    mediaType: item.mediaType || 'game',
+    developer: null,
+    isEpic: true,
+  }
+}
+
+// Map an unmatched Epic game to the page's local-game shape.
+function mapEpicUnmatched(item: any): any {
+  return {
+    id: `epic-unmatched-${item.id}`,
+    title: item.epicName || item.epic_name || item.title,
+    posterUrl: null,
+    localIconUrl: null,
+    iconUrl: null,
+    otixMediaId: undefined,
+    platform: 'epic',
+    providerName: 'epic',
+    gameType: 'main_game',
+    mediaType: 'game',
+    developer: null,
+    epicAppName: item.appName || item.app_name,
+    isEpic: true,
   }
 }
 
@@ -185,7 +227,6 @@ function deduplicateGames(items: any[]): any[] {
 }
 
 export function SettingsLibraryPage() {
-  const desktop = isDesktop()
   const [pluginApi, setPluginApi] = useState<PluginAPI | null>(null)
   const [loading, setLoading] = useState(true)
   const [games, setGames] = useState<any[]>([])
@@ -195,16 +236,40 @@ export function SettingsLibraryPage() {
   const [platformFilter, setPlatformFilter] = useState<string>('')
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
-  const [scanPaths, setScanPaths] = useState<string[]>([])
-  const [isScanning, setIsScanning] = useState(false)
 
   const api = (window as any).desktopAPI
   const { openModal } = useModal()
-  const { toast } = useToast()
-  const { pick: pickFolder } = usePickFolder({ target: 'local' })
-  useSettingsHashScroll()
 
-  // Load plugin API & scan paths
+  let location: any = null
+  let navigate: any = null
+  try {
+    location = useLocation()
+    navigate = useNavigate()
+  } catch {
+    // Isolated tests outside RouterProvider
+  }
+
+  const [activeTab, setActiveTab] = useState<LibrarySettingsTab>(() =>
+    resolveLibrarySettingsTab(location?.hash || (typeof window !== 'undefined' ? window.location.hash : '')),
+  )
+
+  useEffect(() => {
+    const next = resolveLibrarySettingsTab(location?.hash || (typeof window !== 'undefined' ? window.location.hash : ''))
+    setActiveTab(next)
+  }, [location?.hash])
+
+  const handleTabChange = useCallback(
+    (tab: LibrarySettingsTab) => {
+      setActiveTab(tab)
+      if (navigate) {
+        navigate({ to: '/settings/library', hash: tab, replace: true })
+      } else if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', `#${tab}`)
+      }
+    },
+    [navigate],
+  )
+  // Load plugin API
   useEffect(() => {
     const pApi = getPluginAPI()
     setPluginApi(pApi)
@@ -212,32 +277,17 @@ export function SettingsLibraryPage() {
     return () => clearTimeout(t)
   }, [])
 
-  useEffect(() => {
-    if (api?.getScanPaths) {
-      api.getScanPaths().then((paths: any[]) => {
-        if (Array.isArray(paths)) {
-          const mapped = paths.filter((p) => p.type === 'game').map((p) => p.path)
-          setScanPaths(mapped)
-          try { localStorage.setItem('otix:scan-paths', JSON.stringify(mapped)) } catch {}
-        }
-      }).catch(() => {})
-    } else {
-      try {
-        const stored = localStorage.getItem('otix:scan-paths')
-        if (stored) setScanPaths(JSON.parse(stored))
-      } catch {}
-    }
-  }, [api])
-
-  // Fetch all games: local disk scan (desktop) + backend Steam library (matched + unmatched).
+  // Fetch all games: local disk scan (desktop) + backend Steam & Epic library (matched + unmatched).
   const fetchGames = useCallback(async () => {
     setGamesLoading(true)
-    const [local, steamMatched, steamUnmatched] = await Promise.all([
+    const [local, steamMatched, steamUnmatched, epicMatched, epicUnmatched] = await Promise.all([
       api?.getLocalGames?.().then((data: any[]) => data || []).catch(() => []),
       fetchAllLibraryPages('/library/steam').then((items) => items.map(mapSteamMatched)).catch(() => []),
       fetchAllLibraryPages('/library/steam/unmatched').then((items) => items.map(mapSteamUnmatched)).catch(() => []),
+      fetchAllLibraryPages('/library/epic').then((items) => items.map(mapEpicMatched)).catch(() => []),
+      fetchAllLibraryPages('/library/epic/unmatched').then((items) => items.map(mapEpicUnmatched)).catch(() => []),
     ])
-    setGames(deduplicateGames([...(local ?? []), ...steamMatched, ...steamUnmatched]))
+    setGames(deduplicateGames([...(local ?? []), ...steamMatched, ...steamUnmatched, ...epicMatched, ...epicUnmatched]))
     setGamesLoading(false)
   }, [api])
 
@@ -255,77 +305,6 @@ export function SettingsLibraryPage() {
     }
   }, [api, fetchGames])
 
-  const handleAddScanFolder = async () => {
-    try {
-      const dir = await pickFolder()
-      if (!dir) return
-      if (api?.getScanPaths && api?.saveScanPaths) {
-        const existing = await api.getScanPaths()
-        await api.saveScanPaths([...existing, { path: dir, type: 'game' }])
-      }
-      setScanPaths((prev) => {
-        const next = [...prev, dir]
-        try { localStorage.setItem('otix:scan-paths', JSON.stringify(next)) } catch {}
-        return next
-      })
-      toast({
-        title: 'Library Path Added',
-        description: `Added ${dir} to game scan paths.`,
-        variant: 'success',
-      })
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to add folder path.',
-        variant: 'error',
-      })
-    }
-  }
-
-  const handleRemoveScanFolder = async (pathToRemove: string) => {
-    try {
-      if (api?.getScanPaths && api?.saveScanPaths) {
-        const existing = await api.getScanPaths()
-        const updated = existing.filter((p: any) => p.path !== pathToRemove)
-        await api.saveScanPaths(updated)
-      }
-      setScanPaths((prev) => {
-        const next = prev.filter((p) => p !== pathToRemove)
-        try { localStorage.setItem('otix:scan-paths', JSON.stringify(next)) } catch {}
-        return next
-      })
-      toast({
-        title: 'Library Path Removed',
-        description: `Removed ${pathToRemove}.`,
-        variant: 'default',
-      })
-    } catch {}
-  }
-
-  const handleTriggerScan = async () => {
-    try {
-      setIsScanning(true)
-      if (api?.scanPaths) {
-        await api.scanPaths(scanPaths, [])
-      } else {
-        await apiClient.post('/scan').catch(() => {})
-      }
-      await fetchGames()
-      toast({
-        title: 'Scan Finished',
-        description: 'Updated your library with detected games and files.',
-        variant: 'success',
-      })
-    } catch {
-      toast({
-        title: 'Scan Error',
-        description: 'Failed to scan library paths.',
-        variant: 'error',
-      })
-    } finally {
-      setIsScanning(false)
-    }
-  }
 
   // Helper to determine game type slug
   const getGameType = (g: any): string => {
@@ -503,328 +482,383 @@ export function SettingsLibraryPage() {
     )
   }, [openModal, fetchGames])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-white/50 gap-3">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-        <span>Loading library...</span>
-      </div>
-    )
-  }
-
   return (
     <div id="settings-library-section" className="space-y-6">
       <SectionHeader
         variant="page"
-        icon={Gamepad2}
-        title="Library"
-        description="Manage scanned game titles, matching, and match proposals."
+        icon={HardDrive}
+        title="Library & Downloads"
+        description={
+          activeTab === 'overview'
+            ? 'Status across matching, storage paths, game servers, and automation.'
+            : activeTab === 'library'
+              ? 'Match titles to Otix metadata, review candidates, and manage providers.'
+              : activeTab === 'paths'
+                ? 'Set download destinations and folders Otix should scan.'
+                : activeTab === 'downloads'
+                  ? 'Connect remote game servers and manage download clients.'
+                  : 'Wishlist scanning, post-processing, and release naming.'
+        }
       />
 
-      <SettingsCard>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {/* Stats Bar */}
-          <div className="flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-1.5 text-white">
-              <Gamepad2 className="h-4 w-4 text-primary" />
-              <span className="font-bold">{stats.total}</span>
-              <span className="text-white/40">Total Items</span>
-            </div>
-            <div className="h-3 w-px bg-white/10" />
-            <div className="flex items-center gap-1.5 text-emerald-400">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span className="font-bold">{stats.matched}</span>
-              <span className="text-white/40">Matched</span>
-            </div>
-            {stats.candidates > 0 && (
-              <>
-                <div className="h-3 w-px bg-white/10" />
-                <div className="flex items-center gap-1.5 text-sky-400">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span className="font-bold">{stats.candidates}</span>
-                  <span className="text-white/40">Need Review</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          <DkButton
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              const close = openModal(
-                <DkDialog
-                  open
-                  onOpenChange={(next) => {
-                    if (!next) close()
-                  }}
-                  title="Library Providers"
-                  description="Configure scanner paths and platform integration providers."
-                  className="max-w-4xl"
-                >
-                  <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1 pt-1 pb-1">
-                    {pluginApi && <PluginSlot location="library:scan" pluginApi={pluginApi} />}
-                  </div>
-                </DkDialog>,
-              )
-            }}
-          >
-            <FolderOpen className="h-3.5 w-3.5" />
-            Manage Providers
-          </DkButton>
-        </div>
-      </SettingsCard>
-
-      {/* Local Game Scan Paths */}
-      <SettingsCard>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-white">Local Library Scan Paths</h3>
-            <p className="text-xs text-white/50 mt-0.5">
-              Directories where Otix monitors and scans for installed games and executables.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <DkButton size="sm" variant="ghost" onClick={handleAddScanFolder}>
-              <FolderPlus className="h-3.5 w-3.5" />
-              Add Folder
-            </DkButton>
-            <DkButton size="sm" onClick={handleTriggerScan} disabled={isScanning} loading={isScanning}>
-              <RefreshCw className="h-3.5 w-3.5" />
-              {isScanning ? 'Scanning...' : 'Scan Now'}
-            </DkButton>
-          </div>
-        </div>
-
-        <div className="space-y-1.5 pt-3">
-          {scanPaths.length > 0 ? (
-            scanPaths.map((p, idx) => (
-              <div
-                key={idx}
-                className="px-3 py-2 rounded-xl bg-white/[0.04] text-xs font-mono text-white/70 flex items-center justify-between gap-2"
-              >
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <FolderOpen size={14} className="text-primary shrink-0" />
-                  <span className="truncate">{p}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveScanFolder(p)}
-                  className="h-6 w-6 flex items-center justify-center rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 cursor-pointer"
-                  title="Remove folder"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))
-          ) : (
-            <div className="px-3 py-3 rounded-xl bg-white/[0.03] text-xs text-white/40 text-center">
-              Standard Steam, Epic, and GOG libraries are automatically detected. Click "Add Folder" to specify additional directories.
-            </div>
-          )}
-        </div>
-      </SettingsCard>
-
-      {/* Pinned free games — always visible regardless of sort/filter */}
-      <SettingsFreeGamesSection />
-
-      <div id="proposals" className="scroll-mt-28">
-        <ProposalsPage />
-      </div>
-
-      {/* Library Games List */}
-      <SettingsCard>
-        {/* Search & Filter Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-white/40" />
-            <input
-              type="text"
-              placeholder="Search library titles, developers, platforms..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 pl-9 pr-8 rounded-xl bg-white/5 text-xs text-white placeholder:text-white/30 outline-none focus:bg-white/10 transition-colors"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-2.5 text-white/40 hover:text-white"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            {/* Custom DkDropdown for Category / Filter */}
-            <DkDropdown
-              options={categoryDropdownOptions}
-              value={filterTab}
-              onChange={(val) => setFilterTab(val as ItemFilter)}
-              variant="filter"
-              label="Type"
-            />
-
-            {/* Custom DkDropdown for Platform */}
-            {availablePlatforms.length > 0 && (
-              <DkDropdown
-                options={platformDropdownOptions}
-                value={platformFilter}
-                onChange={setPlatformFilter}
-                variant="filter"
-                label="Platform"
-              />
-            )}
-
-            {/* Custom DkDropdown for Sort */}
-            <DkDropdown
-              options={sortDropdownOptions}
-              value={sortKey}
-              onChange={(val) => {
-                const newKey = val as SortKey
-                setSortKey(newKey)
-                if (newKey === 'recent' || newKey === 'playtime') {
-                  setSortDir('desc')
-                } else {
-                  setSortDir('asc')
-                }
+      <SettingsLibraryTabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        panels={{
+          overview: (
+            <SettingsLibraryOverviewSection
+              stats={{
+                total: stats.total,
+                matched: stats.matched,
+                candidates: stats.candidates,
+                unmatched: stats.unmatched,
+                loading: gamesLoading,
               }}
-              variant="filter"
-              label="Sort"
+              onNavigate={handleTabChange}
             />
+          ),
+          library: (
+            <div id="library" className="space-y-6 scroll-mt-28">
+              {loading ? (
+                <div className="flex items-center justify-center py-20 text-white/50 gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span>Loading library...</span>
+                </div>
+              ) : (
+                <>
+                  <SettingsCard className="space-y-4">
+                    <SectionHeader
+                      icon={Gamepad2}
+                      title="Catalog"
+                      description="Local, Steam, and Epic titles Otix has found — match them, review suggestions, or leave unmatched."
+                      action={
+                        <DkButton
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const close = openModal(
+                              <DkDialog
+                                open
+                                onOpenChange={(next) => {
+                                  if (!next) close()
+                                }}
+                                title="Library Providers"
+                                description="Configure scanner paths and platform integration providers."
+                                className="max-w-4xl"
+                              >
+                                <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1 pt-1 pb-1">
+                                  {pluginApi && <PluginSlot location="library:scan" pluginApi={pluginApi} />}
+                                </div>
+                              </DkDialog>,
+                            )
+                          }}
+                        >
+                          <FolderOpen className="h-3.5 w-3.5" />
+                          Manage Providers
+                        </DkButton>
+                      }
+                    />
 
-            {/* Sort Direction Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-              className="flex items-center justify-center h-8 w-8 rounded-full bg-white/[0.05] hover:bg-white/10 text-white/70 hover:text-white transition-all cursor-pointer select-none"
-              title={sortDir === 'asc' ? 'Ascending (Click for Descending)' : 'Descending (Click for Ascending)'}
-            >
-              <ArrowUpDown className={cn('h-3.5 w-3.5 transition-transform duration-200', sortDir === 'desc' && 'rotate-180 text-primary')} />
-            </button>
-          </div>
-        </div>
-
-        {/* All Games Grid */}
-        {gamesLoading ? (
-          <div className="flex items-center justify-center py-12 text-xs text-white/40 gap-2">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            Loading games...
-          </div>
-        ) : filteredGames.length === 0 ? (
-          <div className="py-12 text-center space-y-2">
-            <div className="h-10 w-10 rounded-2xl bg-white/5 flex items-center justify-center mx-auto text-white/20">
-              <Gamepad2 className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-white/80">No items found</p>
-              <p className="text-[11px] text-white/40 mt-0.5 max-w-xs mx-auto leading-relaxed">
-                {searchQuery || filterTab !== 'all' || platformFilter || sortKey !== 'title' || sortDir !== 'asc'
-                  ? 'Try clearing active filters.'
-                  : 'Click "Providers" above to add local game folders.'}
-              </p>
-            </div>
-            {(searchQuery || filterTab !== 'all' || platformFilter || sortKey !== 'title' || sortDir !== 'asc') && (
-              <div className="pt-1">
-                <button
-                  onClick={() => { setSearchQuery(''); setFilterTab('all'); setPlatformFilter(''); setSortKey('title'); setSortDir('asc') }}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer"
-                >
-                  Reset Filters
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-3">
-            {filteredGames.map((game: any) => {
-              const isMatched = !!game.otixMediaId
-              const isCandidate = !isMatched && !!game.otixMatchSuggestion
-              const iconUrl = game.posterUrl || game.localIconUrl || game.iconUrl
-              const gt = getGameType(game)
-
-              return (
-                <button
-                  key={game.id || game.title}
-                  onClick={() => handleGameClick(game)}
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-left transition-all group cursor-pointer relative overflow-hidden"
-                  style={{
-                    boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.06)',
-                  }}
-                >
-                  {/* Poster / Cover Thumbnail */}
-                  <div className="h-12 w-12 rounded-xl bg-white/10 shrink-0 overflow-hidden flex items-center justify-center relative">
-                    {iconUrl ? (
-                      <img src={iconUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
-                    ) : (
-                      <Gamepad2 className="h-5 w-5 text-white/30" />
-                    )}
-                  </div>
-
-                  {/* Title & Provider + Status Row */}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-white truncate whitespace-nowrap group-hover:text-primary transition-colors">
-                      {game.title}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1 min-w-0">
-                      <div title={game.platform || game.providerName || 'PC'} className="flex items-center justify-center p-1 rounded-md bg-white/5 shrink-0">
-                        <ProviderLogo platform={game.platform || game.providerName || 'pc'} className="h-3.5 w-3.5" />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div
+                        className="rounded-xl px-3.5 py-3 border border-white/5"
+                        style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+                      >
+                        <div className="flex items-center gap-1.5 text-white/40 mb-1">
+                          <HardDrive className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">Total</span>
+                        </div>
+                        <p className="text-lg font-bold text-white tabular-nums leading-none">
+                          {gamesLoading ? '…' : stats.total}
+                        </p>
+                        <p className="text-[11px] text-white/40 mt-1">All library items</p>
                       </div>
-                      {(gt === 'dlc_addon' || game.isDlc) && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                          DLC
-                        </span>
-                      )}
-                      {(gt === 'expansion' || gt === 'standalone_expansion') && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                          Expansion
-                        </span>
-                      )}
-                      {(gt === 'demo' || game.isDemo) && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                          Demo
-                        </span>
-                      )}
-                      {(gt === 'beta' || game.isBeta) && (gt !== 'demo' && !game.isDemo) && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                          Beta
-                        </span>
-                      )}
-                      {gt === 'mod' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                          Mod
-                        </span>
-                      )}
-                      {gt === 'soundtrack' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                          OST
-                        </span>
-                      )}
-                      {isMatched ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
-                          Matched
-                        </span>
-                      ) : isCandidate ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                          <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse shadow-[0_0_6px_rgba(56,189,248,0.7)]" />
-                          Review
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-white/40 bg-white/5 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                          <span className="h-1.5 w-1.5 rounded-full bg-white/30" />
-                          Unmatched
-                        </span>
-                      )}
+
+                      <div
+                        className="rounded-xl px-3.5 py-3 border border-white/5"
+                        style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+                      >
+                        <div className="flex items-center gap-1.5 text-white/40 mb-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">Matched</span>
+                        </div>
+                        <p className="text-lg font-bold text-emerald-400 tabular-nums leading-none">
+                          {gamesLoading ? '…' : stats.matched}
+                        </p>
+                        <p className="text-[11px] text-white/40 mt-1">Linked to metadata</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setFilterTab('candidates')}
+                        className={cn(
+                          'rounded-xl px-3.5 py-3 border text-left transition-colors',
+                          filterTab === 'candidates'
+                            ? 'border-sky-500/30 bg-sky-500/10'
+                            : 'border-white/5 hover:border-sky-500/20 hover:bg-sky-500/5',
+                        )}
+                        style={filterTab === 'candidates' ? undefined : { backgroundColor: 'var(--dk-surface-raised)' }}
+                      >
+                        <div className="flex items-center gap-1.5 text-white/40 mb-1">
+                          <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">Review</span>
+                        </div>
+                        <p className="text-lg font-bold text-sky-400 tabular-nums leading-none">
+                          {gamesLoading ? '…' : stats.candidates}
+                        </p>
+                        <p className="text-[11px] text-white/40 mt-1">Need a decision</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setFilterTab('unmatched')}
+                        className={cn(
+                          'rounded-xl px-3.5 py-3 border text-left transition-colors',
+                          filterTab === 'unmatched'
+                            ? 'border-white/20 bg-white/10'
+                            : 'border-white/5 hover:border-white/15 hover:bg-white/[0.04]',
+                        )}
+                        style={filterTab === 'unmatched' ? undefined : { backgroundColor: 'var(--dk-surface-raised)' }}
+                      >
+                        <div className="flex items-center gap-1.5 text-white/40 mb-1">
+                          <Gamepad2 className="h-3.5 w-3.5 text-white/50" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">Unmatched</span>
+                        </div>
+                        <p className="text-lg font-bold text-white/70 tabular-nums leading-none">
+                          {gamesLoading ? '…' : stats.unmatched}
+                        </p>
+                        <p className="text-[11px] text-white/40 mt-1">No Otix link yet</p>
+                      </button>
                     </div>
+                  </SettingsCard>
+
+                  <div id="proposals" className="scroll-mt-28">
+                    <ProposalsPage />
                   </div>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </SettingsCard>
+
+                  <SettingsCard>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                      <div className="relative flex-1 max-w-sm">
+                        <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-white/40" />
+                        <input
+                          type="text"
+                          placeholder="Search library titles, developers, platforms..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full h-9 pl-9 pr-8 rounded-xl bg-white/5 text-xs text-white placeholder:text-white/30 outline-none focus:bg-white/10 transition-colors"
+                        />
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2.5 top-2.5 text-white/40 hover:text-white"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                        <DkDropdown
+                          options={categoryDropdownOptions}
+                          value={filterTab}
+                          onChange={(val) => setFilterTab(val as ItemFilter)}
+                          variant="filter"
+                          label="Type"
+                        />
+
+                        {availablePlatforms.length > 0 && (
+                          <DkDropdown
+                            options={platformDropdownOptions}
+                            value={platformFilter}
+                            onChange={setPlatformFilter}
+                            variant="filter"
+                            label="Platform"
+                          />
+                        )}
+
+                        <DkDropdown
+                          options={sortDropdownOptions}
+                          value={sortKey}
+                          onChange={(val) => {
+                            const newKey = val as SortKey
+                            setSortKey(newKey)
+                            if (newKey === 'recent' || newKey === 'playtime') {
+                              setSortDir('desc')
+                            } else {
+                              setSortDir('asc')
+                            }
+                          }}
+                          variant="filter"
+                          label="Sort"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                          className="flex items-center justify-center h-8 w-8 rounded-full bg-white/[0.05] hover:bg-white/10 text-white/70 hover:text-white transition-all cursor-pointer select-none"
+                          title={sortDir === 'asc' ? 'Ascending (Click for Descending)' : 'Descending (Click for Ascending)'}
+                        >
+                          <ArrowUpDown
+                            className={cn(
+                              'h-3.5 w-3.5 transition-transform duration-200',
+                              sortDir === 'desc' && 'rotate-180 text-primary',
+                            )}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {gamesLoading ? (
+                      <div className="flex items-center justify-center py-12 text-xs text-white/40 gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        Loading games...
+                      </div>
+                    ) : filteredGames.length === 0 ? (
+                      <div className="py-12 text-center space-y-2">
+                        <div className="h-10 w-10 rounded-2xl bg-white/5 flex items-center justify-center mx-auto text-white/20">
+                          <Gamepad2 className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-white/80">No items found</p>
+                          <p className="text-[11px] text-white/40 mt-0.5 max-w-xs mx-auto leading-relaxed">
+                            {searchQuery ||
+                            filterTab !== 'all' ||
+                            platformFilter ||
+                            sortKey !== 'title' ||
+                            sortDir !== 'asc'
+                              ? 'Try clearing active filters.'
+                              : 'Add scan folders under Paths, or open Manage Providers.'}
+                          </p>
+                        </div>
+                        {(searchQuery ||
+                          filterTab !== 'all' ||
+                          platformFilter ||
+                          sortKey !== 'title' ||
+                          sortDir !== 'asc') && (
+                          <div className="pt-1">
+                            <button
+                              onClick={() => {
+                                setSearchQuery('')
+                                setFilterTab('all')
+                                setPlatformFilter('')
+                                setSortKey('title')
+                                setSortDir('asc')
+                              }}
+                              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer"
+                            >
+                              Reset Filters
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-3">
+                        {filteredGames.map((game: any) => {
+                          const isMatched = !!game.otixMediaId
+                          const isCandidate = !isMatched && !!game.otixMatchSuggestion
+                          const iconUrl = game.posterUrl || game.localIconUrl || game.iconUrl
+                          const gt = getGameType(game)
+
+                          return (
+                            <button
+                              key={game.id || game.title}
+                              onClick={() => handleGameClick(game)}
+                              className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-left transition-all group cursor-pointer relative overflow-hidden"
+                              style={{
+                                boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.06)',
+                              }}
+                            >
+                              <div className="h-12 w-12 rounded-xl bg-white/10 shrink-0 overflow-hidden flex items-center justify-center relative">
+                                {iconUrl ? (
+                                  <img
+                                    src={iconUrl}
+                                    alt=""
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                  />
+                                ) : (
+                                  <Gamepad2 className="h-5 w-5 text-white/30" />
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-white truncate whitespace-nowrap group-hover:text-primary transition-colors">
+                                  {game.title}
+                                </p>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-1 min-w-0">
+                                  <div
+                                    title={game.platform || game.providerName || 'PC'}
+                                    className="flex items-center justify-center p-1 rounded-md bg-white/5 shrink-0"
+                                  >
+                                    <ProviderLogo
+                                      platform={game.platform || game.providerName || 'pc'}
+                                      className="h-3.5 w-3.5"
+                                    />
+                                  </div>
+                                  {(gt === 'dlc_addon' || game.isDlc) && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                      DLC
+                                    </span>
+                                  )}
+                                  {(gt === 'expansion' || gt === 'standalone_expansion') && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                      Expansion
+                                    </span>
+                                  )}
+                                  {(gt === 'demo' || game.isDemo) && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                      Demo
+                                    </span>
+                                  )}
+                                  {(gt === 'beta' || game.isBeta) &&
+                                    gt !== 'demo' &&
+                                    !game.isDemo && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                        Beta
+                                      </span>
+                                    )}
+                                  {gt === 'mod' && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                      Mod
+                                    </span>
+                                  )}
+                                  {gt === 'soundtrack' && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                      OST
+                                    </span>
+                                  )}
+                                  {isMatched ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+                                      Matched
+                                    </span>
+                                  ) : isCandidate ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse shadow-[0_0_6px_rgba(56,189,248,0.7)]" />
+                                      Review
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-white/40 bg-white/5 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-white/30" />
+                                      Unmatched
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </SettingsCard>
+                </>
+              )}
+            </div>
+          ),
+          paths: <SettingsPathsSection onScanComplete={fetchGames} />,
+          downloads: <SettingsDownloadsSection embedded />,
+          organize: <SettingsOrganizeSection />,
+        }}
+      />
     </div>
   )
 }

@@ -77,3 +77,29 @@ def catalog_drain() -> dict:
     bounded by ``CATALOG_DRAIN_LIMIT``. Doubles as the periodic beat body the
     catalog-seed driver was designed for (inc 44)."""
     return catalog_seed.drain_catalog(limit=settings.CATALOG_DRAIN_LIMIT)
+
+
+@shared_task(name="integrations.catalog_seed_popular")
+def catalog_seed_popular() -> dict:
+    """Catalog seed sweep — enqueue popular movie/show and game IDs into SyncJob backlog.
+
+    Feeds unseen items from TMDB and IGDB popular discovery sources so that the
+    periodic catalog_drain worker task has a backlog to drain. Bounded by
+    ``CATALOG_POPULAR_SEED_LIMIT``. Resolved via the service module attribute at
+    call time so tests patch the body.
+    """
+    return catalog_seed.seed_popular_catalog(limit=settings.CATALOG_POPULAR_SEED_LIMIT)
+
+
+@shared_task(name="integrations.catalog_sync_updated")
+def catalog_sync_updated() -> dict:
+    """Catalog change-feed sweep — enqueue updated IDs from providers with change endpoints.
+
+    Discovers recently updated IDs from TMDB (/changes) and IGDB (updated_at)
+    and marks them for re-sync/seeding in the SyncJob backlog for catalog_drain.
+    Bounded by ``CATALOG_UPDATED_SYNC_LIMIT``. Resolved via the service module attribute at
+    call time so tests patch the body.
+    """
+    return catalog_seed.seed_updated_catalog(limit=settings.CATALOG_UPDATED_SYNC_LIMIT)
+
+

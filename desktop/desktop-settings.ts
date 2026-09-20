@@ -9,6 +9,8 @@ export interface DesktopSettings {
   alwaysOnTop: boolean;
   startMinimized: boolean;
   gamesDownloadPath?: string;
+  /** Rescan configured library folders when the desktop app starts. */
+  scanOnLaunch?: boolean;
 }
 
 const DEFAULT_SETTINGS: DesktopSettings = {
@@ -18,6 +20,7 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   alwaysOnTop: false,
   startMinimized: false,
   gamesDownloadPath: '',
+  scanOnLaunch: false,
 };
 
 let cachedSettings: DesktopSettings | null = null;

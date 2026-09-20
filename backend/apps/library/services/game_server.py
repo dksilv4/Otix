@@ -187,6 +187,113 @@ def list_pending_nodes_for(user) -> list[dict]:
     return pending
 
 
+def _normalized_url_keys(local_url: str | None, remote_url: str | None) -> set[str]:
+    keys: set[str] = set()
+    for url in (local_url, remote_url):
+        stripped = _strip_url(url)
+        if not stripped:
+            continue
+        parsed = urlparse(stripped)
+        host = (parsed.hostname or "").lower()
+        if host in _LOOPBACK_HOSTS:
+            host = "127.0.0.1"
+        if not host:
+            keys.add(stripped)
+            continue
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        keys.add(f"{host}:{port}")
+    return keys
+
+
+def server_match_keys(local_url: str | None, remote_url: str | None, auth_token: str | None) -> set[str]:
+    """Identity keys used to treat two UserGameServer rows as the same node."""
+    keys = {f"url:{key}" for key in _normalized_url_keys(local_url, remote_url)}
+    token = (auth_token or "").strip()
+    if token:
+        keys.add(f"token:{token}")
+    return keys
+
+
+def _merge_game_server_into(keeper: UserGameServer, extra: UserGameServer) -> None:
+    """Move downloads onto ``keeper`` and copy any missing connection fields."""
+    from apps.library.models import GameServerDownload
+
+    fields: list[str] = []
+    if extra.auth_token and extra.auth_token != keeper.auth_token:
+        keeper.auth_token = extra.auth_token
+        fields.append("auth_token")
+    if extra.name and keeper.name != extra.name:
+        keeper.name = extra.name
+        fields.append("name")
+    if extra.local_url and not keeper.local_url:
+        keeper.local_url = extra.local_url
+        fields.append("local_url")
+    if extra.remote_url and not keeper.remote_url:
+        keeper.remote_url = extra.remote_url
+        fields.append("remote_url")
+    if extra.is_online and not keeper.is_online:
+        keeper.is_online = True
+        fields.append("is_online")
+    if extra.last_seen_at and (keeper.last_seen_at is None or extra.last_seen_at > keeper.last_seen_at):
+        keeper.last_seen_at = extra.last_seen_at
+        fields.append("last_seen_at")
+    if fields:
+        keeper.save(update_fields=[*fields, "updated_at"])
+
+    for download in GameServerDownload.objects.filter(server=extra):
+        if GameServerDownload.objects.filter(server=keeper, nzo_id=download.nzo_id).exists():
+            download.delete()
+        else:
+            download.server = keeper
+            download.save(update_fields=["server"])
+    extra.delete()
+
+
+def collapse_duplicate_game_servers(user) -> int:
+    """Keep one row per node (token or normalized URL) and delete extras."""
+    servers = list(UserGameServer.objects.filter(user=user).order_by("created_at", "id"))
+    groups: list[tuple[set[str], UserGameServer]] = []
+    extras: list[tuple[UserGameServer, UserGameServer]] = []
+    for server in servers:
+        keys = server_match_keys(server.local_url, server.remote_url, server.auth_token)
+        matched: UserGameServer | None = None
+        for group_keys, keeper in groups:
+            if keys & group_keys:
+                matched = keeper
+                group_keys |= keys
+                break
+        if matched is None:
+            groups.append((keys, server))
+        else:
+            extras.append((server, matched))
+    for extra, keeper in extras:
+        _merge_game_server_into(keeper, extra)
+    return len(extras)
+
+
+def link_or_create_game_server(user, data: dict) -> tuple[UserGameServer, bool]:
+    """Register a node, or update the user's existing row for the same node."""
+    local_url = data.get("local_url") or ""
+    remote_url = data.get("remote_url") or ""
+    auth_token = data.get("auth_token") or ""
+    incoming = server_match_keys(local_url, remote_url, auth_token)
+    for server in UserGameServer.objects.filter(user=user).order_by("created_at", "id"):
+        existing = server_match_keys(server.local_url, server.remote_url, server.auth_token)
+        if not (incoming & existing):
+            continue
+        fields: list[str] = []
+        for field in ("name", "local_url", "remote_url", "auth_token", "is_active"):
+            value = data.get(field)
+            if value in (None, "") or getattr(server, field) == value:
+                continue
+            setattr(server, field, value)
+            fields.append(field)
+        if fields:
+            server.save(update_fields=[*fields, "updated_at"])
+        return server, False
+    return UserGameServer.objects.create(user=user, **data), True
+
+
 def _auth_headers(server: UserGameServer) -> dict[str, str]:
     if not server.auth_token:
         return {}

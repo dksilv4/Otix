@@ -22,15 +22,17 @@ describe('settings navigation IA', () => {
     expect(NAV_ITEMS.find((i) => i.id === 'desktop')?.desktop).toBe(false)
     expect(NAV_ITEMS.find((i) => i.id === 'library')?.group).toBe('library')
     expect(NAV_ITEMS.find((i) => i.id === 'library')?.desktop).toBe(false)
-    expect(NAV_ITEMS.find((i) => i.id === 'downloads')?.group).toBe('library')
     expect(NAV_ITEMS.find((i) => i.id === 'connections')?.label).toBe('Connections')
-    expect(NAV_ITEMS.some((i) => i.id === 'overview' || i.id === 'integrations' || i.id === 'general')).toBe(false)
+    expect(NAV_ITEMS.some((i) => i.id === 'overview' || i.id === 'integrations' || i.id === 'general' || i.id === 'downloads')).toBe(false)
   })
 
   it('matches sidebar search against labels and keywords', () => {
     const connections = NAV_ITEMS.find((i) => i.id === 'connections')!
     expect(matchNavItem(connections, 'plex')).toBe(true)
     expect(matchNavItem(connections, 'xyzzy')).toBe(false)
+    const library = NAV_ITEMS.find((i) => i.id === 'library')!
+    expect(matchNavItem(library, 'downloads')).toBe(true)
+    expect(matchNavItem(library, 'sabnzbd')).toBe(true)
     const launcher = NAV_ITEMS.find((i) => i.id === 'launcher')!
     expect(matchNavItem(launcher, 'xbox')).toBe(true)
     expect(matchNavItem(launcher, 'layout')).toBe(true)

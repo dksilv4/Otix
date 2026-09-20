@@ -697,6 +697,155 @@ def run_daily_tmdb_import(limit: int | None = None) -> dict[str, Any]:
     }
 
 
+def seed_popular_catalog(limit: int | None = 50) -> dict[str, Any]:
+    """Beat body for periodic catalog seeding: enqueue popular movies, shows, and games.
+
+    Enqueues unseen IDs from TMDB popular movies and shows (if TMDB credentials
+    are configured) and IGDB popular games (if IGDB credentials are configured).
+    Returns a unified summary dict for beat/worker reporting.
+    """
+    effective_limit = limit if limit is not None else 50
+    result: dict[str, Any] = {}
+
+    if settings.TMDB_API_KEY or settings.TMDB_RAT:
+        result["tmdb"] = {
+            "movie": asyncio.run(enqueue_tmdb_popular("movie", limit=effective_limit)),
+            "show": asyncio.run(enqueue_tmdb_popular("show", limit=effective_limit)),
+        }
+    else:
+        result["tmdb"] = {"status": "unconfigured"}
+
+    if settings.IGDB_CLIENT_ID and settings.IGDB_CLIENT_SECRET:
+        result["igdb"] = {
+            "game": asyncio.run(enqueue_igdb_popular(limit=effective_limit)),
+        }
+    else:
+        result["igdb"] = {"status": "unconfigured"}
+
+    return result
+
+
+def _enqueue_change_ids(provider: str, entity_type: str, external_ids: list[str]) -> list[str]:
+    enqueued: list[str] = []
+    for ext_id in external_ids:
+        job = ensure_catalog_job(
+            provider, entity_type, ext_id, priority=3, force=True, dispatch=False
+        )
+        if job is not None:
+            enqueued.append(ext_id)
+    return enqueued
+
+
+async def enqueue_tmdb_changes(
+    entity_type: str,
+    *,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = 50,
+    provider: TMDBProvider | None = None,
+) -> dict[str, Any]:
+    """Fetch changed movie/show IDs from TMDB's /changes endpoint and enqueue them."""
+    if entity_type not in ("movie", "show"):
+        raise ValueError(f"TMDB changes only supports movie/show; got {entity_type!r}")
+    if provider is None:
+        provider = TMDBProvider()
+    now = datetime.now(UTC)
+    if not start_date:
+        start_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = now.strftime("%Y-%m-%d")
+
+    fetcher = provider.get_movie_changes if entity_type == "movie" else provider.get_show_changes
+    ids: list[str] = []
+    seen: set[int] = set()
+    page = 1
+    while len(ids) < limit:
+        data = await fetcher(start_date=start_date, end_date=end_date, page=page)
+        results = data.get("results") or []
+        if not results:
+            break
+        for item in results:
+            raw_id = item.get("id")
+            if raw_id is None or raw_id in seen:
+                continue
+            seen.add(raw_id)
+            ids.append(str(raw_id))
+            if len(ids) >= limit:
+                break
+        page += 1
+        total_pages = data.get("total_pages") or page
+        if page > total_pages:
+            break
+
+    enqueued = await sync_to_async(_enqueue_change_ids)(
+        provider="tmdb", entity_type=entity_type, external_ids=ids
+    )
+    return {
+        "provider": "tmdb",
+        "entity_type": entity_type,
+        "discovered": len(ids),
+        "enqueued": len(enqueued),
+        "external_ids": enqueued,
+    }
+
+
+async def enqueue_igdb_changes(
+    *,
+    start_timestamp: int | None = None,
+    limit: int = 50,
+    provider: IGDBProvider | None = None,
+) -> dict[str, Any]:
+    """Fetch changed game IDs from IGDB's updated_at endpoint and enqueue them."""
+    if provider is None:
+        provider = IGDBProvider()
+    if start_timestamp is None:
+        start_timestamp = int((datetime.now(UTC) - timedelta(days=1)).timestamp())
+
+    results = await provider.get_changed_game_ids(start_timestamp=start_timestamp, limit=limit)
+    ids: list[str] = []
+    seen: set[int] = set()
+    for game in results:
+        raw_id = game.get("id")
+        if not isinstance(raw_id, int) or raw_id in seen:
+            continue
+        seen.add(raw_id)
+        ids.append(str(raw_id))
+
+    enqueued = await sync_to_async(_enqueue_change_ids)(
+        provider="igdb", entity_type="game", external_ids=ids
+    )
+    return {
+        "provider": "igdb",
+        "entity_type": "game",
+        "discovered": len(ids),
+        "enqueued": len(enqueued),
+        "external_ids": enqueued,
+    }
+
+
+def seed_updated_catalog(limit: int | None = 50) -> dict[str, Any]:
+    """Beat body for changed/updated catalog seeding across supported providers."""
+    effective_limit = limit if limit is not None else 50
+    result: dict[str, Any] = {}
+
+    if settings.TMDB_API_KEY or settings.TMDB_RAT:
+        result["tmdb"] = {
+            "movie": asyncio.run(enqueue_tmdb_changes("movie", limit=effective_limit)),
+            "show": asyncio.run(enqueue_tmdb_changes("show", limit=effective_limit)),
+        }
+    else:
+        result["tmdb"] = {"status": "unconfigured"}
+
+    if settings.IGDB_CLIENT_ID and settings.IGDB_CLIENT_SECRET:
+        result["igdb"] = {
+            "game": asyncio.run(enqueue_igdb_changes(limit=effective_limit)),
+        }
+    else:
+        result["igdb"] = {"status": "unconfigured"}
+
+    return result
+
+
 def run_tmdb_deletion_scan() -> dict[str, Any]:
     """Sync wrapper over the async deletion-detection passes (movie then show)."""
     return {

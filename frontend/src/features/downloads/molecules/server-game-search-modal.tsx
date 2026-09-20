@@ -219,7 +219,6 @@ export function ServerGameSearchModal({
       title="Indexer results"
       description={`Search Prowlarr indexers on ${serverName} and queue a release to the server.`}
       className="flex max-h-[min(88vh,860px)] min-h-0 w-full max-w-3xl flex-col overflow-hidden"
-      showAmbient={false}
     >
       <form onSubmit={handleSearch} className="flex shrink-0 gap-2">
         <div className="relative flex-1">

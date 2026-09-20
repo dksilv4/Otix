@@ -3,6 +3,7 @@ import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import { apiClient } from '@/lib/api/client'
 import { openExternal } from '@/lib/utils/open-external'
+import EpicIcon from '@/assets/provider-logos/epic.svg?react'
 
 export interface EpicCodeModalProps {
   authUrl: string
@@ -35,7 +36,7 @@ export function EpicCodeModal({
   const handleSubmit = async () => {
     const code = paste.trim()
     if (!code) {
-      setError('Paste the authorization code from Epic.')
+      setError('Paste the authorization code from Epic Games.')
       return
     }
     setSubmitting(true)
@@ -58,16 +59,17 @@ export function EpicCodeModal({
         if (!open) onClose()
       }}
       title="Link Epic Games"
-      description="Sign in with Epic, then paste the authorization code or the JSON that contains authorizationCode. Otix never stores the refresh token in the browser."
+      description="Sign in with Epic Games, then paste the authorization code or the JSON that contains authorizationCode. Otix never stores the refresh token in the browser."
     >
       <div className="space-y-4">
         <DkButton
           type="button"
           variant="ghost"
+          leftIcon={EpicIcon}
           className="w-full bg-white/10 text-white shadow-none hover:bg-white/15"
           onClick={() => openExternal(authUrl)}
         >
-          Open Epic login
+          Open Epic Games login
         </DkButton>
         <div className="space-y-1">
           <label htmlFor="epic-auth-code" className="block pl-1 text-sm font-medium">

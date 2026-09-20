@@ -82,21 +82,12 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     id: 'library',
-    label: 'Library',
+    label: 'Library & Downloads',
     icon: HardDrive,
     desktop: false,
     requiresAuth: false,
     group: 'library',
-    keywords: 'scan folders matching proposals metadata games',
-  },
-  {
-    id: 'downloads',
-    label: 'Downloads',
-    icon: Download,
-    desktop: false,
-    requiresAuth: false,
-    group: 'library',
-    keywords: 'paths organizer game servers folders history',
+    keywords: 'overview scan folders matching proposals metadata games downloads paths organizer game servers folders history sabnzbd organize automation naming',
   },
   {
     id: 'connections',

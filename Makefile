@@ -10,7 +10,8 @@
 
 .PHONY: help up down build logs logs-all logs-worker shell worker-shell \
 	db-shell redis-shell deps migrate makemigrations seed create-admin lint drift parity \
-	test check celery-status celery-queues celery-stats
+	test check celery-status celery-queues celery-stats \
+	package-frontend build-frontend build-backend build-images prod-up prod-down
 
 .DEFAULT_GOAL := help
 
@@ -102,3 +103,21 @@ celery-queues: ## Queues each worker consumes
 
 celery-stats: ## Worker stats
 	docker compose exec worker celery -A config inspect stats
+
+# ── Release & Packaging ──────────────────────────────────────────────────
+package-frontend: ## Build frontend production static bundle and release tarball
+	cd frontend && npm run package:dist
+
+build-frontend: ## Build frontend production Docker image
+	docker build -t otix-frontend:latest -f frontend/Dockerfile frontend/
+
+build-backend: ## Build backend production Docker image
+	docker build -t otix-backend:latest -f backend/Dockerfile backend/
+
+build-images: build-backend build-frontend ## Build both production Docker images
+
+prod-up: ## Start the production compose stack
+	docker compose -f docker-compose.prod.yml up -d
+
+prod-down: ## Stop the production compose stack
+	docker compose -f docker-compose.prod.yml down

@@ -7,6 +7,10 @@ import { PathInput } from '@/components/path-picker'
 import { ProviderLogo } from '@/features/settings/components/atoms/provider-logo'
 import { apiClient } from '@/lib/api/client'
 import { isDesktop } from '@/lib/desktop/api'
+import { useModal } from '@/lib/modals'
+import { useGameServers } from '@/features/downloads/use-server-downloads'
+import { openExternal } from '@/lib/utils/open-external'
+import { EpicCodeModal } from '@/features/settings/components/organisms/epic-code-modal'
 
 interface ConfigField {
   key: string
@@ -76,16 +80,24 @@ export function PluginSlot({ location, pluginApi }: Props) {
   }
 
   const isLibraryScan = location === 'library:scan'
+  const filteredSlotData = isLibraryScan
+    ? slotData.filter((entry) => entry.pluginId !== 'otix-epic')
+    : slotData
 
-  if (slotData.length === 0 && !isLibraryScan) return null
+  if (filteredSlotData.length === 0 && !isLibraryScan) return null
 
   return (
     <div className="space-y-4">
-      {isLibraryScan && <SteamScanSlotCard />}
+      {isLibraryScan && (
+        <>
+          <SteamScanSlotCard />
+          <EpicScanSlotCard />
+        </>
+      )}
 
-      {slotData.length > 0 && (
+      {filteredSlotData.length > 0 && (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
-          {slotData.map(entry => {
+          {filteredSlotData.map(entry => {
             if (entry.data?.type === 'scan') {
               return <ScanSlotCard key={entry.pluginId} entry={entry} pluginApi={pluginApi} />
             }
@@ -299,6 +311,193 @@ function SteamScanSlotCard() {
               <span>{steamError}</span>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EpicScanSlotCard() {
+  const { openModal } = useModal()
+  const { data: gameServers = [] } = useGameServers()
+  const hasOnlineNode = gameServers.some((s) => s.isOnline)
+
+  const [epicConnected, setEpicConnected] = useState(false)
+  const [epicDisplayName, setEpicDisplayName] = useState<string | null>(null)
+  const [epicAccountId, setEpicAccountId] = useState<string | null>(null)
+  const [epicScanning, setEpicScanning] = useState(false)
+  const [epicConnecting, setEpicConnecting] = useState(false)
+  const [epicMessage, setEpicMessage] = useState('')
+  const [epicError, setEpicError] = useState('')
+  const [scanResult, setScanResult] = useState<{ totalInEpic: number; matchedInOtix: number; failed: number } | null>(null)
+
+  const fetchEpicStatus = useCallback(async () => {
+    try {
+      const { data } = await apiClient.get<{
+        connected?: boolean
+        displayName?: string | null
+        accountId?: string | null
+      }>('/integrations/epic/status')
+      setEpicConnected(Boolean(data.connected))
+      setEpicDisplayName(data.displayName ?? null)
+      setEpicAccountId(data.accountId ?? null)
+    } catch {
+      setEpicConnected(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchEpicStatus()
+  }, [fetchEpicStatus])
+
+  const handleConnectEpic = async () => {
+    setEpicConnecting(true)
+    setEpicError('')
+    try {
+      if (!hasOnlineNode) {
+        setEpicError('Connect an Otix Server to link Epic.')
+        return
+      }
+      const { data } = await apiClient.post('/auth/oauth/epic')
+      const authUrl = data.authUrl || data.auth_url
+      const state = data.state
+      const openOAuthWindow = (window as any).desktopAPI?.plugin?.openOAuthWindow
+      if (isDesktop() && openOAuthWindow) {
+        const win = await openOAuthWindow(authUrl, 'id/api/redirect') as {
+          success?: boolean
+          code?: string
+          error?: string
+        }
+        if (!win?.success || !win.code) {
+          setEpicError((win?.error as string | undefined) || 'Login cancelled')
+          return
+        }
+        await apiClient.post('/auth/oauth/epic/callback', { code: win.code, state })
+        await fetchEpicStatus()
+        return
+      }
+      openExternal(authUrl)
+      const closeRef = { current: () => {} }
+      closeRef.current = openModal(
+        <EpicCodeModal
+          authUrl={authUrl}
+          state={state}
+          onClose={() => closeRef.current()}
+          onLinked={() => { void fetchEpicStatus() }}
+        />
+      )
+    } catch (err: any) {
+      setEpicError(err?.response?.data?.detail || err?.message || 'Failed to initiate Epic Games login.')
+    } finally {
+      setEpicConnecting(false)
+    }
+  }
+
+  const handleScanEpicGames = async () => {
+    setEpicScanning(true)
+    setEpicError('')
+    setEpicMessage('')
+    try {
+      const { data } = await apiClient.post<{
+        totalInEpic: number
+        matchedInOtix: number
+        failed: number
+      }>('/integrations/epic/scan')
+      setScanResult(data)
+      let msg = `Scanned Epic library: ${data.matchedInOtix} matched out of ${data.totalInEpic} games.`
+      if (data.failed > 0) msg += ` (${data.failed} unmatched)`
+      setEpicMessage(msg)
+      window.dispatchEvent(new CustomEvent('scanned-games-updated'))
+    } catch (err: any) {
+      setEpicError(err?.response?.data?.detail || err?.message || 'Failed to scan Epic games.')
+    } finally {
+      setEpicScanning(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl p-4 bg-white/5 border border-white/10 space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20 text-white">
+            <ProviderLogo platform="epic" className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-bold text-white">Epic Games Provider</h4>
+              {epicConnected ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Connected
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-white/50 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                  Not Linked
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-white/50 mt-0.5">
+              {epicConnected && epicDisplayName
+                ? `Linked as ${epicDisplayName}${epicAccountId ? ` (${epicAccountId})` : ''}`
+                : !hasOnlineNode
+                  ? 'Connect an Otix Server to link Epic.'
+                  : 'Scan and sync your Epic Games library.'}
+            </p>
+          </div>
+        </div>
+
+        {!epicConnected && (
+          <button
+            onClick={handleConnectEpic}
+            disabled={epicConnecting || !hasOnlineNode}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
+          >
+            <ProviderLogo platform="epic" className="h-3.5 w-3.5" />
+            Connect Epic Games
+          </button>
+        )}
+      </div>
+
+      {epicConnected && (
+        <div className="pt-2 space-y-3 border-t border-white/10">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <button
+              onClick={handleScanEpicGames}
+              disabled={epicScanning}
+              className="flex flex-col p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer disabled:opacity-50"
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
+                  <RefreshCw className={`h-3.5 w-3.5 text-white/80 ${epicScanning ? 'animate-spin' : ''}`} />
+                  Scan Epic Games
+                </span>
+              </div>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                {scanResult ? `${scanResult.matchedInOtix} matched / ${scanResult.totalInEpic} total` : 'Import & match owned Epic titles'}
+              </p>
+            </button>
+          </div>
+
+          {epicMessage && (
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span>{epicMessage}</span>
+            </div>
+          )}
+
+          {epicError && (
+            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{epicError}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!epicConnected && epicError && (
+        <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{epicError}</span>
         </div>
       )}
     </div>

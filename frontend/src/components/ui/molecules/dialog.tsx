@@ -10,11 +10,11 @@ interface DkDialogProps {
   description?: string
   children: ReactNode
   className?: string
-  /** Soft color orbs behind the panel. Default true. */
+  /** @deprecated Ambient orbs have been removed from modals. */
   showAmbient?: boolean
 }
 
-function DkDialog({ open, onOpenChange, title, description, children, className, showAmbient = true }: DkDialogProps) {
+function DkDialog({ open, onOpenChange, title, description, children, className }: DkDialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -51,7 +51,7 @@ function DkDialog({ open, onOpenChange, title, description, children, className,
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'relative w-full max-w-lg rounded-3xl p-6 sm:p-7 backdrop-blur-3xl text-white transition-all overflow-hidden',
+          'relative w-full max-w-lg rounded-3xl p-6 sm:p-7 backdrop-blur-3xl text-white transition-all overflow-hidden bg-[#18181b]/95',
           className,
         )}
         style={{
@@ -60,15 +60,9 @@ function DkDialog({ open, onOpenChange, title, description, children, className,
           animation: 'authFormFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        {showAmbient && (
-          <>
-            <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-primary/15 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
-          </>
-        )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-black/[0.2]" />
 
-        <div className="relative z-10 flex h-full min-h-0 flex-col">
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         {title && (
           <div className="mb-5 flex shrink-0 items-start justify-between gap-4">
             <div className="space-y-1">

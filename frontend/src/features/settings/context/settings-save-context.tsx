@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useId, useMemo, type ReactNode } from 'react'
 
 export interface SettingsSaveConfig {
   hasChanges: boolean
@@ -11,6 +11,8 @@ export interface SettingsSaveConfig {
 
 interface SettingsSaveContextType {
   config: SettingsSaveConfig | null
+  registerConfig: (id: string, config: SettingsSaveConfig) => void
+  unregisterConfig: (id: string) => void
   setConfig: (config: SettingsSaveConfig | null) => void
   clearConfig: () => void
 }
@@ -18,18 +20,86 @@ interface SettingsSaveContextType {
 const SettingsSaveContext = createContext<SettingsSaveContextType | undefined>(undefined)
 
 export function SettingsSaveProvider({ children }: { children: ReactNode }) {
-  const [config, setConfigState] = useState<SettingsSaveConfig | null>(null)
+  const [registry, setRegistry] = useState<Record<string, SettingsSaveConfig>>({})
+  const [legacyConfig, setLegacyConfig] = useState<SettingsSaveConfig | null>(null)
+
+  const registerConfig = useCallback((id: string, cfg: SettingsSaveConfig) => {
+    setRegistry((prev) => {
+      const cur = prev[id]
+      if (
+        cur &&
+        cur.hasChanges === cfg.hasChanges &&
+        cur.saving === cfg.saving &&
+        cur.saved === cfg.saved &&
+        cur.label === cfg.label
+      ) {
+        return prev
+      }
+      return { ...prev, [id]: cfg }
+    })
+  }, [])
+
+  const unregisterConfig = useCallback((id: string) => {
+    setRegistry((prev) => {
+      if (!prev[id]) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }, [])
 
   const setConfig = useCallback((newConfig: SettingsSaveConfig | null) => {
-    setConfigState(newConfig)
+    setLegacyConfig(newConfig)
   }, [])
 
   const clearConfig = useCallback(() => {
-    setConfigState(null)
+    setLegacyConfig(null)
   }, [])
 
+  const combinedConfig = useMemo<SettingsSaveConfig | null>(() => {
+    const allConfigs = Object.values(registry)
+    if (legacyConfig) allConfigs.push(legacyConfig)
+
+    if (allConfigs.length === 0) return null
+
+    const hasChanges = allConfigs.some((c) => c.hasChanges)
+    const saving = allConfigs.some((c) => c.saving)
+    const saved = allConfigs.some((c) => c.saved)
+    const label = allConfigs.find((c) => c.label)?.label || 'Save Changes'
+
+    return {
+      hasChanges,
+      saving,
+      saved,
+      label,
+      onSave: async () => {
+        for (const c of allConfigs) {
+          if (c.hasChanges || c.onSave) {
+            await c.onSave?.()
+          }
+        }
+      },
+      onDiscard: () => {
+        for (const c of allConfigs) {
+          c.onDiscard?.()
+        }
+      },
+    }
+  }, [registry, legacyConfig])
+
+  const value = useMemo(
+    () => ({
+      config: combinedConfig,
+      registerConfig,
+      unregisterConfig,
+      setConfig,
+      clearConfig,
+    }),
+    [combinedConfig, registerConfig, unregisterConfig, setConfig, clearConfig],
+  )
+
   return (
-    <SettingsSaveContext.Provider value={{ config, setConfig, clearConfig }}>
+    <SettingsSaveContext.Provider value={value}>
       {children}
     </SettingsSaveContext.Provider>
   )
@@ -44,21 +114,36 @@ export function useSettingsSaveContext() {
 }
 
 export function useSettingsSaveBar(cfg: SettingsSaveConfig) {
-  const { setConfig, clearConfig } = useSettingsSaveContext()
+  const ctx = useContext(SettingsSaveContext)
+  const id = useId()
+  const onSaveRef = useRef(cfg.onSave)
+  onSaveRef.current = cfg.onSave
+  const onDiscardRef = useRef(cfg.onDiscard)
+  onDiscardRef.current = cfg.onDiscard
+
+  const registerConfig = ctx?.registerConfig
+  const unregisterConfig = ctx?.unregisterConfig
 
   useEffect(() => {
-    setConfig(cfg)
+    if (!registerConfig || !unregisterConfig) return
+    registerConfig(id, {
+      hasChanges: cfg.hasChanges,
+      saving: cfg.saving,
+      saved: cfg.saved,
+      label: cfg.label,
+      onSave: () => onSaveRef.current?.(),
+      onDiscard: () => onDiscardRef.current?.(),
+    })
     return () => {
-      clearConfig()
+      unregisterConfig(id)
     }
   }, [
+    id,
+    registerConfig,
+    unregisterConfig,
     cfg.hasChanges,
     cfg.saving,
     cfg.saved,
     cfg.label,
-    cfg.onSave,
-    cfg.onDiscard,
-    setConfig,
-    clearConfig,
   ])
 }

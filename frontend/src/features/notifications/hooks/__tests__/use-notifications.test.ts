@@ -13,6 +13,7 @@ vi.mock('@/lib/api/client', () => ({
 
 vi.mock('@/lib/providers/auth', () => ({
   useAuth: () => ({ isAuthenticated: true }),
+  useHasSession: () => true,
 }))
 
 describe('useNotifications', () => {
