@@ -6,7 +6,9 @@ are declared before the generic ``<tab>`` so ``installed``/``plex``/``steam``/
 ``epic``/``youtube`` are never shadowed.
 """
 
-from django.urls import path
+from django.urls import path, register_converter
+
+from apps.library.converters import SignedIntConverter
 
 from apps.library.views import (
     EpicLibraryView,
@@ -23,6 +25,8 @@ from apps.library.views import (
     GameServerExplorerSetPathView,
     GameServerFilesView,
     GameServerListCreateView,
+    GameServerLibrariesView,
+    GameServerOrganizeView,
     GameServerPendingView,
     GameServerPingView,
     GameServerProvidersView,
@@ -54,6 +58,10 @@ from apps.library.views import (
     GameServerUsenetSearchView,
     GameServerUsenetTestProwlarrView,
     GameServerUsenetTestSabnzbdView,
+    GameServerConnectionsSyncView,
+    GameServerInstancesImportView,
+    NodeConnectionsSyncView,
+    NodeConnectionsView,
     InstalledGamesView,
     LibraryTabView,
     PlexLibraryView,
@@ -66,219 +74,247 @@ from apps.library.views import (
     YoutubeLibraryView,
 )
 
+register_converter(SignedIntConverter, "sint")
+
 app_name = "library"
 
 urlpatterns = [
     path("installed", InstalledGamesView.as_view(), name="library-installed"),
+    path("node-connections", NodeConnectionsView.as_view(), name="library-node-connections"),
+    path(
+        "node-connections/sync",
+        NodeConnectionsSyncView.as_view(),
+        name="library-node-connections-sync",
+    ),
     path("servers", GameServerListCreateView.as_view(), name="library-servers"),
     path("servers/pending", GameServerPendingView.as_view(), name="library-servers-pending"),
-    path("servers/<int:server_id>", GameServerDetailView.as_view(), name="library-server-detail"),
-    path("servers/<int:server_id>/ping", GameServerPingView.as_view(), name="library-server-ping"),
+    path("servers/<sint:server_id>", GameServerDetailView.as_view(), name="library-server-detail"),
+    path("servers/<sint:server_id>/ping", GameServerPingView.as_view(), name="library-server-ping"),
     path(
-        "servers/<int:server_id>/explorer",
+        "servers/<sint:server_id>/connections/sync",
+        GameServerConnectionsSyncView.as_view(),
+        name="library-server-connections-sync",
+    ),
+    path(
+        "servers/<sint:server_id>/instances/import",
+        GameServerInstancesImportView.as_view(),
+        name="library-server-instances-import",
+    ),
+    path(
+        "servers/<sint:server_id>/explorer",
         GameServerExplorerBrowseView.as_view(),
         name="library-server-explorer-browse",
     ),
     path(
-        "servers/<int:server_id>/explorer/set-download-path",
+        "servers/<sint:server_id>/explorer/set-download-path",
         GameServerExplorerSetPathView.as_view(),
         name="library-server-explorer-set-path",
     ),
     path(
-        "servers/<int:server_id>/explorer/create-folder",
+        "servers/<sint:server_id>/explorer/create-folder",
         GameServerExplorerCreateFolderView.as_view(),
         name="library-server-explorer-create-folder",
     ),
     # Modular Providers & Downloads Framework
     path(
-        "servers/<int:server_id>/providers",
+        "servers/<sint:server_id>/providers",
         GameServerProvidersView.as_view(),
         name="library-server-providers",
     ),
     path(
-        "servers/<int:server_id>/providers/<str:provider_type>/<str:name>/test",
+        "servers/<sint:server_id>/providers/<str:provider_type>/<str:name>/test",
         GameServerProviderTestView.as_view(),
         name="library-server-provider-test",
     ),
     path(
-        "servers/<int:server_id>/downloads/search",
+        "servers/<sint:server_id>/downloads/search",
         GameServerDownloadsSearchView.as_view(),
         name="library-server-downloads-search",
     ),
     path(
-        "servers/<int:server_id>/downloads/add",
+        "servers/<sint:server_id>/downloads/add",
         GameServerDownloadsAddView.as_view(),
         name="library-server-downloads-add",
     ),
     path(
-        "servers/<int:server_id>/downloads/queue",
+        "servers/<sint:server_id>/downloads/queue",
         GameServerDownloadsQueueView.as_view(),
         name="library-server-downloads-queue",
     ),
     path(
-        "servers/<int:server_id>/downloads/queue/<str:download_id>",
+        "servers/<sint:server_id>/downloads/queue/<str:download_id>",
         GameServerDownloadsQueueView.as_view(),
         name="library-server-downloads-queue-item",
     ),
     path(
-        "servers/<int:server_id>/downloads/history",
+        "servers/<sint:server_id>/downloads/history",
         GameServerDownloadsHistoryView.as_view(),
         name="library-server-downloads-history",
     ),
     # Backward compatibility aliases for Usenet
     path(
-        "servers/<int:server_id>/usenet/config",
+        "servers/<sint:server_id>/usenet/config",
         GameServerUsenetConfigView.as_view(),
         name="library-server-usenet-config",
     ),
     path(
-        "servers/<int:server_id>/usenet/test-sabnzbd",
+        "servers/<sint:server_id>/usenet/test-sabnzbd",
         GameServerUsenetTestSabnzbdView.as_view(),
         name="library-server-usenet-test-sabnzbd",
     ),
     path(
-        "servers/<int:server_id>/usenet/test-prowlarr",
+        "servers/<sint:server_id>/usenet/test-prowlarr",
         GameServerUsenetTestProwlarrView.as_view(),
         name="library-server-usenet-test-prowlarr",
     ),
     path(
-        "servers/<int:server_id>/usenet/search",
+        "servers/<sint:server_id>/usenet/search",
         GameServerUsenetSearchView.as_view(),
         name="library-server-usenet-search",
     ),
     path(
-        "servers/<int:server_id>/usenet/download",
+        "servers/<sint:server_id>/usenet/download",
         GameServerUsenetDownloadView.as_view(),
         name="library-server-usenet-download",
     ),
     path(
-        "servers/<int:server_id>/usenet/queue",
+        "servers/<sint:server_id>/usenet/queue",
         GameServerUsenetQueueView.as_view(),
         name="library-server-usenet-queue",
     ),
     path(
-        "servers/<int:server_id>/usenet/queue/<str:nzo_id>",
+        "servers/<sint:server_id>/usenet/queue/<str:nzo_id>",
         GameServerUsenetQueueView.as_view(),
         name="library-server-usenet-queue-item",
     ),
     path(
-        "servers/<int:server_id>/usenet/history",
+        "servers/<sint:server_id>/usenet/history",
         GameServerUsenetHistoryView.as_view(),
         name="library-server-usenet-history",
     ),
     # Prowlarr & SABnzbd specific routes
     path(
-        "servers/<int:server_id>/prowlarr/indexers",
+        "servers/<sint:server_id>/prowlarr/indexers",
         GameServerProwlarrIndexersView.as_view(),
         name="library-server-prowlarr-indexers",
     ),
     path(
-        "servers/<int:server_id>/prowlarr/sync",
+        "servers/<sint:server_id>/prowlarr/sync",
         GameServerProwlarrSyncView.as_view(),
         name="library-server-prowlarr-sync",
     ),
     path(
-        "servers/<int:server_id>/sabnzbd/queue/<str:action>",
+        "servers/<sint:server_id>/sabnzbd/queue/<str:action>",
         GameServerSabnzbdQueueControlView.as_view(),
         name="library-server-sabnzbd-queue-control",
     ),
-    path("servers/<int:server_id>/scan", GameServerScanView.as_view(), name="library-server-scan"),
+    path("servers/<sint:server_id>/scan", GameServerScanView.as_view(), name="library-server-scan"),
     # Radarr routes
     path(
-        "servers/<int:server_id>/radarr/config",
+        "servers/<sint:server_id>/radarr/config",
         GameServerRadarrConfigView.as_view(),
         name="library-server-radarr-config",
     ),
     path(
-        "servers/<int:server_id>/radarr/test",
+        "servers/<sint:server_id>/radarr/test",
         GameServerRadarrTestView.as_view(),
         name="library-server-radarr-test",
     ),
     path(
-        "servers/<int:server_id>/radarr/rootfolders",
+        "servers/<sint:server_id>/radarr/rootfolders",
         GameServerRadarrRootFoldersView.as_view(),
         name="library-server-radarr-rootfolders",
     ),
     path(
-        "servers/<int:server_id>/radarr/qualityprofiles",
+        "servers/<sint:server_id>/radarr/qualityprofiles",
         GameServerRadarrQualityProfilesView.as_view(),
         name="library-server-radarr-qualityprofiles",
     ),
     path(
-        "servers/<int:server_id>/radarr/movies",
+        "servers/<sint:server_id>/radarr/movies",
         GameServerRadarrMoviesView.as_view(),
         name="library-server-radarr-movies",
     ),
     path(
-        "servers/<int:server_id>/radarr/lookup",
+        "servers/<sint:server_id>/radarr/lookup",
         GameServerRadarrLookupView.as_view(),
         name="library-server-radarr-lookup",
     ),
     path(
-        "servers/<int:server_id>/radarr/queue",
+        "servers/<sint:server_id>/radarr/queue",
         GameServerRadarrQueueView.as_view(),
         name="library-server-radarr-queue",
     ),
     path(
-        "servers/<int:server_id>/radarr/queue/<str:queue_id>",
+        "servers/<sint:server_id>/radarr/queue/<str:queue_id>",
         GameServerRadarrQueueView.as_view(),
         name="library-server-radarr-queue-item",
     ),
     path(
-        "servers/<int:server_id>/radarr/history",
+        "servers/<sint:server_id>/radarr/history",
         GameServerRadarrHistoryView.as_view(),
         name="library-server-radarr-history",
     ),
     # Sonarr routes
     path(
-        "servers/<int:server_id>/sonarr/config",
+        "servers/<sint:server_id>/sonarr/config",
         GameServerSonarrConfigView.as_view(),
         name="library-server-sonarr-config",
     ),
     path(
-        "servers/<int:server_id>/sonarr/test",
+        "servers/<sint:server_id>/sonarr/test",
         GameServerSonarrTestView.as_view(),
         name="library-server-sonarr-test",
     ),
     path(
-        "servers/<int:server_id>/sonarr/rootfolders",
+        "servers/<sint:server_id>/sonarr/rootfolders",
         GameServerSonarrRootFoldersView.as_view(),
         name="library-server-sonarr-rootfolders",
     ),
     path(
-        "servers/<int:server_id>/sonarr/qualityprofiles",
+        "servers/<sint:server_id>/sonarr/qualityprofiles",
         GameServerSonarrQualityProfilesView.as_view(),
         name="library-server-sonarr-qualityprofiles",
     ),
     path(
-        "servers/<int:server_id>/sonarr/series",
+        "servers/<sint:server_id>/sonarr/series",
         GameServerSonarrSeriesView.as_view(),
         name="library-server-sonarr-series",
     ),
     path(
-        "servers/<int:server_id>/sonarr/lookup",
+        "servers/<sint:server_id>/sonarr/lookup",
         GameServerSonarrLookupView.as_view(),
         name="library-server-sonarr-lookup",
     ),
     path(
-        "servers/<int:server_id>/sonarr/queue",
+        "servers/<sint:server_id>/sonarr/queue",
         GameServerSonarrQueueView.as_view(),
         name="library-server-sonarr-queue",
     ),
     path(
-        "servers/<int:server_id>/sonarr/queue/<str:queue_id>",
+        "servers/<sint:server_id>/sonarr/queue/<str:queue_id>",
         GameServerSonarrQueueView.as_view(),
         name="library-server-sonarr-queue-item",
     ),
     path(
-        "servers/<int:server_id>/sonarr/history",
+        "servers/<sint:server_id>/sonarr/history",
         GameServerSonarrHistoryView.as_view(),
         name="library-server-sonarr-history",
     ),
     path(
-        "servers/<int:server_id>/desktop",
+        "servers/<sint:server_id>/desktop",
         GameServerDesktopView.as_view(),
         name="library-server-desktop",
+    ),
+    path(
+        "servers/<sint:server_id>/libraries",
+        GameServerLibrariesView.as_view(),
+        name="library-server-libraries",
+    ),
+    path(
+        "servers/<sint:server_id>/organize",
+        GameServerOrganizeView.as_view(),
+        name="library-server-organize",
     ),
     path("server-games", GameServerFilesView.as_view(), name="library-server-games"),
     path("plex", PlexLibraryView.as_view(), name="library-plex"),

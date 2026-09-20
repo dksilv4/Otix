@@ -9,6 +9,7 @@ import { apiClient } from '@/lib/api/client'
 import { isDesktop } from '@/lib/desktop/api'
 import { useModal } from '@/lib/modals'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
+import { workerConnectionNodes } from '@/features/downloads/molecules/use-integration-target-server'
 import { openExternal } from '@/lib/utils/open-external'
 import { EpicCodeModal } from '@/features/settings/components/organisms/epic-code-modal'
 
@@ -320,7 +321,7 @@ function SteamScanSlotCard() {
 function EpicScanSlotCard() {
   const { openModal } = useModal()
   const { data: gameServers = [] } = useGameServers()
-  const hasOnlineNode = gameServers.some((s) => s.isOnline)
+  const hasOnlineNode = workerConnectionNodes(gameServers).some((s) => s.isOnline)
 
   const [epicConnected, setEpicConnected] = useState(false)
   const [epicDisplayName, setEpicDisplayName] = useState<string | null>(null)

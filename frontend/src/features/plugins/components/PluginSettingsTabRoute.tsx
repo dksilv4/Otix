@@ -12,13 +12,14 @@ import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/serv
 import { ServerRadarrSettingsModal } from '@/features/downloads/molecules/server-radarr-settings-modal'
 import { ServerSonarrSettingsModal } from '@/features/downloads/molecules/server-sonarr-settings-modal'
 import { useServerRadarrConfig, useServerSonarrConfig } from '@/features/downloads/use-server-arr'
+import { pickConnectionNode } from '@/features/downloads/molecules/use-integration-target-server'
 import { PluginSettingsPage } from './PluginSettingsPage'
 import { useModal } from '@/lib/modals'
 
 const LEGACY_SETTINGS_TABS: Record<string, { to: string; hash?: string }> = {
   overview: { to: '/settings/appearance' },
   general: { to: '/settings/appearance', hash: 'general' },
-  desktop: { to: '/settings/desktop' },
+  desktop: { to: '/settings/nodes' },
   launcher: { to: '/settings/launcher' },
   integrations: { to: '/settings/connections' },
   proposals: { to: '/settings/library', hash: 'proposals' },
@@ -30,7 +31,7 @@ export function PluginSettingsTabRoute() {
   const tab = tabs.find((t) => t.id === tabId)
   const { openModal } = useModal()
   const { data: servers = [] } = useGameServers()
-  const activeServer = servers[0]
+  const activeServer = pickConnectionNode(servers) || servers[0]
   const { data: usenetConfig } = useServerUsenetConfig(activeServer?.id)
   const { data: radarrConfig } = useServerRadarrConfig(activeServer?.id)
   const { data: sonarrConfig } = useServerSonarrConfig(activeServer?.id)

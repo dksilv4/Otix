@@ -308,6 +308,11 @@ def _mark_offline(server: UserGameServer, error: str) -> dict:
 
 def ping_server_sync(server: UserGameServer) -> dict:
     """Probe server /api/v1/status and update server model state."""
+    from apps.library.services.backend_node import is_backend_node
+
+    if is_backend_node(server):
+        return {"online": True, "latency_ms": 0}
+
     targets = contact_urls(server.primary_url)
     if not targets:
         return _mark_offline(server, "No server URL provided")
@@ -365,6 +370,11 @@ def server_proxy_request(
     timeout: float = 6.0,
 ) -> tuple[int, dict | list]:
     """Generic helper to proxy requests to connected otix-server node."""
+    from apps.library.services.backend_node import handle_backend_proxy, is_backend_node
+
+    if is_backend_node(server):
+        return handle_backend_proxy(server.user, method, path, json, params)
+
     targets = contact_urls(server.primary_url)
     if not targets:
         return 400, {"error": "Server URL not configured"}
@@ -439,8 +449,9 @@ def explorer_create_folder(
 # ── Usenet (SABnzbd & Prowlarr) Operations ──────────────────────────────
 
 
-def usenet_get_config(server: UserGameServer) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "GET", "/api/v1/usenet/config")
+def usenet_get_config(server: UserGameServer, include_secrets: bool = False) -> tuple[int, dict | list]:
+    params = {"include_secrets": True} if include_secrets else None
+    return usenet_proxy_request(server, "GET", "/api/v1/usenet/config", params=params)
 
 
 def usenet_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
@@ -598,8 +609,9 @@ def _instance_params(params: dict | None, instance_id: str | None) -> dict | Non
     return params
 
 
-def radarr_get_config(server: UserGameServer) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "GET", "/api/v1/radarr/config", timeout=6.0)
+def radarr_get_config(server: UserGameServer, include_secrets: bool = False) -> tuple[int, dict | list]:
+    params = {"include_secrets": True} if include_secrets else None
+    return usenet_proxy_request(server, "GET", "/api/v1/radarr/config", params=params, timeout=6.0)
 
 
 def radarr_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
@@ -702,8 +714,9 @@ def radarr_get_history(
 # ── Sonarr Operations ───────────────────────────────────────────────────
 
 
-def sonarr_get_config(server: UserGameServer) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/config", timeout=6.0)
+def sonarr_get_config(server: UserGameServer, include_secrets: bool = False) -> tuple[int, dict | list]:
+    params = {"include_secrets": True} if include_secrets else None
+    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/config", params=params, timeout=6.0)
 
 
 def sonarr_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
@@ -813,6 +826,22 @@ NO_EPIC_NODE = "Connect an Otix Server to link Epic."
 
 def desktop_get_settings(server: UserGameServer) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "GET", "/api/v1/desktop/settings", timeout=6.0)
+
+
+def node_list_libraries(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/libraries", timeout=8.0)
+
+
+def node_replace_libraries(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "PUT", "/api/v1/libraries", json=payload, timeout=20.0)
+
+
+def node_get_organize(server: UserGameServer) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/organize", timeout=6.0)
+
+
+def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "POST", "/api/v1/organize", json=payload, timeout=10.0)
 
 
 def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:

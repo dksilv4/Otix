@@ -338,7 +338,7 @@ export function SettingsLauncherPage() {
           <div className="text-xs space-y-1">
             <p className="font-semibold text-white">Looking for Game Library & Download Settings?</p>
             <p className="text-white/60 leading-relaxed">
-              Local folder scan paths, game matching, download directories, and game servers are managed under <span className="font-medium text-white">Settings &gt; Library &amp; Downloads</span>.
+              Local folder scan paths, game matching, download directories, and worker nodes are managed under <span className="font-medium text-white">Settings &gt; Library</span> and <span className="font-medium text-white">Settings &gt; Nodes</span>.
               Linked accounts (Steam, Plex, *arr) are under <span className="font-medium text-white">Settings &gt; Connections</span>.
             </p>
           </div>

@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.library.models import UserGameServer
+from apps.library.models import UserGameServer, UserNodeConnection
 from apps.media.models import MediaItem
 
 User = get_user_model()
@@ -23,7 +23,12 @@ class GameServersApiTests(TestCase):
     def test_list_servers_empty(self):
         response = self.client.get("/api/v1/library/servers")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), [])
+        rows = response.json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["id"], -2)
+        self.assertEqual(rows[0]["name"], "Otix backend")
+        self.assertTrue(rows[0]["is_backend"])
+        self.assertTrue(rows[0]["is_online"])
 
     @mock.patch("apps.library.services.game_server.httpx.Client")
     def test_create_and_list_server(self, mock_client_cls):
@@ -53,10 +58,13 @@ class GameServersApiTests(TestCase):
         self.assertTrue(data["is_online"])
         self.assertEqual(data["total_files"], 12)
 
-        # List servers
+        # List servers includes the Otix backend plus the new worker
         list_res = self.client.get("/api/v1/library/servers")
         self.assertEqual(list_res.status_code, 200)
-        self.assertEqual(len(list_res.json()), 1)
+        rows = list_res.json()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["id"], -2)
+        self.assertEqual(rows[1]["name"], "Home NAS")
 
     @mock.patch("apps.library.services.game_server.ping_server_sync")
     def test_create_same_node_twice_updates_instead_of_duplicating(self, mock_ping):
@@ -114,8 +122,9 @@ class GameServersApiTests(TestCase):
         list_res = self.client.get("/api/v1/library/servers")
         self.assertEqual(list_res.status_code, 200)
         rows = list_res.json()
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["name"], "DK Game Storage Server")
+        workers = [row for row in rows if not row.get("is_backend")]
+        self.assertEqual(len(workers), 1)
+        self.assertEqual(workers[0]["name"], "DK Game Storage Server")
         self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 1)
 
     def test_list_does_not_collapse_distinct_servers(self):
@@ -133,7 +142,9 @@ class GameServersApiTests(TestCase):
         )
         list_res = self.client.get("/api/v1/library/servers")
         self.assertEqual(list_res.status_code, 200)
-        self.assertEqual(len(list_res.json()), 2)
+        rows = list_res.json()
+        workers = [row for row in rows if not row.get("is_backend")]
+        self.assertEqual(len(workers), 2)
         self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 2)
 
     @mock.patch("apps.library.services.game_server.ping_server_sync")
@@ -695,3 +706,126 @@ class GameServersApiTests(TestCase):
         self.assertEqual(res.status_code, 200)
         body = mock_client.request.call_args.kwargs.get("json") or {}
         self.assertEqual(body.get("instance_id"), "anime")
+
+    @mock.patch("apps.library.services.game_server.httpx.Client")
+    def test_node_libraries_and_organize_proxy(self, mock_client_cls):
+        mock_client = mock.MagicMock()
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = [{"name": "Games", "path": "/games", "kind": "game"}]
+        mock_client.request.return_value = mock_resp
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        server = UserGameServer.objects.create(
+            user=self.user,
+            name="Home NAS",
+            local_url="http://192.168.1.100:8000",
+            auth_token="secret",
+        )
+
+        res = self.client.get(f"/api/v1/library/servers/{server.id}/libraries")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()[0]["path"], "/games")
+
+        mock_resp.json.return_value = {"status": "updated", "libraries": []}
+        res = self.client.put(
+            f"/api/v1/library/servers/{server.id}/libraries",
+            {"libraries": [{"name": "ISOs", "path": "/isos", "kind": "iso"}]},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+
+        mock_resp.json.return_value = {"autoOrganizeEnabled": True, "isoDownloadPath": "/isos"}
+        res = self.client.get(f"/api/v1/library/servers/{server.id}/organize")
+        self.assertEqual(res.status_code, 200)
+        organize = res.json()
+        self.assertTrue(organize.get("auto_organize_enabled") or organize.get("autoOrganizeEnabled"))
+
+        res = self.client.post(
+            f"/api/v1/library/servers/{server.id}/organize",
+            {"autoOrganizeEnabled": False},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+
+
+class BackendNodeApiTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="backend_node", email="backend@example.com", password="password123"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_backend_node_cannot_be_patched_or_deleted(self):
+        patch_res = self.client.patch(
+            "/api/v1/library/servers/-2",
+            {"name": "Renamed"},
+            format="json",
+        )
+        self.assertEqual(patch_res.status_code, 404)
+        del_res = self.client.delete("/api/v1/library/servers/-2")
+        self.assertEqual(del_res.status_code, 404)
+
+    def test_backend_node_stores_connections_libraries_and_organize(self):
+        usenet = self.client.post(
+            "/api/v1/library/servers/-2/usenet/config",
+            {"sabnzbd": {"host": "127.0.0.1", "port": 8080, "api_key": "sab-secret"}},
+            format="json",
+        )
+        self.assertEqual(usenet.status_code, 200)
+
+        stored = UserNodeConnection.objects.get(user=self.user)
+        self.assertEqual(stored.usenet["sabnzbd"]["host"], "127.0.0.1")
+        self.assertEqual(stored.usenet["sabnzbd"]["api_key"], "sab-secret")
+
+        fetched = self.client.get("/api/v1/library/servers/-2/usenet/config")
+        self.assertEqual(fetched.status_code, 200)
+        self.assertEqual(fetched.json()["sabnzbd"]["host"], "127.0.0.1")
+        self.assertEqual(fetched.json()["sabnzbd"]["api_key"], "***")
+
+        libraries = self.client.put(
+            "/api/v1/library/servers/-2/libraries",
+            {"libraries": [{"name": "Games", "path": "/data/games", "kind": "game"}]},
+            format="json",
+        )
+        self.assertEqual(libraries.status_code, 200)
+        listed = self.client.get("/api/v1/library/servers/-2/libraries")
+        self.assertEqual(listed.json()[0]["path"], "/data/games")
+
+        organize = self.client.post(
+            "/api/v1/library/servers/-2/organize",
+            {"autoOrganizeEnabled": True, "isoDownloadPath": "/data/isos"},
+            format="json",
+        )
+        self.assertEqual(organize.status_code, 200)
+        current = self.client.get("/api/v1/library/servers/-2/organize")
+        body = current.json()
+        self.assertTrue(body.get("autoOrganizeEnabled") or body.get("auto_organize_enabled"))
+        self.assertEqual(body.get("isoDownloadPath") or body.get("iso_download_path"), "/data/isos")
+
+        desktop = self.client.post(
+            "/api/v1/library/servers/-2/desktop",
+            {"gamesDownloadPath": "/data/downloads"},
+            format="json",
+        )
+        self.assertEqual(desktop.status_code, 200)
+        self.assertEqual(desktop.json().get("gamesDownloadPath") or desktop.json().get("games_download_path"), "/data/downloads")
+
+        tray = self.client.post(
+            "/api/v1/library/servers/-2/desktop",
+            {"launchOnStartup": True},
+            format="json",
+        )
+        self.assertEqual(tray.status_code, 400)
+
+    def test_backend_node_rejects_worker_only_actions(self):
+        scan = self.client.post("/api/v1/library/servers/-2/scan")
+        self.assertEqual(scan.status_code, 400)
+        explore = self.client.get("/api/v1/library/servers/-2/explorer")
+        self.assertEqual(explore.status_code, 400)
+        ping = self.client.post("/api/v1/library/servers/-2/ping")
+        self.assertEqual(ping.status_code, 200)
+        self.assertTrue(ping.json()["online"])
+        self.assertEqual(ping.json()["server"]["id"], -2)

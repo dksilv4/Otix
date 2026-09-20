@@ -4,7 +4,10 @@ import { DkButton } from '@ui/atoms/button'
 import { DkSwitch } from '@ui/atoms/switch'
 import { useAuth } from '@/lib/providers/auth'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
-import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
+import { getDesktopAPI } from '@/lib/desktop/api'
+import { apiClient } from '@/lib/api/client'
+import { useSettingsNode } from '../../context/settings-node-context'
+import { isLocalDesktopNodeId } from '../../local-desktop-node'
 import { SectionHeader } from '../molecules/settings-section-header'
 import { SettingsCard } from '../molecules/settings-card'
 import { SettingsRow } from '../molecules/settings-row'
@@ -38,7 +41,7 @@ function readScanOnLaunch(): boolean {
   }
 }
 
-export function SettingsOrganizeSection() {
+export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: number | null } = {}) {
   let user: { id: string } | null = null
   try {
     user = useAuth().user as { id: string } | null
@@ -47,7 +50,9 @@ export function SettingsOrganizeSection() {
   }
 
   const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
-  const desktop = isDesktop()
+  const { selectedNode } = useSettingsNode()
+  const nodeId = nodeIdProp !== undefined ? nodeIdProp : (selectedNode?.id ?? null)
+  const remoteNodeId = isLocalDesktopNodeId(nodeId) ? null : nodeId
 
   const [autoSearch, setAutoSearch] = useState(false)
   const [intervalHours, setIntervalHours] = useState(12)
@@ -58,9 +63,57 @@ export function SettingsOrganizeSection() {
   const [presetId, setPresetId] = useState('standard')
   const [preferredRepackers, setPreferredRepackers] = useState('')
   const [scanOnLaunch, setScanOnLaunch] = useState(readScanOnLaunch)
+  const [nodeLoaded, setNodeLoaded] = useState(false)
+  const [loadedSnap, setLoadedSnap] = useState('')
 
   useEffect(() => {
-    if (!dlConfig) return
+    if (!remoteNodeId) {
+      setNodeLoaded(false)
+      return
+    }
+    let cancelled = false
+    apiClient
+      .get<any>(`/library/servers/${remoteNodeId}/organize`)
+      .then((res) => {
+        const data = res?.data
+        if (cancelled || !data) return
+        setAutoSearch(Boolean(data.autoSearchWishlist ?? data.auto_search_wishlist))
+        setIntervalHours(Number(data.wishlistIntervalHours ?? data.wishlist_interval_hours ?? 12) || 12)
+        setAllowHypervisor(Boolean(data.allowHypervisor ?? data.allow_hypervisor))
+        setAutoOrganizeEnabled(Boolean(data.autoOrganizeEnabled ?? data.auto_organize_enabled))
+        setPostProcessEnabled(data.postProcessEnabled ?? data.post_process_enabled ?? true)
+        setNamingTemplate(data.namingTemplate ?? data.naming_template ?? NAMING_PRESETS[0].template)
+        setPreferredRepackers(data.preferredRepackers ?? data.preferred_repackers ?? '')
+        const template = data.namingTemplate ?? data.naming_template ?? NAMING_PRESETS[0].template
+        const match = NAMING_PRESETS.find((p) => p.template === template)
+        setPresetId(match?.id ?? 'custom')
+        if (typeof (data.scanOnLaunch ?? data.scan_on_launch) === 'boolean') {
+          setScanOnLaunch(Boolean(data.scanOnLaunch ?? data.scan_on_launch))
+        }
+        setNodeLoaded(true)
+        setLoadedSnap(
+          JSON.stringify({
+            autoSearch: Boolean(data.autoSearchWishlist ?? data.auto_search_wishlist),
+            intervalHours: Number(data.wishlistIntervalHours ?? data.wishlist_interval_hours ?? 12) || 12,
+            allowHypervisor: Boolean(data.allowHypervisor ?? data.allow_hypervisor),
+            autoOrganizeEnabled: Boolean(data.autoOrganizeEnabled ?? data.auto_organize_enabled),
+            postProcessEnabled: data.postProcessEnabled ?? data.post_process_enabled ?? true,
+            namingTemplate: data.namingTemplate ?? data.naming_template ?? NAMING_PRESETS[0].template,
+            preferredRepackers: data.preferredRepackers ?? data.preferred_repackers ?? '',
+            scanOnLaunch: Boolean(data.scanOnLaunch ?? data.scan_on_launch),
+          }),
+        )
+      })
+      .catch(() => {
+        if (!cancelled) setNodeLoaded(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [remoteNodeId])
+
+  useEffect(() => {
+    if (remoteNodeId || !dlConfig) return
     setAutoSearch(dlConfig.autoSearchWishlist ?? false)
     setIntervalHours(dlConfig.wishlistIntervalHours ?? 12)
     setAllowHypervisor(dlConfig.allowHypervisor ?? false)
@@ -70,9 +123,10 @@ export function SettingsOrganizeSection() {
     setPreferredRepackers(dlConfig.preferredRepackers ?? '')
     const match = NAMING_PRESETS.find((p) => p.template === (dlConfig.namingTemplate ?? NAMING_PRESETS[0].template))
     setPresetId(match?.id ?? 'custom')
-  }, [dlConfig])
+  }, [dlConfig, remoteNodeId])
 
   useEffect(() => {
+    if (remoteNodeId) return
     const api = getDesktopAPI()
     if (!api?.getDesktopSettings) return
     api.getDesktopSettings().then((ds: any) => {
@@ -86,6 +140,32 @@ export function SettingsOrganizeSection() {
   }, [])
 
   const handleSave = useCallback(async () => {
+    if (remoteNodeId) {
+      await apiClient.post(`/library/servers/${remoteNodeId}/organize`, {
+        postProcessEnabled,
+        autoSearchWishlist: autoSearch,
+        wishlistIntervalHours: intervalHours,
+        allowHypervisor,
+        autoOrganizeEnabled,
+        namingTemplate: namingTemplate || '',
+        preferredRepackers: preferredRepackers.trim(),
+        scanOnLaunch,
+      })
+      setLoadedSnap(
+        JSON.stringify({
+          autoSearch,
+          intervalHours,
+          allowHypervisor,
+          autoOrganizeEnabled,
+          postProcessEnabled,
+          namingTemplate,
+          preferredRepackers,
+          scanOnLaunch,
+        }),
+      )
+      return
+    }
+
     if (user) {
       await saveConfig({
         userId: user.id,
@@ -122,9 +202,37 @@ export function SettingsOrganizeSection() {
     namingTemplate,
     preferredRepackers,
     scanOnLaunch,
+    remoteNodeId,
   ])
 
   const handleDiscard = useCallback(() => {
+    if (remoteNodeId && loadedSnap) {
+      try {
+        const snap = JSON.parse(loadedSnap) as {
+          autoSearch: boolean
+          intervalHours: number
+          allowHypervisor: boolean
+          autoOrganizeEnabled: boolean
+          postProcessEnabled: boolean
+          namingTemplate: string
+          preferredRepackers: string
+          scanOnLaunch: boolean
+        }
+        setAutoSearch(snap.autoSearch)
+        setIntervalHours(snap.intervalHours)
+        setAllowHypervisor(snap.allowHypervisor)
+        setAutoOrganizeEnabled(snap.autoOrganizeEnabled)
+        setPostProcessEnabled(snap.postProcessEnabled)
+        setNamingTemplate(snap.namingTemplate)
+        setPreferredRepackers(snap.preferredRepackers)
+        setScanOnLaunch(snap.scanOnLaunch)
+        const match = NAMING_PRESETS.find((p) => p.template === snap.namingTemplate)
+        setPresetId(match?.id ?? 'custom')
+      } catch {
+        // ignore invalid snapshot
+      }
+      return
+    }
     if (dlConfig) {
       setAutoSearch(dlConfig.autoSearchWishlist ?? false)
       setIntervalHours(dlConfig.wishlistIntervalHours ?? 12)
@@ -137,19 +245,31 @@ export function SettingsOrganizeSection() {
       setPresetId(match?.id ?? 'custom')
     }
     setScanOnLaunch(readScanOnLaunch())
-  }, [dlConfig])
+  }, [dlConfig, loadedSnap, remoteNodeId])
 
-  const hasChanges = Boolean(
-    dlConfig &&
-      (autoSearch !== (dlConfig.autoSearchWishlist ?? false) ||
-        intervalHours !== (dlConfig.wishlistIntervalHours ?? 12) ||
-        allowHypervisor !== (dlConfig.allowHypervisor ?? false) ||
-        autoOrganizeEnabled !== (dlConfig.autoOrganizeEnabled ?? false) ||
-        postProcessEnabled !== (dlConfig.postProcessEnabled ?? true) ||
-        namingTemplate !== (dlConfig.namingTemplate ?? NAMING_PRESETS[0].template) ||
-        preferredRepackers !== (dlConfig.preferredRepackers ?? '') ||
-        scanOnLaunch !== readScanOnLaunch()),
-  )
+  const hasChanges = remoteNodeId
+    ? nodeLoaded &&
+      JSON.stringify({
+        autoSearch,
+        intervalHours,
+        allowHypervisor,
+        autoOrganizeEnabled,
+        postProcessEnabled,
+        namingTemplate,
+        preferredRepackers,
+        scanOnLaunch,
+      }) !== loadedSnap
+    : Boolean(
+        dlConfig &&
+          (autoSearch !== (dlConfig.autoSearchWishlist ?? false) ||
+            intervalHours !== (dlConfig.wishlistIntervalHours ?? 12) ||
+            allowHypervisor !== (dlConfig.allowHypervisor ?? false) ||
+            autoOrganizeEnabled !== (dlConfig.autoOrganizeEnabled ?? false) ||
+            postProcessEnabled !== (dlConfig.postProcessEnabled ?? true) ||
+            namingTemplate !== (dlConfig.namingTemplate ?? NAMING_PRESETS[0].template) ||
+            preferredRepackers !== (dlConfig.preferredRepackers ?? '') ||
+            scanOnLaunch !== readScanOnLaunch()),
+      )
 
   useSettingsSaveBar({
     hasChanges,
@@ -190,13 +310,11 @@ export function SettingsOrganizeSection() {
           description="Extract, verify, and move completed downloads into your library paths."
           action={<DkSwitch checked={postProcessEnabled} onCheckedChange={setPostProcessEnabled} />}
         />
-        {desktop && (
-          <SettingsRow
-            label="Scan library on launch"
-            description="Rescan configured folders when Otix starts."
-            action={<DkSwitch checked={scanOnLaunch} onCheckedChange={setScanOnLaunch} />}
-          />
-        )}
+        <SettingsRow
+          label="Scan library on launch"
+          description="Rescan configured folders when the selected node starts."
+          action={<DkSwitch checked={scanOnLaunch} onCheckedChange={setScanOnLaunch} />}
+        />
       </SettingsCard>
 
       <SettingsCard className="space-y-4">

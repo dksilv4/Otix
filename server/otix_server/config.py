@@ -18,10 +18,15 @@ class ServerSettings(BaseModel):
     downloads_path: str = "./storage/downloads"
 
 
+GAME_EXTENSIONS = [".iso", ".img", ".exe", ".zip", ".7z", ".rar"]
+ISO_EXTENSIONS = [".iso", ".img", ".chd", ".rvz", ".nkit", ".cso"]
+
+
 class LibraryConfig(BaseModel):
     name: str
     path: str
-    allowed_extensions: List[str] = [".iso", ".img", ".exe", ".zip", ".7z", ".rar"]
+    kind: str = "game"  # "game" | "iso"
+    allowed_extensions: List[str] = Field(default_factory=lambda: list(GAME_EXTENSIONS))
 
 
 class SavesConfig(BaseModel):
@@ -41,6 +46,18 @@ class DesktopSettings(BaseModel):
     always_on_top: bool = False
     start_minimized: bool = False
     games_download_path: str = ""
+    scan_on_launch: bool = False
+
+
+class OrganizeSettings(BaseModel):
+    post_process_enabled: bool = True
+    auto_search_wishlist: bool = False
+    wishlist_interval_hours: int = 12
+    preferred_repackers: str = ""
+    allow_hypervisor: bool = False
+    auto_organize_enabled: bool = False
+    naming_template: str = "{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}"
+    iso_download_path: str = ""
 
 
 class AppConfig(BaseModel):
@@ -51,6 +68,7 @@ class AppConfig(BaseModel):
     radarr: RadarrConfig = Field(default_factory=RadarrConfig)
     sonarr: SonarrConfig = Field(default_factory=SonarrConfig)
     desktop: DesktopSettings = Field(default_factory=DesktopSettings)
+    organize: OrganizeSettings = Field(default_factory=OrganizeSettings)
 
 
 

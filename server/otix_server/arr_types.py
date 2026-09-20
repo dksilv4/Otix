@@ -58,6 +58,12 @@ def _redact_key(value: str) -> str:
     return "***" if value else ""
 
 
+def _export_key(value: str, include_secrets: bool) -> str:
+    if include_secrets:
+        return value or ""
+    return _redact_key(value)
+
+
 class RadarrConfig(BaseModel):
     enabled: bool = False
     host: str = "127.0.0.1"
@@ -315,7 +321,7 @@ class SonarrConfig(BaseModel):
         return self.resolve().clean_url_base
 
 
-def serialize_radarr_config(config: RadarrConfig) -> Dict[str, Any]:
+def serialize_radarr_config(config: RadarrConfig, include_secrets: bool = False) -> Dict[str, Any]:
     inst = config.resolve()
     instances = []
     for item in config.instances or [inst]:
@@ -326,8 +332,8 @@ def serialize_radarr_config(config: RadarrConfig) -> Dict[str, Any]:
                 "enabled": item.enabled,
                 "host": item.host,
                 "port": item.port,
-                "api_key": _redact_key(item.api_key),
-                "apiKey": _redact_key(item.api_key),
+                "api_key": _export_key(item.api_key, include_secrets),
+                "apiKey": _export_key(item.api_key, include_secrets),
                 "use_ssl": item.use_ssl,
                 "useSsl": item.use_ssl,
                 "url_base": item.url_base,
@@ -346,8 +352,8 @@ def serialize_radarr_config(config: RadarrConfig) -> Dict[str, Any]:
         "enabled": config.enabled or any(item.enabled for item in (config.instances or [])),
         "host": inst.host,
         "port": inst.port,
-        "api_key": _redact_key(inst.api_key),
-        "apiKey": _redact_key(inst.api_key),
+        "api_key": _export_key(inst.api_key, include_secrets),
+        "apiKey": _export_key(inst.api_key, include_secrets),
         "use_ssl": inst.use_ssl,
         "useSsl": inst.use_ssl,
         "url_base": inst.url_base,
@@ -365,7 +371,7 @@ def serialize_radarr_config(config: RadarrConfig) -> Dict[str, Any]:
     }
 
 
-def serialize_sonarr_config(config: SonarrConfig) -> Dict[str, Any]:
+def serialize_sonarr_config(config: SonarrConfig, include_secrets: bool = False) -> Dict[str, Any]:
     inst = config.resolve()
     instances = []
     for item in config.instances or [inst]:
@@ -376,8 +382,8 @@ def serialize_sonarr_config(config: SonarrConfig) -> Dict[str, Any]:
                 "enabled": item.enabled,
                 "host": item.host,
                 "port": item.port,
-                "api_key": _redact_key(item.api_key),
-                "apiKey": _redact_key(item.api_key),
+                "api_key": _export_key(item.api_key, include_secrets),
+                "apiKey": _export_key(item.api_key, include_secrets),
                 "use_ssl": item.use_ssl,
                 "useSsl": item.use_ssl,
                 "url_base": item.url_base,
@@ -400,8 +406,8 @@ def serialize_sonarr_config(config: SonarrConfig) -> Dict[str, Any]:
         "enabled": config.enabled or any(item.enabled for item in (config.instances or [])),
         "host": inst.host,
         "port": inst.port,
-        "api_key": _redact_key(inst.api_key),
-        "apiKey": _redact_key(inst.api_key),
+        "api_key": _export_key(inst.api_key, include_secrets),
+        "apiKey": _export_key(inst.api_key, include_secrets),
         "use_ssl": inst.use_ssl,
         "useSsl": inst.use_ssl,
         "url_base": inst.url_base,

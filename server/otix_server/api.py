@@ -345,17 +345,25 @@ async def get_server_status(
     }
 
 
-@app.get("/api/v1/libraries")
-async def list_libraries(_: None = Depends(verify_token)):
-    """List configured storage libraries on this server node."""
-    cfg = get_app_config()
-    return [{"name": lib.name, "path": lib.path, "allowed_extensions": lib.allowed_extensions} for lib in cfg.game_libraries]
-
-
 class AddLibraryRequest(BaseModel):
     name: str
     path: str
+    kind: str | None = None
     allowed_extensions: list[str] | None = None
+    allowedExtensions: list[str] | None = None
+
+
+class ReplaceLibrariesRequest(BaseModel):
+    libraries: list[AddLibraryRequest]
+
+
+@app.get("/api/v1/libraries")
+async def list_libraries(_: None = Depends(verify_token)):
+    """List configured storage libraries on this server node."""
+    from otix_server.desktop_node import library_payload
+
+    cfg = get_app_config()
+    return [library_payload(lib) for lib in cfg.game_libraries]
 
 
 @app.post("/api/v1/libraries")
@@ -365,17 +373,41 @@ async def add_library(
     _: None = Depends(verify_token),
 ):
     """Assign and index a new storage folder on this server node."""
+    from otix_server.desktop_node import build_library_config, library_payload
+
     cfg = get_app_config()
-    from otix_server.config import LibraryConfig
-    new_lib = LibraryConfig(
-        name=req.name,
-        path=req.path,
-        allowed_extensions=req.allowed_extensions or [".iso", ".img", ".exe", ".zip", ".7z", ".rar"],
+    new_lib = build_library_config(req.model_dump(exclude_unset=True))
+    existing = any(
+        Path(lib.path).resolve() == Path(new_lib.path).resolve() and lib.kind == new_lib.kind
+        for lib in cfg.game_libraries
     )
-    cfg.game_libraries.append(new_lib)
-    indexer.libraries.append(new_lib.model_dump())
+    if not existing:
+        cfg.game_libraries.append(new_lib)
+        indexer.libraries.append(new_lib.model_dump())
+        save_config(cfg)
     files = indexer.scan_all()
-    return {"status": "added", "library": new_lib.model_dump(), "total_files": len(files)}
+    return {"status": "added", "library": library_payload(new_lib), "total_files": len(files)}
+
+
+@app.put("/api/v1/libraries")
+async def replace_libraries(
+    req: ReplaceLibrariesRequest,
+    indexer: StorageIndexer = Depends(get_indexer),
+    _: None = Depends(verify_token),
+):
+    """Replace the node's scan folders and re-index."""
+    from otix_server.desktop_node import library_payload, replace_game_libraries
+
+    cfg = get_app_config()
+    items = [item.model_dump(exclude_unset=True) for item in req.libraries]
+    libraries = replace_game_libraries(cfg, items)
+    indexer.libraries = [lib.model_dump() for lib in libraries]
+    files = indexer.scan_all()
+    return {
+        "status": "updated",
+        "libraries": [library_payload(lib) for lib in libraries],
+        "total_files": len(files),
+    }
 
 
 @app.post("/api/v1/scan")
@@ -819,18 +851,27 @@ async def modular_cancel_download(
 # ── Usenet Compatibility Aliases ─────────────────────────────────────────
 
 @app.get("/api/v1/usenet/config")
-async def get_usenet_config(_: None = Depends(verify_token)):
+async def get_usenet_config(
+    include_secrets: bool = Query(False),
+    _: None = Depends(verify_token),
+):
     """Get Usenet download client and indexer configuration."""
     cfg = get_app_config()
     u = cfg.usenet
     library_status = provider_library_status(cfg)
+
+    def key(value: str) -> str:
+        if include_secrets:
+            return value or ""
+        return "***" if value else ""
+
     return {
         "enabled": u.enabled,
         "sabnzbd": {
             "host": u.sabnzbd.host,
             "port": u.sabnzbd.port,
-            "api_key": "***" if u.sabnzbd.api_key else "",
-            "apiKey": "***" if u.sabnzbd.api_key else "",
+            "api_key": key(u.sabnzbd.api_key),
+            "apiKey": key(u.sabnzbd.api_key),
             "use_ssl": u.sabnzbd.use_ssl,
             "useSsl": u.sabnzbd.use_ssl,
             "url_base": u.sabnzbd.url_base,
@@ -848,8 +889,8 @@ async def get_usenet_config(_: None = Depends(verify_token)):
         "prowlarr": {
             "host": u.prowlarr.host,
             "port": u.prowlarr.port,
-            "api_key": "***" if u.prowlarr.api_key else "",
-            "apiKey": "***" if u.prowlarr.api_key else "",
+            "api_key": key(u.prowlarr.api_key),
+            "apiKey": key(u.prowlarr.api_key),
             "use_ssl": u.prowlarr.use_ssl,
             "useSsl": u.prowlarr.use_ssl,
             "url_base": u.prowlarr.url_base,
@@ -1129,10 +1170,13 @@ async def resume_sabnzbd(_: None = Depends(verify_token)):
 # ── Radarr Integration ──────────────────────────────────────────────────
 
 @app.get("/api/v1/radarr/config")
-async def get_radarr_config(_: None = Depends(verify_token)):
+async def get_radarr_config(
+    include_secrets: bool = Query(False),
+    _: None = Depends(verify_token),
+):
     """Get Radarr configuration."""
     cfg = get_app_config()
-    return serialize_radarr_config(cfg.radarr)
+    return serialize_radarr_config(cfg.radarr, include_secrets=include_secrets)
 
 
 class ArrInstanceUpdate(BaseModel):
@@ -1498,10 +1542,13 @@ async def get_radarr_history(
 # ── Sonarr Integration ──────────────────────────────────────────────────
 
 @app.get("/api/v1/sonarr/config")
-async def get_sonarr_config(_: None = Depends(verify_token)):
+async def get_sonarr_config(
+    include_secrets: bool = Query(False),
+    _: None = Depends(verify_token),
+):
     """Get Sonarr configuration."""
     cfg = get_app_config()
-    return serialize_sonarr_config(cfg.sonarr)
+    return serialize_sonarr_config(cfg.sonarr, include_secrets=include_secrets)
 
 
 class UpdateSonarrConfigRequest(BaseModel):
@@ -1748,7 +1795,9 @@ async def get_sonarr_history(
 
 from otix_server.desktop_node import (
     apply_desktop_settings,
+    apply_organize_settings,
     get_desktop_settings_dict,
+    get_organize_settings_dict,
 )
 
 
@@ -1765,6 +1814,8 @@ class DesktopSettingsPayload(BaseModel):
     start_minimized: Optional[bool] = None
     gamesDownloadPath: Optional[str] = None
     games_download_path: Optional[str] = None
+    scanOnLaunch: Optional[bool] = None
+    scan_on_launch: Optional[bool] = None
 
 
 @app.get("/api/v1/desktop/settings")
@@ -1783,3 +1834,42 @@ async def update_node_desktop_settings(
     cfg = get_app_config()
     data = payload.model_dump(exclude_unset=True)
     return apply_desktop_settings(cfg, data)
+
+
+class OrganizeSettingsPayload(BaseModel):
+    postProcessEnabled: Optional[bool] = None
+    post_process_enabled: Optional[bool] = None
+    autoSearchWishlist: Optional[bool] = None
+    auto_search_wishlist: Optional[bool] = None
+    wishlistIntervalHours: Optional[int] = None
+    wishlist_interval_hours: Optional[int] = None
+    preferredRepackers: Optional[str] = None
+    preferred_repackers: Optional[str] = None
+    allowHypervisor: Optional[bool] = None
+    allow_hypervisor: Optional[bool] = None
+    autoOrganizeEnabled: Optional[bool] = None
+    auto_organize_enabled: Optional[bool] = None
+    namingTemplate: Optional[str] = None
+    naming_template: Optional[str] = None
+    isoDownloadPath: Optional[str] = None
+    iso_download_path: Optional[str] = None
+    scanOnLaunch: Optional[bool] = None
+    scan_on_launch: Optional[bool] = None
+
+
+@app.get("/api/v1/organize")
+async def get_node_organize_settings(_: None = Depends(verify_token)):
+    """Library organize / automation settings stored on this node."""
+    cfg = get_app_config()
+    return get_organize_settings_dict(cfg)
+
+
+@app.post("/api/v1/organize")
+async def update_node_organize_settings(
+    payload: OrganizeSettingsPayload,
+    _: None = Depends(verify_token),
+):
+    """Update library organize / automation settings on this node."""
+    cfg = get_app_config()
+    data = payload.model_dump(exclude_unset=True)
+    return apply_organize_settings(cfg, data)

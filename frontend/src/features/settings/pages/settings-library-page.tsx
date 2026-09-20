@@ -9,15 +9,13 @@ import { ProviderLogo } from '../components/atoms/provider-logo'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { CandidateReviewModal } from '../components/organisms/settings-candidate-review-modal'
-import { SettingsPathsSection } from '../components/organisms/settings-paths-section'
 import { SettingsLibraryOverviewSection } from '../components/organisms/settings-library-overview-section'
 import {
   SettingsLibraryTabs,
+  isRetiredLibraryHash,
   resolveLibrarySettingsTab,
   type LibrarySettingsTab,
 } from '../components/organisms/settings-library-tabs'
-import { SettingsOrganizeSection } from '../components/organisms/settings-organize-section'
-import { SettingsDownloadsSection } from './settings-downloads-page'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useModal } from '@/lib/modals'
 import { apiClient } from '@/lib/api/client'
@@ -41,6 +39,30 @@ async function fetchAllLibraryPages(path: string): Promise<any[]> {
     cursor = data.nextCursor
   }
   return items
+}
+
+function mapInstalledGame(item: any): any {
+  const suggestionId = item.matchSuggestionMediaId || item.match_suggestion_media_id
+  return {
+    id: `installed-${item.id}`,
+    title: item.title,
+    posterUrl: item.catalogPosterUrl || item.catalog_poster_url || item.catalogTextlessPosterUrl || item.catalog_textless_poster_url || null,
+    localIconUrl: item.catalogLogoUrl || item.catalog_logo_url || null,
+    iconUrl: item.catalogLogoUrl || item.catalog_logo_url || null,
+    otixMediaId: item.mediaItemId || item.media_item_id,
+    platform: item.platform || 'pc',
+    providerName: item.platform || 'pc',
+    gameType: 'main_game',
+    mediaType: 'game',
+    developer: null,
+    lastPlayedAt: item.lastSeenAt || item.last_seen_at || null,
+    otixMatchSuggestion: suggestionId ? { id: suggestionId } : undefined,
+  }
+}
+
+async function fetchInstalledGames(): Promise<any[]> {
+  const { data } = await apiClient.get<any>('/library/installed', { params: { limit: 200 } })
+  return (data?.games ?? []).map(mapInstalledGame)
 }
 
 // Map a matched Steam MediaItemSummary to the page's local-game shape.
@@ -254,9 +276,14 @@ export function SettingsLibraryPage() {
   )
 
   useEffect(() => {
-    const next = resolveLibrarySettingsTab(location?.hash || (typeof window !== 'undefined' ? window.location.hash : ''))
+    const hash = location?.hash || (typeof window !== 'undefined' ? window.location.hash : '')
+    if (isRetiredLibraryHash(hash) && navigate) {
+      navigate({ to: '/settings/nodes', replace: true })
+      return
+    }
+    const next = resolveLibrarySettingsTab(hash)
     setActiveTab(next)
-  }, [location?.hash])
+  }, [location?.hash, navigate])
 
   const handleTabChange = useCallback(
     (tab: LibrarySettingsTab) => {
@@ -277,17 +304,18 @@ export function SettingsLibraryPage() {
     return () => clearTimeout(t)
   }, [])
 
-  // Fetch all games: local disk scan (desktop) + backend Steam & Epic library (matched + unmatched).
+  // Disk scan (this app or synced installs) + Steam & Epic library (matched + unmatched).
   const fetchGames = useCallback(async () => {
     setGamesLoading(true)
-    const [local, steamMatched, steamUnmatched, epicMatched, epicUnmatched] = await Promise.all([
+    const [local, installed, steamMatched, steamUnmatched, epicMatched, epicUnmatched] = await Promise.all([
       api?.getLocalGames?.().then((data: any[]) => data || []).catch(() => []),
+      fetchInstalledGames().catch(() => []),
       fetchAllLibraryPages('/library/steam').then((items) => items.map(mapSteamMatched)).catch(() => []),
       fetchAllLibraryPages('/library/steam/unmatched').then((items) => items.map(mapSteamUnmatched)).catch(() => []),
       fetchAllLibraryPages('/library/epic').then((items) => items.map(mapEpicMatched)).catch(() => []),
       fetchAllLibraryPages('/library/epic/unmatched').then((items) => items.map(mapEpicUnmatched)).catch(() => []),
     ])
-    setGames(deduplicateGames([...(local ?? []), ...steamMatched, ...steamUnmatched, ...epicMatched, ...epicUnmatched]))
+    setGames(deduplicateGames([...(local ?? []), ...installed, ...steamMatched, ...steamUnmatched, ...epicMatched, ...epicUnmatched]))
     setGamesLoading(false)
   }, [api])
 
@@ -487,20 +515,13 @@ export function SettingsLibraryPage() {
       <SectionHeader
         variant="page"
         icon={HardDrive}
-        title="Library & Downloads"
+        title="Library"
         description={
-          activeTab === 'overview'
-            ? 'Status across matching, storage paths, game servers, and automation.'
-            : activeTab === 'library'
-              ? 'Match titles to Otix metadata, review candidates, and manage providers.'
-              : activeTab === 'paths'
-                ? 'Set download destinations and folders Otix should scan.'
-                : activeTab === 'downloads'
-                  ? 'Connect remote game servers and manage download clients.'
-                  : 'Wishlist scanning, post-processing, and release naming.'
+          activeTab === 'library'
+            ? 'Match titles to Otix metadata, review candidates, and manage providers.'
+            : 'Status across matching, folders, nodes, and automation.'
         }
       />
-
       <SettingsLibraryTabs
         value={activeTab}
         onValueChange={handleTabChange}
@@ -854,9 +875,6 @@ export function SettingsLibraryPage() {
               )}
             </div>
           ),
-          paths: <SettingsPathsSection onScanComplete={fetchGames} />,
-          downloads: <SettingsDownloadsSection embedded />,
-          organize: <SettingsOrganizeSection />,
         }}
       />
     </div>

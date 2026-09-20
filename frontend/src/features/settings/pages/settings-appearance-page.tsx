@@ -4,7 +4,6 @@ import { useTheme } from '@/lib/providers/theme'
 import { useShaderQuality, SHADER_QUALITY_OPTIONS } from '@/lib/providers/shader-quality'
 import { useMotionPreference, MOTION_OPTIONS } from '@/lib/providers/motion-preference'
 import { cn } from '@/lib/utils'
-import { isDesktop } from '@/lib/desktop/api'
 import { Moon, Sun, Monitor, Plus, Palette } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
@@ -65,7 +64,6 @@ export function SettingsAppearancePage() {
   const { motionPreference, setMotionPreference } = useMotionPreference()
   const [accent, setAccent] = useState<string>(getInitialAccent)
   const [customAccents, setCustomAccents] = useState<string[]>(getCustomAccents)
-  const desktop = isDesktop()
   const location = useLocation()
   const navigate = useNavigate()
   useSettingsHashScroll()
@@ -74,7 +72,7 @@ export function SettingsAppearancePage() {
     if (location.hash === '#launcher' || location.hash === 'launcher') {
       navigate({ to: '/settings/launcher', replace: true })
     } else if (location.hash === '#desktop' || location.hash === 'desktop') {
-      navigate({ to: '/settings/desktop', replace: true })
+      navigate({ to: '/settings/nodes', replace: true })
     }
   }, [location.hash, navigate])
 

@@ -28,6 +28,10 @@ import {
 import { usePlexLibraries, streamPlexLibrarySync } from '@library/library-queries'
 import type { PlexLibraryInfo } from '@library/library-queries'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
+import {
+  pickConnectionNode,
+  workerConnectionNodes,
+} from '@/features/downloads/molecules/use-integration-target-server'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { useModal } from '@/lib/modals'
 import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
@@ -283,10 +287,11 @@ export function SettingsIntegrationsPage() {
 
   const { openModal } = useModal()
   const { data: gameServers = [] } = useGameServers({ enabled: isAuthenticated })
-  const activeServer = gameServers[0]
-  const hasOnlineNode = gameServers.some((s) => s.isOnline)
+  const liveNode = pickConnectionNode(gameServers)
+  const activeServer = liveNode
+  const hasOnlineNode = workerConnectionNodes(gameServers).some((s) => s.isOnline)
   const isEpicConnected = epicConnected
-  const arrServerId = isAuthenticated ? activeServer?.id : undefined
+  const arrServerId = isAuthenticated ? liveNode?.id : undefined
   const radarrLiveId = expandedId === 'radarr' ? arrServerId : undefined
   const sonarrLiveId = expandedId === 'sonarr' ? arrServerId : undefined
   const sabnzbdLiveId = expandedId === 'sabnzbd' ? arrServerId : undefined
@@ -295,8 +300,8 @@ export function SettingsIntegrationsPage() {
   const openSabnzbdModal = () => {
     openBoundModal(openModal, (onClose) => (
       <ServerSabnzbdSettingsModal
-        serverId={activeServer?.id}
-        serverName={activeServer?.name}
+        serverId={liveNode?.id}
+        serverName={liveNode?.name}
         onClose={onClose}
       />
     ))
@@ -305,8 +310,8 @@ export function SettingsIntegrationsPage() {
   const openProwlarrModal = () => {
     openBoundModal(openModal, (onClose) => (
       <ServerProwlarrSettingsModal
-        serverId={activeServer?.id}
-        serverName={activeServer?.name}
+        serverId={liveNode?.id}
+        serverName={liveNode?.name}
         onClose={onClose}
       />
     ))
@@ -315,8 +320,8 @@ export function SettingsIntegrationsPage() {
   const openRadarrModal = () => {
     openBoundModal(openModal, (onClose) => (
       <ServerRadarrSettingsModal
-        serverId={activeServer?.id}
-        serverName={activeServer?.name}
+        serverId={liveNode?.id}
+        serverName={liveNode?.name}
         onClose={onClose}
       />
     ))
@@ -325,8 +330,8 @@ export function SettingsIntegrationsPage() {
   const openSonarrModal = () => {
     openBoundModal(openModal, (onClose) => (
       <ServerSonarrSettingsModal
-        serverId={activeServer?.id}
-        serverName={activeServer?.name}
+        serverId={liveNode?.id}
+        serverName={liveNode?.name}
         onClose={onClose}
       />
     ))
@@ -335,12 +340,11 @@ export function SettingsIntegrationsPage() {
   const { config: dlConfig } = useDownloadConfig(user?.id)
   const { data: usenetConfig } = useServerUsenetConfig(arrServerId)
   const isSabnzbdConfigured = Boolean(
-    (activeServer && usenetConfig?.sabnzbd?.host &&
+    (usenetConfig?.sabnzbd?.host &&
       Boolean(usenetConfig?.sabnzbd?.api_key || usenetConfig?.sabnzbd?.configured)) ||
     (dlConfig?.sabnzbdHost && Boolean(dlConfig?.sabnzbdApiKey))
   )
   const isProwlarrConfigured = Boolean(
-    activeServer &&
     usenetConfig?.prowlarr?.host &&
     Boolean(usenetConfig?.prowlarr?.api_key || usenetConfig?.prowlarr?.configured)
   )
@@ -354,12 +358,10 @@ export function SettingsIntegrationsPage() {
   const { data: sonarrQueue } = useServerSonarrQueue(sonarrLiveId, 1, 50, 4000)
 
   const isRadarrConfigured = Boolean(
-    activeServer &&
     radarrConfig?.host &&
     Boolean(radarrConfig?.apiKey || radarrConfig?.api_key || radarrConfig?.configured)
   )
   const isSonarrConfigured = Boolean(
-    activeServer &&
     sonarrConfig?.host &&
     Boolean(sonarrConfig?.apiKey || sonarrConfig?.api_key || sonarrConfig?.configured)
   )
@@ -369,8 +371,8 @@ export function SettingsIntegrationsPage() {
     sabnzbdLiveId,
     3000
   )
-  const pauseSabnzbdMutation = usePauseSabnzbdQueue(activeServer?.id)
-  const resumeSabnzbdMutation = useResumeSabnzbdQueue(activeServer?.id)
+  const pauseSabnzbdMutation = usePauseSabnzbdQueue(liveNode?.id)
+  const resumeSabnzbdMutation = useResumeSabnzbdQueue(liveNode?.id)
   const isQueuePaused = Boolean(sabnzbdQueue?.status?.toLowerCase().includes('paused'))
 
   const handleToggleQueuePause = async () => {
@@ -486,7 +488,7 @@ export function SettingsIntegrationsPage() {
     } catch (err) {
       setEpicConnected(false)
       const msg = extractIntegrationMessage(err)
-      if (msg === 'Connect an Otix Server to link Epic.' || !gameServers.some((s) => s.isOnline)) {
+      if (msg === 'Connect an Otix Server to link Epic.' || !hasOnlineNode) {
         setEpicError('Connect an Otix Server to link Epic.')
       } else {
         setEpicError(msg)
@@ -1262,9 +1264,9 @@ export function SettingsIntegrationsPage() {
       keywords: 'sabnzbd usenet nzb download downloader queue client otix server',
       description: isSabnzbdConfigured
         ? activeServer
-          ? `Configured via Otix Server: ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
-          : 'Configured locally for desktop downloads'
-        : 'Connect SABnzbd to automate Usenet game downloads to your Otix Server.',
+          ? `Configured on ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
+          : 'Configured on this Otix node'
+        : 'Connect SABnzbd to automate Usenet game downloads on an Otix node.',
       isConnected: isSabnzbdConfigured,
       brandColor: BRAND_COLORS.sabnzbd,
       brandBg: BRAND_BG.sabnzbd,
@@ -1280,8 +1282,8 @@ export function SettingsIntegrationsPage() {
       keywords: 'prowlarr indexer search usenet torrent sync tracker otix server',
       description: isProwlarrConfigured
         ? activeServer
-          ? `Configured via Otix Server: ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
-          : 'Configured via Otix Server'
+          ? `Configured on ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
+          : 'Configured on this Otix node'
         : 'Connect Prowlarr to search and index game releases across Usenet and Torrent trackers.',
       isConnected: isProwlarrConfigured,
       brandColor: BRAND_COLORS.prowlarr,
@@ -1298,9 +1300,9 @@ export function SettingsIntegrationsPage() {
       keywords: 'radarr movie movies watchlist automated download arr otix server',
       description: isRadarrConfigured
         ? activeServer
-          ? `Configured via Otix Server: ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
-          : 'Configured via Otix Server'
-        : 'Connect Radarr to manage movie libraries and automate movie downloads on your server.',
+          ? `Configured on ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
+          : 'Configured on this Otix node'
+        : 'Connect Radarr to manage movie libraries and automate movie downloads on your node.',
       isConnected: isRadarrConfigured,
       brandColor: BRAND_COLORS.radarr,
       brandBg: BRAND_BG.radarr,
@@ -1316,9 +1318,9 @@ export function SettingsIntegrationsPage() {
       keywords: 'sonarr tv shows series automated download arr otix server',
       description: isSonarrConfigured
         ? activeServer
-          ? `Configured via Otix Server: ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
-          : 'Configured via Otix Server'
-        : 'Connect Sonarr to manage TV series and automate episode downloads on your server.',
+          ? `Configured on ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
+          : 'Configured on this Otix node'
+        : 'Connect Sonarr to manage TV series and automate episode downloads on your node.',
       isConnected: isSonarrConfigured,
       brandColor: BRAND_COLORS.sonarr,
       brandBg: BRAND_BG.sonarr,

@@ -5,7 +5,13 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from otix_server.config import AppConfig, save_config
+from otix_server.config import (
+    GAME_EXTENSIONS,
+    ISO_EXTENSIONS,
+    AppConfig,
+    LibraryConfig,
+    save_config,
+)
 
 WINDOWS_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 RUN_ENTRY_NAME = "OtixServer"
@@ -166,6 +172,7 @@ def get_desktop_settings_dict(cfg: AppConfig) -> Dict[str, Any]:
         "alwaysOnTop": cfg.desktop.always_on_top,
         "startMinimized": cfg.desktop.start_minimized,
         "gamesDownloadPath": cfg.desktop.games_download_path or cfg.server.downloads_path,
+        "scanOnLaunch": cfg.desktop.scan_on_launch,
     }
 
 
@@ -200,5 +207,116 @@ def apply_desktop_settings(cfg: AppConfig, payload: Dict[str, Any]) -> Dict[str,
             cfg.desktop.games_download_path = path_val
             cfg.server.downloads_path = path_val
 
+    if "scanOnLaunch" in payload or "scan_on_launch" in payload:
+        cfg.desktop.scan_on_launch = bool(payload.get("scanOnLaunch", payload.get("scan_on_launch")))
+
     save_config(cfg)
     return get_desktop_settings_dict(cfg)
+
+
+def get_organize_settings_dict(cfg: AppConfig) -> Dict[str, Any]:
+    org = cfg.organize
+    return {
+        "postProcessEnabled": org.post_process_enabled,
+        "autoSearchWishlist": org.auto_search_wishlist,
+        "wishlistIntervalHours": org.wishlist_interval_hours,
+        "preferredRepackers": org.preferred_repackers,
+        "allowHypervisor": org.allow_hypervisor,
+        "autoOrganizeEnabled": org.auto_organize_enabled,
+        "namingTemplate": org.naming_template,
+        "isoDownloadPath": org.iso_download_path,
+        "scanOnLaunch": cfg.desktop.scan_on_launch,
+        "gamesDownloadPath": cfg.desktop.games_download_path or cfg.server.downloads_path,
+    }
+
+
+def apply_organize_settings(cfg: AppConfig, payload: Dict[str, Any]) -> Dict[str, Any]:
+    org = cfg.organize
+    mapping = {
+        "postProcessEnabled": ("post_process_enabled", bool),
+        "post_process_enabled": ("post_process_enabled", bool),
+        "autoSearchWishlist": ("auto_search_wishlist", bool),
+        "auto_search_wishlist": ("auto_search_wishlist", bool),
+        "wishlistIntervalHours": ("wishlist_interval_hours", int),
+        "wishlist_interval_hours": ("wishlist_interval_hours", int),
+        "preferredRepackers": ("preferred_repackers", str),
+        "preferred_repackers": ("preferred_repackers", str),
+        "allowHypervisor": ("allow_hypervisor", bool),
+        "allow_hypervisor": ("allow_hypervisor", bool),
+        "autoOrganizeEnabled": ("auto_organize_enabled", bool),
+        "auto_organize_enabled": ("auto_organize_enabled", bool),
+        "namingTemplate": ("naming_template", str),
+        "naming_template": ("naming_template", str),
+        "isoDownloadPath": ("iso_download_path", str),
+        "iso_download_path": ("iso_download_path", str),
+    }
+    for key, (attr, caster) in mapping.items():
+        if key not in payload:
+            continue
+        raw = payload.get(key)
+        if caster is str:
+            setattr(org, attr, str(raw or "").strip())
+        elif caster is int:
+            try:
+                setattr(org, attr, int(raw))
+            except (TypeError, ValueError):
+                continue
+        else:
+            setattr(org, attr, bool(raw))
+
+    if "scanOnLaunch" in payload or "scan_on_launch" in payload:
+        cfg.desktop.scan_on_launch = bool(payload.get("scanOnLaunch", payload.get("scan_on_launch")))
+
+    save_config(cfg)
+    return get_organize_settings_dict(cfg)
+
+
+def library_kind(lib: LibraryConfig) -> str:
+    kind = (lib.kind or "game").strip().lower()
+    if kind == "iso":
+        return "iso"
+    return "game"
+
+
+def library_payload(lib: LibraryConfig) -> Dict[str, Any]:
+    kind = library_kind(lib)
+    return {
+        "name": lib.name,
+        "path": lib.path,
+        "kind": kind,
+        "allowedExtensions": list(lib.allowed_extensions or []),
+    }
+
+
+def build_library_config(item: Dict[str, Any]) -> LibraryConfig:
+    kind = str(item.get("kind") or item.get("type") or "game").strip().lower()
+    if kind not in ("game", "iso"):
+        kind = "game"
+    path = str(item.get("path") or "").strip()
+    name = str(item.get("name") or "").strip() or (Path(path).name if path else kind)
+    exts = item.get("allowedExtensions") or item.get("allowed_extensions")
+    if not isinstance(exts, list) or not exts:
+        exts = list(ISO_EXTENSIONS if kind == "iso" else GAME_EXTENSIONS)
+    return LibraryConfig(
+        name=name,
+        path=path,
+        kind=kind,
+        allowed_extensions=[str(ext) for ext in exts],
+    )
+
+
+def replace_game_libraries(cfg: AppConfig, items: list[Dict[str, Any]]) -> list[LibraryConfig]:
+    libraries: list[LibraryConfig] = []
+    seen: set[str] = set()
+    for item in items:
+        lib = build_library_config(item)
+        if not lib.path:
+            continue
+        key = f"{library_kind(lib)}:{lib.path}"
+        if key in seen:
+            continue
+        seen.add(key)
+        libraries.append(lib)
+    cfg.game_libraries = libraries
+    save_config(cfg)
+    return libraries

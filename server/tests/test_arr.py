@@ -334,6 +334,7 @@ class TestArrMultiInstance(unittest.TestCase):
         self.assertEqual(len(payload["instances"]), 1)
         self.assertEqual(payload["instances"][0]["name"], "Main")
         self.assertEqual(payload["instances"][0]["api_key"], "***")
+        self.assertEqual(serialize_radarr_config(cfg, include_secrets=True)["instances"][0]["api_key"], "hidden")
 
         sonarr = SonarrConfig(
             instances=[

@@ -81,6 +81,10 @@ export interface GameServer {
   createdAt: string;
   updatedAt: string;
   connectError?: string | null;
+  /** True when this row is the Otix desktop app on this computer. */
+  isLocalDesktop?: boolean;
+  /** True when this row is the Otix backend (account-hosted node). */
+  isBackend?: boolean;
 }
 
 export interface ServerGameFile {

@@ -54,6 +54,14 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
 }))
 
+vi.mock('@/features/downloads/use-server-downloads', () => ({
+  useGameServers: () => ({ data: [], isLoading: false }),
+  useCreateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePingGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
+
 
 describe('SettingsLibraryPage Sort Feature', () => {
   const mockGames = [

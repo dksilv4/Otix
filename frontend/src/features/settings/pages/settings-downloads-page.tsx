@@ -9,6 +9,8 @@ import {
   ExternalLink,
   HardDrive,
   Star,
+  ChevronRight,
+  ArrowRight,
 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
 import { useModal } from '@/lib/modals'
@@ -21,20 +23,31 @@ import {
 } from '@/features/downloads/use-server-downloads'
 import { ServerFileExplorerModal } from '@/features/downloads/molecules/server-file-explorer-modal'
 import { useToast } from '@ui/molecules/toast'
-import { useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { ManageDownloadersModal } from '@/features/downloads/molecules/manage-downloaders-modal'
+import { useSettingsNode } from '../context/settings-node-context'
+import { isBackendNode } from '../backend-node'
+import { isLocalDesktopNode } from '../local-desktop-node'
+import { nodeSettingsNavigateOptions } from '../node-settings'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 
 export interface SettingsDownloadsPageProps {
   embedded?: boolean
+  variant?: 'all' | 'nodes' | 'clients'
 }
 
-export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPageProps = {}) {
+export function SettingsDownloadsPage({
+  embedded = false,
+  variant = 'all',
+}: SettingsDownloadsPageProps = {}) {
   const { openModal } = useModal()
   const { toast } = useToast()
-  const navigate = useNavigate()
-  const { data: gameServers = [] } = useGameServers()
+  const showClients = variant !== 'nodes'
+  const showNodes = variant !== 'clients'
+  const { data: remoteServers = [] } = useGameServers()
+  const { servers: settingsServers } = useSettingsNode()
+  const gameServers = showNodes ? settingsServers : remoteServers
   const createServerMutation = useCreateGameServer()
   const deleteServerMutation = useDeleteGameServer()
   const pingServerMutation = usePingGameServer()
@@ -43,6 +56,7 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
   const [showAddServer, setShowAddServer] = useState(false)
   const [serverName, setServerName] = useState('')
   const [serverUrl, setServerUrl] = useState('')
+  const [serverRemoteUrl, setServerRemoteUrl] = useState('')
   const [serverToken, setServerToken] = useState('')
   const [serverSubmitting, setServerSubmitting] = useState(false)
 
@@ -64,11 +78,12 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
       const server = await createServerMutation.mutateAsync({
         name: serverName.trim(),
         local_url: serverUrl.trim(),
+        remote_url: serverRemoteUrl.trim() || undefined,
         auth_token: serverToken.trim() || undefined,
       })
       if (server.isOnline) {
         toast({
-          title: 'Game Server Connected',
+          title: 'Node connected',
           description: `Successfully linked ${serverName}.`,
           variant: 'success',
         })
@@ -83,11 +98,12 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
       }
       setServerName('')
       setServerUrl('')
+      setServerRemoteUrl('')
       setServerToken('')
       setShowAddServer(false)
     } catch (err: any) {
       toast({
-        title: 'Failed to Connect Server',
+        title: 'Failed to connect node',
         description: err.message || 'Check URL and network connection.',
         variant: 'error',
       })
@@ -100,8 +116,8 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
     try {
       await deleteServerMutation.mutateAsync(id)
       toast({
-        title: 'Server Disconnected',
-        description: `Removed ${name} from your game servers.`,
+        title: 'Node disconnected',
+        description: `Removed ${name} from your nodes.`,
         variant: 'default',
       })
     } catch (err: any) {
@@ -141,7 +157,9 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
   const handleSetPrimary = async (id: number) => {
     try {
       await Promise.all(
-        gameServers.map((server) =>
+        gameServers
+          .filter((server) => !isLocalDesktopNode(server) && !isBackendNode(server))
+          .map((server) =>
           updateServerMutation.mutateAsync({
             id: server.id,
             is_active: server.id === id,
@@ -149,7 +167,7 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
         ),
       )
       toast({
-        title: 'Primary server updated',
+        title: 'Primary node updated',
         description: 'Downloads and browse actions will prefer this node.',
         variant: 'success',
       })
@@ -174,37 +192,43 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
             variant="page"
             icon={DownloadCloud}
             title="Downloads"
-            description="Game servers and download clients."
+            description="Otix nodes and download clients."
           />
         </SettingsCard>
       )}
 
+      {showClients && (
       <SettingsCard>
         <SectionHeader
           title="Download clients"
-          description="SABnzbd and related clients are configured on Connections."
+          description="SABnzbd, Prowlarr, Radarr, and Sonarr each have an instance per Otix node."
           action={
             <div className="flex items-center gap-2">
               <DkButton size="sm" variant="ghost" onClick={openManageDownloadersModal}>
                 <DownloadCloud className="h-3.5 w-3.5" />
                 Manage Downloaders
               </DkButton>
-              <DkButton size="sm" variant="ghost" onClick={() => navigate({ to: '/settings/connections' })}>
-                Open Connections
+              <DkButton size="sm" variant="ghost" asChild>
+                <Link to="/settings/connections">
+                  Open Connections
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </DkButton>
             </div>
           }
         />
       </SettingsCard>
+      )}
 
+      {showNodes && (
       <SettingsCard className="space-y-4">
         <SectionHeader
-          title="Remote Game Servers"
-          description="Connect self-hosted otix-server nodes. Set one as primary for downloads and browsing."
+          title="Otix nodes"
+          description="Select a node to open its page. Connect workers to host folders, downloads, and your library on other machines."
           action={
             <DkButton size="sm" variant="ghost" onClick={() => setShowAddServer(!showAddServer)}>
               <Plus size={14} />
-              {showAddServer ? 'Cancel' : 'Connect Server'}
+              {showAddServer ? 'Cancel' : 'Connect node'}
             </DkButton>
           }
         />
@@ -214,7 +238,7 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
-                  Server Name
+                  Node name
                 </label>
                 <input
                   type="text"
@@ -227,17 +251,33 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
               </div>
               <div>
                 <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
-                  Server URL (LAN or Domain)
+                  LAN URL
                 </label>
                 <input
                   type="url"
                   required
-                  placeholder="e.g. http://127.0.0.1:8090"
+                  placeholder="e.g. http://192.168.1.50:8090"
                   value={serverUrl}
                   onChange={(e) => setServerUrl(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
+                Remote URL <span className="normal-case font-normal text-white/30">(optional)</span>
+              </label>
+              <input
+                type="url"
+                placeholder="e.g. https://nas.example.com"
+                value={serverRemoteUrl}
+                onChange={(e) => setServerRemoteUrl(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              <p className="mt-1.5 text-[11px] text-white/40 leading-relaxed">
+                Used when you or someone you share with opens Otix away from home.
+              </p>
             </div>
 
             <div>
@@ -291,16 +331,39 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
 
         <div className="space-y-2">
           {gameServers.length > 0 ? (
-            gameServers.map((server) => (
-              <React.Fragment key={server.id}>
-                <div className="p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
+            gameServers.map((server) => {
+              const local = isLocalDesktopNode(server)
+              const backend = isBackendNode(server)
+              const reserved = local || backend
+              return (
+              <div
+                key={server.id}
+                className="relative group p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"
+              >
+                <Link
+                  {...nodeSettingsNavigateOptions(server.id)}
+                  className="absolute inset-0 z-[1] rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  aria-label={`Open ${server.name}`}
+                >
+                  <span className="sr-only">Open {server.name}</span>
+                </Link>
+                <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center shrink-0">
                       <Server size={18} className="text-white/80" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-white">{server.name}</span>
+                        {local && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400">
+                            Otix app
+                          </span>
+                        )}
+                        {backend && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/10 text-sky-400">
+                            Backend
+                          </span>
+                        )}
                         {server.isActive && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary">
                             <Star size={10} />
@@ -325,7 +388,13 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-white/40 mt-0.5 flex-wrap">
-                        <span className="font-mono text-white/60 truncate">{server.primaryUrl}</span>
+                        <span className={cn('truncate', reserved ? 'text-white/50' : 'font-mono text-white/60')}>
+                          {local
+                            ? 'Otix app on this computer'
+                            : backend
+                              ? 'Account settings live on the Otix backend'
+                              : server.primaryUrl}
+                        </span>
                         {server.totalFiles > 0 && <span>· {server.totalFiles} games</span>}
                         {server.storageFreeBytes > 0 && (
                           <span>· {formatBytes(server.storageFreeBytes)} free</span>
@@ -334,12 +403,14 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+                  <div className="relative z-[2] flex items-center gap-2 self-end sm:self-center flex-wrap pointer-events-none">
+                  {!reserved && (
+                  <>
                     {!server.isActive && (
                       <button
                         type="button"
                         onClick={() => handleSetPrimary(server.id)}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors"
+                        className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors"
                         title="Set as primary"
                       >
                         <Star size={12} />
@@ -349,7 +420,7 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
                     <button
                       type="button"
                       onClick={() => openServerExplorer(server)}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-colors"
+                      className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-colors"
                       title="Explore Server Storage"
                     >
                       <HardDrive size={12} />
@@ -358,7 +429,7 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
                     <button
                       type="button"
                       onClick={() => handlePingServer(server.id)}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors"
+                      className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors"
                       title="Test Connection"
                     >
                       <Radio size={12} />
@@ -367,27 +438,38 @@ export function SettingsDownloadsPage({ embedded = false }: SettingsDownloadsPag
                     <button
                       type="button"
                       onClick={() => handleDeleteServer(server.id, server.name)}
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-white/50 hover:text-rose-400 transition-colors"
+                      className="pointer-events-auto p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-white/50 hover:text-rose-400 transition-colors"
                       title="Disconnect Server"
                     >
                       <Trash2 size={13} />
                     </button>
+                  </>
+                  )}
+                    <span
+                      aria-hidden
+                      className="flex items-center gap-0.5 text-xs font-medium text-white/40 group-hover:text-white transition-colors"
+                    >
+                      Open
+                      <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                    </span>
                   </div>
-                </div>
-              </React.Fragment>
-            ))
+              </div>
+              )
+            })
           ) : (
             <div className="p-4 rounded-xl bg-white/[0.03] text-center space-y-1">
-              <p className="text-xs text-white/50 font-medium">No game servers connected</p>
+              <p className="text-xs text-white/50 font-medium">No Otix nodes connected</p>
               <p className="text-[11px] text-white/30 max-w-sm mx-auto">
-                Run <span className="font-mono text-white/50">otix-server start</span> on your NAS,
-                Unraid, or PC. Live nodes are auto-claimed when you are signed in, or connect one
-                manually above.
+                Run <span className="font-mono text-white/50">otix-server</span> on your NAS,
+                Unraid, or another PC — or open the Otix app on this computer, which is a node too.
+                Signed-in users auto-claim a live worker, or connect one
+                manually above to manage that machine from anywhere.
               </p>
             </div>
           )}
         </div>
       </SettingsCard>
+      )}
     </div>
   )
 }

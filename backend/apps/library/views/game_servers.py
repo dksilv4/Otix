@@ -41,6 +41,10 @@ from apps.library.services.game_server import (
     explorer_set_download_path,
     link_or_create_game_server,
     list_pending_nodes_for,
+    node_get_organize,
+    node_list_libraries,
+    node_replace_libraries,
+    node_save_organize,
     ping_server_sync,
     provider_list,
     provider_test,
@@ -81,6 +85,16 @@ from apps.library.services.game_server import (
     usenet_test_prowlarr,
     usenet_test_sabnzbd,
 )
+from apps.library.services.node_connections import (
+    configured_map,
+    import_instances,
+    push_shared_connections,
+    push_shared_to_servers,
+    read_with_shared,
+    save_store_and_node,
+    serialized_store,
+    store_all,
+)
 from apps.library.services.server_catalog import match_files_to_catalog, unmatched_scan_titles
 from apps.search.services.search import enqueue_prehydrate_titles
 
@@ -97,13 +111,19 @@ def _track_download_history(fn, *args, **kwargs):
 
 
 def _get_server_or_404(request: Request, server_id: int) -> UserGameServer:
+    from apps.library.services.backend_node import backend_server_stub, is_backend_node_id
+
+    if is_backend_node_id(server_id):
+        if not getattr(request, "user", None) or not request.user.is_authenticated:
+            raise NotFound("Otix node not found")
+        return backend_server_stub(request.user)
     server = None
     if getattr(request, "user", None) and request.user.is_authenticated:
         server = UserGameServer.objects.filter(id=server_id, user=request.user).first()
     if not server:
         server = UserGameServer.objects.filter(id=server_id).first()
     if not server:
-        raise NotFound("Game server not found")
+        raise NotFound("Otix node not found")
     return server
 
 
@@ -124,9 +144,12 @@ class GameServerListCreateView(APIView):
     """
 
     def get(self, request: Request) -> Response:
+        from apps.library.services.backend_node import backend_node_payload
+
         collapse_duplicate_game_servers(request.user)
         servers = UserGameServer.objects.filter(user=request.user)
-        return Response(UserGameServerSerializer(servers, many=True).data)
+        payload = [backend_node_payload(request.user), *UserGameServerSerializer(servers, many=True).data]
+        return Response(payload)
 
     def post(self, request: Request) -> Response:
         serializer = UserGameServerCreateSerializer(data=request.data)
@@ -136,6 +159,8 @@ class GameServerListCreateView(APIView):
         server.refresh_from_db()
         payload = UserGameServerSerializer(server).data
         payload["connect_error"] = None if result.get("online") else result.get("error")
+        payload["created"] = created
+        payload["shared_connections"] = configured_map(request.user)
         return Response(
             payload,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
@@ -166,10 +191,14 @@ class GameServerDetailView(APIView):
     """
 
     def _get_server(self, request: Request, server_id: int) -> UserGameServer:
+        from apps.library.services.backend_node import is_backend_node_id
+
+        if is_backend_node_id(server_id):
+            raise NotFound("The Otix backend node cannot be edited or removed.")
         try:
             return UserGameServer.objects.get(id=server_id, user=request.user)
         except UserGameServer.DoesNotExist:
-            raise NotFound("Game server not found") from None
+            raise NotFound("Otix node not found") from None
 
     def patch(self, request: Request, server_id: int) -> Response:
         server = self._get_server(request, server_id)
@@ -190,12 +219,12 @@ class GameServerPingView(APIView):
     """``POST /api/v1/library/servers/{server_id}/ping`` — test server connectivity."""
 
     def post(self, request: Request, server_id: int) -> Response:
-        try:
-            server = UserGameServer.objects.get(id=server_id, user=request.user)
-        except UserGameServer.DoesNotExist:
-            raise NotFound("Game server not found") from None
+        from apps.library.services.backend_node import backend_node_payload, is_backend_node
 
+        server = _get_server_or_404(request, server_id)
         result = ping_server_sync(server)
+        if is_backend_node(server):
+            return Response({**result, "server": backend_node_payload(request.user)})
         server.refresh_from_db()
         return Response(
             {
@@ -287,10 +316,7 @@ class GameServerExplorerBrowseView(APIView):
     """``GET /api/v1/library/servers/{server_id}/explorer`` — browse server filesystem."""
 
     def get(self, request: Request, server_id: int) -> Response:
-        try:
-            server = UserGameServer.objects.get(id=server_id, user=request.user)
-        except UserGameServer.DoesNotExist:
-            raise NotFound("Game server not found") from None
+        server = _get_server_or_404(request, server_id)
 
         path = request.query_params.get("path")
         status_code, data = explorer_browse(server, path=path)
@@ -301,10 +327,9 @@ class GameServerExplorerSetPathView(APIView):
     """Assign the server download folder via explorer/set-download-path."""
 
     def post(self, request: Request, server_id: int) -> Response:
-        try:
-            server = UserGameServer.objects.get(id=server_id, user=request.user)
-        except UserGameServer.DoesNotExist:
-            raise NotFound("Game server not found") from None
+        from apps.library.services.backend_node import is_backend_node
+
+        server = _get_server_or_404(request, server_id)
 
         path = request.data.get("path")
         if not path:
@@ -316,7 +341,7 @@ class GameServerExplorerSetPathView(APIView):
         status_code, data = explorer_set_download_path(
             server, path=path, create_if_missing=create_if_missing, add_as_library=add_as_library
         )
-        if status_code == 200:
+        if status_code == 200 and not is_backend_node(server):
             ping_server_sync(server)
             server.refresh_from_db()
         return Response(data, status=status_code)
@@ -351,12 +376,14 @@ class GameServerUsenetConfigView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = usenet_get_config(server)
+        status_code, data = read_with_shared(server.user, "usenet", server, usenet_get_config)
         return Response(data, status=status_code)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = usenet_save_config(server, request.data)
+        status_code, data = save_store_and_node(
+            server.user, "usenet", request.data, server, usenet_save_config
+        )
         return Response(data, status=status_code)
 
 
@@ -614,12 +641,14 @@ class GameServerRadarrConfigView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = radarr_get_config(server)
+        status_code, data = read_with_shared(server.user, "radarr", server, radarr_get_config)
         return Response(data, status=status_code)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = radarr_save_config(server, request.data)
+        status_code, data = save_store_and_node(
+            server.user, "radarr", request.data, server, radarr_save_config
+        )
         return Response(data, status=status_code)
 
 
@@ -749,12 +778,14 @@ class GameServerSonarrConfigView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = sonarr_get_config(server)
+        status_code, data = read_with_shared(server.user, "sonarr", server, sonarr_get_config)
         return Response(data, status=status_code)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = sonarr_save_config(server, request.data)
+        status_code, data = save_store_and_node(
+            server.user, "sonarr", request.data, server, sonarr_save_config
+        )
         return Response(data, status=status_code)
 
 
@@ -888,3 +919,116 @@ class GameServerDesktopView(APIView):
         server = _get_server_or_404(request, server_id)
         status_code, data = desktop_save_settings(server, request.data)
         return Response(data, status=status_code)
+
+
+class GameServerLibrariesView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/libraries`` — list node scan folders.
+    ``PUT /api/v1/library/servers/{server_id}/libraries`` — replace node scan folders.
+    """
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = node_list_libraries(server)
+        return Response(data, status=status_code)
+
+    def put(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        payload = request.data
+        if isinstance(payload, list):
+            payload = {"libraries": payload}
+        status_code, data = node_replace_libraries(server, payload)
+        return Response(data, status=status_code)
+
+
+class GameServerOrganizeView(APIView):
+    """``GET/POST /api/v1/library/servers/{server_id}/organize`` — node organize settings."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = node_get_organize(server)
+        return Response(data, status=status_code)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = node_save_organize(server, request.data)
+        return Response(data, status=status_code)
+
+
+def _request_payload(request: Request) -> dict:
+    data = getattr(request, "data", None)
+    return dict(data) if isinstance(data, dict) else {}
+
+
+def _requested_server_ids(payload: dict) -> list[int] | None:
+    raw = payload.get("server_ids", payload.get("serverIds"))
+    if raw is None:
+        return None
+    if not isinstance(raw, list):
+        raw = [raw]
+    ids: list[int] = []
+    for item in raw:
+        try:
+            ids.append(int(item))
+        except (TypeError, ValueError):
+            continue
+    return ids
+
+
+class NodeConnectionsView(APIView):
+    """Account-level SABnzbd / *arr connections. Nodes receive a copy only when synced."""
+
+    def get(self, request: Request) -> Response:
+        return Response(serialized_store(request.user))
+
+    def put(self, request: Request) -> Response:
+        return Response(store_all(request.user, _request_payload(request)))
+
+    def post(self, request: Request) -> Response:
+        return self.put(request)
+
+
+class NodeConnectionsSyncView(APIView):
+    """Push stored connections onto chosen Otix nodes (or every node)."""
+
+    def post(self, request: Request) -> Response:
+        payload = _request_payload(request)
+        results = push_shared_to_servers(request.user, _requested_server_ids(payload))
+        return Response({"results": results})
+
+
+class GameServerConnectionsSyncView(APIView):
+    """Push stored connections onto one Otix node."""
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        if getattr(request.user, "is_authenticated", False) and server.user_id != request.user.id:
+            raise NotFound("Otix node not found")
+        kinds = push_shared_connections(server)
+        return Response({"ok": True, "server_id": server.id, "kinds": kinds})
+
+
+class GameServerInstancesImportView(APIView):
+    """Copy SABnzbd / *arr instances from another node onto this one."""
+
+    def post(self, request: Request, server_id: int) -> Response:
+        dest = _get_server_or_404(request, server_id)
+        payload = _request_payload(request)
+        raw_source = payload.get("from_server_id", payload.get("fromServerId"))
+        try:
+            source_id = int(raw_source)
+        except (TypeError, ValueError):
+            return Response({"error": "from_server_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        source = _get_server_or_404(request, source_id)
+        kinds = payload.get("kinds")
+        if isinstance(kinds, str):
+            kinds = [kinds]
+        if kinds is not None and not isinstance(kinds, list):
+            kinds = None
+        result = import_instances(request.user, dest, source, kinds)
+        if result.get("error") and not result.get("imported"):
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        return Response(result)

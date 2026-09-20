@@ -9,11 +9,15 @@ import {
   Sparkles,
   Wand2,
 } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
-import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
+import { apiClient } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
+import { useSettingsNode } from '../../context/settings-node-context'
+import { isLocalDesktopNodeId } from '../../local-desktop-node'
+import { nodeSettingsNavigateOptions, type NodeSettingsTab } from '../../node-settings'
 import { SettingsCard } from '../molecules/settings-card'
 import { SectionHeader } from '../molecules/settings-section-header'
 import type { LibrarySettingsTab } from './settings-library-tabs'
@@ -72,26 +76,29 @@ function OverviewNavCard({
   description,
   icon: Icon,
   onClick,
+  to,
+  params,
+  hash,
   children,
 }: {
   title: string
   description: string
   icon: ComponentType<{ className?: string }>
-  onClick: () => void
+  onClick?: () => void
+  to?: string
+  params?: Record<string, string>
+  hash?: string
   children: ReactNode
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`Open ${title} settings`}
-      className="group text-left w-full rounded-2xl sm:rounded-3xl p-5 sm:p-6 backdrop-blur-xl transition-all duration-200 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-      style={{
-        backgroundColor: 'var(--dk-surface-base)',
-        boxShadow:
-          'inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 10px 30px -10px rgba(0, 0, 0, 0.5)',
-      }}
-    >
+  const className =
+    'group text-left w-full rounded-2xl sm:rounded-3xl p-5 sm:p-6 backdrop-blur-xl transition-all duration-200 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
+  const style = {
+    backgroundColor: 'var(--dk-surface-base)',
+    boxShadow:
+      'inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 10px 30px -10px rgba(0, 0, 0, 0.5)',
+  }
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -105,8 +112,44 @@ function OverviewNavCard({
         <ArrowRight className="h-4 w-4 text-white/30 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-white/5">{children}</div>
+    </>
+  )
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        params={params}
+        hash={hash}
+        aria-label={`Go to ${title}`}
+        className={className}
+        style={style}
+      >
+        {body}
+      </Link>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Open ${title}`}
+      className={className}
+      style={style}
+    >
+      {body}
     </button>
   )
+}
+
+type OverviewOrganize = {
+  autoSearchWishlist?: boolean
+  postProcessEnabled?: boolean
+  autoOrganizeEnabled?: boolean
+  preferredRepackers?: string | null
+  downloadPath?: string | null
+  isoDownloadPath?: string | null
 }
 
 export function SettingsLibraryOverviewSection({
@@ -122,17 +165,25 @@ export function SettingsLibraryOverviewSection({
   }
 
   const { config: dlConfig, isLoading: configLoading } = useDownloadConfig(user?.id)
-  const { data: gameServers = [], isLoading: serversLoading } = useGameServers()
+  const { servers: gameServers = [], selectedNode, isLoading: serversLoading } = useSettingsNode()
+  const nodePage = (tab?: NodeSettingsTab) =>
+    selectedNode
+      ? nodeSettingsNavigateOptions(selectedNode.id, tab)
+      : { to: '/settings/nodes' as const }
 
   const [scanPathCount, setScanPathCount] = useState(0)
   const [gamesDownloadPath, setGamesDownloadPath] = useState('')
+  const [isoDownloadPath, setIsoDownloadPath] = useState('')
+  const [nodeOrganize, setNodeOrganize] = useState<OverviewOrganize | null>(null)
   const [pathsLoading, setPathsLoading] = useState(true)
+
+  const nodeId = selectedNode?.id ?? null
+  const remoteNodeId = isLocalDesktopNodeId(nodeId) ? null : nodeId
 
   useEffect(() => {
     let cancelled = false
 
-    const load = async () => {
-      setPathsLoading(true)
+    const loadLocal = async () => {
       const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
 
       let paths: Array<{ path?: string; type?: string }> = []
@@ -178,35 +229,83 @@ export function SettingsLibraryOverviewSection({
       if (!cancelled) {
         setScanPathCount(paths.filter((p) => p.path).length)
         setGamesDownloadPath(downloadPath)
+        setIsoDownloadPath('')
+        setNodeOrganize(null)
         setPathsLoading(false)
       }
+    }
+
+    const load = async () => {
+      setPathsLoading(true)
+      if (remoteNodeId) {
+        try {
+          const [libRes, desktopRes, organizeRes] = await Promise.all([
+            apiClient.get<any>(`/library/servers/${remoteNodeId}/libraries`),
+            apiClient.get<any>(`/library/servers/${remoteNodeId}/desktop`),
+            apiClient.get<any>(`/library/servers/${remoteNodeId}/organize`),
+          ])
+          if (cancelled) return
+          const rows = Array.isArray(libRes?.data) ? libRes.data : libRes?.data?.libraries || []
+          const gamesPath =
+            desktopRes?.data?.gamesDownloadPath ||
+            desktopRes?.data?.games_download_path ||
+            organizeRes?.data?.gamesDownloadPath ||
+            organizeRes?.data?.games_download_path ||
+            ''
+          const isoPath =
+            organizeRes?.data?.isoDownloadPath || organizeRes?.data?.iso_download_path || ''
+          setScanPathCount(rows.filter((row: { path?: string }) => row?.path).length)
+          setGamesDownloadPath(gamesPath)
+          setIsoDownloadPath(isoPath)
+          setNodeOrganize({
+            autoSearchWishlist: Boolean(
+              organizeRes?.data?.autoSearchWishlist ?? organizeRes?.data?.auto_search_wishlist,
+            ),
+            postProcessEnabled:
+              organizeRes?.data?.postProcessEnabled ?? organizeRes?.data?.post_process_enabled ?? true,
+            autoOrganizeEnabled: Boolean(
+              organizeRes?.data?.autoOrganizeEnabled ?? organizeRes?.data?.auto_organize_enabled,
+            ),
+            preferredRepackers:
+              organizeRes?.data?.preferredRepackers ?? organizeRes?.data?.preferred_repackers ?? null,
+            isoDownloadPath: isoPath,
+          })
+          setPathsLoading(false)
+          return
+        } catch {
+          // fall through to this device
+        }
+      }
+      await loadLocal()
     }
 
     void load()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [remoteNodeId])
 
   const onlineServers = gameServers.filter((s: any) => s.isOnline).length
-  const primaryServer = gameServers.find((s: any) => s.isPrimary)
+  const primaryServer = gameServers.find((s: any) => s.isActive)
+  const organizeSource: OverviewOrganize | null = nodeOrganize || dlConfig
+  const organizeLoading = remoteNodeId ? pathsLoading : configLoading
 
   const organizeFlags = [
-    dlConfig?.autoSearchWishlist && 'Wishlist search',
-    dlConfig?.postProcessEnabled && 'Post-process',
-    dlConfig?.autoOrganizeEnabled && 'Auto-organize',
+    organizeSource?.autoSearchWishlist && 'Wishlist search',
+    organizeSource?.postProcessEnabled && 'Post-process',
+    organizeSource?.autoOrganizeEnabled && 'Auto-organize',
   ].filter(Boolean) as string[]
+  const isoHint = isoDownloadPath || organizeSource?.isoDownloadPath || dlConfig?.downloadPath
 
   return (
     <div id="overview" className="space-y-6 scroll-mt-28">
       <SettingsCard className="space-y-3">
         <SectionHeader
           title="Overview"
-          description="A quick look at your library, storage paths, game servers, and automation."
+          description="A quick look at your library, folders, Otix nodes, and automation."
         />
         <p className="text-xs text-white/45 leading-relaxed max-w-2xl">
-          Jump into a section to configure it. Destinations, scan folders, matching, and download
-          clients all live under this page.
+          Jump into matching, or open a node to configure folders, downloaders, and automation for that machine.
         </p>
       </SettingsCard>
 
@@ -249,9 +348,9 @@ export function SettingsLibraryOverviewSection({
 
         <OverviewNavCard
           title="Paths"
-          description="Download destinations and folders Otix scans."
+          description="Download destinations and folders Otix scans. Configure them on a node."
           icon={FolderOpen}
-          onClick={() => onNavigate('paths')}
+          {...nodePage('paths')}
         >
           <Metric
             icon={FolderOpen}
@@ -272,19 +371,19 @@ export function SettingsLibraryOverviewSection({
                     : 'Not set'
             }
             tone={gamesDownloadPath ? 'success' : 'muted'}
-            hint={dlConfig?.downloadPath ? `ISOs: ${dlConfig.downloadPath}` : 'ISO destination optional'}
+            hint={isoHint ? `ISOs: ${isoHint}` : 'ISO destination optional'}
           />
         </OverviewNavCard>
 
         <OverviewNavCard
           title="Downloads"
-          description="Remote game servers and download clients."
+          description="Otix nodes and download clients. Open a node to manage its instances."
           icon={Server}
-          onClick={() => onNavigate('downloads')}
+          {...nodePage('downloaders')}
         >
           <Metric
             icon={Server}
-            label="Game servers"
+            label="Nodes"
             value={serversLoading ? '…' : gameServers.length}
             hint={
               serversLoading
@@ -298,23 +397,23 @@ export function SettingsLibraryOverviewSection({
           <Metric
             icon={CheckCircle2}
             label="Primary"
-            value={primaryServer?.name || (gameServers.length ? 'Not set' : '—')}
-            tone={primaryServer ? 'success' : 'muted'}
-            hint="Used for remote downloads"
+            value={primaryServer?.name || selectedNode?.name || (gameServers.length ? 'Not set' : '—')}
+            tone={primaryServer || selectedNode ? 'success' : 'muted'}
+            hint={primaryServer ? 'Used for remote downloads' : selectedNode ? selectedNode.name : 'Used for remote downloads'}
           />
         </OverviewNavCard>
 
         <OverviewNavCard
           title="Organize"
-          description="Wishlist scanning, post-processing, and naming."
+          description="Wishlist scanning, post-processing, and naming on each node."
           icon={Wand2}
-          onClick={() => onNavigate('organize')}
+          {...nodePage('organize')}
         >
           <Metric
             icon={Wand2}
             label="Automation"
             value={
-              configLoading
+              organizeLoading
                 ? '…'
                 : organizeFlags.length > 0
                   ? `${organizeFlags.length} enabled`
@@ -327,14 +426,14 @@ export function SettingsLibraryOverviewSection({
             icon={Sparkles}
             label="Naming"
             value={
-              configLoading
+              organizeLoading
                 ? '…'
-                : dlConfig?.autoOrganizeEnabled
+                : organizeSource?.autoOrganizeEnabled
                   ? 'Auto-organize on'
                   : 'Manual'
             }
-            tone={dlConfig?.autoOrganizeEnabled ? 'success' : 'muted'}
-            hint={dlConfig?.preferredRepackers ? `Prefer ${dlConfig.preferredRepackers}` : 'Repackers optional'}
+            tone={organizeSource?.autoOrganizeEnabled ? 'success' : 'muted'}
+            hint={organizeSource?.preferredRepackers ? `Prefer ${organizeSource.preferredRepackers}` : 'Repackers optional'}
           />
         </OverviewNavCard>
       </div>

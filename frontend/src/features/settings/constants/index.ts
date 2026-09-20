@@ -10,6 +10,7 @@ import {
   Puzzle,
   Shuffle,
   HardDrive,
+  Server,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
@@ -24,7 +25,7 @@ export const NAV_GROUPS: { id: NavGroup; label: string }[] = [
   { id: 'admin', label: 'Admin' },
 ]
 
-/** Sections that require local desktop APIs and hide from the web sidebar. */
+/** Previously desktop-only section ids. Empty now that Otix nodes cover those settings on web. */
 export const DESKTOP_SECTIONS = new Set<string>()
 
 export const SETTINGS_LAST_SECTION_KEY = 'otix:settings-last-section'
@@ -51,7 +52,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: false,
     requiresAuth: false,
     group: 'preferences',
-    keywords: 'theme accent motion shader sidebar landing cache about general desktop tray startup',
+    keywords: 'theme accent motion shader sidebar landing cache about general',
   },
   {
     id: 'launcher',
@@ -61,15 +62,6 @@ export const NAV_ITEMS: NavItem[] = [
     requiresAuth: false,
     group: 'preferences',
     keywords: 'launcher theme layout modern xbox playstation switch forge glass minimal carousel animations transitions controller editions',
-  },
-  {
-    id: 'desktop',
-    label: 'Desktop',
-    icon: Monitor,
-    desktop: false,
-    requiresAuth: false,
-    group: 'preferences',
-    keywords: 'desktop tray startup minimize close always on top window node native',
   },
   {
     id: 'notifications',
@@ -82,12 +74,21 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     id: 'library',
-    label: 'Library & Downloads',
+    label: 'Library',
     icon: HardDrive,
     desktop: false,
     requiresAuth: false,
     group: 'library',
-    keywords: 'overview scan folders matching proposals metadata games downloads paths organizer game servers folders history sabnzbd organize automation naming',
+    keywords: 'overview scan folders matching proposals metadata games catalog',
+  },
+  {
+    id: 'nodes',
+    label: 'Nodes',
+    icon: Server,
+    desktop: false,
+    requiresAuth: false,
+    group: 'library',
+    keywords: 'desktop tray startup minimize close always on top window node native servers nas share remote worker machine paths folders organize downloaders sabnzbd scan',
   },
   {
     id: 'connections',
@@ -169,6 +170,7 @@ export function matchNavItem(item: NavItem, query: string): boolean {
 export function getLastSettingsSection(allowedIds?: Set<string>): string {
   try {
     const stored = localStorage.getItem(SETTINGS_LAST_SECTION_KEY)
+    if (stored === 'desktop') return 'nodes'
     if (stored && (!allowedIds || allowedIds.has(stored))) return stored
     if (stored && NAV_ITEMS.some((i) => i.id === stored) && !allowedIds) return stored
   } catch {
@@ -178,6 +180,7 @@ export function getLastSettingsSection(allowedIds?: Set<string>): string {
 }
 
 export function rememberSettingsSection(id: string) {
+  if (id === 'desktop') id = 'nodes'
   if (!id || id === 'overview' || id === 'general' || id === 'integrations' || id === 'proposals') {
     return
   }
@@ -195,6 +198,7 @@ function getIconByName(name: string): ComponentType<{ className?: string }> {
     shuffle: Shuffle,
     download: Download,
     monitor: Monitor,
+    server: Server,
   }
   return icons[name] || Puzzle
 }

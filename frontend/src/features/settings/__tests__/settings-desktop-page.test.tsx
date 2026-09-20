@@ -1,9 +1,11 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ModalProvider, ModalRoot } from '@/lib/modals'
+import { SettingsSaveProvider } from '../context/settings-save-context'
 import { SettingsDesktopPage } from '../pages/settings-desktop-page'
-import { apiClient } from '@/lib/api/client'
+import { clearDesktopAPICache } from '@/lib/desktop/api'
 
 vi.mock('@/lib/api/client', () => ({
   apiClient: {
@@ -24,14 +26,55 @@ vi.mock('@/lib/desktop/platform', async (importOriginal) => {
 vi.mock('@/features/downloads/use-server-downloads', () => ({
   useGameServers: () => ({
     data: [
-      { id: 1, name: 'Living Room PC', primaryUrl: 'http://192.168.1.100:8000' },
+      { id: 1, name: 'Living Room PC', primaryUrl: 'http://192.168.1.100:8000', isOnline: true },
     ],
     isLoading: false,
   }),
+  useCreateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  usePingGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
+
+const mockNavigate = vi.fn()
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => mockNavigate,
+  useLocation: () => ({ hash: '', pathname: '/settings/nodes' }),
+  Link: ({ children, to, params, hash, ...props }: any) => {
+    let href = String(to ?? '')
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        href = href.replace(`$${key}`, String(value))
+      }
+    }
+    if (hash) href = `${href}#${hash}`
+    return <a href={href} {...props}>{children}</a>
+  },
 }))
 
 vi.mock('@ui/molecules/toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
+}))
+
+vi.mock('@/lib/providers/auth', () => ({
+  useAuth: () => ({ user: { id: 1 }, isAuthenticated: true, isLoading: false }),
+}))
+
+vi.mock('@/features/downloads/use-downloads', () => ({
+  useDownloadConfig: () => ({
+    config: { downloadPath: '' },
+    saveConfig: vi.fn(),
+    isLoading: false,
+  }),
+}))
+
+vi.mock('@/components/path-picker', () => ({
+  PathInput: () => <input aria-label="path" />,
+}))
+
+vi.mock('@/features/downloads/use-server-usenet', () => ({
+  useServerUsenetConfig: () => ({ data: null, isLoading: false }),
+  useTestSabnzbd: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 describe('SettingsDesktopPage', () => {
@@ -41,6 +84,7 @@ describe('SettingsDesktopPage', () => {
     vi.clearAllMocks()
     localStorage.clear()
     delete (window as any).desktopAPI
+    clearDesktopAPICache()
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
@@ -49,129 +93,58 @@ describe('SettingsDesktopPage', () => {
   function renderPage() {
     return render(
       <QueryClientProvider client={queryClient}>
-        <SettingsDesktopPage />
+        <SettingsSaveProvider>
+          <ModalProvider>
+            <SettingsDesktopPage />
+            <ModalRoot />
+          </ModalProvider>
+        </SettingsSaveProvider>
       </QueryClientProvider>,
     )
   }
 
-  it('renders web mode with connected server node badge and loads node settings', async () => {
-    vi.mocked(apiClient.get).mockResolvedValueOnce({
-      data: {
-        platform: 'windows',
-        supported: true,
-        launchOnStartup: true,
-        minimizeToTray: false,
-        closeToTray: true,
-        alwaysOnTop: false,
-        startMinimized: false,
-      },
-    } as any)
-
+  it('opens node settings from the list instead of showing a page-level picker', async () => {
     renderPage()
 
-    await waitFor(() => {
-      expect(screen.getByText('Living Room PC')).toBeInTheDocument()
-      expect(screen.getByText('windows')).toBeInTheDocument()
-    })
-
-    expect(apiClient.get).toHaveBeenCalledWith('/library/servers/1/desktop')
+    expect(screen.getAllByText('Living Room PC').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Managing node')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /open living room pc/i })).toHaveAttribute(
+      'href',
+      '/settings/nodes/1',
+    )
+    expect(screen.getAllByText('Open').length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: /Living Room PC settings/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Machine' })).not.toBeInTheDocument()
   })
 
-  it('toggles settings and sends POST to server node in web mode', async () => {
-    vi.mocked(apiClient.get).mockResolvedValueOnce({
-      data: {
-        platform: 'linux',
-        supported: true,
-        launchOnStartup: false,
-        minimizeToTray: false,
-        closeToTray: false,
-        alwaysOnTop: false,
-        startMinimized: false,
-      },
-    } as any)
-
-    vi.mocked(apiClient.post).mockResolvedValueOnce({
-      data: {
-        platform: 'linux',
-        supported: true,
-        launchOnStartup: true,
-        minimizeToTray: false,
-        closeToTray: false,
-        alwaysOnTop: false,
-        startMinimized: false,
-      },
-    } as any)
-
+  it('navigates to the node settings page', async () => {
     renderPage()
 
-    await waitFor(() => {
-      expect(screen.getByText('Living Room PC')).toBeInTheDocument()
-    })
-
-    // Find switches - the first switch is Launch on startup
-    const switches = screen.getAllByRole('switch')
-    expect(switches.length).toBeGreaterThan(0)
-
-    fireEvent.click(switches[0])
-
-    await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith('/library/servers/1/desktop', {
-        launchOnStartup: true,
-      })
-    })
+    expect(screen.getByRole('link', { name: /open living room pc/i })).toHaveAttribute(
+      'href',
+      '/settings/nodes/1',
+    )
+    expect(screen.queryByRole('tab', { name: 'Paths' })).not.toBeInTheDocument()
   })
 
-  it('falls back to localStorage when server node is offline', async () => {
-    vi.mocked(apiClient.get).mockRejectedValueOnce(new Error('Network error'))
-
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Launch on startup')).toBeInTheDocument()
-    })
-
-    const switches = screen.getAllByRole('switch')
-    fireEvent.click(switches[1]) // minimize to tray
-
-    await waitFor(() => {
-      const stored = JSON.parse(localStorage.getItem('otix:desktop-settings') || '{}')
-      expect(stored.minimizeToTray).toBe(true)
-    })
-  })
-
-  it('uses native desktopAPI in desktop mode and hides server node banner', async () => {
-    const mockGet = vi.fn().mockResolvedValue({
-      launchOnStartup: true,
-      minimizeToTray: true,
-      closeToTray: false,
-      alwaysOnTop: false,
-      startMinimized: false,
-    })
-    const mockSet = vi.fn().mockResolvedValue({
-      launchOnStartup: true,
-      minimizeToTray: false,
-      closeToTray: false,
-      alwaysOnTop: false,
-      startMinimized: false,
-    })
-
+  it('navigates to this computer as a node when the Otix app is present', async () => {
     ;(window as any).desktopAPI = {
-      getDesktopSettings: mockGet,
-      setDesktopSettings: mockSet,
+      platform: 'darwin',
+      getDesktopSettings: vi.fn().mockResolvedValue({}),
+      setDesktopSettings: vi.fn().mockResolvedValue({}),
     }
+    clearDesktopAPICache()
 
     renderPage()
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalled()
-      expect(screen.queryByText('Living Room PC')).not.toBeInTheDocument()
+      expect(screen.getAllByText('This computer').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Otix app').length).toBeGreaterThan(0)
     })
 
-    const switches = screen.getAllByRole('switch')
-    fireEvent.click(switches[1]) // minimize to tray
-
-    await waitFor(() => {
-      expect(mockSet).toHaveBeenCalledWith({ minimizeToTray: false })
-    })
+    expect(screen.getByRole('link', { name: /open this computer/i })).toHaveAttribute(
+      'href',
+      '/settings/nodes/-1',
+    )
   })
 })

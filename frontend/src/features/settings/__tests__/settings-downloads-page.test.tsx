@@ -15,7 +15,16 @@ vi.mock('@/lib/providers/auth', () => ({
 
 const mockNavigate = vi.fn()
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
+  Link: ({ children, to, params, hash, ...props }: any) => {
+    let href = String(to ?? '')
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        href = href.replace(`$${key}`, String(value))
+      }
+    }
+    if (hash) href = `${href}#${hash}`
+    return <a href={href} {...props}>{children}</a>
+  },
   useLocation: () => ({ href: '/settings/downloads' }),
   useNavigate: () => mockNavigate,
 }))
@@ -94,6 +103,10 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
       </SettingsSaveProvider>,
     )
     expect(screen.getByText('Downloads')).toBeInTheDocument()
+    expect(screen.getByText('Otix backend')).toBeInTheDocument()
+    expect(screen.getByText('Backend')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /explore/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /ping/i })).not.toBeInTheDocument()
   })
 
   it('opens Manage Downloaders modal with SABnzbd as the only downloader', async () => {
@@ -123,12 +136,27 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
     // Standard icon-based action buttons in downloader row card
     expect(screen.getByRole('button', { name: /configure client/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /test connection/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /connections page/i })).toBeInTheDocument()
 
     // Navigates to connections
     const goToConnectionsBtn = screen.getByRole('button', { name: /go to connections/i })
     await user.click(goToConnectionsBtn)
 
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings/connections' })
+  })
+
+  it('opens node settings as a page under /settings/nodes/:id', async () => {
+    render(
+      <SettingsSaveProvider>
+        <ModalProvider>
+          <SettingsDownloadsPage />
+          <ModalRoot />
+        </ModalProvider>
+      </SettingsSaveProvider>,
+    )
+
+    expect(screen.getByRole('link', { name: /open otix backend/i })).toHaveAttribute(
+      'href',
+      '/settings/nodes/-2',
+    )
   })
 })

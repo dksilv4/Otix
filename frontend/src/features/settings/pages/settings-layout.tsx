@@ -15,6 +15,7 @@ import {
   type NavItem,
 } from '../constants'
 import { SettingsSaveProvider } from '../context/settings-save-context'
+import { SettingsNodeProvider } from '../context/settings-node-context'
 import { SettingsSaveBar } from '../components/molecules/settings-save-bar'
 import { usePluginTabs } from '@/features/_config/slots'
 
@@ -318,7 +319,9 @@ function SettingsLayoutInner() {
 export function SettingsLayout() {
   return (
     <SettingsSaveProvider>
-      <SettingsLayoutInner />
+      <SettingsNodeProvider>
+        <SettingsLayoutInner />
+      </SettingsNodeProvider>
     </SettingsSaveProvider>
   )
 }

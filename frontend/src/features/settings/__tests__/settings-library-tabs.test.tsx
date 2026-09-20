@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { SettingsLibraryPage } from '../pages/settings-library-page'
 import { SettingsSaveProvider } from '../context/settings-save-context'
 import { resolveLibrarySettingsTab } from '../components/organisms/settings-library-tabs'
+import { clearDesktopAPICache } from '@/lib/desktop/api'
 
 vi.mock('@/lib/providers/auth', () => ({
   useAuth: () => ({
@@ -17,11 +17,20 @@ vi.mock('@/lib/providers/auth', () => ({
 const mockNavigate = vi.fn()
 let mockHash = ''
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, ...props }: any) => (
-    <a href={to} {...props}>
-      {children}
-    </a>
-  ),
+  Link: ({ children, to, params, hash, ...props }: any) => {
+    let href = String(to ?? '')
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        href = href.replace(`$${key}`, String(value))
+      }
+    }
+    if (hash) href = `${href}#${hash}`
+    return (
+      <a href={href} {...props}>
+        {children}
+      </a>
+    )
+  },
   useLocation: () => ({ href: '/settings/library', hash: mockHash }),
   useNavigate: () => mockNavigate,
 }))
@@ -94,7 +103,7 @@ vi.mock('../components/organisms/settings-free-games-section', () => ({
 }))
 
 describe('resolveLibrarySettingsTab', () => {
-  it('defaults empty and overview to overview; maps legacy hashes onto library', () => {
+  it('defaults empty and overview to overview; maps legacy hashes onto library or overview', () => {
     expect(resolveLibrarySettingsTab('')).toBe('overview')
     expect(resolveLibrarySettingsTab(undefined)).toBe('overview')
     expect(resolveLibrarySettingsTab('overview')).toBe('overview')
@@ -102,9 +111,9 @@ describe('resolveLibrarySettingsTab', () => {
     expect(resolveLibrarySettingsTab('games')).toBe('library')
     expect(resolveLibrarySettingsTab('#proposals')).toBe('library')
     expect(resolveLibrarySettingsTab('library')).toBe('library')
-    expect(resolveLibrarySettingsTab('paths')).toBe('paths')
-    expect(resolveLibrarySettingsTab('downloads')).toBe('downloads')
-    expect(resolveLibrarySettingsTab('organize')).toBe('organize')
+    expect(resolveLibrarySettingsTab('paths')).toBe('overview')
+    expect(resolveLibrarySettingsTab('downloads')).toBe('overview')
+    expect(resolveLibrarySettingsTab('organize')).toBe('overview')
   })
 })
 
@@ -119,6 +128,7 @@ describe('SettingsLibraryPage tabs', () => {
       getDesktopSettings: vi.fn().mockResolvedValue({ gamesDownloadPath: '' }),
       saveDesktopSettings: vi.fn().mockResolvedValue(undefined),
     }
+    clearDesktopAPICache()
   })
 
   it('renders tablist and Overview tab by default', async () => {
@@ -131,28 +141,36 @@ describe('SettingsLibraryPage tabs', () => {
       </SettingsSaveProvider>,
     )
 
-    expect(screen.getByRole('heading', { name: 'Library & Downloads' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { name: 'Library' }).length).toBeGreaterThan(0)
     expect(
-      screen.getByText('Status across matching, storage paths, game servers, and automation.'),
+      screen.getByText('Status across matching, folders, nodes, and automation.'),
     ).toBeInTheDocument()
     expect(screen.getByRole('tablist')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Library' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Paths' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Downloads' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Organize' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Paths' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Downloads' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Organize' })).not.toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Open Library settings' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Open Paths settings' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Open Downloads settings' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Open Organize settings' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Open Library' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Go to Paths' })).toHaveAttribute(
+        'href',
+        '/settings/nodes/-1',
+      )
+      expect(screen.getByRole('link', { name: 'Go to Downloads' })).toHaveAttribute(
+        'href',
+        '/settings/nodes/-1#downloaders',
+      )
+      expect(screen.getByRole('link', { name: 'Go to Organize' })).toHaveAttribute(
+        'href',
+        '/settings/nodes/-1#organize',
+      )
     })
   })
 
-  it('navigates from overview card to Paths tab', async () => {
-    const user = userEvent.setup()
+  it('navigates from overview card to the selected node settings page', async () => {
     render(
       <SettingsSaveProvider>
         <ModalProvider>
@@ -163,20 +181,14 @@ describe('SettingsLibraryPage tabs', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Open Paths settings' })).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Open Paths settings' }))
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings/library', hash: 'paths', replace: true })
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Destinations' })).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'Scan folders' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Go to Paths' })).toHaveAttribute(
+        'href',
+        '/settings/nodes/-1',
+      )
     })
   })
 
-  it('switches to Paths tab and updates hash', async () => {
-    const user = userEvent.setup()
+  it('does not keep a Paths tab on the library page', async () => {
     render(
       <SettingsSaveProvider>
         <ModalProvider>
@@ -186,19 +198,11 @@ describe('SettingsLibraryPage tabs', () => {
       </SettingsSaveProvider>,
     )
 
-    await user.click(screen.getByRole('tab', { name: 'Paths' }))
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings/library', hash: 'paths', replace: true })
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Destinations' })).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: 'Scan folders' })).toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: 'Remote path mappings' })).not.toBeInTheDocument()
-      expect(screen.getByText('Games download folder')).toBeInTheDocument()
-      expect(screen.getByText('Scan folders')).toBeInTheDocument()
-    })
+    expect(screen.queryByRole('tab', { name: 'Paths' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Managing node')).not.toBeInTheDocument()
   })
 
-  it('opens Downloads tab content from hash', async () => {
+  it('redirects retired downloads hash to Nodes', async () => {
     mockHash = '#downloads'
     render(
       <SettingsSaveProvider>
@@ -210,8 +214,7 @@ describe('SettingsLibraryPage tabs', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Remote Game Servers')).toBeInTheDocument()
-      expect(screen.getByText('Download clients')).toBeInTheDocument()
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings/nodes', replace: true })
     })
   })
 

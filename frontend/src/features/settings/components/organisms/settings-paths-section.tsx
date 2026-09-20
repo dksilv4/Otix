@@ -12,6 +12,10 @@ import { useToast } from '@ui/molecules/toast'
 import { useAuth } from '@/lib/providers/auth'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
+import { apiClient } from '@/lib/api/client'
+import { useSettingsNode } from '../../context/settings-node-context'
+import { isBackendNodeId } from '../../backend-node'
+import { isLocalDesktopNodeId } from '../../local-desktop-node'
 import { SettingsCard } from '../molecules/settings-card'
 import { SectionHeader } from '../molecules/settings-section-header'
 import { cn } from '@/lib/utils'
@@ -24,9 +28,11 @@ export interface ScanPathItem {
 export interface SettingsPathsSectionProps {
   onScanComplete?: () => void
   className?: string
+  /** When set, load and save paths on this Otix node instead of the page-level selection. */
+  nodeId?: number | null
 }
 
-export function SettingsPathsSection({ onScanComplete, className }: SettingsPathsSectionProps) {
+export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeIdProp }: SettingsPathsSectionProps) {
   const { toast } = useToast()
   let user: any = null
   try {
@@ -37,7 +43,13 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
   }
 
   const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
+  const { selectedNode } = useSettingsNode()
+  const nodeId = nodeIdProp !== undefined ? nodeIdProp : (selectedNode?.id ?? null)
+  const isLocalNode = isLocalDesktopNodeId(nodeId)
+  const backendNode = isBackendNodeId(nodeId)
+  const remoteNodeId = isLocalNode ? null : nodeId
   const desktop = isDesktop()
+  const folderTarget = remoteNodeId ? 'server' : desktop ? 'local' : 'server'
 
   // ── State ──
   const [scanPaths, setScanPaths] = useState<ScanPathItem[]>([])
@@ -53,10 +65,25 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
   const [draftScanPath, setDraftScanPath] = useState('')
   const [draftScanType, setDraftScanType] = useState<'game' | 'iso'>('game')
 
-  const folderTarget = desktop ? 'local' : 'server'
-
-  // ── 1. Load scan paths from desktop API or localStorage ──
+  // ── 1. Load scan paths from the selected node, desktop API, or localStorage ──
   const loadScanPaths = useCallback(async () => {
+    if (remoteNodeId) {
+      try {
+        const { data } = await apiClient.get(`/library/servers/${remoteNodeId}/libraries`)
+        const rows = Array.isArray(data) ? data : data?.libraries || []
+        const items: ScanPathItem[] = rows
+          .map((row: any) => ({
+            path: String(row.path || '').trim(),
+            type: row.kind === 'iso' || row.type === 'iso' ? 'iso' as const : 'game' as const,
+          }))
+          .filter((row: ScanPathItem) => row.path)
+        setScanPaths(items)
+        return
+      } catch (err) {
+        console.warn('Failed to get scan paths from Otix node:', err)
+      }
+    }
+
     const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
     if (api?.getScanPaths) {
       try {
@@ -93,28 +120,52 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
       }
       setScanPaths(items)
     } catch {}
-  }, [])
+  }, [remoteNodeId])
 
   useEffect(() => {
     loadScanPaths()
   }, [loadScanPaths])
 
-  // ── 2. Load desktop settings & download config ──
+  // ── 2. Load destination folders from the node or this device ──
   useEffect(() => {
-    const api = getDesktopAPI()
-    if (!api?.getDesktopSettings) return
-    api
-      .getDesktopSettings()
-      .then((ds) => {
-        if (ds?.gamesDownloadPath) {
-          setGamesDownloadPath(ds.gamesDownloadPath)
-          try {
-            localStorage.setItem('otix:games-download-dir', ds.gamesDownloadPath)
-          } catch {}
+    let cancelled = false
+    async function loadDestinations() {
+      if (remoteNodeId) {
+        try {
+          const [desktopRes, organizeRes] = await Promise.all([
+            apiClient.get<any>(`/library/servers/${remoteNodeId}/desktop`),
+            apiClient.get<any>(`/library/servers/${remoteNodeId}/organize`),
+          ])
+          if (cancelled) return
+          const gamesPath = desktopRes?.data?.gamesDownloadPath || desktopRes?.data?.games_download_path || ''
+          const isoPath = organizeRes?.data?.isoDownloadPath || organizeRes?.data?.iso_download_path || ''
+          if (gamesPath) setGamesDownloadPath(gamesPath)
+          if (isoPath) setServerDownloadPath(isoPath)
+          return
+        } catch {
+          // fall through
         }
-      })
-      .catch(() => {})
-  }, [])
+      }
+      const api = getDesktopAPI()
+      if (api?.getDesktopSettings) {
+        try {
+          const ds = await api.getDesktopSettings()
+          if (!cancelled && ds?.gamesDownloadPath) {
+            setGamesDownloadPath(ds.gamesDownloadPath)
+            try {
+              localStorage.setItem('otix:games-download-dir', ds.gamesDownloadPath)
+            } catch {}
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+    void loadDestinations()
+    return () => {
+      cancelled = true
+    }
+  }, [remoteNodeId])
 
   useEffect(() => {
     if (dlConfig) {
@@ -125,6 +176,20 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
   // Helper to persist scan paths
   const persistScanPaths = async (updated: ScanPathItem[]) => {
     setScanPaths(updated)
+    if (remoteNodeId) {
+      try {
+        await apiClient.put(`/library/servers/${remoteNodeId}/libraries`, {
+          libraries: updated.map((item) => ({
+            name: item.path.split(/[\\/]/).filter(Boolean).pop() || item.type,
+            path: item.path,
+            kind: item.type,
+          })),
+        })
+      } catch (err) {
+        console.error('Failed to save scan paths to Otix node:', err)
+      }
+      return
+    }
     const api = getDesktopAPI()
     if (api?.saveScanPaths) {
       try {
@@ -145,13 +210,17 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
     setGamesDownloadPath(trimmed)
 
     try {
-      const api = getDesktopAPI()
-      if (api?.setDesktopSettings) {
-        await api.setDesktopSettings({ gamesDownloadPath: trimmed })
+      if (remoteNodeId) {
+        await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesDownloadPath: trimmed })
+      } else {
+        const api = getDesktopAPI()
+        if (api?.setDesktopSettings) {
+          await api.setDesktopSettings({ gamesDownloadPath: trimmed })
+        }
+        try {
+          localStorage.setItem('otix:games-download-dir', trimmed)
+        } catch {}
       }
-      try {
-        localStorage.setItem('otix:games-download-dir', trimmed)
-      } catch {}
 
       // Automatically register in scanPaths if not already present
       if (trimmed) {
@@ -180,9 +249,14 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
     const trimmed = path.trim()
     setServerDownloadPath(trimmed)
 
-    if (user && saveConfig && dlConfig) {
+    if (remoteNodeId) {
       try {
-        // Merge with existing config — downloadsSaveConfig writes every column.
+        await apiClient.post(`/library/servers/${remoteNodeId}/organize`, { isoDownloadPath: trimmed || '' })
+      } catch (err) {
+        console.error('Failed to save ISO path to Otix node:', err)
+      }
+    } else if (user && saveConfig && dlConfig) {
+      try {
         await saveConfig({
           ...dlConfig,
           userId: user.id,
@@ -246,12 +320,16 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
   // ── 6. Trigger Scan ──
   const handleTriggerScan = async () => {
     setIsScanning(true)
-    const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
     try {
-      if (api?.scanPaths) {
-        const gameDirs = scanPaths.filter((p) => p.type === 'game').map((p) => p.path)
-        const isoDirs = scanPaths.filter((p) => p.type === 'iso').map((p) => p.path)
-        await api.scanPaths(gameDirs, isoDirs)
+      if (remoteNodeId) {
+        await apiClient.post(`/library/servers/${remoteNodeId}/scan`)
+      } else {
+        const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+        if (api?.scanPaths) {
+          const gameDirs = scanPaths.filter((p) => p.type === 'game').map((p) => p.path)
+          const isoDirs = scanPaths.filter((p) => p.type === 'iso').map((p) => p.path)
+          await api.scanPaths(gameDirs, isoDirs)
+        }
       }
       onScanComplete?.()
       toast({
@@ -293,8 +371,9 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
               value={gamesDownloadPath}
               onChange={setGamesDownloadPath}
               onCommit={handleSaveGamesPath}
-              placeholder={desktop ? 'e.g. D:\\Games or ~/Downloads/Games' : 'e.g. /media/games'}
+              placeholder={desktop && !remoteNodeId ? 'e.g. D:\\Games or ~/Downloads/Games' : 'e.g. /media/games'}
               target={folderTarget}
+              serverId={remoteNodeId ?? undefined}
             />
           </div>
 
@@ -312,8 +391,9 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
               value={serverDownloadPath}
               onChange={setServerDownloadPath}
               onCommit={handleSaveServerIsoPath}
-              placeholder={desktop ? 'e.g. D:\\ISOs or /Volumes/Storage/ISOs' : 'e.g. /app/storage/installers'}
+              placeholder={desktop && !remoteNodeId ? 'e.g. D:\\ISOs or /Volumes/Storage/ISOs' : 'e.g. /app/storage/installers'}
               target={folderTarget}
+              serverId={remoteNodeId ?? undefined}
             />
           </div>
         </div>
@@ -322,8 +402,13 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
       <SettingsCard className="space-y-4">
         <SectionHeader
           title="Scan folders"
-          description="Extra folders to index. Destinations above are linked automatically."
+          description={
+            backendNode
+              ? 'Folders stored on the Otix backend. Scanning needs a worker node with those paths on disk.'
+              : 'Extra folders to index. Destinations above are linked automatically.'
+          }
           action={
+            backendNode ? undefined : (
             <DkButton
               size="sm"
               onClick={handleTriggerScan}
@@ -334,6 +419,7 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
               <RefreshCw className="h-3.5 w-3.5" />
               {isScanning ? 'Scanning...' : 'Scan Now'}
             </DkButton>
+            )
           }
         />
 
@@ -426,7 +512,7 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
               onChange={setDraftScanPath}
               onCommit={handleCommitDraftScanPath}
               placeholder={
-                desktop
+                desktop && !remoteNodeId
                   ? draftScanType === 'iso'
                     ? 'e.g. D:\\ISOs or /Volumes/Storage/ROMs'
                     : 'e.g. D:\\Games\\Steam or ~/Games'
@@ -435,6 +521,7 @@ export function SettingsPathsSection({ onScanComplete, className }: SettingsPath
                     : 'e.g. /media/games'
               }
               target={folderTarget}
+              serverId={remoteNodeId ?? undefined}
             />
           </div>
         </div>

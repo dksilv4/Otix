@@ -19,8 +19,11 @@ const SettingsAppearancePage = lazy(() =>
 const SettingsLauncherPage = lazy(() =>
   import('./pages/settings-launcher-page').then((m) => ({ default: m.SettingsLauncherPage })),
 )
-const SettingsDesktopPage = lazy(() =>
-  import('./pages/settings-desktop-page').then((m) => ({ default: m.SettingsDesktopPage })),
+const SettingsNodesPage = lazy(() =>
+  import('./pages/settings-desktop-page').then((m) => ({ default: m.SettingsNodesPage })),
+)
+const SettingsNodeDetailPage = lazy(() =>
+  import('./pages/settings-node-detail-page').then((m) => ({ default: m.SettingsNodeDetailPage })),
 )
 const SettingsNotificationsPage = lazy(() =>
   import('./pages/settings-notifications-page').then((m) => ({ default: m.SettingsNotificationsPage })),
@@ -89,11 +92,26 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     },
   })
 
-  const settingsDesktopRoute = createRoute({
+  const settingsDesktopRedirect = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/desktop',
-    component: SettingsDesktopPage,
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes' })
+    },
+  })
+
+  const settingsNodesRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/nodes',
+    component: SettingsNodesPage,
     loader: preload(() => import('./pages/settings-desktop-page')),
+  })
+
+  const settingsNodeDetailRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/nodes/$nodeId',
+    component: SettingsNodeDetailPage,
+    loader: preload(() => import('./pages/settings-node-detail-page')),
   })
 
   const settingsLauncherRoute = createRoute({
@@ -187,7 +205,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/downloads',
     beforeLoad: () => {
-      throw redirect({ to: '/settings/library', hash: 'downloads' })
+      throw redirect({ to: '/settings/nodes' })
     },
   })
 
@@ -210,7 +228,9 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       settingsIndexRoute,
       settingsOverviewRedirect,
       settingsGeneralRedirect,
-      settingsDesktopRoute,
+      settingsDesktopRedirect,
+      settingsNodesRoute,
+      settingsNodeDetailRoute,
       settingsIntegrationsRedirect,
       settingsAdminProposalsRedirect,
       settingsProposalsRedirect,
