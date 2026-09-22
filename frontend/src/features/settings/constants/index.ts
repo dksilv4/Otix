@@ -97,7 +97,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: false,
     requiresAuth: false,
     group: 'connections',
-    keywords: 'integrations steam plex tmdb youtube sabnzbd prowlarr radarr sonarr usenet oauth',
+    keywords: 'integrations steam plex tmdb youtube sabnzbd prowlarr radarr sonarr usenet oauth connection nodes accounts',
   },
   {
     id: 'plugins',

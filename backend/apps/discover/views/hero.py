@@ -31,7 +31,8 @@ class DiscoverHeroView(APIView):
             request.user.is_authenticated and getattr(request.user, "is_staff", False)
         )
         items = discover_services.hero_items(exclude_adult=exclude_adult, limit=limit)
-        catalog_service.enrich_summaries(items, request.user)
+        context = catalog_service.request_context(request)
+        catalog_service.enrich_summaries(items, request.user, context)
         return Response(
             {
                 "items": MediaItemSummarySerializer(items, many=True).data,

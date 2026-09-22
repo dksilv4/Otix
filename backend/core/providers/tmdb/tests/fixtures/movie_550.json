@@ -1,0 +1,142 @@
+{
+  "adult": false,
+  "backdrop_path": "/hZkgoQYus5vegHoetLkCJzb17zJ.jpg",
+  "belongs_to_collection": null,
+  "budget": 63000000,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    },
+    {
+      "id": 53,
+      "name": "Thriller"
+    }
+  ],
+  "homepage": "http://www.foxmovies.com/movies/fight-club",
+  "id": 550,
+  "imdb_id": "tt0137523",
+  "original_language": "en",
+  "original_title": "Fight Club",
+  "overview": "An insomniac office worker and a devil-may-care soap maker form an underground fight club that evolves into much more.",
+  "popularity": 61.416,
+  "poster_path": "/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+  "production_companies": [
+    {
+      "id": 508,
+      "logo_path": "/cxw.jpg",
+      "name": "Regency Enterprises",
+      "origin_country": "US"
+    },
+    {
+      "id": 711,
+      "logo_path": null,
+      "name": "Fox 2000 Pictures",
+      "origin_country": "US"
+    }
+  ],
+  "release_date": "1999-10-15",
+  "revenue": 100853753,
+  "runtime": 139,
+  "status": "Released",
+  "tagline": "Mischief. Mayhem. Soap.",
+  "title": "Fight Club",
+  "vote_average": 8.433,
+  "vote_count": 26280,
+  "credits": {
+    "cast": [
+      {
+        "id": 819,
+        "name": "Edward Norton",
+        "character": "The Narrator",
+        "order": 0,
+        "profile_path": "/norton.jpg"
+      },
+      {
+        "id": 287,
+        "name": "Brad Pitt",
+        "character": "Tyler Durden",
+        "order": 1,
+        "profile_path": "/pitt.jpg"
+      },
+      {
+        "id": 1283,
+        "name": "Helena Bonham Carter",
+        "character": "Marla Singer",
+        "order": 2,
+        "profile_path": "/carter.jpg"
+      }
+    ],
+    "crew": [
+      {
+        "id": 7467,
+        "name": "David Fincher",
+        "job": "Director",
+        "order": 0,
+        "profile_path": "/fincher.jpg"
+      }
+    ]
+  },
+  "images": {
+    "backdrops": [
+      {
+        "file_path": "/bk1.jpg",
+        "width": 1920,
+        "height": 1080
+      }
+    ],
+    "logos": [
+      {
+        "file_path": "/lg1.png",
+        "iso_639_1": "en"
+      }
+    ],
+    "posters": [
+      {
+        "file_path": "/pst0.jpg",
+        "iso_639_1": null
+      }
+    ]
+  },
+  "videos": {
+    "results": [
+      {
+        "id": "abc123",
+        "key": "oB6q8T4P4eA",
+        "name": "Fight Club - Trailer",
+        "site": "YouTube",
+        "type": "Trailer"
+      }
+    ]
+  },
+  "release_dates": {
+    "results": [
+      {
+        "iso_3166_1": "US",
+        "release_dates": [
+          {
+            "certification": "R",
+            "release_date": "1999-10-15T00:00:00.000Z",
+            "release_type": 3
+          }
+        ]
+      }
+    ]
+  },
+  "keywords": {
+    "keywords": [
+      {
+        "id": 1,
+        "name": "insomnia"
+      },
+      {
+        "id": 2,
+        "name": "soap"
+      }
+    ]
+  },
+  "external_ids": {
+    "imdb_id": "tt0137523",
+    "wikidata_id": "Q180563"
+  }
+}

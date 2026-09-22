@@ -13,6 +13,7 @@ from apps.library.services.game_server import (
     proxy_epic_scan,
 )
 from apps.media.models import ExternalID, MediaItem
+from apps.media.services.game_matcher import _comparison_key
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,10 @@ def scan_epic_library(user) -> dict:
             ]
         )
     id_map = _epic_external_id_map(ids)
+    catalog_games = {
+        _comparison_key(m.title): m.id
+        for m in MediaItem.objects.filter(media_type="game").only("id", "title")
+    }
 
     app_names = [game.get("app_name") for game in games if game.get("app_name")]
     existing = {
@@ -80,6 +85,20 @@ def scan_epic_library(user) -> dict:
             or id_map.get(game.get("offer_id"))
             or id_map.get(app_name)
         )
+        if media_id is None and game.get("title"):
+            media_id = catalog_games.get(_comparison_key(game["title"]))
+            if media_id is not None:
+                content_type = _media_content_type()
+                for ext in [game.get("catalog_item_id"), game.get("offer_id"), app_name]:
+                    if ext:
+                        ExternalID.objects.get_or_create(
+                            content_type=content_type,
+                            provider="epic",
+                            external_id=str(ext),
+                            media_type="game",
+                            defaults={"object_id": media_id},
+                        )
+
         if media_id is not None:
             matched += 1
         defaults = {

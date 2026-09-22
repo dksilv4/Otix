@@ -46,6 +46,7 @@ class DesktopSettings(BaseModel):
     always_on_top: bool = False
     start_minimized: bool = False
     games_download_path: str = ""
+    games_install_path: str = ""
     scan_on_launch: bool = False
 
 

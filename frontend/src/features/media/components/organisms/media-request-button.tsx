@@ -84,49 +84,75 @@ export function RequestMediaButton() {
   const busy = state.requesting != null
 
   if (state.loading && state.instances.length === 0) {
+    const loadingText = state.loadingLabel || 'Checking Library…'
     return (
       <button
         type="button"
         disabled
-        className="inline-flex items-center gap-2 rounded-full bg-blue-500/80 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/15 opacity-80"
+        title={state.disabledReason || `Checking ${state.mediaType === 'movie' ? 'Radarr' : 'Sonarr'} library status…`}
+        className="inline-flex items-center gap-2 rounded-full bg-blue-500/80 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/15 opacity-80 cursor-not-allowed"
       >
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>{state.requestLabel}</span>
+        <span>{loadingText}</span>
       </button>
     )
   }
 
   if (downloaded && targets.length === 0) {
+    const downloadedInstances = state.instances
+      .filter((item) => item.status === 'downloaded')
+      .map((item) => item.name)
+      .join(', ')
     return (
-      <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-5 py-2.5 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-500/40 shadow-lg shadow-emerald-500/10">
+      <div
+        className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-5 py-2.5 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-500/40 shadow-lg shadow-emerald-500/10"
+        title={downloadedInstances ? `Available in library on: ${downloadedInstances}` : 'Available in library'}
+      >
         <Check className="h-4 w-4" />
-        In Library
+        Available
       </div>
     )
   }
 
   if (requested && targets.length === 0) {
+    const requestedInstances = state.instances
+      .filter((item) => item.status === 'requested')
+      .map((item) => item.name)
+      .join(', ')
     return (
-      <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 px-5 py-2.5 text-sm font-semibold text-amber-300 ring-1 ring-amber-500/40 shadow-lg shadow-amber-500/10">
+      <div
+        className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 px-5 py-2.5 text-sm font-semibold text-amber-300 ring-1 ring-amber-500/40 shadow-lg shadow-amber-500/10"
+        title={requestedInstances ? `Requested on: ${requestedInstances}` : 'Already requested'}
+      >
         <Clock className="h-4 w-4" />
         Requested
       </div>
     )
   }
 
-  const label = targets.length > 0 && (downloaded || requested) ? 'Request Additional' : state.requestLabel
+  const label = targets.length > 0 && (downloaded || requested)
+    ? 'Request Additional'
+    : targets.length === 0
+      ? 'Request Unavailable'
+      : state.requestLabel
   const singleTarget = targets.length <= 1
 
   if (singleTarget) {
     const target = targets[0]
+    const buttonTitle = busy
+      ? 'Request is in progress…'
+      : !target
+        ? (state.disabledReason || 'Request unavailable for this title')
+        : `Request on ${target?.name || state.activeServerName}`
+
     return (
       <>
         <button
           type="button"
           onClick={() => openConfirm(target?.id)}
           disabled={busy || !target}
-          className="inline-flex items-center gap-2 rounded-full bg-blue-500 hover:bg-blue-400 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
-          title={`Request on ${state.activeServerName}`}
+          className="inline-flex items-center gap-2 rounded-full bg-blue-500 hover:bg-blue-400 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          title={buttonTitle}
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
           <span>{busy ? 'Requesting…' : label}</span>
@@ -151,7 +177,8 @@ export function RequestMediaButton() {
           type="button"
           onClick={() => openConfirm(targets[0]?.id)}
           disabled={busy}
-          className="inline-flex items-center gap-2 rounded-l-full bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-400 transition-all duration-200 cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-l-full bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-400 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          title={busy ? 'Request is in progress…' : `Request on ${targets[0]?.name || state.activeServerName}`}
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
           <span>{busy ? 'Requesting…' : label}</span>

@@ -1,0 +1,272 @@
+{
+  "adult": false,
+  "backdrop_path": "/8rft8AQ46v0OTtT19xfCDk82RIj.jpg",
+  "belongs_to_collection": null,
+  "budget": 100000000,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    },
+    {
+      "id": 36,
+      "name": "History"
+    }
+  ],
+  "homepage": "https://www.oppenheimermovie.com",
+  "id": 872585,
+  "imdb_id": "tt15398776",
+  "origin_country": [
+    "US"
+  ],
+  "original_language": "en",
+  "original_title": "Oppenheimer",
+  "overview": "The story of J. Robert Oppenheimer's role in the development of the atomic bomb during World War II.",
+  "popularity": 142.85,
+  "poster_path": "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
+  "production_companies": [
+    {
+      "id": 33,
+      "logo_path": "/8lvHyZjrGhKFk78laKWUbYv9ZkS.png",
+      "name": "Universal Pictures",
+      "origin_country": "US"
+    },
+    {
+      "id": 9996,
+      "logo_path": "/2Tc1P3Ac8M479naPp1kYT3izLS5.png",
+      "name": "Syncopy",
+      "origin_country": "GB"
+    }
+  ],
+  "production_countries": [
+    {
+      "iso_3166_1": "US",
+      "name": "United States of America"
+    },
+    {
+      "iso_3166_1": "GB",
+      "name": "United Kingdom"
+    }
+  ],
+  "release_date": "2023-07-19",
+  "revenue": 957000000,
+  "runtime": 181,
+  "spoken_languages": [
+    {
+      "english_name": "English",
+      "iso_639_1": "en",
+      "name": "English"
+    },
+    {
+      "english_name": "German",
+      "iso_639_1": "de",
+      "name": "Deutsch"
+    }
+  ],
+  "status": "Released",
+  "tagline": "The world forever changes.",
+  "title": "Oppenheimer",
+  "video": false,
+  "vote_average": 8.1,
+  "vote_count": 8940,
+  "credits": {
+    "cast": [
+      {
+        "adult": false,
+        "gender": 2,
+        "id": 2037,
+        "known_for_department": "Acting",
+        "name": "Cillian Murphy",
+        "original_name": "Cillian Murphy",
+        "popularity": 45.2,
+        "profile_path": "/llkLz5y28sQWz78v5gM6k4Kk9zD.jpg",
+        "cast_id": 1,
+        "character": "J. Robert Oppenheimer",
+        "credit_id": "615fa2584142f70043818e95",
+        "order": 0
+      },
+      {
+        "adult": false,
+        "gender": 1,
+        "id": 5081,
+        "known_for_department": "Acting",
+        "name": "Emily Blunt",
+        "original_name": "Emily Blunt",
+        "popularity": 38.6,
+        "profile_path": "/nPJZvL2iScmcbZ1A1pXvoSg9D0H.jpg",
+        "cast_id": 2,
+        "character": "Katherine 'Kitty' Oppenheimer",
+        "credit_id": "616ed3d2894ed6008f51a441",
+        "order": 1
+      },
+      {
+        "adult": false,
+        "gender": 2,
+        "id": 1892,
+        "known_for_department": "Acting",
+        "name": "Matt Damon",
+        "original_name": "Matt Damon",
+        "popularity": 42.1,
+        "profile_path": "/elSlNgV8xVifu2HN79ZXVRQk0jM.jpg",
+        "cast_id": 3,
+        "character": "Leslie Groves",
+        "credit_id": "61786baef288380061e88cf8",
+        "order": 2
+      },
+      {
+        "adult": false,
+        "gender": 2,
+        "id": 3223,
+        "known_for_department": "Acting",
+        "name": "Robert Downey Jr.",
+        "original_name": "Robert Downey Jr.",
+        "popularity": 55.4,
+        "profile_path": "/im9SAqJPZKEbVZGmjXuLI4O7RvM.jpg",
+        "cast_id": 4,
+        "character": "Lewis Strauss",
+        "credit_id": "61786bc6894ed6002ae7e781",
+        "order": 3
+      }
+    ],
+    "crew": [
+      {
+        "adult": false,
+        "gender": 2,
+        "id": 525,
+        "known_for_department": "Directing",
+        "name": "Christopher Nolan",
+        "original_name": "Christopher Nolan",
+        "popularity": 32.1,
+        "profile_path": "/xuAIuYSmsUzKlUMBFGVZaWsY3Z5.jpg",
+        "credit_id": "613a7c64c8a2c4004313f8c8",
+        "department": "Directing",
+        "job": "Director"
+      },
+      {
+        "adult": false,
+        "gender": 2,
+        "id": 525,
+        "known_for_department": "Directing",
+        "name": "Christopher Nolan",
+        "original_name": "Christopher Nolan",
+        "popularity": 32.1,
+        "profile_path": "/xuAIuYSmsUzKlUMBFGVZaWsY3Z5.jpg",
+        "credit_id": "613a7c64c8a2c4004313f8c9",
+        "department": "Writing",
+        "job": "Writer"
+      },
+      {
+        "adult": false,
+        "gender": 2,
+        "id": 1391782,
+        "known_for_department": "Sound",
+        "name": "Ludwig Göransson",
+        "original_name": "Ludwig Göransson",
+        "popularity": 12.5,
+        "profile_path": "/eZgP5tZz0oM5v0eN6I1K2L4M8P.jpg",
+        "credit_id": "616ed3d2894ed6008f51a442",
+        "department": "Sound",
+        "job": "Original Music Composer"
+      }
+    ]
+  },
+  "external_ids": {
+    "imdb_id": "tt15398776",
+    "wikidata_id": "Q108839994",
+    "facebook_id": "OppenheimerMovie",
+    "instagram_id": "oppenheimermovie",
+    "twitter_id": "OppenheimerFilm"
+  },
+  "images": {
+    "backdrops": [
+      {
+        "aspect_ratio": 1.778,
+        "height": 2160,
+        "iso_639_1": null,
+        "file_path": "/8rft8AQ46v0OTtT19xfCDk82RIj.jpg",
+        "vote_average": 5.384,
+        "vote_count": 9,
+        "width": 3840
+      }
+    ],
+    "logos": [
+      {
+        "aspect_ratio": 3.75,
+        "height": 480,
+        "iso_639_1": "en",
+        "file_path": "/d9hZlW99hYtVf958vH0L7V6Vf2B.png",
+        "vote_average": 5.312,
+        "vote_count": 5,
+        "width": 1800
+      }
+    ],
+    "posters": [
+      {
+        "aspect_ratio": 0.667,
+        "height": 3000,
+        "iso_639_1": "en",
+        "file_path": "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
+        "vote_average": 5.384,
+        "vote_count": 13,
+        "width": 2000
+      }
+    ]
+  },
+  "videos": {
+    "results": [
+      {
+        "iso_639_1": "en",
+        "iso_3166_1": "US",
+        "name": "Official Trailer",
+        "key": "uYPbbksJxIg",
+        "site": "YouTube",
+        "size": 1080,
+        "type": "Trailer",
+        "official": true,
+        "published_at": "2023-05-08T16:00:10.000Z",
+        "id": "64591f868c44b9013c7bbbf2"
+      }
+    ]
+  },
+  "release_dates": {
+    "results": [
+      {
+        "iso_3166_1": "US",
+        "release_dates": [
+          {
+            "certification": "R",
+            "descriptors": [],
+            "iso_639_1": "",
+            "note": "",
+            "release_date": "2023-07-21T00:00:00.000Z",
+            "type": 3
+          }
+        ]
+      }
+    ]
+  },
+  "keywords": {
+    "keywords": [
+      {
+        "id": 186,
+        "name": "atomic bomb"
+      },
+      {
+        "id": 209,
+        "name": "world war ii"
+      },
+      {
+        "id": 5565,
+        "name": "biography"
+      },
+      {
+        "id": 10084,
+        "name": "scientist"
+      },
+      {
+        "id": 215456,
+        "name": "manhattan project"
+      }
+    ]
+  }
+}

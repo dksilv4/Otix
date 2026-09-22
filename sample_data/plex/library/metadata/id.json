@@ -1,0 +1,46 @@
+{
+  "MediaContainer": {
+    "size": 1,
+    "allowSync": false,
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": 1,
+    "Metadata": [
+      {
+        "ratingKey": "101",
+        "key": "/library/metadata/101",
+        "guid": "plex://movie/5d776825a073f3001f3b3924",
+        "type": "movie",
+        "title": "Oppenheimer",
+        "year": 2023,
+        "duration": 10860000,
+        "Media": [
+          {
+            "id": 201,
+            "duration": 10860000,
+            "bitrate": 18500,
+            "width": 3840,
+            "height": 1714,
+            "aspectRatio": 2.24,
+            "audioChannels": 6,
+            "audioCodec": "dca",
+            "videoCodec": "hevc",
+            "videoResolution": "4k",
+            "container": "mkv",
+            "videoFrameRate": "24p",
+            "Part": [
+              {
+                "id": 301,
+                "key": "/library/parts/301/1700000000/file.mkv",
+                "duration": 10860000,
+                "file": "/data/movies/Oppenheimer (2023)/Oppenheimer.2023.2160p.UHD.Remux.mkv",
+                "size": 65899345920,
+                "container": "mkv",
+                "videoProfile": "main 10"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -139,8 +139,8 @@ export interface ServerArrQueueResponse {
 }
 
 export interface AddRadarrMoviePayload {
-  title: string;
-  tmdb_id: number;
+  title?: string;
+  tmdb_id?: number;
   year?: number;
   quality_profile_id?: number;
   root_folder_path?: string;

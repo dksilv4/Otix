@@ -1,0 +1,55 @@
+{
+  "name": "Oppenheimer",
+  "tmdb_id": "872585",
+  "imdb_id": "tt15398776",
+  "hdmovielogo": [
+    {
+      "id": "352101",
+      "url": "https://assets.fanart.tv/fanart/movies/872585/hdmovielogo/oppenheimer-64b58f845d045.png",
+      "lang": "en",
+      "likes": "12"
+    }
+  ],
+  "movielogo": [
+    {
+      "id": "352102",
+      "url": "https://assets.fanart.tv/fanart/movies/872585/movielogo/oppenheimer-64b58f845d046.png",
+      "lang": "en",
+      "likes": "4"
+    }
+  ],
+  "movieposter": [
+    {
+      "id": "352103",
+      "url": "https://assets.fanart.tv/fanart/movies/872585/movieposter/oppenheimer-64b58f845d047.jpg",
+      "lang": "en",
+      "likes": "8"
+    }
+  ],
+  "moviebackground": [
+    {
+      "id": "352104",
+      "url": "https://assets.fanart.tv/fanart/movies/872585/moviebackground/oppenheimer-64b58f845d048.jpg",
+      "lang": "en",
+      "likes": "15"
+    }
+  ],
+  "moviedisc": [
+    {
+      "id": "352105",
+      "url": "https://assets.fanart.tv/fanart/movies/872585/moviedisc/oppenheimer-64b58f845d049.png",
+      "lang": "en",
+      "likes": "6",
+      "disc": "1",
+      "disc_type": "bluray"
+    }
+  ],
+  "moviebanner": [
+    {
+      "id": "352106",
+      "url": "https://assets.fanart.tv/fanart/movies/872585/moviebanner/oppenheimer-64b58f845d050.jpg",
+      "lang": "en",
+      "likes": "5"
+    }
+  ]
+}

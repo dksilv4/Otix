@@ -16,7 +16,7 @@ import asyncio
 from unittest import mock
 
 import httpx
-from django.test import TestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
 
 from apps.company.models import Company, InvolvedCompany
 from apps.media.models import (
@@ -36,11 +36,13 @@ from apps.media.models import (
 from apps.media.models.genre import Genre, MediaGenre, MediaGenreType
 from apps.media.services.completeness import completeness_flags
 from apps.media.services.tmdb_ingest import (
+    _skip_fresh_tmdb,
     fetch_and_seed_movie,
     fetch_and_seed_show,
     seed_episodes_from_season,
     seed_movie_from_tmdb,
     seed_show_from_tmdb,
+    show_needs_episodes,
 )
 from apps.people.models import MediaCredit, Person
 from core.providers.api_cache import ApiCache
@@ -423,8 +425,8 @@ class SeedShowFromTmdbTests(TestCase):
         self.assertEqual(media.popularity, 300.0)
         self.assertEqual(media.original_language, "en")
         self.assertFalse(media.is_adult)
-        # Recompute at the seed tail: 10/19 show flags (no credits in the raw).
-        self.assertEqual(media.completeness_score, 0.526)
+        # Recompute at the seed tail: 9/19 show flags (no credits in raw, no episodes yet).
+        self.assertEqual(media.completeness_score, 0.474)
         self.assertIsNotNone(media.next_sync_at)
 
         show = Show.objects.get(media_item_id=media_id)
@@ -1034,3 +1036,65 @@ class FanartEnrichFoldInTests(TestCase):
 
         self.assertEqual(result, 9876)
         enrich.assert_not_awaited()
+
+
+class ShowEpisodeHydrationTests(TransactionTestCase):
+    def test_seed_show_from_tmdb_seeds_embedded_episodes(self):
+        raw = _show_raw(
+            seasons=[
+                {
+                    "season_number": 1,
+                    "name": "Season 1",
+                    "air_date": "2008-01-20",
+                    "poster_path": "/s1.jpg",
+                    "episodes": [
+                        {
+                            "episode_number": 1,
+                            "name": "Pilot",
+                            "overview": "A chemistry teacher diagnosed with cancer.",
+                            "runtime": 58,
+                            "air_date": "2008-01-20",
+                            "still_path": "/e1.jpg",
+                        },
+                        {
+                            "episode_number": 2,
+                            "name": "Cat's in the Bag...",
+                            "overview": "Walt and Jesse clean up.",
+                            "runtime": 48,
+                            "air_date": "2008-01-27",
+                            "still_path": "/e2.jpg",
+                        },
+                    ],
+                }
+            ]
+        )
+        media_id = seed_show_from_tmdb(raw)
+        self.assertEqual(Episode.objects.filter(season__show_id=media_id).count(), 2)
+        ep1 = Episode.objects.get(season__show_id=media_id, episode_number=1)
+        self.assertEqual(ep1.name, "Pilot")
+        self.assertEqual(ep1.runtime, 58)
+        self.assertFalse(show_needs_episodes(media_id))
+
+    def test_show_needs_episodes_detects_empty_episodes(self):
+        raw = _show_raw()
+        media_id = seed_show_from_tmdb(raw)
+        self.assertEqual(Episode.objects.filter(season__show_id=media_id).count(), 0)
+        self.assertTrue(show_needs_episodes(media_id))
+
+    def test_skip_fresh_tmdb_does_not_skip_when_episodes_needed(self):
+        raw = _show_raw()
+        media_id = seed_show_from_tmdb(raw)
+        # Show row exists, payload hash matches, but episodes are missing:
+        skipped = _run(_skip_fresh_tmdb(raw, 1396, "show", force=False))
+        self.assertIsNone(skipped)
+
+        # Now seed episodes so all regular seasons are populated:
+        season1 = Season.objects.filter(show_id=media_id, season_number=1).first()
+        Episode.objects.create(season=season1, episode_number=1, name="Pilot")
+        season2 = Season.objects.filter(show_id=media_id, season_number=2).first()
+        Episode.objects.create(season=season2, episode_number=1, name="Seven Thirty-Seven")
+
+        self.assertFalse(show_needs_episodes(media_id))
+        skipped = _run(_skip_fresh_tmdb(raw, 1396, "show", force=False))
+        self.assertEqual(skipped, media_id)
+

@@ -301,7 +301,7 @@ function OverviewContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
         <div className="flex items-center justify-between">
           <span className="text-xs text-white/30">Repository</span>
           <button
-            onClick={() => openExternal(plugin.repository)}
+            onClick={() => openExternal(plugin.repository, { newTab: true })}
             className="flex items-center gap-1 truncate text-xs text-primary/80 hover:text-primary"
           >
             {plugin.repository.replace(/^https?:\/\/[^/]+\//, '').replace(/\/$/, '')}

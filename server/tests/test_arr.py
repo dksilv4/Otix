@@ -28,6 +28,7 @@ from otix_server.arr_utils import (
     fetch_sonarr_series,
     fetch_radarr_queue,
     fetch_sonarr_queue,
+    lookup_radarr_movie,
     add_radarr_movie,
     add_sonarr_series,
     delete_radarr_queue_item,
@@ -196,12 +197,48 @@ class TestArrIntegration(unittest.TestCase):
         self.assertEqual(queue.records[0].tmdb_id, 693134)
 
     @patch("otix_server.arr_utils.httpx.Client")
-    def test_add_radarr_movie(self, mock_client_cls):
+    def test_lookup_radarr_movie_enriches_downloaded_status(self, mock_client_cls):
+        lookup_resp = MagicMock()
+        lookup_resp.status_code = 200
+        lookup_resp.json.return_value = [
+            {"id": 42, "title": "Inception", "tmdbId": 27205, "hasFile": False}
+        ]
+        movie_detail_resp = MagicMock()
+        movie_detail_resp.status_code = 200
+        movie_detail_resp.json.return_value = {
+            "id": 42,
+            "hasFile": True,
+            "sizeOnDisk": 15000000000,
+            "status": "released",
+        }
+
         mock_client = MagicMock()
-        mock_resp = MagicMock()
-        mock_resp.status_code = 201
-        mock_resp.json.return_value = {"id": 12, "title": "Oppenheimer"}
-        mock_client.post.return_value = mock_resp
+        mock_client.get.side_effect = [lookup_resp, movie_detail_resp]
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        cfg = RadarrConfig(api_key="key")
+        results = lookup_radarr_movie(cfg, "tmdb:27205")
+        self.assertEqual(len(results), 1)
+        self.assertTrue(results[0]["hasFile"])
+        self.assertEqual(results[0]["sizeOnDisk"], 15000000000)
+
+    @patch("otix_server.arr_utils.httpx.Client")
+    def test_add_radarr_movie(self, mock_client_cls):
+        lookup_resp = MagicMock()
+        lookup_resp.status_code = 200
+        lookup_resp.is_error = False
+        lookup_resp.json.return_value = [
+            {"title": "Oppenheimer", "tmdbId": 872585, "year": 2023, "titleSlug": "oppenheimer-2023"}
+        ]
+        post_resp = MagicMock()
+        post_resp.status_code = 201
+        post_resp.is_error = False
+        post_resp.json.return_value = {"id": 12, "title": "Oppenheimer"}
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = lookup_resp
+        mock_client.post.return_value = post_resp
         mock_client.__enter__.return_value = mock_client
         mock_client_cls.return_value = mock_client
 
@@ -211,9 +248,55 @@ class TestArrIntegration(unittest.TestCase):
         sent_json = mock_client.post.call_args[1]["json"]
         self.assertEqual(sent_json["title"], "Oppenheimer")
         self.assertEqual(sent_json["tmdbId"], 872585)
+        self.assertEqual(sent_json["titleSlug"], "oppenheimer-2023")
         self.assertEqual(sent_json["qualityProfileId"], 1)
         self.assertEqual(sent_json["rootFolderPath"], "/movies")
         self.assertTrue(sent_json["addOptions"]["searchForMovie"])
+
+    @patch("otix_server.arr_utils.httpx.Client")
+    def test_add_radarr_movie_falls_back_to_title_lookup(self, mock_client_cls):
+        empty_lookup_resp = MagicMock()
+        empty_lookup_resp.status_code = 200
+        empty_lookup_resp.is_error = False
+        empty_lookup_resp.json.return_value = []
+
+        title_lookup_resp = MagicMock()
+        title_lookup_resp.status_code = 200
+        title_lookup_resp.is_error = False
+        title_lookup_resp.json.return_value = [
+            {"title": "Oppenheimer", "tmdbId": 872585, "year": 2023, "titleSlug": "oppenheimer-2023"}
+        ]
+
+        post_resp = MagicMock()
+        post_resp.status_code = 201
+        post_resp.is_error = False
+        post_resp.json.return_value = {"id": 12, "title": "Oppenheimer"}
+
+        mock_client = MagicMock()
+        # First call (tmdb:1) returns empty, second call (title) returns the match
+        mock_client.get.side_effect = [empty_lookup_resp, title_lookup_resp]
+        mock_client.post.return_value = post_resp
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        cfg = RadarrConfig(api_key="key", quality_profile_id=1, root_folder_path="/movies")
+        # Passing a bogus tmdb_id (e.g. Otix PK 1) alongside the correct title
+        res = add_radarr_movie(cfg, {"title": "Oppenheimer", "tmdb_id": 1, "year": 2023})
+        self.assertEqual(res["id"], 12)
+        sent_json = mock_client.post.call_args[1]["json"]
+        self.assertEqual(sent_json["tmdbId"], 872585)
+
+    def test_add_radarr_movie_request_accepts_title_or_tmdb_id(self):
+        req1 = AddRadarrMovieRequest(title="Oppenheimer")
+        self.assertEqual(req1.title, "Oppenheimer")
+        self.assertIsNone(req1.tmdb_id)
+
+        req2 = AddRadarrMovieRequest(tmdb_id=872585)
+        self.assertEqual(req2.tmdb_id, 872585)
+        self.assertIsNone(req2.title)
+
+        with self.assertRaises(Exception):
+            AddRadarrMovieRequest()
 
     @patch("otix_server.arr_utils.httpx.Client")
     def test_add_sonarr_series_resolves_tmdb(self, mock_client_cls):

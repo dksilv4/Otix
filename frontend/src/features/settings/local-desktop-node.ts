@@ -21,8 +21,7 @@ export function localDesktopNodeName(): string {
   return 'This computer'
 }
 
-export function getLocalDesktopNode(): GameServer | null {
-  if (typeof window === 'undefined' || !isDesktop()) return null
+export function getLocalDesktopNodeFallback(): GameServer {
   return {
     id: LOCAL_DESKTOP_NODE_ID,
     name: localDesktopNodeName(),
@@ -37,6 +36,11 @@ export function getLocalDesktopNode(): GameServer | null {
     updatedAt: '',
     isLocalDesktop: true,
   }
+}
+
+export function getLocalDesktopNode(): GameServer | null {
+  if (typeof window === 'undefined' || !isDesktop()) return null
+  return getLocalDesktopNodeFallback()
 }
 
 export function mergeLocalDesktopNode(servers: GameServer[]): GameServer[] {

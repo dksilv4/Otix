@@ -1,0 +1,36 @@
+{
+  "MediaContainer": {
+    "size": 1,
+    "Metadata": [
+      {
+        "ratingKey": "101",
+        "key": "/library/metadata/101",
+        "type": "movie",
+        "title": "Oppenheimer",
+        "viewOffset": 3600000,
+        "duration": 10860000,
+        "User": {
+          "id": "1",
+          "title": "diogo",
+          "thumb": "https://plex.tv/users/avatar.jpg"
+        },
+        "Player": {
+          "address": "192.168.1.50",
+          "device": "macOS",
+          "machineIdentifier": "client-macbook-pro",
+          "model": "standalone",
+          "platform": "macOS",
+          "platformVersion": "14.4",
+          "product": "Plex for Mac",
+          "state": "playing",
+          "title": "MacBook Pro"
+        },
+        "Session": {
+          "id": "session-unique-abc-123",
+          "bandwidth": 24000,
+          "location": "lan"
+        }
+      }
+    ]
+  }
+}

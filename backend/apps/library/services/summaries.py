@@ -43,8 +43,6 @@ _LABEL_PREF: dict[str, dict[str, int]] = {
     "icon": {"official": 0, "custom": 1},
 }
 
-_ARTIST_ROLES = ("artist", "primary")
-
 
 def _iso(value: date | datetime | None) -> str | None:
     """Render a date/datetime as the ISO string the legacy JSON API returned."""
@@ -129,17 +127,6 @@ def _attach_tmdb_ids(items: list[MediaItem]) -> None:
         item._resolved_tmdb_id = mapping.get(item.id)
 
 
-def _first_artist(item: MediaItem) -> str | None:
-    credits = item.credits.select_related("person").order_by("sort_order", "id")
-    for credit in credits:
-        if credit.role in _ARTIST_ROLES and credit.person_id and credit.person:
-            return credit.person.name
-    for credit in credits:
-        if credit.person_id and credit.person:
-            return credit.person.name
-    return None
-
-
 def _attach_movie_fields(item: MediaItem) -> None:
     if item.media_type == "movie":
         movie = _subtype(item, "movie")
@@ -151,15 +138,9 @@ def _attach_movie_fields(item: MediaItem) -> None:
 
 
 def _attach_album_fields(item: MediaItem) -> None:
-    if item.media_type == "music":
-        album = _subtype(item, "album")
-        item._album_track_count = album.track_count if album is not None else None
-        item._album_musicbrainz_release_group_id = None
-        item._album_artist_name = _first_artist(item)
-    else:
-        item._album_track_count = None
-        item._album_musicbrainz_release_group_id = None
-        item._album_artist_name = None
+    item._album_track_count = None
+    item._album_musicbrainz_release_group_id = None
+    item._album_artist_name = None
 
 
 def enrich_media_items(

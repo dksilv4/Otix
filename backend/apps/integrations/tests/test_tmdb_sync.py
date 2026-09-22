@@ -211,8 +211,8 @@ class TmdbRatingSyncTests(TmdbSyncTestBase):
         )
 
     def test_export_skips_non_movie_show_or_missing_ext(self):
-        music = MediaItem.objects.create(media_type="music", title="An Album", slug="an-album")
-        MediaItemRating.objects.create(user=self.user, media_item=music, score=8)
+        game = MediaItem.objects.create(media_type="game", title="A Game", slug="a-game")
+        MediaItemRating.objects.create(user=self.user, media_item=game, score=8)
         with _patched({}):
             resp = self.post(direction="export")
         self.assertEqual(resp.status_code, 200)

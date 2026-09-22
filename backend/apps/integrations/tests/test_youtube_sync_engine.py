@@ -18,9 +18,8 @@ from django.test import TestCase
 from apps.integrations.models import SyncJob, UserYoutubeLikedVideo
 from apps.integrations.services.youtube_sync import NO_TOKEN_ERROR
 from apps.integrations.tasks import run_sync_job
-from apps.media.models import Album, ExternalID, MediaItem
-from apps.people.models import MediaCredit, Person
-from apps.social.models import UserMediaInteraction
+from apps.media.models import ExternalID
+from apps.people.models import Person
 from core import progress as progress_lib
 
 User = get_user_model()
@@ -90,14 +89,6 @@ class YoutubeSyncEngineTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="youtuber", password="pw")
         self.artist = Person.objects.create(name="Song Artist")
-        media_item = MediaItem.objects.create(
-            media_type="music", title="Cool Song", slug="cool-song"
-        )
-        Album.objects.create(media_item=media_item)
-        MediaCredit.objects.create(
-            media_item=media_item, person=self.artist, role="artist"
-        )
-        self.album_media_id = media_item.id
 
         self.fake = FakeRedis()
         patchers = [
@@ -142,7 +133,7 @@ class YoutubeSyncEngineTests(TestCase):
         self.assertEqual(outcome["status"], "success")
         self.assertEqual(
             {k: outcome[k] for k in ("total", "music_videos", "matched", "channel_links")},
-            {"total": 3, "music_videos": 2, "matched": 1, "channel_links": 1},
+            {"total": 3, "music_videos": 2, "matched": 0, "channel_links": 1},
         )
         self.assertEqual(job.status, "completed")
         self.assertIsNone(job.error_message)
@@ -161,23 +152,8 @@ class YoutubeSyncEngineTests(TestCase):
             ],
         )
         stored = progress_lib.RedisProgress("youtube:sync").get_stored_result(job.pk)
-        self.assertEqual(stored["matched"], 1)
+        self.assertEqual(stored["matched"], 0)
         self.assertEqual(stored["task_id"], str(job.pk))
-
-    def test_match_creates_listened_interaction(self):
-        job = self.job()
-        run_sync_job.delay(job.pk).get()
-
-        self.assertTrue(
-            UserMediaInteraction.objects.filter(
-                user=self.user,
-                media_item_id=self.album_media_id,
-                interaction_type="listened",
-            ).exists()
-        )
-        self.assertEqual(
-            MediaItem.objects.get(pk=self.album_media_id).listened_count, 1
-        )
 
     def test_music_videos_upserted_raw_and_unmatched_stays_null(self):
         job = self.job()
@@ -186,7 +162,7 @@ class YoutubeSyncEngineTests(TestCase):
         rows = list(UserYoutubeLikedVideo.objects.filter(user=self.user))
         self.assertEqual(len(rows), 2)  # non-music video is never stored
         by_id = {row.video_id: row for row in rows}
-        self.assertEqual(by_id["v1"].matched_media_item_id, self.album_media_id)
+        self.assertIsNone(by_id["v1"].matched_media_item_id)
         self.assertEqual(by_id["v1"].matched_artist, "Song Artist")
         self.assertEqual(by_id["v1"].matched_title, "Cool Song")
         self.assertIsNone(by_id["v3"].matched_media_item_id)
@@ -231,7 +207,7 @@ class YoutubeSyncEngineTests(TestCase):
         second = self.job()
         outcome = run_sync_job.delay(second.pk).get()
 
-        self.assertEqual(outcome["matched"], 1)
+        self.assertEqual(outcome["matched"], 0)
         self.assertEqual(
             UserYoutubeLikedVideo.objects.filter(user=self.user).count(), 2
         )

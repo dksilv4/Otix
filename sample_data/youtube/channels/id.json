@@ -1,0 +1,31 @@
+{
+  "kind": "youtube#channelListResponse",
+  "etag": "chan-etag-123",
+  "items": [
+    {
+      "kind": "youtube#channel",
+      "etag": "ch-1",
+      "id": "UCGLyR1B2Z2W9P48yN4k9tVw",
+      "snippet": {
+        "title": "Radiohead",
+        "description": "Official YouTube channel for Radiohead.",
+        "customUrl": "@radiohead",
+        "publishedAt": "2006-03-24T18:22:10Z",
+        "thumbnails": {
+          "high": {
+            "url": "https://yt3.ggpht.com/a/channel-radiohead.jpg"
+          }
+        }
+      },
+      "status": {
+        "privacyStatus": "public",
+        "isLinked": true,
+        "longUploadsStatus": "eligible"
+      }
+    }
+  ],
+  "pageInfo": {
+    "totalResults": 1,
+    "resultsPerPage": 1
+  }
+}

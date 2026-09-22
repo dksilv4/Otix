@@ -11,6 +11,7 @@ import { RatingsHub } from '../components/organisms/media-ratings-hub'
 import { WhereToWatch } from '../components/organisms/media-where-to-watch'
 import { MediaSpecsCard } from '../components/organisms/media-specs-card'
 import { CastCrew } from '../components/organisms/media-cast-crew'
+import { GameCharacters } from '../game/components/organisms/game-characters'
 import { SignInCTA } from '../components/organisms/media-signin-cta'
 
 import type { ParsedBlueprint } from '@media/game/components/organisms/media-game-blueprint-vault'
@@ -125,6 +126,7 @@ export function MediaDetailPage() {
   const displayType = detail.mediaType as 'movie' | 'show' | 'game' | 'music'
   const gameExternalId = isGame(detail) ? String(detail.game?.steamAppId || detail.id) : null
   const hasCredits = Boolean(detail.credits && detail.credits.length > 0)
+  const hasCharacters = Boolean(detail.characters && detail.characters.length > 0)
 
   return (
     <div id="media-detail" className={`animate-fade-in pb-28 ${isDesktop ? 'pt-[var(--title-bar-height,38px)]' : ''}`}>
@@ -257,6 +259,9 @@ export function MediaDetailPage() {
                 </Suspense>
               </div>
             )}
+
+            {/* Game Characters */}
+            {hasCharacters && <GameCharacters characters={detail.characters} />}
 
             {/* Cast & Crew V4 with horizontal scroll buttons & full credits modal */}
             {hasCredits && <CastCrew credits={detail.credits} />}

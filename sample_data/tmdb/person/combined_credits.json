@@ -1,0 +1,53 @@
+{
+  "id": 525,
+  "cast": [],
+  "crew": [
+    {
+      "adult": false,
+      "backdrop_path": "/8rft8AQ46v0OTtT19xfCDk82RIj.jpg",
+      "genre_ids": [
+        18,
+        36
+      ],
+      "id": 872585,
+      "original_language": "en",
+      "original_title": "Oppenheimer",
+      "overview": "The story of J. Robert Oppenheimer's role in the development of the atomic bomb during World War II.",
+      "popularity": 142.85,
+      "poster_path": "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
+      "release_date": "2023-07-19",
+      "title": "Oppenheimer",
+      "video": false,
+      "vote_average": 8.1,
+      "vote_count": 8940,
+      "credit_id": "613a7c64c8a2c4004313f8c8",
+      "department": "Directing",
+      "job": "Director",
+      "media_type": "movie"
+    },
+    {
+      "adult": false,
+      "backdrop_path": "/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg",
+      "genre_ids": [
+        28,
+        878,
+        12
+      ],
+      "id": 27205,
+      "original_language": "en",
+      "original_title": "Inception",
+      "overview": "Cobb, a skilled thief who steals corporate secrets through the use of dream-sharing technology...",
+      "popularity": 98.4,
+      "poster_path": "/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg",
+      "release_date": "2010-07-15",
+      "title": "Inception",
+      "video": false,
+      "vote_average": 8.4,
+      "vote_count": 35800,
+      "credit_id": "52fe4534c3a36847f80c1d11",
+      "department": "Directing",
+      "job": "Director",
+      "media_type": "movie"
+    }
+  ]
+}

@@ -18,6 +18,7 @@ import { SettingsSaveProvider } from '../context/settings-save-context'
 import { SettingsNodeProvider } from '../context/settings-node-context'
 import { SettingsSaveBar } from '../components/molecules/settings-save-bar'
 import { usePluginTabs } from '@/features/_config/slots'
+import { QueryErrorBoundary } from '@/components/query-error-boundary'
 
 const SETTINGS_SIDEBAR_COLLAPSED_KEY = 'otix-settings-sidebar-collapsed'
 
@@ -305,7 +306,9 @@ function SettingsLayoutInner() {
                 <ChevronDown className="h-4 w-4 rotate-90" />
                 {activeLabel}
               </button>
-              <Outlet />
+              <QueryErrorBoundary label="settings page">
+                <Outlet />
+              </QueryErrorBoundary>
             </div>
           </main>
         </div>

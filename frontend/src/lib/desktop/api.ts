@@ -13,6 +13,8 @@ export interface DesktopSettingsData {
   alwaysOnTop: boolean;
   startMinimized: boolean;
   gamesDownloadPath?: string;
+  gamesInstallPath?: string;
+  isoDownloadPath?: string;
   scanOnLaunch?: boolean;
 }
 
@@ -295,9 +297,12 @@ let _cached: DesktopAPI | null | undefined
 
 /** Get typed DesktopAPI reference, or null in web/browser context. */
 export function getDesktopAPI(): DesktopAPI | null {
-  if (_cached !== undefined) return _cached
-  _cached = window.desktopAPI ?? null
-  return _cached
+  if (typeof window !== 'undefined' && window.desktopAPI) {
+    _cached = window.desktopAPI
+    return _cached
+  }
+  if (_cached) return _cached
+  return null
 }
 
 export function hasDesktopAPI(): boolean {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 from typing import Any, Callable
@@ -13,6 +14,7 @@ EPIC_CLIENT_ID = "34a02cf8f4414e29b15921876da36f9a"
 EPIC_CLIENT_SECRET = "daafbccc737745039dffe53d94fc76cf"
 EPIC_OAUTH_HOST = "account-public-service-prod03.ol.epicgames.com"
 EPIC_LIBRARY_HOST = "library-service.live.use1a.on.epicgames.com"
+EPIC_CATALOG_HOST = "catalog-public-service-prod06.ol.epicgames.com"
 EPIC_UA = "UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit"
 SKIP_PREFIXES = ("UE_", "QuixelBridge_", "MetaHumanSample_", "Lyra_", "FabPlugin_")
 
@@ -219,6 +221,104 @@ def fetch_library_items(access_token: str, *, request: RequestFn | None = None) 
     return items
 
 
+def is_generic_title(title: str | None) -> bool:
+    if not title:
+        return True
+    s = str(title).strip().lower()
+    if s in ("live", "production", "staging", "test", "dev", "development"):
+        return True
+    if s.endswith(" production") or s.endswith(" staging"):
+        return True
+    return False
+
+
+def enrich_catalog_titles(
+    access_token: str,
+    records: list[dict],
+    *,
+    request: RequestFn | None = None,
+    max_workers: int = 20,
+) -> dict[str, str]:
+    by_namespace: dict[str, list[str]] = {}
+    for record in records:
+        app_name = str(record.get("appName") or record.get("sandboxId") or record.get("id") or "")
+        if any(app_name.startswith(p) for p in SKIP_PREFIXES):
+            continue
+        catalog_id = record.get("catalogItemId")
+        namespace = record.get("namespace")
+        if not catalog_id or not namespace:
+            continue
+        title = record.get("appTitle") or record.get("title") or record.get("sandboxName")
+        if is_generic_title(title) or title == app_name:
+            by_namespace.setdefault(str(namespace), []).append(str(catalog_id))
+
+    if not by_namespace:
+        return {}
+
+    catalog_titles: dict[str, str] = {}
+
+    if request is not None:
+        for namespace, ids in by_namespace.items():
+            for i in range(0, len(ids), 50):
+                batch = ids[i : i + 50]
+                query = "&".join("id=" + cid for cid in batch)
+                url = f"https://{EPIC_CATALOG_HOST}/catalog/api/shared/namespace/{namespace}/bulk/items?{query}&country=US&locale=en-US"
+                status, body = request(
+                    "GET",
+                    url,
+                    headers={
+                        "Authorization": f"bearer {access_token}",
+                        "User-Agent": EPIC_UA,
+                    },
+                )
+                if status == 200 and isinstance(body, dict):
+                    for cid in batch:
+                        item = body.get(cid)
+                        if isinstance(item, dict) and item.get("title"):
+                            catalog_titles[cid] = str(item["title"])
+        return catalog_titles
+
+    batches: list[tuple[str, list[str]]] = []
+    for namespace, ids in by_namespace.items():
+        for i in range(0, len(ids), 50):
+            batches.append((namespace, ids[i : i + 50]))
+
+    def fetch_batch(args: tuple[str, list[str]]) -> list[tuple[str, str]]:
+        ns, batch = args
+        query = "&".join("id=" + cid for cid in batch)
+        url = f"https://{EPIC_CATALOG_HOST}/catalog/api/shared/namespace/{ns}/bulk/items?{query}&country=US&locale=en-US"
+        out: list[tuple[str, str]] = []
+        try:
+            resp = client.get(
+                url,
+                headers={
+                    "Authorization": f"bearer {access_token}",
+                    "User-Agent": EPIC_UA,
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if isinstance(data, dict):
+                    for cid in batch:
+                        item = data.get(cid)
+                        if isinstance(item, dict) and item.get("title"):
+                            out.append((cid, str(item["title"])))
+        except Exception:
+            pass
+        return out
+
+    with httpx.Client(
+        timeout=10.0,
+        limits=httpx.Limits(max_connections=30, max_keepalive_connections=20),
+    ) as client:
+        with ThreadPoolExecutor(max_workers=min(max_workers, max(1, len(batches)))) as pool:
+            for batch_results in pool.map(fetch_batch, batches):
+                for cid, title in batch_results:
+                    catalog_titles[cid] = title
+
+    return catalog_titles
+
+
 def complete_scan(storage_dir: Path, *, request: RequestFn | None = None) -> list[dict]:
     secrets = read_secrets(storage_dir)
     if not secrets or not secrets.get("refresh_token"):
@@ -237,12 +337,14 @@ def complete_scan(storage_dir: Path, *, request: RequestFn | None = None) -> lis
             refresh_token=tokens["refresh_token"],
         )
     records = fetch_library_items(tokens["access_token"], request=request)
-    return normalize_games(records)
+    catalog_titles = enrich_catalog_titles(tokens["access_token"], records, request=request)
+    return normalize_games(records, catalog_titles=catalog_titles)
 
 
-def normalize_games(records: list[dict]) -> list[dict]:
+def normalize_games(records: list[dict], catalog_titles: dict[str, str] | None = None) -> list[dict]:
     seen: set[str] = set()
     games: list[dict] = []
+    titles_map = catalog_titles or {}
     for record in records:
         app_name = record.get("appName") or record.get("sandboxId") or record.get("id")
         if not app_name:
@@ -253,17 +355,26 @@ def normalize_games(records: list[dict]) -> list[dict]:
         if app_name in seen:
             continue
         seen.add(app_name)
-        title = (
-            record.get("sandboxName")
-            or record.get("appTitle")
-            or record.get("title")
-            or app_name
-        )
+        catalog_id = record.get("catalogItemId")
+        title = record.get("appTitle") or record.get("title")
+        if title and not is_generic_title(title):
+            pass
+        elif catalog_id and str(catalog_id) in titles_map:
+            title = titles_map[str(catalog_id)]
+        else:
+            sb = record.get("sandboxName")
+            if sb and not is_generic_title(sb):
+                title = sb
+            elif catalog_id and str(catalog_id) in titles_map:
+                title = titles_map[str(catalog_id)]
+            else:
+                title = sb or app_name
+
         games.append(
             {
                 "app_name": app_name,
                 "namespace": record.get("namespace"),
-                "catalog_item_id": record.get("catalogItemId"),
+                "catalog_item_id": catalog_id,
                 "offer_id": record.get("offerId"),
                 "title": str(title),
             }

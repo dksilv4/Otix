@@ -19,7 +19,7 @@ from django.db.models.query import QuerySet
 from apps.media.models import MediaItem, Season
 from apps.media.services import catalog as catalog_service
 
-VALID_MEDIA_TYPES = {"movie", "show", "game", "music"}
+VALID_MEDIA_TYPES = {"movie", "show", "game"}
 VALID_LIST_TYPES = {
     "trending",
     "popular",
@@ -139,7 +139,7 @@ def list_feed(
         is_anime=is_anime,
         platform=platform,
         has_artwork=require_artwork,
-        has_logo=not is_game,
+        has_logo=media_type in ("movie", "show"),
         main_games_only=is_game,
         sort_by=sort_by,
         sort_dir=sort_dir,
@@ -342,18 +342,6 @@ def default_sections() -> list[dict]:
             "language": None,
             "is_anime": None,
             "platform": "nintendo-switch",
-            "is_personalized": False,
-            "reason": None,
-        },
-        {
-            "id": "new_music",
-            "title": "New Music",
-            "media_type": "music",
-            "list_type": "popular",
-            "genre": None,
-            "language": None,
-            "is_anime": None,
-            "platform": None,
             "is_personalized": False,
             "reason": None,
         },

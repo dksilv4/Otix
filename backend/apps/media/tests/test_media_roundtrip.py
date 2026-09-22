@@ -9,7 +9,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
 from apps.media.models import (
-    Album,
     Episode,
     ExternalID,
     Franchise,
@@ -20,8 +19,6 @@ from apps.media.models import (
     Movie,
     Season,
     Show,
-    Track,
-    TrackRating,
 )
 
 User = get_user_model()
@@ -65,19 +62,12 @@ class MediaSubtypeRoundTripTests(TestCase):
         self.assertEqual(movie.media_item, media_item)
         self.assertEqual(media_item.movie, movie)
 
-    def test_game_album_track_and_franchise(self) -> None:
+    def test_game_and_franchise(self) -> None:
         franchise = Franchise.objects.create(name="Final Fantasy", slug="final-fantasy")
         game_item = _media_item("game", "Final Fantasy VII", "ff7")
         game = Game.objects.create(media_item=game_item, franchise=franchise, game_type="main_game")
         self.assertEqual(game.pk, game_item.pk)
         self.assertEqual(list(franchise.games.all()), [game])
-
-        album_item = _media_item("music", "OK Computer", "ok-computer")
-        album = Album.objects.create(media_item=album_item, release_type="album", track_count=2)
-        track = Track.objects.create(album=album, track_number=1, disc_number=1, title="Airbag")
-        self.assertEqual(album_item.album, album)
-        self.assertEqual(list(album.tracks.all()), [track])
-        self.assertEqual(track.album, album)
 
 
 class MediaJoinAndExternalIdTests(TestCase):
@@ -102,13 +92,3 @@ class MediaJoinAndExternalIdTests(TestCase):
         self.assertEqual(external.target, media_item)
         self.assertEqual(media_item.external_ids.count(), 1)
         self.assertEqual(media_item.external_ids.first().external_id, "1396")
-
-    def test_track_rating_roundtrip(self) -> None:
-        user = User.objects.create_user(username="raty", password="x")
-        album_item = _media_item("music", "In Rainbows", "in-rainbows")
-        album = Album.objects.create(media_item=album_item)
-        track = Track.objects.create(album=album, track_number=1, title="15 Step")
-        rating = TrackRating.objects.create(user=user, track=track, score=8)
-
-        self.assertEqual(list(track.ratings.all()), [rating])
-        self.assertEqual(list(user.track_ratings.all()), [rating])

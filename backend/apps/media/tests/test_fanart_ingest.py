@@ -229,9 +229,7 @@ def _SHOW_CATEGORIES_FOR_TEST():
 
 class FanartContextTests(TestCase):
     def test_none_for_non_movie_show_row(self):
-        music = _media(media_type="music")
         game = _media(media_type="game", slug="hades", title="Hades")
-        self.assertIsNone(_context(music.pk))
         self.assertIsNone(_context(game.pk))
 
     def test_movie_resolves_kind_and_tmdb_id(self):

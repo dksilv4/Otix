@@ -54,7 +54,8 @@ class FreeGamesMatchView(APIView):
         for match in matches:
             media_detail = None
             if match.matched and match.media_item is not None:
-                catalog_service.enrich_summaries([match.media_item], request.user)
+                context = catalog_service.request_context(request)
+                catalog_service.enrich_summaries([match.media_item], request.user, context)
                 media_detail = MediaItemDetailSerializer(match.media_item).data
             items.append(
                 {

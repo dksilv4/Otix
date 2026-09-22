@@ -829,3 +829,32 @@ class BackendNodeApiTests(TestCase):
         self.assertEqual(ping.status_code, 200)
         self.assertTrue(ping.json()["online"])
         self.assertEqual(ping.json()["server"]["id"], -2)
+
+    def test_backend_node_arr_and_usenet_endpoints(self):
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/usenet/queue").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/prowlarr/indexers").status_code, 200)
+        self.assertEqual(self.client.post("/api/v1/library/servers/-2/prowlarr/sync").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/radarr/movies").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/radarr/queue").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/radarr/rootfolders").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/radarr/qualityprofiles").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/sonarr/series").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/sonarr/queue").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/sonarr/rootfolders").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/sonarr/qualityprofiles").status_code, 200)
+        # Test endpoints return 200 with result payload
+        test_radarr = self.client.post(
+            "/api/v1/library/servers/-2/radarr/test",
+            {"host": "127.0.0.1", "port": 7878, "api_key": "test"},
+            format="json",
+        )
+        self.assertEqual(test_radarr.status_code, 200)
+        self.assertIn("ok", test_radarr.json())
+
+        test_sab = self.client.post(
+            "/api/v1/library/servers/-2/usenet/test-sabnzbd",
+            {"host": "127.0.0.1", "port": 8080, "api_key": "test"},
+            format="json",
+        )
+        self.assertEqual(test_sab.status_code, 200)
+        self.assertIn("ok", test_sab.json())

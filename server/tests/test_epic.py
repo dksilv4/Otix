@@ -175,6 +175,45 @@ class ScanFlowTests(unittest.TestCase):
         ])
         self.assertEqual(read_secrets(self.dir)["refresh_token"], "new-rt")
 
+    def test_complete_scan_enriches_live_title_from_catalog(self):
+        from otix_server.epic import complete_scan
+
+        write_secrets(self.dir, account_id="acc", display_name="Diogo", refresh_token="rt")
+
+        def request(method, url, **kwargs):
+            if "oauth/token" in url:
+                return 200, {"access_token": "at", "refresh_token": "rt"}
+            if "library/api/public/items" in url:
+                return 200, {
+                    "records": [
+                        {
+                            "appName": "app_live",
+                            "namespace": "ns1",
+                            "sandboxName": "Live",
+                            "catalogItemId": "cid1",
+                            "offerId": "off1",
+                        }
+                    ]
+                }
+            if "catalog/api/shared/namespace" in url:
+                return 200, {
+                    "cid1": {
+                        "title": "Turnip Boy Commits Tax Evasion",
+                    }
+                }
+            return 404, {}
+
+        games = complete_scan(self.dir, request=request)
+        self.assertEqual(games, [
+            {
+                "app_name": "app_live",
+                "namespace": "ns1",
+                "catalog_item_id": "cid1",
+                "offer_id": "off1",
+                "title": "Turnip Boy Commits Tax Evasion",
+            }
+        ])
+
 
 class EpicRouteTests(unittest.TestCase):
     def setUp(self):

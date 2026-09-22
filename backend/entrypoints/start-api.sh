@@ -20,6 +20,7 @@ if migrations_enabled; then
   echo ">>> Running database migrations..."
   python manage.py migrate --noinput
   echo ">>> Migrations applied successfully."
+
 else
   echo ">>> Skipping migrations (RUN_MIGRATIONS off) — run 'manage.py migrate' as a deploy step."
 fi

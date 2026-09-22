@@ -1,0 +1,34 @@
+{
+  "air_date": "2011-04-17",
+  "id": 3624,
+  "name": "Season 1",
+  "overview": "Trouble is brewing in Westeros. For the inhabitants of this world, control of the Iron Throne holds the lure of great power.",
+  "poster_path": "/s1.jpg",
+  "season_number": 1,
+  "episodes": [
+    {
+      "air_date": "2011-04-17",
+      "episode_number": 1,
+      "id": 63056,
+      "name": "Winter Is Coming",
+      "overview": "Jon Arryn, the Hand of the King, is dead.",
+      "runtime": 62,
+      "season_number": 1,
+      "still_path": "/wrGWeW4WKxnaeA8sxJb2T9O6ryo.jpg",
+      "vote_average": 9.1,
+      "vote_count": 800
+    },
+    {
+      "air_date": "2011-04-24",
+      "episode_number": 2,
+      "id": 63057,
+      "name": "The Kingsroad",
+      "overview": "Having agreed to become the Hand of the King, Ned leaves Winterfell.",
+      "runtime": 56,
+      "season_number": 1,
+      "still_path": "/bE8yYQW2Dq4YV3O6Z2T8Y8X8.jpg",
+      "vote_average": 8.8,
+      "vote_count": 650
+    }
+  ]
+}

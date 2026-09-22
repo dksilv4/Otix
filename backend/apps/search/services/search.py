@@ -23,7 +23,7 @@ from django.db.models import Case, IntegerField, QuerySet, Value, When
 from django.utils.text import slugify
 
 from apps.company.models import Company
-from apps.media.models import ExternalID, MediaItem, Track
+from apps.media.models import ExternalID, MediaItem
 from apps.people.models import Person
 from apps.search.models import SearchLog
 from apps.search.serializers import (
@@ -55,7 +55,7 @@ PREHYDRATE_CACHE_TTL = 6 * 60 * 60
 
 def _media_base(q: str, media_type: str | None) -> QuerySet[MediaItem]:
     """Filtered hub rows for a title search (vector search lands later)."""
-    qs = MediaItem.objects.filter(title__icontains=q).exclude(media_type="music")
+    qs = MediaItem.objects.filter(title__icontains=q)
     if media_type:
         qs = qs.filter(media_type=media_type)
     if EXCLUDE_ADULT:
@@ -96,7 +96,7 @@ def _search_media_rows(
     return rows[:page_size], total, has_more
 
 
-def _search_track_rows(q: str, limit: int = 20) -> list[Track]:
+def _search_track_rows(q: str, limit: int = 20) -> list:
     """Music is excluded from search."""
     return []
 

@@ -17,6 +17,7 @@ export function PathInput({
   compact = false,
   className,
   inputClassName,
+  commitOnBlur = true,
 }: {
   value: string
   onChange: (value: string) => void
@@ -31,6 +32,7 @@ export function PathInput({
   compact?: boolean
   className?: string
   inputClassName?: string
+  commitOnBlur?: boolean
 }) {
   const autoId = useId()
   const inputId = id || autoId
@@ -48,8 +50,13 @@ export function PathInput({
     if (event.key !== 'Enter') return
     event.preventDefault()
     const next = event.currentTarget.value.trim()
-    if (!next) return
     onChange(next)
+    onCommit?.(next)
+  }
+
+  const handleBlur = () => {
+    if (!commitOnBlur) return
+    const next = value.trim()
     onCommit?.(next)
   }
 
@@ -68,6 +75,7 @@ export function PathInput({
           placeholder={placeholder}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
           className={cn(
             'h-9 min-w-0 flex-1 rounded-xl bg-white/5 px-3 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10',
             inputClassName,

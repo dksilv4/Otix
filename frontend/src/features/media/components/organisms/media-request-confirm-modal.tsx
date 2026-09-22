@@ -1,6 +1,5 @@
- 
 import { useEffect, useMemo, useState } from 'react'
-import { Film, HardDrive, Layers, Loader2, Server, Tv } from 'lucide-react'
+import { Check, Clock, Film, HardDrive, Layers, Loader2, Server, Tv } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import { DkDropdown, type DkDropdownOption } from '@ui/atoms/dropdown'
@@ -39,6 +38,8 @@ export function MediaRequestConfirmModal({
     return list.length > 0 ? list : state.instances
   }, [state.instances])
 
+  const availableInstances = state.instances.length > 0 ? state.instances : targets
+
   const [selectedInstanceId, setSelectedInstanceId] = useState<string>('')
   const [qualityProfileId, setQualityProfileId] = useState<string>('')
   const [rootFolderPath, setRootFolderPath] = useState<string>('')
@@ -46,13 +47,30 @@ export function MediaRequestConfirmModal({
   const [monitored, setMonitored] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
+  // Live double-check status on target instances when modal opens
+  useEffect(() => {
+    if (open) {
+      void state.refetchStatus?.()
+    }
+  }, [open, state.refetchStatus])
+
   // Synchronize initial instance
   useEffect(() => {
     if (!open) return
-    const fallbackId = targets[0]?.id || ''
-    const match = targets.find((item) => item.id === initialInstanceId)
+    const fallbackId = targets[0]?.id || availableInstances[0]?.id || ''
+    const match = availableInstances.find((item) => item.id === initialInstanceId)
     setSelectedInstanceId(match ? match.id : fallbackId)
-  }, [open, initialInstanceId, targets])
+  }, [open, initialInstanceId, targets, availableInstances])
+
+  const currentInstance =
+    state.instances.find((item) => item.id === selectedInstanceId) ||
+    targets.find((item) => item.id === selectedInstanceId) ||
+    targets[0] ||
+    state.instances[0]
+
+  const isDownloaded = currentInstance?.status === 'downloaded'
+  const isRequested = currentInstance?.status === 'requested'
+  const isChecking = Boolean(state.isCheckingStatus)
 
   // Extract parsed arrInstanceId
   const parsed = useMemo(
@@ -111,8 +129,14 @@ export function MediaRequestConfirmModal({
   }, [open, rootFolders, config, rootFolderPath])
 
   const instanceOptions: DkDropdownOption[] = useMemo(
-    () => targets.map((inst) => ({ value: inst.id, label: inst.name })),
-    [targets],
+    () =>
+      availableInstances.map((inst) => {
+        let suffix = ''
+        if (inst.status === 'downloaded') suffix = ' (Available)'
+        else if (inst.status === 'requested') suffix = ' (Requested)'
+        return { value: inst.id, label: `${inst.name}${suffix}` }
+      }),
+    [availableInstances],
   )
 
   const qualityProfileOptions: DkDropdownOption[] = useMemo(
@@ -132,9 +156,19 @@ export function MediaRequestConfirmModal({
     [rootFolders],
   )
 
-  const selectedInstance = targets.find((item) => item.id === selectedInstanceId) || targets[0]
+  const selectedInstance = currentInstance || targets.find((item) => item.id === selectedInstanceId) || targets[0]
 
   const handleConfirm = async () => {
+    if (isDownloaded || isRequested) {
+      showToast({
+        title: isDownloaded ? 'Already in Library' : 'Already requested',
+        description: `This title is already ${isDownloaded ? 'downloaded' : 'requested'} on ${selectedInstance?.name || state.activeServerName}`,
+        variant: 'info',
+      })
+      onClose()
+      return
+    }
+
     setSubmitting(true)
     try {
       await state.handleRequest({
@@ -199,14 +233,49 @@ export function MediaRequestConfirmModal({
           </div>
         </div>
 
+        {/* Status Verification Alerts */}
+        {isDownloaded && (
+          <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
+            <Check className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+            <div className="min-w-0">
+              <p className="font-semibold text-emerald-300">Available in Library</p>
+              <p className="text-white/70 mt-0.5">
+                This {isMovie ? 'movie' : 'show'} is already downloaded on{' '}
+                <span className="text-white font-medium">{selectedInstance?.name || state.activeServerName}</span>.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {isRequested && (
+          <div className="flex items-start gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+            <Clock className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+            <div className="min-w-0">
+              <p className="font-semibold text-amber-300">Already Requested</p>
+              <p className="text-white/70 mt-0.5">
+                This {isMovie ? 'movie' : 'show'} is already requested and monitored on{' '}
+                <span className="text-white font-medium">{selectedInstance?.name || state.activeServerName}</span>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Form Options */}
         <div className="space-y-3.5 rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs">
           {/* Target Instance */}
           <div>
-            <label className="mb-1.5 flex items-center gap-1.5 font-medium text-white/75">
-              <Server className="h-3.5 w-3.5 text-blue-400" />
-              <span>Target Instance</span>
-            </label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="flex items-center gap-1.5 font-medium text-white/75">
+                <Server className="h-3.5 w-3.5 text-blue-400" />
+                <span>Target Instance</span>
+              </label>
+              {isChecking && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-white/40">
+                  <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
+                  <span>Checking status…</span>
+                </span>
+              )}
+            </div>
             {instanceOptions.length > 1 ? (
               <DkDropdown
                 options={instanceOptions}
@@ -304,14 +373,33 @@ export function MediaRequestConfirmModal({
           >
             Cancel
           </DkButton>
-          <DkButton
-            variant="primary"
-            onClick={handleConfirm}
-            loading={submitting}
-            className="px-5 shadow-lg shadow-blue-500/25"
-          >
-            Confirm Request
-          </DkButton>
+          {isDownloaded ? (
+            <DkButton
+              variant="secondary"
+              disabled
+              className="px-5 opacity-60 cursor-not-allowed"
+            >
+              Already Available
+            </DkButton>
+          ) : isRequested ? (
+            <DkButton
+              variant="secondary"
+              disabled
+              className="px-5 opacity-60 cursor-not-allowed"
+            >
+              Already Requested
+            </DkButton>
+          ) : (
+            <DkButton
+              variant="primary"
+              onClick={handleConfirm}
+              loading={submitting || isChecking}
+              disabled={submitting}
+              className="px-5 shadow-lg shadow-blue-500/25"
+            >
+              Confirm Request
+            </DkButton>
+          )}
         </div>
       </div>
     </DkDialog>

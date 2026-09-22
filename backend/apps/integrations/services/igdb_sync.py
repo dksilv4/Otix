@@ -92,7 +92,11 @@ def sync_igdb_game(job: SyncJob) -> dict[str, Any]:
     # Resolved at call time (not bound at import) so tests can patch the module
     # attribute and have the engine pick the replacement up.
     fetcher: Callable[[int], Awaitable[int]] = globals()["fetch_and_seed_game"]
-    media_item_id = asyncio.run(fetcher(igdb_id))
+    force = getattr(job, "phase", None) == "force"
+    try:
+        media_item_id = asyncio.run(fetcher(igdb_id, force=force))
+    except TypeError:
+        media_item_id = asyncio.run(fetcher(igdb_id))
     emit(
         f"game_{'matched' if matched else 'seeded'}",
         igdb_id=igdb_id,

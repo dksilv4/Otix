@@ -21,7 +21,6 @@ from apps.integrations.models import SyncJob
 from apps.integrations.services import (
     catalog_seed,  # noqa: F401
     igdb_sync,  # noqa: F401
-    musicbrainz_sync,  # noqa: F401
     plex_sync,  # noqa: F401
     steamgrid_sync,  # noqa: F401
     tmdb_sync,  # noqa: F401

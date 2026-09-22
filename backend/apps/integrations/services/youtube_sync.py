@@ -31,8 +31,7 @@ from apps.integrations.models import SyncJob, UserYoutubeLikedVideo
 from apps.integrations.services.sync import register_sync_engine
 from apps.integrations.services.youtube import YouTubeClient
 from apps.integrations.services.youtube_title_parser import parse_music_title
-from apps.media.models import Album, ExternalID
-from apps.media.services.interaction import set_interaction
+from apps.media.models import ExternalID
 from apps.people.models import Person
 from core import progress as progress_lib
 
@@ -95,53 +94,6 @@ def _extract_music_videos(liked_videos: list[dict]) -> list[dict]:
             }
         )
     return music_videos
-
-
-def _match_album(parsed) -> Album | None:
-    """Match a parsed title to an album by artist + song, 3 strategies deep."""
-    artist = parsed.artist.strip()
-    song = parsed.song_title.strip()
-    if not artist or not song:
-        return None
-
-    # Strategy 1: exact song title + an artist credit of the same name.
-    album = (
-        Album.objects.filter(
-            media_item__title__iexact=song,
-            media_item__credits__person__name__iexact=artist,
-        )
-        .distinct()
-        .first()
-    )
-    if album is not None:
-        return album
-
-    # Strategy 2: substring song title, then re-check the artist credit per hit.
-    for album in (
-        Album.objects.filter(media_item__title__icontains=song).distinct()[:5]
-    ):
-        if Album.objects.filter(
-            pk=album.pk, media_item__credits__person__name__icontains=artist
-        ).exists():
-            return album
-
-    # Strategy 3: substring song title against each featuring artist.
-    for feat in parsed.featuring_artists:
-        feat = feat.strip()
-        if not feat:
-            continue
-        album = (
-            Album.objects.filter(
-                media_item__title__icontains=song,
-                media_item__credits__person__name__icontains=feat,
-            )
-            .distinct()
-            .first()
-        )
-        if album is not None:
-            return album
-
-    return None
 
 
 def _link_channel_to_person(channel_id: str, channel_title: str) -> bool:
@@ -237,34 +189,17 @@ def sync_youtube_liked_videos(job: SyncJob) -> dict:
         channel_links = 0
         for mv in music_videos:
             parsed = parse_music_title(mv["title"], mv["channel_title"])
-            album = None
             matched_title = None
             matched_artist = None
             if parsed.confidence >= 0.3:
-                album = _match_album(parsed)
-                if album is not None:
-                    matched_title = parsed.song_title
-                    matched_artist = parsed.artist
-                    set_interaction(
-                        user,
-                        album.media_item_id,
-                        "listened",
-                        {
-                            "source": "youtube_liked_videos",
-                            "video_id": mv["video_id"],
-                            "video_title": mv["title"],
-                            "channel_title": mv["channel_title"],
-                            "published_at": mv["published_at"],
-                        },
-                    )
-                    matched += 1
-                    if mv["channel_id"] and _link_channel_to_person(
-                        mv["channel_id"], mv["channel_title"]
-                    ):
-                        channel_links += 1
+                matched_title = parsed.song_title
+                matched_artist = parsed.artist
+                if mv["channel_id"] and _link_channel_to_person(
+                    mv["channel_id"], mv["channel_title"]
+                ):
+                    channel_links += 1
 
-            _upsert_liked_video(user, mv, album.media_item if album else None,
-                                matched_title, matched_artist)
+            _upsert_liked_video(user, mv, None, matched_title, matched_artist)
 
         emit("matching_complete", matched=matched, total_music=len(music_videos))
         return {

@@ -559,6 +559,8 @@ class EpicLinkCallbackView(GenericAPIView):
         status_code, data = proxy_epic_auth(server, code)
         if isinstance(data, dict):
             data.pop("refresh_token", None)
+        if 200 <= status_code < 300:
+            oauth_service.delete_epic_link_states(user_id=request.user.pk)
         return Response(data, status=status_code)
 
 

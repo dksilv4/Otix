@@ -15,17 +15,15 @@ from __future__ import annotations
 
 import asyncio
 import unittest.mock as mock
-from io import StringIO
 
 import httpx
 from django.contrib.contenttypes.models import ContentType
-from django.core.management import call_command
 from django.test import TestCase
 
 from apps.integrations.models import SyncJob
-from apps.integrations.services import catalog_seed
 from apps.integrations.services.catalog_seed import (
     enqueue_seed_jobs,
+    enqueue_tmdb_discover,
     enqueue_tmdb_popular,
     run_pending_jobs,
 )
@@ -347,22 +345,6 @@ class EnqueueDueAndIncompleteTests(TestCase):
         self.assertEqual(SyncJob.objects.count(), 0)
         self.assertEqual(summary["skipped"], 1)
 
-    def test_skips_music_rows(self):
-        from apps.integrations.services.catalog_seed import enqueue_due_and_incomplete
-
-        media = MediaItem.objects.create(
-            media_type="music", title="An Album", slug="an-album", completeness_score=0.1
-        )
-        ExternalID.objects.create(
-            content_type=ContentType.objects.get_for_model(MediaItem),
-            object_id=media.pk,
-            provider="musicbrainz",
-            external_id="mbid",
-            media_type="music",
-        )
-        summary = enqueue_due_and_incomplete(limit=10)
-        self.assertEqual(summary["enqueued"], 0)
-        self.assertEqual(SyncJob.objects.count(), 0)
 
 
 class EnqueueTmdbPopularTests(TestCase):
@@ -452,27 +434,42 @@ class EnqueueTmdbPopularTests(TestCase):
             _run(enqueue_tmdb_popular("game", provider=provider))
 
 
-class CatalogSeedCommandTests(TestCase):
-    def test_command_enqueues_popular_then_drains(self):
-        out = StringIO()
-        summary = {
-            "provider": "tmdb",
-            "entity_type": "movie",
-            "discovered": 5,
-            "enqueued": 2,
-            "external_ids": ["1", "2"],
-        }
-        drain = {"ran": 1, "succeeded": 1, "failed": 0, "skipped": 0}
-        with (
-            mock.patch.object(
-                catalog_seed, "enqueue_tmdb_popular", new=mock.AsyncMock(return_value=summary)
-            ) as enqueue,
-            mock.patch.object(catalog_seed, "run_pending_jobs", return_value=drain) as drain_jobs,
-        ):
-            call_command("catalog_seed", kind="movie", limit=5, drain=True, stdout=out)
+class EnqueueTmdbDiscoverTests(TestCase):
+    def test_unsupported_entity_type_raises(self):
+        with self.assertRaises(ValueError):
+            _run(enqueue_tmdb_discover("game"))
 
-        enqueue.assert_awaited_once_with("movie", limit=5)
-        drain_jobs.assert_called_once_with(provider="tmdb", entity_type="movie")
-        self.assertIn("discovered 5 popular movie ids", out.getvalue())
-        self.assertIn("enqueued 2 new sync jobs", out.getvalue())
-        self.assertIn("drained 1 jobs: 1 succeeded", out.getvalue())
+    def test_unknown_source_raises(self):
+        provider = mock.MagicMock()
+        with self.assertRaises(ValueError):
+            _run(enqueue_tmdb_discover("movie", provider=provider, sources=("bogus",)))
+
+    def test_fans_out_and_dedupes_sources(self):
+        provider = mock.MagicMock()
+        provider.get_movie_popular = mock.AsyncMock(
+            return_value={"results": [{"id": 101}, {"id": 102}]}
+        )
+        provider.get_movie_top_rated = mock.AsyncMock(
+            return_value={"results": [{"id": 102}, {"id": 103}]}
+        )
+        with mock.patch(
+            "apps.integrations.services.catalog_seed.enqueue_seed_jobs",
+            return_value=[SyncJob(provider="tmdb", external_id="101")],
+        ) as enqueue_mock:
+            summary = _run(
+                enqueue_tmdb_discover(
+                    "movie",
+                    limit=10,
+                    provider=provider,
+                    sources=("popular", "top_rated"),
+                )
+            )
+
+        self.assertEqual(summary["discovered"], 3)  # 101, 102, 103 (102 deduped)
+        self.assertEqual(summary["enqueued"], 1)
+        enqueue_mock.assert_called_once_with(
+            provider="tmdb",
+            entity_type="movie",
+            external_ids=["101", "102", "103"],
+        )
+

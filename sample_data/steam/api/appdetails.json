@@ -1,0 +1,71 @@
+{
+  "220": {
+    "success": true,
+    "data": {
+      "type": "game",
+      "name": "Half-Life 2",
+      "steam_appid": 220,
+      "required_age": 0,
+      "is_free": false,
+      "detailed_description": "1998. HALF-LIFE sends a shock through the game industry with its combination of pounding action and continuous, immersive storytelling.",
+      "about_the_game": "1998. HALF-LIFE sends a shock through the game industry with its combination of pounding action...",
+      "short_description": "1998. HALF-LIFE sends a shock through the game industry with its combination of pounding action and continuous, immersive storytelling.",
+      "supported_languages": "English<strong>*</strong>, French<strong>*</strong>, German<strong>*</strong>, Italian<strong>*</strong>, Spanish - Spain<strong>*</strong><br><strong>*</strong>languages with full audio support",
+      "header_image": "https://cdn.akamai.steamstatic.com/steam/apps/220/header.jpg",
+      "website": "http://www.half-life2.com",
+      "pc_requirements": {
+        "minimum": "<strong>Minimum:</strong> 1.7 Ghz Processor, 512MB RAM, DirectX® 8.1 level Graphics Card, Windows® 7 (32/64-bit)/Vista/XP, Mouse, Keyboard, Internet Connection"
+      },
+      "developers": [
+        "Valve"
+      ],
+      "publishers": [
+        "Valve"
+      ],
+      "price_overview": {
+        "currency": "USD",
+        "initial": 999,
+        "final": 999,
+        "discount_percent": 0,
+        "initial_formatted": "",
+        "final_formatted": "$9.99"
+      },
+      "categories": [
+        {
+          "id": 2,
+          "description": "Single-player"
+        },
+        {
+          "id": 22,
+          "description": "Steam Achievements"
+        },
+        {
+          "id": 29,
+          "description": "Steam Trading Cards"
+        },
+        {
+          "id": 13,
+          "description": "Captions available"
+        },
+        {
+          "id": 18,
+          "description": "Partial Controller Support"
+        },
+        {
+          "id": 23,
+          "description": "Steam Cloud"
+        }
+      ],
+      "genres": [
+        {
+          "id": "1",
+          "description": "Action"
+        }
+      ],
+      "release_date": {
+        "coming_soon": false,
+        "date": "16 Nov, 2004"
+      }
+    }
+  }
+}

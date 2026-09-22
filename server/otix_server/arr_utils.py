@@ -61,20 +61,28 @@ def _format_arr_error_response(resp: httpx.Response) -> str:
     try:
         data = resp.json()
         if isinstance(data, list):
-            messages = [
-                item.get("errorMessage")
-                for item in data
-                if isinstance(item, dict) and item.get("errorMessage")
-            ]
+            messages = []
+            for item in data:
+                if isinstance(item, dict) and item.get("errorMessage"):
+                    msg = str(item["errorMessage"]).strip()
+                    if msg.endswith("Path:"):
+                        msg = msg[:-5].strip()
+                    messages.append(msg)
             if messages:
                 return "; ".join(messages)
         elif isinstance(data, dict):
             msg = data.get("message") or data.get("error") or data.get("detail")
             if msg:
-                return str(msg)
+                msg_str = str(msg).strip()
+                if msg_str.endswith("Path:"):
+                    msg_str = msg_str[:-5].strip()
+                return msg_str
     except Exception:
         pass
-    return resp.text or str(resp.status_code)
+    raw = (resp.text or str(resp.status_code)).strip()
+    if raw.endswith("Path:"):
+        raw = raw[:-5].strip()
+    return raw
 
 
 # ── Radarr Client Functions ─────────────────────────────────────────────
@@ -183,7 +191,100 @@ def lookup_radarr_movie(config: RadarrConfig, term: str) -> List[Dict[str, Any]]
     with httpx.Client(timeout=_get_client_timeout(), verify=False) as client:
         resp = client.get(url, headers=headers, params=params)
         resp.raise_for_status()
-        return resp.json() or []
+        items = resp.json() or []
+        for item in items:
+            lib_id = item.get("id")
+            if isinstance(lib_id, int) and lib_id > 0 and not item.get("hasFile"):
+                try:
+                    m_resp = client.get(f"{base}/api/v3/movie/{lib_id}", headers=headers)
+                    if m_resp.status_code == 200:
+                        m_data = m_resp.json()
+                        if isinstance(m_data, dict):
+                            for k in ("hasFile", "sizeOnDisk", "movieFile", "movieFileId", "path", "status", "isAvailable"):
+                                if k in m_data and m_data[k] is not None:
+                                    item[k] = m_data[k]
+                except Exception:
+                    pass
+        return items
+
+
+def _match_radarr_lookup(
+    results: List[Dict[str, Any]],
+    tmdb_id: Any,
+    title: Optional[str] = None,
+    year: Optional[int] = None,
+) -> Optional[Dict[str, Any]]:
+    if not results:
+        return None
+    # 1. Match by tmdbId if provided
+    if tmdb_id:
+        for item in results:
+            if item.get("tmdbId") is not None and str(item.get("tmdbId")) == str(tmdb_id):
+                return item
+    # 2. Match by exact title and year
+    if title and year:
+        t_clean = title.strip().lower()
+        for item in results:
+            if item.get("title", "").strip().lower() == t_clean and item.get("year") == year:
+                return item
+    # 3. Match by exact title
+    if title:
+        t_clean = title.strip().lower()
+        for item in results:
+            if item.get("title", "").strip().lower() == t_clean:
+                return item
+    return results[0]
+
+
+def resolve_radarr_add_target(
+    config: RadarrConfig, payload: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Resolve title/year/tmdbId for an add, using Radarr lookup when needed."""
+    tmdb_id = payload.get("tmdb_id") or payload.get("tmdbId")
+    title = payload.get("title")
+    year = payload.get("year")
+
+    if not tmdb_id and not title:
+        raise ValueError("title or tmdb_id is required")
+
+    match: Optional[Dict[str, Any]] = None
+    # 1. If tmdb_id provided, look up by tmdb:<id>
+    if tmdb_id:
+        try:
+            results = lookup_radarr_movie(config, f"tmdb:{tmdb_id}")
+            match = _match_radarr_lookup(results, tmdb_id, title, year)
+        except Exception as exc:
+            logger.debug("Radarr lookup for tmdb:%s failed: %s", tmdb_id, exc)
+            match = None
+
+    # 2. If lookup by tmdb id didn't find a match with tmdbId, fall back to title lookup
+    if (not match or match.get("tmdbId") is None) and title:
+        try:
+            results = lookup_radarr_movie(config, str(title))
+            match = _match_radarr_lookup(results, tmdb_id, title, year)
+        except Exception as exc:
+            logger.debug("Radarr lookup for title '%s' failed: %s", title, exc)
+            match = None
+
+    if not match or match.get("tmdbId") is None:
+        if tmdb_id:
+            # Lookup didn't return metadata, but caller gave us a tmdb_id; pass it along
+            return {
+                "title": title or f"Movie {tmdb_id}",
+                "tmdb_id": int(tmdb_id),
+                "year": year,
+                "title_slug": None,
+                "images": [],
+            }
+        raise ValueError(f"Could not resolve Radarr movie for '{title or tmdb_id}'")
+
+    return {
+        "title": title or match.get("title"),
+        "tmdb_id": int(match["tmdbId"]),
+        "year": year or match.get("year"),
+        "title_slug": match.get("titleSlug"),
+        "images": match.get("images") or [],
+    }
 
 
 def add_radarr_movie(config: RadarrConfig, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -191,6 +292,7 @@ def add_radarr_movie(config: RadarrConfig, payload: Dict[str, Any]) -> Dict[str,
     base = build_arr_base_url(config.host, config.port, config.use_ssl, config.url_base)
     url = f"{base}/api/v3/movie"
     headers = {"X-Api-Key": config.api_key, "Content-Type": "application/json"}
+    resolved = resolve_radarr_add_target(config, payload)
 
     # Default fallback quality profile and root folder from config if not provided in payload
     root_folder = (
@@ -214,9 +316,9 @@ def add_radarr_movie(config: RadarrConfig, payload: Dict[str, Any]) -> Dict[str,
         quality_profile = profiles[0].id if profiles else 1
 
     final_payload = {
-        "title": payload.get("title"),
-        "tmdbId": payload.get("tmdb_id") or payload.get("tmdbId"),
-        "year": payload.get("year"),
+        "title": resolved["title"],
+        "tmdbId": resolved["tmdb_id"],
+        "year": resolved["year"],
         "qualityProfileId": quality_profile,
         "rootFolderPath": root_folder,
         "monitored": payload.get("monitored", True),
@@ -231,9 +333,14 @@ def add_radarr_movie(config: RadarrConfig, payload: Dict[str, Any]) -> Dict[str,
         },
     }
 
+    if resolved.get("title_slug"):
+        final_payload["titleSlug"] = resolved["title_slug"]
+    if resolved.get("images"):
+        final_payload["images"] = resolved["images"]
+
     with httpx.Client(timeout=_get_client_timeout(), verify=False) as client:
         resp = client.post(url, headers=headers, json=final_payload)
-        if resp.is_error:
+        if resp.status_code >= 400:
             err_msg = _format_arr_error_response(resp)
             raise ValueError(f"Radarr rejected movie request: {err_msg}")
         return resp.json()
@@ -423,7 +530,21 @@ def lookup_sonarr_series(config: SonarrConfig, term: str) -> List[Dict[str, Any]
     with httpx.Client(timeout=_get_client_timeout(), verify=False) as client:
         resp = client.get(url, headers=headers, params=params)
         resp.raise_for_status()
-        return resp.json() or []
+        items = resp.json() or []
+        for item in items:
+            lib_id = item.get("id")
+            if isinstance(lib_id, int) and lib_id > 0 and not (item.get("statistics") or {}).get("episodeFileCount"):
+                try:
+                    s_resp = client.get(f"{base}/api/v3/series/{lib_id}", headers=headers)
+                    if s_resp.status_code == 200:
+                        s_data = s_resp.json()
+                        if isinstance(s_data, dict):
+                            for k in ("statistics", "path", "status"):
+                                if k in s_data and s_data[k] is not None:
+                                    item[k] = s_data[k]
+                except Exception:
+                    pass
+        return items
 
 
 def _match_sonarr_lookup(results: List[Dict[str, Any]], tmdb_id: Any) -> Optional[Dict[str, Any]]:
@@ -513,7 +634,7 @@ def add_sonarr_series(config: SonarrConfig, payload: Dict[str, Any]) -> Dict[str
 
     with httpx.Client(timeout=_get_client_timeout(), verify=False) as client:
         resp = client.post(url, headers=headers, json=final_payload)
-        if resp.is_error:
+        if resp.status_code >= 400:
             err_msg = _format_arr_error_response(resp)
             raise ValueError(f"Sonarr rejected series request: {err_msg}")
         return resp.json()

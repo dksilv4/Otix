@@ -48,3 +48,32 @@ class EpicLibraryScanView(APIView):
             logger.exception("epic library scan failed")
             return Response({"detail": _SCAN_FAILED}, status=500)
         return Response(result)
+
+
+class EpicResolveSteamGridView(APIView):
+    """POST /integrations/epic/resolve-steamgrid — resolve unmatched games via SteamGridDB."""
+
+    def post(self, request):
+        from apps.integrations.services.epic_steamgrid import resolve_unmatched_epic_with_steamgrid
+
+        limit = request.data.get("limit")
+        if limit is not None:
+            try:
+                limit = int(limit)
+            except (ValueError, TypeError):
+                limit = None
+        try:
+            result = resolve_unmatched_epic_with_steamgrid(
+                request.user,
+                limit=limit,
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        except Exception:
+            logger.exception("epic steamgrid resolution failed")
+            return Response(
+                {"detail": "Failed to resolve games with SteamGridDB."},
+                status=500,
+            )
+        return Response(result)
+

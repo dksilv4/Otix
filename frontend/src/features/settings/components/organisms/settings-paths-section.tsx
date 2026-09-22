@@ -5,6 +5,7 @@ import {
   Trash2,
   Gamepad2,
   Disc,
+  HardDrive,
 } from 'lucide-react'
 import { PathInput } from '@/components/path-picker'
 import { DkButton } from '@ui/atoms/button'
@@ -51,19 +52,102 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
   const desktop = isDesktop()
   const folderTarget = remoteNodeId ? 'server' : desktop ? 'local' : 'server'
 
+  const getStorageKey = useCallback((prefix: string) => {
+    return remoteNodeId == null ? prefix : `${prefix}:node:${remoteNodeId}`
+  }, [remoteNodeId])
+
   // ── State ──
-  const [scanPaths, setScanPaths] = useState<ScanPathItem[]>([])
-  const [gamesDownloadPath, setGamesDownloadPath] = useState<string>(() => {
+  const [scanPaths, setScanPaths] = useState<ScanPathItem[]>(() => {
     try {
-      return localStorage.getItem('otix:games-download-dir') || ''
+      const key = remoteNodeId == null ? 'otix:scan-paths' : `otix:scan-paths:node:${remoteNodeId}`
+      const raw = localStorage.getItem(key)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+      if (!remoteNodeId) {
+        const storedGames = localStorage.getItem('otix:scan-paths')
+        const storedIsos = localStorage.getItem('otix:iso-scan-paths')
+        const items: ScanPathItem[] = []
+        if (storedGames) {
+          const parsed = JSON.parse(storedGames)
+          if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'game' as const })))
+        }
+        if (storedIsos) {
+          const parsed = JSON.parse(storedIsos)
+          if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'iso' as const })))
+        }
+        if (items.length > 0) return items
+      }
+    } catch {}
+    return []
+  })
+
+  const [gamesInstallPath, setGamesInstallPath] = useState<string>(() => {
+    try {
+      const key = remoteNodeId == null ? 'otix:games-install-dir' : `otix:games-install-dir:node:${remoteNodeId}`
+      return localStorage.getItem(key) || (!remoteNodeId ? localStorage.getItem('otix:games-install-dir') || '' : '')
     } catch {
       return ''
     }
   })
-  const [serverDownloadPath, setServerDownloadPath] = useState('')
+
+  const [gamesDownloadPath, setGamesDownloadPath] = useState<string>(() => {
+    try {
+      const key = remoteNodeId == null ? 'otix:games-download-dir' : `otix:games-download-dir:node:${remoteNodeId}`
+      return localStorage.getItem(key) || (!remoteNodeId ? localStorage.getItem('otix:games-download-dir') || '' : '')
+    } catch {
+      return ''
+    }
+  })
+
+  const [serverDownloadPath, setServerDownloadPath] = useState<string>(() => {
+    try {
+      const key = remoteNodeId == null ? 'otix:iso-download-dir' : `otix:iso-download-dir:node:${remoteNodeId}`
+      return localStorage.getItem(key) || (!remoteNodeId ? localStorage.getItem('otix:iso-download-dir') || '' : '')
+    } catch {
+      return ''
+    }
+  })
+
   const [isScanning, setIsScanning] = useState(false)
   const [draftScanPath, setDraftScanPath] = useState('')
   const [draftScanType, setDraftScanType] = useState<'game' | 'iso'>('game')
+
+  // Synchronize state from storage when remoteNodeId changes
+  useEffect(() => {
+    try {
+      const installKey = remoteNodeId == null ? 'otix:games-install-dir' : `otix:games-install-dir:node:${remoteNodeId}`
+      const downloadKey = remoteNodeId == null ? 'otix:games-download-dir' : `otix:games-download-dir:node:${remoteNodeId}`
+      const isoKey = remoteNodeId == null ? 'otix:iso-download-dir' : `otix:iso-download-dir:node:${remoteNodeId}`
+      const scanKey = remoteNodeId == null ? 'otix:scan-paths' : `otix:scan-paths:node:${remoteNodeId}`
+
+      setGamesInstallPath(localStorage.getItem(installKey) || (!remoteNodeId ? localStorage.getItem('otix:games-install-dir') || '' : ''))
+      setGamesDownloadPath(localStorage.getItem(downloadKey) || (!remoteNodeId ? localStorage.getItem('otix:games-download-dir') || '' : ''))
+      setServerDownloadPath(localStorage.getItem(isoKey) || (!remoteNodeId ? localStorage.getItem('otix:iso-download-dir') || '' : ''))
+
+      const cachedScan = localStorage.getItem(scanKey)
+      if (cachedScan) {
+        const parsed = JSON.parse(cachedScan)
+        if (Array.isArray(parsed)) setScanPaths(parsed)
+      } else if (!remoteNodeId) {
+        const storedGames = localStorage.getItem('otix:scan-paths')
+        const storedIsos = localStorage.getItem('otix:iso-scan-paths')
+        const items: ScanPathItem[] = []
+        if (storedGames) {
+          const parsed = JSON.parse(storedGames)
+          if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'game' as const })))
+        }
+        if (storedIsos) {
+          const parsed = JSON.parse(storedIsos)
+          if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'iso' as const })))
+        }
+        setScanPaths(items)
+      } else {
+        setScanPaths([])
+      }
+    } catch {}
+  }, [remoteNodeId])
 
   // ── 1. Load scan paths from the selected node, desktop API, or localStorage ──
   const loadScanPaths = useCallback(async () => {
@@ -74,13 +158,17 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         const items: ScanPathItem[] = rows
           .map((row: any) => ({
             path: String(row.path || '').trim(),
-            type: row.kind === 'iso' || row.type === 'iso' ? 'iso' as const : 'game' as const,
+            type: row.kind === 'iso' || row.type === 'iso' ? ('iso' as const) : ('game' as const),
           }))
           .filter((row: ScanPathItem) => row.path)
         setScanPaths(items)
+        try {
+          localStorage.setItem(`otix:scan-paths:node:${remoteNodeId}`, JSON.stringify(items))
+        } catch {}
         return
       } catch (err) {
         console.warn('Failed to get scan paths from Otix node:', err)
+        return
       }
     }
 
@@ -132,29 +220,80 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
     async function loadDestinations() {
       if (remoteNodeId) {
         try {
-          const [desktopRes, organizeRes] = await Promise.all([
+          const [desktopRes, organizeRes] = await Promise.allSettled([
             apiClient.get<any>(`/library/servers/${remoteNodeId}/desktop`),
             apiClient.get<any>(`/library/servers/${remoteNodeId}/organize`),
           ])
           if (cancelled) return
-          const gamesPath = desktopRes?.data?.gamesDownloadPath || desktopRes?.data?.games_download_path || ''
-          const isoPath = organizeRes?.data?.isoDownloadPath || organizeRes?.data?.iso_download_path || ''
-          if (gamesPath) setGamesDownloadPath(gamesPath)
-          if (isoPath) setServerDownloadPath(isoPath)
+
+          if (desktopRes.status === 'fulfilled') {
+            const d = desktopRes.value?.data
+            const gamesPath = d?.gamesDownloadPath || d?.games_download_path || ''
+            const installPath = d?.gamesInstallPath || d?.games_install_path || ''
+            if (gamesPath) {
+              setGamesDownloadPath(gamesPath)
+              try {
+                localStorage.setItem(`otix:games-download-dir:node:${remoteNodeId}`, gamesPath)
+              } catch {}
+            }
+            if (installPath) {
+              setGamesInstallPath(installPath)
+              try {
+                localStorage.setItem(`otix:games-install-dir:node:${remoteNodeId}`, installPath)
+              } catch {}
+            }
+          }
+
+          if (organizeRes.status === 'fulfilled') {
+            const org = organizeRes.value?.data
+            const isoPath = org?.isoDownloadPath || org?.iso_download_path || ''
+            const installPath = org?.gamesInstallPath || org?.games_install_path || ''
+            if (isoPath) {
+              setServerDownloadPath(isoPath)
+              try {
+                localStorage.setItem(`otix:iso-download-dir:node:${remoteNodeId}`, isoPath)
+              } catch {}
+            }
+            if (installPath) {
+              setGamesInstallPath((prev) => {
+                const next = prev || installPath
+                try {
+                  localStorage.setItem(`otix:games-install-dir:node:${remoteNodeId}`, next)
+                } catch {}
+                return next
+              })
+            }
+          }
           return
         } catch {
-          // fall through
+          // ignore
+          return
         }
       }
-      const api = getDesktopAPI()
+
+      const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
       if (api?.getDesktopSettings) {
         try {
           const ds = await api.getDesktopSettings()
-          if (!cancelled && ds?.gamesDownloadPath) {
-            setGamesDownloadPath(ds.gamesDownloadPath)
-            try {
-              localStorage.setItem('otix:games-download-dir', ds.gamesDownloadPath)
-            } catch {}
+          if (!cancelled && ds) {
+            if (ds.gamesDownloadPath) {
+              setGamesDownloadPath(ds.gamesDownloadPath)
+              try {
+                localStorage.setItem('otix:games-download-dir', ds.gamesDownloadPath)
+              } catch {}
+            }
+            if (ds.gamesInstallPath) {
+              setGamesInstallPath(ds.gamesInstallPath)
+              try {
+                localStorage.setItem('otix:games-install-dir', ds.gamesInstallPath)
+              } catch {}
+            }
+            if (ds.isoDownloadPath) {
+              setServerDownloadPath(ds.isoDownloadPath)
+              try {
+                localStorage.setItem('otix:iso-download-dir', ds.isoDownloadPath)
+              } catch {}
+            }
           }
         } catch {
           // ignore
@@ -167,16 +306,26 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
     }
   }, [remoteNodeId])
 
+  // Keep ISO destination in sync with download config for local desktop if not already set
   useEffect(() => {
-    if (dlConfig) {
-      setServerDownloadPath(dlConfig.downloadPath ?? '')
+    if (!remoteNodeId && dlConfig?.downloadPath) {
+      setServerDownloadPath((prev) => {
+        if (prev) return prev
+        try {
+          localStorage.setItem('otix:iso-download-dir', dlConfig.downloadPath!)
+        } catch {}
+        return dlConfig.downloadPath!
+      })
     }
-  }, [dlConfig?.downloadPath])
+  }, [remoteNodeId, dlConfig?.downloadPath])
 
   // Helper to persist scan paths
   const persistScanPaths = async (updated: ScanPathItem[]) => {
     setScanPaths(updated)
     if (remoteNodeId) {
+      try {
+        localStorage.setItem(`otix:scan-paths:node:${remoteNodeId}`, JSON.stringify(updated))
+      } catch {}
       try {
         await apiClient.put(`/library/servers/${remoteNodeId}/libraries`, {
           libraries: updated.map((item) => ({
@@ -190,7 +339,7 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       }
       return
     }
-    const api = getDesktopAPI()
+    const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
     if (api?.saveScanPaths) {
       try {
         await api.saveScanPaths(updated)
@@ -204,16 +353,63 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
     } catch {}
   }
 
-  // ── 3. Games Directory Handler ──
+  // ── 3. Game Installation Directory Handler ──
+  const handleSaveGamesInstallPath = async (path: string) => {
+    const trimmed = path.trim()
+    setGamesInstallPath(trimmed)
+
+    try {
+      if (remoteNodeId) {
+        try {
+          localStorage.setItem(`otix:games-install-dir:node:${remoteNodeId}`, trimmed)
+        } catch {}
+        await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesInstallPath: trimmed })
+      } else {
+        const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+        if (api?.setDesktopSettings) {
+          await api.setDesktopSettings({ gamesInstallPath: trimmed })
+        }
+        try {
+          localStorage.setItem('otix:games-install-dir', trimmed)
+        } catch {}
+      }
+
+      // Automatically register in scanPaths if not already present
+      if (trimmed) {
+        const exists = scanPaths.some((p) => p.path === trimmed && p.type === 'game')
+        if (!exists) {
+          const updated = [...scanPaths, { path: trimmed, type: 'game' as const }]
+          await persistScanPaths(updated)
+        }
+      }
+
+      toast({
+        title: 'Installation Directory Updated',
+        description: `Saved: ${trimmed || 'Not configured'}`,
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Save Failed',
+        description: 'Could not save game installation directory.',
+        variant: 'error',
+      })
+    }
+  }
+
+  // ── 4. Games Download Directory Handler ──
   const handleSaveGamesPath = async (path: string) => {
     const trimmed = path.trim()
     setGamesDownloadPath(trimmed)
 
     try {
       if (remoteNodeId) {
+        try {
+          localStorage.setItem(`otix:games-download-dir:node:${remoteNodeId}`, trimmed)
+        } catch {}
         await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesDownloadPath: trimmed })
       } else {
-        const api = getDesktopAPI()
+        const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
         if (api?.setDesktopSettings) {
           await api.setDesktopSettings({ gamesDownloadPath: trimmed })
         }
@@ -234,52 +430,70 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       toast({
         title: 'Games Directory Updated',
         description: `Saved: ${trimmed || 'System default (~/Downloads/Games)'}`,
+        variant: 'success',
       })
     } catch {
       toast({
         title: 'Save Failed',
         description: 'Could not save games directory.',
-        variant: 'destructive',
+        variant: 'error',
       })
     }
   }
 
-  // ── 4. ISOs Directory Handler ──
+  // ── 5. ISOs Directory Handler ──
   const handleSaveServerIsoPath = async (path: string) => {
     const trimmed = path.trim()
     setServerDownloadPath(trimmed)
 
-    if (remoteNodeId) {
-      try {
+    try {
+      if (remoteNodeId) {
+        try {
+          localStorage.setItem(`otix:iso-download-dir:node:${remoteNodeId}`, trimmed)
+        } catch {}
         await apiClient.post(`/library/servers/${remoteNodeId}/organize`, { isoDownloadPath: trimmed || '' })
-      } catch (err) {
-        console.error('Failed to save ISO path to Otix node:', err)
-      }
-    } else if (user && saveConfig && dlConfig) {
-      try {
-        await saveConfig({
-          ...dlConfig,
-          userId: user.id,
-          downloadPath: trimmed || null,
-        })
-      } catch (err) {
-        console.error('Failed to save download config:', err)
-      }
-    }
+      } else {
+        const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+        if (api?.setDesktopSettings) {
+          await api.setDesktopSettings({ isoDownloadPath: trimmed })
+        }
+        try {
+          localStorage.setItem('otix:iso-download-dir', trimmed)
+        } catch {}
 
-    // Automatically register in scanPaths if not already present
-    if (trimmed) {
-      const exists = scanPaths.some((p) => p.path === trimmed && p.type === 'iso')
-      if (!exists) {
-        const updated = [...scanPaths, { path: trimmed, type: 'iso' as const }]
-        await persistScanPaths(updated)
+        if (user && saveConfig && dlConfig) {
+          try {
+            await saveConfig({
+              ...dlConfig,
+              userId: user.id,
+              downloadPath: trimmed || null,
+            })
+          } catch {}
+        }
       }
-    }
 
-    toast({
-      title: 'ISO Directory Updated',
-      description: `Saved: ${trimmed || 'Not configured'}`,
-    })
+      // Automatically register in scanPaths if not already present
+      if (trimmed) {
+        const exists = scanPaths.some((p) => p.path === trimmed && p.type === 'iso')
+        if (!exists) {
+          const updated = [...scanPaths, { path: trimmed, type: 'iso' as const }]
+          await persistScanPaths(updated)
+        }
+      }
+
+      toast({
+        title: 'ISO Directory Updated',
+        description: `Saved: ${trimmed || 'Not configured'}`,
+        variant: 'success',
+      })
+    } catch (err) {
+      console.error('Failed to save ISO path:', err)
+      toast({
+        title: 'Save Failed',
+        description: 'Could not save ISO directory.',
+        variant: 'error',
+      })
+    }
   }
 
   // ── 5. Add Scan Path (each on its own separate line) ──
@@ -291,17 +505,28 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       toast({
         title: 'Path Already Monitored',
         description: `This directory is already configured as a ${typeToAdd === 'iso' ? 'disc' : 'game'} scan path.`,
+        variant: 'warning',
       })
       return
     }
 
-    const updated = [...scanPaths, { path: p, type: typeToAdd }]
-    await persistScanPaths(updated)
-    setDraftScanPath('')
-    toast({
-      title: 'Scan Path Added',
-      description: `Added ${p} to monitored scan paths.`,
-    })
+    try {
+      const updated = [...scanPaths, { path: p, type: typeToAdd }]
+      await persistScanPaths(updated)
+      setDraftScanPath('')
+      toast({
+        title: 'Scan Path Added',
+        description: `Added ${p} to monitored scan paths.`,
+        variant: 'success',
+      })
+    } catch (err) {
+      console.error('Failed to add scan path:', err)
+      toast({
+        title: 'Add Failed',
+        description: `Could not add ${p}.`,
+        variant: 'error',
+      })
+    }
   }
 
   const handleCommitDraftScanPath = async (path: string) => {
@@ -309,12 +534,22 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
   }
 
   const handleRemoveScanPath = async (itemToRemove: ScanPathItem) => {
-    const updated = scanPaths.filter((item) => !(item.path === itemToRemove.path && item.type === itemToRemove.type))
-    await persistScanPaths(updated)
-    toast({
-      title: 'Path Removed',
-      description: `Removed ${itemToRemove.path}.`,
-    })
+    try {
+      const updated = scanPaths.filter((item) => !(item.path === itemToRemove.path && item.type === itemToRemove.type))
+      await persistScanPaths(updated)
+      toast({
+        title: 'Path Removed',
+        description: `Removed ${itemToRemove.path}.`,
+        variant: 'default',
+      })
+    } catch (err) {
+      console.error('Failed to remove scan path:', err)
+      toast({
+        title: 'Remove Failed',
+        description: `Could not remove ${itemToRemove.path}.`,
+        variant: 'error',
+      })
+    }
   }
 
   // ── 6. Trigger Scan ──
@@ -335,13 +570,14 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       toast({
         title: 'Library Scanned',
         description: 'Completed scanning configured library and download paths.',
+        variant: 'success',
       })
     } catch (err) {
       console.error('Library scan failed:', err)
       toast({
         title: 'Scan Failed',
         description: 'Failed to scan paths.',
-        variant: 'destructive',
+        variant: 'error',
       })
     } finally {
       setIsScanning(false)
@@ -359,19 +595,39 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         <div className="space-y-3">
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                <HardDrive size={16} />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-semibold text-white">Game installation folder</span>
+                <p className="text-[11px] text-white/40">Where installed games live. Target directory for game installers.</p>
+              </div>
+            </div>
+            <PathInput
+              value={gamesInstallPath}
+              onChange={setGamesInstallPath}
+              onCommit={handleSaveGamesInstallPath}
+              placeholder={desktop && !remoteNodeId ? 'e.g. C:\\Games or /Games' : 'e.g. /media/installed-games'}
+              target={folderTarget}
+              serverId={remoteNodeId ?? undefined}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0">
                 <Gamepad2 size={16} />
               </div>
               <div className="min-w-0">
                 <span className="text-xs font-semibold text-white">Games download folder</span>
-                <p className="text-[11px] text-white/40">Primary destination for game installers.</p>
+                <p className="text-[11px] text-white/40">Where game installers are downloaded before installation.</p>
               </div>
             </div>
             <PathInput
               value={gamesDownloadPath}
               onChange={setGamesDownloadPath}
               onCommit={handleSaveGamesPath}
-              placeholder={desktop && !remoteNodeId ? 'e.g. D:\\Games or ~/Downloads/Games' : 'e.g. /media/games'}
+              placeholder={desktop && !remoteNodeId ? 'e.g. D:\\Downloads\\Games or ~/Downloads/Games' : 'e.g. /media/downloads/games'}
               target={folderTarget}
               serverId={remoteNodeId ?? undefined}
             />
@@ -426,7 +682,7 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         <div className="space-y-1.5">
           {scanPaths.map((item, idx) => {
             const isLinkedDestination =
-              (item.type === 'game' && item.path === gamesDownloadPath) ||
+              (item.type === 'game' && (item.path === gamesDownloadPath || item.path === gamesInstallPath)) ||
               (item.type === 'iso' && item.path === serverDownloadPath)
             return (
               <div
@@ -508,6 +764,7 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
             </div>
             <PathInput
               compact
+              commitOnBlur={false}
               value={draftScanPath}
               onChange={setDraftScanPath}
               onCommit={handleCommitDraftScanPath}

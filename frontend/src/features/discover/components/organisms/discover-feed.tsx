@@ -12,12 +12,10 @@ const PRIORITY_RAILS = [
 ] as const
 
 const DEFERRED_RAILS = [
-  { title: 'Trending Music', mediaType: 'music', listType: 'trending' },
   { title: 'Popular Movies', mediaType: 'movie', listType: 'popular' },
   { title: 'Popular Shows', mediaType: 'show', listType: 'popular' },
   { title: 'New Releases', mediaType: 'game', listType: 'newly_released' },
   { title: 'Now Playing Games', mediaType: 'game', listType: 'now_playing' },
-  { title: 'Popular Music', mediaType: 'music', listType: 'popular' },
   { title: 'Top Rated Games', mediaType: 'game', listType: 'top_rated' },
   { title: 'Upcoming Games', mediaType: 'game', listType: 'upcoming' },
   { title: 'Best on PC', mediaType: 'game', listType: 'top_rated', platform: 'windows' },

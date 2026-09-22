@@ -102,11 +102,45 @@ async function fetchTmdbDetail(
 
   const res = await transport({ method: 'GET', url: url.toString(), headers, timeoutMs: 60_000 })
   requireStatus(res, `TMDB ${path} ${externalId}`)
+  let data: Record<string, unknown>
   try {
-    return JSON.parse(res.body) as Record<string, unknown>
+    data = JSON.parse(res.body) as Record<string, unknown>
   } catch {
     throw new Error(`TMDB ${path} ${externalId} returned invalid JSON`)
   }
+
+  if (entityType === 'show' && Array.isArray(data.seasons)) {
+    const seasons = data.seasons as Array<Record<string, unknown>>
+    await Promise.all(
+      seasons.map(async (season) => {
+        const num = season.season_number
+        if (typeof num !== 'number' || num <= 0) return
+        try {
+          const seasonUrl = new URL(`${TMDB_BASE}/tv/${externalId}/season/${num}`)
+          seasonUrl.searchParams.set('language', 'en-US')
+          const seasonHeaders: Record<string, string> = { Accept: 'application/json' }
+          if (tmdbKeys.token) seasonHeaders.Authorization = `Bearer ${tmdbKeys.token}`
+          else if (tmdbKeys.api_key) seasonUrl.searchParams.set('api_key', tmdbKeys.api_key)
+          const seasonRes = await transport({
+            method: 'GET',
+            url: seasonUrl.toString(),
+            headers: seasonHeaders,
+            timeoutMs: 30_000,
+          })
+          if (seasonRes.status === 200) {
+            const seasonData = JSON.parse(seasonRes.body) as Record<string, unknown>
+            if (Array.isArray(seasonData.episodes)) {
+              season.episodes = seasonData.episodes
+            }
+          }
+        } catch {
+          // best-effort per season
+        }
+      })
+    )
+  }
+
+  return data
 }
 
 // ── IGDB ─────────────────────────────────────────────────────────────

@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Home-Media-Server",
+    "product": "Plex Media Server",
+    "productVersion": "1.32.5.7340",
+    "platform": "Linux",
+    "platformVersion": "5.15.0-88-generic",
+    "device": "PC",
+    "clientIdentifier": "4f18b456ce7a123f99a0b12",
+    "createdAt": "2023-01-01T00:00:00Z",
+    "lastSeenAt": "2024-03-20T12:00:00Z",
+    "provides": "server",
+    "ownerId": 123456,
+    "sourceTitle": null,
+    "publicAddress": "82.10.20.30",
+    "accessToken": "plex-token-xyz-123",
+    "owned": true,
+    "home": false,
+    "synced": false,
+    "relay": true,
+    "presence": true,
+    "httpsRequired": true,
+    "publicAddressMatches": true,
+    "dnsRebindingProtection": false,
+    "natLoopbackSupported": true,
+    "connections": [
+      {
+        "protocol": "https",
+        "address": "192.168.1.100",
+        "port": 32400,
+        "uri": "https://192-168-1-100.xxxxxxxx.plex.direct:32400",
+        "local": true,
+        "relay": false,
+        "IPv6": false
+      },
+      {
+        "protocol": "https",
+        "address": "82.10.20.30",
+        "port": 32400,
+        "uri": "https://82-10-20-30.xxxxxxxx.plex.direct:32400",
+        "local": false,
+        "relay": false,
+        "IPv6": false
+      }
+    ]
+  }
+]

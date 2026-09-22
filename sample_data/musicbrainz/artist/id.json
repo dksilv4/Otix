@@ -1,0 +1,57 @@
+{
+  "id": "83d91898-7763-47d7-b03b-b92132375c47",
+  "type": "Group",
+  "name": "Pink Floyd",
+  "sort-name": "Pink Floyd",
+  "gender": null,
+  "country": "GB",
+  "life-span": {
+    "begin": "1965",
+    "end": "2014",
+    "ended": true
+  },
+  "tags": [
+    {
+      "count": 35,
+      "name": "progressive rock"
+    },
+    {
+      "count": 28,
+      "name": "psychedelic rock"
+    },
+    {
+      "count": 22,
+      "name": "art rock"
+    },
+    {
+      "count": 15,
+      "name": "classic rock"
+    }
+  ],
+  "genres": [
+    {
+      "id": "6a9e14a1-00aa-43dd-b1e5-8a901844b611",
+      "name": "progressive rock",
+      "count": 35
+    },
+    {
+      "id": "c1a0179a-e244-469b-8e3b-d29e71e72e88",
+      "name": "psychedelic rock",
+      "count": 28
+    }
+  ],
+  "relations": [
+    {
+      "type": "official homepage",
+      "url": {
+        "resource": "https://www.pinkfloyd.com/"
+      }
+    },
+    {
+      "type": "wikidata",
+      "url": {
+        "resource": "https://www.wikidata.org/wiki/Q2306"
+      }
+    }
+  ]
+}

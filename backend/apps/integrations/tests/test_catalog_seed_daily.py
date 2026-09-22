@@ -17,14 +17,12 @@ import asyncio
 import gzip
 import os
 import tempfile
-from io import StringIO
 from pathlib import Path
 from unittest import mock
 
 import httpx
 from celery.schedules import crontab
 from django.conf import settings
-from django.core.management import call_command
 from django.test import TestCase, override_settings
 
 from apps.integrations.services import catalog_seed
@@ -316,10 +314,10 @@ class SeedPopularCatalogTests(TestCase):
                 IGDB_CLIENT_SECRET="sec",
             ),
             mock.patch.object(
-                catalog_seed, "enqueue_tmdb_popular", new=mock.AsyncMock(return_value=tmdb_res)
+                catalog_seed, "enqueue_tmdb_discover", new=mock.AsyncMock(return_value=tmdb_res)
             ) as tmdb_enqueue,
             mock.patch.object(
-                catalog_seed, "enqueue_igdb_popular", new=mock.AsyncMock(return_value=igdb_res)
+                catalog_seed, "enqueue_igdb_discover", new=mock.AsyncMock(return_value=igdb_res)
             ) as igdb_enqueue,
         ):
             result = catalog_seed.seed_popular_catalog(limit=15)
@@ -398,46 +396,3 @@ class EnqueueChangesTests(TestCase):
         self.assertEqual(summary["discovered"], 2)
         self.assertEqual(summary["enqueued"], 2)
         self.assertEqual(ensure_job.call_count, 2)
-
-
-
-
-class CatalogSeedDailyCommandTests(TestCase):
-    def test_daily_source_whole_file_enqueues_and_drains(self):
-        out = StringIO()
-        summary = {
-            "provider": "tmdb",
-            "entity_type": "show",
-            "discovered": 3,
-            "enqueued": 2,
-            "external_ids": ["1", "2"],
-        }
-        drain = {"ran": 1, "succeeded": 1, "failed": 0, "skipped": 0}
-        with (
-            mock.patch.object(
-                catalog_seed, "enqueue_tmdb_daily", new=mock.AsyncMock(return_value=summary)
-            ) as enqueue,
-            mock.patch.object(catalog_seed, "run_pending_jobs", return_value=drain) as drain_jobs,
-        ):
-            call_command(
-                "catalog_seed", kind="show", source="daily", limit=0, drain=True, stdout=out
-            )
-
-        enqueue.assert_awaited_once_with("show", limit=None)
-        drain_jobs.assert_called_once_with(provider="tmdb", entity_type="show")
-        self.assertIn("discovered 3 daily show ids", out.getvalue())
-        self.assertIn("enqueued 2 new sync jobs", out.getvalue())
-
-    def test_daily_source_honours_a_bounded_limit(self):
-        summary = {"entity_type": "movie", "discovered": 5, "enqueued": 0}
-        with mock.patch.object(
-            catalog_seed,
-            "enqueue_tmdb_daily",
-            new=mock.AsyncMock(return_value=summary),
-        ) as enqueue:
-            call_command("catalog_seed", kind="movie", source="daily", limit=5, stdout=StringIO())
-        enqueue.assert_awaited_once_with("movie", limit=5)
-
-    def test_popular_source_still_rejects_zero_limit(self):
-        with self.assertRaisesMessage(Exception, "--limit must be"):
-            call_command("catalog_seed", source="popular", limit=0, stdout=StringIO())

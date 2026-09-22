@@ -35,7 +35,7 @@ the known-title movie early-out refreshes enrichment too — without duplicating
 
 from __future__ import annotations
 
-import re
+import logging
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
@@ -53,7 +53,6 @@ from apps.media.models import (
     MediaItem,
     MediaRelease,
     MediaVideo,
-    Movie,
     Season,
     Show,
 )
@@ -67,6 +66,8 @@ from apps.people.models import MediaCredit, Person
 
 if TYPE_CHECKING:
     from core.providers.tmdb import TMDBProvider
+
+logger = logging.getLogger(__name__)
 
 IMAGE_BASE = "https://image.tmdb.org/t/p"
 
@@ -514,69 +515,9 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
     Identity is the TMDB ExternalID only — a same-slug title is a different
     row until it holds this tmdb id.
     """
-    from apps.media.services.identity import attach_external_id, find_media_id
+    from core.providers.tmdb.hydrators import seed_movie_from_tmdb as _seed
 
-    tmdb_id = raw.get("id")
-    if tmdb_id is None:
-        raise ValueError("TMDB movie detail missing 'id'")
-
-    existing_id = find_media_id("tmdb", str(tmdb_id), "movie")
-    if existing_id is not None:
-        media = MediaItem.objects.filter(pk=existing_id, media_type="movie").first()
-        if media is not None:
-            _upsert_credits(media, raw)
-            _hydrate_relations(media, raw)
-            _attach_tmdb_crosswalk(media.pk, raw, "movie")
-            finish_catalog_seed(
-                media, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=False
-            )
-        return existing_id
-
-    title = (raw.get("title") or raw.get("name") or "Unknown Movie").strip() or "Unknown Movie"
-    overview = raw.get("overview")
-    poster_url = _image_url(raw.get("poster_path"), size="original")
-    backdrop_url = _image_url(raw.get("backdrop_path"), size="original")
-    slug = re.sub(r"[^a-z0-9]+", "-", slugify(title)).strip("-")[:200] or slugify("untitled")
-    release_date = _parse_date(raw.get("release_date") or raw.get("first_air_date"))
-
-    media = MediaItem.objects.create(
-        media_type="movie",
-        title=title,
-        overview=overview,
-        slug=slug,
-        release_date=release_date,
-        popularity=raw.get("popularity") or 0.0,
-        original_language=raw.get("original_language"),
-        is_adult=bool(raw.get("adult", False)),
-        completeness_score=0.15,
-    )
-    media_id = attach_external_id(media.pk, "tmdb", str(tmdb_id), "movie")
-    if media_id != media.pk:
-        winner = MediaItem.objects.get(pk=media_id)
-        _upsert_credits(winner, raw)
-        _hydrate_relations(winner, raw)
-        recompute_completeness(winner)
-        _attach_tmdb_crosswalk(media_id, raw, "movie")
-        finish_catalog_seed(
-            winner, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=False
-        )
-        return media_id
-    Movie.objects.create(
-        media_item_id=media_id,
-        runtime=raw.get("runtime"),
-        budget=raw.get("budget"),
-        revenue=raw.get("revenue"),
-        tagline=raw.get("tagline"),
-        is_anime=_is_anime(raw),
-    )
-    _upsert_asset(media, poster_url, "poster", 100)
-    _upsert_asset(media, backdrop_url, "backdrop", 100)
-    _upsert_credits(media, raw)
-    _upsert_genres(media, _genre_names(raw))
-    _attach_tmdb_crosswalk(media_id, raw, "movie")
-    _hydrate_relations(media, raw)
-    finish_catalog_seed(media, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=False)
-    return media_id
+    return _seed(raw)
 
 
 def _attach_tmdb_crosswalk(media_id: int, raw: dict[str, Any], media_type: str) -> None:
@@ -614,6 +555,8 @@ def _upsert_seasons(show_pk: int, raw: dict[str, Any]) -> None:
                 "air_date": _parse_date(season_data.get("air_date")),
             },
         )
+        if "episodes" in season_data and isinstance(season_data["episodes"], list):
+            seed_episodes_from_season(show_pk, int(number), season_data)
 
 
 def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
@@ -622,102 +565,43 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
     Identity is the TMDB ExternalID only. A re-sync of a continuing series
     refreshes growth-prone fields and upserts newly aired season summaries.
     """
-    from apps.media.services.identity import attach_external_id, find_media_id
+    from core.providers.tmdb.hydrators import seed_show_from_tmdb as _seed
 
-    tmdb_id = raw.get("id")
-    if tmdb_id is None:
-        raise ValueError("TMDB show detail missing 'id'")
-
-    title = (raw.get("name") or raw.get("title") or "Unknown Show").strip() or "Unknown Show"
-    overview = raw.get("overview")
-    poster_url = _image_url(raw.get("poster_path"), size="original")
-    backdrop_url = _image_url(raw.get("backdrop_path"), size="original")
-    slug = re.sub(r"[^a-z0-9]+", "-", slugify(title)).strip("-")[:200] or slugify("untitled")
-    first_air_date = _parse_date(raw.get("first_air_date") or raw.get("release_date"))
-    last_air_date = _parse_date(raw.get("last_air_date"))
-    status = raw.get("status")
-
-    media_id = find_media_id("tmdb", str(tmdb_id), "show")
-    media = MediaItem.objects.filter(pk=media_id, media_type="show").first() if media_id else None
-    if media is None:
-        media = MediaItem.objects.create(
-            media_type="show",
-            title=title,
-            overview=overview,
-            slug=slug,
-            release_date=first_air_date,
-            popularity=raw.get("popularity") or 0.0,
-            original_language=raw.get("original_language"),
-            is_adult=bool(raw.get("adult", False)),
-            completeness_score=0.15,
-        )
-        media_id = attach_external_id(media.pk, "tmdb", str(tmdb_id), "show")
-        if media_id != media.pk:
-            media = MediaItem.objects.get(pk=media_id)
-    elif media.overview is None and overview:
-        media.overview = overview
-        media.save(update_fields=("overview", "updated_at"))
-    media_id = media.pk
-
-    show = Show.objects.get_or_create(media_item_id=media_id)[0]
-    show.status = status
-    show.first_air_date = first_air_date
-    show.last_air_date = last_air_date
-    show.is_anime = _is_anime(raw)
-    show.number_of_seasons = raw.get("number_of_seasons")
-    show.number_of_episodes = raw.get("number_of_episodes")
-    show.save(
-        update_fields=(
-            "status",
-            "first_air_date",
-            "last_air_date",
-            "is_anime",
-            "number_of_seasons",
-            "number_of_episodes",
-        )
-    )
-    _upsert_asset(media, poster_url, "poster", 100)
-    _upsert_asset(media, backdrop_url, "backdrop", 100)
-    _upsert_credits(media, raw)
-    _upsert_seasons(media_id, raw)
-    _upsert_genres(media, _genre_names(raw), media_type="show")
-    attach_external_id(media_id, "tmdb", str(tmdb_id), "show")
-    _attach_tmdb_crosswalk(media_id, raw, "show")
-    _hydrate_relations(media, raw)
-    finish_catalog_seed(media, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=False)
-    return media_id
+    return _seed(raw)
 
 
 def seed_episodes_from_season(show_id: int, season_number: int, season_raw: dict[str, Any]) -> int:
-    """Seed a season's Episode rows from a ``/tv/{id}/season/{n}`` payload.
+    """Seed a season's Episode rows from a /tv/{id}/season/{n} payload."""
+    from core.providers.tmdb.hydrators import seed_episodes_from_season as _seed
 
-    Idempotent (``get_or_create`` keyed on season + episode_number); returns how
-    many episodes were newly created. ``show_id`` is the ``Show`` subtype pk (==
-    hub pk) and the matching ``Season`` row must already exist —
-    ``seed_show_from_tmdb`` created it from the detail's seasons summary, so a
-    season missing from that array is skipped.
+    return _seed(show_id, season_number, season_raw)
+
+
+def show_needs_episodes(show_id: int) -> bool:
+    """True if a show has regular aired seasons that are missing Episode rows.
+
+    Ignores future unreleased seasons (air_date > today) so announced upcoming
+    seasons don't lock the show into an infinite rehydration loop.
     """
-    season = Season.objects.filter(show_id=show_id, season_number=season_number).first()
-    if season is None:
-        return 0
-    created = 0
-    for ep_data in season_raw.get("episodes", []) or []:
-        number = ep_data.get("episode_number")
-        if number is None:
-            continue
-        _, was_created = Episode.objects.get_or_create(
-            season=season,
-            episode_number=int(number),
-            defaults={
-                "name": ep_data.get("name"),
-                "overview": ep_data.get("overview"),
-                "runtime": ep_data.get("runtime"),
-                "air_date": _parse_date(ep_data.get("air_date")),
-                "still_url": _image_url(ep_data.get("still_path"), size="w300"),
-            },
-        )
-        created += int(was_created)
-    return created
+    from datetime import date
+
+    from django.db.models import Q
+
+    show = Show.objects.filter(media_item_id=show_id).first()
+    if show is None or show.number_of_episodes == 0:
+        return False
+    if not Episode.objects.filter(season__show_id=show_id).exists():
+        return True
+
+    today = date.today()
+    return Season.objects.filter(
+        show_id=show_id,
+        season_number__gt=0,
+    ).filter(
+        Q(air_date__lte=today) | Q(air_date__isnull=True)
+    ).filter(
+        episodes__isnull=True
+    ).exists()
 
 
 async def _omdb_enrich_after_seed(media_id: int) -> None:
@@ -812,12 +696,22 @@ async def fetch_and_seed_show(
         number = season_data.get("season_number")
         if not number or int(number) <= 0:
             continue
-        season_raw = await provider.get_season(tmdb_id, int(number))
-        await sync_to_async(seed_episodes_from_season)(media_id, int(number), season_raw)
+        try:
+            season_raw = await provider.get_season(tmdb_id, int(number))
+            await sync_to_async(seed_episodes_from_season)(media_id, int(number), season_raw)
+        except Exception as exc:
+            logger.warning("Failed to fetch season %s for show tmdb:%s: %s", number, tmdb_id, exc)
     await _omdb_enrich_after_seed(media_id)
     await _fanart_enrich_after_seed(media_id)
     await _wikidata_distributor_enrich_after_seed(media_id)
     await _enqueue_related_tmdb(raw, "show", provider)
+
+    def _finalize(pk: int) -> None:
+        media = MediaItem.objects.filter(pk=pk).first()
+        if media:
+            recompute_completeness(media)
+
+    await sync_to_async(_finalize)(media_id)
     return media_id
 
 
@@ -831,6 +725,10 @@ async def _skip_fresh_tmdb(
     media_id = await sync_to_async(find_media_id)("tmdb", str(tmdb_id), media_type)
     if media_id is None:
         return None
+
+    if media_type == "show" and await sync_to_async(show_needs_episodes)(media_id):
+        return None
+
     matches = await sync_to_async(payload_hash_matches)(
         media_id, "tmdb", str(tmdb_id), media_type, raw
     )

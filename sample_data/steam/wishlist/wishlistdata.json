@@ -1,0 +1,63 @@
+{
+  "1091500": {
+    "name": "Cyberpunk 2077",
+    "capsule": "https://cdn.akamai.steamstatic.com/steam/apps/1091500/capsule_231x87.jpg",
+    "review_score": 8,
+    "review_desc": "Very Positive",
+    "reviews_total": "654320",
+    "reviews_percent": 83,
+    "release_date": "1607558400",
+    "release_string": "10 Dec, 2020",
+    "platform_icons": "<span class=\"platform_img win\"></span>",
+    "subs": [
+      {
+        "id": 345021,
+        "price": "5999",
+        "is_free_license": false
+      }
+    ],
+    "type": "Game",
+    "screenshots": [
+      "https://cdn.akamai.steamstatic.com/steam/apps/1091500/ss_1.jpg"
+    ],
+    "review_css": "positive",
+    "priority": 1,
+    "added": 1600000000,
+    "background": "https://cdn.akamai.steamstatic.com/steam/apps/1091500/page_bg_generated_v6b.jpg",
+    "rank": 1,
+    "tags": [
+      "Cyberpunk",
+      "Open World",
+      "RPG",
+      "Sci-fi"
+    ],
+    "is_free_game": false
+  },
+  "1245620": {
+    "name": "ELDEN RING",
+    "capsule": "https://cdn.akamai.steamstatic.com/steam/apps/1245620/capsule_231x87.jpg",
+    "review_score": 9,
+    "review_desc": "Very Positive",
+    "reviews_total": "610230",
+    "reviews_percent": 92,
+    "release_date": "1645747200",
+    "release_string": "24 Feb, 2022",
+    "subs": [
+      {
+        "id": 412030,
+        "price": "5999",
+        "is_free_license": false
+      }
+    ],
+    "type": "Game",
+    "priority": 2,
+    "added": 1640000000,
+    "tags": [
+      "Souls-like",
+      "Dark Fantasy",
+      "RPG",
+      "Open World"
+    ],
+    "is_free_game": false
+  }
+}

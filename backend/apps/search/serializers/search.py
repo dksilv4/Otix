@@ -18,7 +18,7 @@ Asset URLs (poster/backdrop/logo/icon) are read off ``MediaAsset`` rows and
 from rest_framework import serializers
 
 from apps.company.models import Company
-from apps.media.models import MediaItem, Track
+from apps.media.models import MediaItem
 from apps.people.models import Person
 
 MEDIA_SUMMARY_FIELDS = (
@@ -94,56 +94,23 @@ class MediaSummarySerializer(serializers.ModelSerializer):
         return _asset_url(obj, "icon")
 
 
-class TrackSearchSerializer(serializers.ModelSerializer):
+class TrackSearchSerializer(serializers.Serializer):
     """Track row inside music search results (legacy ``TrackSearchResult``)."""
 
-    media_type = serializers.SerializerMethodField()
-    album_id = serializers.SerializerMethodField()
-    album_title = serializers.SerializerMethodField()
-    album_slug = serializers.SerializerMethodField()
-    album_poster_url = serializers.SerializerMethodField()
-    album_artist_name = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Track
-        fields = (
-            "id",
-            "title",
-            "track_number",
-            "disc_number",
-            "duration_ms",
-            "preview_url",
-            "avg_rating",
-            "rating_count",
-            "media_type",
-            "album_id",
-            "album_title",
-            "album_poster_url",
-            "album_artist_name",
-            "album_slug",
-        )
-        read_only_fields = fields
-
-    def get_media_type(self, _obj: Track) -> str:
-        return "track"
-
-    def get_album_id(self, obj: Track) -> int | None:
-        return obj.album.media_item_id if obj.album else None
-
-    def get_album_title(self, obj: Track) -> str | None:
-        return obj.album.media_item.title if obj.album else None
-
-    def get_album_slug(self, obj: Track) -> str | None:
-        return obj.album.media_item.slug if obj.album else None
-
-    def get_album_poster_url(self, obj: Track) -> str | None:
-        if obj.album is None:
-            return None
-        return _asset_url(obj.album.media_item, "poster")
-
-    def get_album_artist_name(self, _obj: Track) -> str | None:
-        # Requires a person/credit lookup we do not resolve on music yet.
-        return None
+    id = serializers.IntegerField(read_only=True)
+    title = serializers.CharField(read_only=True)
+    track_number = serializers.IntegerField(read_only=True, default=1)
+    disc_number = serializers.IntegerField(read_only=True, default=1)
+    duration_ms = serializers.IntegerField(read_only=True, default=0)
+    preview_url = serializers.CharField(read_only=True, default=None)
+    avg_rating = serializers.FloatField(read_only=True, default=None)
+    rating_count = serializers.IntegerField(read_only=True, default=0)
+    media_type = serializers.CharField(read_only=True, default="track")
+    album_id = serializers.IntegerField(read_only=True, default=None)
+    album_title = serializers.CharField(read_only=True, default=None)
+    album_poster_url = serializers.CharField(read_only=True, default=None)
+    album_artist_name = serializers.CharField(read_only=True, default=None)
+    album_slug = serializers.CharField(read_only=True, default=None)
 
 
 class PersonSearchResultSerializer(serializers.ModelSerializer):

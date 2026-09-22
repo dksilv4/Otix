@@ -1,0 +1,108 @@
+{
+  "releases": [
+    {
+      "id": "a1c10d32-d021-4f30-8025-a1c2263d91c7",
+      "title": "The Dark Side of the Moon",
+      "status": "Official",
+      "date": "1973-03-24",
+      "country": "GB",
+      "barcode": "5099902895529",
+      "artist-credit": [
+        {
+          "name": "Pink Floyd",
+          "artist": {
+            "id": "83d91898-7763-47d7-b03b-b92132375c47",
+            "name": "Pink Floyd",
+            "sort-name": "Pink Floyd",
+            "type": "Group"
+          }
+        }
+      ],
+      "release-group": {
+        "id": "f5093c06-23e3-404f-aeaa-40f720264821",
+        "type": "Album",
+        "title": "The Dark Side of the Moon",
+        "primary-type": "Album"
+      },
+      "media": [
+        {
+          "position": 1,
+          "format": "12\" Vinyl",
+          "track-count": 10,
+          "tracks": [
+            {
+              "id": "2d952296-6e10-449e-ba69-373eb1492b45",
+              "position": 1,
+              "number": "A1",
+              "title": "Speak to Me",
+              "length": 68000,
+              "recording": {
+                "id": "c1f786d7-8509-4bf7-b5fc-5b32e01dfbbf",
+                "title": "Speak to Me",
+                "length": 68000
+              }
+            },
+            {
+              "id": "5f3a0937-fc29-4d64-a13a-a5c68f12c13e",
+              "position": 2,
+              "number": "A2",
+              "title": "Breathe (in the Air)",
+              "length": 169000,
+              "recording": {
+                "id": "e0e2c608-6228-4efc-8e40-9d0b4356e927",
+                "title": "Breathe (in the Air)",
+                "length": 169000
+              }
+            },
+            {
+              "id": "81ec20f5-565a-4cb7-a5df-755734298bb3",
+              "position": 4,
+              "number": "A4",
+              "title": "Time",
+              "length": 425000,
+              "recording": {
+                "id": "1e70e28f-c30f-4fa1-b1e7-9d7fb896c214",
+                "title": "Time",
+                "length": 425000
+              }
+            },
+            {
+              "id": "8cfba70c-2503-45f8-8bb3-d922bb0b5b2a",
+              "position": 6,
+              "number": "B1",
+              "title": "Money",
+              "length": 382000,
+              "recording": {
+                "id": "4225a07d-5e26-444a-95a9-46740620e588",
+                "title": "Money",
+                "length": 382000
+              }
+            }
+          ]
+        }
+      ],
+      "labels": [
+        {
+          "label": {
+            "id": "c71e21b8-3e4e-4f04-9464-32e54366e696",
+            "name": "Harvest",
+            "label-code": 1305
+          }
+        }
+      ],
+      "genres": [
+        {
+          "id": "6a9e14a1-00aa-43dd-b1e5-8a901844b611",
+          "name": "progressive rock",
+          "count": 25
+        },
+        {
+          "id": "c1a0179a-e244-469b-8e3b-d29e71e72e88",
+          "name": "psychedelic rock",
+          "count": 18
+        }
+      ]
+    }
+  ],
+  "release-count": 1
+}

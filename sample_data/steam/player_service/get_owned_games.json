@@ -1,0 +1,40 @@
+{
+  "response": {
+    "game_count": 3,
+    "games": [
+      {
+        "appid": 220,
+        "name": "Half-Life 2",
+        "playtime_forever": 1820,
+        "img_icon_url": "e3a47d2f928e239088",
+        "has_community_visible_stats": true,
+        "playtime_windows_forever": 1820,
+        "playtime_mac_forever": 0,
+        "playtime_linux_forever": 0,
+        "rtime_last_played": 1690000000
+      },
+      {
+        "appid": 400,
+        "name": "Portal",
+        "playtime_forever": 450,
+        "img_icon_url": "c1f7b0e256b8290384",
+        "has_community_visible_stats": true,
+        "playtime_windows_forever": 450,
+        "playtime_mac_forever": 0,
+        "playtime_linux_forever": 0,
+        "rtime_last_played": 1680000000
+      },
+      {
+        "appid": 292030,
+        "name": "The Witcher 3: Wild Hunt",
+        "playtime_forever": 8940,
+        "img_icon_url": "944a9578161726a27e",
+        "has_community_visible_stats": true,
+        "playtime_windows_forever": 8940,
+        "playtime_mac_forever": 0,
+        "playtime_linux_forever": 0,
+        "rtime_last_played": 1700000000
+      }
+    ]
+  }
+}

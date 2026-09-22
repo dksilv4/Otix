@@ -71,7 +71,7 @@ class IgdbSyncEngineTests(TestCase):
         ) as fetch:
             outcome = run_sync_job.delay(job.pk).get()
 
-        fetch.assert_awaited_once_with(IGDB_ID)
+        fetch.assert_awaited_once_with(IGDB_ID, force=False)
         job.refresh_from_db()
         self.assertEqual(outcome["status"], "success")
         self.assertEqual(outcome["media_item_id"], 12345)

@@ -9,14 +9,14 @@ the user's servers + selected libraries and scans each; a single-library sync
 that library off its stored server row.
 
 Per library it fetches the section's items with ``X-Plex-Container-Start/Size``
-paging, then for each movie/show/album either resolves an existing catalog
+paging, then for each movie/show either resolves an existing catalog
 ``MediaItem`` (via the recorded plex guid, then third-party guids) or seeds a
 stub subtype row, upserts the raw ``UserPlexItem`` row, and writes the user
 interactions the library implies (movie ``watched``, any ``started`` on a
-view offset, music ``listened`` for actual listens). Each library runs in its
+view offset). Each library runs in its
 own transaction so a bad library never rolls the job back; ``library_id`` /
 single-server failure is caught and surfaced on the summary. Episodes are never
-returned by a section ``/all`` fetch (it filters to movie/show/music), so they
+returned by a section ``/all`` fetch (it filters to movie/show), so they
 are skipped here.
 
 Interactions mirror the legacy behaviour. Catalog-depth enrichment the
@@ -64,18 +64,7 @@ def _media_type(item: dict, library_type: str | None = None) -> str | None:
         return "movie"
     if plex_type in {"show", "season", "episode"}:
         return "show"
-    if plex_type in {"track", "album", "artist"}:
-        return "music"
     return None
-
-
-def _child_count(item: dict) -> int | None:
-    if not item.get("childCount"):
-        return None
-    try:
-        return int(item["childCount"])
-    except (TypeError, ValueError):
-        return None
 
 
 def _match_or_seed(
@@ -83,8 +72,6 @@ def _match_or_seed(
     media_type: str,
     guids: dict[str, str],
     plex_guid: str | None,
-    *,
-    child_count: int | None = None,
 ) -> tuple[int | None, bool]:
     """Resolve a Plex item to a catalog hub. Never creates a stub MediaItem.
 
@@ -93,9 +80,6 @@ def _match_or_seed(
     """
     from apps.media.services.catalog_resolve import resolve_or_enqueue
     from apps.media.services.identity import attach_external_id, find_media_id_any
-
-    if media_type == "music":
-        return None, False
 
     ids = dict(guids)
     if plex_guid:
@@ -187,7 +171,7 @@ def _fetch_library_items(user, server, library, token: str) -> list[dict] | None
     return [
         item
         for item in all_items
-        if _media_type(item, library.library_type) in {"movie", "show", "music"}
+        if _media_type(item, library.library_type) in {"movie", "show"}
     ]
 
 
@@ -220,21 +204,7 @@ def _apply_interactions(user, item, media_type, media_item_id) -> None:
     view_count = int(item.get("viewCount") or 0)
     view_offset = item.get("viewOffset")
 
-    if media_type == "music":
-        last_listened = item.get("lastViewedAt")
-        if view_count > 0 or last_listened is not None:
-            extra: dict = {"source": "plex", "view_count": view_count}
-            listened_dt = _dt_from_plex(last_listened)
-            if listened_dt:
-                extra["last_played_at"] = listened_dt.isoformat()
-            added_dt = _dt_from_plex(item.get("addedAt"))
-            if added_dt:
-                extra["added_to_library_at"] = added_dt.isoformat()
-            parent_title = item.get("parentTitle")
-            if parent_title:
-                extra["artist_name"] = parent_title
-            set_interaction(user, media_item_id, "listened", extra)
-    elif media_type == "movie" and view_count > 0:
+    if media_type == "movie" and view_count > 0:
         set_interaction(
             user, media_item_id, "watched", {"source": "plex", "view_count": view_count}
         )
@@ -283,11 +253,10 @@ def _sync_library(user, server, library, token: str, emit) -> dict:
                 media_type,
                 guids,
                 plex_guid,
-                child_count=_child_count(item),
             )
             if was_matched:
                 matched += 1
-            elif media_item_id is None and media_type != "music":
+            elif media_item_id is None:
                 # Canonical id was resolved (or not). Count enqueued-or-unmatched
                 # as "seeded" only when a live catalog job exists for this title.
                 from apps.integrations.models import SyncJob

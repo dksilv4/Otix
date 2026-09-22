@@ -127,7 +127,15 @@ def download_asset(asset: MediaAsset) -> int | None:
         asset.local_name = filename
         asset.local_size = len(response.content)
         asset.downloaded_at = timezone.now()
-        asset.save(update_fields=["local_name", "local_size", "downloaded_at"])
+        update_fields = ["local_name", "local_size", "downloaded_at"]
+        if not asset.color_guess:
+            from apps.media.services.color_analyzer import analyze_image_bytes
+
+            guess = analyze_image_bytes(response.content, asset.asset_type)
+            if guess:
+                asset.color_guess = guess
+                update_fields.append("color_guess")
+        asset.save(update_fields=update_fields)
         logger.info("mirrored %s -> %s (%d bytes)", asset.url, filename, len(response.content))
         return len(response.content)
     except httpx.HTTPError as exc:

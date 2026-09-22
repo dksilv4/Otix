@@ -40,21 +40,21 @@ def _seed_tmdb_movie(job: SyncJob, raw: dict[str, Any]) -> int:
 
 
 def _seed_tmdb_show(job: SyncJob, raw: dict[str, Any]) -> int:
+    from apps.media.models import MediaItem
+    from apps.media.services.completeness import recompute_completeness
     from apps.media.services.tmdb_ingest import seed_show_from_tmdb
 
-    return seed_show_from_tmdb(raw)
+    media_id = seed_show_from_tmdb(raw)
+    media = MediaItem.objects.filter(pk=media_id).first()
+    if media is not None:
+        recompute_completeness(media)
+    return media_id
 
 
 def _seed_igdb_game(job: SyncJob, raw: dict[str, Any]) -> int:
     from apps.media.services.igdb_ingest import seed_game_from_igdb
 
     return seed_game_from_igdb(raw, int(job.external_id))
-
-
-def _seed_mb_album(job: SyncJob, raw: dict[str, Any]) -> int:
-    from apps.media.services.musicbrainz_ingest import seed_album_from_musicbrainz
-
-    return seed_album_from_musicbrainz(raw)
 
 
 def register_seeder(provider: str, entity_type: str) -> Callable[[Seeder], Seeder]:
@@ -77,7 +77,6 @@ for _pair, _seeder in (
     (("tmdb", "movie"), _seed_tmdb_movie),
     (("tmdb", "show"), _seed_tmdb_show),
     (("igdb", "game"), _seed_igdb_game),
-    (("musicbrainz", "album"), _seed_mb_album),
 ):
     _SEEDERS[_pair] = _seeder
 

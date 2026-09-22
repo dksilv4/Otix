@@ -331,6 +331,8 @@ function EpicScanSlotCard() {
   const [epicMessage, setEpicMessage] = useState('')
   const [epicError, setEpicError] = useState('')
   const [scanResult, setScanResult] = useState<{ totalInEpic: number; matchedInOtix: number; failed: number } | null>(null)
+  const [resolvingSteamGrid, setResolvingSteamGrid] = useState(false)
+  const [resolveResult, setResolveResult] = useState<{ total: number; matched: number; failed: number } | null>(null)
 
   const fetchEpicStatus = useCallback(async () => {
     try {
@@ -377,7 +379,7 @@ function EpicScanSlotCard() {
         await fetchEpicStatus()
         return
       }
-      openExternal(authUrl)
+      openExternal(authUrl, { newTab: true })
       const closeRef = { current: () => {} }
       closeRef.current = openModal(
         <EpicCodeModal
@@ -413,6 +415,28 @@ function EpicScanSlotCard() {
       setEpicError(err?.response?.data?.detail || err?.message || 'Failed to scan Epic games.')
     } finally {
       setEpicScanning(false)
+    }
+  }
+
+  const handleResolveSteamGrid = async () => {
+    setResolvingSteamGrid(true)
+    setEpicError('')
+    setEpicMessage('')
+    try {
+      const { data } = await apiClient.post<{
+        total: number
+        matched: number
+        failed: number
+      }>('/integrations/epic/resolve-steamgrid')
+      setResolveResult(data)
+      let msg = `SteamGridDB resolution: ${data.matched} matched out of ${data.total} games.`
+      if (data.failed > 0) msg += ` (${data.failed} unmatched)`
+      setEpicMessage(msg)
+      window.dispatchEvent(new CustomEvent('scanned-games-updated'))
+    } catch (err: any) {
+      setEpicError(err?.response?.data?.detail || err?.message || 'Failed to match games with SteamGridDB.')
+    } finally {
+      setResolvingSteamGrid(false)
     }
   }
 
@@ -475,6 +499,22 @@ function EpicScanSlotCard() {
               </div>
               <p className="text-[11px] text-white/40 leading-relaxed">
                 {scanResult ? `${scanResult.matchedInOtix} matched / ${scanResult.totalInEpic} total` : 'Import & match owned Epic titles'}
+              </p>
+            </button>
+
+            <button
+              onClick={handleResolveSteamGrid}
+              disabled={resolvingSteamGrid || epicScanning}
+              className="flex flex-col p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer disabled:opacity-50"
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
+                  <Sparkles className={`h-3.5 w-3.5 text-purple-400 ${resolvingSteamGrid ? 'animate-spin' : ''}`} />
+                  Resolve with SteamGrid
+                </span>
+              </div>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                {resolveResult ? `${resolveResult.matched} matched / ${resolveResult.total} total` : 'Auto-match artwork from SteamGridDB'}
               </p>
             </button>
           </div>

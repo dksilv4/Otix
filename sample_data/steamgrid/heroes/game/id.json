@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": 24201,
+      "score": 18,
+      "style": "material",
+      "width": 1920,
+      "height": 620,
+      "nsfw": false,
+      "humor": false,
+      "mime": "image/jpeg",
+      "language": "en",
+      "url": "https://cdn2.steamgriddb.com/hero/478a514d45fc9c1a0ee33e8a4d2f099c.jpg",
+      "thumb": "https://cdn2.steamgriddb.com/hero_thumb/478a514d45fc9c1a0ee33e8a4d2f099c.jpg",
+      "upvotes": 18,
+      "downvotes": 0
+    }
+  ]
+}

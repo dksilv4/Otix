@@ -71,7 +71,7 @@ function getButtonState(widget: RequestWidget) {
   const requestLabel = widget.props.mediaType === 'movie' ? 'Request Movie' : 'Request Show'
   let label: string
   if (anyNotInLib) label = anyInLib ? 'Request Additional' : requestLabel
-  else if (anyDownloaded) label = 'In Library'
+  else if (anyDownloaded) label = 'Available'
   else label = 'Requested'
 
   let glow: string | null = null
@@ -101,7 +101,7 @@ function FileDetails({ file }: { file: NonNullable<RequestInstance['file']> }) {
 }
 
 const STATUS_CHIP: Record<RequestInstance['status'], { cls: string; icon: React.ReactNode; label: string }> = {
-  downloaded: { cls: 'bg-green-500/10 text-green-400/90', icon: <Check className="h-3 w-3" />, label: 'Downloaded' },
+  downloaded: { cls: 'bg-green-500/10 text-green-400/90', icon: <Check className="h-3 w-3" />, label: 'Available' },
   requested: { cls: 'bg-amber-500/10 text-amber-300/90', icon: <Clock className="h-3 w-3" />, label: 'Requested' },
   not_exists: { cls: 'bg-white/5 text-white/40', icon: <ArrowDownToLine className="h-3 w-3" />, label: 'Not in library' },
   error: { cls: 'bg-red-500/10 text-red-400/90', icon: <AlertTriangle className="h-3 w-3" />, label: 'Error' },
@@ -217,6 +217,20 @@ function RequestButton({
     }
   }
 
+  const isMovie = widget.props.mediaType === 'movie'
+  const serviceName = widget.label || (isMovie ? 'Radarr' : 'Sonarr')
+  let buttonTitle: string
+  if (requesting != null) {
+    buttonTitle = `Requesting from ${serviceName}…`
+  } else if (requestable.length === 0) {
+    const anyInLib = (widget.props.instances || []).some(i => i.status === 'downloaded' || i.status === 'requested')
+    buttonTitle = anyInLib
+      ? `Already in library or requested on ${serviceName}`
+      : `No requestable ${serviceName} instances available`
+  } else {
+    buttonTitle = label
+  }
+
   return (
     <div className="relative">
       <button
@@ -224,11 +238,12 @@ function RequestButton({
         type="button"
         disabled={requestable.length === 0 || requesting != null}
         onClick={handleClick}
+        title={buttonTitle}
         className={cn(
           variant === 'pill'
-            ? 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:scale-100'
+            ? 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:h-4 [&_svg]:w-4 [&_svg]:scale-100'
             : cn(
-                'dk-interaction__btn glass-inset',
+                'dk-interaction__btn glass-inset disabled:cursor-not-allowed',
                 requesting && 'dk-interaction__btn--pending',
               ),
         )}

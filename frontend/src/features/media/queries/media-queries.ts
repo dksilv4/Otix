@@ -100,6 +100,19 @@ export interface MediaItemDetail {
     characterName?: string
     sortOrder: number
   }>
+  characters?: Array<{
+    id: string
+    character: {
+      id: string
+      name: string
+      slug: string
+      description?: string | null
+      gender?: string | null
+      species?: string | null
+      mugShotUrl?: string | null
+    }
+    order: number
+  }>
   involvedCompanies: Array<{
     id: string
     company: { id: string; name: string; slug: string; logoUrl: string | null }

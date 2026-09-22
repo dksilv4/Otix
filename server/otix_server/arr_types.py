@@ -498,8 +498,8 @@ class ArrQueueResponse(BaseModel):
 
 
 class AddRadarrMovieRequest(BaseModel):
-    title: str
-    tmdb_id: int
+    title: Optional[str] = None
+    tmdb_id: Optional[int] = None
     year: Optional[int] = None
     quality_profile_id: Optional[int] = None
     root_folder_path: Optional[str] = None
@@ -507,6 +507,12 @@ class AddRadarrMovieRequest(BaseModel):
     search_for_movie: bool = True
     minimum_availability: Optional[str] = None
     instance_id: Optional[str] = None
+
+    @model_validator(mode="after")
+    def require_identifier(self) -> "AddRadarrMovieRequest":
+        if not self.title and not self.tmdb_id:
+            raise ValueError("title or tmdb_id is required")
+        return self
 
 
 class AddSonarrSeriesRequest(BaseModel):

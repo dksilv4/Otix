@@ -1,0 +1,27 @@
+{
+  "kind": "youtube#playlistItemListResponse",
+  "etag": "pl-etag-123",
+  "items": [
+    {
+      "kind": "youtube#playlistItem",
+      "id": "UExjYzg3NWQ4ZjJiYmIzZjhhLjU2RTY0MDhGQzODEEQ1",
+      "snippet": {
+        "publishedAt": "2024-01-15T10:20:30Z",
+        "channelId": "UCuUserChannel123",
+        "title": "Radiohead - Karma Police (Official Music Video)",
+        "description": "The official music video for Radiohead's 'Karma Police'.",
+        "channelTitle": "Radiohead",
+        "playlistId": "HL",
+        "position": 0,
+        "resourceId": {
+          "kind": "youtube#video",
+          "videoId": "1uYWYWPc9HU"
+        }
+      }
+    }
+  ],
+  "pageInfo": {
+    "totalResults": 1,
+    "resultsPerPage": 50
+  }
+}

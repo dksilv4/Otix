@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
@@ -74,16 +74,6 @@ def _watchlist_media_type(item: dict) -> str | None:
     return None
 
 
-def _parse_plex_date(value: Any) -> date | None:
-    """Parse a Plex date string (``YYYY-MM-DD``) into a Python date."""
-    if value is None:
-        return None
-    try:
-        return date.fromisoformat(str(value)[:10])
-    except (ValueError, TypeError):
-        return None
-
-
 def _dt_from_plex(value: Any) -> datetime | None:
     """Parse a Plex unix-seconds string into a tz-aware datetime."""
     if value is None:
@@ -96,20 +86,6 @@ def _dt_from_plex(value: Any) -> datetime | None:
 
 def _media_content_type() -> ContentType:
     return ContentType.objects.get_for_model(MediaItem)
-
-
-def _find_media_id(media_ct, provider: str, external_id: str, *, media_type: str) -> int | None:
-    """Return the ``MediaItem`` id recorded for an ``ExternalID``, else None."""
-    return (
-        ExternalID.objects.filter(
-            content_type=media_ct,
-            provider=provider,
-            external_id=external_id,
-            media_type=media_type,
-        )
-        .values_list("object_id", flat=True)
-        .first()
-    )
 
 
 def _upsert_external(

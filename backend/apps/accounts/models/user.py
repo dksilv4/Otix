@@ -29,12 +29,11 @@ DEFAULT_PROFILE_SECTIONS = [
     "hof_movie",
     "hof_show",
     "hof_game",
-    "hof_music",
     "library_breakdown",
     "mood_timeline",
 ]
 DEFAULT_PROFILE_CARD_SECTIONS = ["reviews", "stats", "top_rated", "recent_activity"]
-DEFAULT_PREFERRED_MEDIA_TYPES = ["movie", "show", "game", "music"]
+DEFAULT_PREFERRED_MEDIA_TYPES = ["movie", "show", "game"]
 
 
 # Importable defaults (migrations can only serialise dotted paths, not lambdas).

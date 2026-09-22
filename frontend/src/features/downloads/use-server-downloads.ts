@@ -22,12 +22,60 @@ export const serverKeys = {
 
 // ── Hooks: Server CRUD ──
 
+export const CACHED_SERVERS_KEY = 'otix:cached-servers'
+
+export function getCachedGameServers(): GameServer[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(CACHED_SERVERS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export function saveCachedGameServers(servers: GameServer[]): void {
+  if (typeof window === 'undefined' || !Array.isArray(servers) || servers.length === 0) return
+  try {
+    localStorage.setItem(CACHED_SERVERS_KEY, JSON.stringify(servers))
+  } catch {
+    // ignore
+  }
+}
+
+export function removeCachedGameServer(serverId: number): void {
+  if (typeof window === 'undefined') return
+  const cached = getCachedGameServers()
+  const updated = cached.filter((s) => s.id !== serverId)
+  try {
+    localStorage.setItem(CACHED_SERVERS_KEY, JSON.stringify(updated))
+  } catch {
+    // ignore
+  }
+}
+
 export function useGameServers(options?: { enabled?: boolean; refetchInterval?: number | false }) {
   return useQuery<GameServer[]>({
     queryKey: serverKeys.lists(),
     queryFn: async () => {
-      const { data } = await apiClient.get<GameServer[]>('/library/servers')
-      return data || []
+      try {
+        const { data } = await apiClient.get<GameServer[]>('/library/servers')
+        const list = Array.isArray(data) ? data : []
+        if (list.length > 0) {
+          saveCachedGameServers(list)
+        }
+        return list
+      } catch (error) {
+        const cached = getCachedGameServers()
+        if (cached.length > 0) return cached
+        throw error
+      }
+    },
+    initialData: () => {
+      const cached = getCachedGameServers()
+      return cached.length > 0 ? cached : undefined
     },
     staleTime: 15_000,
     refetchInterval: options?.refetchInterval,
@@ -212,7 +260,8 @@ export function useDeleteGameServer() {
     mutationFn: async (serverId: number) => {
       await apiClient.delete(`/library/servers/${serverId}`)
     },
-    onSuccess: () => {
+    onSuccess: (_, serverId) => {
+      removeCachedGameServer(serverId)
       queryClient.invalidateQueries({ queryKey: serverKeys.all })
     },
   })

@@ -139,4 +139,54 @@ describe('PathInput', () => {
     await user.click(screen.getByRole('button', { name: /Browse/i }))
     expect(onCommit).toHaveBeenCalledWith('D:\\Games')
   })
+
+  it('commits on blur when commitOnBlur is true', async () => {
+    const user = userEvent.setup()
+    const onCommit = vi.fn()
+
+    function BlurHarness() {
+      const [value, setValue] = useState('')
+      return <PathInput label="Target folder" value={value} onChange={setValue} onCommit={onCommit} />
+    }
+
+    render(<BlurHarness />)
+    const input = screen.getByLabelText('Target folder')
+    await user.type(input, '/opt/my-games')
+    await user.tab() // triggers blur
+
+    expect(onCommit).toHaveBeenCalledWith('/opt/my-games')
+  })
+
+  it('does not commit on blur when commitOnBlur is false', async () => {
+    const user = userEvent.setup()
+    const onCommit = vi.fn()
+
+    function NoBlurHarness() {
+      const [value, setValue] = useState('')
+      return <PathInput label="Draft folder" value={value} onChange={setValue} onCommit={onCommit} commitOnBlur={false} />
+    }
+
+    render(<NoBlurHarness />)
+    const input = screen.getByLabelText('Draft folder')
+    await user.type(input, '/draft/path')
+    await user.tab() // triggers blur
+
+    expect(onCommit).not.toHaveBeenCalled()
+  })
+
+  it('commits on Enter key', async () => {
+    const user = userEvent.setup()
+    const onCommit = vi.fn()
+
+    function EnterHarness() {
+      const [value, setValue] = useState('')
+      return <PathInput label="Target folder" value={value} onChange={setValue} onCommit={onCommit} />
+    }
+
+    render(<EnterHarness />)
+    const input = screen.getByLabelText('Target folder')
+    await user.type(input, '/enter/folder{Enter}')
+
+    expect(onCommit).toHaveBeenCalledWith('/enter/folder')
+  })
 })

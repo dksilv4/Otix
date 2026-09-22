@@ -180,6 +180,24 @@ class DiscoverApiTests(TestCase):
         self.assertIsNone(response.data["next_cursor"])
         self.assertEqual(response.data["items"][0]["id"], top.pk)
 
+    def test_popular_cursor_pagination(self) -> None:
+        first = _item("Alpha", popularity=90)
+        second = _item("Beta", popularity=80)
+        third = _item("Gamma", popularity=70)
+        page1 = self.client.get(_list_url("movie", "popular"), {"limit": 2})
+        self.assertEqual(page1.status_code, 200)
+        self.assertEqual(len(page1.data["items"]), 2)
+        self.assertTrue(page1.data["has_more"])
+        self.assertEqual(page1.data["next_cursor"], "2")
+        self.assertEqual([item["id"] for item in page1.data["items"]], [first.pk, second.pk])
+
+        page2 = self.client.get(_list_url("movie", "popular"), {"limit": 2, "cursor": "2"})
+        self.assertEqual(page2.status_code, 200)
+        self.assertEqual(len(page2.data["items"]), 1)
+        self.assertFalse(page2.data["has_more"])
+        self.assertIsNone(page2.data["next_cursor"])
+        self.assertEqual(page2.data["items"][0]["id"], third.pk)
+
     def test_popular_prefers_locally_mirrored_artwork(self) -> None:
         _item("Remote-Popular", popularity=90)
         local = _item("Local-Quiet", popularity=1)
@@ -342,16 +360,16 @@ class DiscoverApiTests(TestCase):
         self.assertNotIn(adult.pk, anon_ids)
         self.assertIn(adult.pk, staff_ids)
 
-    def test_music_poster_counts_as_artwork(self) -> None:
+    def test_game_poster_counts_as_artwork(self) -> None:
         _item(
-            "An-Album",
-            media_type="music",
+            "A-Game",
+            media_type="game",
             popularity=50,
             assets=("logo", "poster"),
         )
-        response = self.client.get(_list_url("music", "popular"))
+        response = self.client.get(_list_url("game", "popular"))
         titles = [item["title"] for item in response.data["items"]]
-        self.assertEqual(titles, ["An-Album"])
+        self.assertEqual(titles, ["A-Game"])
 
     # ── /sections ────────────────────────────────────────────────────
     SECTION_KEYS = {
@@ -378,7 +396,6 @@ class DiscoverApiTests(TestCase):
         "best_on_playstation_5",
         "best_on_xbox_series",
         "best_on_nintendo_switch",
-        "new_music",
     ]
 
     def test_sections_public_and_canonical(self) -> None:
@@ -390,7 +407,7 @@ class DiscoverApiTests(TestCase):
         self.assertEqual({s["id"] for s in sections}, set(self._CANONICAL_SECTION_IDS))
         for section in sections:
             self.assertLessEqual(self.SECTION_KEYS, set(section.keys()))
-            self.assertIn(section["media_type"], {"movie", "show", "game", "music"})
+            self.assertIn(section["media_type"], {"movie", "show", "game"})
             self.assertIn(
                 section["list_type"],
                 {"trending", "popular", "top_rated", "upcoming", "now_playing", "newly_released"},

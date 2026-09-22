@@ -58,6 +58,9 @@ describe('arr detail helpers', () => {
     expect(radarrStatusFromLookup({ id: 0, hasFile: false })).toBe('not_exists')
     expect(radarrStatusFromLookup({ id: 12, hasFile: false })).toBe('requested')
     expect(radarrStatusFromLookup({ id: 12, hasFile: true })).toBe('downloaded')
+    expect(radarrStatusFromLookup({ id: 12, hasFile: false, sizeOnDisk: 5000000000 })).toBe('downloaded')
+    expect(radarrStatusFromLookup({ id: 12, hasFile: false, movieFileId: 44 })).toBe('downloaded')
+    expect(radarrStatusFromLookup({ id: 12, status: 'downloaded' })).toBe('downloaded')
   })
 
   it('maps Sonarr lookup status from episode files', () => {

@@ -152,10 +152,6 @@ def configured_map(user) -> dict[str, bool]:
     }
 
 
-def has_shared_connections(user) -> bool:
-    return any(configured_map(user).values())
-
-
 def serialized_store(user) -> dict[str, Any]:
     return {
         "usenet": _mask_secrets(stored_connection(user, "usenet")),
@@ -238,25 +234,6 @@ def push_shared_to_servers(user, server_ids: list[int] | None = None) -> list[di
             }
         )
     return results
-
-
-def overlay_connection_payload(kind: str, live: Any, shared: dict | None) -> Any:
-    shared_payload = shared if isinstance(shared, dict) else {}
-    if not shared_payload:
-        return live
-    if not isinstance(live, dict):
-        return _mask_secrets(shared_payload)
-    if kind == "usenet":
-        merged = dict(live)
-        for section in ("sabnzbd", "prowlarr"):
-            live_section = live.get(section)
-            shared_section = shared_payload.get(section)
-            if not _section_configured(live_section) and _section_configured(shared_section):
-                merged[section] = _mask_secrets(shared_section)
-        return merged
-    if _section_configured(live) or live.get("instances"):
-        return live
-    return _mask_secrets(shared_payload)
 
 
 def save_store_and_node(

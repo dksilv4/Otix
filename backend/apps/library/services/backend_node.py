@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
+
 from apps.library.models import UserGameServer
 from apps.library.services.node_connections import (
     _mask_secrets,
@@ -26,6 +28,7 @@ DEFAULT_ORGANIZE: dict[str, Any] = {
     "isoDownloadPath": "",
     "scanOnLaunch": False,
     "gamesDownloadPath": "",
+    "gamesInstallPath": "",
 }
 
 WORKER_ONLY_DETAIL = (
@@ -113,6 +116,139 @@ def _maybe_mask(payload: dict, include_secrets: bool) -> dict:
     return _mask_secrets(payload)
 
 
+def _arr_base_url(host: str, port: int, use_ssl: bool, url_base: str = "") -> str:
+    scheme = "https" if use_ssl else "http"
+    base = (url_base or "").strip().rstrip("/")
+    if base and not base.startswith("/"):
+        base = f"/{base}"
+    return f"{scheme}://{host}:{port}{base}"
+
+
+def _resolve_cfg(user, kind: str, subkey: str | None, body: dict) -> dict:
+    stored = stored_connection(user, kind) or {}
+    if subkey:
+        stored = stored.get(subkey) or {}
+    merged = dict(stored)
+    for k, v in body.items():
+        if v not in (None, "", "***"):
+            merged[k] = v
+    return merged
+
+
+def _test_sabnzbd(cfg: dict) -> tuple[int, dict]:
+    host = cfg.get("host") or "127.0.0.1"
+    port = cfg.get("port") or 8080
+    use_ssl = bool(cfg.get("use_ssl") or cfg.get("useSsl"))
+    url_base = cfg.get("url_base") or cfg.get("urlBase") or ""
+    api_key = cfg.get("api_key") or cfg.get("apiKey") or ""
+    base = _arr_base_url(host, port, use_ssl, url_base)
+    url = f"{base}/api?mode=version&output=json&apikey={api_key}"
+    try:
+        with httpx.Client(timeout=5.0, verify=False) as client:
+            resp = client.get(url)
+            if resp.status_code == 200:
+                data = resp.json()
+                if "version" in data:
+                    return 200, {"ok": True, "version": data["version"], "message": f"Connected to SABnzbd v{data['version']}"}
+                if data.get("status") is False:
+                    return 200, {"ok": False, "message": data.get("error", "SABnzbd error (check API key)")}
+            elif resp.status_code in (401, 403):
+                return 200, {"ok": False, "message": "Invalid SABnzbd API Key"}
+            return 200, {"ok": False, "message": f"HTTP {resp.status_code} from SABnzbd"}
+    except Exception as exc:
+        return 200, {"ok": False, "message": f"Cannot connect to SABnzbd at {host}:{port} ({exc})"}
+
+
+def _test_prowlarr(cfg: dict) -> tuple[int, dict]:
+    host = cfg.get("host") or "127.0.0.1"
+    port = cfg.get("port") or 9696
+    use_ssl = bool(cfg.get("use_ssl") or cfg.get("useSsl"))
+    url_base = cfg.get("url_base") or cfg.get("urlBase") or ""
+    api_key = cfg.get("api_key") or cfg.get("apiKey") or ""
+    base = _arr_base_url(host, port, use_ssl, url_base)
+    headers = {"X-Api-Key": api_key} if api_key else {}
+    try:
+        with httpx.Client(timeout=5.0, verify=False) as client:
+            resp = client.get(f"{base}/api/v1/system/status", headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                version = data.get("version", "Unknown")
+                return 200, {"ok": True, "version": version, "message": f"Connected to Prowlarr v{version}"}
+            elif resp.status_code in (401, 403):
+                return 200, {"ok": False, "message": "Invalid Prowlarr API Key"}
+            return 200, {"ok": False, "message": f"HTTP {resp.status_code} from Prowlarr"}
+    except Exception as exc:
+        return 200, {"ok": False, "message": f"Cannot connect to Prowlarr at {host}:{port} ({exc})"}
+
+
+def _test_arr(app_name: str, cfg: dict, default_port: int) -> tuple[int, dict]:
+    host = cfg.get("host") or "127.0.0.1"
+    port = cfg.get("port") or default_port
+    use_ssl = bool(cfg.get("use_ssl") or cfg.get("useSsl"))
+    url_base = cfg.get("url_base") or cfg.get("urlBase") or ""
+    api_key = cfg.get("api_key") or cfg.get("apiKey") or ""
+    if not api_key:
+        return 200, {"ok": False, "message": f"{app_name.capitalize()} API key is missing"}
+    base = _arr_base_url(host, port, use_ssl, url_base)
+    url = f"{base}/api/v3/system/status"
+    headers = {"X-Api-Key": api_key}
+    try:
+        with httpx.Client(timeout=5.0, verify=False) as client:
+            resp = client.get(url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                version = data.get("version", "unknown")
+                return 200, {"ok": True, "version": version, "message": f"Connected to {app_name.capitalize()} v{version}"}
+            elif resp.status_code in (401, 403):
+                return 200, {"ok": False, "message": f"Invalid {app_name.capitalize()} API key"}
+            return 200, {"ok": False, "message": f"HTTP {resp.status_code} from {app_name.capitalize()}"}
+    except Exception as exc:
+        return 200, {"ok": False, "message": f"Cannot connect to {app_name.capitalize()}: {exc}"}
+
+
+def _fetch_arr_list(cfg: dict, endpoint: str, default_port: int) -> tuple[int, list]:
+    host = cfg.get("host") or "127.0.0.1"
+    port = cfg.get("port") or default_port
+    use_ssl = bool(cfg.get("use_ssl") or cfg.get("useSsl"))
+    url_base = cfg.get("url_base") or cfg.get("urlBase") or ""
+    api_key = cfg.get("api_key") or cfg.get("apiKey") or ""
+    if not api_key or not host:
+        return 200, []
+    base = _arr_base_url(host, port, use_ssl, url_base)
+    url = f"{base}/api/v3/{endpoint}"
+    headers = {"X-Api-Key": api_key}
+    try:
+        with httpx.Client(timeout=5.0, verify=False) as client:
+            resp = client.get(url, headers=headers)
+            if resp.status_code == 200:
+                items = resp.json()
+                return 200, items if isinstance(items, list) else []
+    except Exception:
+        pass
+    return 200, []
+
+
+def _fetch_prowlarr_indexers(cfg: dict) -> tuple[int, list]:
+    host = cfg.get("host") or "127.0.0.1"
+    port = cfg.get("port") or 9696
+    use_ssl = bool(cfg.get("use_ssl") or cfg.get("useSsl"))
+    url_base = cfg.get("url_base") or cfg.get("urlBase") or ""
+    api_key = cfg.get("api_key") or cfg.get("apiKey") or ""
+    if not api_key or not host:
+        return 200, []
+    base = _arr_base_url(host, port, use_ssl, url_base)
+    headers = {"X-Api-Key": api_key}
+    try:
+        with httpx.Client(timeout=5.0, verify=False) as client:
+            resp = client.get(f"{base}/api/v1/indexer", headers=headers)
+            if resp.status_code == 200:
+                items = resp.json()
+                return 200, items if isinstance(items, list) else []
+    except Exception:
+        pass
+    return 200, []
+
+
 def handle_backend_proxy(
     user,
     method: str,
@@ -138,6 +274,27 @@ def handle_backend_proxy(
         store_connection(user, "usenet", body)
         return 200, {"status": "ok", "stored": True}
 
+    if route == "/api/v1/usenet/test-sabnzbd":
+        return _test_sabnzbd(_resolve_cfg(user, "usenet", "sabnzbd", body))
+
+    if route == "/api/v1/usenet/test-prowlarr":
+        return _test_prowlarr(_resolve_cfg(user, "usenet", "prowlarr", body))
+
+    if route == "/api/v1/usenet/queue":
+        return 200, {"status": "Idle", "speed": "0 B/s", "items": [], "time_left": ""}
+
+    if route == "/api/v1/usenet/history":
+        return 200, {"slots": [], "total": 0}
+
+    if route.startswith("/api/v1/sabnzbd/queue"):
+        return 200, {"status": "ok"}
+
+    if route == "/api/v1/prowlarr/indexers":
+        return _fetch_prowlarr_indexers(_resolve_cfg(user, "usenet", "prowlarr", {}))
+
+    if route == "/api/v1/prowlarr/sync":
+        return 200, {"status": "ok", "message": "Prowlarr sync completed", "indexers": []}
+
     if route == "/api/v1/radarr/config":
         if verb == "GET":
             stored = stored_connection(user, "radarr")
@@ -147,6 +304,27 @@ def handle_backend_proxy(
         store_connection(user, "radarr", body)
         return 200, {"status": "ok", "stored": True}
 
+    if route == "/api/v1/radarr/test":
+        return _test_arr("radarr", _resolve_cfg(user, "radarr", None, body), 7878)
+
+    if route == "/api/v1/radarr/rootfolders":
+        return _fetch_arr_list(_resolve_cfg(user, "radarr", None, {}), "rootfolder", 7878)
+
+    if route == "/api/v1/radarr/qualityprofiles":
+        return _fetch_arr_list(_resolve_cfg(user, "radarr", None, {}), "qualityprofile", 7878)
+
+    if route == "/api/v1/radarr/movies":
+        return 200, []
+
+    if route == "/api/v1/radarr/queue":
+        return 200, {"totalRecords": 0, "records": []}
+
+    if route == "/api/v1/radarr/history":
+        return 200, {"totalRecords": 0, "records": []}
+
+    if route == "/api/v1/radarr/lookup":
+        return 200, []
+
     if route == "/api/v1/sonarr/config":
         if verb == "GET":
             stored = stored_connection(user, "sonarr")
@@ -155,6 +333,27 @@ def handle_backend_proxy(
             return 200, _empty_arr(8989)
         store_connection(user, "sonarr", body)
         return 200, {"status": "ok", "stored": True}
+
+    if route == "/api/v1/sonarr/test":
+        return _test_arr("sonarr", _resolve_cfg(user, "sonarr", None, body), 8989)
+
+    if route == "/api/v1/sonarr/rootfolders":
+        return _fetch_arr_list(_resolve_cfg(user, "sonarr", None, {}), "rootfolder", 8989)
+
+    if route == "/api/v1/sonarr/qualityprofiles":
+        return _fetch_arr_list(_resolve_cfg(user, "sonarr", None, {}), "qualityprofile", 8989)
+
+    if route == "/api/v1/sonarr/series":
+        return 200, []
+
+    if route == "/api/v1/sonarr/queue":
+        return 200, {"totalRecords": 0, "records": []}
+
+    if route == "/api/v1/sonarr/history":
+        return 200, {"totalRecords": 0, "records": []}
+
+    if route == "/api/v1/sonarr/lookup":
+        return 200, []
 
     if route == "/api/v1/libraries":
         row = _connection_row(user)
@@ -201,6 +400,8 @@ def handle_backend_proxy(
             merged = dict(current)
             if "gamesDownloadPath" in body or "games_download_path" in body:
                 merged["gamesDownloadPath"] = body.get("gamesDownloadPath") or body.get("games_download_path") or ""
+            if "gamesInstallPath" in body or "games_install_path" in body:
+                merged["gamesInstallPath"] = body.get("gamesInstallPath") or body.get("games_install_path") or ""
             if "scanOnLaunch" in body or "scan_on_launch" in body:
                 merged["scanOnLaunch"] = bool(body.get("scanOnLaunch", body.get("scan_on_launch")))
             row.organize = merged
@@ -212,6 +413,7 @@ def handle_backend_proxy(
             "serverName": BACKEND_NODE_NAME,
             "serverId": BACKEND_NODE_ID,
             "gamesDownloadPath": current.get("gamesDownloadPath") or current.get("games_download_path") or "",
+            "gamesInstallPath": current.get("gamesInstallPath") or current.get("games_install_path") or "",
             "scanOnLaunch": bool(current.get("scanOnLaunch", current.get("scan_on_launch"))),
         }
 

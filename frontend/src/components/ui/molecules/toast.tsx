@@ -1,15 +1,15 @@
-import { useEffect, useState, useCallback, createContext, useContext, type ReactNode } from 'react'
+import { Component, useEffect, useState, useCallback, createContext, useContext, type ReactNode } from 'react'
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
-type ToastVariant = 'default' | 'success' | 'error' | 'warning' | 'info'
+export type ToastVariant = 'default' | 'success' | 'error' | 'warning' | 'info' | 'destructive'
 
 export interface Toast {
   id: string
   title: string
   description?: string
-  variant: ToastVariant
+  variant?: ToastVariant
   duration?: number
 }
 
@@ -66,9 +66,10 @@ export function useToast() {
   return ctx
 }
 
-const variantConfig: Record<ToastVariant, { icon: typeof CheckCircle; ring: string }> = {
+const variantConfig: Record<string, { icon: typeof CheckCircle; ring: string }> = {
   success: { icon: CheckCircle, ring: 'ring-green-500/30' },
   error: { icon: AlertCircle, ring: 'ring-destructive/30' },
+  destructive: { icon: AlertCircle, ring: 'ring-destructive/30' },
   warning: { icon: AlertTriangle, ring: 'ring-orange-500/30' },
   info: { icon: Info, ring: 'ring-blue-500/30' },
   default: { icon: Info, ring: 'ring-[var(--dk-ring-color)]' },
@@ -80,12 +81,28 @@ const toastAnimation = {
   exit: { opacity: 0, y: -12, scale: 0.96 },
 }
 
+class ToastErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: unknown) {
+    console.error('Toast failed to render:', error)
+  }
+  render() {
+    if (this.state.hasError) return null
+    return this.props.children
+  }
+}
+
 function DkToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const addToast = useCallback((t: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).slice(2)
-    setToasts((prev) => [...prev, { ...t, id }])
+    const rawVariant = t.variant || 'default'
+    const variant = rawVariant === 'destructive' ? 'error' : rawVariant
+    setToasts((prev) => [...prev, { ...t, variant, id }])
   }, [])
 
   const removeToast = useCallback((id: string) => {
@@ -106,7 +123,9 @@ function DkToastProvider({ children }: { children: ReactNode }) {
       <div className="fixed bottom-6 right-6 z-[var(--dk-z-toast)] flex flex-col-reverse gap-3 pointer-events-none">
         <AnimatePresence mode="popLayout">
           {toasts.map((t) => (
-            <ToastItem key={t.id} toast={t} onRemove={removeToast} />
+            <ToastErrorBoundary key={t.id}>
+              <ToastItem toast={t} onRemove={removeToast} />
+            </ToastErrorBoundary>
           ))}
         </AnimatePresence>
       </div>
@@ -115,8 +134,8 @@ function DkToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastItem({ toast: t, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
-  const config = variantConfig[t.variant]
-  const Icon = config.icon
+  const config = (t.variant && variantConfig[t.variant]) || variantConfig.default
+  const Icon = config?.icon || variantConfig.default.icon
 
   useEffect(() => {
     const timer = setTimeout(() => onRemove(t.id), t.duration ?? 4000)

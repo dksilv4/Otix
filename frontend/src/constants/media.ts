@@ -3,7 +3,7 @@ import { Film, Tv, Gamepad2, Music, type LucideIcon } from 'lucide-react'
 
 export type MediaType = 'movie' | 'show' | 'game' | 'music'
 
-export const MEDIA_TYPES: MediaType[] = ['movie', 'show', 'game', 'music']
+export const MEDIA_TYPES: MediaType[] = ['movie', 'show', 'game']
 
 export const MEDIA_TYPE_LABEL: Record<MediaType, string> = {
   movie: 'Movie',

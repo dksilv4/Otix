@@ -195,8 +195,8 @@ def remove_vote(proposal_id: int, user: AbstractBaseUser) -> bool:
 
 
 def _subtype_of(media_item: MediaItem):
-    """First present subtype row (movie/show/game/album), if any."""
-    for accessor in ("movie", "show", "game", "album"):
+    """First present subtype row (movie/show/game), if any."""
+    for accessor in ("movie", "show", "game"):
         try:
             return getattr(media_item, accessor)
         except Exception:

@@ -1,0 +1,11 @@
+[
+  {
+    "id": 2401,
+    "company": 1104,
+    "game": 1942,
+    "developer": true,
+    "publisher": true,
+    "porting": false,
+    "supporting": false
+  }
+]

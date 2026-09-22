@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "data": {
+    "id": 17,
+    "name": "Rocket League",
+    "types": ["steam"],
+    "verified": true
+  }
+}

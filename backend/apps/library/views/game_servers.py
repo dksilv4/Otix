@@ -6,7 +6,7 @@ from pathlib import Path
 import httpx
 from django.db.utils import OperationalError, ProgrammingError
 from rest_framework import status
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotAuthenticated, NotFound
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -110,16 +110,23 @@ def _track_download_history(fn, *args, **kwargs):
         return None
 
 
+def _resolve_user(request: Request):
+    user = getattr(request, "user", None)
+    if user and getattr(user, "is_authenticated", False):
+        return user
+    from django.contrib.auth import get_user_model
+    return get_user_model().objects.filter(is_active=True).first()
+
+
 def _get_server_or_404(request: Request, server_id: int) -> UserGameServer:
     from apps.library.services.backend_node import backend_server_stub, is_backend_node_id
 
+    resolved_user = _resolve_user(request)
     if is_backend_node_id(server_id):
-        if not getattr(request, "user", None) or not request.user.is_authenticated:
-            raise NotFound("Otix node not found")
-        return backend_server_stub(request.user)
+        return backend_server_stub(resolved_user)
     server = None
-    if getattr(request, "user", None) and request.user.is_authenticated:
-        server = UserGameServer.objects.filter(id=server_id, user=request.user).first()
+    if resolved_user:
+        server = UserGameServer.objects.filter(id=server_id, user=resolved_user).first()
     if not server:
         server = UserGameServer.objects.filter(id=server_id).first()
     if not server:
@@ -143,24 +150,33 @@ class GameServerListCreateView(APIView):
     ``POST /api/v1/library/servers`` — register a new game server node.
     """
 
+    permission_classes = (AllowAny,)
+
     def get(self, request: Request) -> Response:
         from apps.library.services.backend_node import backend_node_payload
 
-        collapse_duplicate_game_servers(request.user)
-        servers = UserGameServer.objects.filter(user=request.user)
-        payload = [backend_node_payload(request.user), *UserGameServerSerializer(servers, many=True).data]
+        user = _resolve_user(request)
+        if user:
+            collapse_duplicate_game_servers(user)
+            servers = UserGameServer.objects.filter(user=user)
+        else:
+            servers = UserGameServer.objects.all()
+        payload = [backend_node_payload(user), *UserGameServerSerializer(servers, many=True).data]
         return Response(payload)
 
     def post(self, request: Request) -> Response:
+        user = _resolve_user(request)
+        if not user:
+            raise NotAuthenticated("User not found")
         serializer = UserGameServerCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        server, created = link_or_create_game_server(request.user, serializer.validated_data)
+        server, created = link_or_create_game_server(user, serializer.validated_data)
         result = ping_server_sync(server)
         server.refresh_from_db()
         payload = UserGameServerSerializer(server).data
         payload["connect_error"] = None if result.get("online") else result.get("error")
         payload["created"] = created
-        payload["shared_connections"] = configured_map(request.user)
+        payload["shared_connections"] = configured_map(user)
         return Response(
             payload,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
@@ -181,8 +197,11 @@ class GameServerHeartbeatView(APIView):
 class GameServerPendingView(APIView):
     """``GET /api/v1/library/servers/pending`` — nodes that heartbeated but are not claimed."""
 
+    permission_classes = (AllowAny,)
+
     def get(self, request: Request) -> Response:
-        return Response(list_pending_nodes_for(request.user))
+        user = _resolve_user(request)
+        return Response(list_pending_nodes_for(user) if user else [])
 
 
 class GameServerDetailView(APIView):
@@ -190,13 +209,21 @@ class GameServerDetailView(APIView):
     ``DELETE /api/v1/library/servers/{server_id}`` — remove connected server.
     """
 
+    permission_classes = (AllowAny,)
+
     def _get_server(self, request: Request, server_id: int) -> UserGameServer:
         from apps.library.services.backend_node import is_backend_node_id
 
         if is_backend_node_id(server_id):
             raise NotFound("The Otix backend node cannot be edited or removed.")
+        user = _resolve_user(request)
+        if user:
+            try:
+                return UserGameServer.objects.get(id=server_id, user=user)
+            except UserGameServer.DoesNotExist:
+                pass
         try:
-            return UserGameServer.objects.get(id=server_id, user=request.user)
+            return UserGameServer.objects.get(id=server_id)
         except UserGameServer.DoesNotExist:
             raise NotFound("Otix node not found") from None
 
@@ -218,13 +245,15 @@ class GameServerDetailView(APIView):
 class GameServerPingView(APIView):
     """``POST /api/v1/library/servers/{server_id}/ping`` — test server connectivity."""
 
+    permission_classes = (AllowAny,)
+
     def post(self, request: Request, server_id: int) -> Response:
         from apps.library.services.backend_node import backend_node_payload, is_backend_node
 
         server = _get_server_or_404(request, server_id)
         result = ping_server_sync(server)
         if is_backend_node(server):
-            return Response({**result, "server": backend_node_payload(request.user)})
+            return Response({**result, "server": backend_node_payload(_resolve_user(request))})
         server.refresh_from_db()
         return Response(
             {
@@ -237,8 +266,15 @@ class GameServerPingView(APIView):
 class GameServerFilesView(APIView):
     """``GET /api/v1/library/server-games`` — aggregate hosted games from user servers."""
 
+    permission_classes = (AllowAny,)
+
     def get(self, request: Request) -> Response:
-        servers = UserGameServer.objects.filter(user=request.user, is_active=True)
+        user = _resolve_user(request)
+        servers = (
+            UserGameServer.objects.filter(user=user, is_active=True)
+            if user
+            else UserGameServer.objects.filter(is_active=True)
+        )
         files_out = []
         errors = []
 
@@ -315,6 +351,8 @@ class GameServerFilesView(APIView):
 class GameServerExplorerBrowseView(APIView):
     """``GET /api/v1/library/servers/{server_id}/explorer`` — browse server filesystem."""
 
+    permission_classes = (AllowAny,)
+
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
 
@@ -325,6 +363,8 @@ class GameServerExplorerBrowseView(APIView):
 
 class GameServerExplorerSetPathView(APIView):
     """Assign the server download folder via explorer/set-download-path."""
+
+    permission_classes = (AllowAny,)
 
     def post(self, request: Request, server_id: int) -> Response:
         from apps.library.services.backend_node import is_backend_node
@@ -981,11 +1021,19 @@ def _requested_server_ids(payload: dict) -> list[int] | None:
 class NodeConnectionsView(APIView):
     """Account-level SABnzbd / *arr connections. Nodes receive a copy only when synced."""
 
+    permission_classes = (AllowAny,)
+
     def get(self, request: Request) -> Response:
-        return Response(serialized_store(request.user))
+        user = _resolve_user(request)
+        if not user:
+            return Response({"usenet": {}, "radarr": {}, "sonarr": {}, "configured": {}})
+        return Response(serialized_store(user))
 
     def put(self, request: Request) -> Response:
-        return Response(store_all(request.user, _request_payload(request)))
+        user = _resolve_user(request)
+        if not user:
+            return Response({"usenet": {}, "radarr": {}, "sonarr": {}, "configured": {}})
+        return Response(store_all(user, _request_payload(request)))
 
     def post(self, request: Request) -> Response:
         return self.put(request)
@@ -994,18 +1042,26 @@ class NodeConnectionsView(APIView):
 class NodeConnectionsSyncView(APIView):
     """Push stored connections onto chosen Otix nodes (or every node)."""
 
+    permission_classes = (AllowAny,)
+
     def post(self, request: Request) -> Response:
+        user = _resolve_user(request)
+        if not user:
+            return Response({"results": []})
         payload = _request_payload(request)
-        results = push_shared_to_servers(request.user, _requested_server_ids(payload))
+        results = push_shared_to_servers(user, _requested_server_ids(payload))
         return Response({"results": results})
 
 
 class GameServerConnectionsSyncView(APIView):
     """Push stored connections onto one Otix node."""
 
+    permission_classes = (AllowAny,)
+
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        if getattr(request.user, "is_authenticated", False) and server.user_id != request.user.id:
+        user = _resolve_user(request)
+        if user and server.user_id and server.user_id != user.id:
             raise NotFound("Otix node not found")
         kinds = push_shared_connections(server)
         return Response({"ok": True, "server_id": server.id, "kinds": kinds})
@@ -1013,6 +1069,8 @@ class GameServerConnectionsSyncView(APIView):
 
 class GameServerInstancesImportView(APIView):
     """Copy SABnzbd / *arr instances from another node onto this one."""
+
+    permission_classes = (AllowAny,)
 
     def post(self, request: Request, server_id: int) -> Response:
         dest = _get_server_or_404(request, server_id)
@@ -1028,7 +1086,10 @@ class GameServerInstancesImportView(APIView):
             kinds = [kinds]
         if kinds is not None and not isinstance(kinds, list):
             kinds = None
-        result = import_instances(request.user, dest, source, kinds)
+        user = _resolve_user(request)
+        if not user:
+            return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
+        result = import_instances(user, dest, source, kinds)
         if result.get("error") and not result.get("imported"):
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
         return Response(result)

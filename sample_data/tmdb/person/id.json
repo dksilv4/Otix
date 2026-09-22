@@ -1,0 +1,32 @@
+{
+  "adult": false,
+  "also_known_as": [
+    "Christopher Edward Nolan"
+  ],
+  "biography": "Christopher Edward Nolan is a British-American film director, producer, and screenwriter. He is known for his Hollywood blockbusters with complex storytelling.",
+  "birthday": "1970-07-30",
+  "deathday": null,
+  "gender": 2,
+  "homepage": null,
+  "id": 525,
+  "imdb_id": "nm0634240",
+  "known_for_department": "Directing",
+  "name": "Christopher Nolan",
+  "place_of_birth": "Westminster, London, England, UK",
+  "popularity": 32.1,
+  "profile_path": "/xuAIuYSmsUzKlUMBFGVZaWsY3Z5.jpg",
+  "external_ids": {
+    "imdb_id": "nm0634240",
+    "wikidata_id": "Q25187"
+  },
+  "images": {
+    "profiles": [
+      {
+        "aspect_ratio": 0.667,
+        "file_path": "/xuAIuYSmsUzKlUMBFGVZaWsY3Z5.jpg",
+        "height": 1440,
+        "width": 960
+      }
+    ]
+  }
+}

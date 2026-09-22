@@ -1,0 +1,40 @@
+{
+  "MediaContainer": {
+    "size": 2,
+    "totalSize": 2,
+    "Metadata": [
+      {
+        "ratingKey": "601",
+        "title": "Dune: Part Two",
+        "type": "movie",
+        "year": 2024,
+        "thumb": "https://metadata-static.plex.tv/...",
+        "publicPagesURL": "https://app.plex.tv/item/601",
+        "Guid": [
+          {
+            "id": "tmdb://693134"
+          },
+          {
+            "id": "imdb://tt15239678"
+          }
+        ]
+      },
+      {
+        "ratingKey": "602",
+        "title": "Civil War",
+        "type": "movie",
+        "year": 2024,
+        "thumb": "https://metadata-static.plex.tv/...",
+        "publicPagesURL": "https://app.plex.tv/item/602",
+        "Guid": [
+          {
+            "id": "tmdb://929590"
+          },
+          {
+            "id": "imdb://tt17279496"
+          }
+        ]
+      }
+    ]
+  }
+}

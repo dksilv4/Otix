@@ -1,0 +1,176 @@
+{
+  "adult": false,
+  "backdrop_path": "/9faGSFi5jam6pDWGNd0ip80ioqa.jpg",
+  "created_by": [
+    {
+      "id": 66633,
+      "credit_id": "52542287760ee313280017e2",
+      "name": "Vince Gilligan",
+      "gender": 2,
+      "profile_path": "/uFh3OrBvkwKSUkeRtOHL7pA1y7D.jpg"
+    }
+  ],
+  "episode_run_time": [
+    47
+  ],
+  "first_air_date": "2008-01-20",
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    },
+    {
+      "id": 80,
+      "name": "Crime"
+    }
+  ],
+  "homepage": "http://www.amc.com/shows/breaking-bad",
+  "id": 1396,
+  "in_production": false,
+  "languages": [
+    "en",
+    "es"
+  ],
+  "last_air_date": "2013-09-29",
+  "name": "Breaking Bad",
+  "number_of_episodes": 62,
+  "number_of_seasons": 5,
+  "origin_country": [
+    "US"
+  ],
+  "original_language": "en",
+  "original_name": "Breaking Bad",
+  "overview": "Walter White, a New Mexico chemistry teacher, is diagnosed with Stage III cancer and given a prognosis of two years left to live. He chooses to enter the dangerous world of drugs and crime.",
+  "popularity": 284.21,
+  "poster_path": "/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg",
+  "production_companies": [
+    {
+      "id": 11073,
+      "logo_path": "/wHs44fkOdBroxhUVYsUtKMynH0Y.png",
+      "name": "Sony Pictures Television",
+      "origin_country": "US"
+    },
+    {
+      "id": 33742,
+      "logo_path": null,
+      "name": "High Bridge Productions",
+      "origin_country": "US"
+    }
+  ],
+  "seasons": [
+    {
+      "air_date": "2009-02-17",
+      "episode_count": 5,
+      "id": 3577,
+      "name": "Specials",
+      "overview": "",
+      "poster_path": "/4N1ne2fsU7n4Z0j4u1bX0E9E6R0.jpg",
+      "season_number": 0,
+      "vote_average": 0.0
+    },
+    {
+      "air_date": "2008-01-20",
+      "episode_count": 7,
+      "id": 3572,
+      "name": "Season 1",
+      "overview": "High school chemistry teacher Walter White's life is suddenly turned upside down when he's diagnosed with stage III terminal lung cancer.",
+      "poster_path": "/1BPtte5eJ43J9T0J8d8WnO4M7Qv.jpg",
+      "season_number": 1,
+      "vote_average": 8.3
+    }
+  ],
+  "status": "Ended",
+  "tagline": "Change the equation.",
+  "type": "Scripted",
+  "vote_average": 8.9,
+  "vote_count": 14200,
+  "credits": {
+    "cast": [
+      {
+        "adult": false,
+        "gender": 2,
+        "id": 17419,
+        "name": "Bryan Cranston",
+        "original_name": "Bryan Cranston",
+        "popularity": 32.4,
+        "profile_path": "/kNyTXGkiSPIR4n29I1Jj7kQxP.jpg",
+        "character": "Walter White",
+        "credit_id": "52542282760ee313280016fb",
+        "order": 0
+      },
+      {
+        "adult": false,
+        "gender": 2,
+        "id": 84497,
+        "name": "Aaron Paul",
+        "original_name": "Aaron Paul",
+        "popularity": 28.1,
+        "profile_path": "/8095Y1Tz9qH98Wn0m1H0F.jpg",
+        "character": "Jesse Pinkman",
+        "credit_id": "52542282760ee3132800170b",
+        "order": 1
+      }
+    ],
+    "crew": [
+      {
+        "id": 66633,
+        "name": "Vince Gilligan",
+        "department": "Writing",
+        "job": "Executive Producer"
+      }
+    ]
+  },
+  "external_ids": {
+    "imdb_id": "tt0903747",
+    "tvdb_id": 81189,
+    "wikidata_id": "Q1079"
+  },
+  "images": {
+    "backdrops": [
+      {
+        "file_path": "/9faGSFi5jam6pDWGNd0ip80ioqa.jpg",
+        "width": 1920,
+        "height": 1080
+      }
+    ],
+    "posters": [
+      {
+        "file_path": "/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg",
+        "width": 1000,
+        "height": 1500
+      }
+    ]
+  },
+  "content_ratings": {
+    "results": [
+      {
+        "iso_3166_1": "US",
+        "rating": "TV-MA"
+      }
+    ]
+  },
+  "keywords": {
+    "results": [
+      {
+        "id": 596,
+        "name": "adultery"
+      },
+      {
+        "id": 417,
+        "name": "corruption"
+      },
+      {
+        "id": 1568,
+        "name": "undercover"
+      },
+      {
+        "id": 2149,
+        "name": "drug dealer"
+      },
+      {
+        "id": 6149,
+        "name": "methamphetamine"
+      }
+    ]
+  }
+}

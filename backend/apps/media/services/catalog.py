@@ -71,6 +71,76 @@ def _best_asset(item: MediaItem, asset_type: str, context: str = "general") -> M
 
 SELECTION_CONTEXTS = ("general", "dark", "light")
 
+# Theme contrast rank per asset_type and context.
+# Higher score = better contrast/fit for the viewer theme.
+_LOGO_THEME_RANK = {
+    "dark": {
+        "guess_white": 3,
+        "guess_colorful": 2,
+        "guess_multicolor": 2,
+        None: 1,
+        "guess_gray": 1,
+        "guess_black": 0,
+    },
+    "light": {
+        "guess_black": 3,
+        "guess_colorful": 2,
+        "guess_multicolor": 2,
+        None: 1,
+        "guess_gray": 1,
+        "guess_white": 0,
+    },
+}
+
+_BACKDROP_THEME_RANK = {
+    "dark": {
+        "guess_black": 2,
+        "guess_colorful": 1,
+        "guess_gray": 1,
+        None: 1,
+        "guess_white": 0,
+    },
+    "light": {
+        "guess_white": 2,
+        "guess_colorful": 1,
+        "guess_gray": 1,
+        None: 1,
+        "guess_black": 0,
+    },
+}
+
+
+def _theme_contrast_rank(asset: MediaAsset, context: str) -> int:
+    """Evaluate how well an asset's colors contrast with the UI theme."""
+    if context not in ("dark", "light"):
+        return 0
+    asset_type = (asset.asset_type or "").lower()
+    guess = asset.color_guess
+    if asset_type in ("logo", "icon"):
+        return _LOGO_THEME_RANK[context].get(guess, 1)
+    if asset_type in ("backdrop", "textless_backdrop"):
+        return _BACKDROP_THEME_RANK[context].get(guess, 1)
+    return 0
+
+
+def request_context(request) -> str:
+    """Resolve theme context ('dark' | 'light' | 'general') from request."""
+    if request is None:
+        return "general"
+    params = getattr(request, "query_params", None)
+    if params is None:
+        params = getattr(request, "GET", None)
+    theme = params.get("theme") if params else None
+    if not theme and hasattr(request, "headers"):
+        theme = request.headers.get("X-Otix-Theme")
+    if not theme and hasattr(request, "META"):
+        theme = request.META.get("HTTP_X_OTIX_THEME")
+    if theme:
+        normalized = str(theme).lower().strip()
+        if normalized in ("dark", "light"):
+            return normalized
+    return "general"
+
 
 def _selection_rank(asset: MediaAsset, context: str) -> int:
     """How strongly ``asset`` is pinned for ``context``: theme pin > general > none."""
@@ -82,16 +152,29 @@ def _selection_rank(asset: MediaAsset, context: str) -> int:
 
 
 def _asset_outranks(candidate: MediaAsset, current: MediaAsset, context: str) -> bool:
-    # A row pinned for this context always wins; a general pin is the shared
-    # fallback for the theme contexts. Then score, mirror state, then lower pk.
+    # 1. A row pinned for this context always wins; a general pin is the shared
+    # fallback for the theme contexts.
     candidate_rank = _selection_rank(candidate, context)
     current_rank = _selection_rank(current, context)
     if candidate_rank != current_rank:
         return candidate_rank > current_rank
+
+    # 2. Theme compatibility/contrast rank when context is dark or light
+    if context in ("dark", "light"):
+        cand_theme = _theme_contrast_rank(candidate, context)
+        curr_theme = _theme_contrast_rank(current, context)
+        if cand_theme != curr_theme:
+            return cand_theme > curr_theme
+
+    # 3. Community score
     if (candidate.score or 0) != (current.score or 0):
         return (candidate.score or 0) > (current.score or 0)
+
+    # 4. Mirror state
     if bool(candidate.local_name) != bool(current.local_name):
         return bool(candidate.local_name)
+
+    # 5. Deterministic tie-breaker
     return candidate.pk < current.pk
 
 
@@ -140,7 +223,7 @@ def attach_media_urls(items: list[MediaItem], context: str = "general") -> None:
 
 
 def external_ids_for(
-    items: list[MediaItem], providers=("tmdb", "igdb", "tvdb", "imdb")
+    items: list[MediaItem], providers=("tmdb", "igdb", "tvdb", "imdb", "steam")
 ) -> dict[int, dict[str, str]]:
     """Resolve provider external ids for a batch of media items."""
     ids = [item.id for item in items]
@@ -166,6 +249,9 @@ def enrich_summaries(items: list[MediaItem], user: _User, context: str = "genera
         item.tmdb_id = ext_map.get(item.id, {}).get("tmdb")
         item.tvdb_id = ext_map.get(item.id, {}).get("tvdb")
         item.imdb_id = ext_map.get(item.id, {}).get("imdb")
+        item.igdb_id = ext_map.get(item.id, {}).get("igdb")
+        steam_raw = ext_map.get(item.id, {}).get("steam")
+        item.steam_app_id = int(steam_raw) if steam_raw and steam_raw.isdigit() else None
         item.user_interactions = None
         _attach_summary_derived(item)
     if user is not None and user.is_authenticated:
@@ -288,8 +374,7 @@ def list_media(
         qs = qs.filter(credits__person_id=person_id)
     if has_artwork:
         # Movies/shows need a textless poster (TMDB+Fanart provide it); games
-        # (IGDB covers) and music (album art) have text baked in, so their
-        # plain poster counts. Mirrors legacy `MediaService.list_media`.
+        # (IGDB covers) have text baked in, so their plain poster counts.
         qs = qs.annotate(
             _has_textless=Exists(
                 MediaAsset.objects.filter(
@@ -300,7 +385,7 @@ def list_media(
                 MediaAsset.objects.filter(media_item_id=OuterRef("pk"), asset_type="poster")
             ),
         ).filter(
-            Q(_has_textless=True) | (Q(media_type__in=["game", "music"]) & Q(_has_poster=True))
+            Q(_has_textless=True) | (Q(media_type="game") & Q(_has_poster=True))
         )
     if has_logo:
         qs = qs.filter(
@@ -350,7 +435,6 @@ def media_detail_queryset(media_id: int) -> MediaItem | None:
             "movie",
             "show",
             "game",
-            "album",
             "movie__collection",
             "game__franchise",
         )
@@ -360,12 +444,12 @@ def media_detail_queryset(media_id: int) -> MediaItem | None:
             "releases",
             "media_genres__genre",
             "credits__person",
+            "characters__character",
             "involved_companies__company",
             "platforms__platform",
             "game_modes__game_mode",
             "watch_providers__watch_provider",
             "show__seasons__episodes",
-            "album__tracks",
             "movie__collection__movies__media_item",
         )
         .filter(pk=media_id)
@@ -427,7 +511,7 @@ def similar_items(media_id: int, media_type: str | None, limit: int) -> list[Med
     qs = MediaItem.objects.exclude(pk=media_id).filter(is_adult=False)
     if media_type:
         qs = qs.filter(media_type=media_type)
-    elif source.media_type in ("movie", "show", "game", "music"):
+    elif source.media_type in ("movie", "show", "game"):
         qs = qs.filter(media_type=source.media_type)
     if genre_ids:
         qs = qs.filter(media_genres__genre_id__in=genre_ids).annotate(

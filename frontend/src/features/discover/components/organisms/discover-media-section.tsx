@@ -56,8 +56,8 @@ export const MediaSection = memo(function MediaSection({
         <MediaCarousel
           items={items}
           title={title}
-          viewAllLink="/search"
-          viewAllSearch={{ q: '', type: mediaType, sort: '' }}
+          viewAllLink={`/discover/${mediaType}/${listType}`}
+          viewAllSearch={platform ? { platform } : undefined}
         />
       )}
     </motion.section>

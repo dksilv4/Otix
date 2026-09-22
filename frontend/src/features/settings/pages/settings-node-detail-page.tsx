@@ -6,7 +6,7 @@ import { DkTabs, DkTabList, DkTab, DkTabPanel } from '@ui/molecules/tabs'
 import { NodeDownloaderCard } from '@/features/downloads/molecules/node-downloader-card'
 import { ImportNodeInstancesButton } from '@/features/downloads/molecules/import-node-instances-modal'
 import { isBackendNode } from '../backend-node'
-import { isLocalDesktopNode } from '../local-desktop-node'
+import { isLocalDesktopNode, isLocalDesktopNodeId, getLocalDesktopNodeFallback } from '../local-desktop-node'
 import { useSettingsNode } from '../context/settings-node-context'
 import {
   NODE_SETTINGS_TABS,
@@ -18,6 +18,7 @@ import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsPathsSection } from '../components/organisms/settings-paths-section'
 import { SettingsOrganizeSection } from '../components/organisms/settings-organize-section'
 import { NodeMachineSettings } from '../components/organisms/node-machine-settings'
+import { QueryErrorBoundary } from '@/components/query-error-boundary'
 
 export function SettingsNodeDetailPage() {
   const navigate = useNavigate()
@@ -25,7 +26,9 @@ export function SettingsNodeDetailPage() {
   const params = useParams({ strict: false }) as { nodeId?: string }
   const nodeId = parseNodeIdParam(params.nodeId)
   const { servers, isLoading, setSelectedNodeId } = useSettingsNode()
-  const server = servers.find((item) => item.id === nodeId) ?? null
+  const server =
+    servers.find((item) => item.id === nodeId) ??
+    (isLocalDesktopNodeId(nodeId) ? getLocalDesktopNodeFallback() : null)
 
   useEffect(() => {
     if (server) setSelectedNodeId(server.id)
@@ -122,19 +125,21 @@ export function SettingsNodeDetailPage() {
         </DkTabList>
         {NODE_SETTINGS_TABS.map((tab) => (
           <DkTabPanel key={tab.id} value={tab.id} className="pt-2">
-            {tab.id === 'paths' && <SettingsPathsSection nodeId={server.id} />}
-            {tab.id === 'organize' && <SettingsOrganizeSection nodeId={server.id} />}
-            {tab.id === 'downloaders' && (
-              <div className="space-y-4">
-                <SectionHeader
-                  title="Instances"
-                  description="SABnzbd on this node. Import also copies Prowlarr, Radarr, and Sonarr from another node."
-                  action={<ImportNodeInstancesButton dest={server} />}
-                />
-                <NodeDownloaderCard server={server} />
-              </div>
-            )}
-            {tab.id === 'machine' && <NodeMachineSettings server={server} />}
+            <QueryErrorBoundary label={`${tab.label.toLowerCase()} settings`}>
+              {tab.id === 'paths' && <SettingsPathsSection nodeId={server.id} />}
+              {tab.id === 'organize' && <SettingsOrganizeSection nodeId={server.id} />}
+              {tab.id === 'downloaders' && (
+                <div className="space-y-4">
+                  <SectionHeader
+                    title="Instances"
+                    description="SABnzbd on this node. Import also copies Prowlarr, Radarr, and Sonarr from another node."
+                    action={<ImportNodeInstancesButton dest={server} />}
+                  />
+                  <NodeDownloaderCard server={server} />
+                </div>
+              )}
+              {tab.id === 'machine' && <NodeMachineSettings server={server} />}
+            </QueryErrorBoundary>
           </DkTabPanel>
         ))}
       </DkTabs>

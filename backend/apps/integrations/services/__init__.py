@@ -3,7 +3,6 @@
 from apps.integrations.services.epic import scan_epic_library
 from apps.integrations.services.plex import (
     DISCOVER_UNEXPECTED,
-    PlexAlbumTracksFetchError,
     PlexConnectInfoNotFound,
     PlexDiscoveryAuthRevoked,
     PlexDiscoveryConnectError,
@@ -13,7 +12,6 @@ from apps.integrations.services.plex import (
     PlexNoLinkedAccount,
     discover_plex_libraries,
     discover_plex_servers,
-    get_plex_album_tracks,
     get_plex_connect_info,
     get_plex_sessions,
     get_plex_stream_url,
@@ -33,7 +31,6 @@ from apps.integrations.services.tmdb import import_tmdb_watchlist, sync_tmdb_rat
 
 __all__ = [
     "DISCOVER_UNEXPECTED",
-    "PlexAlbumTracksFetchError",
     "PlexConnectInfoNotFound",
     "PlexDiscoveryAuthRevoked",
     "PlexDiscoveryConnectError",
@@ -46,7 +43,6 @@ __all__ = [
     "enqueue_sync_job",
     "execute_sync_job",
     "get_sync_engine",
-    "get_plex_album_tracks",
     "get_plex_connect_info",
     "get_plex_sessions",
     "get_plex_stream_url",

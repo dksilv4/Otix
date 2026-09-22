@@ -6,13 +6,10 @@ import logging
 import re
 import time
 from datetime import datetime
-from pathlib import Path
 
 import httpx
 from django.contrib.contenttypes.models import ContentType
 
-from apps.library.models import UserGameServer
-from apps.library.services.server_catalog import match_files_to_catalog, unmatched_scan_titles
 from apps.media.models import ExternalID, MediaItem
 from apps.media.services.game_matcher import _comparison_key, _igdb_search_query
 
@@ -21,7 +18,6 @@ logger = logging.getLogger(__name__)
 _STEAM_UA = "Mozilla/5.0 (compatible; OtixCatalogSeed/1.0)"
 _STEAM_SEARCH = "https://store.steampowered.com/api/storesearch"
 _STEAM_DETAILS = "https://store.steampowered.com/api/appdetails"
-_HTML_TAG = re.compile(r"<[^>]+>")
 _SCENE_TAG = re.compile(
     r"\b(?:razor1911|flt|codex|skidrow|repack|fitgirl|dodi|elamigos|rune|gog|unleashed)\b",
     re.IGNORECASE,
@@ -50,15 +46,6 @@ _SKIP_TITLES = {
     "vc redist",
     "vcredist",
 }
-
-
-def steam_asset_urls(appid: int) -> list[tuple[str, str, int]]:
-    base = f"https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/{appid}"
-    return [
-        ("poster", f"{base}/library_600x900.jpg", 100),
-        ("backdrop", f"{base}/library_hero.jpg", 100),
-        ("logo", f"{base}/logo.png", 90),
-    ]
 
 
 def _steam_get(url: str, params: dict | None = None) -> dict | list | None:
@@ -178,14 +165,6 @@ def parse_steam_release_date(raw: str | None):
     return None
 
 
-def _plain_text(raw: str | None) -> str | None:
-    if not raw:
-        return None
-    text = _HTML_TAG.sub(" ", raw)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text or None
-
-
 def _mapped_steam_ids() -> set[str]:
     content_type = ContentType.objects.get_for_model(MediaItem)
     return set(
@@ -290,59 +269,3 @@ def seed_games_from_titles(
         "unmatched": unmatched,
         "searched": len(seen),
     }
-
-
-def _server_file_row(server: UserGameServer, raw: dict) -> dict:
-    relative_path = raw.get("relative_path") or ""
-    filepath = raw.get("filepath") or ""
-    if not relative_path and filepath:
-        parts = [part for part in Path(str(filepath)).parts if part not in ("/", "\\")]
-        relative_path = "/".join(parts[-2:]) if len(parts) >= 2 else Path(str(filepath)).name
-    return {
-        "server_id": server.id,
-        "filename": raw.get("filename"),
-        "extension": raw.get("extension", ""),
-        "game_title": raw.get("game_title", ""),
-        "relative_path": relative_path,
-        "filepath": filepath,
-    }
-
-
-def collect_active_server_files() -> list[dict]:
-    files: list[dict] = []
-    for server in UserGameServer.objects.filter(is_active=True):
-        target = (server.primary_url or "").rstrip("/")
-        if not target:
-            continue
-        headers = {"User-Agent": _STEAM_UA}
-        if server.auth_token:
-            headers["Authorization"] = f"Bearer {server.auth_token}"
-        try:
-            with httpx.Client(timeout=15.0, headers=headers, follow_redirects=True) as client:
-                response = client.get(f"{target}/api/v1/files")
-        except Exception:  # noqa: BLE001 - a down node must not abort the rest
-            logger.exception("could not list files for server %s", server.id)
-            continue
-        if response.status_code != 200:
-            logger.warning("server %s files HTTP %s", server.id, response.status_code)
-            continue
-        try:
-            payload = response.json()
-        except ValueError:
-            continue
-        if not isinstance(payload, list):
-            continue
-        for raw in payload:
-            if isinstance(raw, dict):
-                files.append(_server_file_row(server, raw))
-    return files
-
-
-def seed_unmatched_server_games(*, limit: int = 5000, delay: float = 0.2) -> dict:
-    files = collect_active_server_files()
-    match_files_to_catalog(files)
-    titles = unmatched_scan_titles(files, limit=limit)
-    result = seed_games_from_titles(titles, delay=delay)
-    result["scanned_files"] = len(files)
-    result["unmatched_titles"] = titles
-    return result

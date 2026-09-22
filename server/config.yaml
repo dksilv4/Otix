@@ -8,56 +8,16 @@ server:
   enable_heartbeat: true
   downloads_path: ./storage/downloads
 game_libraries:
-- name: PC Installers & ISOs
-  path: ./storage/installers
-  allowed_extensions:
-  - .iso
-  - .img
-  - .exe
-  - .zip
-  - .7z
-  - .rar
-- name: Console ROMs
-  path: ./storage/roms
-  allowed_extensions:
-  - .iso
-  - .zip
-  - .7z
-  - .chd
-  - .rvz
-- name: SABnzbd Completed Games
-  path: /server/Downloads
-  allowed_extensions:
-  - .iso
-  - .img
-  - .exe
-  - .zip
-  - .7z
-  - .rar
-  - .chd
-  - .rvz
-- name: SABnzbd Completed Games (2)
+- name: Games
   path: /server/Games
+  kind: iso
   allowed_extensions:
   - .iso
   - .img
-  - .exe
-  - .zip
-  - .7z
-  - .rar
   - .chd
   - .rvz
-- name: Local Games
-  path: /games
-  allowed_extensions:
-  - .iso
-  - .img
-  - .exe
-  - .zip
-  - .7z
-  - .rar
-  - .chd
-  - .rvz
+  - .nkit
+  - .cso
 saves:
   storage_path: ./storage/saves
   max_snapshots_per_game: 10
@@ -100,6 +60,18 @@ radarr:
   quality_profile_id: 5
   root_folder_path: /Media/Movies
   minimum_availability: announced
+  instances:
+  - id: default
+    name: Default
+    enabled: true
+    host: server.diogodasilva.com
+    port: 443
+    url_base: /radarr/main
+    api_key: 0ca18af25cc84fefb065996f68a10098
+    use_ssl: true
+    quality_profile_id: 5
+    root_folder_path: /Media/Movies
+    minimum_availability: announced
 sonarr:
   enabled: true
   host: server.diogodasilva.com
@@ -112,3 +84,34 @@ sonarr:
   series_type: standard
   season_folder: true
   language_profile_id: null
+  instances:
+  - id: default
+    name: Default
+    enabled: true
+    host: server.diogodasilva.com
+    port: 443
+    url_base: /sonarr/main
+    api_key: e98f5a0dcaef46f5ab41a0d9854dc7f4
+    use_ssl: true
+    quality_profile_id: 5
+    root_folder_path: /Media/Shows
+    series_type: standard
+    season_folder: true
+    language_profile_id: null
+desktop:
+  launch_on_startup: false
+  minimize_to_tray: false
+  close_to_tray: false
+  always_on_top: false
+  start_minimized: false
+  games_download_path: ''
+  scan_on_launch: false
+organize:
+  post_process_enabled: true
+  auto_search_wishlist: false
+  wishlist_interval_hours: 12
+  preferred_repackers: ''
+  allow_hypervisor: false
+  auto_organize_enabled: false
+  naming_template: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}'
+  iso_download_path: /server/Games

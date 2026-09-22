@@ -1481,3 +1481,11 @@ def consume_epic_link_state(state: str, *, user_id: int) -> dict | None:
     if payload.get("user_id") != user_id:
         return None
     return payload
+
+
+def delete_epic_link_states(*, user_id: int) -> None:
+    """Clean up any remaining epic-link OAuthState rows for the given user."""
+    for row in OAuthState.objects.filter(payload__flow=EPIC_OAUTH_FLOW):
+        if row.payload.get("user_id") == user_id:
+            row.delete()
+

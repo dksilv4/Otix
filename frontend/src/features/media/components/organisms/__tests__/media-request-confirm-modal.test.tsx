@@ -107,4 +107,68 @@ describe('MediaRequestConfirmModal', () => {
     expect(mockState.handleRequest).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('triggers double-check on modal open via refetchStatus', () => {
+    const refetchStatus = vi.fn().mockResolvedValue(undefined)
+    render(
+      <MediaRequestConfirmModal
+        open={true}
+        onClose={vi.fn()}
+        state={{
+          ...mockState,
+          refetchStatus,
+        }}
+      />,
+    )
+
+    expect(refetchStatus).toHaveBeenCalledTimes(1)
+  })
+
+  it('displays Already Requested alert and disables confirmation if title is already requested', () => {
+    const requestedState: RequestMediaState = {
+      ...mockState,
+      instances: [
+        { id: '1:default', name: 'Primary Sonarr', status: 'requested', file: null },
+      ],
+    }
+
+    render(
+      <MediaRequestConfirmModal
+        open={true}
+        onClose={vi.fn()}
+        state={requestedState}
+        initialInstanceId="1:default"
+      />,
+    )
+
+    expect(screen.getAllByText('Already Requested')[0]).toBeInTheDocument()
+    expect(screen.getByText(/already requested and monitored/i)).toBeInTheDocument()
+
+    const disabledBtn = screen.getByRole('button', { name: 'Already Requested' })
+    expect(disabledBtn).toBeDisabled()
+  })
+
+  it('displays Available in Library alert and disables confirmation if title is already downloaded', () => {
+    const downloadedState: RequestMediaState = {
+      ...mockState,
+      instances: [
+        { id: '1:default', name: 'Primary Sonarr', status: 'downloaded', file: null },
+      ],
+    }
+
+    render(
+      <MediaRequestConfirmModal
+        open={true}
+        onClose={vi.fn()}
+        state={downloadedState}
+        initialInstanceId="1:default"
+      />,
+    )
+
+    expect(screen.getByText('Available in Library')).toBeInTheDocument()
+    expect(screen.getByText(/already downloaded on/i)).toBeInTheDocument()
+
+    const disabledBtn = screen.getByRole('button', { name: 'Already Available' })
+    expect(disabledBtn).toBeDisabled()
+  })
 })

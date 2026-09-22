@@ -1,0 +1,90 @@
+{
+  "MediaContainer": {
+    "size": 2,
+    "totalSize": 2,
+    "allowSync": false,
+    "art": "/:/resources/movie-fanart.jpg",
+    "identifier": "com.plexapp.plugins.library",
+    "librarySectionID": 1,
+    "librarySectionTitle": "Movies",
+    "librarySectionUUID": "8e920d3f-561b-41f2-95b2-70b991ab45e0",
+    "offset": 0,
+    "title1": "Movies",
+    "title2": "All Movies",
+    "viewGroup": "movie",
+    "Metadata": [
+      {
+        "ratingKey": "101",
+        "key": "/library/metadata/101",
+        "guid": "plex://movie/5d776825a073f3001f3b3924",
+        "studio": "Syncopy",
+        "type": "movie",
+        "title": "Oppenheimer",
+        "contentRating": "R",
+        "summary": "The story of J. Robert Oppenheimer's role in the development of the atomic bomb during World War II.",
+        "rating": 8.1,
+        "year": 2023,
+        "thumb": "/library/metadata/101/thumb/1700000000",
+        "art": "/library/metadata/101/art/1700000000",
+        "duration": 10860000,
+        "originallyAvailableAt": "2023-07-21",
+        "addedAt": 1690000000,
+        "updatedAt": 1700000000,
+        "Guid": [
+          {
+            "id": "imdb://tt15398776"
+          },
+          {
+            "id": "tmdb://872585"
+          }
+        ],
+        "Genre": [
+          {
+            "tag": "Drama"
+          },
+          {
+            "tag": "History"
+          }
+        ],
+        "Director": [
+          {
+            "tag": "Christopher Nolan"
+          }
+        ],
+        "Writer": [
+          {
+            "tag": "Christopher Nolan"
+          }
+        ],
+        "Country": [
+          {
+            "tag": "United States of America"
+          }
+        ],
+        "Role": [
+          {
+            "tag": "Cillian Murphy",
+            "role": "J. Robert Oppenheimer"
+          }
+        ]
+      },
+      {
+        "ratingKey": "102",
+        "key": "/library/metadata/102",
+        "guid": "plex://movie/5d776825a073f3001f3b1100",
+        "type": "movie",
+        "title": "Inception",
+        "year": 2010,
+        "duration": 8880000,
+        "Guid": [
+          {
+            "id": "imdb://tt1375666"
+          },
+          {
+            "id": "tmdb://27205"
+          }
+        ]
+      }
+    ]
+  }
+}

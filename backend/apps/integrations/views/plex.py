@@ -65,21 +65,6 @@ class PlexConnectInfoView(APIView):
         return Response(data)
 
 
-class PlexAlbumTracksView(APIView):
-    """GET /integrations/plex/album-tracks/{media_item_id}"""
-
-    def get(self, request, media_item_id: int):
-        try:
-            data = integrations_services.get_plex_album_tracks(
-                request.user, media_item_id
-            )
-        except integrations_services.PlexConnectInfoNotFound as exc:
-            raise NotFound(exc.detail) from None
-        except integrations_services.PlexAlbumTracksFetchError as exc:
-            return Response({"detail": exc.detail}, status=502)
-        return Response(data)
-
-
 class PlexSessionsView(APIView):
     """GET /integrations/plex/sessions"""
 

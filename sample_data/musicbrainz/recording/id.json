@@ -1,0 +1,20 @@
+{
+  "id": "4225a07d-5e26-444a-95a9-46740620e588",
+  "title": "Money",
+  "length": 382000,
+  "artist-credit": [
+    {
+      "name": "Pink Floyd",
+      "artist": {
+        "id": "83d91898-7763-47d7-b03b-b92132375c47",
+        "name": "Pink Floyd"
+      }
+    }
+  ],
+  "tags": [
+    {
+      "count": 12,
+      "name": "progressive rock"
+    }
+  ]
+}

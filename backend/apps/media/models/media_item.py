@@ -17,8 +17,8 @@ from django.db import models
 from core.models import TimestampedModel
 
 # Allowed values for MediaItem.media_type. ``season``/``episode`` mirror future
-# unified-catalog rows; movies/shows/games/albums map to the subtype tables.
-MEDIA_TYPE_VALUES = ["movie", "show", "season", "episode", "game", "music"]
+# unified-catalog rows; movies/shows/games map to the subtype tables.
+MEDIA_TYPE_VALUES = ["movie", "show", "season", "episode", "game"]
 
 
 class MediaItem(TimestampedModel):
@@ -208,28 +208,3 @@ class Game(models.Model):
     def __str__(self) -> str:
         return self.media_item.title
 
-
-class Album(models.Model):
-    """Music release subtype; PK equals the ``media_items.id`` it extends."""
-
-    media_item = models.OneToOneField(
-        MediaItem,
-        on_delete=models.CASCADE,
-        primary_key=True,
-        related_name="album",
-    )
-    release_type = models.CharField(max_length=20, default="album")
-    format = models.CharField(max_length=50, null=True, blank=True)
-    catalog_number = models.CharField(max_length=100, null=True, blank=True)
-    barcode = models.CharField(max_length=50, null=True, blank=True)
-    track_count = models.IntegerField(default=0)
-    disc_count = models.IntegerField(default=0)
-    duration_ms = models.IntegerField(null=True, blank=True)
-    preview_url = models.CharField(max_length=500, null=True, blank=True)
-    audio_features = models.JSONField(null=True, blank=True)
-
-    class Meta:
-        db_table = "albums"
-
-    def __str__(self) -> str:
-        return self.media_item.title

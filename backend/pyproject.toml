@@ -23,6 +23,7 @@ dependencies = [
     "httpx>=0.28.1",
     # Web-push delivery for release notifications (apps.push.services.sender).
     "pywebpush>=2.0",
+    "pillow>=10.0",
 ]
 
 [dependency-groups]

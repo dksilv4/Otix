@@ -16,10 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import unittest.mock as mock
-from io import StringIO
 
-from django.core.management import call_command
-from django.core.management.base import CommandError
 from django.test import TestCase
 
 from apps.integrations.models import SyncJob
@@ -161,96 +158,3 @@ class EnqueueIgdbDiscoverTests(TestCase):
             _run(enqueue_igdb_discover(provider=provider, sources=("bogus",)))
 
 
-class CatalogSeedIgdbCommandTests(TestCase):
-    def test_igdb_source_enqueues_and_drains(self):
-        out = StringIO()
-        summary = {
-            "provider": "igdb",
-            "entity_type": "game",
-            "discovered": 3,
-            "enqueued": 2,
-            "external_ids": ["1", "2"],
-        }
-        drain = {"ran": 1, "succeeded": 1, "failed": 0, "skipped": 0}
-        with (
-            mock.patch.object(
-                catalog_seed, "enqueue_igdb_discover", new=mock.AsyncMock(return_value=summary)
-            ) as enqueue,
-            mock.patch.object(catalog_seed, "run_pending_jobs", return_value=drain) as drain_jobs,
-        ):
-            call_command(
-                "catalog_seed",
-                provider="igdb",
-                kind="game",
-                limit=7,
-                drain=True,
-                stdout=out,
-            )
-
-        enqueue.assert_awaited_once_with(limit=7)
-        drain_jobs.assert_called_once_with(provider="igdb", entity_type="game")
-        self.assertIn("discovered 3 all game ids", out.getvalue())
-        self.assertIn("enqueued 2 new sync jobs", out.getvalue())
-        self.assertIn("drained 1 jobs: 1 succeeded", out.getvalue())
-
-    def test_igdb_source_popular_routes_to_legacy_fetcher(self):
-        out = StringIO()
-        summary = {"provider": "igdb", "entity_type": "game", "discovered": 1, "enqueued": 1}
-        with mock.patch.object(
-            catalog_seed, "enqueue_igdb_popular", new=mock.AsyncMock(return_value=summary)
-        ) as enqueue:
-            call_command(
-                "catalog_seed",
-                provider="igdb",
-                kind="game",
-                source="popular",
-                limit=5,
-                stdout=out,
-            )
-        enqueue.assert_awaited_once_with(limit=5)
-
-    def test_igdb_source_narrow_list_routes_to_discover(self):
-        out = StringIO()
-        summary = {"provider": "igdb", "entity_type": "game", "discovered": 2, "enqueued": 2}
-        with mock.patch.object(
-            catalog_seed, "enqueue_igdb_discover", new=mock.AsyncMock(return_value=summary)
-        ) as enqueue:
-            call_command(
-                "catalog_seed",
-                provider="igdb",
-                kind="game",
-                source="upcoming",
-                limit=4,
-                stdout=out,
-            )
-        enqueue.assert_awaited_once_with(limit=4, sources=("upcoming",))
-
-    def test_igdb_source_rejects_unknown_list(self):
-        with self.assertRaisesMessage(CommandError, "--source for igdb must be one of"):
-            call_command(
-                "catalog_seed",
-                provider="igdb",
-                kind="game",
-                source="new",
-                limit=5,
-                stdout=StringIO(),
-            )
-
-    def test_igdb_source_rejects_non_game_kind(self):
-        with self.assertRaisesMessage(CommandError, "IGDB discovery seeds --kind game only"):
-            call_command("catalog_seed", provider="igdb", kind="show", limit=5, stdout=StringIO())
-
-    def test_igdb_source_rejects_daily(self):
-        with self.assertRaisesMessage(CommandError, "--source daily is TMDB-only"):
-            call_command(
-                "catalog_seed",
-                provider="igdb",
-                kind="game",
-                source="daily",
-                limit=0,
-                stdout=StringIO(),
-            )
-
-    def test_tmdb_source_rejects_game_kind(self):
-        with self.assertRaisesMessage(CommandError, "TMDB discovery seeds --kind movie|show only"):
-            call_command("catalog_seed", kind="game", source="popular", limit=5, stdout=StringIO())

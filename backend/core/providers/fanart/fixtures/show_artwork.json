@@ -1,0 +1,56 @@
+{
+  "name": "Breaking Bad",
+  "tvdb_id": "73713",
+  "hdtvlogo": [
+    {
+      "id": "10",
+      "url": "https://assets.fanart.tv/art/tv/73713/hdtvlogo/1.png",
+      "lang": "en",
+      "width": 800,
+      "height": 310
+    }
+  ],
+  "clearlogo": [
+    {
+      "id": "11",
+      "url": "https://assets.fanart.tv/art/tv/73713/clearlogo/1.png",
+      "lang": "en",
+      "width": 400,
+      "height": 155
+    }
+  ],
+  "tvposter": [
+    {
+      "id": "12",
+      "url": "https://assets.fanart.tv/art/tv/73713/tvposter/1.jpg",
+      "lang": "en",
+      "width": 1000,
+      "height": 1500
+    },
+    {
+      "id": "13",
+      "url": "https://assets.fanart.tv/art/tv/73713/tvposter/2.jpg",
+      "lang": "00",
+      "width": 1000,
+      "height": 1500
+    }
+  ],
+  "seasonposter": [
+    {
+      "id": "14",
+      "url": "https://assets.fanart.tv/art/tv/73713/seasonposter/1.jpg",
+      "lang": "en",
+      "width": 1000,
+      "height": 1500
+    }
+  ],
+  "showbackground": [
+    {
+      "id": "15",
+      "url": "https://assets.fanart.tv/art/tv/73713/showbackground/1.jpg",
+      "lang": "en",
+      "width": 1920,
+      "height": 1080
+    }
+  ]
+}

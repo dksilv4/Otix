@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": 14201,
+      "score": 12,
+      "style": "alternate",
+      "width": 600,
+      "height": 900,
+      "language": "en",
+      "url": "https://cdn2.steamgriddb.com/grid/a3285cf6574fec0cf044ca2181ceea1d.jpg"
+    },
+    {
+      "id": 14202,
+      "score": 8,
+      "style": "no_logo",
+      "width": 600,
+      "height": 900,
+      "language": "en",
+      "url": "https://cdn2.steamgriddb.com/grid/textless_grid.jpg"
+    }
+  ]
+}

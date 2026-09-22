@@ -88,6 +88,23 @@ def _asset_type_for(kind: str) -> str:
     return kind  # logo/icon map 1:1
 
 
+def _color_guess_for(kind: str, style: str | None) -> str | None:
+    if not style:
+        return None
+    s = str(style).lower().strip()
+    if kind == "logo":
+        if s == "white":
+            return "guess_white"
+        if s == "black":
+            return "guess_black"
+        if s == "official":
+            return "guess_multicolor"
+    elif kind == "grid":
+        if s in ("white", "white_logo"):
+            return "guess_white"
+    return None
+
+
 def _specs_for(kind: str, entry: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     """Map one SteamGridDB artwork entry to its MediaAsset insert spec(s).
 
@@ -95,7 +112,7 @@ def _specs_for(kind: str, entry: dict[str, Any]) -> list[tuple[str, dict[str, An
     both a ``poster`` and a ``textless_poster`` spec sharing the same URL.
     Entries without a ``url`` are dropped. Values map onto the MediaAsset columns
     the serializers read (``provider``/``style``/``label``/``score``/``width``/
-    ``height``/``lang``).
+    ``height``/``lang``/``color_guess``).
     """
     url = entry.get("url")
     if not url:
@@ -110,6 +127,7 @@ def _specs_for(kind: str, entry: dict[str, Any]) -> list[tuple[str, dict[str, An
         "score": entry.get("score"),
         "provider": "steamgrid",
         "label": _label_for(kind, style),
+        "color_guess": _color_guess_for(kind, style),
     }
     asset_type = _asset_type_for(kind)
     primary = {**base, "asset_type": asset_type}
@@ -146,9 +164,9 @@ def attach_steamgrid_assets(
     """Upsert SteamGridDB artwork rows for ``media_item_id``; return new count.
 
     Idempotent on the ``(media_item, url, asset_type)`` natural key: re-running
-    with the same payload creates nothing new. Existing rows only get a missing
-    ``lang`` backfilled (never overwriting a set one). Also stores the SteamGridDB
-    game id as a ``provider="steamgrid"`` ``ExternalID``.
+    with the same payload creates nothing new. Existing rows get missing
+    ``lang`` or ``color_guess`` backfilled. Also stores the SteamGridDB game id
+    as a ``provider="steamgrid"`` ``ExternalID``.
     """
     _ensure_steamgrid_external(media_item_id, sgdb_game_id)
     added = 0
@@ -169,9 +187,16 @@ def attach_steamgrid_assets(
                 )
                 if created:
                     added += 1
-                elif lang and asset.lang is None:
-                    asset.lang = lang
-                    asset.save(update_fields=("lang",))
+                else:
+                    updated = []
+                    if lang and asset.lang is None:
+                        asset.lang = lang
+                        updated.append("lang")
+                    if spec.get("color_guess") and asset.color_guess is None:
+                        asset.color_guess = spec["color_guess"]
+                        updated.append("color_guess")
+                    if updated:
+                        asset.save(update_fields=updated)
     if added:
         recompute_completeness(MediaItem.objects.get(pk=media_item_id))
     return added

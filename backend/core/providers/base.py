@@ -24,6 +24,11 @@ if TYPE_CHECKING:
 from core.providers.api_cache import ApiCache
 from core.providers.circuit_breaker import CircuitBreaker
 from core.providers.circuit_breaker import State as CBState
+from core.providers.framework.errors import (
+    CircuitOpenError,
+    ProviderError,
+    RateLimitError,
+)
 from core.providers.metrics import CIRCUIT_BREAKER_STATE, track_api_call
 from core.ratelimit import RateLimiter
 from core.redis import get_async_client
@@ -50,21 +55,6 @@ def _url_for_cache(url: str, kwargs: dict) -> str:
         return url
     sep = "&" if "?" in url else "?"
     return f"{url}{sep}{raw}"
-
-
-class ProviderError(Exception):
-    pass
-
-
-class RateLimitError(ProviderError):
-    def __init__(self, message: str = "", retry_after: int = 0):
-        super().__init__(message)
-        self.retry_after = retry_after
-
-
-class CircuitOpenError(ProviderError):
-    def __init__(self, provider: str):
-        super().__init__(f"Circuit breaker is OPEN for {provider}")
 
 
 class BaseProvider:

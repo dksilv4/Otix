@@ -10,7 +10,7 @@ relation that is absent.
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.media.models import Album, Episode, Game, MediaItem, Movie, Season, Show
+from apps.media.models import Episode, Game, MediaItem, Movie, Season, Show
 
 
 class SparseCatalogTests(TestCase):
@@ -80,15 +80,6 @@ class SparseCatalogTests(TestCase):
         self.assertIsNotNone(data["game"])
         for key in ("genres", "involved_companies", "platforms", "game_modes", "watch_providers"):
             self.assertEqual(data[key], [])
-
-    def test_album_without_tracks_serializes(self) -> None:
-        item = self._item("music", "Bare Album")
-        Album.objects.create(media_item=item)
-
-        response = self.client.get(f"/api/v1/media/music/{item.pk}")
-        self.assertEqual(response.status_code, 200)
-        self.assertIsNotNone(response.data["album"])
-        self.assertEqual(response.data["album"]["tracks"], [])
 
     def test_discover_rail_is_empty_not_error_when_catalog_empty(self) -> None:
         """A discover list_type over a media type with zero rows returns an empty

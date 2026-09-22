@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": 4001,
+      "score": 5,
+      "style": "official",
+      "width": 128,
+      "height": 128,
+      "language": "en",
+      "url": "https://cdn2.steamgriddb.com/icon/icon1.ico"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "name": "Breaking Bad",
+  "thetvdb_id": "81189",
+  "clearlogo": [
+    {
+      "id": "14501",
+      "url": "https://assets.fanart.tv/fanart/tv/81189/clearlogo/breaking-bad-4e9432616a287.png",
+      "lang": "en",
+      "likes": "25"
+    }
+  ],
+  "hdtvlogo": [
+    {
+      "id": "14502",
+      "url": "https://assets.fanart.tv/fanart/tv/81189/hdtvlogo/breaking-bad-5047b7449c256.png",
+      "lang": "en",
+      "likes": "42"
+    }
+  ],
+  "showbackground": [
+    {
+      "id": "14503",
+      "url": "https://assets.fanart.tv/fanart/tv/81189/showbackground/breaking-bad-4e9434855425e.jpg",
+      "likes": "30"
+    }
+  ],
+  "tvthumb": [
+    {
+      "id": "14504",
+      "url": "https://assets.fanart.tv/fanart/tv/81189/tvthumb/breaking-bad-4f8ef035123d2.jpg",
+      "lang": "en",
+      "likes": "14"
+    }
+  ],
+  "seasonposter": [
+    {
+      "id": "14505",
+      "url": "https://assets.fanart.tv/fanart/tv/81189/seasonposter/breaking-bad-50567e9842a22.jpg",
+      "lang": "en",
+      "likes": "7",
+      "season": "1"
+    }
+  ],
+  "tvbanner": [
+    {
+      "id": "14506",
+      "url": "https://assets.fanart.tv/fanart/tv/81189/tvbanner/breaking-bad-4e9432f82ba18.jpg",
+      "lang": "en",
+      "likes": "10"
+    }
+  ]
+}

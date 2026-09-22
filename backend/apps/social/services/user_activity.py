@@ -182,8 +182,6 @@ def get_activity_heatmap(user_id: int, weeks: int) -> dict:
         key = date_map[interaction.created_at.date()]
         if media_type == "movie":
             key["movie"] += 1
-        elif media_type == "music":
-            key["music"] += 1
         elif media_type == "show":
             key["show"] += 1
 

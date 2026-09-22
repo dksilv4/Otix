@@ -31,7 +31,10 @@ export const discoverQueries = {
       queryKey: discoverKeys.list(mediaType, listType, genre, language, isAnime, platform),
       queryFn: async ({ pageParam }) => {
         const params: Record<string, string | boolean> = { limit: '20' }
-        if (pageParam) params.cursor = pageParam as string
+        if (pageParam) {
+          params.page = pageParam as string
+          params.cursor = pageParam as string
+        }
         if (genre) params.genre = genre
         if (language) params.language = language
         if (isAnime != null) params.is_anime = isAnime
@@ -56,7 +59,10 @@ export const discoverQueries = {
       queryKey: discoverKeys.trendingSeasons(),
       queryFn: async ({ pageParam }) => {
         const params: Record<string, string | boolean> = { limit: '20' }
-        if (pageParam) params.cursor = pageParam as string
+        if (pageParam) {
+          params.page = pageParam as string
+          params.cursor = pageParam as string
+        }
         const { data } = await apiClient.get<SeasonListResponse>(
           '/discover/season/trending',
           { params },

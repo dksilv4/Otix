@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": 4867,
+      "name": "Portal 2",
+      "types": [
+        "steam"
+      ]
+    },
+    {
+      "id": 4866,
+      "name": "Portal",
+      "types": [
+        "steam"
+      ]
+    }
+  ]
+}

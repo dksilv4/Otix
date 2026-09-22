@@ -33,7 +33,13 @@ export const TrendingSeasonsSection = memo(function TrendingSeasonsSection({
       {showSkeleton ? (
         <MediaSectionSkeleton />
       ) : (
-        <Carousel title="New Seasons" minItemWidth={250} gap={12} showArrows>
+        <Carousel
+          title="New Seasons"
+          minItemWidth={250}
+          gap={12}
+          showArrows
+          viewAllLink="/discover/season/trending"
+        >
           {(Array.isArray(items) ? items.filter(Boolean) : []).map((season) => (
             <DiscoverSeasonCard key={`${season.showId}-${season.seasonNumber}`} season={season} />
           ))}

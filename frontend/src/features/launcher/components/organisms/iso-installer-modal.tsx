@@ -46,12 +46,18 @@ const PHASE_LABELS: Record<InstallPhase, string> = {
   error: "Install failed",
 };
 
-/** Suggest a default install directory — use first game library folder, fall back to ISO dir. */
+/** Suggest a default install directory — prefer configured games installation folder, then first game library folder, fall back to ISO dir. */
 function suggestInstallDir(isoPath: string, gameTitle: string): string {
-  const dirs = getScanPaths();
-  const base = dirs.length > 0 ? dirs[0] : isoPath.replace(/[/\\][^/\\]+$/, "");
+  let base = '';
+  try {
+    base = localStorage.getItem('otix:games-install-dir') || '';
+  } catch {}
+  if (!base) {
+    const dirs = getScanPaths();
+    base = dirs.length > 0 ? dirs[0] : isoPath.replace(/[/\\][^/\\]+$/, "");
+  }
   const clean = gameTitle.replace(/[<>:"|?*]/g, "").trim();
-  return `${base}/${clean}`;
+  return clean ? `${base}/${clean}` : base;
 }
 
 interface IsoInstallerModalProps {

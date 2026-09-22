@@ -1,0 +1,47 @@
+{
+  "name": "Fight Club",
+  "tmdb_id": "550",
+  "hdmovielogo": [
+    {
+      "id": "1",
+      "url": "https://assets.fanart.tv/art/movies/550/hdmovielogo/1.png",
+      "lang": "en",
+      "width": 800,
+      "height": 310
+    }
+  ],
+  "movielogo": [
+    {
+      "id": "2",
+      "url": "https://assets.fanart.tv/art/movies/550/movielogo/2.png",
+      "lang": "",
+      "width": 400,
+      "height": 155
+    }
+  ],
+  "movieposter": [
+    {
+      "id": "3",
+      "url": "https://assets.fanart.tv/art/movies/550/movieposter/1.jpg",
+      "lang": "en",
+      "width": 1000,
+      "height": 1500
+    },
+    {
+      "id": "4",
+      "url": "https://assets.fanart.tv/art/movies/550/movieposter/2.jpg",
+      "lang": "zxx",
+      "width": 1000,
+      "height": 1500
+    }
+  ],
+  "moviebackground": [
+    {
+      "id": "5",
+      "url": "https://assets.fanart.tv/art/movies/550/moviebackground/1.jpg",
+      "lang": "en",
+      "width": 1920,
+      "height": 1080
+    }
+  ]
+}

@@ -14,11 +14,12 @@ import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
 import { isDesktop } from '@/lib/desktop/api'
 import { openExternal } from '@/lib/utils/open-external'
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
-import { Loader2, RefreshCw, Download, DownloadCloud, Link2, Film, Tv, Music, FolderOpen, Search, Pause, Play, Check, HardDrive } from 'lucide-react'
+import { Loader2, RefreshCw, Download, DownloadCloud, Link2, Film, Tv, Music, FolderOpen, Search, Pause, Play, Check, HardDrive, Server, ChevronDown, Sparkles } from 'lucide-react'
 import { PlexStorageOptimizerModal } from '@/features/integrations/plex-storage'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
+import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
 import {
   IntegrationAction,
   IntegrationCard,
@@ -28,11 +29,13 @@ import {
 import { usePlexLibraries, streamPlexLibrarySync } from '@library/library-queries'
 import type { PlexLibraryInfo } from '@library/library-queries'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
+import type { GameServer } from '@/features/downloads/use-server-downloads'
 import {
-  pickConnectionNode,
   workerConnectionNodes,
+  remoteConnectionNodes,
 } from '@/features/downloads/molecules/use-integration-target-server'
-import { useDownloadConfig } from '@/features/downloads/use-downloads'
+import { isBackendNode } from '../backend-node'
+import { useSettingsNode } from '../context/settings-node-context'
 import { useModal } from '@/lib/modals'
 import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
 import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/server-prowlarr-settings-modal'
@@ -58,6 +61,7 @@ import {
 } from '@/features/downloads/use-server-usenet'
 import { normalizeProwlarrIndexers } from '@/features/downloads/usenet-utils'
 import type { ProwlarrIndexerItem } from '@/features/downloads/usenet-types'
+import { cn } from '@/lib/utils'
 
 type SteamProfile = {
   personaname: string | null
@@ -181,8 +185,423 @@ const BRAND_BG: Record<string, string> = {
   sonarr: 'bg-[#00c4df]/10',
 }
 
+const NODE_KEYWORDS = 'sabnzbd prowlarr radarr sonarr usenet torrent arr downloader server node'
+
+/** Renders SABnzbd, Prowlarr, Radarr, and Sonarr cards scoped to a single Otix worker node. */
+function NodeConnectionsGroup({
+  server,
+  searchQuery,
+}: {
+  server: GameServer
+  searchQuery: string
+}) {
+  const { openModal } = useModal()
+  const isBackend = isBackendNode(server)
+  const [nodeOpen, setNodeOpen] = useState(true)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [prowlarrSyncProtocol, setProwlarrSyncProtocol] = useState<'all' | 'torrent' | 'usenet'>('all')
+  const [prowlarrSyncMessage, setProwlarrSyncMessage] = useState<string | null>(null)
+  const [syncedProwlarrIndexers, setSyncedProwlarrIndexers] = useState<ProwlarrIndexerItem[]>([])
+
+  const sabnzbdLiveId = !isBackend && expandedId === 'sabnzbd' ? server.id : undefined
+  const prowlarrLiveId = !isBackend && expandedId === 'prowlarr' ? server.id : undefined
+  const radarrLiveId = !isBackend && expandedId === 'radarr' ? server.id : undefined
+  const sonarrLiveId = !isBackend && expandedId === 'sonarr' ? server.id : undefined
+
+  const { data: usenetConfig } = useServerUsenetConfig(server.id)
+  const { data: radarrConfig } = useServerRadarrConfig(server.id)
+  const { data: sonarrConfig } = useServerSonarrConfig(server.id)
+  const { data: radarrMovies = [] } = useServerRadarrMovies(radarrLiveId)
+  const { data: sonarrSeries = [] } = useServerSonarrSeries(sonarrLiveId)
+  const { data: radarrQueue } = useServerRadarrQueue(radarrLiveId, 1, 50, 4000)
+  const { data: sonarrQueue } = useServerSonarrQueue(sonarrLiveId, 1, 50, 4000)
+  const { data: sabnzbdQueue, refetch: refetchQueue } = useServerUsenetQueue(sabnzbdLiveId, 3000)
+  const pauseSabnzbdMutation = usePauseSabnzbdQueue(server.id)
+  const resumeSabnzbdMutation = useResumeSabnzbdQueue(server.id)
+  const isQueuePaused = Boolean(sabnzbdQueue?.status?.toLowerCase().includes('paused'))
+  const { data: fetchedProwlarrIndexers = [], refetch: refetchProwlarrIndexers } = useProwlarrIndexers(prowlarrLiveId)
+  const syncProwlarrMutation = useSyncProwlarrIndexers(server.id)
+  const prowlarrIndexers = fetchedProwlarrIndexers.length > 0 ? fetchedProwlarrIndexers : syncedProwlarrIndexers
+
+  const isSabnzbdConfigured = Boolean(
+    usenetConfig?.sabnzbd?.host &&
+    Boolean(usenetConfig?.sabnzbd?.api_key || usenetConfig?.sabnzbd?.configured)
+  )
+  const isProwlarrConfigured = Boolean(
+    usenetConfig?.prowlarr?.host &&
+    Boolean(usenetConfig?.prowlarr?.api_key || usenetConfig?.prowlarr?.configured)
+  )
+  const isRadarrConfigured = Boolean(
+    radarrConfig?.host &&
+    Boolean(radarrConfig?.apiKey || radarrConfig?.api_key || radarrConfig?.configured)
+  )
+  const isSonarrConfigured = Boolean(
+    sonarrConfig?.host &&
+    Boolean(sonarrConfig?.apiKey || sonarrConfig?.api_key || sonarrConfig?.configured)
+  )
+
+  const openSabnzbdModal = () => {
+    openBoundModal(openModal, (onClose) => (
+      <ServerSabnzbdSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
+    ))
+  }
+  const openProwlarrModal = () => {
+    openBoundModal(openModal, (onClose) => (
+      <ServerProwlarrSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
+    ))
+  }
+  const openRadarrModal = () => {
+    openBoundModal(openModal, (onClose) => (
+      <ServerRadarrSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
+    ))
+  }
+  const openSonarrModal = () => {
+    openBoundModal(openModal, (onClose) => (
+      <ServerSonarrSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
+    ))
+  }
+
+  const handleToggleQueuePause = async () => {
+    try {
+      if (isQueuePaused) {
+        await resumeSabnzbdMutation.mutateAsync()
+      } else {
+        await pauseSabnzbdMutation.mutateAsync()
+      }
+      refetchQueue()
+    } catch (err) {
+      console.error('Failed to toggle queue pause:', err)
+    }
+  }
+
+  const handleProwlarrSync = async () => {
+    try {
+      const res = await syncProwlarrMutation.mutateAsync(prowlarrSyncProtocol)
+      setSyncedProwlarrIndexers(normalizeProwlarrIndexers(res))
+      setProwlarrSyncMessage(res.message)
+      await refetchProwlarrIndexers()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setProwlarrSyncMessage(`Sync failed: ${message}`)
+    }
+  }
+
+  const toggleExpand = (id: string) => setExpandedId(expandedId === id ? null : id)
+
+  const query = searchQuery.toLowerCase().trim()
+
+  const nodeDefs = [
+    {
+      id: 'sabnzbd',
+      name: 'SABnzbd',
+      keywords: 'sabnzbd usenet nzb download downloader queue client',
+      isConnected: isSabnzbdConfigured,
+      description: isSabnzbdConfigured
+        ? isBackend
+          ? 'Configured on Otix backend'
+          : `Configured on ${server.name}`
+        : isBackend
+          ? 'Connect SABnzbd to store shared Usenet downloader settings.'
+          : 'Connect SABnzbd to automate Usenet downloads on this node.',
+      brandColor: BRAND_COLORS.sabnzbd,
+      brandBg: BRAND_BG.sabnzbd,
+      icon: DownloadCloud,
+      onConnect: openSabnzbdModal,
+    },
+    {
+      id: 'prowlarr',
+      name: 'Prowlarr',
+      keywords: 'prowlarr indexer search usenet torrent sync tracker',
+      isConnected: isProwlarrConfigured,
+      description: isProwlarrConfigured
+        ? isBackend
+          ? 'Configured on Otix backend'
+          : `Configured on ${server.name}`
+        : isBackend
+          ? 'Connect Prowlarr to store shared indexer settings.'
+          : 'Connect Prowlarr to index game releases across Usenet and Torrent trackers.',
+      brandColor: BRAND_COLORS.prowlarr,
+      brandBg: BRAND_BG.prowlarr,
+      icon: Search,
+      onConnect: openProwlarrModal,
+    },
+    {
+      id: 'radarr',
+      name: 'Radarr',
+      keywords: 'radarr movie movies watchlist automated download arr',
+      isConnected: isRadarrConfigured,
+      description: isRadarrConfigured
+        ? isBackend
+          ? 'Configured on Otix backend'
+          : `Configured on ${server.name}`
+        : isBackend
+          ? 'Connect Radarr to store shared movie downloader settings.'
+          : 'Connect Radarr to manage movie libraries and automate movie downloads.',
+      brandColor: BRAND_COLORS.radarr,
+      brandBg: BRAND_BG.radarr,
+      icon: Film,
+      onConnect: openRadarrModal,
+    },
+    {
+      id: 'sonarr',
+      name: 'Sonarr',
+      keywords: 'sonarr tv shows series automated download arr',
+      isConnected: isSonarrConfigured,
+      description: isSonarrConfigured
+        ? isBackend
+          ? 'Configured on Otix backend'
+          : `Configured on ${server.name}`
+        : isBackend
+          ? 'Connect Sonarr to store shared TV series downloader settings.'
+          : 'Connect Sonarr to manage TV series and automate episode downloads.',
+      brandColor: BRAND_COLORS.sonarr,
+      brandBg: BRAND_BG.sonarr,
+      icon: Tv,
+      onConnect: openSonarrModal,
+    },
+  ]
+
+  const filteredDefs = query
+    ? nodeDefs.filter(
+        (i) =>
+          i.name.toLowerCase().includes(query) ||
+          i.keywords.includes(query) ||
+          server.name.toLowerCase().includes(query) ||
+          NODE_KEYWORDS.includes(query)
+      )
+    : nodeDefs
+
+  if (filteredDefs.length === 0) return null
+
+  return (
+    <SettingsCard className="overflow-hidden !p-0">
+      {/* Collapsible node header */}
+      <button
+        type="button"
+        onClick={() => setNodeOpen((o) => !o)}
+        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/[0.03] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+      >
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="flex shrink-0 items-center justify-center h-7 w-7 rounded-lg bg-primary/10 text-primary">
+            <Server className="h-3.5 w-3.5" />
+          </div>
+          <span className="text-sm font-semibold truncate">{server.name}</span>
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0',
+              server.isOnline ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400',
+            )}
+          >
+            <span
+              className={cn(
+                'w-1.5 h-1.5 rounded-full',
+                server.isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400',
+              )}
+            />
+            {server.isOnline ? 'Online' : 'Offline'}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <Link
+            to="/settings/nodes/$nodeId"
+            params={{ nodeId: String(server.id) }}
+            className="text-xs text-white/40 hover:text-white/70 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Node settings →
+          </Link>
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 text-white/40 transition-transform duration-200',
+              nodeOpen ? 'rotate-0' : '-rotate-90',
+            )}
+          />
+        </div>
+      </button>
+
+      {/* Per-node integration cards */}
+      {nodeOpen && (
+        <div className="border-t border-white/[0.06] space-y-px">
+          {filteredDefs.map((i) => (
+
+        <IntegrationCard
+          key={i.id}
+          name={i.name}
+          description={i.description}
+          brandColor={i.brandColor}
+          brandBg={i.brandBg}
+          icon={i.icon}
+          isConnected={i.isConnected}
+          expanded={expandedId === i.id}
+          onToggle={() => toggleExpand(i.id)}
+          onConnect={i.onConnect}
+          connecting={false}
+          onDisconnect={undefined}
+          disconnecting={false}
+        >
+          {/* SABnzbd content */}
+          {i.id === 'sabnzbd' && (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs">
+                <span className="text-white/60">
+                  {isBackend ? (
+                    <>Stored on <span className="text-white/90 font-medium">{server.name}</span> (account settings)</>
+                  ) : (
+                    <>Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}</>
+                  )}
+                </span>
+                {!isBackend && (
+                  <Link
+                    to="/downloads"
+                    className="text-amber-400 hover:text-amber-300 font-medium transition-colors duration-150 inline-flex items-center gap-1"
+                  >
+                    View Downloads Queue &rarr;
+                  </Link>
+                )}
+              </div>
+              {!isBackend && sabnzbdQueue && (
+                <IntegrationStats items={[
+                  { label: 'queue status', value: sabnzbdQueue.status || 'Idle' },
+                  { label: 'download speed', value: sabnzbdQueue.speed || '0 B/s' },
+                  { label: 'queued items', value: String(sabnzbdQueue.items?.length ?? 0) },
+                  ...(sabnzbdQueue.time_left ? [{ label: 'time left', value: sabnzbdQueue.time_left }] : []),
+                ]} />
+              )}
+              {!isBackend && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 bg-white/[0.03]">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Queue Controls</p>
+                    <p className="text-xs text-white/70 mt-0.5">
+                      {isQueuePaused ? 'Download queue is paused.' : 'Download queue is currently active.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <DkButton
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleToggleQueuePause}
+                      loading={pauseSabnzbdMutation.isPending || resumeSabnzbdMutation.isPending}
+                      leftIcon={isQueuePaused ? Play : Pause}
+                      className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                    >
+                      {isQueuePaused ? 'Resume Queue' : 'Pause Queue'}
+                    </DkButton>
+                  </div>
+                </div>
+              )}
+              <IntegrationAction
+                label="SABnzbd Settings"
+                description="Configure host, port, API key, and download category"
+                buttonLabel="Configure SABnzbd"
+                buttonIcon={DownloadCloud}
+                onPress={openSabnzbdModal}
+              />
+            </>
+          )}
+
+          {/* Prowlarr content */}
+          {i.id === 'prowlarr' && (
+            <>
+              <div className="flex items-center justify-between px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
+                <span>
+                  {isBackend ? (
+                    <>Stored on <span className="text-white/90 font-medium">{server.name}</span> (account settings)</>
+                  ) : (
+                    <>Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}</>
+                  )}
+                </span>
+              </div>
+              {!isBackend && (
+                <div className="px-5 py-4 space-y-3">
+                  <ProwlarrIndexersPanel
+                    protocol={prowlarrSyncProtocol}
+                    onProtocolChange={setProwlarrSyncProtocol}
+                    onSync={() => void handleProwlarrSync()}
+                    isSyncing={syncProwlarrMutation.isPending}
+                    indexers={prowlarrIndexers}
+                    syncMessage={prowlarrSyncMessage}
+                  />
+                </div>
+              )}
+              <IntegrationAction
+                label="Prowlarr Settings"
+                description="Configure host, port, API key, and search categories"
+                buttonLabel="Configure Prowlarr"
+                buttonIcon={Search}
+                onPress={openProwlarrModal}
+              />
+            </>
+          )}
+
+          {/* Radarr content */}
+          {i.id === 'radarr' && (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
+                <span>
+                  {isBackend ? (
+                    <>Stored on <span className="text-white/90 font-medium">{server.name}</span> (account settings)</>
+                  ) : (
+                    <>Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}</>
+                  )}
+                </span>
+              </div>
+              {!isBackend && isRadarrConfigured && (
+                <IntegrationStats items={[
+                  { label: 'indexed movies', value: String(radarrMovies.length) },
+                  { label: 'monitored', value: String(radarrMovies.filter((m) => m.monitored).length) },
+                  { label: 'queued downloads', value: String(radarrQueue?.totalRecords ?? radarrQueue?.records?.length ?? 0) },
+                ]} />
+              )}
+              <IntegrationAction
+                label="Radarr Settings"
+                description="Configure host, port, API key, quality profile, and root folder"
+                buttonLabel="Configure Radarr"
+                buttonIcon={Film}
+                onPress={openRadarrModal}
+              />
+            </>
+          )}
+
+          {/* Sonarr content */}
+          {i.id === 'sonarr' && (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
+                <span>
+                  {isBackend ? (
+                    <>Stored on <span className="text-white/90 font-medium">{server.name}</span> (account settings)</>
+                  ) : (
+                    <>Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}</>
+                  )}
+                </span>
+              </div>
+              {!isBackend && isSonarrConfigured && (
+                <IntegrationStats items={[
+                  { label: 'indexed series', value: String(sonarrSeries.length) },
+                  { label: 'monitored', value: String(sonarrSeries.filter((s) => s.monitored).length) },
+                  { label: 'queued downloads', value: String(sonarrQueue?.totalRecords ?? sonarrQueue?.records?.length ?? 0) },
+                ]} />
+              )}
+              <IntegrationAction
+                label="Sonarr Settings"
+                description="Configure host, port, API key, quality profile, and series options"
+                buttonLabel="Configure Sonarr"
+                buttonIcon={Tv}
+                onPress={openSonarrModal}
+              />
+            </>
+          )}
+        </IntegrationCard>
+        ))}
+      </div>
+      )}
+    </SettingsCard>
+  )
+}
+
 export function SettingsIntegrationsPage() {
+
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  useSettingsHashScroll()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -229,6 +648,12 @@ export function SettingsIntegrationsPage() {
   const [epicScanResult, setEpicScanResult] = useState<{
     totalInEpic: number
     matchedInOtix: number
+    failed: number
+  } | null>(null)
+  const [epicResolvingSteamGrid, setEpicResolvingSteamGrid] = useState(false)
+  const [epicSteamGridResult, setEpicSteamGridResult] = useState<{
+    total: number
+    matched: number
     failed: number
   } | null>(null)
   const [epicMessage, setEpicMessage] = useState('')
@@ -287,130 +712,14 @@ export function SettingsIntegrationsPage() {
 
   const { openModal } = useModal()
   const { data: gameServers = [] } = useGameServers({ enabled: isAuthenticated })
-  const liveNode = pickConnectionNode(gameServers)
-  const activeServer = liveNode
   const hasOnlineNode = workerConnectionNodes(gameServers).some((s) => s.isOnline)
   const isEpicConnected = epicConnected
-  const arrServerId = isAuthenticated ? liveNode?.id : undefined
-  const radarrLiveId = expandedId === 'radarr' ? arrServerId : undefined
-  const sonarrLiveId = expandedId === 'sonarr' ? arrServerId : undefined
-  const sabnzbdLiveId = expandedId === 'sabnzbd' ? arrServerId : undefined
-  const prowlarrLiveId = expandedId === 'prowlarr' ? arrServerId : undefined
-
-  const openSabnzbdModal = () => {
-    openBoundModal(openModal, (onClose) => (
-      <ServerSabnzbdSettingsModal
-        serverId={liveNode?.id}
-        serverName={liveNode?.name}
-        onClose={onClose}
-      />
-    ))
-  }
-
-  const openProwlarrModal = () => {
-    openBoundModal(openModal, (onClose) => (
-      <ServerProwlarrSettingsModal
-        serverId={liveNode?.id}
-        serverName={liveNode?.name}
-        onClose={onClose}
-      />
-    ))
-  }
-
-  const openRadarrModal = () => {
-    openBoundModal(openModal, (onClose) => (
-      <ServerRadarrSettingsModal
-        serverId={liveNode?.id}
-        serverName={liveNode?.name}
-        onClose={onClose}
-      />
-    ))
-  }
-
-  const openSonarrModal = () => {
-    openBoundModal(openModal, (onClose) => (
-      <ServerSonarrSettingsModal
-        serverId={liveNode?.id}
-        serverName={liveNode?.name}
-        onClose={onClose}
-      />
-    ))
-  }
-
-  const { config: dlConfig } = useDownloadConfig(user?.id)
-  const { data: usenetConfig } = useServerUsenetConfig(arrServerId)
-  const isSabnzbdConfigured = Boolean(
-    (usenetConfig?.sabnzbd?.host &&
-      Boolean(usenetConfig?.sabnzbd?.api_key || usenetConfig?.sabnzbd?.configured)) ||
-    (dlConfig?.sabnzbdHost && Boolean(dlConfig?.sabnzbdApiKey))
-  )
-  const isProwlarrConfigured = Boolean(
-    usenetConfig?.prowlarr?.host &&
-    Boolean(usenetConfig?.prowlarr?.api_key || usenetConfig?.prowlarr?.configured)
-  )
-
-  // ── Radarr + Sonarr managed via Otix Server node ──
-  const { data: radarrConfig } = useServerRadarrConfig(arrServerId)
-  const { data: sonarrConfig } = useServerSonarrConfig(arrServerId)
-  const { data: radarrMovies = [] } = useServerRadarrMovies(radarrLiveId)
-  const { data: sonarrSeries = [] } = useServerSonarrSeries(sonarrLiveId)
-  const { data: radarrQueue } = useServerRadarrQueue(radarrLiveId, 1, 50, 4000)
-  const { data: sonarrQueue } = useServerSonarrQueue(sonarrLiveId, 1, 50, 4000)
-
-  const isRadarrConfigured = Boolean(
-    radarrConfig?.host &&
-    Boolean(radarrConfig?.apiKey || radarrConfig?.api_key || radarrConfig?.configured)
-  )
-  const isSonarrConfigured = Boolean(
-    sonarrConfig?.host &&
-    Boolean(sonarrConfig?.apiKey || sonarrConfig?.api_key || sonarrConfig?.configured)
-  )
-
-  // SABnzbd queue controls
-  const { data: sabnzbdQueue, refetch: refetchQueue } = useServerUsenetQueue(
-    sabnzbdLiveId,
-    3000
-  )
-  const pauseSabnzbdMutation = usePauseSabnzbdQueue(liveNode?.id)
-  const resumeSabnzbdMutation = useResumeSabnzbdQueue(liveNode?.id)
-  const isQueuePaused = Boolean(sabnzbdQueue?.status?.toLowerCase().includes('paused'))
-
-  const handleToggleQueuePause = async () => {
-    try {
-      if (isQueuePaused) {
-        await resumeSabnzbdMutation.mutateAsync()
-      } else {
-        await pauseSabnzbdMutation.mutateAsync()
-      }
-      refetchQueue()
-    } catch (err) {
-      console.error('Failed to toggle queue pause:', err)
-    }
-  }
-
-  // Prowlarr indexer sync
-  const [prowlarrSyncProtocol, setProwlarrSyncProtocol] = useState<'all' | 'torrent' | 'usenet'>('all')
-  const { data: fetchedProwlarrIndexers = [], refetch: refetchProwlarrIndexers } = useProwlarrIndexers(
-    prowlarrLiveId
-  )
-  const syncProwlarrMutation = useSyncProwlarrIndexers(activeServer?.id)
-  const [prowlarrSyncMessage, setProwlarrSyncMessage] = useState<string | null>(null)
-  const [syncedProwlarrIndexers, setSyncedProwlarrIndexers] = useState<ProwlarrIndexerItem[]>([])
-  const prowlarrIndexers = fetchedProwlarrIndexers.length > 0 ? fetchedProwlarrIndexers : syncedProwlarrIndexers
-
-  const handleProwlarrSync = async () => {
-    try {
-      const res = await syncProwlarrMutation.mutateAsync(prowlarrSyncProtocol)
-      setSyncedProwlarrIndexers(normalizeProwlarrIndexers(res))
-      setProwlarrSyncMessage(res.message)
-      await refetchProwlarrIndexers()
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      setProwlarrSyncMessage(`Sync failed: ${message}`)
-    }
-  }
+  const { servers: allNodes } = useSettingsNode()
+  // Remote connection nodes include real Otix worker nodes + the Otix backend node
+  const workerNodes = remoteConnectionNodes(allNodes)
 
   const fetchIntegrations = async () => {
+
     try {
       const { data } = await apiClient.get('/auth/oauth')
       const steam = (data.providers as Array<{
@@ -566,7 +875,7 @@ export function SettingsIntegrationsPage() {
         await fetchEpicStatus()
         return
       }
-      openExternal(authUrl)
+      openExternal(authUrl, { newTab: true })
       openBoundModal(openModal, (onClose) => (
         <EpicCodeModal
           authUrl={authUrl}
@@ -617,6 +926,26 @@ export function SettingsIntegrationsPage() {
       setEpicError(extractIntegrationMessage(err))
     } finally {
       setEpicScanning(false)
+    }
+  }
+
+  const handleEpicResolveSteamGrid = async () => {
+    setEpicResolvingSteamGrid(true)
+    setEpicError('')
+    try {
+      const { data } = await apiClient.post<{
+        total: number
+        matched: number
+        failed: number
+      }>('/integrations/epic/resolve-steamgrid')
+      setEpicSteamGridResult(data)
+      let msg = `Matched ${data.matched} out of ${data.total} Epic games with SteamGridDB.`
+      if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
+      setEpicMessage(msg)
+    } catch (err) {
+      setEpicError(extractIntegrationMessage(err))
+    } finally {
+      setEpicResolvingSteamGrid(false)
     }
   }
 
@@ -1258,78 +1587,6 @@ export function SettingsIntegrationsPage() {
       disconnecting: tmdbDisconnecting,
       error: tmdbError,
     },
-    {
-      id: 'sabnzbd',
-      name: 'SABnzbd',
-      keywords: 'sabnzbd usenet nzb download downloader queue client otix server',
-      description: isSabnzbdConfigured
-        ? activeServer
-          ? `Configured on ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
-          : 'Configured on this Otix node'
-        : 'Connect SABnzbd to automate Usenet game downloads on an Otix node.',
-      isConnected: isSabnzbdConfigured,
-      brandColor: BRAND_COLORS.sabnzbd,
-      brandBg: BRAND_BG.sabnzbd,
-      icon: DownloadCloud,
-      onConnect: openSabnzbdModal,
-      connecting: false,
-      onDisconnect: undefined,
-      disconnecting: false,
-    },
-    {
-      id: 'prowlarr',
-      name: 'Prowlarr',
-      keywords: 'prowlarr indexer search usenet torrent sync tracker otix server',
-      description: isProwlarrConfigured
-        ? activeServer
-          ? `Configured on ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
-          : 'Configured on this Otix node'
-        : 'Connect Prowlarr to search and index game releases across Usenet and Torrent trackers.',
-      isConnected: isProwlarrConfigured,
-      brandColor: BRAND_COLORS.prowlarr,
-      brandBg: BRAND_BG.prowlarr,
-      icon: Search,
-      onConnect: openProwlarrModal,
-      connecting: false,
-      onDisconnect: undefined,
-      disconnecting: false,
-    },
-    {
-      id: 'radarr',
-      name: 'Radarr',
-      keywords: 'radarr movie movies watchlist automated download arr otix server',
-      description: isRadarrConfigured
-        ? activeServer
-          ? `Configured on ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
-          : 'Configured on this Otix node'
-        : 'Connect Radarr to manage movie libraries and automate movie downloads on your node.',
-      isConnected: isRadarrConfigured,
-      brandColor: BRAND_COLORS.radarr,
-      brandBg: BRAND_BG.radarr,
-      icon: Film,
-      onConnect: openRadarrModal,
-      connecting: false,
-      onDisconnect: undefined,
-      disconnecting: false,
-    },
-    {
-      id: 'sonarr',
-      name: 'Sonarr',
-      keywords: 'sonarr tv shows series automated download arr otix server',
-      description: isSonarrConfigured
-        ? activeServer
-          ? `Configured on ${activeServer.name} (${activeServer.isOnline ? 'Online' : 'Offline'})`
-          : 'Configured on this Otix node'
-        : 'Connect Sonarr to manage TV series and automate episode downloads on your node.',
-      isConnected: isSonarrConfigured,
-      brandColor: BRAND_COLORS.sonarr,
-      brandBg: BRAND_BG.sonarr,
-      icon: Tv,
-      onConnect: openSonarrModal,
-      connecting: false,
-      onDisconnect: undefined,
-      disconnecting: false,
-    },
   ]
 
   const filteredIntegrations = (query
@@ -1340,560 +1597,457 @@ export function SettingsIntegrationsPage() {
       )
     : integrationDefs)
 
+  const nodesVisible = !query ||
+    NODE_KEYWORDS.includes(query) ||
+    workerNodes.some((n) => n.name.toLowerCase().includes(query))
+
   return (
     <div id="settings-connections-section" className="space-y-6">
-      <SettingsCard className="space-y-6">
-        <SectionHeader
-          variant="page"
-          icon={Link2}
-          title="Connections"
-          description="Connect Steam, Plex, TMDb, YouTube, and download clients."
+      <SectionHeader
+        variant="page"
+        icon={Link2}
+        title="Connections"
+        description="Connect Steam, Plex, TMDb, YouTube, and download clients."
+      />
+      <div className="relative">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search integrations..."
+          className="w-full text-sm text-white outline-none h-9 rounded-xl bg-white/5 pl-9 pr-3 shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-150 placeholder:text-white/30 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.3)]"
         />
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search integrations..."
-            className="w-full text-sm text-white outline-none h-9 rounded-xl bg-white/5 pl-9 pr-3 shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-150 placeholder:text-white/30 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.3)]"
-          />
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 py-8 text-sm text-white/60">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading integrations...
         </div>
-
-        {loading ? (
-          <div className="flex items-center gap-2 py-8 text-sm text-white/60">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading integrations...
-          </div>
-        ) : filteredIntegrations.length === 0 ? (
-          <div className="rounded-2xl p-8 text-center bg-white/5">
-            <p className="text-sm text-white/60">No integrations match &quot;{searchQuery}&quot;</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredIntegrations.map((i) => (
-              <IntegrationCard
-                key={i.id}
-                name={i.name}
-                description={i.description}
-                brandColor={i.brandColor}
-                brandBg={i.brandBg}
-                icon={i.icon}
-                isConnected={i.isConnected}
-                expanded={expandedId === i.id}
-                onToggle={() => toggleExpand(i.id)}
-                onConnect={i.onConnect}
-                connecting={i.connecting}
-                connectDisabled={i.connectDisabled}
-                onDisconnect={i.onDisconnect}
-                disconnecting={i.disconnecting}
-                error={i.error}
-              >
-                {/* Steam content */}
-                {i.id === 'steam' && (
-                  <>
-                    <IntegrationProfile
-                      avatarUrl={steamProfile?.avatarfull}
-                      avatarAlt={steamProfile?.personaname ?? 'Steam avatar'}
-                      name={steamProfile?.personaname ?? 'Steam User'}
-                      detail={steamProfile?.realname ?? (displayedSteamId ? `Steam ID: ${displayedSteamId}` : 'Steam account linked')}
-                      brandBg={BRAND_BG.steam}
-                      icon={SteamIcon}
-                      brandColor={BRAND_COLORS.steam}
-                      meta={steamProfile?.profileurl && (
-                        <a href={steamProfile.profileurl} target="_blank" rel="noopener noreferrer" className="text-xs text-white/40 hover:text-primary transition-colors duration-150 shrink-0">
-                          View Profile &rarr;
-                        </a>
-                      )}
-                    />
-                    {steamProfile && (
-                      <IntegrationStats items={[
-                        ...(steamProfile.timecreated ? [{ label: 'account age', value: formatAccountAge(steamProfile.timecreated) }] : []),
-                        ...(steamProfile.loccountrycode ? [{ label: 'location', value: steamProfile.loccountrycode }] : []),
-                        ...(steamProfile.personastate !== null && steamProfile.personastate !== undefined ? [{ label: 'status', value: personaStateLabel(steamProfile.personastate) }] : []),
-                      ]} />
+      ) : filteredIntegrations.length === 0 && !nodesVisible ? (
+        <div className="rounded-2xl p-8 text-center bg-white/5">
+          <p className="text-sm text-white/60">No integrations match &quot;{searchQuery}&quot;</p>
+        </div>
+      ) : (
+        <>
+          {filteredIntegrations.length > 0 && (
+            <div id="accounts" className="scroll-mt-28">
+              <SettingsCard className="space-y-2">
+                <SectionHeader
+                  icon={Link2}
+                  title="Accounts"
+                  description="Sign in with Steam, Plex, TMDb, Google, and more."
+                />
+                {filteredIntegrations.map((i) => (
+                  <IntegrationCard
+                    key={i.id}
+                    name={i.name}
+                    description={i.description}
+                    brandColor={i.brandColor}
+                    brandBg={i.brandBg}
+                    icon={i.icon}
+                    isConnected={i.isConnected}
+                    expanded={expandedId === i.id}
+                    onToggle={() => toggleExpand(i.id)}
+                    onConnect={i.onConnect}
+                    connecting={i.connecting}
+                    connectDisabled={i.connectDisabled}
+                    onDisconnect={i.onDisconnect}
+                    disconnecting={i.disconnecting}
+                    error={i.error}
+                  >
+                    {/* Steam content */}
+                    {i.id === 'steam' && (
+                      <>
+                        <IntegrationProfile
+                          avatarUrl={steamProfile?.avatarfull}
+                          avatarAlt={steamProfile?.personaname ?? 'Steam avatar'}
+                          name={steamProfile?.personaname ?? 'Steam User'}
+                          detail={steamProfile?.realname ?? (displayedSteamId ? `Steam ID: ${displayedSteamId}` : 'Steam account linked')}
+                          brandBg={BRAND_BG.steam}
+                          icon={SteamIcon}
+                          brandColor={BRAND_COLORS.steam}
+                          meta={steamProfile?.profileurl && (
+                            <a href={steamProfile.profileurl} target="_blank" rel="noopener noreferrer" className="text-xs text-white/40 hover:text-primary transition-colors duration-150 shrink-0">
+                              View Profile &rarr;
+                            </a>
+                          )}
+                        />
+                        {steamProfile && (
+                          <IntegrationStats items={[
+                            ...(steamProfile.timecreated ? [{ label: 'account age', value: formatAccountAge(steamProfile.timecreated) }] : []),
+                            ...(steamProfile.loccountrycode ? [{ label: 'location', value: steamProfile.loccountrycode }] : []),
+                            ...(steamProfile.personastate !== null && steamProfile.personastate !== undefined ? [{ label: 'status', value: personaStateLabel(steamProfile.personastate) }] : []),
+                          ]} />
+                        )}
+                        <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 text-xs text-white/70">
+                            <FolderOpen className="h-4 w-4 text-sky-400 shrink-0" />
+                            <span>
+                              Game scanning, wishlist syncing, and auto-matching are managed under
+                              {' '}<strong>Library Settings</strong> as a Provider.
+                            </span>
+                          </div>
+                          <Link
+                            to="/settings/library"
+                            className="px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+                          >
+                            Go to Library Settings &rarr;
+                          </Link>
+                        </div>
+                        {steamMessage && <p className="px-5 py-2 text-xs text-green-400">{steamMessage}</p>}
+                        {steamError && <p className="px-5 py-2 text-xs text-red-400">{steamError}</p>}
+                      </>
                     )}
-                    <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5 text-xs text-white/70">
-                        <FolderOpen className="h-4 w-4 text-sky-400 shrink-0" />
-                        <span>
-                          Game scanning, wishlist syncing, and auto-matching are managed under
-                          {' '}<strong>Library Settings</strong> as a Provider.
-                        </span>
-                      </div>
-                      <Link
-                        to="/settings/library"
-                        className="px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
-                      >
-                        Go to Library Settings &rarr;
-                      </Link>
-                    </div>
-                    {steamMessage && <p className="px-5 py-2 text-xs text-green-400">{steamMessage}</p>}
-                    {steamError && <p className="px-5 py-2 text-xs text-red-400">{steamError}</p>}
-                  </>
-                )}
 
-                {/* Epic content */}
-                {i.id === 'epic' && (
-                  <>
-                    <IntegrationProfile
-                      avatarAlt={epicDisplayName ?? 'Epic Games avatar'}
-                      name={epicDisplayName ?? 'Epic Games User'}
-                      detail={epicAccountId ? `Account ID: ${epicAccountId}` : 'Epic Games account linked'}
-                      brandBg={BRAND_BG.epic}
-                      icon={EpicIcon}
-                      brandColor={BRAND_COLORS.epic}
-                    />
-                    <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5 text-xs text-white/70">
-                        <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
-                        <span>
-                          Game scanning and matching are also managed under
-                          {' '}<strong>Library Settings</strong> as a Provider.
-                        </span>
-                      </div>
-                      <Link
-                        to="/settings/library"
-                        className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
-                      >
-                        Go to Library Settings &rarr;
-                      </Link>
-                    </div>
-                    <IntegrationAction
-                      label="Library Scan"
-                      description="Scan your Epic Games library"
-                      result={epicScanResult ? `${epicScanResult.matchedInOtix} matches out of ${epicScanResult.totalInEpic} Epic games` : null}
-                      buttonLabel={epicScanning ? 'Scanning...' : epicScanResult ? 'Re-scan' : 'Scan Library'}
-                      buttonIcon={RefreshCw}
-                      onPress={handleEpicScan}
-                      loading={epicScanning}
-                    />
-                    {epicMessage && <p className="px-5 py-2 text-xs text-green-400">{epicMessage}</p>}
-                    {epicError && <p className="px-5 py-2 text-xs text-red-400">{epicError}</p>}
-                  </>
-                )}
+                    {/* Epic content */}
+                    {i.id === 'epic' && (
+                      <>
+                        <IntegrationProfile
+                          avatarAlt={epicDisplayName ?? 'Epic Games avatar'}
+                          name={epicDisplayName ?? 'Epic Games User'}
+                          detail={epicAccountId ? `Account ID: ${epicAccountId}` : 'Epic Games account linked'}
+                          brandBg={BRAND_BG.epic}
+                          icon={EpicIcon}
+                          brandColor={BRAND_COLORS.epic}
+                        />
+                        <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 text-xs text-white/70">
+                            <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
+                            <span>
+                              Game scanning and matching are also managed under
+                              {' '}<strong>Library Settings</strong> as a Provider.
+                            </span>
+                          </div>
+                          <Link
+                            to="/settings/library"
+                            className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+                          >
+                            Go to Library Settings &rarr;
+                          </Link>
+                        </div>
+                        <IntegrationAction
+                          label="Library Scan"
+                          description="Scan your Epic Games library"
+                          result={epicScanResult ? `${epicScanResult.matchedInOtix} matches out of ${epicScanResult.totalInEpic} Epic games` : null}
+                          buttonLabel={epicScanning ? 'Scanning...' : epicScanResult ? 'Re-scan' : 'Scan Library'}
+                          buttonIcon={RefreshCw}
+                          onPress={handleEpicScan}
+                          loading={epicScanning}
+                        />
+                        <IntegrationAction
+                          label="SteamGridDB Matching"
+                          description="Match artwork and metadata from SteamGridDB for unmatched Epic games"
+                          result={epicSteamGridResult ? `${epicSteamGridResult.matched} matched out of ${epicSteamGridResult.total} games` : null}
+                          buttonLabel={epicResolvingSteamGrid ? 'Matching...' : 'Resolve with SteamGrid'}
+                          buttonIcon={Sparkles}
+                          onPress={handleEpicResolveSteamGrid}
+                          loading={epicResolvingSteamGrid}
+                        />
+                        {epicMessage && <p className="px-5 py-2 text-xs text-green-400">{epicMessage}</p>}
+                        {epicError && <p className="px-5 py-2 text-xs text-red-400">{epicError}</p>}
+                      </>
+                    )}
 
-                {/* Plex content */}
-                {i.id === 'plex' && (
-                  <>
-                    <IntegrationProfile
-                      avatarUrl={plex?.plexThumb}
-                      avatarAlt={plex?.plexUsername ?? 'Plex avatar'}
-                      name={plex?.plexUsername ?? 'Plex User'}
-                      detail={plex?.plexEmail ?? (plex?.plexId ?? user?.plexId ?? 'Plex account linked')}
-                      brandBg={BRAND_BG.plex}
-                      icon={PlexIcon}
-                      brandColor={BRAND_COLORS.plex}
-                    />
+                    {/* Plex content */}
+                    {i.id === 'plex' && (
+                      <>
+                        <IntegrationProfile
+                          avatarUrl={plex?.plexThumb}
+                          avatarAlt={plex?.plexUsername ?? 'Plex avatar'}
+                          name={plex?.plexUsername ?? 'Plex User'}
+                          detail={plex?.plexEmail ?? (plex?.plexId ?? user?.plexId ?? 'Plex account linked')}
+                          brandBg={BRAND_BG.plex}
+                          icon={PlexIcon}
+                          brandColor={BRAND_COLORS.plex}
+                        />
 
-                    {/* Libraries list */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Plex Libraries</p>
-                        <p className="mt-1 text-sm font-medium">
-                          {plexLibrariesLoading
-                            ? 'Loading...'
-                            : plexLibraries && plexLibraries.length > 0
-                              ? `${plexLibraries.length} librar${plexLibraries.length === 1 ? 'y' : 'ies'} found`
-                              : 'Discover your Plex libraries to sync individually'}
-                        </p>
-                      </div>
-                      <DkButton
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleDiscoverLibraries}
-                        loading={discoveringPlex}
-                        disabled={discoveringPlex || plexSyncing || syncingLibraryIds.size > 0}
-                        leftIcon={RefreshCw}
-                        className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
-                      >
-                        {plexLibraries && plexLibraries.length > 0 ? 'Refresh' : 'Discover'}
-                      </DkButton>
-                    </div>
+                        {/* Libraries list */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Plex Libraries</p>
+                            <p className="mt-1 text-sm font-medium">
+                              {plexLibrariesLoading
+                                ? 'Loading...'
+                                : plexLibraries && plexLibraries.length > 0
+                                  ? `${plexLibraries.length} librar${plexLibraries.length === 1 ? 'y' : 'ies'} found`
+                                  : 'Discover your Plex libraries to sync individually'}
+                            </p>
+                          </div>
+                          <DkButton
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleDiscoverLibraries}
+                            loading={discoveringPlex}
+                            disabled={discoveringPlex || plexSyncing || syncingLibraryIds.size > 0}
+                            leftIcon={RefreshCw}
+                            className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
+                          >
+                            {plexLibraries && plexLibraries.length > 0 ? 'Refresh' : 'Discover'}
+                          </DkButton>
+                        </div>
 
-                    {plexLibraries && plexLibraries.length > 0 && (
-                      <div className="px-5 py-2 space-y-2">
-                        {plexLibraries.map((lib) => {
-                          const TypeIcon =
-                            lib.libraryType === 'movie' ? Film :
-                            lib.libraryType === 'show' ? Tv :
-                            lib.libraryType === 'artist' ? Music :
-                            FolderOpen
-                          const typeLabel =
-                            lib.libraryType === 'artist' ? 'Music' :
-                            lib.libraryType === 'movie' ? 'Movies' :
-                            lib.libraryType === 'show' ? 'TV Shows' :
-                            lib.libraryType === 'photo' ? 'Photos' : lib.libraryType
-                          const libIdStr = String(lib.id)
-                          const libProgress = plexLibraryProgress[libIdStr]
-                          const isSyncing = syncingLibraryIds.has(lib.id) || (plexSyncing && libProgress?.phase === 'syncing')
-                          const isComplete = libProgress?.phase === 'complete'
-                          const libError = plexLibraryErrors[libIdStr]
+                        {plexLibraries && plexLibraries.length > 0 && (
+                          <div className="px-5 py-2 space-y-2">
+                            {plexLibraries.map((lib) => {
+                              const TypeIcon =
+                                lib.libraryType === 'movie' ? Film :
+                                lib.libraryType === 'show' ? Tv :
+                                lib.libraryType === 'artist' ? Music :
+                                FolderOpen
+                              const typeLabel =
+                                lib.libraryType === 'artist' ? 'Music' :
+                                lib.libraryType === 'movie' ? 'Movies' :
+                                lib.libraryType === 'show' ? 'TV Shows' :
+                                lib.libraryType === 'photo' ? 'Photos' : lib.libraryType
+                              const libIdStr = String(lib.id)
+                              const libProgress = plexLibraryProgress[libIdStr]
+                              const isSyncing = syncingLibraryIds.has(lib.id) || (plexSyncing && libProgress?.phase === 'syncing')
+                              const isComplete = libProgress?.phase === 'complete'
+                              const libError = plexLibraryErrors[libIdStr]
 
-                          return (
-                            <div key={lib.id} className="flex flex-col gap-2 rounded-xl p-3 bg-white/[0.03]">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium truncate">{lib.title}</span>
-                                    <span className="inline-flex items-center gap-1 text-xs text-white/60 shrink-0 bg-white/5 rounded-md px-1.5 py-0.5">
-                                      <TypeIcon className="h-3 w-3" />
-                                      {typeLabel}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
-                                    <span className="font-medium text-white/60">{lib.serverName}</span>
-                                    <span className="text-white/20">·</span>
-                                    <span>{lib.itemCount} items</span>
-                                    {lib.lastSyncedAt && (
-                                      <>
+                              return (
+                                <div key={lib.id} className="flex flex-col gap-2 rounded-xl p-3 bg-white/[0.03]">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium truncate">{lib.title}</span>
+                                        <span className="inline-flex items-center gap-1 text-xs text-white/60 shrink-0 bg-white/5 rounded-md px-1.5 py-0.5">
+                                          <TypeIcon className="h-3 w-3" />
+                                          {typeLabel}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
+                                        <span className="font-medium text-white/60">{lib.serverName}</span>
                                         <span className="text-white/20">·</span>
-                                        <span>last synced {formatDaysAgo(Math.floor(new Date(lib.lastSyncedAt).getTime() / 1000))}</span>
-                                      </>
-                                    )}
+                                        <span>{lib.itemCount} items</span>
+                                        {lib.lastSyncedAt && (
+                                          <>
+                                            <span className="text-white/20">·</span>
+                                            <span>last synced {formatDaysAgo(Math.floor(new Date(lib.lastSyncedAt).getTime() / 1000))}</span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <DkButton
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleSyncLibrary(lib)}
+                                      loading={isSyncing}
+                                      disabled={isSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
+                                      leftIcon={RefreshCw}
+                                      loadingText="Syncing"
+                                      className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
+                                    >
+                                      Sync
+                                    </DkButton>
                                   </div>
-                                </div>
-                                <DkButton
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleSyncLibrary(lib)}
-                                  loading={isSyncing}
-                                  disabled={isSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
-                                  leftIcon={RefreshCw}
-                                  loadingText="Syncing"
-                                  className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
-                                >
-                                  Sync
-                                </DkButton>
-                              </div>
 
-                              {/* Progress bar: visible when actively syncing this library */}
-                              {isSyncing && libProgress && (
-                                <div className="space-y-1">
-                                  {libProgress.itemsTotal > 0 ? (
-                                    <>
-                                      <div className="overflow-hidden rounded-full h-1.5 w-full bg-white/10">
-                                        <div
-                                          className="rounded-full h-full bg-primary transition-all duration-150"
-                                          style={{ width: `${Math.min(100, Math.round((libProgress.itemsProcessed / libProgress.itemsTotal) * 100))}%` }}
-                                        />
-                                      </div>
-                                      <div className="flex justify-between text-[11px] text-white/40">
-                                        <span>Syncing items...</span>
-                                        <span>{libProgress.itemsProcessed} / {libProgress.itemsTotal}</span>
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <div className="flex justify-between text-[11px] text-white/40">
-                                      <span>Preparing sync...</span>
+                                  {/* Progress bar: visible when actively syncing this library */}
+                                  {isSyncing && libProgress && (
+                                    <div className="space-y-1">
+                                      {libProgress.itemsTotal > 0 ? (
+                                        <>
+                                          <div className="overflow-hidden rounded-full h-1.5 w-full bg-white/10">
+                                            <div
+                                              className="rounded-full h-full bg-primary transition-all duration-150"
+                                              style={{ width: `${Math.min(100, Math.round((libProgress.itemsProcessed / libProgress.itemsTotal) * 100))}%` }}
+                                            />
+                                          </div>
+                                          <div className="flex justify-between text-[11px] text-white/40">
+                                            <span>Syncing items...</span>
+                                            <span>{libProgress.itemsProcessed} / {libProgress.itemsTotal}</span>
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <div className="flex justify-between text-[11px] text-white/40">
+                                          <span>Preparing sync...</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Success state */}
+                                  {isComplete && (
+                                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
+                                      <Check className="h-3 w-3" />
+                                      <span>Sync complete</span>
+                                    </div>
+                                  )}
+
+                                  {/* Individual library scan error */}
+                                  {libError && (
+                                    <div className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400">
+                                      {libError}
                                     </div>
                                   )}
                                 </div>
-                              )}
+                              )
+                            })}
+                          </div>
+                        )}
 
-                              {/* Success state */}
-                              {isComplete && (
-                                <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
-                                  <Check className="h-3 w-3" />
-                                  <span>Sync complete</span>
-                                </div>
-                              )}
+                        {/* Sync All */}
+                        <IntegrationAction
+                          label="Sync All Libraries"
+                          description="Sync all selected Plex libraries at once"
+                          result={plexSyncResult ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded` : null}
+                          buttonLabel={plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync All' : 'Sync All'}
+                          buttonIcon={RefreshCw}
+                          onPress={handlePlexSync}
+                          loading={plexSyncing}
+                          disabled={plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex || !plexLibraries || plexLibraries.length === 0}
+                          progress={plexSyncing && Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length > 0 && <span className="text-xs text-primary">{Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length} libraries syncing</span>}
+                          muted
+                        />
 
-                              {/* Individual library scan error */}
-                              {libError && (
-                                <div className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400">
-                                  {libError}
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
+                        <IntegrationAction
+                          label="Watchlist Sync"
+                          description="Plex Watchlist"
+                          result={plexWatchlistSyncResult ? `${plexWatchlistSyncResult.matched} matches out of ${plexWatchlistSyncResult.total} watchlist items` : null}
+                          buttonLabel={plexWatchlistSyncing ? 'Syncing...' : plexWatchlistSyncResult ? 'Re-sync' : 'Sync Watchlist'}
+                          buttonIcon={RefreshCw}
+                          onPress={handlePlexWatchlistSync}
+                          loading={plexWatchlistSyncing}
+                          disabled={plexWatchlistSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
+                          muted
+                        />
+
+                        <IntegrationAction
+                          label="Storage Optimizer"
+                          description="Analyze server disk space and discover opportunities to save storage from duplicates, legacy codecs, and unwatched items"
+                          buttonLabel="Open Optimizer"
+                          buttonIcon={HardDrive}
+                          onPress={() => setPlexStorageModalOpen(true)}
+                        />
+                        <div className="flex items-center justify-between gap-4 px-5 py-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">Watch History Sync</p>
+                            <p className="mt-0.5 text-xs text-white/60">
+                              Sync episode-level watch history from Plex to your Otix library.
+                            </p>
+                          </div>
+                          <DkSwitch
+                            checked={plexWatchHistoryEnabled}
+                            onCheckedChange={async (checked) => {
+                              setPlexWatchHistoryEnabled(checked)
+                              setPlexError('')
+                              try {
+                                await apiClient.patch('/auth/me', { plex_watch_history_enabled: checked })
+                              } catch (err) {
+                                setPlexWatchHistoryEnabled(!checked)
+                                setPlexError(extractIntegrationMessage(err))
+                              }
+                            }}
+                          />
+                        </div>
+                        {plexMessage && <p className="px-5 py-2 text-xs text-green-400">{plexMessage}</p>}
+                        {plexError && <p className="px-5 py-2 text-xs text-red-400">{plexError}</p>}
+                      </>
                     )}
 
-                    {/* Sync All */}
-                    <IntegrationAction
-                      label="Sync All Libraries"
-                      description="Sync all selected Plex libraries at once"
-                      result={plexSyncResult ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded` : null}
-                      buttonLabel={plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync All' : 'Sync All'}
-                      buttonIcon={RefreshCw}
-                      onPress={handlePlexSync}
-                      loading={plexSyncing}
-                      disabled={plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex || !plexLibraries || plexLibraries.length === 0}
-                      progress={plexSyncing && Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length > 0 && <span className="text-xs text-primary">{Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length} libraries syncing</span>}
-                      muted
-                    />
-
-                    <IntegrationAction
-                      label="Watchlist Sync"
-                      description="Plex Watchlist"
-                      result={plexWatchlistSyncResult ? `${plexWatchlistSyncResult.matched} matches out of ${plexWatchlistSyncResult.total} watchlist items` : null}
-                      buttonLabel={plexWatchlistSyncing ? 'Syncing...' : plexWatchlistSyncResult ? 'Re-sync' : 'Sync Watchlist'}
-                      buttonIcon={RefreshCw}
-                      onPress={handlePlexWatchlistSync}
-                      loading={plexWatchlistSyncing}
-                      disabled={plexWatchlistSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
-                      muted
-                    />
-
-                    <IntegrationAction
-                      label="Storage Optimizer"
-                      description="Analyze server disk space and discover opportunities to save storage from duplicates, legacy codecs, and unwatched items"
-                      buttonLabel="Open Optimizer"
-                      buttonIcon={HardDrive}
-                      onPress={() => setPlexStorageModalOpen(true)}
-                    />
-                    <div className="flex items-center justify-between gap-4 px-5 py-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium">Watch History Sync</p>
-                        <p className="mt-0.5 text-xs text-white/60">
-                          Sync episode-level watch history from Plex to your Otix library.
-                        </p>
-                      </div>
-                      <DkSwitch
-                        checked={plexWatchHistoryEnabled}
-                        onCheckedChange={async (checked) => {
-                          setPlexWatchHistoryEnabled(checked)
-                          setPlexError('')
-                          try {
-                            await apiClient.patch('/auth/me', { plex_watch_history_enabled: checked })
-                          } catch (err) {
-                            setPlexWatchHistoryEnabled(!checked)
-                            setPlexError(extractIntegrationMessage(err))
-                          }
-                        }}
-                      />
-                    </div>
-                    {plexMessage && <p className="px-5 py-2 text-xs text-green-400">{plexMessage}</p>}
-                    {plexError && <p className="px-5 py-2 text-xs text-red-400">{plexError}</p>}
-                  </>
-                )}
-
-                {/* Google Drive content */}
-                {i.id === 'google_drive' && (
-                  <>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 bg-white/[0.03] text-xs text-white/60">
-                      <span>
-                        {googleEmail ? (
-                          <>Connected account: <span className="text-white/90 font-medium">{googleEmail}</span></>
-                        ) : (
-                          'Backs up your game saves to a dedicated folder in your Google Drive.'
-                        )}
-                      </span>
-                    </div>
-                    {driveMessage && <p className="px-5 py-2 text-xs text-green-400">{driveMessage}</p>}
-                    {driveError && <p className="px-5 py-2 text-xs text-red-400">{driveError}</p>}
-                  </>
-                )}
-
-                {/* Google content */}
-                {i.id === 'google' && (
-                  <>
-                    <IntegrationProfile
-                      avatarUrl={googleAvatarUrl}
-                      avatarAlt={googleName ?? 'Google avatar'}
-                      name={googleName ?? 'Google User'}
-                      detail={googleEmail ?? 'Google account linked'}
-                      brandBg={BRAND_BG.google}
-                      icon={GoogleIcon}
-                      brandColor={BRAND_COLORS.google}
-                    />
-                    <IntegrationAction label="YouTube Sync" description="YouTube Liked Videos" result={youtubeSyncResult ? `${youtubeSyncResult.total} videos (${youtubeSyncResult.matched} matched, ${youtubeSyncResult.musicVideos} music)` : null} buttonLabel={youtubeSyncing ? 'Syncing...' : youtubeSyncResult ? 'Re-sync' : 'Sync Liked Videos'} buttonIcon={RefreshCw} onPress={handleYouTubeSync} loading={youtubeSyncing} disabled={youtubeSyncing} progress={youtubeProgress && <span className="text-xs text-primary">{youtubeProgress.phase}{youtubeProgress.detail ? ` (${youtubeProgress.detail})` : ''}</span>} />
-                    {googleMessage && <p className="px-5 py-2 text-xs text-green-400">{googleMessage}</p>}
-                    {googleError && <p className="px-5 py-2 text-xs text-red-400">{googleError}</p>}
-                    {youtubeMessage && <p className="px-5 py-2 text-xs text-green-400">{youtubeMessage}</p>}
-                    {youtubeError && <p className="px-5 py-2 text-xs text-red-400">{youtubeError}</p>}
-                  </>
-                )}
-
-                {/* TMDb content */}
-                {i.id === 'tmdb' && (
-                  <>
-                    <IntegrationProfile
-                      avatarUrl={tmdbAvatarUrl}
-                      avatarAlt={tmdbUsername ?? 'TMDb avatar'}
-                      name={tmdbUsername ?? 'TMDb User'}
-                      detail="TMDb account linked"
-                      brandBg={BRAND_BG.tmdb}
-                      icon={TmdbIcon}
-                      brandColor={BRAND_COLORS.tmdb}
-                    />
-                    {tmdbStats && (
-                      <IntegrationStats items={[
-                        { label: 'rated movies', value: tmdbStats.ratedMovies },
-                        { label: 'rated shows', value: tmdbStats.ratedTv },
-                        { label: 'watchlist movies', value: tmdbStats.watchlistMovies },
-                        { label: 'watchlist shows', value: tmdbStats.watchlistTv },
-                      ]} />
-                    )}
-                    <IntegrationAction label="Rating Sync" description="Sync ratings between Otix and TMDb" result={tmdbSyncResult ? `${tmdbSyncResult.imported > 0 ? `${tmdbSyncResult.imported} imported` : ''}${tmdbSyncResult.imported > 0 && tmdbSyncResult.exported > 0 ? ', ' : ''}${tmdbSyncResult.exported > 0 ? `${tmdbSyncResult.exported} exported` : ''}${tmdbSyncResult.skipped > 0 ? ` (${tmdbSyncResult.skipped} skipped)` : ''}` : null} buttonLabel={tmdbSyncing ? 'Syncing...' : 'Sync Ratings'} buttonIcon={RefreshCw} onPress={handleTmdbRatingSync} loading={tmdbSyncing} disabled={tmdbSyncDirection === 'disabled'}>
-                      <div className="mt-2">
-                        <DkDropdown options={tmdbSyncDirections} value={tmdbSyncDirection} onChange={setTmdbSyncDirection} placeholder="Direction" />
-                      </div>
-                    </IntegrationAction>
-                    <IntegrationAction label="Watchlist Import" description="Import your TMDb watchlist into Otix" result={tmdbWatchlistResult ? `${tmdbWatchlistResult.imported} imported, ${tmdbWatchlistResult.skipped} skipped` : null} buttonLabel={tmdbWatchlistImporting ? 'Importing...' : tmdbWatchlistResult ? 'Re-import' : 'Import'} buttonIcon={Download} onPress={handleTmdbWatchlistImport} loading={tmdbWatchlistImporting} muted />
-                    {tmdbMessage && <p className="px-5 py-2 text-xs text-green-400">{tmdbMessage}</p>}
-                    {tmdbError && <p className="px-5 py-2 text-xs text-red-400">{tmdbError}</p>}
-                  </>
-                )}
-
-                {/* SABnzbd content */}
-                {i.id === 'sabnzbd' && (
-                  <>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs">
-                      <span className="text-white/60">
-                        {activeServer ? (
-                          <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
-                        ) : (
-                          'Connect a server to enable'
-                        )}
-                      </span>
-                      <Link
-                        to="/downloads"
-                        className="text-amber-400 hover:text-amber-300 font-medium transition-colors duration-150 inline-flex items-center gap-1"
-                      >
-                        View Downloads Queue &rarr;
-                      </Link>
-                    </div>
-                    {sabnzbdQueue && (
-                      <IntegrationStats items={[
-                        { label: 'queue status', value: sabnzbdQueue.status || 'Idle' },
-                        { label: 'download speed', value: sabnzbdQueue.speed || '0 B/s' },
-                        { label: 'queued items', value: String(sabnzbdQueue.items?.length ?? 0) },
-                        ...(sabnzbdQueue.time_left ? [{ label: 'time left', value: sabnzbdQueue.time_left }] : []),
-                      ]} />
-                    )}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 bg-white/[0.03]">
-                      <div>
-                        <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Queue Controls</p>
-                        <p className="text-xs text-white/70 mt-0.5">
-                          {isQueuePaused ? 'Download queue is paused.' : 'Download queue is currently active.'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <DkButton
-                          size="sm"
-                          variant="ghost"
-                          onClick={handleToggleQueuePause}
-                          loading={pauseSabnzbdMutation.isPending || resumeSabnzbdMutation.isPending}
-                          leftIcon={isQueuePaused ? Play : Pause}
-                          className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                        >
-                          {isQueuePaused ? 'Resume Queue' : 'Pause Queue'}
-                        </DkButton>
-                      </div>
-                    </div>
-                    <IntegrationAction
-                      label="SABnzbd Settings"
-                      description="Configure host, port, API key, and download category"
-                      buttonLabel="Configure SABnzbd"
-                      buttonIcon={DownloadCloud}
-                      onPress={openSabnzbdModal}
-                    />
-                  </>
-                )}
-
-                {/* Prowlarr content */}
-                {i.id === 'prowlarr' && (
-                  <>
-                    <div className="flex items-center justify-between px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
-                      <span>
-                        {activeServer ? (
-                          <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
-                        ) : (
-                          'Connect a server to enable'
-                        )}
-                      </span>
-                    </div>
-
-                    <div className="px-5 py-4 space-y-3">
-                      <ProwlarrIndexersPanel
-                        protocol={prowlarrSyncProtocol}
-                        onProtocolChange={setProwlarrSyncProtocol}
-                        onSync={() => void handleProwlarrSync()}
-                        isSyncing={syncProwlarrMutation.isPending}
-                        indexers={prowlarrIndexers}
-                        syncMessage={prowlarrSyncMessage}
-                      />
-                    </div>
-
-                    <IntegrationAction
-                      label="Prowlarr Settings"
-                      description="Configure host, port, API key, and search categories"
-                      buttonLabel="Configure Prowlarr"
-                      buttonIcon={Search}
-                      onPress={openProwlarrModal}
-                    />
-                  </>
-                )}
-
-                {/* Radarr content */}
-                {i.id === 'radarr' && (
-                  <>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
-                      <span>
-                        {activeServer ? (
-                          <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
-                        ) : (
-                          'Connect a server to enable'
-                        )}
-                      </span>
-                    </div>
-
-                    {isRadarrConfigured && (
-                      <IntegrationStats items={[
-                        { label: 'indexed movies', value: String(radarrMovies.length) },
-                        { label: 'monitored', value: String(radarrMovies.filter((m) => m.monitored).length) },
-                        { label: 'queued downloads', value: String(radarrQueue?.totalRecords ?? radarrQueue?.records?.length ?? 0) },
-                      ]} />
+                    {/* Google Drive content */}
+                    {i.id === 'google_drive' && (
+                      <>
+                        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 bg-white/[0.03] text-xs text-white/60">
+                          <span>
+                            {googleEmail ? (
+                              <>Connected account: <span className="text-white/90 font-medium">{googleEmail}</span></>
+                            ) : (
+                              'Backs up your game saves to a dedicated folder in your Google Drive.'
+                            )}
+                          </span>
+                        </div>
+                        {driveMessage && <p className="px-5 py-2 text-xs text-green-400">{driveMessage}</p>}
+                        {driveError && <p className="px-5 py-2 text-xs text-red-400">{driveError}</p>}
+                      </>
                     )}
 
-                    <IntegrationAction
-                      label="Radarr Settings"
-                      description="Configure host, port, API key, quality profile, and root folder"
-                      buttonLabel="Configure Radarr"
-                      buttonIcon={Film}
-                      onPress={openRadarrModal}
-                    />
-                  </>
-                )}
-
-                {/* Sonarr content */}
-                {i.id === 'sonarr' && (
-                  <>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
-                      <span>
-                        {activeServer ? (
-                          <>Managed by <span className="text-white/90 font-medium">{activeServer.name}</span> ({activeServer.primaryUrl})</>
-                        ) : (
-                          'Connect a server to enable'
-                        )}
-                      </span>
-                    </div>
-
-                    {isSonarrConfigured && (
-                      <IntegrationStats items={[
-                        { label: 'indexed series', value: String(sonarrSeries.length) },
-                        { label: 'monitored', value: String(sonarrSeries.filter((s) => s.monitored).length) },
-                        { label: 'queued downloads', value: String(sonarrQueue?.totalRecords ?? sonarrQueue?.records?.length ?? 0) },
-                      ]} />
+                    {/* Google content */}
+                    {i.id === 'google' && (
+                      <>
+                        <IntegrationProfile
+                          avatarUrl={googleAvatarUrl}
+                          avatarAlt={googleName ?? 'Google avatar'}
+                          name={googleName ?? 'Google User'}
+                          detail={googleEmail ?? 'Google account linked'}
+                          brandBg={BRAND_BG.google}
+                          icon={GoogleIcon}
+                          brandColor={BRAND_COLORS.google}
+                        />
+                        <IntegrationAction label="YouTube Sync" description="YouTube Liked Videos" result={youtubeSyncResult ? `${youtubeSyncResult.total} videos (${youtubeSyncResult.matched} matched, ${youtubeSyncResult.musicVideos} music)` : null} buttonLabel={youtubeSyncing ? 'Syncing...' : youtubeSyncResult ? 'Re-sync' : 'Sync Liked Videos'} buttonIcon={RefreshCw} onPress={handleYouTubeSync} loading={youtubeSyncing} disabled={youtubeSyncing} progress={youtubeProgress && <span className="text-xs text-primary">{youtubeProgress.phase}{youtubeProgress.detail ? ` (${youtubeProgress.detail})` : ''}</span>} />
+                        {googleMessage && <p className="px-5 py-2 text-xs text-green-400">{googleMessage}</p>}
+                        {googleError && <p className="px-5 py-2 text-xs text-red-400">{googleError}</p>}
+                        {youtubeMessage && <p className="px-5 py-2 text-xs text-green-400">{youtubeMessage}</p>}
+                        {youtubeError && <p className="px-5 py-2 text-xs text-red-400">{youtubeError}</p>}
+                      </>
                     )}
 
-                    <IntegrationAction
-                      label="Sonarr Settings"
-                      description="Configure host, port, API key, quality profile, and series options"
-                      buttonLabel="Configure Sonarr"
-                      buttonIcon={Tv}
-                      onPress={openSonarrModal}
-                    />
-                  </>
-                )}
-              </IntegrationCard>
-            ))}
-          </div>
-        )}
-      </SettingsCard>
+                    {/* TMDb content */}
+                    {i.id === 'tmdb' && (
+                      <>
+                        <IntegrationProfile
+                          avatarUrl={tmdbAvatarUrl}
+                          avatarAlt={tmdbUsername ?? 'TMDb avatar'}
+                          name={tmdbUsername ?? 'TMDb User'}
+                          detail="TMDb account linked"
+                          brandBg={BRAND_BG.tmdb}
+                          icon={TmdbIcon}
+                          brandColor={BRAND_COLORS.tmdb}
+                        />
+                        {tmdbStats && (
+                          <IntegrationStats items={[
+                            { label: 'rated movies', value: tmdbStats.ratedMovies },
+                            { label: 'rated shows', value: tmdbStats.ratedTv },
+                            { label: 'watchlist movies', value: tmdbStats.watchlistMovies },
+                            { label: 'watchlist shows', value: tmdbStats.watchlistTv },
+                          ]} />
+                        )}
+                        <IntegrationAction label="Rating Sync" description="Sync ratings between Otix and TMDb" result={tmdbSyncResult ? `${tmdbSyncResult.imported > 0 ? `${tmdbSyncResult.imported} imported` : ''}${tmdbSyncResult.imported > 0 && tmdbSyncResult.exported > 0 ? ', ' : ''}${tmdbSyncResult.exported > 0 ? `${tmdbSyncResult.exported} exported` : ''}${tmdbSyncResult.skipped > 0 ? ` (${tmdbSyncResult.skipped} skipped)` : ''}` : null} buttonLabel={tmdbSyncing ? 'Syncing...' : 'Sync Ratings'} buttonIcon={RefreshCw} onPress={handleTmdbRatingSync} loading={tmdbSyncing} disabled={tmdbSyncDirection === 'disabled'}>
+                          <div className="mt-2">
+                            <DkDropdown options={tmdbSyncDirections} value={tmdbSyncDirection} onChange={setTmdbSyncDirection} placeholder="Direction" />
+                          </div>
+                        </IntegrationAction>
+                        <IntegrationAction label="Watchlist Import" description="Import your TMDb watchlist into Otix" result={tmdbWatchlistResult ? `${tmdbWatchlistResult.imported} imported, ${tmdbWatchlistResult.skipped} skipped` : null} buttonLabel={tmdbWatchlistImporting ? 'Importing...' : tmdbWatchlistResult ? 'Re-import' : 'Import'} buttonIcon={Download} onPress={handleTmdbWatchlistImport} loading={tmdbWatchlistImporting} muted />
+                        {tmdbMessage && <p className="px-5 py-2 text-xs text-green-400">{tmdbMessage}</p>}
+                        {tmdbError && <p className="px-5 py-2 text-xs text-red-400">{tmdbError}</p>}
+                      </>
+                    )}
+                  </IntegrationCard>
+                ))}
+              </SettingsCard>
+            </div>
+          )}
+
+          {nodesVisible && (
+            <div id="nodes" className="scroll-mt-28 space-y-3">
+              {workerNodes.length > 0 ? (
+                workerNodes.map((node) => (
+                  <NodeConnectionsGroup key={node.id} server={node} searchQuery={searchQuery} />
+                ))
+              ) : (
+                <SettingsCard>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white/80">No nodes connected</p>
+                      <p className="text-xs text-white/50 mt-0.5">
+                        Connect an Otix node to configure SABnzbd, Prowlarr, Radarr, and Sonarr.
+                      </p>
+                    </div>
+                    <Link
+                      to="/settings/nodes"
+                      className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+                    >
+                      Go to Nodes →
+                    </Link>
+                  </div>
+                </SettingsCard>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
       {plexStorageModalOpen && (
         <PlexStorageOptimizerModal
@@ -1904,3 +2058,4 @@ export function SettingsIntegrationsPage() {
     </div>
   )
 }
+

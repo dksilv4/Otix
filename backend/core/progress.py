@@ -123,6 +123,5 @@ class RedisProgress:
 plex_progress = RedisProgress("plex:sync")
 youtube_progress = RedisProgress("youtube:sync")
 tmdb_progress = RedisProgress("tmdb:sync")
-musicbrainz_progress = RedisProgress("musicbrainz:sync")
 igdb_progress = RedisProgress("igdb:sync")
 steamgrid_progress = RedisProgress("steamgrid:sync")

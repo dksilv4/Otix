@@ -1,0 +1,79 @@
+{
+  "kind": "youtube#videoListResponse",
+  "etag": "YTB-etag-xyz-123",
+  "items": [
+    {
+      "kind": "youtube#video",
+      "etag": "item-etag-1",
+      "id": "1uYWYWPc9HU",
+      "snippet": {
+        "publishedAt": "2008-11-25T14:15:40Z",
+        "channelId": "UCGLyR1B2Z2W9P48yN4k9tVw",
+        "title": "Radiohead - Karma Police (Official Music Video)",
+        "description": "The official music video for Radiohead's 'Karma Police' directed by Jonathan Glazer.",
+        "thumbnails": {
+          "default": {
+            "url": "https://i.ytimg.com/vi/1uYWYWPc9HU/default.jpg",
+            "width": 120,
+            "height": 90
+          },
+          "medium": {
+            "url": "https://i.ytimg.com/vi/1uYWYWPc9HU/mqdefault.jpg",
+            "width": 320,
+            "height": 180
+          },
+          "high": {
+            "url": "https://i.ytimg.com/vi/1uYWYWPc9HU/hqdefault.jpg",
+            "width": 480,
+            "height": 360
+          }
+        },
+        "channelTitle": "Radiohead",
+        "tags": [
+          "Radiohead",
+          "Karma Police",
+          "OK Computer",
+          "Alternative Rock"
+        ],
+        "categoryId": "10",
+        "liveBroadcastContent": "none"
+      },
+      "topicDetails": {
+        "topicCategories": [
+          "https://en.wikipedia.org/wiki/Music",
+          "https://en.wikipedia.org/wiki/Rock_music"
+        ]
+      }
+    },
+    {
+      "kind": "youtube#video",
+      "etag": "item-etag-2",
+      "id": "fJ9rUzIMcZQ",
+      "snippet": {
+        "publishedAt": "2008-08-01T12:00:00Z",
+        "channelId": "UCuAXFkgsw1L7xaCfnd5JJOw",
+        "title": "Queen - Bohemian Rhapsody (Official Video Remastered)",
+        "description": "Bohemian Rhapsody official video remastered in HD.",
+        "thumbnails": {
+          "high": {
+            "url": "https://i.ytimg.com/vi/fJ9rUzIMcZQ/hqdefault.jpg",
+            "width": 480,
+            "height": 360
+          }
+        },
+        "channelTitle": "Queen Official",
+        "categoryId": "10"
+      },
+      "topicDetails": {
+        "topicCategories": [
+          "https://en.wikipedia.org/wiki/Music",
+          "https://en.wikipedia.org/wiki/Rock_music"
+        ]
+      }
+    }
+  ],
+  "pageInfo": {
+    "totalResults": 2,
+    "resultsPerPage": 50
+  }
+}

@@ -54,9 +54,9 @@ from apps.media.models import (
     Platform,
 )
 from apps.media.services.catalog_lifecycle import finish_catalog_seed, payload_hash_matches
-from apps.media.services.catalog_link import attach_igdb_store_ids
 from apps.media.services.completeness import recompute_completeness
-from apps.media.services.igdb import _PLATFORM_NORMALIZATION, cover_url
+from apps.media.services.igdb import _PLATFORM_NORMALIZATION
+from core.providers.igdb.hydrators import seed_game_from_igdb
 
 if TYPE_CHECKING:
     from core.providers.igdb import IGDBProvider
@@ -582,53 +582,6 @@ def _upsert_game_age_ratings(media: MediaItem, raw_ratings: Any) -> None:
         )
 
 
-def seed_game_from_igdb(raw: dict[str, Any], igdb_id: int) -> int:
-    """Map an IGDB game lookup onto a MediaItem + Game, hydrate it; return its pk.
-
-    Identity is the IGDB ExternalID only — two games that share a slug (DLC vs
-    main) stay separate rows.
-    """
-    from apps.media.services.identity import attach_external_id, find_media_id
-
-    igdb_id_str = str(igdb_id)
-    existing_id = find_media_id("igdb", igdb_id_str, "game")
-    media = MediaItem.objects.filter(pk=existing_id).first() if existing_id else None
-
-    if media is None:
-        title = (raw.get("name") or "Unknown Game").strip() or "Unknown Game"
-        overview = raw.get("storyline") or raw.get("summary")
-        poster_url = cover_url(raw.get("cover"))
-        slug = _game_slug(raw, title)
-        release_date = _ts_to_date(raw.get("first_release_date"))
-        media = MediaItem.objects.create(
-            media_type="game",
-            title=title,
-            slug=slug,
-            overview=overview,
-            release_date=release_date,
-            completeness_score=0.15,
-        )
-        media_id = attach_external_id(media.pk, "igdb", igdb_id_str, "game")
-        if media_id != media.pk:
-            media = MediaItem.objects.get(pk=media_id)
-        else:
-            if poster_url:
-                _upsert_poster_asset(media, poster_url)
-    else:
-        media_id = media.pk
-        poster_url = cover_url(raw.get("cover"))
-        if poster_url:
-            _upsert_poster_asset(media, poster_url)
-
-    game, _ = Game.objects.get_or_create(media_item_id=media.pk)
-    _hydrate_game(media, game, raw)
-    _top_up_media_popularity(media, raw)
-    top_up_game_ratings(media, raw)
-    attach_igdb_store_ids(media.pk, raw)
-    finish_catalog_seed(media, raw, provider="igdb", external_id=str(igdb_id), hash_matched=False)
-    return media.pk
-
-
 def _top_up_media_popularity(media: MediaItem, raw: dict[str, Any]) -> None:
     """Fold an IGDB popularity proxy onto a game hub row that has none yet.
 
@@ -924,6 +877,24 @@ async def fetch_and_seed_game(
             raw["all_covers"] = covers
     except Exception:
         pass
+    # Resolve character details (best-effort)
+    raw_chars = raw.get("characters")
+    if isinstance(raw_chars, list) and raw_chars:
+        if any(isinstance(c, (int, str)) for c in raw_chars):
+            try:
+                char_ids = [int(c) for c in raw_chars if c is not None]
+                chars = await provider.get_characters(char_ids)
+                if chars:
+                    raw["characters"] = chars
+            except Exception:
+                pass
+    elif not raw_chars:
+        try:
+            chars = await provider.get_game_characters(igdb_id)
+            if chars:
+                raw["characters"] = chars
+        except Exception:
+            pass
     media_id = await sync_to_async(seed_game_from_igdb)(raw, igdb_id)
     await _steamgrid_enrich_after_seed(media_id, _steam_app_id(raw))
     await _enqueue_related_igdb(raw)

@@ -182,7 +182,7 @@ class ReleaseTaskTests(TestCase):
 
     @mock.patch("apps.social.tasks.send_notification")
     def test_transition_task_sends_available(self, send) -> None:
-        media = self._media(timezone.localdate(), "today")
+        self._media(timezone.localdate(), "today")
         created = notify_release_transitions_task()
         self.assertEqual(created, 1)
         send.assert_called_once()

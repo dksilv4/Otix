@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "games": [
+    {
+      "app_name": "Sugar",
+      "title": "Alan Wake 2",
+      "namespace": "20a6f0814f3b497b830d663efc81912f",
+      "catalog_item_id": "4b68e9833cb94689be50ca31ee4d4f20",
+      "offer_id": "3b2bc756c9d04baab941b312b9dcfd75"
+    },
+    {
+      "app_name": "Salt",
+      "title": "Death Stranding",
+      "namespace": "0a12f7186a524e93bb39832dc9b5aa12",
+      "catalog_item_id": "5c78f1028a114b10b0a8809c90b0e911",
+      "offer_id": "4a3b82195e024b898124b8f041cb1212"
+    },
+    {
+      "app_name": "Pepper",
+      "title": "Control",
+      "namespace": "2a14cf8a4f3b497b830d663efc81912a",
+      "catalog_item_id": "1b28e9833cb94689be50ca31ee4d4f10",
+      "offer_id": "2a3bc756c9d04baab941b312b9dcfd60"
+    }
+  ]
+}

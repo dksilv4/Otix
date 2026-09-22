@@ -4,6 +4,7 @@
 .env.*
 **/.env
 **/.env.*
+docker-compose.override.yml
 # Legacy FastAPI tree (renamed backend/ -> old-backend/ in the Django cutover).
 /old-backend/.venv
 /old-backend/otix.egg-info

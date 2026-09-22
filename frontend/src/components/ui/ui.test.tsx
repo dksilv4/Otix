@@ -182,6 +182,15 @@ describe('dk-ui molecules', () => {
           <button onClick={() => toast({ title: 'Default Msg', variant: 'default' })}>
             Toast Default
           </button>
+          <button onClick={() => toast({ title: 'No Variant Msg' })}>
+            Toast No Variant
+          </button>
+          <button onClick={() => toast({ title: 'Destructive Msg', variant: 'destructive' })}>
+            Toast Destructive
+          </button>
+          <button onClick={() => toast({ title: 'Unknown Msg', variant: 'custom-unknown' as any })}>
+            Toast Unknown
+          </button>
         </div>
       )
     }
@@ -212,6 +221,18 @@ describe('dk-ui molecules', () => {
     // Click default
     await userEvent.click(screen.getByText('Toast Default'))
     expect(screen.getByText('Default Msg')).toBeInTheDocument()
+
+    // Click omitted variant - should not crash and render safely
+    await userEvent.click(screen.getByText('Toast No Variant'))
+    expect(screen.getByText('No Variant Msg')).toBeInTheDocument()
+
+    // Click destructive variant - should not crash and render safely
+    await userEvent.click(screen.getByText('Toast Destructive'))
+    expect(screen.getByText('Destructive Msg')).toBeInTheDocument()
+
+    // Click unknown variant - should not crash and fallback safely
+    await userEvent.click(screen.getByText('Toast Unknown'))
+    expect(screen.getByText('Unknown Msg')).toBeInTheDocument()
   })
 
   it('throws error when useToast is used outside provider', () => {

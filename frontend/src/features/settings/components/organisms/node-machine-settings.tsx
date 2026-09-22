@@ -21,9 +21,10 @@ const DEFAULT_SETTINGS: DesktopSettingsData = {
   startMinimized: false,
 }
 
-function readStoredSettings(): DesktopSettingsData {
+function readStoredSettings(serverId?: number): DesktopSettingsData {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const key = serverId != null && serverId !== -1 ? `${STORAGE_KEY}:node:${serverId}` : STORAGE_KEY
+    const raw = localStorage.getItem(key)
     if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
   } catch {}
   return DEFAULT_SETTINGS
@@ -37,6 +38,7 @@ function mapNodeSettings(fetched: Record<string, any>, fallback?: DesktopSetting
     alwaysOnTop: Boolean(fetched.alwaysOnTop ?? fetched.always_on_top ?? fallback?.alwaysOnTop),
     startMinimized: Boolean(fetched.startMinimized ?? fetched.start_minimized ?? fallback?.startMinimized),
     gamesDownloadPath: fetched.gamesDownloadPath || fetched.games_download_path || fallback?.gamesDownloadPath || '',
+    gamesInstallPath: fetched.gamesInstallPath || fetched.games_install_path || fallback?.gamesInstallPath || '',
     scanOnLaunch: Boolean(fetched.scanOnLaunch ?? fetched.scan_on_launch ?? fallback?.scanOnLaunch),
   }
 }
@@ -51,7 +53,10 @@ const ROWS = [
 
 export function NodeMachineSettings({ server }: { server: GameServer }) {
   const { toast } = useToast()
-  const [settings, setSettings] = useState<DesktopSettingsData>(readStoredSettings)
+  const managingLocal = isLocalDesktopNode(server)
+  const managingBackend = isBackendNode(server)
+  const storageKey = managingLocal ? STORAGE_KEY : `${STORAGE_KEY}:node:${server.id}`
+  const [settings, setSettings] = useState<DesktopSettingsData>(() => readStoredSettings(server.id))
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [supported, setSupported] = useState(false)
@@ -63,9 +68,6 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
     platform?: string
   } | undefined
 
-  const managingLocal = isLocalDesktopNode(server)
-  const managingBackend = isBackendNode(server)
-
   useEffect(() => {
     let cancelled = false
 
@@ -73,7 +75,7 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
       setLoading(true)
       try {
         if (managingLocal) {
-          let mapped = readStoredSettings()
+          let mapped = readStoredSettings(server.id)
           if (api?.getDesktopSettings) {
             try {
               const local = await api.getDesktopSettings()
@@ -98,11 +100,11 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
           setSupported(fetchedSettings.supported ?? (nextPlatform === 'windows' || nextPlatform === 'linux'))
           const mapped = mapNodeSettings(fetchedSettings)
           setSettings(mapped)
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped)) } catch {}
+          try { localStorage.setItem(storageKey, JSON.stringify(mapped)) } catch {}
         }
       } catch {
         if (!cancelled) {
-          setSettings(readStoredSettings())
+          setSettings(readStoredSettings(server.id))
           setSupported(false)
           setPlatform('unknown')
         }
@@ -115,13 +117,13 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
     return () => {
       cancelled = true
     }
-  }, [api, managingLocal, server.id])
+  }, [api, managingLocal, server.id, storageKey])
 
   const handleToggle = useCallback((key: keyof DesktopSettingsData) => async (checked: boolean) => {
     setSaving(key)
     const next = { ...settings, [key]: checked }
     setSettings(next)
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
+    try { localStorage.setItem(storageKey, JSON.stringify(next)) } catch {}
 
     if (managingLocal) {
       try {
@@ -133,7 +135,7 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
         toast({
           title: 'Failed to update setting',
           description: String(err),
-          variant: 'destructive',
+          variant: 'error',
         })
       } finally {
         setSaving(null)

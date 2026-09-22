@@ -9,8 +9,8 @@ from django.urls import path
 
 from apps.integrations.views import (
     EpicLibraryScanView,
+    EpicResolveSteamGridView,
     EpicStatusView,
-    PlexAlbumTracksView,
     PlexConnectInfoView,
     PlexLibrariesView,
     PlexServersView,
@@ -55,11 +55,6 @@ urlpatterns = [
         PlexConnectInfoView.as_view(),
         name="plex-connect-info",
     ),
-    path(
-        "plex/album-tracks/<int:media_item_id>",
-        PlexAlbumTracksView.as_view(),
-        name="plex-album-tracks",
-    ),
     path("plex/sessions", PlexSessionsView.as_view(), name="plex-sessions"),
     path(
         "plex/watchlist/sync",
@@ -97,6 +92,11 @@ urlpatterns = [
     # Epic status + scan (token lives on the Otix Server node).
     path("epic/status", EpicStatusView.as_view(), name="epic-status"),
     path("epic/scan", EpicLibraryScanView.as_view(), name="epic-scan"),
+    path(
+        "epic/resolve-steamgrid",
+        EpicResolveSteamGridView.as_view(),
+        name="epic-resolve-steamgrid",
+    ),
     # TMDb account sync (ratings both ways + watchlist import).
     path(
         "tmdb/rating-sync",

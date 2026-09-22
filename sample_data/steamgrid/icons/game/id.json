@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": 44201,
+      "score": 9,
+      "width": 256,
+      "height": 256,
+      "nsfw": false,
+      "humor": false,
+      "mime": "image/png",
+      "language": "en",
+      "url": "https://cdn2.steamgriddb.com/icon/479ef4a85208f8bb1945f32df6655ce5.png",
+      "thumb": "https://cdn2.steamgriddb.com/icon_thumb/479ef4a85208f8bb1945f32df6655ce5.png",
+      "upvotes": 9,
+      "downvotes": 0
+    }
+  ]
+}

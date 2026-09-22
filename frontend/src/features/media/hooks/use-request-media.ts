@@ -61,6 +61,8 @@ export interface RequestMediaState {
   mediaYear?: number
   posterUrl?: string | null
   requestLabel: string
+  loadingLabel?: string
+  disabledReason?: string | null
   instances: RequestInstance[]
   widgets: RequestWidget[]
   hasLibraryStatus: boolean
@@ -71,6 +73,8 @@ export interface RequestMediaState {
   serverId?: number
   handleRequest: (opts?: string | RequestMediaOptions) => Promise<void>
   handleCancelQueue: () => void
+  refetchStatus?: () => Promise<unknown>
+  isCheckingStatus?: boolean
 }
 
 async function lookupOnInstance(
@@ -94,11 +98,16 @@ export function useRequestMedia(): RequestMediaState {
   const hasSession = useHasSession()
   const enabled = isArrMediaType(rawType)
   const mediaType: 'movie' | 'show' = rawType === 'show' ? 'show' : 'movie'
-  const { data: detail } = useQuery({
+  const detailQuery = useQuery({
     ...mediaQueries.detail(rawType, mediaId),
     enabled: enabled && Boolean(mediaId),
   })
-  const tmdbId = detail?.tmdbId || ''
+  const detail = detailQuery.data
+  const detailLoading = detailQuery.isLoading
+  const tmdbId =
+    detail?.tmdbId ||
+    (mediaId && /^tmdb:(?:movie:|show:)?(\d+)$/i.exec(mediaId)?.[1]) ||
+    ''
   const tvdbId = detail?.tvdbId || ''
   const mediaTitle = detail?.title || ''
   const year = yearFromReleaseDate(detail?.releaseDate)
@@ -116,14 +125,15 @@ export function useRequestMedia(): RequestMediaState {
   const configLoading = isMovie ? radarrConfig.isLoading : sonarrConfig.isLoading
   const instances = readyArrInstances(config, isMovie ? 7878 : 8989)
   const hasArr = enabled && Boolean(serverId) && instances.length > 0
+  const identifier = String(tmdbId || tvdbId || mediaTitle)
 
   const statusQuery = useQuery({
-    queryKey: requestMediaKeys.status(serverId, mediaType, String(tmdbId || tvdbId)),
+    queryKey: requestMediaKeys.status(serverId, mediaType, identifier),
     queryFn: async () => {
-      if (!serverId || (!tmdbId && !tvdbId)) return [] as RequestInstance[]
+      if (!serverId || (!tmdbId && !tvdbId && !mediaTitle)) return [] as RequestInstance[]
       const term = isMovie
-        ? lookupTmdbTerm(tmdbId)
-        : (tvdbId ? `tvdb:${tvdbId}` : lookupTmdbTerm(tmdbId))
+        ? (tmdbId ? lookupTmdbTerm(tmdbId) : mediaTitle)
+        : (tvdbId ? `tvdb:${tvdbId}` : (tmdbId ? lookupTmdbTerm(tmdbId) : mediaTitle))
       return Promise.all(
         instances.map(async (instance) => {
           const id = makeServerArrInstanceId(serverId, instance.id)
@@ -131,8 +141,8 @@ export function useRequestMedia(): RequestMediaState {
           try {
             const results = await lookupOnInstance(serverId, kind, term, instance.id)
             const match = isMovie
-              ? matchLookupByTmdb(results, tmdbId)
-              : matchLookupByTvdbOrTmdb(results, tvdbId, tmdbId)
+              ? (tmdbId ? matchLookupByTmdb(results, tmdbId) : (results[0] as Record<string, unknown> | undefined))
+              : (tvdbId || tmdbId ? matchLookupByTvdbOrTmdb(results, tvdbId, tmdbId) : (results[0] as Record<string, unknown> | undefined))
             const status = isMovie ? radarrStatusFromLookup(match) : sonarrStatusFromLookup(match)
             const file = isMovie ? fileFromRadarrLookup(match) : fileFromSonarrLookup(match)
             return toRequestInstance(id, name, status, file)
@@ -142,7 +152,7 @@ export function useRequestMedia(): RequestMediaState {
         }),
       )
     },
-    enabled: hasArr && Boolean(tmdbId || tvdbId),
+    enabled: hasArr && Boolean(tmdbId || tvdbId || mediaTitle),
     staleTime: 15_000,
   })
 
@@ -174,7 +184,7 @@ export function useRequestMedia(): RequestMediaState {
   }, [isMovie, mediaType, requestable, tmdbId])
 
   const handleRequest = async (opts?: string | RequestMediaOptions) => {
-    if (!serverId || (!tmdbId && !tvdbId)) return
+    if (!serverId || (!tmdbId && !tvdbId && !mediaTitle)) return
     const options: RequestMediaOptions = typeof opts === 'string' ? { instanceId: opts } : (opts || {})
     const target =
       requestable.find((item) => item.id === options.instanceId) ||
@@ -186,8 +196,8 @@ export function useRequestMedia(): RequestMediaState {
     try {
       if (isMovie) {
         await addMovie.mutateAsync({
-          title: mediaTitle || String(tmdbId),
-          tmdb_id: Number(tmdbId),
+          title: mediaTitle || (tmdbId ? String(tmdbId) : ''),
+          tmdb_id: tmdbId ? Number(tmdbId) : undefined,
           year,
           monitored: options.monitored ?? true,
           search_for_movie: options.searchNow ?? true,
@@ -208,7 +218,7 @@ export function useRequestMedia(): RequestMediaState {
           instance_id: parsed.arrInstanceId,
         })
       }
-      await queryClient.invalidateQueries({ queryKey: requestMediaKeys.status(serverId, mediaType, String(tmdbId || tvdbId)) })
+      await queryClient.invalidateQueries({ queryKey: requestMediaKeys.status(serverId, mediaType, identifier) })
       await queryClient.invalidateQueries({ queryKey: isMovie ? arrKeys.radarr.queue(serverId) : arrKeys.sonarr.queue(serverId) })
     } catch (err) {
       throw new Error(arrRequestErrorMessage(err, `Failed to request ${isMovie ? 'movie' : 'show'}`))
@@ -223,9 +233,58 @@ export function useRequestMedia(): RequestMediaState {
     else cancelSonarr.mutate({ queueId: queueItem.id })
   }
 
+  const serviceName = isMovie ? 'Radarr' : 'Sonarr'
+  const loading = Boolean(detailLoading || configLoading || (hasArr && statusQuery.isLoading))
+  const loadingLabel = isMovie ? 'Checking Radarr…' : 'Checking Sonarr…'
+
+  const disabledReason = useMemo(() => {
+    if (requesting != null) {
+      return `Requesting from ${activeServer?.name || 'server'}…`
+    }
+    if (loading) {
+      return `Checking ${serviceName} library status…`
+    }
+    if (hasArr && instances.length === 0) {
+      return `No ${serviceName} instance configured on ${activeServer?.name || 'server'}`
+    }
+    if (statusQuery.isError) {
+      return `Failed to connect to ${serviceName} on ${activeServer?.name || 'server'}`
+    }
+    if (!tmdbId && !tvdbId && !mediaTitle) {
+      return isMovie ? 'Movie TMDb ID is unavailable' : 'Show TVDb/TMDb ID is unavailable'
+    }
+    if (requestable.length === 0) {
+      return `No ${serviceName} instances available`
+    }
+    const hasTargets = requestable.some((item) => item.status === 'not_exists' || item.status === 'error')
+    if (!hasTargets) {
+      const allDownloaded = requestable.every((item) => item.status === 'downloaded')
+      if (allDownloaded) return `Already available in ${serviceName} library`
+      const allRequested = requestable.every((item) => item.status === 'requested')
+      if (allRequested) return `Already requested in ${serviceName}`
+      return `Already available or requested on all ${serviceName} instances`
+    }
+    return null
+  }, [
+    requesting,
+    loading,
+    serviceName,
+    hasArr,
+    instances.length,
+    activeServer?.name,
+    statusQuery.isError,
+    tmdbId,
+    tvdbId,
+    mediaTitle,
+    isMovie,
+    requestable,
+  ])
+
   return {
     hidden: !enabled || !serverId || (!configLoading && instances.length === 0),
-    loading: Boolean(configLoading || (hasArr && statusQuery.isLoading)),
+    loading,
+    loadingLabel,
+    disabledReason,
     mediaType,
     mediaTitle,
     mediaYear: year,
@@ -243,5 +302,7 @@ export function useRequestMedia(): RequestMediaState {
     serverId,
     handleRequest,
     handleCancelQueue,
+    refetchStatus: statusQuery.refetch,
+    isCheckingStatus: statusQuery.isFetching,
   }
 }

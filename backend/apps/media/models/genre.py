@@ -35,7 +35,7 @@ class MediaGenreType(BaseModel):
         constraints = [
             models.UniqueConstraint(fields=["genre", "media_type"], name="uq_genre_media_type"),
             models.CheckConstraint(
-                condition=models.Q(media_type__in=["movie", "show", "game", "music"]),
+                condition=models.Q(media_type__in=["movie", "show", "game"]),
                 name="ck_genre_media_type",
             ),
         ]

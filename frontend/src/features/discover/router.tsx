@@ -6,6 +6,7 @@ import { discoverQueries, type DiscoverListResponse } from './queries/discover-q
 import { mediaQueries } from '@media/queries/media-queries'
 
 const DiscoverPage = lazy(() => import('@discover/pages/discover-page').then(m => ({ default: m.DiscoverPage })))
+const DiscoverRailPage = lazy(() => import('@discover/pages/discover-rail-page').then(m => ({ default: m.DiscoverRailPage })))
 
 function prefetchHeroSlideDetails(queryClient: QueryClient) {
   void queryClient.prefetchInfiniteQuery(discoverQueries.hero()).then(() => {
@@ -35,5 +36,21 @@ export function createDiscoverRoutes(rootRoute: AnyRoute) {
     },
   })
 
-  return [homeRoute]
+  const railRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/discover/$mediaType/$listType',
+    component: DiscoverRailPage,
+    loader: ({ params, context }) => {
+      void import('@discover/pages/discover-rail-page')
+      if (params.mediaType === 'season' && params.listType === 'trending') {
+        void context.queryClient.prefetchInfiniteQuery(discoverQueries.trendingSeasons())
+      } else {
+        void context.queryClient.prefetchInfiniteQuery(
+          discoverQueries.list(params.mediaType, params.listType),
+        )
+      }
+    },
+  })
+
+  return [homeRoute, railRoute]
 }

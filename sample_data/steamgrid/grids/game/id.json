@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": 14201,
+      "score": 12,
+      "style": "alternate",
+      "width": 600,
+      "height": 900,
+      "nsfw": false,
+      "humor": false,
+      "notes": null,
+      "mime": "image/jpeg",
+      "language": "en",
+      "url": "https://cdn2.steamgriddb.com/grid/a3285cf6574fec0cf044ca2181ceea1d.jpg",
+      "thumb": "https://cdn2.steamgriddb.com/thumb/a3285cf6574fec0cf044ca2181ceea1d.jpg",
+      "lock": false,
+      "epilepsy": false,
+      "upvotes": 12,
+      "downvotes": 0,
+      "author": {
+        "name": "RetroPoster",
+        "steam64": "76561198000000000",
+        "avatar": "https://cdn.steamgriddb.com/avatar/..."
+      }
+    }
+  ]
+}

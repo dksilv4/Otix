@@ -135,6 +135,19 @@ describe('Settings Integrations Modals Regression Tests', () => {
     expect(screen.getByText('Plex')).toBeInTheDocument()
   })
 
+  it('puts connection nodes in a separate section from accounts', async () => {
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Connection nodes' })).toBeInTheDocument()
+    })
+    expect(screen.getByRole('heading', { name: 'Accounts' })).toBeInTheDocument()
+    expect(document.getElementById('accounts')).toBeTruthy()
+    expect(document.getElementById('nodes')).toBeTruthy()
+    expect(document.getElementById('nodes')!.contains(screen.getByText('SABnzbd'))).toBe(true)
+    expect(document.getElementById('accounts')!.contains(screen.getByText('Steam'))).toBe(true)
+  })
+
   it('opens SABnzbd modal via modal framework even when no server is connected', async () => {
     const user = userEvent.setup()
     renderPage()

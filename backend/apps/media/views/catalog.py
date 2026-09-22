@@ -33,46 +33,117 @@ MEDIA_ITEM_NOT_FOUND = "Media item not found"
 
 
 def resolve_media_pk(media_type: str, media_id: str | int) -> int | None:
-    raw = str(media_id)
+    from apps.media.services.identity import CANONICAL_PROVIDER, find_media_id
+
+    raw = str(media_id).strip()
+    if not raw:
+        return None
+
+    # 1. If raw is digits, check exact PK first; if absent, check if it's a canonical provider external ID
     if raw.isdigit():
-        return int(raw)
+        val = int(raw)
+        if MediaItem.objects.filter(pk=val, media_type=media_type).exists():
+            return val
+        canonical = CANONICAL_PROVIDER.get(media_type)
+        if canonical:
+            found = find_media_id(canonical, raw, media_type)
+            if found is not None:
+                return found
+            if media_type == "game":
+                found_steam = find_media_id("steam", raw, "game")
+                if found_steam is not None:
+                    return found_steam
+            from apps.integrations.services.catalog_seed import ensure_catalog_job
+            from apps.integrations.services.fetch_proxy import server_can_fetch
+            from apps.integrations.services.sync import execute_sync_job
+
+            if server_can_fetch(canonical):
+                job = ensure_catalog_job(canonical, media_type, raw, priority=0, dispatch=False)
+                if job is not None:
+                    try:
+                        execute_sync_job(job.pk)
+                    except Exception:
+                        logger.exception("On-demand sync failed for %s:%s", canonical, raw)
+                found = find_media_id(canonical, raw, media_type)
+                if found is not None:
+                    return found
+        if MediaItem.objects.filter(pk=val).exists():
+            return val
+
+    # 2. Check slug match
+    slug_match = MediaItem.objects.filter(media_type=media_type, slug=raw).values_list("pk", flat=True).first()
+    if slug_match is not None:
+        return slug_match
+
+    # 3. Handle prefixed IDs
     provider = None
     ext_id = None
+    target_media_type = media_type
+
     if raw.startswith("tmdb:movie:"):
         provider = "tmdb"
-        media_type = "movie"
-        ext_id = raw.split("tmdb:movie:")[1]
+        target_media_type = "movie"
+        ext_id = raw.split("tmdb:movie:")[1].strip()
     elif raw.startswith("tmdb:show:"):
         provider = "tmdb"
-        media_type = "show"
-        ext_id = raw.split("tmdb:show:")[1]
+        target_media_type = "show"
+        ext_id = raw.split("tmdb:show:")[1].strip()
+    elif raw.startswith("tmdb:"):
+        provider = "tmdb"
+        ext_id = raw.split("tmdb:")[1].strip()
+    elif raw.startswith("igdb:game:"):
+        provider = "igdb"
+        target_media_type = "game"
+        ext_id = raw.split("igdb:game:")[1].strip()
     elif raw.startswith("igdb:"):
         provider = "igdb"
-        media_type = "game"
-        ext_id = raw.split("igdb:")[1]
+        target_media_type = "game"
+        ext_id = raw.split("igdb:")[1].strip()
+    elif raw.startswith("steam:game:"):
+        provider = "steam"
+        target_media_type = "game"
+        ext_id = raw.split("steam:game:")[1].strip()
+    elif raw.startswith("steam:"):
+        provider = "steam"
+        target_media_type = "game"
+        ext_id = raw.split("steam:")[1].strip()
     elif raw.startswith("steamgrid:"):
         provider = "steamgrid"
-        media_type = "game"
-        ext_id = raw.split("steamgrid:")[1]
+        target_media_type = "game"
+        ext_id = raw.split("steamgrid:")[1].strip()
+    elif raw.startswith("tvdb:"):
+        provider = "tvdb"
+        target_media_type = "show"
+        ext_id = raw.split("tvdb:")[1].strip()
+    elif raw.startswith("imdb:"):
+        provider = "imdb"
+        ext_id = raw.split("imdb:")[1].strip()
 
     if not provider or not ext_id:
         return None
 
-    from apps.media.services.identity import find_media_id
-
-    found = find_media_id(provider, ext_id, media_type)
+    found = find_media_id(provider, ext_id, target_media_type)
     if found is not None:
         return found
+
+    if provider == "steam":
+        from apps.media.services.steam_seed import resolve_steam_app_to_game
+
+        item = resolve_steam_app_to_game(int(ext_id)) if ext_id.isdigit() else None
+        if item is not None:
+            return item.pk
+        return None
+
     from apps.integrations.services.catalog_seed import ensure_catalog_job
     from apps.integrations.services.sync import execute_sync_job
 
-    job = ensure_catalog_job(provider, media_type, ext_id, priority=0, dispatch=False)
+    job = ensure_catalog_job(provider, target_media_type, ext_id, priority=0, dispatch=False)
     if job is not None:
         try:
             execute_sync_job(job.pk)
         except Exception:
             logger.exception("On-demand sync failed for %s:%s", provider, ext_id)
-    return find_media_id(provider, ext_id, media_type)
+    return find_media_id(provider, ext_id, target_media_type)
 
 
 class MediaListView(APIView):
@@ -97,21 +168,45 @@ class MediaListView(APIView):
         )
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(qs, request, view=self)
-        catalog_service.enrich_summaries(page, user)
+        context = catalog_service.request_context(request)
+        catalog_service.enrich_summaries(page, user, context)
         serializer = MediaItemSummarySerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
 
-def _enqueue_detail_rehydrate(item: MediaItem) -> None:
+def _enqueue_detail_rehydrate(item: MediaItem) -> bool:
+    from datetime import timedelta
+
+    from django.utils import timezone
+
     from apps.integrations.services.catalog_seed import ensure_catalog_job
+    from apps.integrations.services.fetch_proxy import server_can_fetch
+    from apps.integrations.services.sync import execute_sync_job
     from apps.media.services.catalog_lifecycle import canonical_external_id
     from apps.media.services.identity import CANONICAL_PROVIDER
+    from apps.media.services.tmdb_ingest import show_needs_episodes
 
     provider = CANONICAL_PROVIDER.get(item.media_type)
     ext = canonical_external_id(item)
     if not provider or not ext:
-        return
-    ensure_catalog_job(provider, item.media_type, ext, priority=0)
+        return False
+
+    recently_synced = bool(item.synced_at and item.synced_at > timezone.now() - timedelta(minutes=15))
+    needs_episodes = item.media_type == "show" and show_needs_episodes(item.pk)
+
+    if needs_episodes and server_can_fetch(provider) and not recently_synced:
+        job = ensure_catalog_job(
+            provider, item.media_type, ext, priority=0, force=True, dispatch=False
+        )
+        if job is not None:
+            try:
+                execute_sync_job(job.pk)
+                return True
+            except Exception:
+                logger.exception("Synchronous episode sync failed for %s:%s", provider, ext)
+    else:
+        ensure_catalog_job(provider, item.media_type, ext, priority=0, force=needs_episodes)
+    return False
 
 
 class GenreListView(APIView):
@@ -164,10 +259,14 @@ class MediaDetailView(APIView):
         item = catalog_service.media_detail_queryset(pk)
         if item is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
-        theme = request.query_params.get("theme")
-        context = theme if theme in ("dark", "light") else "general"
+        context = catalog_service.request_context(request)
         catalog_service.enrich_summaries([item], request.user, context)
-        _enqueue_detail_rehydrate(item)
+        rehydrated = _enqueue_detail_rehydrate(item)
+        if rehydrated:
+            refreshed = catalog_service.media_detail_queryset(pk)
+            if refreshed is not None:
+                item = refreshed
+                catalog_service.enrich_summaries([item], request.user, context)
         return Response(MediaItemDetailSerializer(item).data)
 
 
@@ -198,7 +297,8 @@ class SimilarMediaView(APIView):
         if pk is None:
             return Response([])
         items = catalog_service.similar_items(pk, filter_type, min(limit, 50))
-        catalog_service.enrich_summaries(items, request.user)
+        context = catalog_service.request_context(request)
+        catalog_service.enrich_summaries(items, request.user, context)
         return Response(_summary_list_payload(items))
 
 
@@ -224,7 +324,8 @@ class RecommendationView(APIView):
         if source_type is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
         items = catalog_service.similar_items(pk, source_type, min(limit, 50))
-        catalog_service.enrich_summaries(items, request.user)
+        context = catalog_service.request_context(request)
+        catalog_service.enrich_summaries(items, request.user, context)
         return Response(_summary_list_payload(items))
 
 

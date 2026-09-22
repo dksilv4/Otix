@@ -22,6 +22,7 @@ export interface NodeOrganizeSettings {
   isoDownloadPath: string
   scanOnLaunch: boolean
   gamesDownloadPath: string
+  gamesInstallPath?: string
 }
 
 function nodeSettingsKeys(serverId: number) {

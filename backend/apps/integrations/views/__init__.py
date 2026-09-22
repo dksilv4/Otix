@@ -1,13 +1,16 @@
 """Integrations API views, re-exported for convenient imports."""
 
-from apps.integrations.views.epic import EpicLibraryScanView, EpicStatusView
+from apps.integrations.views.epic import (
+    EpicLibraryScanView,
+    EpicResolveSteamGridView,
+    EpicStatusView,
+)
 from apps.integrations.views.fetch import (
     FetchDeviceView,
     FetchRequestStreamView,
     FetchResultView,
 )
 from apps.integrations.views.plex import (
-    PlexAlbumTracksView,
     PlexConnectInfoView,
     PlexLibrariesView,
     PlexServersView,
@@ -40,7 +43,6 @@ __all__ = [
     "FetchDeviceView",
     "FetchRequestStreamView",
     "FetchResultView",
-    "PlexAlbumTracksView",
     "PlexConnectInfoView",
     "PlexLibrariesView",
     "PlexServersView",
@@ -55,6 +57,7 @@ __all__ = [
     "PlexWatchlistSyncView",
     "PlexWebhookView",
     "EpicLibraryScanView",
+    "EpicResolveSteamGridView",
     "EpicStatusView",
     "SteamLibraryScanView",
     "SteamOwnedAppIdsView",

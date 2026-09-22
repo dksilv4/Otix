@@ -114,7 +114,15 @@ def completeness_flags(media_item: MediaItem) -> dict[str, bool | None]:
         has["has_collection"] = _subtype_bool(media_item, "movie", "collection")
     elif media_type == "show":
         has["has_show_status"] = _subtype_bool(media_item, "show", "status")
-        has["has_episodes"] = _subtype_bool(media_item, "show", "number_of_episodes")
+        show_obj = getattr(media_item, "show", None)
+        if show_obj is None:
+            has["has_episodes"] = False
+        elif show_obj.number_of_episodes == 0:
+            has["has_episodes"] = True
+        else:
+            from apps.media.models import Episode
+
+            has["has_episodes"] = Episode.objects.filter(season__show_id=media_item.pk).exists()
     elif media_type == "game":
         has["has_platforms"] = media_item.platforms.exists()
         has["has_game_modes"] = media_item.game_modes.exists()

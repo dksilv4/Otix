@@ -92,13 +92,6 @@ TMDB_RAT = os.environ.get("TMDB_RAT", "")  # v4 read-access bearer token
 TMDB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("TMDB_REQUEST_TIMEOUT_SECONDS", "30.0"))
 TMDB_GLOBAL_RPS_LIMIT = float(os.environ.get("TMDB_GLOBAL_RPS_LIMIT", "40.0"))
 
-# MusicBrainz ws/2 (keyless — auth is a descriptive User-Agent). Etiquette is
-# ~1 req/s; the provider treats HTTP 503 as a rate limit, not a 5xx failure.
-MUSICBRAINZ_REQUEST_TIMEOUT_SECONDS = float(
-    os.environ.get("MUSICBRAINZ_REQUEST_TIMEOUT_SECONDS", "15.0")
-)
-MUSICBRAINZ_GLOBAL_RPS_LIMIT = float(os.environ.get("MUSICBRAINZ_GLOBAL_RPS_LIMIT", "1.0"))
-
 # SteamGridDB (game artwork: grids/heroes/logos/icons). Key is sent per request
 # as a Bearer header; accepts the legacy STEAM_GRID_API_KEY env alias. Free tier
 # is ~100 req / 5 min; the provider throttles to 2/s by default.
@@ -114,18 +107,6 @@ STEAMGRID_GLOBAL_RPS_LIMIT = float(os.environ.get("STEAMGRID_GLOBAL_RPS_LIMIT", 
 OMDB_API_KEY = os.environ.get("OMDB_API_KEY", "")
 OMDB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("OMDB_REQUEST_TIMEOUT_SECONDS", "15.0"))
 OMDB_GLOBAL_RPS_LIMIT = float(os.environ.get("OMDB_GLOBAL_RPS_LIMIT", "5.0"))
-
-# Last.fm (album wiki/tags/playcount enrichment). Key rides an api_key query
-# param per request; empty default makes the album enrich tail a benign no-op.
-LASTFM_API_KEY = os.environ.get("LASTFM_API_KEY", "")
-LASTFM_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LASTFM_REQUEST_TIMEOUT_SECONDS", "15.0"))
-LASTFM_GLOBAL_RPS_LIMIT = float(os.environ.get("LASTFM_GLOBAL_RPS_LIMIT", "5.0"))
-
-# LRCLIB (album-track lyrics). Free, no-auth REST API; the per-track lyric
-# enrich tail is ungated (no key to configure) and self-limits to albums that
-# have a primary-artist credit + tracks missing lyrics.
-LRCLIB_REQUEST_TIMEOUT_SECONDS = float(os.environ.get("LRCLIB_REQUEST_TIMEOUT_SECONDS", "10.0"))
-LRCLIB_GLOBAL_RPS_LIMIT = float(os.environ.get("LRCLIB_GLOBAL_RPS_LIMIT", "5.0"))
 
 # Fanart.tv (movie/show artwork — logos/textless posters/backdrops). Key rides an
 # api_key query param per request; empty default makes the movie/show enrich tail

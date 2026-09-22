@@ -74,14 +74,21 @@ export function libraryIdFromLookup(item: ArrLookupItem | null): number | null {
 export function radarrStatusFromLookup(item: ArrLookupItem | null): ArrRequestStatus {
   if (!item || !libraryIdFromLookup(item)) return 'not_exists'
   const hasFile = Boolean(pick(item, 'hasFile', 'has_file'))
-  return hasFile ? 'downloaded' : 'requested'
+  const sizeOnDisk = asNumber(pick(item, 'sizeOnDisk', 'size_on_disk')) ?? 0
+  const hasMovieFile = Boolean(pick(item, 'movieFile', 'movie_file', 'movieFileId', 'movie_file_id'))
+  const statusStr = String(pick(item, 'status') ?? '').toLowerCase()
+  const isDownloaded = hasFile || sizeOnDisk > 0 || hasMovieFile || statusStr === 'downloaded'
+  return isDownloaded ? 'downloaded' : 'requested'
 }
 
 export function sonarrStatusFromLookup(item: ArrLookupItem | null): ArrRequestStatus {
   if (!item || !libraryIdFromLookup(item)) return 'not_exists'
   const stats = (pick(item, 'statistics') as ArrLookupItem | undefined) || {}
   const files = asNumber(pick(stats, 'episodeFileCount', 'episode_file_count')) ?? 0
-  return files > 0 ? 'downloaded' : 'requested'
+  const sizeOnDisk = asNumber(pick(stats, 'sizeOnDisk', 'size_on_disk', 'totalEpisodeCount')) ?? 0
+  const hasFile = Boolean(pick(item, 'hasFile', 'has_file'))
+  const statusStr = String(pick(item, 'status') ?? '').toLowerCase()
+  return files > 0 || (hasFile && sizeOnDisk > 0) || statusStr === 'downloaded' ? 'downloaded' : 'requested'
 }
 
 export function fileFromRadarrLookup(item: ArrLookupItem | null): RequestInstance['file'] {

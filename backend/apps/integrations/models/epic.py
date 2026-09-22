@@ -1,8 +1,9 @@
 """Per-user Epic owned games from library scans."""
 
-from core.models import TimestampedModel
 from django.conf import settings
 from django.db import models
+
+from core.models import TimestampedModel
 
 
 class UserEpicGame(TimestampedModel):

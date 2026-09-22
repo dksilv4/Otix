@@ -29,6 +29,7 @@ describe('settings navigation IA', () => {
   it('matches sidebar search against labels and keywords', () => {
     const connections = NAV_ITEMS.find((i) => i.id === 'connections')!
     expect(matchNavItem(connections, 'plex')).toBe(true)
+    expect(matchNavItem(connections, 'connection nodes')).toBe(true)
     expect(matchNavItem(connections, 'xyzzy')).toBe(false)
     const library = NAV_ITEMS.find((i) => i.id === 'library')!
     expect(matchNavItem(library, 'matching')).toBe(true)

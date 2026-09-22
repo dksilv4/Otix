@@ -71,7 +71,7 @@ class TmdbSyncEngineTests(TestCase):
         ) as fetch:
             outcome = run_sync_job.delay(job.pk).get()
 
-        fetch.assert_awaited_once_with(550)
+        fetch.assert_awaited_once_with(550, force=False)
         job.refresh_from_db()
         self.assertEqual(outcome["status"], "success")
         self.assertEqual(outcome["media_item_id"], 12345)
@@ -127,7 +127,7 @@ class TmdbSyncEngineTests(TestCase):
         ) as fetch:
             outcome = run_sync_job.delay(job.pk).get()
 
-        fetch.assert_awaited_once_with(1396)
+        fetch.assert_awaited_once_with(1396, force=False)
         self.assertEqual(outcome["status"], "success")
         self.assertEqual(outcome["media_item_id"], 777)
         self.assertEqual(outcome["tmdb_id"], 1396)

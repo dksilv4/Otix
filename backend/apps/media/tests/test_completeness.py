@@ -71,7 +71,6 @@ class ScoreFromFlagsTests(TestCase):
         self.assertEqual(len(required_flags("movie")), 6 + 10 + 5)
         self.assertEqual(len(required_flags("show")), 6 + 10 + 3)
         self.assertEqual(len(required_flags("game")), 6 + 10 + 3)
-        self.assertEqual(len(required_flags("music")), 6 + 10)
         self.assertEqual(len(required_flags("person")), 6 + 10)
         self.assertEqual(len(TYPE_FLAG_GROUPS["movie"]), 5)
         self.assertEqual(len(TYPE_FLAG_GROUPS["show"]), 3)

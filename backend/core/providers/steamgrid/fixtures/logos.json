@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": 3001,
+      "score": 10,
+      "style": "official",
+      "width": 800,
+      "height": 310,
+      "language": "en",
+      "url": "https://cdn2.steamgriddb.com/logo/logo1.png"
+    }
+  ]
+}

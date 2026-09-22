@@ -1,0 +1,44 @@
+{
+  "data": {
+    "Catalog": {
+      "searchStore": {
+        "elements": [
+          {
+            "title": "Death Stranding",
+            "id": "5c78f1028a114b10b0a8809c90b0e911",
+            "namespace": "0a12f7186a524e93bb39832dc9b5aa12",
+            "description": "From legendary game creator Hideo Kojima comes an all-new, genre-defying experience.",
+            "effectiveDate": "2020-07-14T14:00:00.000Z",
+            "keyImages": [
+              {
+                "type": "OfferImageWide",
+                "url": "https://cdn1.epicgames.com/offer/0a12f7186a524e93bb39832dc9b5aa12/wide.jpg"
+              }
+            ],
+            "seller": {
+              "id": "o-seller123",
+              "name": "505 Games"
+            },
+            "productSlug": "death-stranding",
+            "promotions": {
+              "promotionalOffers": [
+                {
+                  "promotionalOffers": [
+                    {
+                      "startDate": "2024-03-21T15:00:00.000Z",
+                      "endDate": "2024-03-28T15:00:00.000Z",
+                      "discountSetting": {
+                        "discountType": "PERCENTAGE",
+                        "discountPercentage": 0
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -158,6 +158,36 @@ class EpicScanTests(TestCase):
             name_media.pk,
         )
 
+    @patch("apps.integrations.services.epic.proxy_epic_scan")
+    def test_matches_catalog_title_fallback_and_records_external_id(self, proxy):
+        _node(self.user)
+        media = MediaItem.objects.create(
+            media_type="game", title="River City Girls 2", slug="river-city-girls-2"
+        )
+        Game.objects.create(media_item=media)
+        proxy.return_value = (
+            200,
+            {
+                "games": [
+                    {
+                        "app_name": "app123",
+                        "catalog_item_id": "cid999",
+                        "offer_id": "off999",
+                        "namespace": "ns",
+                        "title": "River City Girls 2",
+                    }
+                ]
+            },
+        )
+        resp = self.post()
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["matched_in_otix"], 1)
+        row = UserEpicGame.objects.get(user=self.user, app_name="app123")
+        self.assertEqual(row.media_item_id, media.pk)
+        self.assertTrue(
+            ExternalID.objects.filter(provider="epic", external_id="cid999", object_id=media.pk).exists()
+        )
+
 
 class EpicStatusTests(TestCase):
     def setUp(self):

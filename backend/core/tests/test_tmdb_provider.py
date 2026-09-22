@@ -177,6 +177,7 @@ class TMDBProviderTests(SimpleTestCase):
                     "/movie/550",
                     language="en-US",
                     append_to_response="credits,external_ids,images,videos,release_dates,keywords",
+                    include_image_language="en,null",
                 )
 
         _run(run())
@@ -193,6 +194,7 @@ class TMDBProviderTests(SimpleTestCase):
                     calls[0],
                     "/tv/1399",
                     append_to_response="credits,external_ids,images,videos,keywords,seasons,content_ratings",
+                    include_image_language="en,null",
                 )
 
         _run(run())

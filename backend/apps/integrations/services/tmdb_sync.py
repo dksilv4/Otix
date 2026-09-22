@@ -174,7 +174,11 @@ def sync_tmdb_media(job: SyncJob) -> dict[str, Any]:
 
     matched = _tmdb_mapped(tmdb_id, job.entity_type)
     emit(f"fetching_{job.entity_type}", tmdb_id=tmdb_id)
-    media_item_id = asyncio.run(fetcher(tmdb_id))
+    force = getattr(job, "phase", None) == "force"
+    try:
+        media_item_id = asyncio.run(fetcher(tmdb_id, force=force))
+    except TypeError:
+        media_item_id = asyncio.run(fetcher(tmdb_id))
     emit(
         f"{job.entity_type}_{'matched' if matched else 'seeded'}",
         tmdb_id=tmdb_id,

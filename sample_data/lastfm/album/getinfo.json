@@ -1,0 +1,96 @@
+{
+  "album": {
+    "name": "OK Computer",
+    "artist": "Radiohead",
+    "mbid": "0d635c91-cb3e-4629-873a-f3493eef2509",
+    "url": "https://www.last.fm/music/Radiohead/OK+Computer",
+    "image": [
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/34s/...",
+        "size": "small"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/64s/...",
+        "size": "medium"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/174s/...",
+        "size": "large"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/c5163b4d667c4ecba87cfd60064fa2e7.png",
+        "size": "extralarge"
+      }
+    ],
+    "listeners": "2612340",
+    "playcount": "84321090",
+    "tracks": {
+      "track": [
+        {
+          "name": "Airbag",
+          "url": "https://www.last.fm/music/Radiohead/_/Airbag",
+          "duration": "284",
+          "@attr": {
+            "rank": "1"
+          },
+          "artist": {
+            "name": "Radiohead",
+            "mbid": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "url": "https://www.last.fm/music/Radiohead"
+          }
+        },
+        {
+          "name": "Paranoid Android",
+          "url": "https://www.last.fm/music/Radiohead/_/Paranoid+Android",
+          "duration": "383",
+          "@attr": {
+            "rank": "2"
+          },
+          "artist": {
+            "name": "Radiohead",
+            "mbid": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "url": "https://www.last.fm/music/Radiohead"
+          }
+        },
+        {
+          "name": "Karma Police",
+          "url": "https://www.last.fm/music/Radiohead/_/Karma+Police",
+          "duration": "261",
+          "@attr": {
+            "rank": "6"
+          },
+          "artist": {
+            "name": "Radiohead",
+            "mbid": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "url": "https://www.last.fm/music/Radiohead"
+          }
+        }
+      ]
+    },
+    "tags": {
+      "tag": [
+        {
+          "name": "alternative rock",
+          "url": "https://www.last.fm/tag/alternative+rock"
+        },
+        {
+          "name": "90s",
+          "url": "https://www.last.fm/tag/90s"
+        },
+        {
+          "name": "art rock",
+          "url": "https://www.last.fm/tag/art+rock"
+        },
+        {
+          "name": "indie rock",
+          "url": "https://www.last.fm/tag/indie+rock"
+        }
+      ]
+    },
+    "wiki": {
+      "published": "05 Jun 2008, 12:34",
+      "summary": "OK Computer is the third studio album by English rock band Radiohead, released on 21 May 1997 on Parlophone in the United Kingdom and 1 July 1997 on Capitol Records in the United States.",
+      "content": "OK Computer is the third studio album by the English alternative rock band Radiohead, released on 21 May 1997 on Parlophone in the United Kingdom and 1 July 1997 on Capitol Records in the United States. Produced by the band and Nigel Godrich, the album made significant use of complex song structures and unconventional instrumentation..."
+    }
+  }
+}

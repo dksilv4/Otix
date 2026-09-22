@@ -1,7 +1,6 @@
 """Media serializers, re-exported for convenient imports."""
 
 from apps.media.serializers.catalog import (
-    AlbumDetailSerializer,
     CollectionMovieOutSerializer,
     CollectionOutSerializer,
     CompanyOutSerializer,
@@ -25,7 +24,6 @@ from apps.media.serializers.catalog import (
     SeasonOutSerializer,
     SeasonSummarySerializer,
     ShowDetailSerializer,
-    TrackOutSerializer,
     UserInteractionStateSerializer,
     WatchProviderOutSerializer,
     company_out,
@@ -69,7 +67,6 @@ from apps.media.serializers.social import (
 __all__ = [
     "INTERACTION_STATE_KEYS",
     "INTERACTION_TOGGLE_KEYS",
-    "AlbumDetailSerializer",
     "ApproveRejectBodySerializer",
     "BulkMarkResponseSerializer",
     "CollectionMovieOutSerializer",
@@ -120,7 +117,6 @@ __all__ = [
     "SeasonSummarySerializer",
     "ShowDetailSerializer",
     "ShowProgressOutSerializer",
-    "TrackOutSerializer",
     "UserInteractionStateSerializer",
     "VoteResponseSerializer",
     "WatchProviderOutSerializer",

@@ -102,7 +102,7 @@ class MeProfilePreferencesTests(TestCase):
             "notification_preferences",
         })
         self.assertEqual(
-            response.data["preferred_media_types"], ["movie", "show", "game", "music"]
+            response.data["preferred_media_types"], ["movie", "show", "game"]
         )
         self.assertEqual(response.data["preferred_genres"], [])
         self.assertEqual(response.data["preferred_languages"], [])

@@ -12,6 +12,18 @@ from apps.media.services import catalog as catalog_service
 from core.pagination import DefaultPagination
 
 
+class DiscoverPagination(DefaultPagination):
+    """Pagination for discover feeds supporting both ?page= and ?cursor= parameters."""
+
+    def get_page_number(self, request, paginator):
+        raw = request.query_params.get(self.page_query_param)
+        if raw is None:
+            raw = request.query_params.get("cursor")
+        if raw is not None and str(raw).strip():
+            return raw
+        return 1
+
+
 class DiscoverListView(APIView):
     """GET /discover/{media_type}/{list_type} — public, paginated.
 
@@ -22,7 +34,7 @@ class DiscoverListView(APIView):
     """
 
     permission_classes = (permissions.AllowAny,)
-    pagination_class = DefaultPagination
+    pagination_class = DiscoverPagination
 
     def get(self, request, media_type: str, list_type: str) -> Response:
         language = request.query_params.get("language")
@@ -65,7 +77,8 @@ class DiscoverListView(APIView):
         paginator.page_size = _page_size(request)
         page = paginator.paginate_queryset(qs, request, view=self)
         if serializer_cls is MediaItemSummarySerializer:
-            catalog_service.enrich_summaries(page, request.user)
+            context = catalog_service.request_context(request)
+            catalog_service.enrich_summaries(page, request.user, context)
         elif serializer_cls is SeasonSummarySerializer:
             catalog_service.attach_season_poster_urls(page)
         serializer = serializer_cls(page, many=True)

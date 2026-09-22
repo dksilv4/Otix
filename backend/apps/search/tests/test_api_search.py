@@ -1,6 +1,6 @@
 """Endpoint tests for the search API area (DRF).
 
-Seeds a movie, show, game, music album, person and company, then exercises the
+Seeds a movie, show, game, person and company, then exercises the
 ported legacy routes: ``/search`` (with SearchLog writes), ``/search/suggestions``,
 ``/search/grouped``, ``/search/companies``, ``/search/poll``, the external/empty
 provider contracts and the Otix-catalog branch of ``/search/providers``.
@@ -15,7 +15,7 @@ from rest_framework.test import APIClient
 
 from apps.company.models import Company
 from apps.integrations.models import SyncJob
-from apps.media.models import Album, Game, MediaItem, Movie, Show
+from apps.media.models import Game, MediaItem, Movie, Show
 from apps.people.models import Person
 from apps.search.models import SearchLog
 
@@ -45,7 +45,7 @@ COMPANY_ITEM_KEYS = {
 def _seed_media(media_type: str, title: str, slug: str) -> MediaItem:
     """Create a hub row plus its concrete subtype row."""
     item = MediaItem.objects.create(media_type=media_type, title=title, slug=slug)
-    subtype = {"movie": Movie, "show": Show, "game": Game, "music": Album}[media_type]
+    subtype = {"movie": Movie, "show": Show, "game": Game}[media_type]
     subtype.objects.create(media_item=item)
     return item
 
@@ -61,7 +61,6 @@ class SearchApiTests(TestCase):
         self.movie = _seed_media("movie", "Inception", "inception")
         self.show = _seed_media("show", "Inception: Origins", "inception-origins")
         self.game = _seed_media("game", "Inception Game", "inception-game")
-        self.album = _seed_media("music", "Inception Soundtrack", "inception-soundtrack")
         self.person = Person.objects.create(
             name="Inception Artist", photo_url="https://img.example.com/artist.jpg"
         )

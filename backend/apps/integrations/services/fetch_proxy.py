@@ -29,14 +29,13 @@ from core.redis import get_client
 logger = logging.getLogger(__name__)
 
 # Providers whose engine needs a server API key before it can fetch. Absent
-# from this map (plex/youtube/musicbrainz/lrclib/steam/unknown) → the server
+# from this map (plex/youtube/steam/unknown) → the server
 # always handles them; there is nothing to proxy.
 _PROVIDER_REQUIRED_SETTINGS = {
     "tmdb": ("TMDB_API_KEY",),
     "igdb": ("IGDB_CLIENT_ID", "IGDB_CLIENT_SECRET"),
     "steamgrid": ("STEAM_GRID_API_KEY",),
     "omdb": ("OMDB_API_KEY",),
-    "lastfm": ("LASTFM_API_KEY",),
     "fanart": ("FANART_API_KEY",),
 }
 
@@ -50,6 +49,8 @@ def server_can_fetch(provider: str) -> bool:
     Providers without a keyed profile (or unknown ones) are treated as
     server-handled so the gate is a no-op for keyless providers.
     """
+    if provider == "tmdb":
+        return bool(getattr(settings, "TMDB_RAT", None) or getattr(settings, "TMDB_API_KEY", None))
     required = _PROVIDER_REQUIRED_SETTINGS.get(provider)
     if not required:
         return True

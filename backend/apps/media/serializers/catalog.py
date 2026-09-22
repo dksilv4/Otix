@@ -11,10 +11,11 @@ serialize as ``None``/empty rather than being dropped.
 
 from datetime import date
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
-from apps.media.models import Album, Episode, Game, MediaAsset, Movie, Season, Show, Track
+from apps.media.models import Episode, ExternalID, Game, MediaAsset, MediaItem, Movie, Season, Show
 
 
 class GenreOutSerializer(serializers.Serializer):
@@ -259,48 +260,6 @@ class GameDetailSerializer(serializers.Serializer):
     is_demo = serializers.BooleanField()
 
 
-class TrackOutSerializer(serializers.ModelSerializer):
-    musicbrainz_recording_id = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Track
-        fields = (
-            "id",
-            "track_number",
-            "disc_number",
-            "title",
-            "duration_ms",
-            "preview_url",
-            "musicbrainz_recording_id",
-            "audio_features",
-            "avg_rating",
-            "rating_count",
-        )
-        read_only_fields = fields
-
-    def get_musicbrainz_recording_id(self, _obj: Track) -> None:
-        return None
-
-
-class AlbumDetailSerializer(serializers.Serializer):
-    release_type = serializers.CharField()
-    format = serializers.CharField(allow_null=True)
-    catalog_number = serializers.CharField(allow_null=True)
-    barcode = serializers.CharField(allow_null=True)
-    track_count = serializers.IntegerField()
-    disc_count = serializers.IntegerField()
-    duration_ms = serializers.IntegerField(allow_null=True)
-    musicbrainz_id = serializers.CharField(allow_null=True)
-    musicbrainz_release_group_id = serializers.CharField(allow_null=True)
-    preview_url = serializers.CharField(allow_null=True)
-    audio_features = serializers.JSONField(allow_null=True)
-    tracks = serializers.SerializerMethodField()
-
-    def get_tracks(self, obj: Album):
-        tracks = sorted(obj.tracks.all(), key=lambda t: (t.disc_number or 0, t.track_number or 0))
-        return TrackOutSerializer(tracks, many=True).data
-
-
 class MediaCreditPersonOutSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
@@ -313,6 +272,22 @@ class MediaCreditOutSerializer(serializers.Serializer):
     role = serializers.CharField()
     character_name = serializers.CharField(allow_null=True)
     sort_order = serializers.IntegerField()
+
+
+class CharacterOutSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    slug = serializers.CharField()
+    description = serializers.CharField(allow_null=True)
+    gender = serializers.CharField(allow_null=True)
+    species = serializers.CharField(allow_null=True)
+    mug_shot_url = serializers.CharField(allow_null=True)
+
+
+class MediaCharacterOutSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    character = CharacterOutSerializer()
+    order = serializers.IntegerField()
 
 
 class CompanyOutSerializer(serializers.Serializer):
@@ -393,6 +368,8 @@ class MediaItemSummarySerializer(serializers.Serializer):
     tmdb_id = serializers.CharField(allow_null=True)
     tvdb_id = serializers.CharField(allow_null=True, required=False, default=None)
     imdb_id = serializers.CharField(allow_null=True, required=False, default=None)
+    igdb_id = serializers.CharField(allow_null=True, required=False, default=None)
+    steam_app_id = serializers.IntegerField(allow_null=True, required=False, default=None)
     poster_url = serializers.CharField(allow_null=True)
     textless_poster_url = serializers.CharField(allow_null=True)
     backdrop_url = serializers.CharField(allow_null=True)
@@ -457,6 +434,8 @@ class MediaItemDetailSerializer(serializers.Serializer):
     tmdb_id = serializers.CharField(allow_null=True)
     tvdb_id = serializers.CharField(allow_null=True, required=False, default=None)
     imdb_id = serializers.CharField(allow_null=True, required=False, default=None)
+    igdb_id = serializers.CharField(allow_null=True, required=False, default=None)
+    steam_app_id = serializers.IntegerField(allow_null=True, required=False, default=None)
     like_count = serializers.IntegerField()
     watchlist_count = serializers.IntegerField()
     watched_count = serializers.IntegerField()
@@ -475,6 +454,7 @@ class MediaItemDetailSerializer(serializers.Serializer):
     youtube_channel_title = serializers.CharField(allow_null=True)
     genres = serializers.SerializerMethodField()
     credits = serializers.SerializerMethodField()
+    characters = serializers.SerializerMethodField()
     involved_companies = serializers.SerializerMethodField()
     releases = serializers.SerializerMethodField()
     platforms = serializers.SerializerMethodField()
@@ -498,6 +478,10 @@ class MediaItemDetailSerializer(serializers.Serializer):
     def get_credits(self, obj):
         credits = [c for c in obj.credits.all() if c.person_id is not None]
         return MediaCreditOutSerializer(credits, many=True).data
+
+    def get_characters(self, obj):
+        characters = [mc for mc in obj.characters.all() if mc.character_id is not None]
+        return MediaCharacterOutSerializer(characters, many=True).data
 
     def get_involved_companies(self, obj):
         companies = [ic for ic in obj.involved_companies.all() if ic.company_id is not None]
@@ -558,11 +542,24 @@ class MediaItemDetailSerializer(serializers.Serializer):
         game: Game | None = self._subtype(obj, "game")
         if game is None:
             return None
+        steam_id = getattr(obj, "steam_app_id", None)
+        if steam_id is None:
+            steam_str = (
+                ExternalID.objects.filter(
+                    content_type=ContentType.objects.get_for_model(MediaItem),
+                    object_id=obj.pk,
+                    provider="steam",
+                    media_type="game",
+                )
+                .values_list("external_id", flat=True)
+                .first()
+            )
+            steam_id = int(steam_str) if steam_str and steam_str.isdigit() else None
         return {
             "release_status": game.release_status,
             "website": game.website,
-            "steam_app_id": None,
-            "store_ids": None,
+            "steam_app_id": steam_id,
+            "store_ids": {"steam": str(steam_id)} if steam_id else None,
             "current_players": game.current_players,
             "price_json": game.price_json,
             "recommendations": game.recommendations,
@@ -578,11 +575,8 @@ class MediaItemDetailSerializer(serializers.Serializer):
             "is_demo": (game.game_type or "") == "demo",
         }
 
-    def get_album(self, obj):
-        album: Album | None = self._subtype(obj, "album")
-        if album is None:
-            return None
-        return AlbumDetailSerializer(album).data
+    def get_album(self, _obj):
+        return None
 
     def get_collection(self, obj):
         movie = self._subtype(obj, "movie")

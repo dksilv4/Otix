@@ -362,6 +362,8 @@ export interface DesktopSettings {
   alwaysOnTop: boolean;
   startMinimized: boolean;
   gamesDownloadPath?: string;
+  gamesInstallPath?: string;
+  isoDownloadPath?: string;
 }
 
 export interface IDesktopAPI {

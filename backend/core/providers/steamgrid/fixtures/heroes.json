@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": 2001,
+      "score": 15,
+      "style": "material",
+      "width": 1920,
+      "height": 620,
+      "language": "en",
+      "url": "https://cdn2.steamgriddb.com/hero/hero1.jpg"
+    }
+  ]
+}

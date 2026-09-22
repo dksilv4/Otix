@@ -18,7 +18,6 @@ _MEDIA_SUBTYPE_SELECT = (
     "media_item__movie",
     "media_item__show",
     "media_item__game",
-    "media_item__album",
 )
 
 

@@ -64,6 +64,24 @@ _TMDB_POPULAR: dict[str, str] = {
     "show": "get_show_popular",
 }
 
+# Main discovery lists per supported TMDB media kind.
+_TMDB_DISCOVER: dict[str, dict[str, str]] = {
+    "movie": {
+        "popular": "get_movie_popular",
+        "top_rated": "get_movie_top_rated",
+        "upcoming": "get_movie_upcoming",
+        "now_playing": "get_movie_now_playing",
+        "trending": "trending",
+    },
+    "show": {
+        "popular": "get_show_popular",
+        "top_rated": "get_show_top_rated",
+        "on_the_air": "get_show_on_the_air",
+        "airing_today": "get_show_airing_today",
+        "trending": "trending",
+    },
+}
+
 _MEDIA_CT: ContentType | None = None
 
 
@@ -221,6 +239,11 @@ def _fresh_enough(provider: str, entity_type: str, external_id: str) -> bool:
     media_id = find_media_id(provider, external_id, entity_type)
     if media_id is None:
         return False
+    if entity_type == "show":
+        from apps.media.services.tmdb_ingest import show_needs_episodes
+
+        if show_needs_episodes(media_id):
+            return False
     media = MediaItem.objects.filter(pk=media_id).only("completeness_score", "next_sync_at").first()
     if media is None:
         return False
@@ -337,45 +360,81 @@ def run_pending_jobs(
     }
 
 
-async def enqueue_tmdb_popular(
+async def _fetch_tmdb_source(
+    provider: Any,
+    entity_type: str,
+    source: str,
+    page: int,
+) -> list[dict[str, Any]]:
+    fetch_map = _TMDB_DISCOVER.get(entity_type) or {}
+    fetch_name = fetch_map.get(source)
+    if not fetch_name:
+        return []
+    if source == "trending":
+        fetcher = getattr(provider, "trending", None) or getattr(provider, "get_trending", None)
+        if not fetcher:
+            return []
+        media_type = "movie" if entity_type == "movie" else "tv"
+        data = await fetcher(media_type=media_type, time_window="week", page=page)
+    else:
+        fetcher = getattr(provider, fetch_name, None)
+        if not fetcher:
+            return []
+        data = await fetcher(page=page)
+    return (data or {}).get("results") or []
+
+
+async def enqueue_tmdb_discover(
     entity_type: str,
     *,
     limit: int = 50,
     provider: TMDBProvider | None = None,
+    sources: Iterable[str] | None = None,
 ) -> dict[str, Any]:
-    """Page the TMDB popular {entity_type} list and enqueue the unseen ids.
+    """Page through TMDB discovery lists for {entity_type} and enqueue unseen ids.
 
-    The driver's first discovery source (the legacy ``priority_seed`` TMDB
-    discover step): fetches popular-list pages until *limit* unique ids are
-    collected or a page comes back empty, then enqueues a tmdb sync job per id
-    that is not already mapped. Dedupe and pending-job checks live in
-    ``enqueue_seed_jobs``; the DB write crosses to a worker thread via
-    ``sync_to_async`` (the async service → sync write rule). *provider* is
-    injectable for tests and defaults to a real TMDB client.
+    Fans out across the specified discovery *sources* (default all: popular,
+    top_rated, upcoming/on_the_air, now_playing/airing_today, trending).
+    For each source, pages until *limit* unique ids are collected or pages run
+    dry. All discovered ids are unified (deduped across sources) and enqueued as
+    sync jobs.
     """
-    fetch_name = _TMDB_POPULAR.get(entity_type)
-    if fetch_name is None:
-        raise ValueError(f"TMDB popular seeding does not yet support entity_type '{entity_type}'")
+    fetch_map = _TMDB_DISCOVER.get(entity_type)
+    if fetch_map is None:
+        raise ValueError(f"TMDB discovery seeding does not yet support entity_type '{entity_type}'")
     if provider is None:
         provider = TMDBProvider()
-    fetcher = getattr(provider, fetch_name)
+    if sources is None:
+        sources = tuple(fetch_map.keys())
+    unknown = set(sources) - set(fetch_map.keys())
+    if unknown:
+        raise ValueError(f"Unknown TMDB discovery source(s): {sorted(unknown)}")
 
     ids: list[str] = []
     seen: set[int] = set()
-    page = 1
-    while len(ids) < limit:
-        results = (await fetcher(page=page)).get("results") or []
-        if not results:
-            break
-        for item in results:
-            raw_id = item.get("id")
-            if raw_id is None or raw_id in seen:
-                continue
-            seen.add(raw_id)
-            ids.append(str(raw_id))
-            if len(ids) >= limit:
+
+    for source in sources:
+        page = 1
+        source_seen: set[int] = set()
+        while len(source_seen) < limit:
+            results = await _fetch_tmdb_source(provider, entity_type, source, page)
+            if not results:
                 break
-        page += 1
+            added_on_page = 0
+            for item in results:
+                raw_id = item.get("id")
+                if raw_id is None or raw_id in source_seen:
+                    continue
+                source_seen.add(raw_id)
+                added_on_page += 1
+                if raw_id not in seen:
+                    seen.add(raw_id)
+                    ids.append(str(raw_id))
+                if len(source_seen) >= limit:
+                    break
+            if added_on_page == 0:
+                break
+            page += 1
 
     created = await sync_to_async(enqueue_seed_jobs)(
         provider="tmdb", entity_type=entity_type, external_ids=ids
@@ -387,6 +446,21 @@ async def enqueue_tmdb_popular(
         "enqueued": len(created),
         "external_ids": [job.external_id for job in created],
     }
+
+
+async def enqueue_tmdb_popular(
+    entity_type: str,
+    *,
+    limit: int = 50,
+    provider: TMDBProvider | None = None,
+) -> dict[str, Any]:
+    """Page the TMDB popular {entity_type} list and enqueue the unseen ids."""
+    return await enqueue_tmdb_discover(
+        entity_type,
+        limit=limit,
+        provider=provider,
+        sources=("popular",),
+    )
 
 
 # IGDB's popular query is one-shot (no offset paging) and the API caps a single
@@ -698,10 +772,11 @@ def run_daily_tmdb_import(limit: int | None = None) -> dict[str, Any]:
 
 
 def seed_popular_catalog(limit: int | None = 50) -> dict[str, Any]:
-    """Beat body for periodic catalog seeding: enqueue popular movies, shows, and games.
+    """Beat body for periodic catalog seeding: enqueue discover movies, shows, and games.
 
-    Enqueues unseen IDs from TMDB popular movies and shows (if TMDB credentials
-    are configured) and IGDB popular games (if IGDB credentials are configured).
+    Enqueues unseen IDs from TMDB discovery lists (popular, top_rated, upcoming/on_the_air,
+    now_playing/airing_today, trending) and IGDB discover sources (popular,
+    recently_released, upcoming, platforms).
     Returns a unified summary dict for beat/worker reporting.
     """
     effective_limit = limit if limit is not None else 50
@@ -709,15 +784,15 @@ def seed_popular_catalog(limit: int | None = 50) -> dict[str, Any]:
 
     if settings.TMDB_API_KEY or settings.TMDB_RAT:
         result["tmdb"] = {
-            "movie": asyncio.run(enqueue_tmdb_popular("movie", limit=effective_limit)),
-            "show": asyncio.run(enqueue_tmdb_popular("show", limit=effective_limit)),
+            "movie": asyncio.run(enqueue_tmdb_discover("movie", limit=effective_limit)),
+            "show": asyncio.run(enqueue_tmdb_discover("show", limit=effective_limit)),
         }
     else:
         result["tmdb"] = {"status": "unconfigured"}
 
     if settings.IGDB_CLIENT_ID and settings.IGDB_CLIENT_SECRET:
         result["igdb"] = {
-            "game": asyncio.run(enqueue_igdb_popular(limit=effective_limit)),
+            "game": asyncio.run(enqueue_igdb_discover(limit=effective_limit)),
         }
     else:
         result["igdb"] = {"status": "unconfigured"}

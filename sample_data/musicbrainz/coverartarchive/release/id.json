@@ -1,0 +1,22 @@
+{
+  "images": [
+    {
+      "approved": true,
+      "back": false,
+      "comment": "",
+      "edit": 1234567,
+      "front": true,
+      "id": 987654321,
+      "image": "https://coverartarchive.org/release/a1c10d32-d021-4f30-8025-a1c2263d91c7/987654321.jpg",
+      "thumbnails": {
+        "250": "https://coverartarchive.org/release/a1c10d32-d021-4f30-8025-a1c2263d91c7/987654321-250.jpg",
+        "500": "https://coverartarchive.org/release/a1c10d32-d021-4f30-8025-a1c2263d91c7/987654321-500.jpg",
+        "1200": "https://coverartarchive.org/release/a1c10d32-d021-4f30-8025-a1c2263d91c7/987654321-1200.jpg"
+      },
+      "types": [
+        "Front"
+      ]
+    }
+  ],
+  "release": "https://musicbrainz.org/release/a1c10d32-d021-4f30-8025-a1c2263d91c7"
+}

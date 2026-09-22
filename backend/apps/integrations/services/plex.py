@@ -31,20 +31,11 @@ from apps.integrations.models import UserPlexItem, UserPlexLibrary, UserPlexServ
 
 CONNECT_INFO_ITEM_NOT_FOUND = "Media item not found in your Plex library"
 CONNECT_INFO_SERVER_NOT_FOUND = "Plex server not found"
-ALBUM_TRACKS_FETCH_ERROR = "Could not fetch Plex album tracks"
 
 
 class PlexConnectInfoNotFound(Exception):
     """Raised when a Plex lookup cannot be satisfied; carries the legacy 404
     detail string."""
-
-    def __init__(self, detail: str) -> None:
-        self.detail = detail
-        super().__init__(detail)
-
-
-class PlexAlbumTracksFetchError(Exception):
-    """Raised when no Plex connection succeeds in serving the album's tracks."""
 
     def __init__(self, detail: str) -> None:
         self.detail = detail
@@ -264,61 +255,6 @@ def _plex_server_get(server: UserPlexServer, user, path: str) -> tuple[dict, str
         except Exception:
             continue
     return None
-
-
-def get_plex_album_tracks(user, media_item_id: int) -> dict:
-    """Return the user's Plex album tracks for a catalog music media item.
-
-    Mirrors the legacy response: ``{tracks, base_url, token, rating_key,
-    album_thumb_url}`` where each track carries ``{rating_key, title, artist,
-    track_number, disc_number, duration_ms}``. Raises ``PlexConnectInfoNotFound``
-    when the user has no such item/server and ``PlexAlbumTracksFetchError`` when
-    every Plex connection fails.
-    """
-    plex_item = (
-        UserPlexItem.objects.filter(user=user, media_item_id=media_item_id)
-        .select_related("server")
-        .first()
-    )
-    if plex_item is None:
-        raise PlexConnectInfoNotFound(CONNECT_INFO_ITEM_NOT_FOUND)
-    server = plex_item.server
-    if server is None:
-        raise PlexConnectInfoNotFound(CONNECT_INFO_SERVER_NOT_FOUND)
-
-    result = _plex_server_get(
-        server, user, f"/library/metadata/{plex_item.rating_key}/children"
-    )
-    if result is None:
-        raise PlexAlbumTracksFetchError(ALBUM_TRACKS_FETCH_ERROR)
-    data, working_base_url = result
-
-    token = server.access_token or user.plex_auth_token
-    album_thumb_url = None
-    if working_base_url and token and plex_item.rating_key:
-        album_thumb_url = (
-            f"{working_base_url}/library/metadata/{plex_item.rating_key}/thumb"
-            f"?X-Plex-Token={token}"
-        )
-
-    tracks = [
-        {
-            "rating_key": str(item.get("ratingKey", "")),
-            "title": item.get("title", ""),
-            "artist": item.get("grandparentTitle", "") or item.get("originalTitle", ""),
-            "track_number": item.get("index", 0),
-            "disc_number": item.get("parentIndex", 1),
-            "duration_ms": item.get("duration"),
-        }
-        for item in _container_items(data)
-    ]
-    return {
-        "tracks": tracks,
-        "base_url": working_base_url,
-        "token": token,
-        "rating_key": plex_item.rating_key,
-        "album_thumb_url": album_thumb_url,
-    }
 
 
 def _to_int(value: Any) -> int | None:

@@ -172,6 +172,7 @@ def get_desktop_settings_dict(cfg: AppConfig) -> Dict[str, Any]:
         "alwaysOnTop": cfg.desktop.always_on_top,
         "startMinimized": cfg.desktop.start_minimized,
         "gamesDownloadPath": cfg.desktop.games_download_path or cfg.server.downloads_path,
+        "gamesInstallPath": cfg.desktop.games_install_path,
         "scanOnLaunch": cfg.desktop.scan_on_launch,
     }
 
@@ -207,6 +208,13 @@ def apply_desktop_settings(cfg: AppConfig, payload: Dict[str, Any]) -> Dict[str,
             cfg.desktop.games_download_path = path_val
             cfg.server.downloads_path = path_val
 
+    # Handle install path
+    if "gamesInstallPath" in payload or "games_install_path" in payload:
+        install_val = str(
+            payload.get("gamesInstallPath", payload.get("games_install_path")) or ""
+        ).strip()
+        cfg.desktop.games_install_path = install_val
+
     if "scanOnLaunch" in payload or "scan_on_launch" in payload:
         cfg.desktop.scan_on_launch = bool(payload.get("scanOnLaunch", payload.get("scan_on_launch")))
 
@@ -227,6 +235,7 @@ def get_organize_settings_dict(cfg: AppConfig) -> Dict[str, Any]:
         "isoDownloadPath": org.iso_download_path,
         "scanOnLaunch": cfg.desktop.scan_on_launch,
         "gamesDownloadPath": cfg.desktop.games_download_path or cfg.server.downloads_path,
+        "gamesInstallPath": cfg.desktop.games_install_path,
     }
 
 

@@ -26,7 +26,7 @@ from apps.media.services.completeness import completeness_flags, score_from_flag
 from apps.people.models import Person
 from apps.proposals.models import MediaEditProposal, ProposalVote, TMDBDeletedID
 
-MEDIA_TYPE_VALUES = ("movie", "show", "music", "game", "person")
+MEDIA_TYPE_VALUES = ("movie", "show", "game", "person")
 _HYDRATION_SORTS = {
     "completeness_score",
     "synced_at",
@@ -69,8 +69,6 @@ _ENRICHMENT_PROVIDERS = (
     "igdb",
     "steam",
     "steamgrid",
-    "musicbrainz",
-    "lastfm",
     "embedding",
     "imdb",
 )
@@ -257,13 +255,11 @@ def get_stats() -> dict:
         }
         for mt in MEDIA_TYPE_VALUES
     }
-    _fill_asset_provider_counts(enrichment, "fanart", ("movie", "show", "music", "game"))
+    _fill_asset_provider_counts(enrichment, "fanart", ("movie", "show", "game"))
     _fill_asset_provider_counts(enrichment, "steam", ("game",))
     _fill_asset_provider_counts(enrichment, "steamgrid", ("game",))
     _fill_rating_provider_counts(enrichment, "omdb", ("movie", "show"), "imdb")
-    _fill_rating_provider_counts(enrichment, "lastfm", ("music",), "lastfm")
     _fill_external_id_counts(enrichment, "igdb", ("game",))
-    _fill_external_id_counts(enrichment, "musicbrainz", ("music",))
     _fill_external_id_counts(enrichment, "imdb", ("movie", "show"))
 
     recent_users = list(
