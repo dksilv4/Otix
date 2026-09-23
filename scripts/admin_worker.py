@@ -164,6 +164,12 @@ class AdminComputeWorker:
         title = job.get("title", "Asset")
         asset_type = job.get("asset_type", "poster")
 
+        # Skip SVG vector images (server mirrors raster formats: webp/jpg/png)
+        if url.lower().split("?", 1)[0].endswith(".svg"):
+            print(f"  {Colors.GRAY}[Skip]{Colors.RESET} {title} ({asset_type}): SVG vector artwork skipped")
+            self.release_leases([asset_id])
+            return False
+
         # 1. Download image from provider CDN
         try:
             dl_resp = self.http_client.get(url, timeout=20.0)
