@@ -138,7 +138,7 @@ class AdminComputeWorker:
                 print(f"{Colors.RED}Error: User '{username}' is not a staff/admin user.{Colors.RESET}")
                 print(f"{Colors.YELLOW}Compute worker endpoints require is_staff=True.{Colors.RESET}")
                 sys.exit(1)
-            print(f"{Colors.GREEN}✓ Authenticated as admin '{username}'{Colors.RESET}")
+            print(f"{Colors.GREEN}[OK] Authenticated as admin '{username}'{Colors.RESET}")
         else:
             print(f"{Colors.YELLOW}Warning: Could not verify /auth/me (HTTP {me_resp.status_code}). Proceeding with token.{Colors.RESET}")
 
@@ -207,8 +207,8 @@ class AdminComputeWorker:
                 self.total_bytes += len(webp_bytes)
                 saved_pct = (1.0 - len(webp_bytes) / max(1, len(raw_bytes))) * 100
                 print(
-                    f"  {Colors.GREEN}✓ [Done]{Colors.RESET} {Colors.BOLD}{title}{Colors.RESET} ({asset_type}) "
-                    f"→ {len(webp_bytes) / 1024:.1f} KB ({saved_pct:+.1f}% vs raw) [{color_guess}]"
+                    f"  {Colors.GREEN}[Done]{Colors.RESET} {Colors.BOLD}{title}{Colors.RESET} ({asset_type}) "
+                    f"-> {len(webp_bytes) / 1024:.1f} KB ({saved_pct:+.1f}% vs raw) [{color_guess}]"
                 )
                 return True
             else:
