@@ -114,7 +114,8 @@ def exchange_code(code: str, request_fn: RequestFn | None = None) -> dict[str, A
         data={"grant_type": "authorization_code", "code": code},
     )
     if status != 200:
-        raise EpicAuthError(400, data.get("errorMessage") or data.get("detail") or "Epic auth failed")
+        detail = data.get("errorMessage") or data.get("detail") or "Epic auth failed"
+        raise EpicAuthError(400, detail)
     return data
 
 
@@ -131,7 +132,8 @@ def refresh_access_token(refresh_token: str, request_fn: RequestFn | None = None
         data={"grant_type": "refresh_token", "refresh_token": refresh_token},
     )
     if status != 200:
-        raise EpicAuthError(400, data.get("errorMessage") or data.get("detail") or "Epic refresh failed")
+        detail = data.get("errorMessage") or data.get("detail") or "Epic refresh failed"
+        raise EpicAuthError(400, detail)
     return data
 
 
@@ -197,7 +199,12 @@ def _fetch_library_items(access_token: str, request_fn: RequestFn) -> list[dict]
     return records if isinstance(records, list) else []
 
 
-def _catalog_title(namespace: str, catalog_item_id: str, access_token: str, request_fn: RequestFn) -> str:
+def _catalog_title(
+    namespace: str,
+    catalog_item_id: str,
+    access_token: str,
+    request_fn: RequestFn,
+) -> str:
     status, data = request_fn(
         "GET",
         f"https://{EPIC_CATALOG_HOST}/catalog/api/shared/namespace/{namespace}/bulk/items"
