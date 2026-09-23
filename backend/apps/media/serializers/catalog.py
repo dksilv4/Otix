@@ -274,6 +274,45 @@ class MediaCreditOutSerializer(serializers.Serializer):
     sort_order = serializers.IntegerField()
 
 
+class CharacterAssetOutSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    asset_type = serializers.CharField()
+    url = serializers.CharField()
+    width = serializers.IntegerField(allow_null=True)
+    height = serializers.IntegerField(allow_null=True)
+    provider = serializers.CharField(allow_null=True)
+    caption = serializers.CharField(allow_null=True)
+    order = serializers.IntegerField()
+
+
+class CharacterExternalIDOutSerializer(serializers.Serializer):
+    provider = serializers.CharField()
+    external_id = serializers.CharField()
+    url = serializers.SerializerMethodField()
+
+    def get_url(self, obj) -> str | None:
+        import urllib.parse
+
+        provider = getattr(obj, "provider", "")
+        ext_id = getattr(obj, "external_id", "")
+        if not ext_id:
+            return None
+        if provider == "wikidata":
+            return f"https://www.wikidata.org/wiki/{ext_id}"
+        if provider == "fandom":
+            if ":" in ext_id:
+                comm, title = ext_id.split(":", 1)
+                return f"https://{comm}.fandom.com/wiki/{urllib.parse.quote(title)}"
+            return f"https://fandom.com/wiki/{urllib.parse.quote(ext_id)}"
+        if provider == "wikipedia":
+            return f"https://en.wikipedia.org/wiki/{urllib.parse.quote(ext_id)}"
+        if provider == "igdb":
+            return f"https://www.igdb.com/characters/{urllib.parse.quote(ext_id)}"
+        if provider == "btva":
+            return f"https://www.behindthevoiceactors.com/characters/{urllib.parse.quote(ext_id)}"
+        return None
+
+
 class CharacterOutSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
@@ -282,12 +321,47 @@ class CharacterOutSerializer(serializers.Serializer):
     gender = serializers.CharField(allow_null=True)
     species = serializers.CharField(allow_null=True)
     mug_shot_url = serializers.CharField(allow_null=True)
+    assets = serializers.SerializerMethodField()
+    external_ids = serializers.SerializerMethodField()
+
+    def get_assets(self, obj):
+        if hasattr(obj, "assets"):
+            return CharacterAssetOutSerializer(obj.assets.all(), many=True).data
+        return []
+
+    def get_external_ids(self, obj):
+        if hasattr(obj, "external_ids"):
+            return CharacterExternalIDOutSerializer(obj.external_ids.all(), many=True).data
+        return []
 
 
 class MediaCharacterOutSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     character = CharacterOutSerializer()
     order = serializers.IntegerField()
+    actor = serializers.SerializerMethodField()
+
+    def get_actor(self, obj):
+        actor_map = self.context.get("actor_map")
+        from core.providers.wikidata import normalize_character_name
+
+        norm_name = normalize_character_name(getattr(obj.character, "name", ""))
+        if actor_map is not None:
+            person = actor_map.get(norm_name)
+            return MediaCreditPersonOutSerializer(person).data if person else None
+
+        # Fallback for standalone calls: check prefetched credits on media_item
+        media_item = getattr(obj, "media_item", None)
+        if media_item and hasattr(media_item, "credits"):
+            for c in media_item.credits.all():
+                if (
+                    c.role == "cast"
+                    and c.character_name
+                    and normalize_character_name(c.character_name) == norm_name
+                    and c.person
+                ):
+                    return MediaCreditPersonOutSerializer(c.person).data
+        return None
 
 
 class CompanyOutSerializer(serializers.Serializer):
@@ -390,7 +464,7 @@ class MediaItemSummarySerializer(serializers.Serializer):
     listened_count = serializers.IntegerField()
     view_count = serializers.IntegerField()
     is_adult = serializers.BooleanField()
-    new_season_released = serializers.BooleanField()
+    new_season_released = serializers.BooleanField(default=False, required=False)
     new_season_release_date = serializers.DateField(allow_null=True)
     user_interactions = serializers.SerializerMethodField()
     steam_playtime_forever = serializers.IntegerField(allow_null=True)
@@ -444,7 +518,7 @@ class MediaItemDetailSerializer(serializers.Serializer):
     listened_count = serializers.IntegerField()
     view_count = serializers.IntegerField()
     is_adult = serializers.BooleanField()
-    new_season_released = serializers.BooleanField()
+    new_season_released = serializers.BooleanField(default=False, required=False)
     new_season_release_date = serializers.DateField(allow_null=True)
     user_interactions = serializers.SerializerMethodField()
     steam_playtime_forever = serializers.IntegerField(allow_null=True)
@@ -480,8 +554,16 @@ class MediaItemDetailSerializer(serializers.Serializer):
         return MediaCreditOutSerializer(credits, many=True).data
 
     def get_characters(self, obj):
+        from core.providers.wikidata import normalize_character_name
+
         characters = [mc for mc in obj.characters.all() if mc.character_id is not None]
-        return MediaCharacterOutSerializer(characters, many=True).data
+        actor_map = {
+            normalize_character_name(c.character_name): c.person
+            for c in obj.credits.all()
+            if c.person_id is not None and c.role == "cast" and c.character_name
+        }
+        ctx = {**self.context, "actor_map": actor_map}
+        return MediaCharacterOutSerializer(characters, many=True, context=ctx).data
 
     def get_involved_companies(self, obj):
         companies = [ic for ic in obj.involved_companies.all() if ic.company_id is not None]

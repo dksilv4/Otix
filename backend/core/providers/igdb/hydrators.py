@@ -118,8 +118,8 @@ def _upsert_game_image_assets(
             continue
         width = entry.get("width")
         height = entry.get("height")
-        w = int(width) if isinstance(width, (int, float)) and width > 0 else None
-        h = int(height) if isinstance(height, (int, float)) and height > 0 else None
+        w = int(width) if isinstance(width, int | float) and width > 0 else None
+        h = int(height) if isinstance(height, int | float) and height > 0 else None
         if min_aspect is not None and (w is None or h is None or w / h < min_aspect):
             continue
         url = image_url(entry.get("image_id"), size)
@@ -153,8 +153,8 @@ def _upsert_game_artworks(media: MediaItem, raw_artworks: Any) -> None:
 
         width = entry.get("width")
         height = entry.get("height")
-        w = int(width) if isinstance(width, (int, float)) and width > 0 else None
-        h = int(height) if isinstance(height, (int, float)) and height > 0 else None
+        w = int(width) if isinstance(width, int | float) and width > 0 else None
+        h = int(height) if isinstance(height, int | float) and height > 0 else None
         aspect = (w / h) if (w is not None and h is not None and h > 0) else None
 
         image_type = entry.get("image_type")
@@ -316,8 +316,8 @@ def _upsert_game_additional_covers(
             continue
         width = entry.get("width")
         height = entry.get("height")
-        w = int(width) if isinstance(width, (int, float)) and width > 0 else None
-        h = int(height) if isinstance(height, (int, float)) and height > 0 else None
+        w = int(width) if isinstance(width, int | float) and width > 0 else None
+        h = int(height) if isinstance(height, int | float) and height > 0 else None
         image_type = entry.get("image_type")
         if image_type == 9:
             lbl = "historical"
@@ -420,17 +420,20 @@ def _upsert_game_characters(media: MediaItem, raw_characters: Any) -> None:
                 character = Character.objects.filter(pk=ext.object_id).first()
 
         if character is None:
-            character = Character.objects.filter(slug=slug).first()
-            if character is None:
-                character = Character.objects.create(
-                    name=name,
-                    slug=slug,
-                    description=description or None,
-                    gender=gender,
-                    species=species,
-                    mug_shot_url=mug_shot,
-                )
-            else:
+            from apps.media.services.character_enrichment import (
+                get_or_create_character_for_media,
+            )
+
+            defaults = {
+                "description": description or None,
+                "gender": gender,
+                "species": species,
+                "mug_shot_url": mug_shot,
+            }
+            character, created = get_or_create_character_for_media(
+                media, name, slug=slug, defaults=defaults
+            )
+            if not created:
                 updates = []
                 if not character.description and description:
                     character.description = description

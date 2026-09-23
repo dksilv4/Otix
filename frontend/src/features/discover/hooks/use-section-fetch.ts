@@ -5,7 +5,7 @@ import { discoverQueries } from '../queries/discover-queries'
 import type { PersonalizedSection } from '../types'
 import type { MediaItemSummary } from '@media/queries/media-queries'
 
-const PREFETCH_MARGIN = '0px 0px 800px 0px'
+const PREFETCH_MARGIN = '0px 0px 200px 0px'
 
 export function useSectionFetch(section: PersonalizedSection, eager = false) {
   const ref = useRef<HTMLDivElement>(null)

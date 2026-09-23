@@ -851,7 +851,7 @@ async def modular_cancel_download(
 # ── Usenet Compatibility Aliases ─────────────────────────────────────────
 
 @app.get("/api/v1/usenet/config")
-async def get_usenet_config(
+def get_usenet_config(
     include_secrets: bool = Query(False),
     _: None = Depends(verify_token),
 ):

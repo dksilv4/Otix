@@ -4,7 +4,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { discoverQueries } from '../queries/discover-queries'
 import type { SeasonSummary } from '@media/queries/media-queries'
 
-const PREFETCH_MARGIN = '0px 0px 800px 0px'
+const PREFETCH_MARGIN = '0px 0px 200px 0px'
 
 /**
  * Fetch for the dedicated New Seasons rail, whose items are a show's latest

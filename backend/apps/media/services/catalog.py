@@ -12,7 +12,7 @@ from datetime import date
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Avg, Count, Exists, OuterRef, Q
+from django.db.models import Avg, Count, Exists, OuterRef, Q, prefetch_related_objects
 from django.db.models.query import QuerySet
 
 from apps.company.models import Company
@@ -243,6 +243,8 @@ def external_ids_for(
 
 def enrich_summaries(items: list[MediaItem], user: _User, context: str = "general") -> None:
     """Attach image urls, external ids and per-user interaction state to items."""
+    if items:
+        prefetch_related_objects(items, "assets")
     attach_media_urls(items, context)
     ext_map = external_ids_for(items)
     for item in items:
@@ -307,7 +309,7 @@ def _attach_summary_derived(item: MediaItem) -> None:
     item.album_artist_name = None
     item.album_track_count = None
     item.album_musicbrainz_release_group_id = None
-    movie = getattr(item, "movie", None)
+    movie = getattr(item, "movie", None) if getattr(item, "media_type", None) == "movie" else None
     item.revenue = movie.revenue if movie is not None else None
     item.budget = movie.budget if movie is not None else None
 
@@ -355,6 +357,8 @@ def list_media(
     qs = MediaItem.objects.all()
     if media_type:
         qs = qs.filter(media_type=media_type)
+        if media_type == "movie":
+            qs = qs.select_related("movie")
     if genre:
         qs = qs.filter(media_genres__genre__slug=genre)
     if company:
@@ -384,9 +388,7 @@ def list_media(
             _has_poster=Exists(
                 MediaAsset.objects.filter(media_item_id=OuterRef("pk"), asset_type="poster")
             ),
-        ).filter(
-            Q(_has_textless=True) | (Q(media_type="game") & Q(_has_poster=True))
-        )
+        ).filter(Q(_has_textless=True) | (Q(media_type="game") & Q(_has_poster=True)))
     if has_logo:
         qs = qs.filter(
             Exists(MediaAsset.objects.filter(media_item_id=OuterRef("pk"), asset_type="logo"))
@@ -419,8 +421,21 @@ def list_media(
         qs = qs.filter(rating_count__gt=0)
     order: list[str] = []
     if prefer_local:
-        qs = qs.annotate(_has_local=local_artwork_exists())
-        order.append("-_has_local")
+        # Short-circuit: if no asset has ever been mirrored the annotation is a
+        # no-op that still adds an expensive correlated subquery to every row.
+        # One EXISTS over the whole table (O(1) via the local_name index) avoids
+        # the per-row subquery entirely when the mirror is empty or unused.
+        _any_local = (
+            MediaAsset.objects.filter(
+                local_name__isnull=False,
+                asset_type__in=LOCAL_CARD_ASSET_TYPES,
+            )
+            .exclude(local_name="")
+            .exists()
+        )
+        if _any_local:
+            qs = qs.annotate(_has_local=local_artwork_exists())
+            order.append("-_has_local")
     if sort_field:
         order.extend([f"{direction}{sort_field}", "-popularity", "id"])
     else:

@@ -226,3 +226,33 @@ class BackfillGameCharactersCommandTests(TestCase):
         self.assertEqual(char.name, "Johnny Silverhand")
         self.assertEqual(self.media.characters.count(), 1)
         self.assertEqual(self.media.characters.first().character, char)
+
+    def test_character_scoping_isolates_unrelated_games(self):
+        from apps.media.services.character_enrichment import get_or_create_character_for_media
+
+        game1 = MediaItem.objects.create(media_type="game", title="God of War", slug="god-of-war")
+        game2 = MediaItem.objects.create(media_type="game", title="Hades II", slug="hades-ii")
+
+        char1, created1 = get_or_create_character_for_media(game1, "Zeus")
+        self.assertTrue(created1)
+        self.assertEqual(char1.slug, "zeus")
+        MediaCharacter.objects.create(media_item=game1, character=char1, order=0)
+
+        # Game 2 creates Zeus - must not reuse Game 1's Zeus
+        char2, created2 = get_or_create_character_for_media(game2, "Zeus")
+        self.assertTrue(created2)
+        self.assertNotEqual(char1.pk, char2.pk)
+        self.assertEqual(char2.slug, "hades-ii-zeus")
+
+    @patch("apps.media.services.character_enrichment.enrich_game_characters")
+    @patch("apps.media.services.game_credits.hydrate_game_credits")
+    def test_automated_hydration_task(self, mock_hydrate, mock_enrich):
+        from apps.media.tasks import hydrate_game_characters_and_credits_task
+
+        mock_hydrate.return_value = 5
+        mock_enrich.return_value = 10
+
+        res = hydrate_game_characters_and_credits_task(self.media.pk)
+        self.assertEqual(res["status"], "success")
+        self.assertEqual(res["credits_hydrated"], 5)
+        self.assertEqual(res["characters_enriched"], 10)

@@ -23,8 +23,21 @@ INSTALLER_EXTENSIONS = [
 SAB_LIBRARY_PREFIX = "SABnzbd Completed Games"
 
 
-def _resolved(path: str) -> Path:
-    return Path(path).expanduser().resolve()
+def _safe_resolve(path: str | Path) -> Path:
+    try:
+        return Path(path).expanduser().resolve()
+    except (OSError, ValueError):
+        return Path(path).expanduser().absolute()
+
+
+def _safe_is_dir(path: Path) -> bool:
+    try:
+        return path.is_dir()
+    except (OSError, ValueError):
+        return False
+
+
+_resolved = _safe_resolve
 
 
 def _configured_mappings(config: AppConfig) -> list[DownloadPathMapping]:
@@ -60,9 +73,9 @@ def _mapping_status(config: AppConfig, mapping: DownloadPathMapping) -> dict[str
                 "Set the host path for this shared folder."
             )
         else:
-            target = raw_target.resolve()
-            accessible = target.is_dir()
-            indexed = any(_resolved(lib.path) == target for lib in config.game_libraries)
+            target = _safe_resolve(raw_target)
+            accessible = _safe_is_dir(target)
+            indexed = any(_safe_resolve(lib.path) == target for lib in config.game_libraries)
             linked = accessible and indexed
             if linked:
                 linked_path = str(target)
@@ -114,8 +127,8 @@ def _mapping_target(mapping: DownloadPathMapping) -> Path | None:
     raw_target = Path(requested).expanduser()
     if not raw_target.is_absolute():
         return None
-    target = raw_target.resolve()
-    return target if target.is_dir() else None
+    target = _safe_resolve(raw_target)
+    return target if _safe_is_dir(target) else None
 
 
 def _managed_library(name: str) -> bool:

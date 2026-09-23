@@ -59,28 +59,31 @@ def external_library_roots(library_paths: list[str], server_root: Path) -> list[
     seen: set[str] = set()
     extra: list[Path] = []
     for raw in library_paths:
-        folder = Path(raw)
-        if not folder.exists():
+        try:
+            folder = Path(raw)
+            if not folder.exists():
+                continue
+            if not folder.is_dir():
+                folder = folder.parent
+            current = folder.resolve()
+            if _is_inside(current, root):
+                continue
+            while True:
+                parent = current.parent
+                if parent == current:
+                    break
+                if _is_inside(root, parent) or parent == root.parent:
+                    break
+                current = parent
+            if not current.is_dir():
+                continue
+            key = str(current)
+            if key in seen:
+                continue
+            seen.add(key)
+            extra.append(current)
+        except (OSError, ValueError):
             continue
-        if not folder.is_dir():
-            folder = folder.parent
-        current = folder.resolve()
-        if _is_inside(current, root):
-            continue
-        while True:
-            parent = current.parent
-            if parent == current:
-                break
-            if _is_inside(root, parent) or parent == root.parent:
-                break
-            current = parent
-        if not current.is_dir():
-            continue
-        key = str(current)
-        if key in seen:
-            continue
-        seen.add(key)
-        extra.append(current)
     return extra
 
 

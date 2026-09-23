@@ -350,6 +350,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "media.mirror_discover_artwork",
         "schedule": crontab(minute="*"),
     },
+    # Automated game character & credit hydration sweep (runs every 10 minutes)
+    "sweep-unhydrated-games": {
+        "task": "media.sweep_unhydrated_games",
+        "schedule": crontab(minute="*/10"),
+    },
     # Notify followers of followed studios when an announced title's release date
     # arrives. Runs early morning (after the 03:07 TMDB import lands new dates).
     "notify-release-transitions": {

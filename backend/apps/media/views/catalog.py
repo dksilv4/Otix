@@ -39,7 +39,8 @@ def resolve_media_pk(media_type: str, media_id: str | int) -> int | None:
     if not raw:
         return None
 
-    # 1. If raw is digits, check exact PK first; if absent, check if it's a canonical provider external ID
+    # 1. If raw is digits, check exact PK first;
+    # if absent, check if it's a canonical provider external ID
     if raw.isdigit():
         val = int(raw)
         if MediaItem.objects.filter(pk=val, media_type=media_type).exists():
@@ -71,7 +72,11 @@ def resolve_media_pk(media_type: str, media_id: str | int) -> int | None:
             return val
 
     # 2. Check slug match
-    slug_match = MediaItem.objects.filter(media_type=media_type, slug=raw).values_list("pk", flat=True).first()
+    slug_match = (
+        MediaItem.objects.filter(media_type=media_type, slug=raw)
+        .values_list("pk", flat=True)
+        .first()
+    )
     if slug_match is not None:
         return slug_match
 
@@ -191,7 +196,9 @@ def _enqueue_detail_rehydrate(item: MediaItem) -> bool:
     if not provider or not ext:
         return False
 
-    recently_synced = bool(item.synced_at and item.synced_at > timezone.now() - timedelta(minutes=15))
+    recently_synced = bool(
+        item.synced_at and item.synced_at > timezone.now() - timedelta(minutes=15)
+    )
     needs_episodes = item.media_type == "show" and show_needs_episodes(item.pk)
 
     if needs_episodes and server_can_fetch(provider) and not recently_synced:
@@ -267,6 +274,16 @@ class MediaDetailView(APIView):
             if refreshed is not None:
                 item = refreshed
                 catalog_service.enrich_summaries([item], request.user, context)
+
+        # Automated hydration: if a game has 0 characters and 0 credits, trigger background task
+        if item.media_type == "game" and item.characters.count() == 0 and item.credits.count() == 0:
+            try:
+                from apps.media.tasks import hydrate_game_characters_and_credits_task
+
+                hydrate_game_characters_and_credits_task.delay(item.pk)
+            except Exception:
+                pass
+
         return Response(MediaItemDetailSerializer(item).data)
 
 

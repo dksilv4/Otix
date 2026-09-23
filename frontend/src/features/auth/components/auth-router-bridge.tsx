@@ -13,6 +13,9 @@ export function AuthRouterBridge() {
         isAuthLoaded: !isLoading,
       },
     })
+    // Re-run all active beforeLoad guards with the fresh auth context so
+    // protected routes redirect immediately after login/logout.
+    void router.invalidate()
   }, [isAuthenticated, isLoading])
 
   return null

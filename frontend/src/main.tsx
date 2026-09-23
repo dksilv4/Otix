@@ -12,6 +12,7 @@ import { ThemeProvider } from '@/lib/providers/theme'
 import { LogoPreferenceProvider } from '@/lib/providers/logo-preference'
 import { AuthProvider } from '@/features/auth/providers/auth-provider'
 import { AuthRouterBridge } from '@/features/auth/components/auth-router-bridge'
+import { AuthGate } from '@/features/auth/components/auth-gate'
 import { WatchlistSyncPrompt } from '@/features/auth/components/watchlist-sync-prompt'
 import { FeatureProvider } from '@/features/_config'
 import { PageMetaProvider } from '@/lib/providers/page-context'
@@ -20,7 +21,6 @@ import { PlayerProvider } from '@/lib/player/use-player'
 import { DkToastProvider, showErrorToast } from '@ui/molecules/toast'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { getDesktopPlatform } from '@/lib/desktop/platform'
-import { ACCESS_TOKEN_KEY } from '@/lib/config'
 import './index.css'
 
 // Set desktop platform attribute for CSS targeting
@@ -56,8 +56,6 @@ window.addEventListener('error', (event) => {
   }
 })
 
-const hasToken = !!localStorage.getItem(ACCESS_TOKEN_KEY)
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HelmetProvider>
@@ -72,19 +70,21 @@ createRoot(document.getElementById('root')!).render(
                 <FeatureProvider>
                 <AuthProvider>
                   <AuthRouterBridge />
-                  <WatchlistSyncPrompt />
-                  <DkToastProvider>
-                    <PlexAudioProvider>
-                      <PlayerProvider>
-                        <PageMetaProvider>
-                          <ModalProvider>
-                            <RouterProvider router={router} context={{ queryClient, isAuthenticated: false, isAuthLoaded: !hasToken }} />
-                            <ModalRoot />
-                          </ModalProvider>
-                        </PageMetaProvider>
-                      </PlayerProvider>
-                    </PlexAudioProvider>
-                  </DkToastProvider>
+                  <AuthGate>
+                    <WatchlistSyncPrompt />
+                    <DkToastProvider>
+                      <PlexAudioProvider>
+                        <PlayerProvider>
+                          <PageMetaProvider>
+                            <ModalProvider>
+                              <RouterProvider router={router} context={{ queryClient, isAuthenticated: false, isAuthLoaded: false }} />
+                              <ModalRoot />
+                            </ModalProvider>
+                          </PageMetaProvider>
+                        </PlayerProvider>
+                      </PlexAudioProvider>
+                    </DkToastProvider>
+                  </AuthGate>
               </AuthProvider>
               </FeatureProvider>
               </LogoPreferenceProvider>

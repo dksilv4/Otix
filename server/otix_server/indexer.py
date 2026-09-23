@@ -29,7 +29,10 @@ class StorageIndexer:
             lib_path = Path(lib.get("path", "."))
             allowed_exts = set(e.lower() for e in lib.get("allowed_extensions", []))
 
-            if not lib_path.exists():
+            try:
+                if not lib_path.exists():
+                    continue
+            except (OSError, ValueError):
                 continue
 
             for root, _, files in os.walk(lib_path):
