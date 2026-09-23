@@ -132,7 +132,7 @@ class AdminComputeWorker:
         me_resp = self.http_client.get(f"{self.server_url}/api/v1/auth/me")
         if me_resp.status_code == 200:
             user_data = me_resp.json()
-            is_staff = user_data.get("is_staff", False)
+            is_staff = user_data.get("is_admin", False) or user_data.get("is_staff", False)
             username = user_data.get("username", "Admin")
             if not is_staff:
                 print(f"{Colors.RED}Error: User '{username}' is not a staff/admin user.{Colors.RESET}")
