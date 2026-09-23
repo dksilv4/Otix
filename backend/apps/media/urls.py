@@ -15,6 +15,7 @@ from apps.media.views import (
     AdminComputeClaimView,
     AdminComputeReleaseView,
     AdminComputeStatsView,
+    AdminComputeSubmitEnrichmentView,
     AdminComputeSubmitView,
     ArtworkSelectionView,
     ArtworkSettingsView,
@@ -125,6 +126,11 @@ urlpatterns = [
         "admin/compute/submit",
         AdminComputeSubmitView.as_view(),
         name="admin-compute-submit",
+    ),
+    path(
+        "admin/compute/enrichment",
+        AdminComputeSubmitEnrichmentView.as_view(),
+        name="admin-compute-enrichment",
     ),
     path(
         "admin/compute/release",

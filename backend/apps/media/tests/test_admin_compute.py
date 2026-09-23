@@ -173,13 +173,90 @@ class AdminComputeTests(TestCase):
             # Release
             res = self.admin_client.post(
                 "/api/v1/media/admin/compute/release",
-                {"asset_ids": [self.asset1.pk, self.asset2.pk]},
+                {"asset_ids": [self.asset1.pk, self.asset2.pk], "media_ids": [self.item.pk]},
                 format="json",
             )
             self.assertEqual(res.status_code, status.HTTP_200_OK)
-            self.assertEqual(res.json()["released"], 2)
+            self.assertEqual(res.json()["released"], 3)
 
             # Stats
             stats_res = self.admin_client.get("/api/v1/media/admin/compute/stats")
             self.assertEqual(stats_res.status_code, status.HTTP_200_OK)
             self.assertIn("unmirrored_candidates", stats_res.json())
+
+    def test_claim_grouped_by_media(self):
+        fake_redis = {}
+
+        def fake_get_client():
+            class FakeRedis:
+                def exists(self, key):
+                    return key in fake_redis
+
+                def set(self, key, val, ex=None):
+                    fake_redis[key] = val
+
+                def delete(self, key):
+                    fake_redis.pop(key, None)
+
+            return FakeRedis()
+
+        with patch("apps.media.views.admin_compute.get_client", side_effect=fake_get_client):
+            res = self.admin_client.post(
+                "/api/v1/media/admin/compute/claim",
+                {"batch_size": 5, "group_by_media": True},
+                format="json",
+            )
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            data = res.json()
+            self.assertTrue(data.get("grouped_by_media"))
+            self.assertEqual(data["count"], 1)
+            media_job = data["media_jobs"][0]
+            self.assertEqual(media_job["media_item_id"], self.item.pk)
+            self.assertEqual(len(media_job["assets"]), 2)
+            self.assertTrue(media_job["needs_enrichment"])
+
+    def test_submit_enrichment(self):
+        from apps.media.models import MediaCharacter
+        from apps.people.models import MediaCredit, Person
+
+        payload = {
+            "media_item_id": self.item.pk,
+            "cast": [
+                {
+                    "person_name": "Leonardo DiCaprio",
+                    "character_name": "Cobb",
+                    "photo_url": "https://example.com/leo.jpg",
+                }
+            ],
+            "crew": [
+                {
+                    "person_name": "Christopher Nolan",
+                    "role": "director",
+                }
+            ],
+            "characters": [
+                {
+                    "character_name": "Cobb",
+                    "description": "Extractor",
+                    "wikidata_id": "Q9999",
+                }
+            ],
+        }
+
+        res = self.admin_client.post(
+            "/api/v1/media/admin/compute/enrichment",
+            payload,
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["credits_added"], 2)
+        self.assertEqual(data["characters_added"], 1)
+
+        # Verify database
+        self.assertTrue(Person.objects.filter(name="Leonardo DiCaprio").exists())
+        self.assertTrue(Person.objects.filter(name="Christopher Nolan").exists())
+        self.assertTrue(MediaCredit.objects.filter(media_item=self.item, role="cast").exists())
+        self.assertTrue(MediaCredit.objects.filter(media_item=self.item, role="director").exists())
+        self.assertTrue(MediaCharacter.objects.filter(media_item=self.item).exists())

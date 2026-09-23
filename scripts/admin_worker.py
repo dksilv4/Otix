@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Otix Admin Distributed Compute Worker (Turbo Edition + Theme Analyzer).
+Otix Admin Distributed Compute Worker (Turbo Edition: Media-Grouped + Theme Analyzer + Wikidata Offload).
 
 A high-performance pipelined runner that allows administrators to use their
-workstations (e.g. 16-thread Ryzen 7 9800X3D) to offload heavy artwork processing,
-resizing, WebP transcoding, luminance/contrast analysis, and theme classification
-(guess_white, guess_black, guess_colorful, guess_multicolor, guess_gray).
+workstations (e.g. 16-thread Ryzen 7 9800X3D) to offload:
+1. Media-grouped artwork processing: evaluates all candidates locally and uploads ONLY winners
+   for General, Dark, Light, and Textless UI contexts (saving 70-80% VM disk space).
+2. Artwork theme classification (guess_white, guess_black, guess_colorful, guess_multicolor, guess_gray).
+3. Public Wikidata & Wikipedia metadata enrichment (game voice cast, characters, crew, and movie distributors).
 
 Usage:
-    python scripts/admin_worker.py --server http://84.8.154.67:8000 --username worker --password worker --threads 16 --batch-size 50
+    python scripts/admin_worker.py --server http://84.8.154.67:8000 --username worker --password worker --threads 16 --batch-size 20
 """
 
 import argparse
@@ -20,6 +22,8 @@ import signal
 import sys
 import threading
 import time
+import urllib.parse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import httpx
@@ -32,20 +36,23 @@ class Colors:
     YELLOW = "\033[93m"
     RED = "\033[91m"
     GRAY = "\033[90m"
+    MAGENTA = "\033[95m"
     BOLD = "\033[1m"
     RESET = "\033[0m"
 
 
 def print_banner(server: str, workers: int, batch_size: int):
-    print(f"\n{Colors.CYAN}{Colors.BOLD}=========================================================={Colors.RESET}")
-    print(f"{Colors.CYAN}{Colors.BOLD}   OTIX DISTRIBUTED WORKER (TURBO + THEME CLASSIFIER)    {Colors.RESET}")
-    print(f"{Colors.CYAN}{Colors.BOLD}=========================================================={Colors.RESET}")
+    print(f"\n{Colors.CYAN}{Colors.BOLD}=================================================================={Colors.RESET}")
+    print(f"{Colors.CYAN}{Colors.BOLD}   OTIX DISTRIBUTED WORKER (TURBO + MEDIA-GROUPED + WIKIDATA)     {Colors.RESET}")
+    print(f"{Colors.CYAN}{Colors.BOLD}=================================================================={Colors.RESET}")
     print(f"  {Colors.BOLD}Server URL:{Colors.RESET}       {server}")
     print(f"  {Colors.BOLD}Worker Threads:{Colors.RESET}   {workers} (pipelined streaming)")
-    print(f"  {Colors.BOLD}Batch Size:{Colors.RESET}       {batch_size} assets/claim")
+    print(f"  {Colors.BOLD}Batch Size:{Colors.RESET}       {batch_size} media items/claim")
+    print(f"  {Colors.BOLD}Artwork Mode:{Colors.RESET}     Media-Grouped Winner-Only (70-80% storage saved)")
     print(f"  {Colors.BOLD}Theme Analysis:{Colors.RESET}   Alpha-aware HSL + Perceived Luminance")
-    print(f"  {Colors.BOLD}Mode:{Colors.RESET}             Zero-Trust Admin Compute")
-    print(f"{Colors.CYAN}----------------------------------------------------------{Colors.RESET}\n")
+    print(f"  {Colors.BOLD}Metadata Offload:{Colors.RESET} Public Wikidata Cast, Characters & Distributors")
+    print(f"  {Colors.BOLD}Auth Mode:{Colors.RESET}        Zero-Trust Admin Compute with Auto-Refresh")
+    print(f"{Colors.CYAN}------------------------------------------------------------------{Colors.RESET}\n")
 
 
 # Theme classification constants matching backend color_analyzer service
@@ -56,6 +63,44 @@ _MULTICOLOR_CHROMATIC_MIN = 0.5
 _HUE_BIN_COUNT = 12
 _HUE_BIN_MIN_SHARE = 0.08
 _HUE_DOMINANT_MAX = 0.8
+
+_LOGO_THEME_RANK = {
+    "dark": {
+        "guess_white": 2,
+        "guess_colorful": 1,
+        "guess_multicolor": 1,
+        "guess_gray": 1,
+        "guess_black": 0,
+        None: 1,
+    },
+    "light": {
+        "guess_black": 2,
+        "guess_colorful": 1,
+        "guess_multicolor": 1,
+        "guess_gray": 1,
+        "guess_white": 0,
+        None: 1,
+    },
+}
+
+_BACKDROP_THEME_RANK = {
+    "dark": {
+        "guess_black": 2,
+        "guess_colorful": 1,
+        "guess_multicolor": 1,
+        "guess_gray": 1,
+        "guess_white": 0,
+        None: 1,
+    },
+    "light": {
+        "guess_white": 2,
+        "guess_colorful": 1,
+        "guess_multicolor": 1,
+        "guess_gray": 1,
+        "guess_black": 0,
+        None: 1,
+    },
+}
 
 
 def _rgb_to_hsl(r: int, g: int, b: int) -> Tuple[float, float, float]:
@@ -176,9 +221,9 @@ def _classify_opaque_image(image: Image.Image, asset_type: str) -> str | None:
 
     if asset_type in ("backdrop", "textless_backdrop"):
         if avg_lum < 0.35:
-            return "guess_black"  # Reads dark; ideal for dark UI with white typography
+            return "guess_black"
         if avg_lum > 0.65:
-            return "guess_white"  # Reads light; ideal for light UI with dark typography
+            return "guess_white"
     else:  # poster, textless_poster, icon
         if avg_lum < 0.30:
             return "guess_black"
@@ -228,6 +273,267 @@ def extract_dominant_color(img: Image.Image) -> str:
     return "#333333"
 
 
+class WikidataResolver:
+    """Public, unauthenticated Wikidata and Wikipedia resolver."""
+
+    SPARQL_URL = "https://query.wikidata.org/sparql"
+    WIKIDATA_API = "https://www.wikidata.org/w/api.php"
+    USER_AGENT = "OtixWorker/1.0 (https://github.com/dksilv4/Otix; admin@otix.media)"
+
+    def __init__(self):
+        limits = httpx.Limits(max_keepalive_connections=16, max_connections=32)
+        self.client = httpx.Client(
+            headers={"User-Agent": self.USER_AGENT},
+            timeout=15.0,
+            limits=limits,
+            follow_redirects=True,
+        )
+
+    def sparql_query(self, query: str) -> List[Dict[str, Any]]:
+        try:
+            resp = self.client.get(
+                self.SPARQL_URL,
+                params={"query": query, "format": "json"},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("results", {}).get("bindings", [])
+        except Exception:
+            pass
+        return []
+
+    def resolve_game_qid(self, steam_id: Optional[str], igdb_id: Optional[str], title: str) -> Optional[str]:
+        # 1. By Steam ID (P1733)
+        if steam_id:
+            q = f'SELECT ?item WHERE {{ ?item wdt:P1733 "{steam_id}" . }} LIMIT 1'
+            bindings = self.sparql_query(q)
+            if bindings:
+                return bindings[0]["item"]["value"].split("/")[-1]
+
+        # 2. By IGDB ID (P5794)
+        if igdb_id:
+            q = f'SELECT ?item WHERE {{ ?item wdt:P5794 "{igdb_id}" . }} LIMIT 1'
+            bindings = self.sparql_query(q)
+            if bindings:
+                return bindings[0]["item"]["value"].split("/")[-1]
+
+        # 3. By Title Search
+        if title:
+            try:
+                resp = self.client.get(
+                    self.WIKIDATA_API,
+                    params={
+                        "action": "wbsearchentities",
+                        "search": title,
+                        "type": "item",
+                        "language": "en",
+                        "limit": 5,
+                        "format": "json",
+                    },
+                )
+                if resp.status_code == 200:
+                    results = resp.json().get("search", [])
+                    for res in results:
+                        desc = (res.get("description") or "").lower()
+                        if any(k in desc for k in ("video game", "game", "action game", "rpg", "shooter")):
+                            return res.get("id")
+                    if results:
+                        return results[0].get("id")
+            except Exception:
+                pass
+        return None
+
+    def fetch_entities(self, qids: List[str]) -> Dict[str, Any]:
+        if not qids:
+            return {}
+        entities: Dict[str, Any] = {}
+        # Fetch in chunks of 50
+        for i in range(0, len(qids), 50):
+            chunk = qids[i : i + 50]
+            try:
+                resp = self.client.get(
+                    self.WIKIDATA_API,
+                    params={
+                        "action": "wbgetentities",
+                        "ids": "|".join(chunk),
+                        "props": "labels|claims|sitelinks",
+                        "languages": "en",
+                        "format": "json",
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json().get("entities", {})
+                    entities.update(data)
+            except Exception:
+                pass
+        return entities
+
+    def resolve_game_credits(self, steam_id: Optional[str], igdb_id: Optional[str], title: str) -> Dict[str, Any]:
+        qid = self.resolve_game_qid(steam_id, igdb_id, title)
+        if not qid:
+            return {}
+
+        entities = self.fetch_entities([qid])
+        game_entity = entities.get(qid, {})
+        claims = game_entity.get("claims", {})
+
+        # Fandom ID (P6262)
+        fandom_id = None
+        p6262 = claims.get("P6262", [])
+        if p6262:
+            fid_val = p6262[0].get("mainsnak", {}).get("datavalue", {}).get("value")
+            if isinstance(fid_val, str):
+                fandom_id = fid_val
+
+        # Characters (P674)
+        char_qids = [
+            c["mainsnak"]["datavalue"]["value"]["id"]
+            for c in claims.get("P674", [])
+            if c.get("mainsnak", {}).get("datavalue", {}).get("value", {}).get("id")
+        ]
+
+        # Cast: P725 (voice actor), P161 (cast), P175 (performer)
+        cast_claims = claims.get("P725", []) + claims.get("P161", []) + claims.get("P175", [])
+        raw_cast_pairs: List[Tuple[str, Optional[str], Optional[str]]] = []
+        for c in cast_claims:
+            aid = c.get("mainsnak", {}).get("datavalue", {}).get("value", {}).get("id")
+            if not aid:
+                continue
+            quals = c.get("qualifiers", {})
+            p4633 = quals.get("P4633", [])
+            p453 = quals.get("P453", [])
+            role_str = p4633[0].get("datavalue", {}).get("value") if p4633 else None
+            role_qid = p453[0].get("datavalue", {}).get("value", {}).get("id") if p453 else None
+            if role_qid and role_qid not in char_qids:
+                char_qids.append(role_qid)
+            raw_cast_pairs.append((aid, role_str, role_qid))
+
+        # Crew: Directors (P57), Screenwriters (P58), Composers (P86)
+        director_ids = [
+            c["mainsnak"]["datavalue"]["value"]["id"]
+            for c in claims.get("P57", [])
+            if c.get("mainsnak", {}).get("datavalue", {}).get("value", {}).get("id")
+        ]
+        writer_ids = [
+            c["mainsnak"]["datavalue"]["value"]["id"]
+            for c in claims.get("P58", [])
+            if c.get("mainsnak", {}).get("datavalue", {}).get("value", {}).get("id")
+        ]
+        composer_ids = [
+            c["mainsnak"]["datavalue"]["value"]["id"]
+            for c in claims.get("P86", [])
+            if c.get("mainsnak", {}).get("datavalue", {}).get("value", {}).get("id")
+        ]
+
+        actor_ids = [p[0] for p in raw_cast_pairs]
+        needed_qids = list(set(char_qids + actor_ids + director_ids + writer_ids + composer_ids))
+        detail_map = self.fetch_entities(needed_qids)
+
+        # Build characters list
+        characters = []
+        for cid in char_qids:
+            cdata = detail_map.get(cid, {})
+            c_name = cdata.get("labels", {}).get("en", {}).get("value")
+            if not c_name:
+                continue
+            c_claims = cdata.get("claims", {})
+            char_img = None
+            p18 = c_claims.get("P18", [])
+            if p18:
+                file_name = p18[0].get("mainsnak", {}).get("datavalue", {}).get("value")
+                if file_name:
+                    char_img = f"https://commons.wikimedia.org/wiki/Special:FilePath/{urllib.parse.quote(file_name)}"
+            w_title = cdata.get("sitelinks", {}).get("enwiki", {}).get("title")
+
+            characters.append({
+                "character_name": c_name,
+                "wikidata_id": cid,
+                "wikipedia_title": w_title,
+                "image_url": char_img,
+            })
+
+        # Build cast
+        cast = []
+        for aid, role_str, role_qid in raw_cast_pairs:
+            adata = detail_map.get(aid, {})
+            aname = adata.get("labels", {}).get("en", {}).get("value")
+            if not aname:
+                continue
+            cname = role_str
+            if not cname and role_qid:
+                cname = detail_map.get(role_qid, {}).get("labels", {}).get("en", {}).get("value")
+            if not cname:
+                cname = "Cast"
+            photo_url = None
+            p18 = adata.get("claims", {}).get("P18", [])
+            if p18:
+                fn = p18[0].get("mainsnak", {}).get("datavalue", {}).get("value")
+                if fn:
+                    photo_url = f"https://commons.wikimedia.org/wiki/Special:FilePath/{urllib.parse.quote(fn)}"
+            cast.append({
+                "person_name": aname,
+                "character_name": cname,
+                "photo_url": photo_url,
+            })
+
+        # Build crew
+        crew = []
+        for d_id in director_ids:
+            ddata = detail_map.get(d_id, {})
+            dname = ddata.get("labels", {}).get("en", {}).get("value")
+            if dname:
+                crew.append({"person_name": dname, "role": "director"})
+        for w_id in writer_ids:
+            wdata = detail_map.get(w_id, {})
+            wname = wdata.get("labels", {}).get("en", {}).get("value")
+            if wname:
+                crew.append({"person_name": wname, "role": "writer"})
+        for cmp_id in composer_ids:
+            cdata = detail_map.get(cmp_id, {})
+            cmpname = cdata.get("labels", {}).get("en", {}).get("value")
+            if cmpname:
+                crew.append({"person_name": cmpname, "role": "composer"})
+
+        return {
+            "cast": cast,
+            "crew": crew,
+            "characters": characters,
+            "fandom_id": fandom_id,
+        }
+
+    def resolve_movie_distributors(self, imdb_id: Optional[str], tmdb_id: Optional[str]) -> List[Dict[str, Any]]:
+        selector = None
+        if imdb_id and imdb_id.startswith("tt"):
+            selector = f'VALUES ?imdb {{ "{imdb_id}" }} ?film wdt:P345 ?imdb .'
+        elif tmdb_id and tmdb_id.isdigit():
+            selector = f'VALUES ?tmdbId {{ "{int(tmdb_id)}" }} ?film wdt:P4947 ?tmdbId .'
+        if not selector:
+            return []
+
+        sparql = f"""
+        SELECT ?dist ?distLabel ?tmdbCompany WHERE {{
+          {selector}
+          ?film wdt:P750 ?dist .
+          OPTIONAL {{ ?dist wdt:P4985 ?tmdbCompany }}
+          SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
+        }}
+        """
+        bindings = self.sparql_query(sparql)
+        distributors = []
+        seen = set()
+        for b in bindings:
+            name = (b.get("distLabel") or {}).get("value")
+            if not name:
+                continue
+            raw_tmdb = (b.get("tmdbCompany") or {}).get("value")
+            tmdb_comp_id = int(raw_tmdb) if raw_tmdb and raw_tmdb.isdigit() else None
+            key = (name, tmdb_comp_id)
+            if key not in seen:
+                seen.add(key)
+                distributors.append({"name": name, "tmdb_company_id": tmdb_comp_id})
+        return distributors
+
+
 class AdminComputeWorker:
     def __init__(
         self,
@@ -236,7 +542,7 @@ class AdminComputeWorker:
         username: Optional[str] = None,
         password: Optional[str] = None,
         concurrency: int = 16,
-        batch_size: int = 50,
+        batch_size: int = 20,
         webp_quality: int = 85,
     ):
         self.server_url = server_url.rstrip("/")
@@ -248,25 +554,21 @@ class AdminComputeWorker:
         self.webp_quality = webp_quality
         self.running = True
 
-        # Pipeline synchronization
-        self.job_queue: queue.Queue = queue.Queue(maxsize=batch_size * 3)
-        self.in_flight_lock = threading.Lock()
-        self.in_flight_ids: Set[int] = set()
-        self.skipped_ids: Set[int] = set()
-
         # Telemetry & Stats
-        self.total_processed = 0
-        self.total_bytes = 0
+        self.total_media_processed = 0
+        self.total_candidates_evaluated = 0
+        self.total_winners_uploaded = 0
+        self.total_bytes_uploaded = 0
+        self.total_enrichments = 0
         self.stats_lock = threading.Lock()
         self.start_time = time.time()
-        self.last_telemetry_time = time.time()
-        self.last_telemetry_count = 0
 
-        # High-throughput connection pooled HTTP client
+        # High-throughput connection pooled HTTP clients
         limits = httpx.Limits(max_keepalive_connections=64, max_connections=128, keepalive_expiry=30.0)
-        self.http_client = httpx.Client(timeout=20.0, follow_redirects=True, limits=limits)
+        self.http_client = httpx.Client(timeout=25.0, follow_redirects=True, limits=limits)
+        self.wikidata = WikidataResolver()
 
-    def authenticate(self):
+    def authenticate(self, silent: bool = False):
         """Authenticates with the server and ensures the user is an admin."""
         if not self.token:
             if not self.username:
@@ -275,7 +577,8 @@ class AdminComputeWorker:
                 self.password = getpass.getpass("Enter admin password: ")
 
             login_url = f"{self.server_url}/api/v1/auth/login"
-            print(f"{Colors.GRAY}Authenticating with {login_url}...{Colors.RESET}")
+            if not silent:
+                print(f"{Colors.GRAY}Authenticating with {login_url}...{Colors.RESET}")
             resp = self.http_client.post(
                 login_url,
                 json={"identity": self.username, "password": self.password},
@@ -300,77 +603,74 @@ class AdminComputeWorker:
 
         self.http_client.headers["Authorization"] = f"Bearer {self.token}"
 
-        # Verify admin privileges
-        me_resp = self.http_client.get(f"{self.server_url}/api/v1/auth/me")
-        if me_resp.status_code == 200:
-            user_data = me_resp.json()
-            is_staff = user_data.get("is_admin", False) or user_data.get("is_staff", False)
-            username = user_data.get("username", "Admin")
-            if not is_staff:
-                print(f"{Colors.RED}Error: User '{username}' is not a staff/admin user.{Colors.RESET}")
-                print(f"{Colors.YELLOW}Compute worker endpoints require is_staff=True.{Colors.RESET}")
-                sys.exit(1)
-            print(f"{Colors.GREEN}[OK] Authenticated as admin '{username}'{Colors.RESET}")
-        else:
-            print(f"{Colors.YELLOW}Warning: Could not verify /auth/me (HTTP {me_resp.status_code}). Proceeding with token.{Colors.RESET}")
+        if not silent:
+            me_resp = self.http_client.get(f"{self.server_url}/api/v1/auth/me")
+            if me_resp.status_code == 200:
+                user_data = me_resp.json()
+                is_staff = user_data.get("is_admin", False) or user_data.get("is_staff", False)
+                username = user_data.get("username", "Admin")
+                if not is_staff:
+                    print(f"{Colors.RED}Error: User '{username}' is not a staff/admin user.{Colors.RESET}")
+                    sys.exit(1)
+                print(f"{Colors.GREEN}[OK] Authenticated as admin '{username}'{Colors.RESET}")
 
-    def claim_jobs(self) -> List[Dict[str, Any]]:
-        """Claim a batch of unmirrored assets from the server."""
+    def claim_media_jobs(self) -> List[Dict[str, Any]]:
+        """Claim a batch of candidate media items and their candidate artwork."""
         claim_url = f"{self.server_url}/api/v1/media/admin/compute/claim"
         try:
-            resp = self.http_client.post(claim_url, json={"batch_size": self.batch_size})
-            if resp.status_code == 403:
-                print(f"{Colors.RED}Claim rejected (403 Forbidden). Ensure your user is an admin.{Colors.RESET}")
-                time.sleep(10)
-                return []
+            resp = self.http_client.post(
+                claim_url,
+                json={"batch_size": self.batch_size, "group_by_media": True},
+            )
+            if resp.status_code == 401:
+                # Token expired: auto-relogin
+                self.token = None
+                self.authenticate(silent=True)
+                return self.claim_media_jobs()
+
             if resp.status_code != 200:
-                print(f"{Colors.YELLOW}Claim error (HTTP {resp.status_code}): {resp.text}{Colors.RESET}")
                 return []
 
             data = resp.json()
-            return data.get("jobs", [])
+            return data.get("media_jobs", [])
         except Exception as exc:
-            print(f"{Colors.YELLOW}Claim network error: {exc}{Colors.RESET}")
+            print(f"{Colors.YELLOW}Claim error: {exc}{Colors.RESET}")
             return []
 
-    def release_leases(self, asset_ids: List[int]):
-        """Releases claim locks on uncompleted assets during shutdown."""
-        if not asset_ids:
+    def release_leases(self, asset_ids: List[int], media_ids: Optional[List[int]] = None):
+        """Releases claim locks on non-winning assets and media rows."""
+        payload = {}
+        if asset_ids:
+            payload["asset_ids"] = asset_ids
+        if media_ids:
+            payload["media_ids"] = media_ids
+        if not payload:
             return
         try:
             self.http_client.post(
                 f"{self.server_url}/api/v1/media/admin/compute/release",
-                json={"asset_ids": asset_ids},
+                json=payload,
             )
         except Exception:
             pass
 
-    def process_and_submit_asset(self, job: Dict[str, Any]) -> bool:
-        """Downloads, transcodes to WebP, analyzes theme contrast, and submits to server."""
-        asset_id = job["asset_id"]
-        url = job["url"]
-        title = job.get("title", "Asset")
-        asset_type = job.get("asset_type", "poster")
+    def _download_and_transcode_asset(self, asset: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Download asset, compute theme classification and WebP transcoding."""
+        aid = asset["asset_id"]
+        url = asset.get("url")
+        asset_type = asset.get("asset_type", "poster")
 
-        # Skip SVG vector images (server mirrors raster formats: webp/jpg/png)
-        if url.lower().split("?", 1)[0].endswith(".svg"):
-            self.skipped_ids.add(asset_id)
-            return False
+        if not url or url.lower().split("?", 1)[0].endswith(".svg"):
+            return None
 
-        # 1. Download image from provider CDN
         try:
-            dl_resp = self.http_client.get(url, timeout=15.0)
+            dl_resp = self.http_client.get(url, timeout=12.0)
             if dl_resp.status_code != 200 or not dl_resp.content:
-                self.skipped_ids.add(asset_id)
-                return False
+                return None
             raw_bytes = dl_resp.content
-        except Exception:
-            self.skipped_ids.add(asset_id)
-            return False
 
-        # 2. Open with Pillow, analyze theme contrast + dominant color, and optimize
-        try:
             with Image.open(io.BytesIO(raw_bytes)) as img:
+                width, height = img.size
                 theme_guess = classify_theme(img, asset_type)
                 hex_color = extract_dominant_color(img)
 
@@ -378,169 +678,240 @@ class AdminComputeWorker:
                 target_img = img.convert("RGBA") if img.mode in ("RGBA", "LA", "P") else img.convert("RGB")
                 target_img.save(buf, format="WEBP", quality=self.webp_quality, method=4)
                 webp_bytes = buf.getvalue()
+
+                return {
+                    "asset_id": aid,
+                    "asset_type": asset_type,
+                    "url": url,
+                    "theme_guess": theme_guess,
+                    "hex_color": hex_color,
+                    "width": width,
+                    "height": height,
+                    "webp_bytes": webp_bytes,
+                    "original_asset": asset,
+                }
         except Exception:
-            self.skipped_ids.add(asset_id)
-            return False
+            return None
 
-        # 3. Submit processed result to server
-        submit_url = f"{self.server_url}/api/v1/media/admin/compute/submit"
-        files = {
-            "file": ("asset.webp", webp_bytes, "image/webp"),
-        }
-        data = {
-            "asset_id": str(asset_id),
-            "color_guess": theme_guess,
-        }
+    def pick_media_winners(
+        self, candidate_assets: List[Dict[str, Any]], processed_map: Dict[int, Dict[str, Any]]
+    ) -> Set[int]:
+        """Selects the winning asset IDs for general, dark, light, and textless contexts."""
+        winners: Set[int] = set()
 
-        try:
-            sub_resp = self.http_client.post(submit_url, data=data, files=files)
-            if sub_resp.status_code == 200:
-                with self.stats_lock:
-                    self.total_processed += 1
-                    self.total_bytes += len(webp_bytes)
-                    count = self.total_processed
+        # Group candidates by asset_type
+        by_type: Dict[str, List[Dict[str, Any]]] = {}
+        for a in candidate_assets:
+            atype = a.get("asset_type", "poster")
+            by_type.setdefault(atype, []).append(a)
 
-                saved_pct = (1.0 - len(webp_bytes) / max(1, len(raw_bytes))) * 100
-                print(
-                    f"  {Colors.GREEN}[Done]{Colors.RESET} {Colors.BOLD}{title}{Colors.RESET} ({asset_type}) "
-                    f"-> {len(webp_bytes) / 1024:.1f} KB [{Colors.CYAN}{theme_guess}{Colors.RESET} | {hex_color}] "
-                    f"({saved_pct:+.1f}%)"
+            # Keep explicitly pinned or flagged assets
+            if a.get("keep_local") or a.get("selected_context"):
+                winners.add(a["asset_id"])
+
+        for atype, assets in by_type.items():
+            for context in ("general", "dark", "light"):
+                best_cand = None
+                best_rank = (-1, -1, -1, -1, 0)  # (pin_rank, theme_rank, score, area, -pk)
+
+                for a in assets:
+                    aid = a["asset_id"]
+                    proc = processed_map.get(aid)
+                    guess = proc["theme_guess"] if proc else None
+                    width = proc["width"] if proc else 0
+                    height = proc["height"] if proc else 0
+                    area = width * height
+
+                    # 1. Pinned context rank
+                    sel_ctx = a.get("selected_context")
+                    pin_rank = 0
+                    if sel_ctx == context:
+                        pin_rank = 3
+                    elif context in ("dark", "light") and sel_ctx == "general":
+                        pin_rank = 2
+
+                    # 2. Theme contrast rank
+                    theme_rank = 0
+                    if context in ("dark", "light"):
+                        if atype in ("logo", "icon"):
+                            theme_rank = _LOGO_THEME_RANK[context].get(guess, 1)
+                        elif atype in ("backdrop", "textless_backdrop"):
+                            theme_rank = _BACKDROP_THEME_RANK[context].get(guess, 1)
+
+                    # 3. Score
+                    score = a.get("score") or 0
+
+                    cand_rank = (pin_rank, theme_rank, score, area, -aid)
+                    if best_cand is None or cand_rank > best_rank:
+                        best_cand = aid
+                        best_rank = cand_rank
+
+                if best_cand is not None:
+                    winners.add(best_cand)
+
+        return winners
+
+    def process_media_item(self, media_job: Dict[str, Any]):
+        """Processes a single media item: downloads candidates, picks winners, uploads & enriches."""
+        mid = media_job["media_item_id"]
+        title = media_job.get("title", f"Media #{mid}")
+        mtype = media_job.get("media_type", "movie")
+        needs_enrichment = media_job.get("needs_enrichment", False)
+        ext_ids = media_job.get("external_ids", {})
+        candidates = media_job.get("assets", [])
+
+        # Filter unmirrored candidate assets
+        unmirrored = [
+            a for a in candidates
+            if not a.get("is_mirrored") and a.get("url") and not a.get("url", "").lower().split("?", 1)[0].endswith(".svg")
+        ]
+
+        # 1. Download & analyze candidate images in parallel
+        processed_map: Dict[int, Dict[str, Any]] = {}
+        if unmirrored:
+            with ThreadPoolExecutor(max_workers=min(len(unmirrored), 8)) as pool:
+                futures = {pool.submit(self._download_and_transcode_asset, a): a["asset_id"] for a in unmirrored}
+                for f in as_completed(futures):
+                    res = f.result()
+                    if res:
+                        processed_map[res["asset_id"]] = res
+
+        # 2. Select winners across General, Dark, Light, Textless
+        winning_ids = self.pick_media_winners(candidates, processed_map)
+        winning_unmirrored = [aid for aid in winning_ids if aid in processed_map]
+        non_winning_ids = [a["asset_id"] for a in unmirrored if a["asset_id"] not in winning_ids]
+
+        # 3. Upload WINNERS only
+        uploaded_count = 0
+        uploaded_bytes = 0
+        for aid in winning_unmirrored:
+            item = processed_map[aid]
+            files = {"file": ("asset.webp", item["webp_bytes"], "image/webp")}
+            data = {"asset_id": str(aid), "color_guess": item["theme_guess"]}
+            try:
+                sub_resp = self.http_client.post(
+                    f"{self.server_url}/api/v1/media/admin/compute/submit",
+                    data=data,
+                    files=files,
                 )
+                if sub_resp.status_code == 200:
+                    uploaded_count += 1
+                    uploaded_bytes += len(item["webp_bytes"])
+            except Exception:
+                pass
 
-                # Periodic telemetry output every 25 completed items
-                if count % 25 == 0:
-                    self.print_telemetry()
+        # 4. Release NON-WINNERS to free redis leases and conserve server storage
+        if non_winning_ids:
+            self.release_leases(asset_ids=non_winning_ids)
 
-                return True
-            else:
-                self.skipped_ids.add(asset_id)
-                return False
-        except Exception:
-            self.skipped_ids.add(asset_id)
-            return False
+        # 5. Public Wikidata Enrichment
+        enrichment_summary = ""
+        if needs_enrichment:
+            enrichment_payload: Dict[str, Any] = {"media_item_id": mid}
+            if mtype == "game":
+                g_credits = self.wikidata.resolve_game_credits(
+                    steam_id=ext_ids.get("steam"),
+                    igdb_id=ext_ids.get("igdb"),
+                    title=title,
+                )
+                if g_credits:
+                    enrichment_payload.update(g_credits)
+                    enrichment_summary = (
+                        f" (Wikidata: {len(g_credits.get('characters', []))} chars, "
+                        f"{len(g_credits.get('cast', []))} cast, {len(g_credits.get('crew', []))} crew)"
+                    )
+            elif mtype in ("movie", "show"):
+                distributors = self.wikidata.resolve_movie_distributors(
+                    imdb_id=ext_ids.get("imdb"),
+                    tmdb_id=ext_ids.get("tmdb"),
+                )
+                if distributors:
+                    enrichment_payload["distributors"] = distributors
+                    enrichment_summary = f" (Wikidata: {len(distributors)} distributors)"
 
-    def print_telemetry(self):
-        """Prints live speed and telemetry."""
-        now = time.time()
-        elapsed = max(0.1, now - self.start_time)
-        recent_elapsed = max(0.1, now - self.last_telemetry_time)
+            if len(enrichment_payload) > 1:
+                try:
+                    e_resp = self.http_client.post(
+                        f"{self.server_url}/api/v1/media/admin/compute/enrichment",
+                        json=enrichment_payload,
+                    )
+                    if e_resp.status_code == 200:
+                        with self.stats_lock:
+                            self.total_enrichments += 1
+                except Exception:
+                    pass
+
+        # Release media lease
+        self.release_leases(asset_ids=[], media_ids=[mid])
+
+        # Telemetry updates
         with self.stats_lock:
-            recent_items = self.total_processed - self.last_telemetry_count
-            overall_speed = self.total_processed / elapsed
-            recent_speed = recent_items / recent_elapsed
-            total_mb = self.total_bytes / (1024 * 1024)
-            qsize = self.job_queue.qsize()
+            self.total_media_processed += 1
+            self.total_candidates_evaluated += len(unmirrored)
+            self.total_winners_uploaded += uploaded_count
+            self.total_bytes_uploaded += uploaded_bytes
 
-        self.last_telemetry_time = now
-        self.last_telemetry_count = self.total_processed
+        saved_pct = 0
+        if len(unmirrored) > 0:
+            saved_pct = int((1.0 - (uploaded_count / len(unmirrored))) * 100)
 
+        elapsed = time.time() - self.start_time
+        mb_up = uploaded_bytes / (1024 * 1024)
         print(
-            f"{Colors.CYAN}==> [Turbo Telemetry] Processed: {Colors.BOLD}{self.total_processed}{Colors.RESET} | "
-            f"Speed: {Colors.GREEN}{recent_speed:.1f}/s{Colors.RESET} (avg {overall_speed:.1f}/s) | "
-            f"Queue: {qsize} | Uploaded: {total_mb:.1f} MB <=={Colors.RESET}"
+            f"{Colors.GREEN}[✓ Media #{mid} ({mtype})]{Colors.RESET} {Colors.BOLD}{title}{Colors.RESET} | "
+            f"Evaluated: {len(unmirrored)} -> {uploaded_count} winners ({Colors.CYAN}{saved_pct}% disk saved{Colors.RESET}) | "
+            f"{mb_up:.2f} MB{enrichment_summary}"
         )
 
-    def feeder_loop(self, idle_sleep: int):
-        """Background thread that keeps the job queue populated."""
+    def run(self):
+        self.authenticate()
+        print(f"\n{Colors.GREEN}[+] Worker online. Starting media-grouped processing loop with {self.concurrency} threads...{Colors.RESET}\n")
+
         while self.running:
-            if self.job_queue.qsize() < (self.concurrency * 2):
-                jobs = self.claim_jobs()
-                if not jobs:
-                    time.sleep(idle_sleep)
-                    continue
-
-                new_count = 0
-                for job in jobs:
-                    aid = job["asset_id"]
-                    if aid in self.skipped_ids:
-                        continue
-                    with self.in_flight_lock:
-                        self.in_flight_ids.add(aid)
-                    self.job_queue.put(job)
-                    new_count += 1
-
-                if new_count > 0:
-                    print(f"{Colors.BOLD}[Feeder] Claimed {len(jobs)} assets ({new_count} enqueued, queue size: {self.job_queue.qsize()}){Colors.RESET}")
-            else:
-                time.sleep(0.5)
-
-    def worker_consumer_loop(self):
-        """Worker thread pulling from queue and processing assets."""
-        while self.running:
-            try:
-                job = self.job_queue.get(timeout=1.0)
-            except queue.Empty:
+            media_jobs = self.claim_media_jobs()
+            if not media_jobs:
+                print(f"{Colors.GRAY}[*] Queue empty or all media leased. Waiting 10s...{Colors.RESET}")
+                time.sleep(10)
                 continue
 
-            aid = job["asset_id"]
-            try:
-                self.process_and_submit_asset(job)
-            finally:
-                with self.in_flight_lock:
-                    self.in_flight_ids.discard(aid)
-                self.job_queue.task_done()
+            # Process media jobs concurrently
+            with ThreadPoolExecutor(max_workers=min(len(media_jobs), max(1, self.concurrency // 2))) as pool:
+                futures = {pool.submit(self.process_media_item, m): m["media_item_id"] for m in media_jobs}
+                for f in as_completed(futures):
+                    try:
+                        f.result()
+                    except Exception as exc:
+                        print(f"{Colors.RED}[!] Media error: {exc}{Colors.RESET}")
 
-    def run(self, once: bool = False, idle_sleep: int = 5):
-        """Starts the producer-consumer processing engine."""
-        self.authenticate()
+            # Telemetry Summary
+            elapsed = time.time() - self.start_time
+            media_rate = self.total_media_processed / elapsed if elapsed > 0 else 0
+            mb_total = self.total_bytes_uploaded / (1024 * 1024)
+            saved_total_pct = 0
+            if self.total_candidates_evaluated > 0:
+                saved_total_pct = int((1.0 - (self.total_winners_uploaded / self.total_candidates_evaluated)) * 100)
 
-        def handle_sigint(signum, frame):
-            print(f"\n{Colors.YELLOW}Shutting down compute worker gracefully...{Colors.RESET}")
-            self.running = False
-
-        signal.signal(signal.SIGINT, handle_sigint)
-
-        print(f"{Colors.CYAN}Ready! Launching Turbo engine with {self.concurrency} worker threads + Theme Analysis...{Colors.RESET}\n")
-
-        feeder_thread = threading.Thread(target=self.feeder_loop, args=(idle_sleep,), daemon=True)
-        feeder_thread.start()
-
-        workers = []
-        for _ in range(self.concurrency):
-            t = threading.Thread(target=self.worker_consumer_loop, daemon=True)
-            t.start()
-            workers.append(t)
-
-        try:
-            while self.running:
-                time.sleep(1.0)
-                if once and self.job_queue.empty() and self.total_processed > 0:
-                    break
-        except KeyboardInterrupt:
-            self.running = False
-
-        with self.in_flight_lock:
-            remaining = list(self.in_flight_ids - self.skipped_ids)
-        if remaining:
-            print(f"Releasing {len(remaining)} in-flight leases back to server...")
-            self.release_leases(remaining)
-
-        elapsed = max(1.0, time.time() - self.start_time)
-        print(f"\n{Colors.CYAN}=========================================================={Colors.RESET}")
-        print(f"{Colors.CYAN}             TURBO WORKER SESSION SUMMARY                 {Colors.RESET}")
-        print(f"{Colors.CYAN}=========================================================={Colors.RESET}")
-        print(f"  Assets Processed:   {Colors.GREEN}{self.total_processed}{Colors.RESET}")
-        print(f"  Total Data Written: {self.total_bytes / (1024 * 1024):.2f} MB")
-        print(f"  Runtime:            {elapsed:.1f}s")
-        print(f"  Average Speed:      {self.total_processed / elapsed:.2f} assets/second")
-        print(f"{Colors.CYAN}=========================================================={Colors.RESET}\n")
+            print(
+                f"\n{Colors.CYAN}--- Progress: {self.total_media_processed} media items | "
+                f"{self.total_winners_uploaded}/{self.total_candidates_evaluated} assets uploaded "
+                f"({saved_total_pct}% storage saved) | {mb_total:.1f} MB uploaded | "
+                f"{self.total_enrichments} Wikidata enrichments | {media_rate:.2f} media/s ---{Colors.RESET}\n"
+            )
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Otix Admin Distributed Compute Worker (Turbo Edition + Theme Analyzer)")
-    parser.add_argument("--server", default="http://localhost:8000", help="Otix server base URL")
-    parser.add_argument("--username", help="Admin username or email")
-    parser.add_argument("--password", help="Admin password")
-    parser.add_argument("--token", help="Direct JWT Bearer token")
-    parser.add_argument("--threads", type=int, default=16, help="Concurrent worker threads (default: 16)")
-    parser.add_argument("--batch-size", type=int, default=50, help="Assets per claim batch (default: 50)")
-    parser.add_argument("--quality", type=int, default=85, help="WebP compression quality (default: 85)")
-    parser.add_argument("--once", action="store_true", help="Run until initial queue drains then exit")
-    parser.add_argument("--idle", type=int, default=5, help="Idle wait seconds when no jobs (default: 5)")
-
+    parser = argparse.ArgumentParser(description="Otix Distributed Compute Worker (Turbo Media-Grouped Edition)")
+    parser.add_argument("--server", type=str, default="http://84.8.154.67:8000", help="Otix central server base URL")
+    parser.add_argument("--token", type=str, default=None, help="Admin JWT access token (optional)")
+    parser.add_argument("--username", type=str, default=None, help="Admin username or email")
+    parser.add_argument("--password", type=str, default=None, help="Admin password")
+    parser.add_argument("--threads", type=int, default=16, help="Worker threads for processing (default 16)")
+    parser.add_argument("--batch-size", type=int, default=20, help="Batch size of media items per claim (default 20)")
+    parser.add_argument("--webp-quality", type=int, default=85, help="WebP compression quality (default 85)")
     args = parser.parse_args()
 
     print_banner(args.server, args.threads, args.batch_size)
+
     worker = AdminComputeWorker(
         server_url=args.server,
         token=args.token,
@@ -548,9 +919,16 @@ def main():
         password=args.password,
         concurrency=args.threads,
         batch_size=args.batch_size,
-        webp_quality=args.quality,
+        webp_quality=args.webp_quality,
     )
-    worker.run(once=args.once, idle_sleep=args.idle)
+
+    def handle_sigint(sig, frame):
+        print(f"\n{Colors.YELLOW}[*] Shutting down worker gracefully...{Colors.RESET}")
+        worker.running = False
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, handle_sigint)
+    worker.run()
 
 
 if __name__ == "__main__":
