@@ -37,7 +37,7 @@ export function PathInput({
   const autoId = useId()
   const inputId = id || autoId
   const { pick, canBrowse } = usePickFolder({ target, serverId })
-  const browseTitle = canBrowse ? 'Browse folder' : 'Connect a game server to browse folders'
+  const browseTitle = canBrowse ? 'Browse folder' : 'Configure a library path on the Otix backend to browse folders'
 
   const handleBrowse = async () => {
     const dir = await pick()

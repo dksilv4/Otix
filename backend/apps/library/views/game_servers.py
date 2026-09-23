@@ -1,13 +1,12 @@
-"""Game server API views: self-hosted otix-server node management and library indexing."""
+"""Backend-as-node API views: Django owns storage, explorer, and downloaders."""
 
 import logging
 from pathlib import Path
 
-import httpx
 from django.db.utils import OperationalError, ProgrammingError
 from rest_framework import status
 from rest_framework.exceptions import NotAuthenticated, NotFound
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -26,9 +25,6 @@ from apps.library.services.download_history import (
     record_queued_download,
 )
 from apps.library.services.game_server import (
-    apply_node_heartbeat,
-    collapse_duplicate_game_servers,
-    contact_urls,
     desktop_get_settings,
     desktop_save_settings,
     downloads_add,
@@ -39,8 +35,6 @@ from apps.library.services.game_server import (
     explorer_browse,
     explorer_create_folder,
     explorer_set_download_path,
-    link_or_create_game_server,
-    list_pending_nodes_for,
     node_get_organize,
     node_list_libraries,
     node_replace_libraries,
@@ -86,7 +80,6 @@ from apps.library.services.game_server import (
     usenet_test_sabnzbd,
 )
 from apps.library.services.node_connections import (
-    configured_map,
     import_instances,
     push_shared_connections,
     push_shared_to_servers,
@@ -114,24 +107,22 @@ def _resolve_user(request: Request):
     user = getattr(request, "user", None)
     if user and getattr(user, "is_authenticated", False):
         return user
-    from django.contrib.auth import get_user_model
-    return get_user_model().objects.filter(is_active=True).first()
+    raise NotAuthenticated("Authentication required")
 
 
 def _get_server_or_404(request: Request, server_id: int) -> UserGameServer:
+    """Only the Django backend node (-2) is a valid product node."""
     from apps.library.services.backend_node import backend_server_stub, is_backend_node_id
 
     resolved_user = _resolve_user(request)
     if is_backend_node_id(server_id):
         return backend_server_stub(resolved_user)
-    server = None
-    if resolved_user:
-        server = UserGameServer.objects.filter(id=server_id, user=resolved_user).first()
-    if not server:
-        server = UserGameServer.objects.filter(id=server_id).first()
-    if not server:
-        raise NotFound("Otix node not found")
-    return server
+    raise NotFound("Otix node not found")
+
+
+def _public_api_origin(request: Request) -> str:
+    """Scheme+host used by desktop Range clients to rebuild /api/v1/files/... URLs."""
+    return request.build_absolute_uri("/").rstrip("/")
 
 
 def _arr_instance_id(request: Request) -> str | None:
@@ -146,62 +137,52 @@ def _arr_instance_id(request: Request) -> str | None:
 
 
 class GameServerListCreateView(APIView):
-    """``GET /api/v1/library/servers`` — list user's game servers.
-    ``POST /api/v1/library/servers`` — register a new game server node.
+    """``GET /api/v1/library/servers`` — the Django backend node.
+
+    ``POST`` is retired (separate Otix Server registration is gone).
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
         from apps.library.services.backend_node import backend_node_payload
 
         user = _resolve_user(request)
-        if user:
-            collapse_duplicate_game_servers(user)
-            servers = UserGameServer.objects.filter(user=user)
-        else:
-            servers = UserGameServer.objects.all()
-        payload = [backend_node_payload(user), *UserGameServerSerializer(servers, many=True).data]
-        return Response(payload)
+        return Response([backend_node_payload(user)])
 
     def post(self, request: Request) -> Response:
-        user = _resolve_user(request)
-        if not user:
-            raise NotAuthenticated("User not found")
-        serializer = UserGameServerCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        server, created = link_or_create_game_server(user, serializer.validated_data)
-        result = ping_server_sync(server)
-        server.refresh_from_db()
-        payload = UserGameServerSerializer(server).data
-        payload["connect_error"] = None if result.get("online") else result.get("error")
-        payload["created"] = created
-        payload["shared_connections"] = configured_map(user)
         return Response(
-            payload,
-            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+            {
+                "detail": (
+                    "Separate Otix Server nodes are retired. "
+                    "Configure libraries and downloaders on the Otix backend node."
+                )
+            },
+            status=status.HTTP_410_GONE,
         )
 
 
 class GameServerHeartbeatView(APIView):
-    """``POST /api/v1/servers/heartbeat`` — otix-server announces itself (no auth)."""
+    """``POST /api/v1/servers/heartbeat`` — retired (no external node registry)."""
 
     authentication_classes = ()
-    permission_classes = (AllowAny,)
+    permission_classes = ()
 
     def post(self, request: Request) -> Response:
-        apply_node_heartbeat(request.data if isinstance(request.data, dict) else {})
-        return Response({"status": "ok"})
+        return Response(
+            {"detail": "Otix Server heartbeat is retired. Django is the node."},
+            status=status.HTTP_410_GONE,
+        )
 
 
 class GameServerPendingView(APIView):
-    """``GET /api/v1/library/servers/pending`` — nodes that heartbeated but are not claimed."""
+    """``GET /api/v1/library/servers/pending`` — always empty (no external nodes)."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
-        user = _resolve_user(request)
-        return Response(list_pending_nodes_for(user) if user else [])
+        _resolve_user(request)
+        return Response([])
 
 
 class GameServerDetailView(APIView):
@@ -209,23 +190,15 @@ class GameServerDetailView(APIView):
     ``DELETE /api/v1/library/servers/{server_id}`` — remove connected server.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def _get_server(self, request: Request, server_id: int) -> UserGameServer:
         from apps.library.services.backend_node import is_backend_node_id
 
+        _resolve_user(request)
         if is_backend_node_id(server_id):
             raise NotFound("The Otix backend node cannot be edited or removed.")
-        user = _resolve_user(request)
-        if user:
-            try:
-                return UserGameServer.objects.get(id=server_id, user=user)
-            except UserGameServer.DoesNotExist:
-                pass
-        try:
-            return UserGameServer.objects.get(id=server_id)
-        except UserGameServer.DoesNotExist:
-            raise NotFound("Otix node not found") from None
+        raise NotFound("Otix node not found")
 
     def patch(self, request: Request, server_id: int) -> Response:
         server = self._get_server(request, server_id)
@@ -245,7 +218,7 @@ class GameServerDetailView(APIView):
 class GameServerPingView(APIView):
     """``POST /api/v1/library/servers/{server_id}/ping`` — test server connectivity."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         from apps.library.services.backend_node import backend_node_payload, is_backend_node
@@ -264,76 +237,42 @@ class GameServerPingView(APIView):
 
 
 class GameServerFilesView(APIView):
-    """``GET /api/v1/library/server-games`` — aggregate hosted games from user servers."""
+    """``GET /api/v1/library/server-games`` — hosted games from the Django backend node."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
-        user = _resolve_user(request)
-        servers = (
-            UserGameServer.objects.filter(user=user, is_active=True)
-            if user
-            else UserGameServer.objects.filter(is_active=True)
+        from apps.library.services import node_indexer
+        from apps.library.services.backend_node import (
+            BACKEND_NODE_ID,
+            BACKEND_NODE_NAME,
+            backend_node_payload,
         )
+
+        user = _resolve_user(request)
+        origin = _public_api_origin(request)
+        files = node_indexer.list_indexed_files(ensure_scanned=True, user=user)
         files_out = []
-        errors = []
+        for item in files:
+            files_out.append(
+                {
+                    "server_id": BACKEND_NODE_ID,
+                    "server_name": BACKEND_NODE_NAME,
+                    "server_url": origin,
+                    "file_id": item.id,
+                    "filename": item.filename,
+                    "filesize": item.filesize,
+                    "extension": item.extension,
+                    "format_category": item.format_category,
+                    "game_title": item.game_title,
+                    "relative_path": item.relative_path,
+                    "filepath": item.filepath,
+                    "library_name": item.library_name,
+                    "modified_at": item.modified_at,
+                    "download_url": f"{origin}/api/v1/files/{item.id}/download",
+                }
+            )
 
-        for s in servers:
-            public_url = (s.primary_url or "").rstrip("/")
-            if not public_url:
-                continue
-            headers = {}
-            if s.auth_token:
-                headers["Authorization"] = f"Bearer {s.auth_token}"
-
-            last_error = None
-            fetched = False
-            for target_url in contact_urls(public_url):
-                try:
-                    with httpx.Client(timeout=4.0) as client:
-                        resp = client.get(f"{target_url}/api/v1/files", headers=headers)
-                    if resp.status_code == 200:
-                        raw_files = resp.json()
-                        for f in raw_files:
-                            file_id = f.get("id")
-                            relative_path = f.get("relative_path") or ""
-                            filepath = f.get("filepath") or ""
-                            if not relative_path and filepath:
-                                parts = [
-                                    part for part in Path(filepath).parts if part not in ("/", "\\")
-                                ]
-                                relative_path = (
-                                    "/".join(parts[-2:]) if len(parts) >= 2 else Path(filepath).name
-                                )
-                            files_out.append(
-                                {
-                                    "server_id": s.id,
-                                    "server_name": s.name,
-                                    "server_url": public_url,
-                                    "file_id": file_id,
-                                    "filename": f.get("filename"),
-                                    "filesize": f.get("filesize", 0),
-                                    "extension": f.get("extension", ""),
-                                    "format_category": f.get("format_category", "installer"),
-                                    "game_title": f.get("game_title", ""),
-                                    "relative_path": relative_path,
-                                    "filepath": filepath,
-                                    "library_name": f.get("library_name", "Default"),
-                                    "modified_at": f.get("modified_at"),
-                                    "download_url": f"{public_url}/api/v1/files/{file_id}/download",
-                                }
-                            )
-                        fetched = True
-                        break
-                    last_error = f"HTTP {resp.status_code}"
-                    if resp.status_code == 401:
-                        break
-                except Exception as err:
-                    last_error = str(err)
-            if not fetched:
-                errors.append({"server_id": s.id, "error": last_error or "Unreachable"})
-
-        # Enrich files with catalog matches (updates resolve to the parent game)
         match_files_to_catalog(files_out)
         enqueue_prehydrate_titles(unmatched_scan_titles(files_out))
         for file in files_out:
@@ -341,17 +280,19 @@ class GameServerFilesView(APIView):
 
         return Response(
             {
-                "servers": UserGameServerSerializer(servers, many=True).data,
+                "servers": [backend_node_payload(user)],
                 "files": files_out,
-                "errors": errors if errors else None,
+                "errors": None,
             }
         )
+
+
 
 
 class GameServerExplorerBrowseView(APIView):
     """``GET /api/v1/library/servers/{server_id}/explorer`` — browse server filesystem."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -364,7 +305,7 @@ class GameServerExplorerBrowseView(APIView):
 class GameServerExplorerSetPathView(APIView):
     """Assign the server download folder via explorer/set-download-path."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         from apps.library.services.backend_node import is_backend_node
@@ -390,7 +331,7 @@ class GameServerExplorerSetPathView(APIView):
 class GameServerExplorerCreateFolderView(APIView):
     """Create a subfolder on the server via explorer/create-folder."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -412,7 +353,7 @@ class GameServerUsenetConfigView(APIView):
     ``POST /api/v1/library/servers/{server_id}/usenet/config`` — save usenet config
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -430,7 +371,7 @@ class GameServerUsenetConfigView(APIView):
 class GameServerUsenetTestSabnzbdView(APIView):
     """Test the server's SABnzbd connection."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -441,7 +382,7 @@ class GameServerUsenetTestSabnzbdView(APIView):
 class GameServerUsenetTestProwlarrView(APIView):
     """Test the server's Prowlarr connection."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -452,7 +393,7 @@ class GameServerUsenetTestProwlarrView(APIView):
 class GameServerUsenetSearchView(APIView):
     """Search Prowlarr indexers for games."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -466,7 +407,7 @@ class GameServerUsenetSearchView(APIView):
 class GameServerUsenetDownloadView(APIView):
     """``POST /api/v1/library/servers/{server_id}/usenet/download`` — send NZB to server SABnzbd."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -482,7 +423,7 @@ class GameServerUsenetDownloadView(APIView):
 class GameServerUsenetQueueView(APIView):
     """``GET /api/v1/library/servers/{server_id}/usenet/queue`` — get active SABnzbd queue."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -502,7 +443,7 @@ class GameServerUsenetQueueView(APIView):
 class GameServerUsenetHistoryView(APIView):
     """``GET /api/v1/library/servers/{server_id}/usenet/history`` — persisted + SABnzbd history."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -520,7 +461,7 @@ class GameServerUsenetHistoryView(APIView):
 class GameServerProvidersView(APIView):
     """List registered providers and the active selection."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -531,7 +472,7 @@ class GameServerProvidersView(APIView):
 class GameServerProviderTestView(APIView):
     """Test connectivity for a named provider."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int, provider_type: str, name: str) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -542,7 +483,7 @@ class GameServerProviderTestView(APIView):
 class GameServerDownloadsSearchView(APIView):
     """Search across the server's active download providers."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -557,7 +498,7 @@ class GameServerDownloadsSearchView(APIView):
 class GameServerDownloadsAddView(APIView):
     """Send a release download to the active downloader."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -576,7 +517,7 @@ class GameServerDownloadsAddView(APIView):
 class GameServerDownloadsQueueView(APIView):
     """Get or cancel items in the server download queue."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -598,7 +539,7 @@ class GameServerDownloadsQueueView(APIView):
 class GameServerDownloadsHistoryView(APIView):
     """Return persisted download history for the server."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -617,7 +558,7 @@ class GameServerDownloadsHistoryView(APIView):
 class GameServerProwlarrIndexersView(APIView):
     """``GET /api/v1/library/servers/{server_id}/prowlarr/indexers`` — get Prowlarr indexers."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -629,7 +570,7 @@ class GameServerProwlarrIndexersView(APIView):
 class GameServerProwlarrSyncView(APIView):
     """Trigger a Prowlarr indexer sync on the server."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -643,7 +584,7 @@ class GameServerProwlarrSyncView(APIView):
 class GameServerSabnzbdQueueControlView(APIView):
     """Pause or resume the SABnzbd download queue."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int, action: str) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -661,7 +602,7 @@ class GameServerSabnzbdQueueControlView(APIView):
 class GameServerScanView(APIView):
     """``POST /api/v1/library/servers/{server_id}/scan`` — re-index hosted installer files."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -677,7 +618,7 @@ class GameServerRadarrConfigView(APIView):
     ``POST /api/v1/library/servers/{server_id}/radarr/config`` — save Radarr config.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -695,7 +636,7 @@ class GameServerRadarrConfigView(APIView):
 class GameServerRadarrTestView(APIView):
     """``POST /api/v1/library/servers/{server_id}/radarr/test`` — test Radarr connection."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -706,7 +647,7 @@ class GameServerRadarrTestView(APIView):
 class GameServerRadarrRootFoldersView(APIView):
     """``GET /api/v1/library/servers/{server_id}/radarr/rootfolders`` — list root folders."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -717,7 +658,7 @@ class GameServerRadarrRootFoldersView(APIView):
 class GameServerRadarrQualityProfilesView(APIView):
     """List Radarr quality profiles for the server."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -732,7 +673,7 @@ class GameServerRadarrMoviesView(APIView):
     ``POST /api/v1/library/servers/{server_id}/radarr/movies`` — add movie.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -748,7 +689,7 @@ class GameServerRadarrMoviesView(APIView):
 class GameServerRadarrLookupView(APIView):
     """``GET /api/v1/library/servers/{server_id}/radarr/lookup`` — lookup movies."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -764,7 +705,7 @@ class GameServerRadarrQueueView(APIView):
     ``DELETE /api/v1/library/servers/{server_id}/radarr/queue/{queue_id}`` — delete item from queue.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -794,7 +735,7 @@ class GameServerRadarrQueueView(APIView):
 class GameServerRadarrHistoryView(APIView):
     """``GET /api/v1/library/servers/{server_id}/radarr/history`` — get history."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -814,7 +755,7 @@ class GameServerSonarrConfigView(APIView):
     ``POST /api/v1/library/servers/{server_id}/sonarr/config`` — save Sonarr config.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -832,7 +773,7 @@ class GameServerSonarrConfigView(APIView):
 class GameServerSonarrTestView(APIView):
     """``POST /api/v1/library/servers/{server_id}/sonarr/test`` — test Sonarr connection."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -843,7 +784,7 @@ class GameServerSonarrTestView(APIView):
 class GameServerSonarrRootFoldersView(APIView):
     """``GET /api/v1/library/servers/{server_id}/sonarr/rootfolders`` — list root folders."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -854,7 +795,7 @@ class GameServerSonarrRootFoldersView(APIView):
 class GameServerSonarrQualityProfilesView(APIView):
     """List Sonarr quality profiles for the server."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -869,7 +810,7 @@ class GameServerSonarrSeriesView(APIView):
     ``POST /api/v1/library/servers/{server_id}/sonarr/series`` — add series.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -885,7 +826,7 @@ class GameServerSonarrSeriesView(APIView):
 class GameServerSonarrLookupView(APIView):
     """``GET /api/v1/library/servers/{server_id}/sonarr/lookup`` — lookup series."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -901,7 +842,7 @@ class GameServerSonarrQueueView(APIView):
     ``DELETE /api/v1/library/servers/{server_id}/sonarr/queue/{queue_id}`` — delete item from queue.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -931,7 +872,7 @@ class GameServerSonarrQueueView(APIView):
 class GameServerSonarrHistoryView(APIView):
     """``GET /api/v1/library/servers/{server_id}/sonarr/history`` — get history."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -948,7 +889,7 @@ class GameServerDesktopView(APIView):
     ``POST /api/v1/library/servers/{server_id}/desktop`` — update node desktop settings.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -966,7 +907,7 @@ class GameServerLibrariesView(APIView):
     ``PUT /api/v1/library/servers/{server_id}/libraries`` — replace node scan folders.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -985,7 +926,7 @@ class GameServerLibrariesView(APIView):
 class GameServerOrganizeView(APIView):
     """``GET/POST /api/v1/library/servers/{server_id}/organize`` — node organize settings."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1021,7 +962,7 @@ def _requested_server_ids(payload: dict) -> list[int] | None:
 class NodeConnectionsView(APIView):
     """Account-level SABnzbd / *arr connections. Nodes receive a copy only when synced."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
         user = _resolve_user(request)
@@ -1042,7 +983,7 @@ class NodeConnectionsView(APIView):
 class NodeConnectionsSyncView(APIView):
     """Push stored connections onto chosen Otix nodes (or every node)."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request) -> Response:
         user = _resolve_user(request)
@@ -1056,7 +997,7 @@ class NodeConnectionsSyncView(APIView):
 class GameServerConnectionsSyncView(APIView):
     """Push stored connections onto one Otix node."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1070,7 +1011,7 @@ class GameServerConnectionsSyncView(APIView):
 class GameServerInstancesImportView(APIView):
     """Copy SABnzbd / *arr instances from another node onto this one."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         dest = _get_server_or_404(request, server_id)
@@ -1079,7 +1020,10 @@ class GameServerInstancesImportView(APIView):
         try:
             source_id = int(raw_source)
         except (TypeError, ValueError):
-            return Response({"error": "from_server_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "from_server_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         source = _get_server_or_404(request, source_id)
         kinds = payload.get("kinds")
         if isinstance(kinds, str):
@@ -1093,3 +1037,50 @@ class GameServerInstancesImportView(APIView):
         if result.get("error") and not result.get("imported"):
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
         return Response(result)
+
+
+class HostedFileDownloadView(APIView):
+    """``GET /api/v1/files/{file_id}/download`` — Range-capable hosted file stream."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request: Request, file_id: str):
+        from apps.library.services import node_indexer
+        from apps.library.services.node_streaming import stream_file_response
+
+        _resolve_user(request)
+        hosted = node_indexer.get_hosted_file(file_id)
+        if hosted is None:
+            # Lazy scan once if index is cold.
+            node_indexer.list_indexed_files(ensure_scanned=True, user=request.user)
+            hosted = node_indexer.get_hosted_file(file_id)
+        if hosted is None:
+            return Response({"detail": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+        return stream_file_response(
+            hosted.filepath,
+            range_header=request.headers.get("Range") or request.META.get("HTTP_RANGE"),
+            download_name=hosted.filename,
+        )
+
+
+class ExplorerFileDownloadView(APIView):
+    """``GET /api/v1/explorer/download?path=`` — Range-capable explorer file stream."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request: Request):
+
+        from apps.library.services.node_streaming import stream_file_response
+
+        _resolve_user(request)
+        raw_path = request.query_params.get("path")
+        if not raw_path:
+            return Response({"detail": "path is required"}, status=status.HTTP_400_BAD_REQUEST)
+        target = Path(raw_path).expanduser().resolve()
+        if not target.is_file():
+            return Response({"detail": "File not found"}, status=status.HTTP_404_NOT_FOUND)
+        return stream_file_response(
+            target,
+            range_header=request.headers.get("Range") or request.META.get("HTTP_RANGE"),
+            download_name=target.name,
+        )

@@ -133,9 +133,11 @@ class MediaItemSummarySerializer(serializers.Serializer):
 
 
 class UserGameServerSerializer(serializers.ModelSerializer):
-    """Connected self-hosted game installer server node."""
+    """Legacy remote-node serializer (product path is the Django backend node)."""
 
     primary_url = serializers.CharField(read_only=True)
+    # Never expose node secrets (C2). Field kept write-only for old create payloads.
+    auth_token = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = UserGameServer

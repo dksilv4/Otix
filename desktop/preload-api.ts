@@ -228,6 +228,7 @@ export interface RemoteDownloadOptions {
   mediaItemId?: string | null;
   authToken?: string | null;
   destDir?: string | null;
+  downloadUrl?: string | null;
 }
 
 export interface RemoteDownloadProgress {

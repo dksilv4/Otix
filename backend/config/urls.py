@@ -10,7 +10,11 @@ from django.http import HttpRequest, JsonResponse
 from django.urls import include, path
 
 from apps.accounts.views import UploadFileView
-from apps.library.views import GameServerHeartbeatView
+from apps.library.views import (
+    ExplorerFileDownloadView,
+    GameServerHeartbeatView,
+    HostedFileDownloadView,
+)
 from apps.media.views import AssetFileView
 from apps.search.views import SearchView
 
@@ -36,6 +40,16 @@ urlpatterns = [
     path("api/v1/search/", include("apps.search.urls")),
     path(
         "api/v1/servers/heartbeat", GameServerHeartbeatView.as_view(), name="game-server-heartbeat"
+    ),
+    path(
+        "api/v1/files/<str:file_id>/download",
+        HostedFileDownloadView.as_view(),
+        name="hosted-file-download",
+    ),
+    path(
+        "api/v1/explorer/download",
+        ExplorerFileDownloadView.as_view(),
+        name="explorer-file-download",
     ),
     path("api/v1/library/", include("apps.library.urls")),
     path("api/v1/media/", include("apps.media.urls")),

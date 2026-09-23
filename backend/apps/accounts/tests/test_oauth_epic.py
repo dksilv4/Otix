@@ -19,7 +19,7 @@ from apps.accounts.models import OAuthState, User
 from apps.integrations.models import UserEpicGame
 from apps.library.models import UserGameServer
 
-NO_EPIC_NODE = "Connect an Otix Server to link Epic."
+NO_EPIC_NODE = "Sign in to Otix to link Epic."
 EPIC_CLIENT_ID = "34a02cf8f4414e29b15921876da36f9a"
 
 
@@ -62,23 +62,17 @@ class _EpicAuthedCase(TestCase):
 
 
 class EpicInitiateTests(_EpicAuthedCase):
-    def test_400_without_node(self) -> None:
+    def test_200_without_legacy_node(self) -> None:
         response = self._authed().post("/api/v1/auth/oauth/epic")
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], NO_EPIC_NODE)
-        self.assertFalse(OAuthState.objects.exists())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(sorted(response.data.keys()), ["auth_url", "state"])
+        self.assertTrue(OAuthState.objects.exists())
 
-    def test_400_when_node_offline(self) -> None:
+    def test_200_ignores_legacy_offline_rows(self) -> None:
         _node(self.user, is_online=False)
         response = self._authed().post("/api/v1/auth/oauth/epic")
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], NO_EPIC_NODE)
-
-    def test_400_when_node_inactive(self) -> None:
-        _node(self.user, is_active=False)
-        response = self._authed().post("/api/v1/auth/oauth/epic")
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], NO_EPIC_NODE)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("auth_url", response.data)
 
     def test_200_with_online_node_stores_state(self) -> None:
         _node(self.user)
@@ -171,15 +165,20 @@ class EpicCallbackTests(_EpicAuthedCase):
         self.assertEqual(response.status_code, 400)
         proxy.assert_not_called()
 
-    def test_callback_400_without_node(self) -> None:
+    @patch(
+        "apps.library.services.game_server.server_proxy_request",
+        return_value=(200, {"connected": True, "account_id": "acc", "display_name": "D"}),
+    )
+    def test_callback_uses_backend_node(self, _proxy) -> None:
         self._store_state()
         response = self._authed().post(
             "/api/v1/auth/oauth/epic/callback",
             {"code": "auth-code", "state": "epic-state"},
             format="json",
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], NO_EPIC_NODE)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["connected"])
+        _proxy.assert_called_once()
 
     def test_callback_unauthed_401(self) -> None:
         response = APIClient().post(
@@ -220,12 +219,16 @@ class EpicDisconnectTests(_EpicAuthedCase):
         _proxy.assert_called_once()
         args, kwargs = _proxy.call_args
         self.assertEqual(args[1], "DELETE")
-        self.assertEqual(args[2], "/api/v1/epic/auth")
+        self.assertEqual(args[2], "/api/v1/epic/disconnect")
 
-    def test_disconnect_400_without_node(self) -> None:
+    @patch(
+        "apps.library.services.game_server.server_proxy_request",
+        return_value=(200, {"connected": False}),
+    )
+    def test_disconnect_uses_backend_node(self, _proxy) -> None:
         response = self._authed().delete("/api/v1/auth/oauth/epic/disconnect")
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], NO_EPIC_NODE)
+        self.assertEqual(response.status_code, 200)
+        _proxy.assert_called_once()
 
     def test_disconnect_unauthed_401(self) -> None:
         response = APIClient().delete("/api/v1/auth/oauth/epic/disconnect")

@@ -10,7 +10,6 @@ from rest_framework.test import APIClient
 
 from apps.integrations.models import UserEpicGame
 from apps.library.models import UserGameServer
-from apps.library.services.game_server import NO_EPIC_NODE
 from apps.media.models import ExternalID, Game, MediaItem
 
 User = get_user_model()
@@ -106,10 +105,10 @@ class EpicScanTests(TestCase):
         )
         self.assertEqual(UserEpicGame.objects.filter(user=self.user).count(), 1)
 
-    def test_400_without_node(self):
+    def test_400_without_epic_connected(self):
         resp = self.post()
         self.assertEqual(resp.status_code, 400)
-        self.assertEqual(resp.json()["detail"], NO_EPIC_NODE)
+        self.assertIn("Epic", resp.json()["detail"])
 
     @patch("apps.integrations.services.epic.proxy_epic_scan")
     def test_400_returns_node_detail(self, proxy):
@@ -196,10 +195,10 @@ class EpicStatusTests(TestCase):
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
 
-    def test_400_without_node(self):
+    def test_disconnected_without_epic_secrets(self):
         resp = self.client.get(STATUS_URL)
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(resp.json()["detail"], NO_EPIC_NODE)
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.json().get("connected"))
 
     @patch("apps.integrations.views.epic.proxy_epic_status")
     def test_strips_refresh_token(self, proxy):

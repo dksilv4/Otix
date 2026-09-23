@@ -3,16 +3,14 @@ import { isLocalDesktopNode } from '@/features/settings/local-desktop-node'
 import type { GameServer } from '../types'
 import { useGameServers } from '../use-server-downloads'
 
-/** Nodes that can store SABnzbd / *arr settings (workers + the Otix backend). */
+/** Nodes that can store SABnzbd / *arr settings (the Otix backend). */
 export function remoteConnectionNodes(servers: GameServer[]): GameServer[] {
   return servers.filter((server) => !isLocalDesktopNode(server))
 }
 
-/** Worker machines only — Epic tokens and live downloaders do not run on the backend node. */
+/** Product node(s) that run downloaders / Epic — Django backend-as-node. */
 export function workerConnectionNodes(servers: GameServer[]): GameServer[] {
-  return remoteConnectionNodes(servers).filter(
-    (server) => !isBackendNode(server) && Number(server.id) > 0,
-  )
+  return remoteConnectionNodes(servers).filter((server) => isBackendNode(server))
 }
 
 export function pickConnectionNode(servers: GameServer[], preferredId?: number): GameServer | undefined {

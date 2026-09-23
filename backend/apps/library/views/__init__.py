@@ -1,8 +1,10 @@
 """Library API views, re-exported for convenient imports."""
 
 from apps.library.views.game_servers import (
+    ExplorerFileDownloadView,
     GameServerDesktopView,
     GameServerDetailView,
+    HostedFileDownloadView,
     GameServerDownloadsAddView,
     GameServerDownloadsHistoryView,
     GameServerDownloadsQueueView,
@@ -68,6 +70,8 @@ from apps.library.views.library import (
 )
 
 __all__ = [
+    "ExplorerFileDownloadView",
+    "HostedFileDownloadView",
     "GameServerDetailView",
     "GameServerDownloadsAddView",
     "GameServerDownloadsHistoryView",

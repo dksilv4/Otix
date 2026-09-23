@@ -28,7 +28,7 @@ echo "  - Storage Server:        http://localhost:8090"
 echo "  - PostgreSQL:            localhost:5433"
 echo "  - Redis:                 localhost:6380"
 echo ""
-echo "Streaming logs (frontend, api, storage-server)... Press Ctrl+C to stop following logs."
+echo "Streaming logs (frontend, api)... Press Ctrl+C to stop following logs."
 echo ""
 
 cleanup() {
@@ -38,4 +38,4 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-docker compose logs -f frontend storage-server api
+docker compose logs -f frontend api

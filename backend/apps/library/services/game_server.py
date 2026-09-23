@@ -369,37 +369,24 @@ def server_proxy_request(
     json: dict | None = None,
     timeout: float = 6.0,
 ) -> tuple[int, dict | list]:
-    """Generic helper to proxy requests to connected otix-server node."""
-    from apps.library.services.backend_node import handle_backend_proxy, is_backend_node
+    """Dispatch node API calls to the Django backend node.
 
-    if is_backend_node(server):
-        return handle_backend_proxy(server.user, method, path, json, params)
+    Remote ``UserGameServer`` / otix-server proxies are retired. ``timeout`` is
+    kept for call-site compatibility.
+    """
+    del timeout  # in-process; no HTTP hop
+    from apps.library.services.backend_node import (
+        backend_server_stub,
+        handle_backend_proxy,
+        is_backend_node,
+    )
 
-    targets = contact_urls(server.primary_url)
-    if not targets:
-        return 400, {"error": "Server URL not configured"}
-
-    headers = _auth_headers(server)
-    last_error: Exception | str = "Server URL not configured"
-    for target_url in targets:
-        try:
-            with httpx.Client(timeout=timeout) as client:
-                resp = client.request(
-                    method=method,
-                    url=f"{target_url}{path}",
-                    params=params,
-                    json=json,
-                    headers=headers,
-                )
-                try:
-                    data = resp.json()
-                except Exception:
-                    data = {"detail": resp.text}
-                return resp.status_code, data
-        except Exception as exc:
-            last_error = exc
-            continue
-    return 502, {"detail": f"Failed to contact game server node: {last_error}"}
+    user = getattr(server, "user", None)
+    if not is_backend_node(server):
+        if user is None:
+            return 410, {"detail": "Separate Otix Server nodes are retired. Use the Otix backend."}
+        server = backend_server_stub(user)
+    return handle_backend_proxy(server.user, method, path, json, params)
 
 
 # Backward-compatible alias
@@ -818,7 +805,7 @@ def sonarr_get_history(
 
 # ── Epic (node-proxied OAuth + library scan) ────────────────────────────
 
-NO_EPIC_NODE = "Connect an Otix Server to link Epic."
+NO_EPIC_NODE = "Sign in to Otix to link Epic."
 
 
 # ── Desktop Operations ──────────────────────────────────────────────────
@@ -851,12 +838,12 @@ def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, d
 
 
 def pick_online_game_server(user) -> UserGameServer | None:
-    """Return the user's most recently seen online, active Otix Server, if any."""
-    return (
-        UserGameServer.objects.filter(user=user, is_active=True, is_online=True)
-        .order_by("-last_seen_at", "-id")
-        .first()
-    )
+    """Return the Django backend node stub (always online for authenticated users)."""
+    if user is None or not getattr(user, "is_authenticated", False):
+        return None
+    from apps.library.services.backend_node import backend_server_stub
+
+    return backend_server_stub(user)
 
 
 def proxy_epic_auth(server: UserGameServer, code: str) -> tuple[int, dict]:
@@ -874,4 +861,4 @@ def proxy_epic_scan(server: UserGameServer) -> tuple[int, dict]:
 
 
 def proxy_epic_disconnect(server: UserGameServer) -> tuple[int, dict]:
-    return server_proxy_request(server, "DELETE", "/api/v1/epic/auth")
+    return server_proxy_request(server, "DELETE", "/api/v1/epic/disconnect")

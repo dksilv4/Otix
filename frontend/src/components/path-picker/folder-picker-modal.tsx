@@ -61,7 +61,7 @@ export function FolderPickerModal({
       className="max-w-2xl"
     >
       {servers.length === 0 ? (
-        <p className="text-sm text-white/60">Connect a game server to browse folders.</p>
+        <p className="text-sm text-white/60">Configure a library path on the Otix backend to browse folders.</p>
       ) : (
         <div className="space-y-3">
           {servers.length > 1 && (

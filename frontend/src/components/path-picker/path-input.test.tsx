@@ -87,7 +87,7 @@ describe('PathInput', () => {
 
     const browse = screen.getByRole('button', { name: /Browse/i })
     expect(browse).toBeDisabled()
-    expect(browse).toHaveAttribute('title', expect.stringMatching(/connect a game server/i))
+    expect(browse).toHaveAttribute('title', expect.stringMatching(/configure a library path/i))
   })
 
   it('uses the native folder dialog for local paths on desktop', async () => {

@@ -52,19 +52,13 @@ class GameServersApiTests(TestCase):
             "auth_token": "secret_token_123",
         }
         create_res = self.client.post("/api/v1/library/servers", payload, format="json")
-        self.assertEqual(create_res.status_code, 201)
-        data = create_res.json()
-        self.assertEqual(data["name"], "Home NAS")
-        self.assertTrue(data["is_online"])
-        self.assertEqual(data["total_files"], 12)
+        self.assertEqual(create_res.status_code, 410)
 
-        # List servers includes the Otix backend plus the new worker
         list_res = self.client.get("/api/v1/library/servers")
         self.assertEqual(list_res.status_code, 200)
         rows = list_res.json()
-        self.assertEqual(len(rows), 2)
+        self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["id"], -2)
-        self.assertEqual(rows[1]["name"], "Home NAS")
 
     @mock.patch("apps.library.services.game_server.ping_server_sync")
     def test_create_same_node_twice_updates_instead_of_duplicating(self, mock_ping):
@@ -80,10 +74,9 @@ class GameServersApiTests(TestCase):
             {**payload, "local_url": "http://localhost:8090"},
             format="json",
         )
-        self.assertEqual(first.status_code, 201)
-        self.assertEqual(second.status_code, 200)
-        self.assertEqual(first.json()["id"], second.json()["id"])
-        self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(first.status_code, 410)
+        self.assertEqual(second.status_code, 410)
+        self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 0)
 
     @mock.patch("apps.library.services.game_server.ping_server_sync")
     def test_create_same_token_from_lan_and_loopback_is_one_server(self, mock_ping):
@@ -107,9 +100,9 @@ class GameServersApiTests(TestCase):
             },
             format="json",
         )
-        self.assertEqual(first.status_code, 201)
-        self.assertEqual(second.status_code, 200)
-        self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(first.status_code, 410)
+        self.assertEqual(second.status_code, 410)
+        self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 0)
 
     def test_list_collapses_duplicate_servers(self):
         for _ in range(4):
@@ -122,12 +115,10 @@ class GameServersApiTests(TestCase):
         list_res = self.client.get("/api/v1/library/servers")
         self.assertEqual(list_res.status_code, 200)
         rows = list_res.json()
-        workers = [row for row in rows if not row.get("is_backend")]
-        self.assertEqual(len(workers), 1)
-        self.assertEqual(workers[0]["name"], "DK Game Storage Server")
-        self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 1)
+        self.assertEqual(len(rows), 1)
+        self.assertTrue(rows[0].get("is_backend"))
 
-    def test_list_does_not_collapse_distinct_servers(self):
+    def test_list_hides_legacy_user_game_servers(self):
         UserGameServer.objects.create(
             user=self.user,
             name="Home NAS",
@@ -143,8 +134,8 @@ class GameServersApiTests(TestCase):
         list_res = self.client.get("/api/v1/library/servers")
         self.assertEqual(list_res.status_code, 200)
         rows = list_res.json()
-        workers = [row for row in rows if not row.get("is_backend")]
-        self.assertEqual(len(workers), 2)
+        self.assertEqual(len(rows), 1)
+        self.assertTrue(rows[0].get("is_backend"))
         self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 2)
 
     @mock.patch("apps.library.services.game_server.ping_server_sync")
@@ -820,15 +811,25 @@ class BackendNodeApiTests(TestCase):
         )
         self.assertEqual(tray.status_code, 400)
 
-    def test_backend_node_rejects_worker_only_actions(self):
+    def test_backend_node_supports_scan_and_explorer(self):
         scan = self.client.post("/api/v1/library/servers/-2/scan")
-        self.assertEqual(scan.status_code, 400)
+        self.assertEqual(scan.status_code, 200)
+        self.assertEqual(scan.json().get("status"), "ok")
         explore = self.client.get("/api/v1/library/servers/-2/explorer")
-        self.assertEqual(explore.status_code, 400)
+        self.assertEqual(explore.status_code, 200)
+        self.assertIn("entries", explore.json())
         ping = self.client.post("/api/v1/library/servers/-2/ping")
         self.assertEqual(ping.status_code, 200)
         self.assertTrue(ping.json()["online"])
         self.assertEqual(ping.json()["server"]["id"], -2)
+
+    def test_create_remote_node_is_gone(self):
+        res = self.client.post(
+            "/api/v1/library/servers",
+            {"name": "NAS", "local_url": "http://127.0.0.1:8090", "auth_token": "x"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 410)
 
     def test_backend_node_arr_and_usenet_endpoints(self):
         self.assertEqual(self.client.get("/api/v1/library/servers/-2/usenet/queue").status_code, 200)

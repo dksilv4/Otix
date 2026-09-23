@@ -31,11 +31,11 @@ describe('connection target nodes', () => {
   it('includes the backend and excludes the local desktop app', () => {
     const remotes = remoteConnectionNodes([desktop, backend, worker])
     expect(remotes.map((server) => server.id)).toEqual([-2, 4])
-    expect(workerConnectionNodes([desktop, backend, worker]).map((server) => server.id)).toEqual([4])
+    expect(workerConnectionNodes([desktop, backend, worker]).map((server) => server.id)).toEqual([-2])
   })
 
-  it('prefers a worker over the always-online backend', () => {
-    expect(pickConnectionNode([backend, worker])?.id).toBe(4)
+  it('prefers the backend node for connections', () => {
+    expect(pickConnectionNode([backend, worker])?.id).toBe(-2)
     expect(pickConnectionNode([backend])?.id).toBe(-2)
     expect(pickConnectionNode([backend, worker], -2)?.id).toBe(-2)
   })

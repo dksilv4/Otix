@@ -115,7 +115,9 @@ export class RemoteDownloadManager extends EventEmitter {
     }
 
     const userId = options.userId || 'default';
-    const downloadUrl = `${options.serverUrl.replace(/\/$/, '')}/api/v1/files/${options.fileId}/download`;
+    const downloadUrl =
+      options.downloadUrl ||
+      `${options.serverUrl.replace(/\/$/, '')}/api/v1/files/${options.fileId}/download`;
 
     // Create or retrieve DB entry
     const dlRow = await createDownload(
@@ -154,7 +156,9 @@ export class RemoteDownloadManager extends EventEmitter {
     const t = this.activeTransfers.get(downloadId);
     if (!t || t.status !== 'downloading') return;
 
-    const downloadUrl = `${t.options.serverUrl.replace(/\/$/, '')}/api/v1/files/${t.options.fileId}/download`;
+    const downloadUrl =
+      t.options.downloadUrl ||
+      `${t.options.serverUrl.replace(/\/$/, '')}/api/v1/files/${t.options.fileId}/download`;
     const urlObj = new URL(downloadUrl);
     const isHttps = urlObj.protocol === 'https:';
     const client = isHttps ? https : http;

@@ -797,8 +797,8 @@ export function SettingsIntegrationsPage() {
     } catch (err) {
       setEpicConnected(false)
       const msg = extractIntegrationMessage(err)
-      if (msg === 'Connect an Otix Server to link Epic.' || !hasOnlineNode) {
-        setEpicError('Connect an Otix Server to link Epic.')
+      if (msg === 'Sign in to Otix to link Epic.' || !hasOnlineNode) {
+        setEpicError('Sign in to Otix to link Epic.')
       } else {
         setEpicError(msg)
       }
@@ -854,7 +854,7 @@ export function SettingsIntegrationsPage() {
     setEpicError('')
     try {
       if (!hasOnlineNode) {
-        setEpicError('Connect an Otix Server to link Epic.')
+        setEpicError('Sign in to Otix to link Epic.')
         return
       }
       const { data } = await apiClient.post('/auth/oauth/epic')
@@ -1513,7 +1513,7 @@ export function SettingsIntegrationsPage() {
       name: 'Epic Games',
       keywords: 'epic games store egs library launcher',
       description: !hasOnlineNode && !isEpicConnected
-        ? 'Connect an Otix Server to link Epic.'
+        ? 'Sign in to Otix to link Epic.'
         : isEpicConnected && epicDisplayName
           ? `Linked as ${epicDisplayName}`
           : 'Sign in with Epic Games to sync your game library.',
@@ -2032,7 +2032,7 @@ export function SettingsIntegrationsPage() {
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-white/80">No nodes connected</p>
                       <p className="text-xs text-white/50 mt-0.5">
-                        Connect an Otix node to configure SABnzbd, Prowlarr, Radarr, and Sonarr.
+                        Open the Otix backend node to configure SABnzbd, Prowlarr, Radarr, and Sonarr.
                       </p>
                     </div>
                     <Link

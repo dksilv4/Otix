@@ -1,15 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { isDesktop, type RemoteDownloadProgress } from '@/lib/desktop/api'
 import type { GameServer, ServerGameFile, ServerGamesResponse } from './types'
-import {
-  nodeUrlKey,
-  pendingNodesToClaim,
-  pendingNodesToRefresh,
-  probeLocalGameNode,
-  type PendingNode,
-} from './pending-nodes'
+import { ACCESS_TOKEN_KEY, API_BASE_URL } from '@/lib/config'
 
 export type { GameServer, ServerGameFile, ServerGamesResponse }
 
@@ -83,108 +77,9 @@ export function useGameServers(options?: { enabled?: boolean; refetchInterval?: 
   })
 }
 
-function mapPendingRow(row: {
-  serverName?: string
-  server_name?: string
-  localUrl?: string
-  local_url?: string
-  authToken?: string
-  auth_token?: string
-}): PendingNode {
-  return {
-    serverName: row.serverName || row.server_name || 'Otix Game Server',
-    localUrl: row.localUrl || row.local_url || '',
-    authToken: row.authToken || row.auth_token || '',
-  }
-}
-
-const inFlightClaimKeys = new Set<string>()
-
-function claimKeysFor(node: PendingNode): string[] {
-  const keys = [nodeUrlKey(node.localUrl)]
-  if (node.authToken) keys.push(`token:${node.authToken}`)
-  return keys
-}
-
-export function useAutoClaimPendingServers(enabled: boolean) {
-  const { data: servers = [] } = useGameServers({ enabled, refetchInterval: 15_000 })
-  const createServer = useCreateGameServer()
-  const updateServer = useUpdateGameServer()
-  const claiming = useRef(false)
-  const createMutateAsync = createServer.mutateAsync
-  const updateMutateAsync = updateServer.mutateAsync
-
-  const pendingQuery = useQuery<PendingNode[]>({
-    queryKey: [...serverKeys.all, 'pending'],
-    queryFn: async () => {
-      const { data } = await apiClient.get<Array<{
-        serverName?: string
-        server_name?: string
-        localUrl?: string
-        local_url?: string
-        authToken?: string
-        auth_token?: string
-      }>>('/library/servers/pending')
-      return (data || []).map(mapPendingRow)
-    },
-    enabled,
-    refetchInterval: 15_000,
-  })
-
-  const localProbe = useQuery({
-    queryKey: [...serverKeys.all, 'local-probe'],
-    queryFn: probeLocalGameNode,
-    enabled,
-    refetchInterval: 15_000,
-    retry: false,
-  })
-
-  useEffect(() => {
-    if (!enabled || claiming.current) return
-    for (const server of servers) {
-      for (const url of [server.primaryUrl, server.localUrl]) {
-        if (url) inFlightClaimKeys.delete(nodeUrlKey(url))
-      }
-      if (server.authToken) inFlightClaimKeys.delete(`token:${server.authToken}`)
-    }
-    const pending = [
-      ...(pendingQuery.data || []),
-      ...(localProbe.data ? [localProbe.data] : []),
-    ]
-    const toRefresh = pendingNodesToRefresh(pending, servers)
-    const toClaim = pendingNodesToClaim(pending, servers).filter((node) =>
-      claimKeysFor(node).every((key) => !inFlightClaimKeys.has(key)),
-    )
-    if (!toRefresh.length && !toClaim.length) return
-    claiming.current = true
-    for (const node of toClaim) {
-      for (const key of claimKeysFor(node)) inFlightClaimKeys.add(key)
-    }
-    Promise.all([
-      ...toRefresh.map(({ id, node }) =>
-        updateMutateAsync({
-          id,
-          auth_token: node.authToken,
-          name: node.serverName,
-        }),
-      ),
-      ...toClaim.map((node) =>
-        createMutateAsync({
-          name: node.serverName,
-          local_url: node.localUrl,
-          auth_token: node.authToken || undefined,
-        }),
-      ),
-    ])
-      .catch(() => {
-        for (const node of toClaim) {
-          for (const key of claimKeysFor(node)) inFlightClaimKeys.delete(key)
-        }
-      })
-      .finally(() => {
-        claiming.current = false
-      })
-  }, [createMutateAsync, enabled, localProbe.data, pendingQuery.data, servers, updateMutateAsync])
+/** Retired: separate Otix Server nodes are no longer claimed. */
+export function useAutoClaimPendingServers(_enabled: boolean) {
+  // no-op — Django backend is the only product node
 }
 
 export function useServerGames(options?: { refetchInterval?: number | false }) {
@@ -323,15 +218,20 @@ export function useRemoteDownloads() {
       }
 
       const assignedDir = destDir || localStorage.getItem('otix:games-download-dir') || undefined
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
+      // Desktop rebuilds `${serverUrl}/api/v1/files/{id}/download` — origin without /api/v1.
+      const apiOrigin = API_BASE_URL.replace(/\/api\/v1\/?$/, '') || file.serverUrl
 
       return await window.desktopAPI.downloadsRemoteStart({
-        serverUrl: file.serverUrl,
+        serverUrl: apiOrigin,
         fileId: file.fileId,
         filename: file.filename,
         filesize: file.filesize,
         gameTitle: file.gameTitle,
         mediaItemId: mediaItemId || file.catalogItem?.id || null,
         destDir: assignedDir,
+        authToken: token || null,
+        downloadUrl: file.downloadUrl || undefined,
       })
     },
     [desktop]

@@ -46,11 +46,11 @@ Write-Host "  - Storage Server:        http://localhost:8090" -ForegroundColor G
 Write-Host "  - PostgreSQL:            localhost:5433" -ForegroundColor Green
 Write-Host "  - Redis:                 localhost:6380" -ForegroundColor Green
 Write-Host ""
-Write-Host "Streaming logs (frontend, api, storage-server)... Press Ctrl+C to stop following logs." -ForegroundColor DarkGray
+Write-Host "Streaming logs (frontend, api)... Press Ctrl+C to stop following logs." -ForegroundColor DarkGray
 Write-Host ""
 
 try {
-    docker compose logs -f frontend storage-server api
+    docker compose logs -f frontend api
 } finally {
     Write-Host ""
     if ($DownOnExit) {

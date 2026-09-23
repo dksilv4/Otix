@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
+import { ACCESS_TOKEN_KEY, API_BASE_URL } from '@/lib/config'
 import { useToast } from '@ui/molecules/toast'
 import { isDesktop } from '@/lib/desktop/api'
 import { useGameServers } from '../use-server-downloads'
@@ -159,22 +160,22 @@ export function ServerFileExplorer({
 
   const handleDownloadFile = async (entry: ServerExplorerEntry) => {
     if (!activeServer) return
-    const targetUrl = (activeServer.primaryUrl || '').replace(/\/+$/, '')
-    const tokenParam = activeServer.authToken
-      ? `&token=${encodeURIComponent(activeServer.authToken)}`
-      : ''
-    const directDownloadUrl = `${targetUrl}/api/v1/explorer/download?path=${encodeURIComponent(entry.path)}${tokenParam}`
+    const apiOrigin = API_BASE_URL.replace(/\/api\/v1\/?$/, '')
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
+    const directDownloadUrl = `${apiOrigin}/api/v1/explorer/download?path=${encodeURIComponent(entry.path)}`
 
     if (desktop && window.desktopAPI?.downloadsRemoteStart) {
       try {
         const destDir = localStorage.getItem('otix:games-download-dir') || undefined
         await window.desktopAPI.downloadsRemoteStart({
-          serverUrl: targetUrl,
+          serverUrl: apiOrigin,
           fileId: `explorer_${entry.name.replace(/\W+/g, '_')}`,
           filename: entry.name,
           filesize: entry.size,
           gameTitle: entry.name.replace(/\.[^/.]+$/, ''),
           destDir,
+          authToken: token || null,
+          downloadUrl: directDownloadUrl,
         })
         toast({
           title: 'Download Started',
@@ -187,12 +188,28 @@ export function ServerFileExplorer({
       }
     }
 
-    const link = document.createElement('a')
-    link.href = directDownloadUrl
-    link.download = entry.name
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    try {
+      const res = await fetch(directDownloadUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = entry.name
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(objectUrl)
+    } catch (err: any) {
+      toast({
+        title: 'Download failed',
+        description: err?.message || 'Could not download file from the Otix backend.',
+        variant: 'error',
+      })
+      return
+    }
 
     toast({
       title: 'Streaming from Server',

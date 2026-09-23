@@ -22,6 +22,8 @@ export interface RemoteDownloadOptions {
   mediaItemId?: string | null;
   authToken?: string | null;
   destDir?: string | null;
+  /** Full download URL override (Django explorer / hosted file). */
+  downloadUrl?: string | null;
 }
 
 export interface RemoteDownloadProgress {

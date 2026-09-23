@@ -224,7 +224,7 @@ export function IntegrationEmptyServerState({
       </p>
       <DkButton asChild size="md" className={cn('mt-2', buttonBgClass)}>
         <a href="/settings/library#downloads" onClick={onClose}>
-          Connect a game server
+          Configure the Otix backend
         </a>
       </DkButton>
     </div>

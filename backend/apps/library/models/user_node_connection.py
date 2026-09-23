@@ -1,4 +1,4 @@
-"""Account-level SABnzbd / *arr connection settings shared across Otix nodes."""
+"""Account-level SABnzbd / *arr / Epic settings for the Django backend node."""
 
 from django.conf import settings
 from django.db import models
@@ -11,10 +11,10 @@ def _empty_object() -> dict:
 
 
 class UserNodeConnection(TimestampedModel):
-    """Downloader, arr, folder, and organize settings for the Otix backend node.
+    """Downloader, arr, folder, organize, and Epic settings for the Otix backend node.
 
-    Worker Otix nodes keep their own copy on disk. Account OAuth (Steam, Plex,
-    TMDb, YouTube) stays on the user row.
+    The Django backend *is* the product node. Account OAuth for Steam/Plex/TMDb/
+    YouTube stays on the user row; Epic launcher tokens live here.
     """
 
     user = models.OneToOneField(
@@ -27,6 +27,7 @@ class UserNodeConnection(TimestampedModel):
     sonarr = models.JSONField(default=_empty_object, blank=True)
     libraries = models.JSONField(default=list, blank=True)
     organize = models.JSONField(default=_empty_object, blank=True)
+    epic = models.JSONField(default=_empty_object, blank=True)
 
     class Meta(TimestampedModel.Meta):
         db_table = "user_node_connections"

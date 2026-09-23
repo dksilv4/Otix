@@ -57,6 +57,9 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ${OTIX_NODE_GAMES:-./sample_data}:/games
+      - server_games:/server/Games
+      - server_downloads:/server/Downloads
     env_file: ./.env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
@@ -70,9 +73,8 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       REDIS_URL: redis://redis:6379/1
       ENABLE_RELOAD: "true"
-      # Loopback storage URLs entered in the UI (127.0.0.1:8090) are rewritten
-      # to this compose hostname so the API container can reach otix-server.
-      OTIX_SERVER_DOCKER_HOST: storage-server
+      # Django-as-node: game libraries are mounted on the API container.
+      OTIX_NODE_GAMES: ${OTIX_NODE_GAMES:-/games}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: bash entrypoints/start-api.sh
@@ -182,28 +184,11 @@ services:
     depends_on:
       - api
 
-  storage-server:
-    build:
-      context: ./server
-      dockerfile: Dockerfile.dev
-    ports:
-      - "8090:8090"
-    volumes:
-      - ./server:/app
-      # Host folders visible in the node file browser.
-      # D:\Games → /games
-      # \\SERVER\Games → /server/Games
-      # \\SERVER\Downloads → /server/Downloads
-      - ${OTIX_NODE_GAMES:-D:/Games}:/games
-      - server_games:/server/Games
-      - server_downloads:/server/Downloads
-    environment:
-      ENABLE_RELOAD: "true"
-      CONFIG_PATH: /app/config.yaml
-      OTIX_REGISTRY_URL: http://api:8000/api
-    depends_on:
-      - api
-    restart: unless-stopped
+
+  # storage-server retired — Django backend is the product node.
+  # Reference code remains under ./server (see server/README.md).
+
+  frontend:
 
   frontend:
     build:
