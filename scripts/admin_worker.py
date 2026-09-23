@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Otix Admin Distributed Compute Worker (Turbo Edition).
+Otix Admin Distributed Compute Worker (Turbo Edition + Theme Analyzer).
 
 A high-performance pipelined runner that allows administrators to use their
 workstations (e.g. 16-thread Ryzen 7 9800X3D) to offload heavy artwork processing,
-resizing, WebP transcoding, and color analysis from the primary Otix server.
+resizing, WebP transcoding, luminance/contrast analysis, and theme classification
+(guess_white, guess_black, guess_colorful, guess_multicolor, guess_gray).
 
 Usage:
     python scripts/admin_worker.py --server http://84.8.154.67:8000 --username worker --password worker --threads 16 --batch-size 50
@@ -19,7 +20,7 @@ import signal
 import sys
 import threading
 import time
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import httpx
 from PIL import Image
@@ -37,13 +38,175 @@ class Colors:
 
 def print_banner(server: str, workers: int, batch_size: int):
     print(f"\n{Colors.CYAN}{Colors.BOLD}=========================================================={Colors.RESET}")
-    print(f"{Colors.CYAN}{Colors.BOLD}       OTIX ADMIN DISTRIBUTED COMPUTE WORKER (TURBO)      {Colors.RESET}")
+    print(f"{Colors.CYAN}{Colors.BOLD}   OTIX DISTRIBUTED WORKER (TURBO + THEME CLASSIFIER)    {Colors.RESET}")
     print(f"{Colors.CYAN}{Colors.BOLD}=========================================================={Colors.RESET}")
     print(f"  {Colors.BOLD}Server URL:{Colors.RESET}       {server}")
     print(f"  {Colors.BOLD}Worker Threads:{Colors.RESET}   {workers} (pipelined streaming)")
     print(f"  {Colors.BOLD}Batch Size:{Colors.RESET}       {batch_size} assets/claim")
+    print(f"  {Colors.BOLD}Theme Analysis:{Colors.RESET}   Alpha-aware HSL + Perceived Luminance")
     print(f"  {Colors.BOLD}Mode:{Colors.RESET}             Zero-Trust Admin Compute")
     print(f"{Colors.CYAN}----------------------------------------------------------{Colors.RESET}\n")
+
+
+# Theme classification constants matching backend color_analyzer service
+_NEUTRAL_SAT = 0.12
+_DARK_LIGHTNESS = 0.28
+_LIGHT_LIGHTNESS = 0.75
+_MULTICOLOR_CHROMATIC_MIN = 0.5
+_HUE_BIN_COUNT = 12
+_HUE_BIN_MIN_SHARE = 0.08
+_HUE_DOMINANT_MAX = 0.8
+
+
+def _rgb_to_hsl(r: int, g: int, b: int) -> Tuple[float, float, float]:
+    """Convert an 8-bit RGB pixel to HSL (h in 0..360, s/l in 0..1)."""
+    rn, gn, bn = r / 255.0, g / 255.0, b / 255.0
+    mx = max(rn, gn, bn)
+    mn = min(rn, gn, bn)
+    delta = mx - mn
+    l_val = (mx + mn) / 2.0
+    if delta == 0:
+        return 0.0, 0.0, l_val
+    s_val = delta / (2.0 - mx - mn) if l_val > 0.5 else delta / (mx + mn)
+    if mx == rn:
+        h_val = ((gn - bn) / delta + (6.0 if gn < bn else 0.0)) / 6.0
+    elif mx == gn:
+        h_val = ((bn - rn) / delta + 2.0) / 6.0
+    else:
+        h_val = ((rn - gn) / delta + 4.0) / 6.0
+    return h_val * 360.0, s_val, l_val
+
+
+def _relative_luminance(r: int, g: int, b: int) -> float:
+    """ITU-R BT.709 perceived luminance in 0..1."""
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0
+
+
+def _classify_transparent_graphic(image: Image.Image) -> str | None:
+    """Classify logos or transparent icons based on visible pixels."""
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
+
+    image = image.resize((64, 64), resample=Image.Resampling.BILINEAR)
+    raw_pixels = list(image.getdata())
+
+    visible = [(r, g, b) for r, g, b, a in raw_pixels if a >= 128]
+    if not visible:
+        return None
+    total = len(visible)
+
+    black = white = gray = dark_color = light_color = colorful = 0
+    hue_bins = [0] * _HUE_BIN_COUNT
+    chromatic = 0
+
+    for r, g, b in visible:
+        h, s, l_val = _rgb_to_hsl(r, g, b)
+        if s < _NEUTRAL_SAT:
+            if l_val < _DARK_LIGHTNESS:
+                black += 1
+            elif l_val > _LIGHT_LIGHTNESS:
+                white += 1
+            else:
+                gray += 1
+        else:
+            chromatic += 1
+            hue_bins[int(h // (360.0 / _HUE_BIN_COUNT)) % _HUE_BIN_COUNT] += 1
+            if l_val < _DARK_LIGHTNESS:
+                dark_color += 1
+            elif l_val > _LIGHT_LIGHTNESS:
+                light_color += 1
+            else:
+                colorful += 1
+
+    dark = (black + dark_color) / total
+    light = (white + light_color) / total
+    gray_ratio = gray / total
+    colorful_ratio = colorful / total
+    chromatic_ratio = chromatic / total
+
+    if chromatic_ratio >= _MULTICOLOR_CHROMATIC_MIN and chromatic > 0:
+        shares = [c / chromatic for c in hue_bins if c > 0]
+        dominant = max(shares)
+        distinct = sum(1 for s in shares if s >= _HUE_BIN_MIN_SHARE)
+        if distinct >= 2 and dominant <= _HUE_DOMINANT_MAX:
+            return "guess_multicolor"
+
+    ratios = {
+        "guess_black": dark,
+        "guess_white": light,
+        "guess_gray": gray_ratio,
+        "guess_colorful": colorful_ratio,
+    }
+    best = max(ratios, key=ratios.get)
+    if ratios[best] >= 0.5:
+        return best
+
+    if colorful_ratio >= 0.35 and colorful_ratio >= max(dark, light, gray_ratio):
+        return "guess_colorful"
+    if dark >= 0.3 and dark >= light:
+        return "guess_black"
+    if light >= 0.3:
+        return "guess_white"
+    if gray_ratio >= 0.3:
+        return "guess_gray"
+    return "guess_gray"
+
+
+def _classify_opaque_image(image: Image.Image, asset_type: str) -> str | None:
+    """Classify backdrops or posters based on perceived luminance and color."""
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+
+    image = image.resize((64, 64), resample=Image.Resampling.BILINEAR)
+    raw_pixels = list(image.getdata())
+    if not raw_pixels:
+        return None
+
+    total = len(raw_pixels)
+    total_lum = 0.0
+    total_sat = 0.0
+
+    for r, g, b in raw_pixels:
+        total_lum += _relative_luminance(r, g, b)
+        _, s, _ = _rgb_to_hsl(r, g, b)
+        total_sat += s
+
+    avg_lum = total_lum / total
+    avg_sat = total_sat / total
+
+    if asset_type in ("backdrop", "textless_backdrop"):
+        if avg_lum < 0.35:
+            return "guess_black"  # Reads dark; ideal for dark UI with white typography
+        if avg_lum > 0.65:
+            return "guess_white"  # Reads light; ideal for light UI with dark typography
+    else:  # poster, textless_poster, icon
+        if avg_lum < 0.30:
+            return "guess_black"
+        if avg_lum > 0.70:
+            return "guess_white"
+
+    if avg_sat > 0.25:
+        return "guess_colorful"
+    return "guess_gray"
+
+
+def classify_theme(image: Image.Image, asset_type: str = "logo") -> str:
+    """Classify artwork into standard Otix theme contrast labels."""
+    has_alpha = image.mode in ("RGBA", "LA") or (
+        image.mode == "P" and "transparency" in image.info
+    )
+
+    if asset_type in ("logo", "icon") and has_alpha:
+        if image.mode != "RGBA":
+            image = image.convert("RGBA")
+        alphas = [a for _, _, _, a in image.getdata()]
+        if any(a < 250 for a in alphas):
+            return _classify_transparent_graphic(image) or "guess_gray"
+
+    if asset_type in ("logo", "icon"):
+        return _classify_transparent_graphic(image) or "guess_gray"
+
+    return _classify_opaque_image(image, asset_type) or "guess_gray"
 
 
 def extract_dominant_color(img: Image.Image) -> str:
@@ -183,7 +346,7 @@ class AdminComputeWorker:
             pass
 
     def process_and_submit_asset(self, job: Dict[str, Any]) -> bool:
-        """Downloads, transcodes to WebP, extracts color, and submits to server."""
+        """Downloads, transcodes to WebP, analyzes theme contrast, and submits to server."""
         asset_id = job["asset_id"]
         url = job["url"]
         title = job.get("title", "Asset")
@@ -205,10 +368,12 @@ class AdminComputeWorker:
             self.skipped_ids.add(asset_id)
             return False
 
-        # 2. Open with Pillow and optimize
+        # 2. Open with Pillow, analyze theme contrast + dominant color, and optimize
         try:
             with Image.open(io.BytesIO(raw_bytes)) as img:
-                color_guess = extract_dominant_color(img)
+                theme_guess = classify_theme(img, asset_type)
+                hex_color = extract_dominant_color(img)
+
                 buf = io.BytesIO()
                 target_img = img.convert("RGBA") if img.mode in ("RGBA", "LA", "P") else img.convert("RGB")
                 target_img.save(buf, format="WEBP", quality=self.webp_quality, method=4)
@@ -224,7 +389,7 @@ class AdminComputeWorker:
         }
         data = {
             "asset_id": str(asset_id),
-            "color_guess": color_guess,
+            "color_guess": theme_guess,
         }
 
         try:
@@ -238,7 +403,8 @@ class AdminComputeWorker:
                 saved_pct = (1.0 - len(webp_bytes) / max(1, len(raw_bytes))) * 100
                 print(
                     f"  {Colors.GREEN}[Done]{Colors.RESET} {Colors.BOLD}{title}{Colors.RESET} ({asset_type}) "
-                    f"-> {len(webp_bytes) / 1024:.1f} KB ({saved_pct:+.1f}% vs raw) [{color_guess}]"
+                    f"-> {len(webp_bytes) / 1024:.1f} KB [{Colors.CYAN}{theme_guess}{Colors.RESET} | {hex_color}] "
+                    f"({saved_pct:+.1f}%)"
                 )
 
                 # Periodic telemetry output every 25 completed items
@@ -277,7 +443,6 @@ class AdminComputeWorker:
     def feeder_loop(self, idle_sleep: int):
         """Background thread that keeps the job queue populated."""
         while self.running:
-            # If queue has room, claim more jobs
             if self.job_queue.qsize() < (self.concurrency * 2):
                 jobs = self.claim_jobs()
                 if not jobs:
@@ -325,13 +490,11 @@ class AdminComputeWorker:
 
         signal.signal(signal.SIGINT, handle_sigint)
 
-        print(f"{Colors.CYAN}Ready! Launching Turbo engine with {self.concurrency} worker threads...{Colors.RESET}\n")
+        print(f"{Colors.CYAN}Ready! Launching Turbo engine with {self.concurrency} worker threads + Theme Analysis...{Colors.RESET}\n")
 
-        # Start feeder thread
         feeder_thread = threading.Thread(target=self.feeder_loop, args=(idle_sleep,), daemon=True)
         feeder_thread.start()
 
-        # Start worker consumer threads
         workers = []
         for _ in range(self.concurrency):
             t = threading.Thread(target=self.worker_consumer_loop, daemon=True)
@@ -346,7 +509,6 @@ class AdminComputeWorker:
         except KeyboardInterrupt:
             self.running = False
 
-        # Release any uncompleted leases that weren't intentionally skipped
         with self.in_flight_lock:
             remaining = list(self.in_flight_ids - self.skipped_ids)
         if remaining:
@@ -365,7 +527,7 @@ class AdminComputeWorker:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Otix Admin Distributed Compute Worker (Turbo Edition)")
+    parser = argparse.ArgumentParser(description="Otix Admin Distributed Compute Worker (Turbo Edition + Theme Analyzer)")
     parser.add_argument("--server", default="http://localhost:8000", help="Otix server base URL")
     parser.add_argument("--username", help="Admin username or email")
     parser.add_argument("--password", help="Admin password")
