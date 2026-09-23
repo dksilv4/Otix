@@ -198,6 +198,7 @@ def enrich_character(
         # Ingest voice actors from Fandom into MediaCredit
         if getattr(f_data, "actors", None):
             from apps.people.models import MediaCredit, Person
+            from apps.people.services.photo_lookup import backfill_person_photo
 
             target_media = media_item
             if not target_media:
@@ -211,6 +212,8 @@ def enrich_character(
                     if not person:
                         person = Person.objects.create(name=actor.name)
                         changed = True
+                    if not person.photo_url:
+                        backfill_person_photo(person)
                     MediaCredit.objects.update_or_create(
                         media_item=target_media,
                         person=person,
@@ -331,17 +334,16 @@ async def _gather_game_enrichment(
     # Fetch character pages using provider
     fandom_pages: dict[str, Any] = {}
     if detected_community:
-        # Discover characters from Category:Characters on Fandom wiki
-        if len(char_names) < 35:
-            try:
-                comm_chars = await provider.get_community_characters(
-                    detected_community, game_title=media_title, limit=35
-                )
-                for c_name in comm_chars:
-                    if c_name not in char_names:
-                        char_names.append(c_name)
-            except Exception as e:
-                logger.debug("Failed community characters lookup on %s: %s", detected_community, e)
+        # Discover characters from Fandom wiki categories
+        try:
+            comm_chars = await provider.get_community_characters(
+                detected_community, game_title=media_title, limit=150
+            )
+            for c_name in comm_chars:
+                if c_name not in char_names:
+                    char_names.append(c_name)
+        except Exception as e:
+            logger.debug("Failed community characters lookup on %s: %s", detected_community, e)
 
         for name in char_names:
             try:
@@ -352,6 +354,7 @@ async def _gather_game_enrichment(
                     "Failed fetching Fandom page for %s/%s: %s", detected_community, name, e
                 )
                 fandom_pages[name] = None
+            await asyncio.sleep(0.35)
 
     return detected_community, wikidata_claims_map, fandom_pages
 

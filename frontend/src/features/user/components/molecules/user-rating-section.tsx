@@ -107,7 +107,7 @@ function UserRatingContent({ username, currentUsername }: { username: string; cu
 
   const profile = profileQuery.data
   const myRating = myRatingQuery.data
-  const loading = myRatingQuery.isLoading || !profile
+  const loading = myRatingQuery.isLoading || profileQuery.isLoading
 
   const ownAvgRating = profile?.avgUserRating != null ? Math.round(profile.avgUserRating) : 0
   const otherScore = loading ? 0 : (myRating?.score ?? 0)
@@ -121,5 +121,12 @@ function UserRatingContent({ username, currentUsername }: { username: string; cu
   }
 
   // Other user's profile — interactive
-  return <StarInput value={displayScore} onChange={(s) => rateUser.mutate(s)} size="sm" />
+  return (
+    <StarInput
+      value={displayScore}
+      onChange={(s) => rateUser.mutate(s)}
+      size="sm"
+      disabled={loading || rateUser.isPending}
+    />
+  )
 }

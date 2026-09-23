@@ -3,9 +3,9 @@ server:
   port: 8090
   host: 0.0.0.0
   auth_token: otix_secret_token_abc123
-  registry_url: http://127.0.0.1:8000/api
+  registry_url: ''
   enable_upnp: false
-  enable_heartbeat: true
+  enable_heartbeat: false
   downloads_path: ./storage/downloads
 game_libraries:
 - name: Games

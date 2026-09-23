@@ -12,9 +12,9 @@ class ServerSettings(BaseModel):
     port: int = 8000
     host: str = "0.0.0.0"
     auth_token: str = "otix_secret_token"
-    registry_url: str = "https://api.otix.io"
+    registry_url: str = ""
     enable_upnp: bool = True
-    enable_heartbeat: bool = True
+    enable_heartbeat: bool = False
     downloads_path: str = "./storage/downloads"
 
 

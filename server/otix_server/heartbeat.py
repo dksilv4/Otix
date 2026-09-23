@@ -36,6 +36,8 @@ def resolve_registry_url(config: AppConfig, *, in_docker: bool | None = None) ->
     if override:
         return override.rstrip("/")
     registry = (config.server.registry_url or "").rstrip("/")
+    if not registry:
+        return ""
     host = (urlparse(registry).hostname or "").lower()
     docker = Path("/.dockerenv").exists() if in_docker is None else in_docker
     if docker and host in _LOOPBACK_HOSTS:
@@ -48,9 +50,12 @@ async def announce_heartbeat(config: AppConfig):
     if not config.server.enable_heartbeat:
         return
 
+    registry_url = resolve_registry_url(config)
+    if not registry_url:
+        return
+
     local_ip = get_local_ip()
     port = config.server.port
-    registry_url = resolve_registry_url(config)
 
     payload = {
         "server_name": config.server.name,

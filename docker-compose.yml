@@ -200,9 +200,6 @@ services:
     environment:
       ENABLE_RELOAD: "true"
       CONFIG_PATH: /app/config.yaml
-      OTIX_REGISTRY_URL: http://api:8000/api
-    depends_on:
-      - api
     restart: unless-stopped
 
   frontend:

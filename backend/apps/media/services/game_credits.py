@@ -60,6 +60,7 @@ async def hydrate_game_credits(
 
     def _apply_credits() -> int:
         count = 0
+        people_to_backfill: list[Person] = []
         with transaction.atomic():
             # 1. Apply cast
             for order, c in enumerate(cast_entries):
@@ -75,6 +76,9 @@ async def hydrate_game_credits(
                     person.photo_url = c["photo_url"]
                     person.save(update_fields=["photo_url"])
 
+                if not person.photo_url and person not in people_to_backfill:
+                    people_to_backfill.append(person)
+
                 MediaCredit.objects.update_or_create(
                     media_item=media,
                     person=person,
@@ -88,12 +92,20 @@ async def hydrate_game_credits(
                     get_or_create_character_for_media,
                 )
 
-                char, _ = get_or_create_character_for_media(media, c_name)
-                MediaCharacter.objects.get_or_create(
-                    media_item=media,
-                    character=char,
-                    defaults={"order": order},
-                )
+                if c_name and c_name.strip().lower() not in (
+                    "cast",
+                    "various",
+                    "additional voices",
+                    "self",
+                    "uncredited",
+                    "narrator",
+                ):
+                    char, _ = get_or_create_character_for_media(media, c_name)
+                    MediaCharacter.objects.get_or_create(
+                        media_item=media,
+                        character=char,
+                        defaults={"order": order},
+                    )
 
             # 1b. Apply additional characters from Wikidata character claims
             for c_order, claim in enumerate(char_entries, start=len(cast_entries)):
@@ -119,7 +131,10 @@ async def hydrate_game_credits(
                     )
                 elif not person.photo_url and cr.get("photo_url"):
                     person.photo_url = cr["photo_url"]
-                    person.save(update_fields=["photo_url", "updated_at"])
+                    person.save(update_fields=["photo_url"])
+
+                if not person.photo_url and person not in people_to_backfill:
+                    people_to_backfill.append(person)
 
                 MediaCredit.objects.update_or_create(
                     media_item=media,
@@ -144,6 +159,15 @@ async def hydrate_game_credits(
                 )
 
             recompute_completeness(media)
+
+        # Backfill photos outside of database transaction
+        for p in people_to_backfill:
+            try:
+                from apps.people.services.photo_lookup import backfill_person_photo
+
+                backfill_person_photo(p)
+            except Exception as e:
+                logger.debug("Failed photo backfill for %s: %s", p.name, e)
 
         # 3. Enrich characters with Wikidata claims and Fandom assets
         try:

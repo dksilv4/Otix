@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Otix/1.0"
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 )
 DEFAULT_REFERER = "https://fandom.com"
 
@@ -239,7 +239,7 @@ class FandomProvider(BaseProviderClient):
         return None
 
     async def get_community_characters(
-        self, community: str, game_title: str = "", limit: int = 50
+        self, community: str, game_title: str = "", limit: int = 150
     ) -> list[str]:
         """Retrieve characters listed in game or character categories for a Fandom wiki."""
         client = self._get_client()
@@ -251,6 +251,7 @@ class FandomProvider(BaseProviderClient):
             if clean_title != game_title:
                 categories.append(f"Category:{clean_title} characters")
                 categories.append(f"Category:{clean_title} Characters")
+                categories.append(f"Category:{clean_title}")
 
         # Generic categories are ONLY allowed for dedicated wikis (never franchise wikis)
         if community not in FRANCHISE_COMMUNITIES:
@@ -258,33 +259,63 @@ class FandomProvider(BaseProviderClient):
             categories.append("Category:Characters")
 
         chars: list[str] = []
-        for cat in categories:
+        visited_cats: set[str] = set()
+        queue = list(categories)
+
+        while queue and len(chars) < limit:
+            cat = queue.pop(0)
+            if cat in visited_cats:
+                continue
+            visited_cats.add(cat)
+
+            # For dedicated wikis, also inspect subcategories (e.g. Expeditioners, Gestrals, Expedition 33)
+            cmtype = "page|subcat" if community not in FRANCHISE_COMMUNITIES else "page"
             url = (
                 f"https://{community}.fandom.com/api.php?"
                 f"action=query&list=categorymembers&cmtitle={urllib.parse.quote(cat)}"
-                f"&cmlimit={limit}&cmtype=page&format=json"
+                f"&cmlimit=100&cmtype={cmtype}&format=json"
             )
             try:
-                resp = await client.get(url, timeout=3.5)
+                resp = await client.get(url, timeout=4.0)
                 if resp.status_code == 200:
                     data = resp.json()
                     members = data.get("query", {}).get("categorymembers", [])
                     for m in members:
+                        ns = m.get("ns")
                         title = m.get("title", "").strip()
-                        if not title or title.lower() in (
-                            "character",
-                            "characters",
-                            "minor characters",
-                            "list of characters",
-                            "categories",
-                        ):
-                            continue
-                        if ":" in title:
-                            continue
-                        if title not in chars:
-                            chars.append(title)
-                    if chars:
-                        break
+                        if ns == 14:  # Subcategory
+                            lower_cat = title.lower()
+                            if any(
+                                kw in lower_cat
+                                for kw in (
+                                    "character",
+                                    "expedition",
+                                    "gestral",
+                                    "merchant",
+                                    "party",
+                                    "people",
+                                    "npc",
+                                    "boss",
+                                    "enem",
+                                )
+                            ):
+                                if title not in visited_cats and title not in queue:
+                                    queue.append(title)
+                        elif ns == 0:
+                            if not title or title.lower() in (
+                                "character",
+                                "characters",
+                                "minor characters",
+                                "list of characters",
+                                "categories",
+                            ):
+                                continue
+                            if ":" in title:
+                                continue
+                            if title not in chars:
+                                chars.append(title)
+                                if len(chars) >= limit:
+                                    break
             except Exception as e:
                 logger.debug("Failed querying %s on %s: %s", cat, community, e)
 
@@ -308,6 +339,10 @@ class FandomProvider(BaseProviderClient):
         )
         try:
             resp = await client.get(query_url)
+            if resp.status_code == 429:
+                import asyncio
+                await asyncio.sleep(1.0)
+                resp = await client.get(query_url)
             if resp.status_code != 200:
                 logger.warning(
                     "Fandom query returned status %s for %s/%s",
@@ -462,6 +497,69 @@ class FandomProvider(BaseProviderClient):
         except Exception as e:
             logger.debug("Failed parsing wikitext for %s/%s: %s", community, page_title, e)
 
+        # 4. Fallback image resolution if pageimages didn't provide a thumbnail
+        if not primary_image_url:
+            candidate_files: list[str] = []
+            if wikitext:
+                m_img = re.search(r"\|\s*image\s*=\s*([^|\n}]+)", wikitext, re.IGNORECASE)
+                if m_img:
+                    raw_val = m_img.group(1).strip()
+                    clean_file = re.sub(r"^\[\[(?:File|Image):|\]\]", "", raw_val).strip()
+                    if clean_file and not clean_file.startswith("File:"):
+                        clean_file = f"File:{clean_file}"
+                    if clean_file:
+                        candidate_files.append(clean_file)
+
+            # Common naming conventions on video game wikis
+            for pattern in (
+                f"File:COE33 char icon {page_title}.png",
+                f"File:COE33 {page_title}.jpg",
+                f"File:COE33 {page_title.replace('-', ' ')}.jpg",
+                f"File:COE33 {page_title}.png",
+                f"File:Coe33 {page_title.lower()}.png",
+                f"File:Coe33 {page_title.lower()}.jpg",
+                f"File:{page_title}.png",
+                f"File:{page_title}.jpg",
+            ):
+                if pattern not in candidate_files:
+                    candidate_files.append(pattern)
+
+            if candidate_files:
+                pipe_candidates = urllib.parse.quote("|".join(candidate_files))
+                cand_url = (
+                    f"https://{community}.fandom.com/api.php?"
+                    f"action=query&titles={pipe_candidates}&prop=imageinfo&iiprop=url|size&format=json"
+                )
+                try:
+                    cand_resp = await client.get(cand_url, timeout=3.5)
+                    if cand_resp.status_code == 200:
+                        cand_data = cand_resp.json()
+                        for c_page in cand_data.get("query", {}).get("pages", {}).values():
+                            infos = c_page.get("imageinfo", [])
+                            if infos and infos[0].get("url"):
+                                cand_img_url = clean_fandom_image_url(infos[0]["url"])
+                                if cand_img_url:
+                                    primary_image_url = cand_img_url
+                                    images_list.insert(
+                                        0,
+                                        FandomImage(
+                                            url=cand_img_url,
+                                            title=c_page.get("title", page_title),
+                                            width=infos[0].get("width"),
+                                            height=infos[0].get("height"),
+                                            is_primary=True,
+                                            caption=f"{page_title} official portrait",
+                                        ),
+                                    )
+                                    break
+                except Exception as e:
+                    logger.debug("Failed querying candidate image files for %s: %s", page_title, e)
+
+            # Fallback to first available gallery image if still None
+            if not primary_image_url and images_list:
+                primary_image_url = images_list[0].url
+                images_list[0].is_primary = True
+
         return FandomCharacter(
             name=page_title,
             community=community,
@@ -517,8 +615,8 @@ class FandomProvider(BaseProviderClient):
 
         # Find voice actors / cast members
         actor_pattern = (
-            r"\n[^\S\r\n]*\|[^\S\r\n]*(portrayed\s*by|voice\s*actor|voiced\s*by|voice|actor|"
-            r"english\s*voice|japanese\s*voice)[^\S\r\n]*=[^\S\r\n]*(.*?)(?=\r?\n[^\S\r\n]*(?:\||\}\}))"
+            r"\n[^\S\r\n]*\|[^\S\r\n]*(portrayed[\s_]*by|voice[\s_]*actor|voiced[\s_]*by|voice|actor|"
+            r"english[\s_]*voice|japanese[\s_]*voice)[^\S\r\n]*=[^\S\r\n]*(.*?)(?=\r?\n[^\S\r\n]*(?:\||\}\}))"
         )
         non_english_headers = (
             "german",
@@ -597,7 +695,7 @@ class FandomProvider(BaseProviderClient):
                 # Strip bullet points, asterisks, hashes
                 clean = re.sub(r"^[\*\#\-\s•]+", "", clean)
                 # Strip trailing notes: " - As Young Kratos...", " (young...)"
-                clean = re.sub(r"\s*[\-–—].*$", "", clean)
+                clean = re.sub(r"\s+[\-–—]\s*.*$", "", clean)
                 clean = re.sub(r"\s*\(.*?\)", "", clean)
                 clean = clean.strip(" \t\r\n'\"[]():;,")
 

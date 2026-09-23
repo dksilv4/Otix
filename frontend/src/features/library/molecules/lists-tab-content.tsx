@@ -5,7 +5,7 @@ import { useUserLists, useCreateList, type UserListCreate, ListComposer, ListCar
 import { useModal } from "@/lib/modals"
 
 export function ListsTabContent() {
-  const { data: lists, isLoading, isError } = useUserLists()
+  const { data: lists, isLoading, isError, refetch } = useUserLists()
   const offline = useOffline()
   const createList = useCreateList()
   const { openModal } = useModal()
@@ -29,16 +29,34 @@ export function ListsTabContent() {
     )
   }
 
-  if (isError && offline && !lists) {
+  if (isError && !lists) {
+    if (offline) {
+      return (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--dk-surface-glass)] text-muted-foreground">
+            <WifiOff className="h-6 w-6" />
+          </div>
+          <p className="text-lg font-semibold text-foreground">You're offline</p>
+          <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+            No saved lists are available yet. Connect to the internet to load them.
+          </p>
+        </div>
+      )
+    }
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--dk-surface-glass)] text-muted-foreground">
-          <WifiOff className="h-6 w-6" />
-        </div>
-        <p className="text-lg font-semibold text-foreground">You're offline</p>
-        <p className="mt-1 text-sm text-muted-foreground max-w-sm">
-          No saved lists are available yet. Connect to the internet to load them.
-        </p>
+        <p className="text-lg font-semibold text-foreground">Failed to load lists</p>
+        <p className="mt-1 text-sm text-muted-foreground">Please try again.</p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className={cn(
+            "mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium",
+            "bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+          )}
+        >
+          Retry
+        </button>
       </div>
     )
   }

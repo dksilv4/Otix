@@ -110,14 +110,14 @@ from otix_server.epic import (
     status_payload,
     write_secrets,
 )
-from otix_server.heartbeat import announce_heartbeat
+from otix_server.heartbeat import announce_heartbeat, resolve_registry_url
 
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     cfg = get_app_config()
     task = None
-    if cfg.server.enable_heartbeat:
+    if cfg.server.enable_heartbeat and resolve_registry_url(cfg):
         task = asyncio.create_task(announce_heartbeat(cfg))
     yield
     if task:

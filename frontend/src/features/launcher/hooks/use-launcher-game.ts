@@ -12,17 +12,14 @@ import {
 import type { LocalGame, Game } from '@/features/launcher/types'
 
 export function useLauncherGame(gameId: string | undefined) {
-  if (gameId === OTIX_DEFAULT_GAME_ID) {
-    return { game: OTIX_DEFAULT_GAME, isLoading: false }
-  }
-
+  const isDefault = gameId === OTIX_DEFAULT_GAME_ID
   const isDesktop = hasDesktopAPI()
-  const { data: localGame, isLoading: isLocalLoading } = useLocalGame(gameId)
-  const { data: serverGamesData } = useServerGames()
+  const { data: localGame, isLoading: isLocalLoading } = useLocalGame(isDefault ? undefined : gameId)
+  const { data: serverGamesData, isLoading: isServerGamesLoading } = useServerGames()
 
   const group = useMemo(
-    () => findGroupedServerGame(serverGamesData?.files, { gameId, local: localGame }),
-    [gameId, localGame, serverGamesData?.files],
+    () => (isDefault ? null : findGroupedServerGame(serverGamesData?.files, { gameId, local: localGame })),
+    [isDefault, gameId, localGame, serverGamesData?.files],
   )
   const serverFile = group?.primary.file || null
   const groupedGame = useMemo(
@@ -32,16 +29,34 @@ export function useLauncherGame(gameId: string | undefined) {
 
   // For desktop matched games, use the otix ID for catalog detail fetch.
   // Falls back to grouped catalog id, or gameId directly if not a server- prefix.
-  const catalogId =
-    localGame?.data?.id ||
-    localGame?.otixMediaId ||
-    groupedGame?.otixMediaId ||
-    serverFile?.catalogItem?.id ||
-    (gameId && !gameId.startsWith('server-') ? gameId : undefined)
+  const catalogId = isDefault
+    ? undefined
+    : localGame?.data?.id ||
+      localGame?.otixMediaId ||
+      groupedGame?.otixMediaId ||
+      serverFile?.catalogItem?.id ||
+      (gameId && !gameId.startsWith('server-') ? gameId : undefined)
 
   const { data: catalogDetail, isLoading: isCatalogLoading } = useGameDetail(catalogId)
 
-  const isLoading = isDesktop ? (isLocalLoading || (!!catalogId && isCatalogLoading)) : isCatalogLoading
+  // Server-only ids have no catalog id until /library/server-games returns.
+  // Without this, the page flashes "not found" while that request is in flight.
+  const waitingForServerGame =
+    !isDefault &&
+    !!gameId?.startsWith('server-') &&
+    !localGame &&
+    !groupedGame &&
+    isServerGamesLoading
+
+  const isLoading = isDefault
+    ? false
+    : isDesktop
+      ? isLocalLoading || waitingForServerGame || (!!catalogId && isCatalogLoading)
+      : waitingForServerGame || isCatalogLoading
+
+  if (isDefault) {
+    return { game: OTIX_DEFAULT_GAME, isLoading: false }
+  }
 
   const withUpdates = localGame
     ? attachGroupToLocalGame(localGame, group)

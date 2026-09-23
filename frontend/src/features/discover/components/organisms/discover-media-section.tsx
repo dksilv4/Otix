@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { useSectionFetch } from '@discover/hooks/use-section-fetch'
 import { MediaCarousel } from '../molecules/discover-media-carousel'
+import { DiscoverSectionError } from '../molecules/discover-section-error'
 import { MediaSectionSkeleton } from '../molecules/discover-media-section-skeleton'
 
 interface MediaSectionProps {
@@ -26,7 +27,7 @@ export const MediaSection = memo(function MediaSection({
   platform,
   eager = false,
 }: MediaSectionProps) {
-  const { ref, items, showSkeleton, isEmpty } = useSectionFetch({
+  const { ref, items, showSkeleton, isEmpty, isError, refetch } = useSectionFetch({
     id: '',
     title,
     mediaType,
@@ -52,6 +53,8 @@ export const MediaSection = memo(function MediaSection({
     >
       {showSkeleton ? (
         <MediaSectionSkeleton />
+      ) : isError && items.length === 0 ? (
+        <DiscoverSectionError title={title} onRetry={() => void refetch()} />
       ) : (
         <MediaCarousel
           items={items}

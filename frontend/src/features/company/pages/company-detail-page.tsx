@@ -301,6 +301,17 @@ export function CompanyDetailPage() {
               <Skeleton key={i} className="aspect-[2/3] w-full rounded-xl" />
             ))}
           </div>
+        ) : titlesQuery.isError && titles.length === 0 ? (
+          <div className="flex flex-col items-start gap-3">
+            <p className="text-sm text-white/50">Failed to load titles.</p>
+            <button
+              type="button"
+              onClick={() => void titlesQuery.refetch()}
+              className="text-xs font-semibold uppercase tracking-wider text-primary hover:text-primary/80"
+            >
+              Retry
+            </button>
+          </div>
         ) : titles.length === 0 ? (
           <p className="text-sm text-white/50">No titles found for this studio.</p>
         ) : (

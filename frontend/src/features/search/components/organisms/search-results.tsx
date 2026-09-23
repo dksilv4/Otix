@@ -17,6 +17,8 @@ import { PeopleCard } from '@people/components/molecules/people-card'
 import { peopleQueries } from '@people/queries/people-queries'
 import { userQueries } from '@/features/user/user-queries'
 import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
+import { DiscoverSectionError } from '@discover/components/molecules/discover-section-error'
+import { MediaSectionSkeleton } from '@discover/components/molecules/discover-media-section-skeleton'
 import { TYPE_OPTIONS } from '@search/components/molecules/search-sort-bar'
 
 function SearchSkeleton({ count = 12 }: { count?: number }) {
@@ -124,7 +126,7 @@ function renderBestResultItem(item: any) {
 
 /** Fetches and renders one curated section carousel. */
 function CuratedSectionCarousel({ section }: { section: CuratedSectionConfig }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['curated-section', section.id],
     queryFn: () =>
       apiClient
@@ -141,7 +143,20 @@ function CuratedSectionCarousel({ section }: { section: CuratedSectionConfig }) 
   })
 
   const sectionItems = Array.isArray(data?.items) ? data.items.filter(Boolean) : []
-  if (isLoading) return null
+  if (isLoading && sectionItems.length === 0) {
+    return (
+      <section className="mb-10">
+        <MediaSectionSkeleton />
+      </section>
+    )
+  }
+  if (isError && sectionItems.length === 0) {
+    return (
+      <section className="mb-10">
+        <DiscoverSectionError title={section.title} onRetry={() => void refetch()} />
+      </section>
+    )
+  }
   if (sectionItems.length === 0) return null
 
   return (

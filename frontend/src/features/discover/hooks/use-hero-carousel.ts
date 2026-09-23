@@ -17,7 +17,7 @@ export function useHeroCarousel() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const touchStartXRef = useRef(0)
   const touchStartYRef = useRef(0)
-  const failedDetailIdsRef = useRef<Set<string>>(new Set())
+  const [failedDetailIds, setFailedDetailIds] = useState<ReadonlySet<string>>(() => new Set())
 
   const { data: heroData, fetchNextPage, hasNextPage, isLoading, isError, refetch } = useInfiniteQuery(discoverQueries.hero())
   const items = useMemo(() => {
@@ -28,11 +28,13 @@ export function useHeroCarousel() {
   }, [heroData])
   const totalItems = items.length
 
-  // Fetch detail for active item
+  // Fetch detail for active item. Skip ids that already failed so a disabled
+  // query (still fetched, still empty) cannot keep advancing the carousel.
   const activeItem = items[activeIndex]
-  const { data: detailData, isFetched } = useQuery({
+  const detailEnabled = !!activeItem && !failedDetailIds.has(activeItem.id)
+  const { data: detailData, isError: detailFailed, isSuccess: detailReady } = useQuery({
     ...mediaQueries.detail(activeItem?.mediaType ?? '', activeItem?.id ?? ''),
-    enabled: !!activeItem && !failedDetailIdsRef.current.has(activeItem.id),
+    enabled: detailEnabled,
   })
 
   // Prefetch next slide
@@ -40,19 +42,31 @@ export function useHeroCarousel() {
     if (totalItems === 0) return
     const nextIdx = (activeIndex + 1) % totalItems
     const nextItem = items[nextIdx]
-    if (nextItem) {
+    if (nextItem && !failedDetailIds.has(nextItem.id)) {
       queryClient.prefetchQuery(mediaQueries.detail(nextItem.mediaType, nextItem.id))
     }
-  }, [activeIndex, items, totalItems, queryClient])
+  }, [activeIndex, items, totalItems, queryClient, failedDetailIds])
 
-  // Auto-skip items whose detail fetch failed
+  // Auto-skip items whose detail fetch failed. Stop once every slide has failed
+  // so the carousel does not cycle forever on a dead catalog.
   useEffect(() => {
-    if (isFetched && !detailData && activeItem) {
-      failedDetailIdsRef.current.add(activeItem.id)
-      const nextIdx = (activeIndex + 1) % totalItems
-      navigateTo(nextIdx)
-    }
-  }, [isFetched, detailData, activeItem, activeIndex, totalItems])
+    if (!detailEnabled || !activeItem || totalItems === 0) return
+    const missing = detailFailed || (detailReady && !detailData)
+    if (!missing || failedDetailIds.has(activeItem.id)) return
+
+    setFailedDetailIds((prev) => {
+      if (prev.has(activeItem.id)) return prev
+      const next = new Set(prev)
+      next.add(activeItem.id)
+      return next
+    })
+
+    if (failedDetailIds.size + 1 >= totalItems) return
+    const nextIdx = (activeIndex + 1) % totalItems
+    if (nextIdx === activeIndex) return
+    setPrevActiveIndex(activeIndex)
+    setActiveIndex(nextIdx)
+  }, [detailEnabled, detailFailed, detailReady, detailData, activeItem, activeIndex, totalItems, failedDetailIds])
 
   // Autoplay
   useEffect(() => {

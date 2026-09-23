@@ -13,7 +13,7 @@ export function NotificationList() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const hasSession = useHasSession()
   const markRead = useMarkRead()
-  const { allItems, isLoading, isFetchingNextPage, lastItemRef } = useNotifications()
+  const { allItems, isLoading, isError, refetch, isFetchingNextPage, lastItemRef } = useNotifications()
   const queryClient = useQueryClient()
 
   const actionCallbacks: ActionCallbacks = {
@@ -41,6 +41,20 @@ export function NotificationList() {
   if (!isAuthenticated) return <NotificationGuest />
 
   const notifications = Array.isArray(allItems) ? allItems.filter((n) => n && n.id) : []
+  if (isError && notifications.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <p className="text-sm text-white/50">Failed to load notifications.</p>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="mt-3 text-sm font-medium text-primary hover:underline"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
   if (notifications.length === 0) return <NotificationEmpty />
 
   return (

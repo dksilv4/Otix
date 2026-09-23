@@ -276,6 +276,17 @@ function SteamTabContent() {
           </h3>
           {unmatchedQuery.isLoading ? (
             <SkeletonGrid />
+          ) : unmatchedQuery.isError && unmatchedItems.length === 0 ? (
+            <div className="dk-library-steam__unmatched-empty">
+              <p>Failed to load unmatched games.</p>
+              <button
+                type="button"
+                onClick={() => void unmatchedQuery.refetch()}
+                className="mt-2 text-xs font-semibold text-primary hover:underline"
+              >
+                Retry
+              </button>
+            </div>
           ) : unmatchedItems.length === 0 ? (
             <p className="dk-library-steam__unmatched-empty">All your Steam games have matches.</p>
           ) : (

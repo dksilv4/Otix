@@ -6,7 +6,7 @@ import { useModal } from '@/lib/modals'
 
 export function ListIndexPage() {
   const { user } = useAuth()
-  const { data: lists, isLoading } = useUserLists()
+  const { data: lists, isLoading, isError, refetch } = useUserLists()
   const createList = useCreateList()
   const { openModal } = useModal()
 
@@ -51,6 +51,19 @@ export function ListIndexPage() {
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-32 animate-pulse rounded-3xl" style={{ backgroundColor: 'var(--dk-surface-glass)' }} />
           ))}
+        </div>
+      ) : isError && !lists ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <LibraryIcon className="mb-4 h-12 w-12 text-muted-foreground/40" />
+          <p className="text-lg font-medium text-foreground">Failed to load lists</p>
+          <p className="mt-1 text-sm text-muted-foreground">Please try again.</p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            Retry
+          </button>
         </div>
       ) : lists && lists.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

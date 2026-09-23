@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { DkSkeleton } from './skeleton'
 
@@ -35,8 +35,18 @@ function DkImage({ src, className, alt, fallback, imgClassName, onError, onLoad,
 }
 
 function DkImageInner({ src, alt, fallback, imgClassName, onError, onLoad, ...props }: DkImageProps) {
+  const imgRef = useRef<HTMLImageElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
+
+  // Cached images can be complete before React attaches onLoad, which leaves
+  // the skeleton up and the image at opacity 0.
+  useEffect(() => {
+    const img = imgRef.current
+    if (!img?.complete) return
+    if (img.naturalWidth > 0) setIsLoading(false)
+    else setHasError(true)
+  }, [src])
 
   if (hasError) {
     return (
@@ -50,10 +60,13 @@ function DkImageInner({ src, alt, fallback, imgClassName, onError, onLoad, ...pr
     <>
       {isLoading && <DkSkeleton className="absolute inset-0 rounded-none" />}
       <img
-        src={src}
-        alt={alt}
         loading="lazy"
         decoding="async"
+        referrerPolicy={props.referrerPolicy ?? 'no-referrer'}
+        {...props}
+        ref={imgRef}
+        src={src}
+        alt={alt}
         className={cn(
           'h-full w-full transition-opacity duration-300',
           !imgClassName && 'object-cover',
@@ -68,7 +81,6 @@ function DkImageInner({ src, alt, fallback, imgClassName, onError, onLoad, ...pr
           setHasError(true)
           onError?.(e)
         }}
-        {...props}
       />
     </>
   )

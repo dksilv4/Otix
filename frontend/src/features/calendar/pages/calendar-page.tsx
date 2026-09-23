@@ -6,7 +6,7 @@ import { CalendarGrid } from '../components/organisms/calendar-grid'
 import { Helmet } from 'react-helmet-async'
 
 export function CalendarPage() {
-  const { data: events, isLoading } = useQuery(calendarQueries.events())
+  const { data: events, isLoading, isError, refetch } = useQuery(calendarQueries.events())
 
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
@@ -72,6 +72,19 @@ export function CalendarPage() {
       {isLoading && (
         <div className="space-y-2">
           <div className="h-64 animate-pulse rounded-lg bg-white/[0.03]" />
+        </div>
+      )}
+
+      {isError && !events && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-sm text-white/50">Failed to load the calendar.</p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="mt-3 rounded-md border border-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:border-white/20 hover:text-white"
+          >
+            Retry
+          </button>
         </div>
       )}
 

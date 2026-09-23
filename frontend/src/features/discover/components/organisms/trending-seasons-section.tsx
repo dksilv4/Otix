@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Carousel } from '@ui/molecules/carousel'
 import { useSeasonSectionFetch } from '@discover/hooks/use-season-section-fetch'
 import { DiscoverSeasonCard } from '../molecules/discover-season-card'
+import { DiscoverSectionError } from '../molecules/discover-section-error'
 import { MediaSectionSkeleton } from '../molecules/discover-media-section-skeleton'
 
 /**
@@ -17,7 +18,7 @@ export const TrendingSeasonsSection = memo(function TrendingSeasonsSection({
 }: {
   eager?: boolean
 }) {
-  const { ref, items, showSkeleton, isEmpty } = useSeasonSectionFetch(eager)
+  const { ref, items, showSkeleton, isEmpty, isError, refetch } = useSeasonSectionFetch(eager)
 
   if (isEmpty) return null
 
@@ -32,6 +33,8 @@ export const TrendingSeasonsSection = memo(function TrendingSeasonsSection({
     >
       {showSkeleton ? (
         <MediaSectionSkeleton />
+      ) : isError && items.length === 0 ? (
+        <DiscoverSectionError title="New Seasons" onRetry={() => void refetch()} />
       ) : (
         <Carousel
           title="New Seasons"
