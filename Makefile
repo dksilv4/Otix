@@ -63,7 +63,7 @@ migrate: ## Apply migrations to the dev database
 makemigrations: ## Autogenerate a migration: make makemigrations app=<label>
 	docker compose exec api python manage.py makemigrations $(app)
 
-create-admin: ## Create or update local admin account (admin / admin123)
+create-admin: ## Create or update an admin/superuser account interactively
 	docker compose exec api python manage.py create_admin
 
 # ── Host code checks (mirror the CI Django job; run from backend/) ───────

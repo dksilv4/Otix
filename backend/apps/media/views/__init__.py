@@ -1,5 +1,11 @@
 """Media API views, re-exported for convenient imports."""
 
+from apps.media.views.admin_compute import (
+    AdminComputeClaimView,
+    AdminComputeReleaseView,
+    AdminComputeStatsView,
+    AdminComputeSubmitView,
+)
 from apps.media.views.catalog import (
     CatalogStreamView,
     CertificationListView,
@@ -58,6 +64,10 @@ from apps.media.views.rating_review import (
 )
 
 __all__ = [
+    "AdminComputeClaimView",
+    "AdminComputeReleaseView",
+    "AdminComputeStatsView",
+    "AdminComputeSubmitView",
     "ArtworkSelectionView",
     "ArtworkSettingsView",
     "AssetFileView",

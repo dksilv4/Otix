@@ -1,0 +1,80 @@
+# Public test API and its database. Redis stays beside them because request
+# handlers use it for rate limits and live event streams.
+name: otix-api
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    env_file: deploy/.env
+    environment:
+      POSTGRES_DB: otix
+      POSTGRES_USER: otix
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otix -d otix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru --save 60 1
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: deploy/.env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      APP_ENV: production
+      DEBUG: "false"
+      # No TLS in front of this slice yet. Prod settings redirect to HTTPS
+      # unless this is explicitly off.
+      SECURE_SSL_REDIRECT: "false"
+      WEB_CONCURRENCY: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/uploads
+    command: bash entrypoints/start-api.sh
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:

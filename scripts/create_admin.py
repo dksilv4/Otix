@@ -2,7 +2,8 @@
 """Create an admin user in the Otix database.
 
 Usage:
-    python scripts/create_admin.py [email] [username] [password]
+    python scripts/create_admin.py
+    python scripts/create_admin.py [username] [email] [password]
 """
 
 from __future__ import annotations
@@ -15,26 +16,28 @@ from pathlib import Path
 
 
 def main():
-    email = sys.argv[1] if len(sys.argv) > 1 else "admin@otix.local"
-    username = sys.argv[2] if len(sys.argv) > 2 else "admin"
-    password = sys.argv[3] if len(sys.argv) > 3 else "admin123"
+    args = sys.argv[1:]
 
-    # If docker compose is available and running, delegate to api container
+    # If docker compose is available, delegate to api container
     docker_bin = shutil.which("docker")
     if docker_bin:
         cmd = [
             docker_bin,
             "compose",
             "exec",
-            "-T",
             "api",
             "python",
             "manage.py",
             "create_admin",
-            f"--username={username}",
-            f"--email={email}",
-            f"--password={password}",
         ]
+        if len(args) >= 1:
+            cmd.append(f"--username={args[0]}")
+        if len(args) >= 2:
+            cmd.append(f"--email={args[1]}")
+        if len(args) >= 3:
+            cmd.append(f"--password={args[2]}")
+            cmd.append("--no-input")
+
         res = subprocess.run(cmd)
         if res.returncode == 0:
             return
@@ -45,12 +48,22 @@ def main():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
 
     import django
+
     django.setup()
 
     from django.core.management import call_command
-    call_command("create_admin", username=username, email=email, password=password)
+
+    kwargs = {}
+    if len(args) >= 1:
+        kwargs["username"] = args[0]
+    if len(args) >= 2:
+        kwargs["email"] = args[1]
+    if len(args) >= 3:
+        kwargs["password"] = args[2]
+        kwargs["no_input"] = True
+
+    call_command("create_admin", **kwargs)
 
 
 if __name__ == "__main__":
     main()
-

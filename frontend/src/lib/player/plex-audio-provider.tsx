@@ -40,10 +40,26 @@ const PlexPlayerContext = createContext<PlexPlayerContextValue | null>(null)
 const VOLUME_KEY = "plex-player-volume"
 const CLIENT_ID_KEY = "plex-client-id"
 
+function generateUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  // Fallback for non-secure contexts (e.g. plain HTTP over remote IP)
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
+    (
+      +c ^
+      ((typeof crypto !== "undefined" && crypto.getRandomValues
+        ? crypto.getRandomValues(new Uint8Array(1))[0]
+        : Math.floor(Math.random() * 256)) &
+        (15 >> (+c / 4)))
+    ).toString(16)
+  )
+}
+
 function getClientId(): string {
   let id = localStorage.getItem(CLIENT_ID_KEY)
   if (!id) {
-    id = crypto.randomUUID()
+    id = generateUuid()
     localStorage.setItem(CLIENT_ID_KEY, id)
   }
   return id

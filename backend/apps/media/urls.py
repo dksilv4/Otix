@@ -12,6 +12,10 @@ never shadowed by ``<media_id>``.
 from django.urls import path
 
 from apps.media.views import (
+    AdminComputeClaimView,
+    AdminComputeReleaseView,
+    AdminComputeStatsView,
+    AdminComputeSubmitView,
     ArtworkSelectionView,
     ArtworkSettingsView,
     AssetMirrorView,
@@ -112,6 +116,26 @@ urlpatterns = [
     ),
     path("admin/assets", PurgeAssetsView.as_view(), name="admin-purge-assets"),
     path("admin/storage", StorageUsageView.as_view(), name="admin-storage"),
+    path(
+        "admin/compute/claim",
+        AdminComputeClaimView.as_view(),
+        name="admin-compute-claim",
+    ),
+    path(
+        "admin/compute/submit",
+        AdminComputeSubmitView.as_view(),
+        name="admin-compute-submit",
+    ),
+    path(
+        "admin/compute/release",
+        AdminComputeReleaseView.as_view(),
+        name="admin-compute-release",
+    ),
+    path(
+        "admin/compute/stats",
+        AdminComputeStatsView.as_view(),
+        name="admin-compute-stats",
+    ),
     # Import / match / sync-local-games (literal verbs; no media_id prefix).
     path("import", ImportView.as_view(), name="media-import"),
     path("import/igdb", ImportIgdbView.as_view(), name="media-import-igdb"),
