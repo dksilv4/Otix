@@ -83,13 +83,13 @@ class AdminComputeClaimView(APIView):
 
         batch_size = request.data.get("batch_size", 10)
         try:
-            batch_size = max(1, min(int(batch_size), 50))
+            batch_size = max(1, min(int(batch_size), 100))
         except (ValueError, TypeError):
             batch_size = 10
 
         redis_client = _get_redis_safe()
 
-        # Query candidates: unmirrored assets that have a source url
+        # Query candidates: unmirrored assets that have a source url (excluding raw SVG vector art)
         enabled_types = assets_service.enabled_asset_types()
         candidates = (
             MediaAsset.objects.filter(
@@ -97,8 +97,9 @@ class AdminComputeClaimView(APIView):
                 url__isnull=False,
                 asset_type__in=enabled_types,
             )
+            .exclude(url__icontains=".svg")
             .select_related("media_item")
-            .order_by("-media_item__popularity", "id")[: batch_size * 3]
+            .order_by("-media_item__popularity", "id")[: batch_size * 4]
         )
 
         claimed_jobs = []

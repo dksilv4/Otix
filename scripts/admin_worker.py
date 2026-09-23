@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """
-Otix Admin Distributed Compute Worker.
+Otix Admin Distributed Compute Worker (Turbo Edition).
 
-A high-performance standalone runner that allows administrators to use their
-workstations (e.g. 8-16 thread PCs) to offload heavy artwork processing,
+A high-performance pipelined runner that allows administrators to use their
+workstations (e.g. 16-thread Ryzen 7 9800X3D) to offload heavy artwork processing,
 resizing, WebP transcoding, and color analysis from the primary Otix server.
 
 Usage:
-    python scripts/admin_worker.py --server http://localhost:8000 --username admin
-    python scripts/admin_worker.py --server https://otix.example.com --token <jwt_token>
+    python scripts/admin_worker.py --server http://84.8.154.67:8000 --username worker --password worker --threads 16 --batch-size 50
 """
 
 import argparse
 import getpass
 import io
 import os
+import queue
 import signal
 import sys
+import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 import httpx
 from PIL import Image
@@ -37,10 +37,10 @@ class Colors:
 
 def print_banner(server: str, workers: int, batch_size: int):
     print(f"\n{Colors.CYAN}{Colors.BOLD}=========================================================={Colors.RESET}")
-    print(f"{Colors.CYAN}{Colors.BOLD}          OTIX ADMIN DISTRIBUTED COMPUTE WORKER          {Colors.RESET}")
+    print(f"{Colors.CYAN}{Colors.BOLD}       OTIX ADMIN DISTRIBUTED COMPUTE WORKER (TURBO)      {Colors.RESET}")
     print(f"{Colors.CYAN}{Colors.BOLD}=========================================================={Colors.RESET}")
     print(f"  {Colors.BOLD}Server URL:{Colors.RESET}       {server}")
-    print(f"  {Colors.BOLD}Worker Threads:{Colors.RESET}   {workers}")
+    print(f"  {Colors.BOLD}Worker Threads:{Colors.RESET}   {workers} (pipelined streaming)")
     print(f"  {Colors.BOLD}Batch Size:{Colors.RESET}       {batch_size} assets/claim")
     print(f"  {Colors.BOLD}Mode:{Colors.RESET}             Zero-Trust Admin Compute")
     print(f"{Colors.CYAN}----------------------------------------------------------{Colors.RESET}\n")
@@ -51,7 +51,6 @@ def extract_dominant_color(img: Image.Image) -> str:
     try:
         small = img.copy().convert("RGB")
         small.thumbnail((50, 50), Image.Resampling.BOX)
-        # Quantize to 8 colors and find most frequent
         quantized = small.quantize(colors=8, method=Image.Quantize.FASTOCTREE)
         palette = quantized.getpalette()
         color_counts = sorted(quantized.getcolors(50 * 50) or [], key=lambda x: x[0], reverse=True)
@@ -73,8 +72,8 @@ class AdminComputeWorker:
         token: Optional[str] = None,
         username: Optional[str] = None,
         password: Optional[str] = None,
-        concurrency: int = 4,
-        batch_size: int = 10,
+        concurrency: int = 16,
+        batch_size: int = 50,
         webp_quality: int = 85,
     ):
         self.server_url = server_url.rstrip("/")
@@ -85,14 +84,24 @@ class AdminComputeWorker:
         self.batch_size = batch_size
         self.webp_quality = webp_quality
         self.running = True
-        self.in_flight_ids: List[int] = []
 
-        # Stats
+        # Pipeline synchronization
+        self.job_queue: queue.Queue = queue.Queue(maxsize=batch_size * 3)
+        self.in_flight_lock = threading.Lock()
+        self.in_flight_ids: Set[int] = set()
+        self.skipped_ids: Set[int] = set()
+
+        # Telemetry & Stats
         self.total_processed = 0
         self.total_bytes = 0
+        self.stats_lock = threading.Lock()
         self.start_time = time.time()
+        self.last_telemetry_time = time.time()
+        self.last_telemetry_count = 0
 
-        self.http_client = httpx.Client(timeout=30.0, follow_redirects=True)
+        # High-throughput connection pooled HTTP client
+        limits = httpx.Limits(max_keepalive_connections=64, max_connections=128, keepalive_expiry=30.0)
+        self.http_client = httpx.Client(timeout=20.0, follow_redirects=True, limits=limits)
 
     def authenticate(self):
         """Authenticates with the server and ensures the user is an admin."""
@@ -145,17 +154,33 @@ class AdminComputeWorker:
     def claim_jobs(self) -> List[Dict[str, Any]]:
         """Claim a batch of unmirrored assets from the server."""
         claim_url = f"{self.server_url}/api/v1/media/admin/compute/claim"
-        resp = self.http_client.post(claim_url, json={"batch_size": self.batch_size})
-        if resp.status_code == 403:
-            print(f"{Colors.RED}Claim rejected (403 Forbidden). Ensure your user is an admin.{Colors.RESET}")
-            time.sleep(10)
-            return []
-        if resp.status_code != 200:
-            print(f"{Colors.YELLOW}Claim error (HTTP {resp.status_code}): {resp.text}{Colors.RESET}")
+        try:
+            resp = self.http_client.post(claim_url, json={"batch_size": self.batch_size})
+            if resp.status_code == 403:
+                print(f"{Colors.RED}Claim rejected (403 Forbidden). Ensure your user is an admin.{Colors.RESET}")
+                time.sleep(10)
+                return []
+            if resp.status_code != 200:
+                print(f"{Colors.YELLOW}Claim error (HTTP {resp.status_code}): {resp.text}{Colors.RESET}")
+                return []
+
+            data = resp.json()
+            return data.get("jobs", [])
+        except Exception as exc:
+            print(f"{Colors.YELLOW}Claim network error: {exc}{Colors.RESET}")
             return []
 
-        data = resp.json()
-        return data.get("jobs", [])
+    def release_leases(self, asset_ids: List[int]):
+        """Releases claim locks on uncompleted assets during shutdown."""
+        if not asset_ids:
+            return
+        try:
+            self.http_client.post(
+                f"{self.server_url}/api/v1/media/admin/compute/release",
+                json={"asset_ids": asset_ids},
+            )
+        except Exception:
+            pass
 
     def process_and_submit_asset(self, job: Dict[str, Any]) -> bool:
         """Downloads, transcodes to WebP, extracts color, and submits to server."""
@@ -166,34 +191,30 @@ class AdminComputeWorker:
 
         # Skip SVG vector images (server mirrors raster formats: webp/jpg/png)
         if url.lower().split("?", 1)[0].endswith(".svg"):
-            print(f"  {Colors.GRAY}[Skip]{Colors.RESET} {title} ({asset_type}): SVG vector artwork skipped")
-            self.release_leases([asset_id])
+            self.skipped_ids.add(asset_id)
             return False
 
         # 1. Download image from provider CDN
         try:
-            dl_resp = self.http_client.get(url, timeout=20.0)
+            dl_resp = self.http_client.get(url, timeout=15.0)
             if dl_resp.status_code != 200 or not dl_resp.content:
-                print(f"  {Colors.YELLOW}[Skip]{Colors.RESET} {title} ({asset_type}): HTTP {dl_resp.status_code} downloading {url}")
+                self.skipped_ids.add(asset_id)
                 return False
             raw_bytes = dl_resp.content
-        except Exception as exc:
-            print(f"  {Colors.YELLOW}[Error]{Colors.RESET} Failed to fetch {url}: {exc}")
+        except Exception:
+            self.skipped_ids.add(asset_id)
             return False
 
         # 2. Open with Pillow and optimize
         try:
             with Image.open(io.BytesIO(raw_bytes)) as img:
-                # Convert color palette & format
                 color_guess = extract_dominant_color(img)
-                
-                # Convert RGBA/RGB to WebP
                 buf = io.BytesIO()
                 target_img = img.convert("RGBA") if img.mode in ("RGBA", "LA", "P") else img.convert("RGB")
                 target_img.save(buf, format="WEBP", quality=self.webp_quality, method=4)
                 webp_bytes = buf.getvalue()
-        except Exception as exc:
-            print(f"  {Colors.RED}[Corrupt]{Colors.RESET} Image processing failed for {url}: {exc}")
+        except Exception:
+            self.skipped_ids.add(asset_id)
             return False
 
         # 3. Submit processed result to server
@@ -209,77 +230,132 @@ class AdminComputeWorker:
         try:
             sub_resp = self.http_client.post(submit_url, data=data, files=files)
             if sub_resp.status_code == 200:
-                self.total_processed += 1
-                self.total_bytes += len(webp_bytes)
+                with self.stats_lock:
+                    self.total_processed += 1
+                    self.total_bytes += len(webp_bytes)
+                    count = self.total_processed
+
                 saved_pct = (1.0 - len(webp_bytes) / max(1, len(raw_bytes))) * 100
                 print(
                     f"  {Colors.GREEN}[Done]{Colors.RESET} {Colors.BOLD}{title}{Colors.RESET} ({asset_type}) "
                     f"-> {len(webp_bytes) / 1024:.1f} KB ({saved_pct:+.1f}% vs raw) [{color_guess}]"
                 )
+
+                # Periodic telemetry output every 25 completed items
+                if count % 25 == 0:
+                    self.print_telemetry()
+
                 return True
             else:
-                print(f"  {Colors.RED}[Reject]{Colors.RESET} Server rejected submission for asset {asset_id}: {sub_resp.text}")
+                self.skipped_ids.add(asset_id)
                 return False
-        except Exception as exc:
-            print(f"  {Colors.RED}[Submit Error]{Colors.RESET} {exc}")
+        except Exception:
+            self.skipped_ids.add(asset_id)
             return False
 
-    def release_leases(self, asset_ids: List[int]):
-        """Releases claim locks on uncompleted assets during shutdown."""
-        if not asset_ids:
-            return
-        try:
-            self.http_client.post(
-                f"{self.server_url}/api/v1/media/admin/compute/release",
-                json={"asset_ids": asset_ids},
-            )
-        except Exception:
-            pass
+    def print_telemetry(self):
+        """Prints live speed and telemetry."""
+        now = time.time()
+        elapsed = max(0.1, now - self.start_time)
+        recent_elapsed = max(0.1, now - self.last_telemetry_time)
+        with self.stats_lock:
+            recent_items = self.total_processed - self.last_telemetry_count
+            overall_speed = self.total_processed / elapsed
+            recent_speed = recent_items / recent_elapsed
+            total_mb = self.total_bytes / (1024 * 1024)
+            qsize = self.job_queue.qsize()
+
+        self.last_telemetry_time = now
+        self.last_telemetry_count = self.total_processed
+
+        print(
+            f"{Colors.CYAN}==> [Turbo Telemetry] Processed: {Colors.BOLD}{self.total_processed}{Colors.RESET} | "
+            f"Speed: {Colors.GREEN}{recent_speed:.1f}/s{Colors.RESET} (avg {overall_speed:.1f}/s) | "
+            f"Queue: {qsize} | Uploaded: {total_mb:.1f} MB <=={Colors.RESET}"
+        )
+
+    def feeder_loop(self, idle_sleep: int):
+        """Background thread that keeps the job queue populated."""
+        while self.running:
+            # If queue has room, claim more jobs
+            if self.job_queue.qsize() < (self.concurrency * 2):
+                jobs = self.claim_jobs()
+                if not jobs:
+                    time.sleep(idle_sleep)
+                    continue
+
+                new_count = 0
+                for job in jobs:
+                    aid = job["asset_id"]
+                    if aid in self.skipped_ids:
+                        continue
+                    with self.in_flight_lock:
+                        self.in_flight_ids.add(aid)
+                    self.job_queue.put(job)
+                    new_count += 1
+
+                if new_count > 0:
+                    print(f"{Colors.BOLD}[Feeder] Claimed {len(jobs)} assets ({new_count} enqueued, queue size: {self.job_queue.qsize()}){Colors.RESET}")
+            else:
+                time.sleep(0.5)
+
+    def worker_consumer_loop(self):
+        """Worker thread pulling from queue and processing assets."""
+        while self.running:
+            try:
+                job = self.job_queue.get(timeout=1.0)
+            except queue.Empty:
+                continue
+
+            aid = job["asset_id"]
+            try:
+                self.process_and_submit_asset(job)
+            finally:
+                with self.in_flight_lock:
+                    self.in_flight_ids.discard(aid)
+                self.job_queue.task_done()
 
     def run(self, once: bool = False, idle_sleep: int = 5):
-        """Main compute loop."""
+        """Starts the producer-consumer processing engine."""
         self.authenticate()
 
-        # Handle Ctrl+C gracefully
         def handle_sigint(signum, frame):
             print(f"\n{Colors.YELLOW}Shutting down compute worker gracefully...{Colors.RESET}")
             self.running = False
 
         signal.signal(signal.SIGINT, handle_sigint)
 
-        print(f"{Colors.CYAN}Ready! Starting distributed processing loop...{Colors.RESET}\n")
+        print(f"{Colors.CYAN}Ready! Launching Turbo engine with {self.concurrency} worker threads...{Colors.RESET}\n")
 
-        with ThreadPoolExecutor(max_workers=self.concurrency) as executor:
+        # Start feeder thread
+        feeder_thread = threading.Thread(target=self.feeder_loop, args=(idle_sleep,), daemon=True)
+        feeder_thread.start()
+
+        # Start worker consumer threads
+        workers = []
+        for _ in range(self.concurrency):
+            t = threading.Thread(target=self.worker_consumer_loop, daemon=True)
+            t.start()
+            workers.append(t)
+
+        try:
             while self.running:
-                jobs = self.claim_jobs()
-                if not jobs:
-                    if once:
-                        print("No jobs available and --once set. Exiting.")
-                        break
-                    print(f"{Colors.GRAY}No pending artwork jobs. Waiting {idle_sleep}s... (Press Ctrl+C to stop){Colors.RESET}")
-                    time.sleep(idle_sleep)
-                    continue
-
-                print(f"{Colors.BOLD}Claimed batch of {len(jobs)} assets. Processing with {self.concurrency} threads...{Colors.RESET}")
-                self.in_flight_ids = [j["asset_id"] for j in jobs]
-
-                futures = {executor.submit(self.process_and_submit_asset, job): job["asset_id"] for job in jobs}
-                for future in as_completed(futures):
-                    aid = futures[future]
-                    if aid in self.in_flight_ids:
-                        self.in_flight_ids.remove(aid)
-
-                if once:
+                time.sleep(1.0)
+                if once and self.job_queue.empty() and self.total_processed > 0:
                     break
+        except KeyboardInterrupt:
+            self.running = False
 
-        # Cleanup if stopped with in-flight
-        if self.in_flight_ids:
-            print(f"Releasing {len(self.in_flight_ids)} remaining leases...")
-            self.release_leases(self.in_flight_ids)
+        # Release any uncompleted leases that weren't intentionally skipped
+        with self.in_flight_lock:
+            remaining = list(self.in_flight_ids - self.skipped_ids)
+        if remaining:
+            print(f"Releasing {len(remaining)} in-flight leases back to server...")
+            self.release_leases(remaining)
 
         elapsed = max(1.0, time.time() - self.start_time)
         print(f"\n{Colors.CYAN}=========================================================={Colors.RESET}")
-        print(f"{Colors.CYAN}                WORKER SESSION SUMMARY                   {Colors.RESET}")
+        print(f"{Colors.CYAN}             TURBO WORKER SESSION SUMMARY                 {Colors.RESET}")
         print(f"{Colors.CYAN}=========================================================={Colors.RESET}")
         print(f"  Assets Processed:   {Colors.GREEN}{self.total_processed}{Colors.RESET}")
         print(f"  Total Data Written: {self.total_bytes / (1024 * 1024):.2f} MB")
@@ -289,15 +365,15 @@ class AdminComputeWorker:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Otix Admin Distributed Compute Worker")
+    parser = argparse.ArgumentParser(description="Otix Admin Distributed Compute Worker (Turbo Edition)")
     parser.add_argument("--server", default="http://localhost:8000", help="Otix server base URL")
     parser.add_argument("--username", help="Admin username or email")
     parser.add_argument("--password", help="Admin password")
     parser.add_argument("--token", help="Direct JWT Bearer token")
-    parser.add_argument("--threads", type=int, default=6, help="Concurrent worker threads (default: 6)")
-    parser.add_argument("--batch-size", type=int, default=10, help="Assets per claim batch (default: 10)")
+    parser.add_argument("--threads", type=int, default=16, help="Concurrent worker threads (default: 16)")
+    parser.add_argument("--batch-size", type=int, default=50, help="Assets per claim batch (default: 50)")
     parser.add_argument("--quality", type=int, default=85, help="WebP compression quality (default: 85)")
-    parser.add_argument("--once", action="store_true", help="Run one batch and exit")
+    parser.add_argument("--once", action="store_true", help="Run until initial queue drains then exit")
     parser.add_argument("--idle", type=int, default=5, help="Idle wait seconds when no jobs (default: 5)")
 
     args = parser.parse_args()
