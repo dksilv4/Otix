@@ -8,6 +8,7 @@ from apps.search.views.search import (
     PrehydrateView,
     ProvidersView,
     SearchView,
+    SemanticSearchView,
     SteamGridView,
     SuggestionsView,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "PrehydrateView",
     "ProvidersView",
     "SearchView",
+    "SemanticSearchView",
     "SteamGridView",
     "SuggestionsView",
 ]

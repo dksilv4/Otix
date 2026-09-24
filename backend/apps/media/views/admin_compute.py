@@ -72,20 +72,78 @@ def _delete_lease(redis_client: Any | None, identifier: int | str) -> None:
         pass
 
 
+def format_media_item_for_embedding(item: MediaItem) -> str:
+    """Format a MediaItem with rich metadata for dense semantic embedding."""
+    parts = []
+    # Title & Year
+    year = item.release_date.year if item.release_date else None
+    title_str = f"Title: {item.title}" + (f" ({year})" if year else "")
+    parts.append(title_str)
+
+    # Type & Genres
+    genre_names = [
+        mg.genre.name
+        for mg in item.media_genres.all()
+        if hasattr(mg, "genre") and mg.genre and mg.genre.name
+    ]
+    type_parts = [f"Type: {item.media_type.capitalize()}"]
+    if genre_names:
+        type_parts.append(f"Genres: {', '.join(genre_names)}")
+    parts.append(" | ".join(type_parts))
+
+    # Movie tagline
+    if item.media_type == "movie" and hasattr(item, "movie") and item.movie and item.movie.tagline:
+        parts.append(f"Tagline: {item.movie.tagline}")
+
+    # Creators / Directors / Developers & Top Cast
+    directors = []
+    cast = []
+    for c in item.credits.all():
+        if not hasattr(c, "person") or not c.person or not c.person.name:
+            continue
+        p_name = c.person.name.strip()
+        role = (c.role or "").lower()
+        if role in ("director", "creator", "developer", "producer", "writer"):
+            directors.append(p_name)
+        elif role == "cast" and len(cast) < 8:
+            if c.character_name and c.character_name.strip():
+                cast.append(f"{p_name} ({c.character_name.strip()})")
+            else:
+                cast.append(p_name)
+
+    if directors:
+        parts.append(f"Creators/Directors: {', '.join(directors[:5])}")
+    if cast:
+        parts.append(f"Cast: {', '.join(cast)}")
+
+    # Overview
+    if item.overview and item.overview.strip():
+        parts.append(f"Overview: {item.overview.strip()}")
+
+    # Keywords / Tropes
+    keywords = [
+        mk.keyword.name
+        for mk in item.media_keywords.all()
+        if hasattr(mk, "keyword") and mk.keyword and mk.keyword.name
+    ][:10]
+    if keywords:
+        parts.append(f"Themes/Keywords: {', '.join(keywords)}")
+
+    return "\n".join(parts)
+
+
 class AdminComputeClaimView(APIView):
     """``POST /api/v1/media/admin/compute/claim``
 
-    Claim a batch of unmirrored primary media assets for local processing.
-    Each claimed asset receives a 5-minute lease in Redis to prevent duplicate work.
+    Claim a batch of unmirrored primary media assets or unembedded media items for local processing.
+    Each claimed item receives a 5-minute lease in Redis to prevent duplicate work.
     If the worker crashes or abandons the task, the lease automatically expires.
     """
 
     permission_classes = (IsAuthenticated, IsAdminUser)
 
     def post(self, request) -> Response:
-        if not assets_service.mirroring_enabled():
-            raise PermissionDenied("Local image mirroring is disabled on the server")
-
+        task = request.data.get("task", "artwork")
         batch_size = request.data.get("batch_size", 10)
         try:
             batch_size = max(1, min(int(batch_size), 500))
@@ -93,6 +151,50 @@ class AdminComputeClaimView(APIView):
             batch_size = 10
 
         redis_client = _get_redis_safe()
+
+        if task == "embeddings":
+            candidates = (
+                MediaItem.objects.filter(embedding__isnull=True)
+                .order_by("-popularity", "id")[: batch_size * 2]
+                .prefetch_related(
+                    "media_genres__genre",
+                    "media_keywords__keyword",
+                    "credits__person",
+                )
+                .select_related("movie", "show", "game")
+            )
+
+            claimed_items = []
+            for item in candidates:
+                if _is_leased(redis_client, f"embed:{item.pk}"):
+                    continue
+
+                _set_lease(redis_client, f"embed:{item.pk}", worker_info=str(request.user.pk))
+                claimed_items.append(
+                    {
+                        "media_item_id": item.pk,
+                        "title": item.title,
+                        "media_type": item.media_type,
+                        "text": format_media_item_for_embedding(item),
+                        "lease_seconds": LEASE_TTL_SECONDS,
+                    }
+                )
+
+                if len(claimed_items) >= batch_size:
+                    break
+
+            return Response(
+                {
+                    "count": len(claimed_items),
+                    "task": "embeddings",
+                    "lease_seconds": LEASE_TTL_SECONDS,
+                    "items": claimed_items,
+                }
+            )
+
+        if not assets_service.mirroring_enabled():
+            raise PermissionDenied("Local image mirroring is disabled on the server")
+
         enabled_types = assets_service.enabled_asset_types()
         group_by_media = bool(request.data.get("group_by_media", False))
 
@@ -530,11 +632,75 @@ class AdminComputeSubmitEnrichmentView(APIView):
         )
 
 
+class AdminComputeSubmitEmbeddingsView(APIView):
+    """``POST /api/v1/media/admin/compute/embeddings``
+
+    Submit 1024-dimensional semantic embeddings computed on the admin worker.
+    Updates MediaItem.embedding and MediaItem.embedded_at atomically.
+    """
+
+    permission_classes = (IsAuthenticated, IsAdminUser)
+
+    def post(self, request) -> Response:
+        embeddings = request.data.get("embeddings")
+        if not embeddings or not isinstance(embeddings, list):
+            raise ValidationError({"embeddings": "A non-empty list of embeddings is required"})
+
+        redis_client = _get_redis_safe()
+        media_ids = []
+        valid_pairs = []
+
+        for entry in embeddings:
+            if not isinstance(entry, dict):
+                continue
+            mid = entry.get("media_item_id")
+            vec = entry.get("vector")
+            if not mid or not isinstance(mid, int):
+                continue
+            if not isinstance(vec, list) or len(vec) != 1024:
+                continue
+            media_ids.append(mid)
+            valid_pairs.append((mid, vec))
+
+        if not valid_pairs:
+            raise ValidationError(
+                {"embeddings": "No valid {media_item_id, vector(1024)} entries provided"}
+            )
+
+        media_items = {m.pk: m for m in MediaItem.objects.filter(pk__in=media_ids)}
+        now = timezone.now()
+        to_update = []
+
+        for mid, vec in valid_pairs:
+            m = media_items.get(mid)
+            if m:
+                m.embedding = vec
+                m.embedded_at = now
+                to_update.append(m)
+                _delete_lease(redis_client, f"embed:{mid}")
+
+        with transaction.atomic():
+            MediaItem.objects.bulk_update(to_update, ["embedding", "embedded_at"], batch_size=200)
+
+        logger.info(
+            "Admin worker submitted %d embeddings (updated %d items)",
+            len(valid_pairs),
+            len(to_update),
+        )
+
+        return Response(
+            {
+                "status": "ok",
+                "submitted": len(valid_pairs),
+                "updated": len(to_update),
+            }
+        )
+
+
 class AdminComputeReleaseView(APIView):
     """``POST /api/v1/media/admin/compute/release``
 
-    Explicitly release leases on asset IDs or media items (e.g., during graceful worker shutdown
-    or when skipping non-winner assets).
+    Explicitly release leases on asset IDs, media items, or embedding tasks.
     """
 
     permission_classes = (IsAuthenticated, IsAdminUser)
@@ -542,6 +708,7 @@ class AdminComputeReleaseView(APIView):
     def post(self, request) -> Response:
         asset_ids = request.data.get("asset_ids", [])
         media_ids = request.data.get("media_ids", [])
+        embedding_ids = request.data.get("embedding_ids", [])
 
         redis_client = _get_redis_safe()
         released = 0
@@ -563,13 +730,22 @@ class AdminComputeReleaseView(APIView):
                 except (ValueError, TypeError):
                     continue
 
+        if isinstance(embedding_ids, list):
+            for eid in embedding_ids:
+                try:
+                    _delete_lease(redis_client, f"embed:{int(eid)}")
+                    released += 1
+                except (ValueError, TypeError):
+                    continue
+
         return Response({"status": "ok", "released": released})
 
 
 class AdminComputeStatsView(APIView):
     """``GET /api/v1/media/admin/compute/stats``
 
-    Returns overall status of pending unmirrored assets, mirrored assets, and storage budget.
+    Returns overall status of pending unmirrored assets, mirrored assets, storage budget,
+    and semantic embedding catalog progress.
     """
 
     permission_classes = (IsAuthenticated, IsAdminUser)
@@ -583,11 +759,18 @@ class AdminComputeStatsView(APIView):
         ).count()
         mirrored = MediaAsset.objects.filter(local_name__isnull=False).count()
 
+        total_catalog = MediaItem.objects.count()
+        embeddings_total = MediaItem.objects.filter(embedding__isnull=False).count()
+        embeddings_pending = MediaItem.objects.filter(embedding__isnull=True).count()
+
         return Response(
             {
                 "unmirrored_candidates": unmirrored,
                 "mirrored_total": mirrored,
                 "mirroring_enabled": assets_service.mirroring_enabled(),
                 "storage": assets_service.mirrored_usage(),
+                "catalog_total": total_catalog,
+                "embeddings_total": embeddings_total,
+                "embeddings_pending": embeddings_pending,
             }
         )

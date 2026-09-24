@@ -10,6 +10,7 @@ from apps.search.services.search import (
     prehydrate_game_titles,
     providers_payload,
     search_media_payload,
+    semantic_search_payload,
     steamgrid_payload,
     suggestions_payload,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "prehydrate_game_titles",
     "providers_payload",
     "search_media_payload",
+    "semantic_search_payload",
     "steamgrid_payload",
     "suggestions_payload",
 ]

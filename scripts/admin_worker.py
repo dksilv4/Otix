@@ -50,16 +50,19 @@ class Colors:
     RESET = "\033[0m"
 
 
-def print_banner(server: str, workers: int, batch_size: int):
+def print_banner(server: str, workers: int, batch_size: int, task: str = "artwork", model_name: str = "BAAI/bge-m3"):
     print(f"\n{Colors.CYAN}{Colors.BOLD}=================================================================={Colors.RESET}")
-    print(f"{Colors.CYAN}{Colors.BOLD}   OTIX DISTRIBUTED WORKER (TURBO + MEDIA-GROUPED + WIKIDATA)     {Colors.RESET}")
+    print(f"{Colors.CYAN}{Colors.BOLD}   OTIX DISTRIBUTED WORKER (TURBO + MEDIA-GROUPED + EMBEDDINGS)   {Colors.RESET}")
     print(f"{Colors.CYAN}{Colors.BOLD}=================================================================={Colors.RESET}")
     print(f"  {Colors.BOLD}Server URL:{Colors.RESET}       {server}")
-    print(f"  {Colors.BOLD}Worker Threads:{Colors.RESET}   {workers} (pipelined streaming)")
-    print(f"  {Colors.BOLD}Batch Size:{Colors.RESET}       {batch_size} media items/claim")
-    print(f"  {Colors.BOLD}Artwork Mode:{Colors.RESET}     Media-Grouped Winner-Only (70-80% storage saved)")
-    print(f"  {Colors.BOLD}Theme Analysis:{Colors.RESET}   Alpha-aware HSL + Perceived Luminance")
-    print(f"  {Colors.BOLD}Metadata Offload:{Colors.RESET} Public Wikidata Cast, Characters & Distributors")
+    print(f"  {Colors.BOLD}Task Mode:{Colors.RESET}        {task.upper()}")
+    if task in ("artwork", "both"):
+        print(f"  {Colors.BOLD}Worker Threads:{Colors.RESET}   {workers} (pipelined streaming)")
+        print(f"  {Colors.BOLD}Artwork Mode:{Colors.RESET}     Media-Grouped Winner-Only (70-80% storage saved)")
+        print(f"  {Colors.BOLD}Metadata Offload:{Colors.RESET} Public Wikidata Cast, Characters & Distributors")
+    if task in ("embeddings", "both"):
+        print(f"  {Colors.BOLD}Embedding Model:{Colors.RESET}  {model_name} (1024-dim dense vectors)")
+    print(f"  {Colors.BOLD}Batch Size:{Colors.RESET}       {batch_size} items/claim")
     print(f"  {Colors.BOLD}Auth Mode:{Colors.RESET}        Zero-Trust Admin Compute with Auto-Refresh")
     print(f"{Colors.CYAN}------------------------------------------------------------------{Colors.RESET}\n")
 
@@ -928,37 +931,275 @@ class AdminComputeWorker:
             )
 
 
+class EmbeddingWorker:
+    """Dedicated GPU-accelerated embedding worker using BAAI/bge-m3."""
+
+    def __init__(
+        self,
+        server_url: str,
+        token: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        batch_size: int = 100,
+        model_name: str = "BAAI/bge-m3",
+        gpu_batch_size: int = 64,
+    ):
+        self.server_url = server_url.rstrip("/")
+        self.token = token
+        self.username = username
+        self.password = password
+        self.batch_size = batch_size
+        self.model_name = model_name
+        self.gpu_batch_size = gpu_batch_size
+
+        self.running = True
+        self.client = httpx.Client(timeout=90.0)
+        self.auth_lock = threading.Lock()
+        self.start_time = time.time()
+        self.total_embedded = 0
+        self.model = None
+        self.device = "cpu"
+
+    def authenticate(self):
+        with self.auth_lock:
+            if self.token:
+                self.client.headers["Authorization"] = f"Bearer {self.token}"
+                return
+
+            if not self.username:
+                self.username = input("Enter admin username or email: ").strip()
+            if not self.password:
+                self.password = getpass.getpass("Enter admin password: ").strip()
+
+            login_url = f"{self.server_url}/api/v1/auth/login"
+            self.client.headers.pop("Authorization", None)
+            try:
+                resp = self.client.post(login_url, json={"username": self.username, "password": self.password})
+                if resp.status_code != 200:
+                    print(f"{Colors.RED}[!] Authentication failed (HTTP {resp.status_code}): {resp.text}{Colors.RESET}")
+                    sys.exit(1)
+
+                data = resp.json()
+                token = data.get("access_token") or data.get("token") or (data.get("tokens") or {}).get("access")
+                if not token:
+                    print(f"{Colors.RED}[!] Could not parse access token: {data}{Colors.RESET}")
+                    sys.exit(1)
+
+                self.token = token
+                self.client.headers["Authorization"] = f"Bearer {self.token}"
+                print(f"{Colors.GREEN}[+] Authenticated successfully as {self.username}{Colors.RESET}")
+            except Exception as exc:
+                print(f"{Colors.RED}[!] Auth connection error: {exc}{Colors.RESET}")
+                sys.exit(1)
+
+    def authenticated_request(self, method: str, url: str, **kwargs) -> httpx.Response:
+        try:
+            resp = self.client.request(method, url, **kwargs)
+        except Exception:
+            time.sleep(1)
+            resp = self.client.request(method, url, **kwargs)
+
+        if resp.status_code == 401 and self.username and self.password:
+            self.authenticate()
+            resp = self.client.request(method, url, **kwargs)
+        return resp
+
+    def init_model(self):
+        print(f"\n{Colors.CYAN}[*] Initializing embedding model {self.model_name}...{Colors.RESET}")
+        try:
+            import torch
+            from sentence_transformers import SentenceTransformer
+
+            if torch.cuda.is_available():
+                self.device = "cuda"
+                gpu_name = torch.cuda.get_device_name(0)
+                vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+                print(f"{Colors.GREEN}[+] GPU: {gpu_name} ({vram_gb:.1f} GB VRAM) — Hardware Acceleration ACTIVE{Colors.RESET}")
+            else:
+                self.device = "cpu"
+                print(f"{Colors.YELLOW}[!] CUDA not available, falling back to CPU{Colors.RESET}")
+
+            self.model = SentenceTransformer(self.model_name, device=self.device)
+            print(f"{Colors.GREEN}[+] Model {self.model_name} loaded successfully on {self.device.upper()}!{Colors.RESET}\n")
+        except Exception as exc:
+            print(f"{Colors.RED}[!] Failed to load model {self.model_name}: {exc}{Colors.RESET}")
+            raise
+
+    def claim_jobs(self) -> List[Dict[str, Any]]:
+        claim_url = f"{self.server_url}/api/v1/media/admin/compute/claim"
+        try:
+            resp = self.authenticated_request(
+                "POST",
+                claim_url,
+                json={"task": "embeddings", "batch_size": self.batch_size},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("items", [])
+            print(f"{Colors.RED}[!] Claim error (HTTP {resp.status_code}): {resp.text[:200]}{Colors.RESET}", flush=True)
+            return []
+        except Exception as exc:
+            print(f"{Colors.RED}[!] Claim network error: {exc}{Colors.RESET}", flush=True)
+            return []
+
+    def submit_embeddings(self, embeddings: List[Dict[str, Any]]) -> bool:
+        sub_url = f"{self.server_url}/api/v1/media/admin/compute/embeddings"
+        try:
+            resp = self.authenticated_request(
+                "POST",
+                sub_url,
+                json={"embeddings": embeddings},
+            )
+            if resp.status_code == 200:
+                return True
+            print(f"{Colors.RED}[!] Submit error (HTTP {resp.status_code}): {resp.text[:200]}{Colors.RESET}", flush=True)
+            return False
+        except Exception as exc:
+            print(f"{Colors.RED}[!] Submit network error: {exc}{Colors.RESET}", flush=True)
+            return False
+
+    def release_leases(self, embedding_ids: List[int]):
+        if not embedding_ids:
+            return
+        try:
+            self.authenticated_request(
+                "POST",
+                f"{self.server_url}/api/v1/media/admin/compute/release",
+                json={"embedding_ids": embedding_ids},
+            )
+        except Exception:
+            pass
+
+    def run(self):
+        self.authenticate()
+        self.init_model()
+
+        print(f"{Colors.GREEN}[+] Embedding worker online. Claim batch size: {self.batch_size}, GPU encode batch: {self.gpu_batch_size}{Colors.RESET}\n")
+
+        while self.running:
+            jobs = self.claim_jobs()
+            if not jobs:
+                print(f"{Colors.GRAY}[*] All catalog media items are embedded or currently leased. Waiting 15s...{Colors.RESET}", flush=True)
+                time.sleep(15)
+                continue
+
+            t0 = time.time()
+            texts = [j["text"] for j in jobs]
+            media_ids = [j["media_item_id"] for j in jobs]
+
+            # GPU batch encoding
+            try:
+                vectors = self.model.encode(
+                    texts,
+                    batch_size=self.gpu_batch_size,
+                    normalize_embeddings=True,
+                    show_progress_bar=False,
+                )
+            except Exception as exc:
+                print(f"{Colors.RED}[!] GPU encode failed: {exc}{Colors.RESET}", flush=True)
+                self.release_leases(media_ids)
+                time.sleep(5)
+                continue
+
+            payload = [
+                {
+                    "media_item_id": mid,
+                    "vector": vec.tolist() if hasattr(vec, "tolist") else list(vec),
+                }
+                for mid, vec in zip(media_ids, vectors)
+            ]
+
+            success = self.submit_embeddings(payload)
+            if success:
+                batch_sec = time.time() - t0
+                self.total_embedded += len(jobs)
+                rate = len(jobs) / batch_sec if batch_sec > 0 else 0
+                elapsed = time.time() - self.start_time
+                avg_rate = self.total_embedded / elapsed if elapsed > 0 else 0
+
+                vram_str = ""
+                try:
+                    import torch
+                    if self.device == "cuda" and torch.cuda.is_available():
+                        vram_mb = torch.cuda.memory_allocated() / (1024 * 1024)
+                        vram_str = f" | VRAM: {vram_mb:.0f} MB"
+                except Exception:
+                    pass
+
+                print(
+                    f"{Colors.GREEN}[+ Embeddings]{Colors.RESET} Processed {len(jobs)} items in {batch_sec:.2f}s "
+                    f"({Colors.CYAN}{rate:.1f} items/s{Colors.RESET}) | Total Indexed: {self.total_embedded} "
+                    f"({avg_rate:.1f} avg/s){vram_str}",
+                    flush=True,
+                )
+            else:
+                self.release_leases(media_ids)
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Otix Distributed Compute Worker (Turbo Media-Grouped Edition)")
+    parser = argparse.ArgumentParser(description="Otix Distributed Compute Worker (Turbo Media-Grouped + Embeddings)")
     parser.add_argument("--server", type=str, default="http://84.8.154.67:8000", help="Otix central server base URL")
     parser.add_argument("--token", type=str, default=None, help="Admin JWT access token (optional)")
     parser.add_argument("--username", type=str, default=None, help="Admin username or email")
     parser.add_argument("--password", type=str, default=None, help="Admin password")
-    parser.add_argument("--threads", type=int, default=16, help="Worker threads for processing (default 16)")
-    parser.add_argument("--batch-size", type=int, default=20, help="Batch size of media items per claim (default 20)")
+    parser.add_argument("--task", choices=["artwork", "embeddings", "both"], default="artwork", help="Task mode: artwork, embeddings, or both")
+    parser.add_argument("--threads", type=int, default=16, help="Worker threads for artwork processing (default 16)")
+    parser.add_argument("--batch-size", type=int, default=20, help="Batch size of items per claim (default 20)")
     parser.add_argument("--webp-quality", type=int, default=85, help="WebP compression quality (default 85)")
+    parser.add_argument("--model", type=str, default="BAAI/bge-m3", help="Embedding model name (default BAAI/bge-m3)")
+    parser.add_argument("--gpu-batch-size", type=int, default=64, help="Batch size for GPU model.encode (default 64)")
     args = parser.parse_args()
 
-    print_banner(args.server, args.threads, args.batch_size)
+    print_banner(args.server, args.threads, args.batch_size, task=args.task, model_name=args.model)
 
-    worker = AdminComputeWorker(
-        server_url=args.server,
-        token=args.token,
-        username=args.username,
-        password=args.password,
-        concurrency=args.threads,
-        batch_size=args.batch_size,
-        webp_quality=args.webp_quality,
-    )
+    active_workers = []
+
+    if args.task in ("artwork", "both"):
+        artwork_worker = AdminComputeWorker(
+            server_url=args.server,
+            token=args.token,
+            username=args.username,
+            password=args.password,
+            concurrency=args.threads,
+            batch_size=args.batch_size,
+            webp_quality=args.webp_quality,
+        )
+        active_workers.append(artwork_worker)
+
+    if args.task in ("embeddings", "both"):
+        embed_batch = 100 if args.batch_size < 50 else args.batch_size
+        embed_worker = EmbeddingWorker(
+            server_url=args.server,
+            token=args.token,
+            username=args.username,
+            password=args.password,
+            batch_size=embed_batch,
+            model_name=args.model,
+            gpu_batch_size=args.gpu_batch_size,
+        )
+        active_workers.append(embed_worker)
 
     def handle_sigint(sig, frame):
-        print(f"\n{Colors.YELLOW}[*] Shutting down worker gracefully...{Colors.RESET}")
-        worker.running = False
+        print(f"\n{Colors.YELLOW}[*] Shutting down workers gracefully...{Colors.RESET}")
+        for w in active_workers:
+            w.running = False
         sys.exit(0)
 
     signal.signal(signal.SIGINT, handle_sigint)
-    worker.run()
+
+    if len(active_workers) == 1:
+        active_workers[0].run()
+    else:
+        # Run both in separate threads
+        threads = []
+        for w in active_workers:
+            t = threading.Thread(target=w.run, daemon=True)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
 
 
 if __name__ == "__main__":
     main()
+

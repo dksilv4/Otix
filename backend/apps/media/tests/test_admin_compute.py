@@ -260,3 +260,82 @@ class AdminComputeTests(TestCase):
         self.assertTrue(MediaCredit.objects.filter(media_item=self.item, role="cast").exists())
         self.assertTrue(MediaCredit.objects.filter(media_item=self.item, role="director").exists())
         self.assertTrue(MediaCharacter.objects.filter(media_item=self.item).exists())
+
+    def test_claim_embeddings(self):
+        res = self.admin_client.post(
+            "/api/v1/media/admin/compute/claim",
+            {"task": "embeddings", "batch_size": 10},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.json()
+        self.assertEqual(data["task"], "embeddings")
+        self.assertGreaterEqual(data["count"], 1)
+        found_item = next((it for it in data["items"] if it["media_item_id"] == self.item.pk), None)
+        self.assertIsNotNone(found_item)
+        self.assertIn("Title: Inception", found_item["text"])
+
+    def test_submit_embeddings_valid(self):
+        # Create a valid 1024-dimensional vector
+        dummy_vector = [0.01 * (i % 50) for i in range(1024)]
+        payload = {
+            "embeddings": [
+                {
+                    "media_item_id": self.item.pk,
+                    "vector": dummy_vector,
+                }
+            ]
+        }
+        res = self.admin_client.post(
+            "/api/v1/media/admin/compute/embeddings",
+            payload,
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["updated"], 1)
+
+        # Verify DB persistence
+        self.item.refresh_from_db()
+        self.assertIsNotNone(self.item.embedding)
+        self.assertEqual(len(self.item.embedding), 1024)
+        self.assertIsNotNone(self.item.embedded_at)
+
+    def test_submit_embeddings_invalid_dimensions(self):
+        # 512 dimensions instead of 1024 -> rejected
+        short_vector = [0.1] * 512
+        payload = {
+            "embeddings": [
+                {
+                    "media_item_id": self.item.pk,
+                    "vector": short_vector,
+                }
+            ]
+        }
+        res = self.admin_client.post(
+            "/api/v1/media/admin/compute/embeddings",
+            payload,
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_semantic_search(self):
+        # First set embedding on self.item
+        dummy_vector = [0.05] * 1024
+        self.item.embedding = dummy_vector
+        self.item.save(update_fields=["embedding"])
+
+        # Query semantic search with exact vector
+        res = self.anon_client.post(
+            "/api/v1/search/semantic",
+            {"vector": dummy_vector},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.json()
+        self.assertGreaterEqual(data["total"], 1)
+        top_hit = data["items"][0]
+        self.assertEqual(top_hit["id"], self.item.pk)
+        self.assertEqual(top_hit["title"], "Inception")
+        self.assertAlmostEqual(top_hit["similarity"], 1.0, places=2)

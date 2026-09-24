@@ -198,3 +198,28 @@ class PrehydrateView(APIView):
             raise ParseError("titles list is required.")
         result = services.prehydrate_game_titles([str(title) for title in titles if title])
         return Response({"queued": result["searched"], **result})
+
+
+class SemanticSearchView(APIView):
+    """``POST /api/v1/search/semantic``
+
+    Execute vector cosine distance search over precomputed media catalog embeddings.
+    Accepts raw 1024-dimensional query vector list.
+    """
+
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request: Request) -> Response:
+        vector = request.data.get("vector")
+        if not vector or not isinstance(vector, list) or len(vector) != 1024:
+            raise ParseError("A 1024-dimensional vector list is required.")
+
+        media_type = _optional_str(request.query_params, "media_type")
+        limit = _int_param(request.query_params, "limit", 24, ge=1, le=100)
+
+        payload = services.semantic_search_payload(
+            vector=vector,
+            media_type=media_type,
+            limit=limit,
+        )
+        return Response(payload)

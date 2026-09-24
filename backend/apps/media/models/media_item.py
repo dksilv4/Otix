@@ -13,6 +13,7 @@ tables hold only subtype-specific columns.
 
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
+from pgvector.django import HnswIndex, VectorField
 
 from core.models import TimestampedModel
 
@@ -51,6 +52,10 @@ class MediaItem(TimestampedModel):
     view_count = models.IntegerField(default=0)
     is_adult = models.BooleanField(default=False)
 
+    # 1024-dimensional semantic embedding (e.g. BAAI/bge-m3 dense vector)
+    embedding = VectorField(dimensions=1024, null=True, blank=True)
+    embedded_at = models.DateTimeField(null=True, blank=True)
+
     # Convenience reverse into the external_ids table (GenericForeignKey).
     external_ids = GenericRelation(
         "media.ExternalID",
@@ -69,6 +74,15 @@ class MediaItem(TimestampedModel):
             models.CheckConstraint(
                 condition=models.Q(completeness_score__gte=0.0, completeness_score__lte=1.0),
                 name="ck_completeness_score",
+            ),
+        ]
+        indexes = [
+            HnswIndex(
+                name="media_items_embedding_hnsw",
+                fields=["embedding"],
+                m=16,
+                ef_construction=128,
+                opclasses=["vector_cosine_ops"],
             ),
         ]
 
@@ -207,4 +221,3 @@ class Game(models.Model):
 
     def __str__(self) -> str:
         return self.media_item.title
-

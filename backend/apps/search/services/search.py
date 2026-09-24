@@ -1047,3 +1047,35 @@ def log_search(
         user=user if getattr(user, "is_authenticated", False) else None,
         is_bot=False,
     )
+
+
+def semantic_search_payload(
+    *,
+    vector: list[float],
+    media_type: str | None = None,
+    limit: int = 24,
+) -> dict:
+    """Execute vector cosine distance search against MediaItem.embedding."""
+    from pgvector.django import CosineDistance
+
+    qs = MediaItem.objects.filter(embedding__isnull=False)
+    if EXCLUDE_ADULT:
+        qs = qs.filter(is_adult=False)
+    if media_type:
+        qs = qs.filter(media_type=media_type)
+
+    qs = (
+        qs.annotate(distance=CosineDistance("embedding", vector))
+        .order_by("distance")[:limit]
+        .prefetch_related("assets", "external_ids")
+    )
+    items = list(qs)
+    serialized = MediaSummarySerializer(items, many=True).data
+    for row, obj in zip(serialized, items, strict=False):
+        dist = getattr(obj, "distance", 1.0)
+        row["similarity"] = round(max(0.0, 1.0 - float(dist if dist is not None else 1.0)), 4)
+
+    return {
+        "total": len(serialized),
+        "items": serialized,
+    }

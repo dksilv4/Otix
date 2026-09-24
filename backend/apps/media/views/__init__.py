@@ -4,6 +4,7 @@ from apps.media.views.admin_compute import (
     AdminComputeClaimView,
     AdminComputeReleaseView,
     AdminComputeStatsView,
+    AdminComputeSubmitEmbeddingsView,
     AdminComputeSubmitEnrichmentView,
     AdminComputeSubmitView,
 )
@@ -68,6 +69,7 @@ __all__ = [
     "AdminComputeClaimView",
     "AdminComputeReleaseView",
     "AdminComputeStatsView",
+    "AdminComputeSubmitEmbeddingsView",
     "AdminComputeSubmitEnrichmentView",
     "AdminComputeSubmitView",
     "ArtworkSelectionView",
