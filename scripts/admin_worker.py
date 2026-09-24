@@ -1000,7 +1000,9 @@ class EmbeddingWorker:
             resp = self.client.request(method, url, **kwargs)
 
         if resp.status_code == 401 and self.username and self.password:
-            self.authenticate()
+            with self.auth_lock:
+                self.token = None
+                self.authenticate()
             resp = self.client.request(method, url, **kwargs)
         return resp
 
