@@ -239,6 +239,7 @@ class AdminComputeTests(TestCase):
                     "character_name": "Cobb",
                     "description": "Extractor",
                     "wikidata_id": "Q9999",
+                    "image_url": "https://example.com/cobb.jpg",
                 }
             ],
         }
@@ -260,6 +261,15 @@ class AdminComputeTests(TestCase):
         self.assertTrue(MediaCredit.objects.filter(media_item=self.item, role="cast").exists())
         self.assertTrue(MediaCredit.objects.filter(media_item=self.item, role="director").exists())
         self.assertTrue(MediaCharacter.objects.filter(media_item=self.item).exists())
+        from apps.media.models import Character, CharacterAsset
+
+        cobb = Character.objects.get(name="Cobb")
+        self.assertEqual(cobb.mug_shot_url, "https://example.com/cobb.jpg")
+        self.assertTrue(
+            CharacterAsset.objects.filter(
+                character=cobb, url="https://example.com/cobb.jpg"
+            ).exists()
+        )
 
     def test_claim_embeddings(self):
         res = self.admin_client.post(

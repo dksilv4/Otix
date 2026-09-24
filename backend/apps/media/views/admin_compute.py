@@ -23,7 +23,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.media.models import Character, ExternalID, MediaAsset, MediaCharacter, MediaItem
+from apps.media.models import (
+    Character,
+    CharacterAsset,
+    ExternalID,
+    MediaAsset,
+    MediaCharacter,
+    MediaItem,
+)
 from apps.media.services import assets as assets_service
 from apps.people.models import MediaCredit, Person
 from apps.proposals.views.proposals import IsAdminUser
@@ -567,10 +574,20 @@ class AdminComputeSubmitEnrichmentView(APIView):
                 if desc and not char.description:
                     char.description = desc
                     char.save(update_fields=["description"])
-                c_photo = claim.get("image_url")
-                if c_photo and not char.photo_url:
-                    char.photo_url = c_photo
-                    char.save(update_fields=["photo_url"])
+                c_photo = claim.get("image_url") or claim.get("photo_url")
+                if c_photo:
+                    if not char.mug_shot_url:
+                        char.mug_shot_url = c_photo
+                        char.save(update_fields=["mug_shot_url"])
+                    CharacterAsset.objects.get_or_create(
+                        character=char,
+                        url=c_photo,
+                        defaults={
+                            "asset_type": "mugshot",
+                            "provider": "wikidata",
+                            "caption": f"{char.name} (Wikidata)",
+                        },
+                    )
 
                 qid = claim.get("wikidata_id")
                 if qid:
