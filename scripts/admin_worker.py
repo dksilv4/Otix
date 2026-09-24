@@ -1046,19 +1046,23 @@ class EmbeddingWorker:
 
     def submit_embeddings(self, embeddings: List[Dict[str, Any]]) -> bool:
         sub_url = f"{self.server_url}/api/v1/media/admin/compute/embeddings"
-        try:
-            resp = self.authenticated_request(
-                "POST",
-                sub_url,
-                json={"embeddings": embeddings},
-            )
-            if resp.status_code == 200:
-                return True
-            print(f"{Colors.RED}[!] Submit error (HTTP {resp.status_code}): {resp.text[:200]}{Colors.RESET}", flush=True)
-            return False
-        except Exception as exc:
-            print(f"{Colors.RED}[!] Submit network error: {exc}{Colors.RESET}", flush=True)
-            return False
+        CHUNK_SIZE = 50
+        all_ok = True
+        for i in range(0, len(embeddings), CHUNK_SIZE):
+            chunk = embeddings[i : i + CHUNK_SIZE]
+            try:
+                resp = self.authenticated_request(
+                    "POST",
+                    sub_url,
+                    json={"embeddings": chunk},
+                )
+                if resp.status_code != 200:
+                    print(f"{Colors.RED}[!] Submit error (HTTP {resp.status_code}): {resp.text[:200]}{Colors.RESET}", flush=True)
+                    all_ok = False
+            except Exception as exc:
+                print(f"{Colors.RED}[!] Submit network error: {exc}{Colors.RESET}", flush=True)
+                all_ok = False
+        return all_ok
 
     def release_leases(self, embedding_ids: List[int]):
         if not embedding_ids:
