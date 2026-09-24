@@ -585,6 +585,9 @@ class AdminComputeWorker:
             if not self.password:
                 self.password = getpass.getpass("Enter admin password: ")
 
+            # Clear expired Authorization header so DRF doesn't reject login endpoint
+            self.http_client.headers.pop("Authorization", None)
+
             login_url = f"{self.server_url}/api/v1/auth/login"
             if not silent:
                 print(f"{Colors.GRAY}Authenticating with {login_url}...{Colors.RESET}")
