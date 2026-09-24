@@ -163,7 +163,7 @@ class AdminComputeClaimView(APIView):
             try:
                 candidates = (
                     MediaItem.objects.filter(embedding__isnull=True)
-                    .order_by("-popularity", "id")[: batch_size * 2]
+                    .order_by("-popularity", "id")[: max(batch_size * 10, 500)]
                     .prefetch_related(
                         "media_genres__genre",
                         "media_keywords__keyword",

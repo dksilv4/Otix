@@ -50,21 +50,43 @@ class Colors:
     RESET = "\033[0m"
 
 
-def print_banner(server: str, workers: int, batch_size: int, task: str = "artwork", model_name: str = "BAAI/bge-m3"):
-    print(f"\n{Colors.CYAN}{Colors.BOLD}=================================================================={Colors.RESET}")
-    print(f"{Colors.CYAN}{Colors.BOLD}   OTIX DISTRIBUTED WORKER (TURBO + MEDIA-GROUPED + EMBEDDINGS)   {Colors.RESET}")
-    print(f"{Colors.CYAN}{Colors.BOLD}=================================================================={Colors.RESET}")
+def print_banner(
+    server: str,
+    workers: int,
+    batch_size: int,
+    task: str = "artwork",
+    model_name: str = "BAAI/bge-m3",
+):
+    print(
+        f"\n{Colors.CYAN}{Colors.BOLD}=================================================================={Colors.RESET}"
+    )
+    print(
+        f"{Colors.CYAN}{Colors.BOLD}   OTIX DISTRIBUTED WORKER (TURBO + MEDIA-GROUPED + EMBEDDINGS)   {Colors.RESET}"
+    )
+    print(
+        f"{Colors.CYAN}{Colors.BOLD}=================================================================={Colors.RESET}"
+    )
     print(f"  {Colors.BOLD}Server URL:{Colors.RESET}       {server}")
     print(f"  {Colors.BOLD}Task Mode:{Colors.RESET}        {task.upper()}")
     if task in ("artwork", "both"):
         print(f"  {Colors.BOLD}Worker Threads:{Colors.RESET}   {workers} (pipelined streaming)")
-        print(f"  {Colors.BOLD}Artwork Mode:{Colors.RESET}     Media-Grouped Winner-Only (70-80% storage saved)")
-        print(f"  {Colors.BOLD}Metadata Offload:{Colors.RESET} Public Wikidata Cast, Characters & Distributors")
+        print(
+            f"  {Colors.BOLD}Artwork Mode:{Colors.RESET}     Media-Grouped Winner-Only (70-80% storage saved)"
+        )
+        print(
+            f"  {Colors.BOLD}Metadata Offload:{Colors.RESET} Public Wikidata Cast, Characters & Distributors"
+        )
     if task in ("embeddings", "both"):
-        print(f"  {Colors.BOLD}Embedding Model:{Colors.RESET}  {model_name} (1024-dim dense vectors)")
+        print(
+            f"  {Colors.BOLD}Embedding Model:{Colors.RESET}  {model_name} (1024-dim dense vectors)"
+        )
     print(f"  {Colors.BOLD}Batch Size:{Colors.RESET}       {batch_size} items/claim")
-    print(f"  {Colors.BOLD}Auth Mode:{Colors.RESET}        Zero-Trust Admin Compute with Auto-Refresh")
-    print(f"{Colors.CYAN}------------------------------------------------------------------{Colors.RESET}\n")
+    print(
+        f"  {Colors.BOLD}Auth Mode:{Colors.RESET}        Zero-Trust Admin Compute with Auto-Refresh"
+    )
+    print(
+        f"{Colors.CYAN}------------------------------------------------------------------{Colors.RESET}\n"
+    )
 
 
 # Theme classification constants matching backend color_analyzer service
@@ -249,9 +271,7 @@ def _classify_opaque_image(image: Image.Image, asset_type: str) -> str | None:
 
 def classify_theme(image: Image.Image, asset_type: str = "logo") -> str:
     """Classify artwork into standard Otix theme contrast labels."""
-    has_alpha = image.mode in ("RGBA", "LA") or (
-        image.mode == "P" and "transparency" in image.info
-    )
+    has_alpha = image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info)
 
     if asset_type in ("logo", "icon") and has_alpha:
         if image.mode != "RGBA":
@@ -314,7 +334,9 @@ class WikidataResolver:
             pass
         return []
 
-    def resolve_game_qid(self, steam_id: Optional[str], igdb_id: Optional[str], title: str) -> Optional[str]:
+    def resolve_game_qid(
+        self, steam_id: Optional[str], igdb_id: Optional[str], title: str
+    ) -> Optional[str]:
         # 1. By Steam ID (P1733)
         if steam_id:
             q = f'SELECT ?item WHERE {{ ?item wdt:P1733 "{steam_id}" . }} LIMIT 1'
@@ -347,7 +369,10 @@ class WikidataResolver:
                     results = resp.json().get("search", [])
                     for res in results:
                         desc = (res.get("description") or "").lower()
-                        if any(k in desc for k in ("video game", "game", "action game", "rpg", "shooter")):
+                        if any(
+                            k in desc
+                            for k in ("video game", "game", "action game", "rpg", "shooter")
+                        ):
                             return res.get("id")
                     if results:
                         return results[0].get("id")
@@ -380,7 +405,9 @@ class WikidataResolver:
                 pass
         return entities
 
-    def resolve_game_credits(self, steam_id: Optional[str], igdb_id: Optional[str], title: str) -> Dict[str, Any]:
+    def resolve_game_credits(
+        self, steam_id: Optional[str], igdb_id: Optional[str], title: str
+    ) -> Dict[str, Any]:
         qid = self.resolve_game_qid(steam_id, igdb_id, title)
         if not qid:
             return {}
@@ -457,12 +484,14 @@ class WikidataResolver:
                     char_img = f"https://commons.wikimedia.org/wiki/Special:FilePath/{urllib.parse.quote(file_name)}"
             w_title = cdata.get("sitelinks", {}).get("enwiki", {}).get("title")
 
-            characters.append({
-                "character_name": c_name,
-                "wikidata_id": cid,
-                "wikipedia_title": w_title,
-                "photo_url": char_img,
-            })
+            characters.append(
+                {
+                    "character_name": c_name,
+                    "wikidata_id": cid,
+                    "wikipedia_title": w_title,
+                    "photo_url": char_img,
+                }
+            )
 
         # Build cast
         cast = []
@@ -482,11 +511,13 @@ class WikidataResolver:
                 fn = p18[0].get("mainsnak", {}).get("datavalue", {}).get("value")
                 if fn:
                     photo_url = f"https://commons.wikimedia.org/wiki/Special:FilePath/{urllib.parse.quote(fn)}"
-            cast.append({
-                "person_name": aname,
-                "character_name": cname,
-                "photo_url": photo_url,
-            })
+            cast.append(
+                {
+                    "person_name": aname,
+                    "character_name": cname,
+                    "photo_url": photo_url,
+                }
+            )
 
         # Build crew
         crew = []
@@ -513,7 +544,9 @@ class WikidataResolver:
             "fandom_id": fandom_id,
         }
 
-    def resolve_movie_distributors(self, imdb_id: Optional[str], tmdb_id: Optional[str]) -> List[Dict[str, Any]]:
+    def resolve_movie_distributors(
+        self, imdb_id: Optional[str], tmdb_id: Optional[str]
+    ) -> List[Dict[str, Any]]:
         selector = None
         if imdb_id and imdb_id.startswith("tt"):
             selector = f'VALUES ?imdb {{ "{imdb_id}" }} ?film wdt:P345 ?imdb .'
@@ -576,10 +609,12 @@ class AdminComputeWorker:
         self.start_time = time.time()
 
         # High-throughput connection pooled HTTP clients
-        limits = httpx.Limits(max_keepalive_connections=64, max_connections=128, keepalive_expiry=30.0)
+        limits = httpx.Limits(
+            max_keepalive_connections=64, max_connections=128, keepalive_expiry=30.0
+        )
         self.http_client = httpx.Client(timeout=25.0, follow_redirects=True, limits=limits)
         self.wikidata = WikidataResolver()
-        self.auth_lock = threading.Lock()
+        self.auth_lock = threading.RLock()
 
     def authenticate(self, silent: bool = False):
         """Authenticates with the server and ensures the user is an admin."""
@@ -600,7 +635,9 @@ class AdminComputeWorker:
                 json={"identity": self.username, "password": self.password},
             )
             if resp.status_code != 200:
-                print(f"{Colors.RED}Authentication failed (HTTP {resp.status_code}): {resp.text}{Colors.RESET}")
+                print(
+                    f"{Colors.RED}Authentication failed (HTTP {resp.status_code}): {resp.text}{Colors.RESET}"
+                )
                 sys.exit(1)
 
             data = resp.json()
@@ -626,7 +663,9 @@ class AdminComputeWorker:
                 is_staff = user_data.get("is_admin", False) or user_data.get("is_staff", False)
                 username = user_data.get("username", "Admin")
                 if not is_staff:
-                    print(f"{Colors.RED}Error: User '{username}' is not a staff/admin user.{Colors.RESET}")
+                    print(
+                        f"{Colors.RED}Error: User '{username}' is not a staff/admin user.{Colors.RESET}"
+                    )
                     sys.exit(1)
                 print(f"{Colors.GREEN}[OK] Authenticated as admin '{username}'{Colors.RESET}")
 
@@ -703,7 +742,9 @@ class AdminComputeWorker:
                 hex_color = extract_dominant_color(img)
 
                 buf = io.BytesIO()
-                target_img = img.convert("RGBA") if img.mode in ("RGBA", "LA", "P") else img.convert("RGB")
+                target_img = (
+                    img.convert("RGBA") if img.mode in ("RGBA", "LA", "P") else img.convert("RGB")
+                )
                 target_img.save(buf, format="WEBP", quality=self.webp_quality, method=4)
                 webp_bytes = buf.getvalue()
 
@@ -790,15 +831,21 @@ class AdminComputeWorker:
 
         # Filter unmirrored candidate assets
         unmirrored = [
-            a for a in candidates
-            if not a.get("is_mirrored") and a.get("url") and not a.get("url", "").lower().split("?", 1)[0].endswith(".svg")
+            a
+            for a in candidates
+            if not a.get("is_mirrored")
+            and a.get("url")
+            and not a.get("url", "").lower().split("?", 1)[0].endswith(".svg")
         ]
 
         # 1. Download & analyze candidate images in parallel
         processed_map: Dict[int, Dict[str, Any]] = {}
         if unmirrored:
             with ThreadPoolExecutor(max_workers=min(len(unmirrored), 8)) as pool:
-                futures = {pool.submit(self._download_and_transcode_asset, a): a["asset_id"] for a in unmirrored}
+                futures = {
+                    pool.submit(self._download_and_transcode_asset, a): a["asset_id"]
+                    for a in unmirrored
+                }
                 for f in as_completed(futures):
                     res = f.result()
                     if res:
@@ -896,18 +943,27 @@ class AdminComputeWorker:
 
     def run(self):
         self.authenticate()
-        print(f"\n{Colors.GREEN}[+] Worker online. Starting media-grouped processing loop with {self.concurrency} threads...{Colors.RESET}\n")
+        print(
+            f"\n{Colors.GREEN}[+] Worker online. Starting media-grouped processing loop with {self.concurrency} threads...{Colors.RESET}\n"
+        )
 
         while self.running:
             media_jobs = self.claim_media_jobs()
             if not media_jobs:
-                print(f"{Colors.GRAY}[*] Queue empty or all media leased. Waiting 10s...{Colors.RESET}", flush=True)
+                print(
+                    f"{Colors.GRAY}[*] Queue empty or all media leased. Waiting 10s...{Colors.RESET}",
+                    flush=True,
+                )
                 time.sleep(10)
                 continue
 
             # Process media jobs concurrently
-            with ThreadPoolExecutor(max_workers=min(len(media_jobs), max(1, self.concurrency // 2))) as pool:
-                futures = {pool.submit(self.process_media_item, m): m["media_item_id"] for m in media_jobs}
+            with ThreadPoolExecutor(
+                max_workers=min(len(media_jobs), max(1, self.concurrency // 2))
+            ) as pool:
+                futures = {
+                    pool.submit(self.process_media_item, m): m["media_item_id"] for m in media_jobs
+                }
                 for f in as_completed(futures):
                     try:
                         f.result()
@@ -920,7 +976,9 @@ class AdminComputeWorker:
             mb_total = self.total_bytes_uploaded / (1024 * 1024)
             saved_total_pct = 0
             if self.total_candidates_evaluated > 0:
-                saved_total_pct = int((1.0 - (self.total_winners_uploaded / self.total_candidates_evaluated)) * 100)
+                saved_total_pct = int(
+                    (1.0 - (self.total_winners_uploaded / self.total_candidates_evaluated)) * 100
+                )
 
             print(
                 f"\n{Colors.CYAN}--- Progress: {self.total_media_processed} media items | "
@@ -954,7 +1012,7 @@ class EmbeddingWorker:
 
         self.running = True
         self.client = httpx.Client(timeout=90.0)
-        self.auth_lock = threading.Lock()
+        self.auth_lock = threading.RLock()
         self.start_time = time.time()
         self.total_embedded = 0
         self.model = None
@@ -974,20 +1032,30 @@ class EmbeddingWorker:
             login_url = f"{self.server_url}/api/v1/auth/login"
             self.client.headers.pop("Authorization", None)
             try:
-                resp = self.client.post(login_url, json={"identity": self.username, "password": self.password})
+                resp = self.client.post(
+                    login_url, json={"identity": self.username, "password": self.password}
+                )
                 if resp.status_code != 200:
-                    print(f"{Colors.RED}[!] Authentication failed (HTTP {resp.status_code}): {resp.text}{Colors.RESET}")
+                    print(
+                        f"{Colors.RED}[!] Authentication failed (HTTP {resp.status_code}): {resp.text}{Colors.RESET}"
+                    )
                     sys.exit(1)
 
                 data = resp.json()
-                token = data.get("access_token") or data.get("token") or (data.get("tokens") or {}).get("access")
+                token = (
+                    data.get("access_token")
+                    or data.get("token")
+                    or (data.get("tokens") or {}).get("access")
+                )
                 if not token:
                     print(f"{Colors.RED}[!] Could not parse access token: {data}{Colors.RESET}")
                     sys.exit(1)
 
                 self.token = token
                 self.client.headers["Authorization"] = f"Bearer {self.token}"
-                print(f"{Colors.GREEN}[+] Authenticated successfully as {self.username}{Colors.RESET}")
+                print(
+                    f"{Colors.GREEN}[+] Authenticated successfully as {self.username}{Colors.RESET}"
+                )
             except Exception as exc:
                 print(f"{Colors.RED}[!] Auth connection error: {exc}{Colors.RESET}")
                 sys.exit(1)
@@ -1016,33 +1084,56 @@ class EmbeddingWorker:
                 self.device = "cuda"
                 gpu_name = torch.cuda.get_device_name(0)
                 vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-                print(f"{Colors.GREEN}[+] GPU: {gpu_name} ({vram_gb:.1f} GB VRAM) — Hardware Acceleration ACTIVE{Colors.RESET}")
+                print(
+                    f"{Colors.GREEN}[+] GPU: {gpu_name} ({vram_gb:.1f} GB VRAM) — Hardware Acceleration ACTIVE{Colors.RESET}"
+                )
             else:
                 self.device = "cpu"
                 print(f"{Colors.YELLOW}[!] CUDA not available, falling back to CPU{Colors.RESET}")
 
             self.model = SentenceTransformer(self.model_name, device=self.device)
-            print(f"{Colors.GREEN}[+] Model {self.model_name} loaded successfully on {self.device.upper()}!{Colors.RESET}\n")
+            # Cap max_seq_length to 2048 tokens to prevent massive attention VRAM spikes on long synopses
+            if hasattr(self.model, "max_seq_length") and self.model.max_seq_length > 2048:
+                self.model.max_seq_length = 2048
+            print(
+                f"{Colors.GREEN}[+] Model {self.model_name} loaded successfully on {self.device.upper()}! (max_seq_len={getattr(self.model, 'max_seq_length', 'default')}){Colors.RESET}\n"
+            )
         except Exception as exc:
             print(f"{Colors.RED}[!] Failed to load model {self.model_name}: {exc}{Colors.RESET}")
             raise
 
     def claim_jobs(self) -> List[Dict[str, Any]]:
         claim_url = f"{self.server_url}/api/v1/media/admin/compute/claim"
-        try:
-            resp = self.authenticated_request(
-                "POST",
-                claim_url,
-                json={"task": "embeddings", "batch_size": self.batch_size},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                return data.get("items", [])
-            print(f"{Colors.RED}[!] Claim error (HTTP {resp.status_code}): {resp.text[:200]}{Colors.RESET}", flush=True)
-            return []
-        except Exception as exc:
-            print(f"{Colors.RED}[!] Claim network error: {exc}{Colors.RESET}", flush=True)
-            return []
+        for try_batch in [
+            self.batch_size,
+            max(self.batch_size * 2, 400),
+            max(self.batch_size * 5, 800),
+        ]:
+            try:
+                resp = self.authenticated_request(
+                    "POST",
+                    claim_url,
+                    json={"task": "embeddings", "batch_size": try_batch},
+                )
+                if resp.status_code == 200:
+                    items = resp.json().get("items", [])
+                    if items:
+                        if len(items) > self.batch_size:
+                            excess = items[self.batch_size :]
+                            items = items[: self.batch_size]
+                            excess_ids = [x["media_item_id"] for x in excess]
+                            self.release_leases(excess_ids)
+                        return items
+                else:
+                    print(
+                        f"{Colors.RED}[!] Claim error (HTTP {resp.status_code}): {resp.text[:200]}{Colors.RESET}",
+                        flush=True,
+                    )
+                    return []
+            except Exception as exc:
+                print(f"{Colors.RED}[!] Claim network error: {exc}{Colors.RESET}", flush=True)
+                return []
+        return []
 
     def submit_embeddings(self, embeddings: List[Dict[str, Any]]) -> bool:
         sub_url = f"{self.server_url}/api/v1/media/admin/compute/embeddings"
@@ -1057,7 +1148,10 @@ class EmbeddingWorker:
                     json={"embeddings": chunk},
                 )
                 if resp.status_code != 200:
-                    print(f"{Colors.RED}[!] Submit error (HTTP {resp.status_code}): {resp.text[:200]}{Colors.RESET}", flush=True)
+                    print(
+                        f"{Colors.RED}[!] Submit error (HTTP {resp.status_code}): {resp.text[:200]}{Colors.RESET}",
+                        flush=True,
+                    )
                     all_ok = False
             except Exception as exc:
                 print(f"{Colors.RED}[!] Submit network error: {exc}{Colors.RESET}", flush=True)
@@ -1080,12 +1174,17 @@ class EmbeddingWorker:
         self.authenticate()
         self.init_model()
 
-        print(f"{Colors.GREEN}[+] Embedding worker online. Claim batch size: {self.batch_size}, GPU encode batch: {self.gpu_batch_size}{Colors.RESET}\n")
+        print(
+            f"{Colors.GREEN}[+] Embedding worker online. Claim batch size: {self.batch_size}, GPU encode batch: {self.gpu_batch_size}{Colors.RESET}\n"
+        )
 
         while self.running:
             jobs = self.claim_jobs()
             if not jobs:
-                print(f"{Colors.GRAY}[*] All catalog media items are embedded or currently leased. Waiting 15s...{Colors.RESET}", flush=True)
+                print(
+                    f"{Colors.GRAY}[*] All catalog media items are embedded or currently leased. Waiting 15s...{Colors.RESET}",
+                    flush=True,
+                )
                 time.sleep(15)
                 continue
 
@@ -1093,7 +1192,7 @@ class EmbeddingWorker:
             texts = [j["text"] for j in jobs]
             media_ids = [j["media_item_id"] for j in jobs]
 
-            # GPU batch encoding
+            # GPU batch encoding with automatic OOM recovery
             try:
                 vectors = self.model.encode(
                     texts,
@@ -1103,9 +1202,33 @@ class EmbeddingWorker:
                 )
             except Exception as exc:
                 print(f"{Colors.RED}[!] GPU encode failed: {exc}{Colors.RESET}", flush=True)
-                self.release_leases(media_ids)
-                time.sleep(5)
-                continue
+                try:
+                    import torch
+
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                except Exception:
+                    pass
+                # Automatic retry with conservative batch size (16)
+                try:
+                    print(
+                        f"{Colors.YELLOW}[*] Retrying batch with conservative GPU batch size (16)...{Colors.RESET}",
+                        flush=True,
+                    )
+                    vectors = self.model.encode(
+                        texts,
+                        batch_size=16,
+                        normalize_embeddings=True,
+                        show_progress_bar=False,
+                    )
+                except Exception as exc2:
+                    print(
+                        f"{Colors.RED}[!] Fallback encode also failed: {exc2}{Colors.RESET}",
+                        flush=True,
+                    )
+                    self.release_leases(media_ids)
+                    time.sleep(5)
+                    continue
 
             payload = [
                 {
@@ -1126,6 +1249,7 @@ class EmbeddingWorker:
                 vram_str = ""
                 try:
                     import torch
+
                     if self.device == "cuda" and torch.cuda.is_available():
                         vram_mb = torch.cuda.memory_allocated() / (1024 * 1024)
                         vram_str = f" | VRAM: {vram_mb:.0f} MB"
@@ -1143,17 +1267,42 @@ class EmbeddingWorker:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Otix Distributed Compute Worker (Turbo Media-Grouped + Embeddings)")
-    parser.add_argument("--server", type=str, default="http://84.8.154.67:8000", help="Otix central server base URL")
+    parser = argparse.ArgumentParser(
+        description="Otix Distributed Compute Worker (Turbo Media-Grouped + Embeddings)"
+    )
+    parser.add_argument(
+        "--server", type=str, default="http://84.8.154.67:8000", help="Otix central server base URL"
+    )
     parser.add_argument("--token", type=str, default=None, help="Admin JWT access token (optional)")
     parser.add_argument("--username", type=str, default=None, help="Admin username or email")
     parser.add_argument("--password", type=str, default=None, help="Admin password")
-    parser.add_argument("--task", choices=["artwork", "embeddings", "both"], default="artwork", help="Task mode: artwork, embeddings, or both")
-    parser.add_argument("--threads", type=int, default=16, help="Worker threads for artwork processing (default 16)")
-    parser.add_argument("--batch-size", type=int, default=20, help="Batch size of items per claim (default 20)")
-    parser.add_argument("--webp-quality", type=int, default=85, help="WebP compression quality (default 85)")
-    parser.add_argument("--model", type=str, default="BAAI/bge-m3", help="Embedding model name (default BAAI/bge-m3)")
-    parser.add_argument("--gpu-batch-size", type=int, default=64, help="Batch size for GPU model.encode (default 64)")
+    parser.add_argument(
+        "--task",
+        choices=["artwork", "embeddings", "both"],
+        default="artwork",
+        help="Task mode: artwork, embeddings, or both",
+    )
+    parser.add_argument(
+        "--threads", type=int, default=16, help="Worker threads for artwork processing (default 16)"
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=20, help="Batch size of items per claim (default 20)"
+    )
+    parser.add_argument(
+        "--webp-quality", type=int, default=85, help="WebP compression quality (default 85)"
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="BAAI/bge-m3",
+        help="Embedding model name (default BAAI/bge-m3)",
+    )
+    parser.add_argument(
+        "--gpu-batch-size",
+        type=int,
+        default=32,
+        help="Batch size for GPU model.encode (default 32)",
+    )
     args = parser.parse_args()
 
     print_banner(args.server, args.threads, args.batch_size, task=args.task, model_name=args.model)
@@ -1208,4 +1357,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
