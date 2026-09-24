@@ -461,7 +461,7 @@ class WikidataResolver:
                 "character_name": c_name,
                 "wikidata_id": cid,
                 "wikipedia_title": w_title,
-                "image_url": char_img,
+                "photo_url": char_img,
             })
 
         # Build cast
