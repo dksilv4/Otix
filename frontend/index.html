@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/16.png" />
@@ -17,7 +17,21 @@
     <meta name="msapplication-TileImage" content="/icons/512.png" />
     <meta name="msapplication-TileColor" content="#0a0b1e" />
     <meta name="theme-color" content="#0a0b1e" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
     <title>Otix</title>
+    <link rel="stylesheet" href="/src/styles/init.scss" />
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('otix-theme');
+          var isDark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches) || !saved;
+          if (saved === 'light') isDark = false;
+          document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

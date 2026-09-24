@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
-import { validateManifestSchema } from '../../plugins/manifest-validation'
+import { validateManifestSchema } from '../../plugin-runtime/manifest-validation'
 
 const baseManifest = {
   name: 'test-plugin',

@@ -181,7 +181,7 @@ INSTALLED_APPS = [
     "apps.blueprint.apps.BlueprintConfig",
     "apps.discover.apps.DiscoverConfig",
     # Plugin framework host (no legacy-parity counterpart; see plugins/README.md)
-    "plugins.apps.PluginsConfig",
+    "plugin_framework.apps.PluginsConfig",
 ]
 
 MIDDLEWARE = [

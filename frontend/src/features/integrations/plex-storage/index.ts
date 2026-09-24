@@ -1,3 +1,3 @@
 export * from './types'
-export * from './use-plex-storage'
+export * from './hooks'
 export * from './PlexStorageOptimizerModal'

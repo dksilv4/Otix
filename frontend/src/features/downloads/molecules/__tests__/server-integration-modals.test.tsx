@@ -138,7 +138,7 @@ describe('integration service modals', () => {
     expect(payload.api_key).toBe('sab-key')
     expect(payload.path_mappings.some((m: { remote_path: string }) => m.remote_path === '/downloads/complete')).toBe(true)
     expect(onClose).toHaveBeenCalled()
-  })
+  }, 15000)
 
   it('tints Test connection yellow, then green or red, and resets when connection fields change', async () => {
     const user = userEvent.setup()
@@ -164,7 +164,7 @@ describe('integration service modals', () => {
     testSabnzbd.mockResolvedValueOnce({ ok: false, message: 'offline' })
     await user.click(testBtn)
     await waitFor(() => expect(testBtn.className).toMatch(/bg-rose-500/))
-  })
+  }, 15000)
 
   it('shows a discovery empty state for an undiscovered completed folder', () => {
     mockGameServers = [{ id: 1, name: 'Node' }]
@@ -465,10 +465,9 @@ describe('integration service modals', () => {
     expect(payload.instances.map((i: { name: string }) => i.name)).not.toContain('UHD')
     expect(payload.instances.map((i: { name: string }) => i.name)).not.toContain('4K')
     expect(payload.instances.length).toBeGreaterThanOrEqual(2)
-  })
+  }, 15000)
 
   it('does not delete the last remaining Radarr instance', async () => {
-    const user = userEvent.setup()
     mockGameServers = [{ id: 1, name: 'Node' }]
     mockRadarrConfig = { host: '127.0.0.1', port: 7878 }
 

@@ -2022,6 +2022,11 @@ export function SettingsIntegrationsPage() {
 
           {nodesVisible && (
             <div id="nodes" className="scroll-mt-28 space-y-3">
+              <SectionHeader
+                icon={Server}
+                title="Connection nodes"
+                description="Manage SABnzbd, Prowlarr, Radarr, and Sonarr instances per node."
+              />
               {workerNodes.length > 0 ? (
                 workerNodes.map((node) => (
                   <NodeConnectionsGroup key={node.id} server={node} searchQuery={searchQuery} />

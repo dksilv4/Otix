@@ -5,7 +5,7 @@ export { getDesktopAPI, hasDesktopAPI, isDesktop, getDesktopPlatform, useDesktop
 export type { DesktopSettingsData, DesktopAPI, DesktopPlatformInfo } from './desktop'
 export { useSseStream } from './hooks'
 export type { UseSseStreamOptions } from './hooks'
-export { AuthProvider, useAuth, PageMetaProvider, usePageMeta, ThemeProvider, LogoPreferenceProvider, MotionPreferenceProvider, useMotionPreference, ShaderQualityProvider } from './providers'
+export { AuthProvider, useAuth, PageMetaProvider, usePageMeta, ThemeProvider, MotionPreferenceProvider, useMotionPreference, ShaderQualityProvider } from './providers'
 export { queryClient, persistOptions } from './query'
 export { router } from './router'
 export type { RouterContext } from './router'

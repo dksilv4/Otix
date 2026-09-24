@@ -61,6 +61,7 @@ export const MediaSection = memo(function MediaSection({
           title={title}
           viewAllLink={`/discover/${mediaType}/${listType}`}
           viewAllSearch={platform ? { platform } : undefined}
+          priority={eager}
         />
       )}
     </motion.section>

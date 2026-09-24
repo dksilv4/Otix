@@ -1,19 +1,26 @@
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react"
 import { Outlet, useLocation } from "@tanstack/react-router"
 import { NavShell } from "@navigation"
 import { TitleBar } from "./title-bar"
 import { XPToastContainer } from "@ui/atoms/xp-toast"
 import { ContextMenuProvider, ContextMenuPortal } from "@/features/_config/context-menu"
 import { CommandPaletteMount } from "@/features/hub"
-import { ActivityModule } from "@activity/components/organisms/activity-panel"
 import { PanelProvider } from "@activity/providers/panel-context"
 import { NotificationsProvider } from "@/features/notifications/providers/notifications-provider"
 import { CatalogStreamProvider } from "@/features/media/providers/catalog-stream-provider"
 import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permissions"
-import { PluginPermissionModal } from "@/features/plugins/components/organisms/plugin-permission-modal"
 import { useModal } from "@/lib/modals"
 import { useAuth } from "@/lib/providers/auth"
 import { useAutoClaimPendingServers } from "@/features/downloads/use-server-downloads"
+
+const ActivityModule = lazy(() =>
+  import("@activity/components/organisms/activity-panel").then((m) => ({ default: m.ActivityModule })),
+)
+const PluginPermissionModal = lazy(() =>
+  import("@/features/plugins/components/organisms/plugin-permission-modal").then((m) => ({
+    default: m.PluginPermissionModal,
+  })),
+)
 
 const PIN_KEY = "otix_player_pinned"
 
@@ -50,13 +57,15 @@ export function RootLayout() {
   useEffect(() => {
     if (currentRequest) {
       closeRef.current = openModal(
-        <PluginPermissionModal
-          request={currentRequest}
-          onAllowOnce={handleAllowOnce}
-          onAllowAlways={handleAllowAlways}
-          onDeny={handleDeny}
-          onClose={handleClose}
-        />,
+        <Suspense fallback={null}>
+          <PluginPermissionModal
+            request={currentRequest}
+            onAllowOnce={handleAllowOnce}
+            onAllowAlways={handleAllowAlways}
+            onDeny={handleDeny}
+            onClose={handleClose}
+          />
+        </Suspense>,
       )
     } else {
       closeRef.current?.()
@@ -82,7 +91,9 @@ export function RootLayout() {
             </NavShell>
 
             <XPToastContainer />
-            <ActivityModule open={isSidebarOpen} onClose={handleCloseSidebar} />
+            <Suspense fallback={null}>
+              <ActivityModule open={isSidebarOpen} onClose={handleCloseSidebar} />
+            </Suspense>
             </CatalogStreamProvider>
           </NotificationsProvider>
         </PanelProvider>

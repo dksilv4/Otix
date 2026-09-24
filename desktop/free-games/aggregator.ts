@@ -3,7 +3,7 @@
 // Discovers all "free-games-provider" plugins, collects their free games,
 // matches against Otix catalog via backend, deduplicates, and caches.
 
-import type { PluginManager } from '../plugins/manager'
+import type { PluginManager } from '../plugin-runtime/manager'
 import { getApiUrl } from '../config'
 
 // ── Types ──────────────────────────────────────────────────────────────

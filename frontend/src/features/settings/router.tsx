@@ -1,11 +1,18 @@
 import { lazy } from 'react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
-import { PluginSettingsPage } from '@/features/plugins/components/PluginSettingsPage'
-import { PluginSettingsTabRoute } from '@/features/plugins/components/PluginSettingsTabRoute'
 import type { PluginSettingsTab } from '@/features/_config/slots'
 import { DEFAULT_SETTINGS_SECTION, getLastSettingsSection, NAV_ITEMS } from './constants'
-import { SettingsLayout } from './pages/settings-layout'
+
+const SettingsLayout = lazy(() =>
+  import('./pages/settings-layout').then((m) => ({ default: m.SettingsLayout })),
+)
+const PluginSettingsPage = lazy(() =>
+  import('@/features/plugins/components/PluginSettingsPage').then((m) => ({ default: m.PluginSettingsPage })),
+)
+const PluginSettingsTabRoute = lazy(() =>
+  import('@/features/plugins/components/PluginSettingsTabRoute').then((m) => ({ default: m.PluginSettingsTabRoute })),
+)
 
 const SettingsProfilePage = lazy(() =>
   import('./pages/settings-profile-page').then((m) => ({ default: m.SettingsProfilePage })),
@@ -60,6 +67,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => rootRoute,
     path: '/settings',
     component: SettingsLayout,
+    loader: preload(() => import('./pages/settings-layout')),
     beforeLoad: ({ location }) => {
       const rest = location.pathname.replace(/^\/settings\/?/, '')
       if (!rest) {
@@ -214,6 +222,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       getParentRoute: () => settingsRoute,
       path: tab.path.replace('/settings/', ''),
       component: () => <PluginSettingsPage tab={tab} />,
+      loader: preload(() => import('@/features/plugins/components/PluginSettingsPage')),
     }),
   )
 
@@ -221,6 +230,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '$tabId',
     component: PluginSettingsTabRoute,
+    loader: preload(() => import('@/features/plugins/components/PluginSettingsTabRoute')),
   })
 
   return [

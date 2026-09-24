@@ -27,6 +27,7 @@ export default defineConfig({
       '@people': path.resolve(__dirname, 'src/features/people'),
       '@company': path.resolve(__dirname, 'src/features/company'),
       '@user': path.resolve(__dirname, 'src/features/user'),
+      '@genre': path.resolve(__dirname, 'src/features/genre'),
       '@desktop': path.resolve(__dirname, '../desktop'),
     },
   },

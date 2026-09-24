@@ -1,5 +1,4 @@
-# Otix — local dev Makefile (Django backend in ./backend, legacy FastAPI tree
-# is retired at ./old-backend and has no targets here).
+# Otix — local dev Makefile (Django backend in ./backend).
 #
 # Compose targets talk to the dev stack in docker-compose.yml (db on :5433,
 # redis on :6380, api on :8000). Code checks (lint/test/parity) run on the host
@@ -19,7 +18,7 @@ help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-16s %s\n", $$1, $$2}'
 
 # ── Full dev lifecycle (one terminal) ────────────────────────────────────
-dev: ## Run all services (backend, arr, storage server, frontend) in one terminal
+dev: ## Run all services (backend, arr, otix node, frontend) in one terminal
 	powershell -ExecutionPolicy Bypass -File ./run.ps1
 
 run: dev

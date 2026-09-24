@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { resolveConfigWrite } from '../../plugins/config-write'
-import type { PluginConfigField } from '../../plugins/types'
+import { resolveConfigWrite } from '../../plugin-runtime/config-write'
+import type { PluginConfigField } from '../../plugin-runtime/types'
 
 const schema: Record<string, PluginConfigField> = {
   host: { type: 'string', label: 'Host' },

@@ -1,6 +1,6 @@
-﻿<#
+<#
 .SYNOPSIS
-    Runs the entire Otix stack (Frontend, Backend, Storage Server, and DB/Redis) in Docker with hot reload.
+    Runs the entire Otix stack (Frontend, Backend, Otix Node, and DB/Redis) in Docker with hot reload.
 .PARAMETER DownOnExit
     Automatically stop Docker containers when exiting.
 #>
@@ -42,15 +42,15 @@ Write-Host ""
 Write-Host "[2/2] All Services Running with Hot Reload:" -ForegroundColor Yellow
 Write-Host "  - Frontend (Vite HMR):   http://localhost:5173" -ForegroundColor Green
 Write-Host "  - Backend API:           http://localhost:8000" -ForegroundColor Green
-Write-Host "  - Storage Server:        http://localhost:8090" -ForegroundColor Green
+Write-Host "  - Otix Node:             http://localhost:8090" -ForegroundColor Green
 Write-Host "  - PostgreSQL:            localhost:5433" -ForegroundColor Green
 Write-Host "  - Redis:                 localhost:6380" -ForegroundColor Green
 Write-Host ""
-Write-Host "Streaming logs (frontend, api, storage-server)... Press Ctrl+C to stop following logs." -ForegroundColor DarkGray
+Write-Host "Streaming logs (frontend, api, node)... Press Ctrl+C to stop following logs." -ForegroundColor DarkGray
 Write-Host ""
 
 try {
-    docker compose logs -f frontend storage-server api
+    docker compose logs -f frontend node api
 } finally {
     Write-Host ""
     if ($DownOnExit) {
@@ -62,3 +62,4 @@ try {
         Write-Host "To stop them anytime, run: docker compose down" -ForegroundColor DarkGray
     }
 }
+

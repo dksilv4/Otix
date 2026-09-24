@@ -47,6 +47,8 @@ interface DkMediaCardProps {
   artistName?: string | null
   /** Render as a plain card (no detail link / prefetch) — for items without a backend detail page. */
   interactive?: boolean
+  /** Prioritize image loading for above-the-fold cards. */
+  priority?: boolean
 }
 
 const DkMediaCard = memo(function DkMediaCard({
@@ -72,6 +74,7 @@ const DkMediaCard = memo(function DkMediaCard({
   subtitleColor,
   artistName,
   interactive = true,
+  priority = false,
 }: DkMediaCardProps) {
   const year = releaseDate?.slice(0, 4)
   const params = useMemo(() => ({ mediaType, mediaId: id }), [mediaType, id])
@@ -122,6 +125,7 @@ const DkMediaCard = memo(function DkMediaCard({
           className="h-full w-full"
           style={position ? { objectPosition: `${position.x}% ${position.y}%` } : undefined}
           fallback={title[0]}
+          priority={priority}
         />
       </div>
 

@@ -1,5 +1,4 @@
-# Otix — production compose file (Django backend; legacy FastAPI stack is
-# retired to old-backend/ and no longer built here).
+# Otix — production compose file (Django backend only).
 x-otix-env: &otix-env
   # ── Django run env (config/settings.prod; fails fast without SECRET_KEY /
   # ALLOWED_HOSTS) ──

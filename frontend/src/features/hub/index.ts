@@ -1,5 +1,4 @@
 export { CommandPaletteMount } from './components/command-palette-mount'
-export { CommandPalette } from './components/organisms/command-palette'
 export { useCommandPalette } from './hooks/use-command-palette'
 export { registerHubProvider, getHubProviders, getHubProvider, clearHubProviders } from './registry'
 export { getDefaultHubProviders, createNavigationProvider, createMediaProvider, createLauncherProvider } from './providers'

@@ -18,13 +18,13 @@ PENDING_TTL = 600
 
 
 def contact_urls(stored_url: str) -> list[str]:
-    """URLs to try when the API talks to an otix-server node.
+    """URLs to try when the API talks to an otix node.
 
     Browsers can reach ``http://127.0.0.1:8090`` on the host; the Django API
     inside Docker cannot. When ``OTIX_SERVER_DOCKER_HOST`` is set (compose
-    uses ``storage-server``), loopback URLs are also tried on that hostname
+    uses ``node``), loopback URLs are also tried on that hostname
     and on ``host.docker.internal`` so a host-entered localhost URL still
-    probes the published storage node.
+    probes the published node.
     """
     base = (stored_url or "").rstrip("/")
     if not base:
@@ -205,7 +205,9 @@ def _normalized_url_keys(local_url: str | None, remote_url: str | None) -> set[s
     return keys
 
 
-def server_match_keys(local_url: str | None, remote_url: str | None, auth_token: str | None) -> set[str]:
+def server_match_keys(
+    local_url: str | None, remote_url: str | None, auth_token: str | None
+) -> set[str]:
     """Identity keys used to treat two UserGameServer rows as the same node."""
     keys = {f"url:{key}" for key in _normalized_url_keys(local_url, remote_url)}
     token = (auth_token or "").strip()
@@ -234,7 +236,9 @@ def _merge_game_server_into(keeper: UserGameServer, extra: UserGameServer) -> No
     if extra.is_online and not keeper.is_online:
         keeper.is_online = True
         fields.append("is_online")
-    if extra.last_seen_at and (keeper.last_seen_at is None or extra.last_seen_at > keeper.last_seen_at):
+    if extra.last_seen_at and (
+        keeper.last_seen_at is None or extra.last_seen_at > keeper.last_seen_at
+    ):
         keeper.last_seen_at = extra.last_seen_at
         fields.append("last_seen_at")
     if fields:
@@ -449,7 +453,9 @@ def explorer_create_folder(
 # ── Usenet (SABnzbd & Prowlarr) Operations ──────────────────────────────
 
 
-def usenet_get_config(server: UserGameServer, include_secrets: bool = False) -> tuple[int, dict | list]:
+def usenet_get_config(
+    server: UserGameServer, include_secrets: bool = False
+) -> tuple[int, dict | list]:
     params = {"include_secrets": True} if include_secrets else None
     return usenet_proxy_request(server, "GET", "/api/v1/usenet/config", params=params)
 
@@ -609,7 +615,9 @@ def _instance_params(params: dict | None, instance_id: str | None) -> dict | Non
     return params
 
 
-def radarr_get_config(server: UserGameServer, include_secrets: bool = False) -> tuple[int, dict | list]:
+def radarr_get_config(
+    server: UserGameServer, include_secrets: bool = False
+) -> tuple[int, dict | list]:
     params = {"include_secrets": True} if include_secrets else None
     return usenet_proxy_request(server, "GET", "/api/v1/radarr/config", params=params, timeout=6.0)
 
@@ -714,7 +722,9 @@ def radarr_get_history(
 # ── Sonarr Operations ───────────────────────────────────────────────────
 
 
-def sonarr_get_config(server: UserGameServer, include_secrets: bool = False) -> tuple[int, dict | list]:
+def sonarr_get_config(
+    server: UserGameServer, include_secrets: bool = False
+) -> tuple[int, dict | list]:
     params = {"include_secrets": True} if include_secrets else None
     return usenet_proxy_request(server, "GET", "/api/v1/sonarr/config", params=params, timeout=6.0)
 

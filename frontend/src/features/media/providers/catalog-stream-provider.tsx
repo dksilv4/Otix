@@ -58,6 +58,7 @@ export function CatalogStreamProvider({ children }: CatalogStreamProviderProps) 
     onMessage: handleMessage,
     enabled: isAuthenticated,
     reconnectDelays: [3000, 10000, 30000],
+    initialDelayMs: 2000,
   })
 
   return <>{children}</>

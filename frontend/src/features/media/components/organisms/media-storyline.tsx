@@ -127,9 +127,9 @@ export function MediaStoryline({ detail, mediaType, className = '' }: MediaStory
           {genres.map((g) => (
             <Link
               key={g.id}
-              to="/browse/$type"
-              params={{ type: mediaType }}
-              search={{ genre: g.slug }}
+              to="/genre/$genreId"
+              params={{ genreId: g.slug }}
+              search={{ type: mediaType }}
               className="glass-inset px-3 py-1.5 text-xs font-medium text-foreground hover:text-primary hover:bg-white/[0.08] transition-all rounded-full"
             >
               {g.name}

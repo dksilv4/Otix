@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   validateConfig,
   validateConfigValue,
-} from '../../plugins/config-validation'
-import type { PluginConfigField, PluginManifest } from '../../plugins/types'
+} from '../../plugin-runtime/config-validation'
+import type { PluginConfigField, PluginManifest } from '../../plugin-runtime/types'
 
 function field(partial: Partial<PluginConfigField> & { type: PluginConfigField['type'] }): PluginConfigField {
   return { label: partial.type, ...partial } as PluginConfigField

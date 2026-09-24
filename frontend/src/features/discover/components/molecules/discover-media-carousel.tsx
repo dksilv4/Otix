@@ -10,6 +10,7 @@ interface MediaCarouselProps {
   title?: string
   viewAllLink?: string
   viewAllSearch?: Record<string, any>
+  priority?: boolean
 }
 
 export const MediaCarousel = memo(function MediaCarousel({
@@ -19,6 +20,7 @@ export const MediaCarousel = memo(function MediaCarousel({
   title,
   viewAllLink,
   viewAllSearch,
+  priority = false,
 }: MediaCarouselProps) {
   return (
     <Carousel
@@ -31,8 +33,8 @@ export const MediaCarousel = memo(function MediaCarousel({
       viewAllLink={viewAllLink}
       viewAllSearch={viewAllSearch}
     >
-      {(Array.isArray(items) ? items.filter((item) => item && item.id) : []).map((item) => (
-        <DiscoverMediaCard key={item.id} item={item} />
+      {(Array.isArray(items) ? items.filter((item) => item && item.id) : []).map((item, index) => (
+        <DiscoverMediaCard key={item.id} item={item} priority={priority && index < 4} />
       ))}
     </Carousel>
   )

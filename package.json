@@ -9,7 +9,9 @@
     "package:frontend": "npm --prefix frontend run package:dist",
     "build:images": "make build-images",
     "prod:up": "make prod-up",
-    "prod:down": "make prod-down"
+    "prod:down": "make prod-down",
+    "test:desktop": "npm test --prefix desktop",
+    "test:frontend": "npm test --prefix frontend"
   },
   "dependencies": {
     "headroom-ai": "^0.22.4",

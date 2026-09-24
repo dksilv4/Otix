@@ -37,7 +37,7 @@ vi.mock('../../free-games/aggregator', () => ({
   FreeGamesAggregator: vi.fn(),
 }))
 
-import { PluginManager } from '../../plugins/manager'
+import { PluginManager } from '../../plugin-runtime/manager'
 
 const validManifest = {
   name: 'demo',

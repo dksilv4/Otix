@@ -3,6 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { DiscoverHero } from './discover-hero'
 import { MediaSection } from './discover-media-section'
 import { TrendingSeasonsSection } from './trending-seasons-section'
+import { DiscoverGenresSection } from './discover-genres-section'
 import { FreeGamesSection } from './free-games-section'
 import { discoverQueries } from '../../queries/discover-queries'
 
@@ -58,6 +59,7 @@ export function DiscoverFeed() {
             />
           ))}
           <TrendingSeasonsSection eager />
+          <DiscoverGenresSection />
           {hasFeedContent && (
             <>
               {DEFERRED_RAILS.map((rail) => (

@@ -87,10 +87,8 @@ describe('EpicCodeModal', () => {
     render(<EpicCodeModal {...defaultProps} />)
 
     const textarea = screen.getByLabelText(/Authorization code/i)
-    await user.type(
-      textarea,
-      'https://www.epicgames.com/id/api/redirect?code=url-code-456'
-    )
+    await user.click(textarea)
+    await user.paste('https://www.epicgames.com/id/api/redirect?code=url-code-456')
 
     const submitButton = screen.getByRole('button', { name: /Link account/i })
     await user.click(submitButton)

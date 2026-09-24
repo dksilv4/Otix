@@ -163,7 +163,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'SABnzbd' })).toBeInTheDocument()
-      expect(screen.getByText('No Game Server Connected')).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByText(/On Otix backend/i)).toBeInTheDocument()
     })
   })
 
@@ -181,7 +181,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
 
     await waitFor(() => {
       expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Prowlarr' })).toBeInTheDocument()
-      expect(screen.getByText('No Game Server Connected')).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByText(/On Otix backend/i)).toBeInTheDocument()
     })
   })
 
@@ -199,7 +199,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
 
     await waitFor(() => {
       expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Radarr' })).toBeInTheDocument()
-      expect(screen.getByText('No Game Server Connected')).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByText(/On Otix backend/i)).toBeInTheDocument()
     })
   })
 
@@ -217,7 +217,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
 
     await waitFor(() => {
       expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Sonarr' })).toBeInTheDocument()
-      expect(screen.getByText('No Game Server Connected')).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByText(/On Otix backend/i)).toBeInTheDocument()
     })
   })
 
@@ -229,10 +229,11 @@ describe('Settings Integrations Modals Regression Tests', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('SABnzbd')).toBeInTheDocument()
+      expect(screen.getByText('Homelab Alpha')).toBeInTheDocument()
     })
 
-    const card = screen.getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
+    const serverSection = screen.getByText('Homelab Alpha').closest('.overflow-hidden') as HTMLElement
+    const card = within(serverSection).getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
     const connectBtn = within(card).getByRole('button', { name: /connect/i })
     await user.click(connectBtn)
 
@@ -260,11 +261,11 @@ describe('Settings Integrations Modals Regression Tests', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('SABnzbd')).toBeInTheDocument()
+      expect(screen.getByText('Main Server')).toBeInTheDocument()
     })
 
-    // Click on SABnzbd card header to expand it
-    const sabnzbdCard = screen.getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
+    const serverSection = screen.getByText('Main Server').closest('.overflow-hidden') as HTMLElement
+    const sabnzbdCard = within(serverSection).getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
     const sabHeader = within(sabnzbdCard).getByRole('button')
     await user.click(sabHeader)
 
@@ -291,10 +292,11 @@ describe('Settings Integrations Modals Regression Tests', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('Prowlarr')).toBeInTheDocument()
+      expect(screen.getByText('Main Server')).toBeInTheDocument()
     })
 
-    const prowlarrCard = screen.getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
+    const serverSection = screen.getByText('Main Server').closest('.overflow-hidden') as HTMLElement
+    const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
     await user.click(within(prowlarrCard).getByRole('button'))
 
     const protocolGroup = await within(prowlarrCard).findByRole('group', { name: /Protocol/i }) as HTMLElement
@@ -324,11 +326,13 @@ describe('Settings Integrations Modals Regression Tests', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('Radarr')).toBeInTheDocument()
+      expect(screen.getByText('Otix Node One')).toBeInTheDocument()
     })
 
+    const serverSection = screen.getByText('Otix Node One').closest('.overflow-hidden') as HTMLElement
+
     // Test Radarr modal with server connected
-    const radarrCard = screen.getByText('Radarr').closest('.rounded-2xl') as HTMLElement
+    const radarrCard = within(serverSection).getByText('Radarr').closest('.rounded-2xl') as HTMLElement
     const radarrConnectBtn = within(radarrCard).getByRole('button', { name: /connect/i })
     await user.click(radarrConnectBtn)
 
@@ -344,7 +348,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     })
 
     // Test Sonarr modal with server connected
-    const sonarrCard = screen.getByText('Sonarr').closest('.rounded-2xl') as HTMLElement
+    const sonarrCard = within(serverSection).getByText('Sonarr').closest('.rounded-2xl') as HTMLElement
     const sonarrConnectBtn = within(sonarrCard).getByRole('button', { name: /connect/i })
     await user.click(sonarrConnectBtn)
 
@@ -360,7 +364,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     })
 
     // Test Prowlarr modal with server connected
-    const prowlarrCard = screen.getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
+    const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
     const prowlarrConnectBtn = within(prowlarrCard).getByRole('button', { name: /connect/i })
     await user.click(prowlarrConnectBtn)
 

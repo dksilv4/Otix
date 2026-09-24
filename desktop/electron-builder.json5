@@ -27,7 +27,7 @@
       "filter": ["**/*"]
     },
     {
-      "from": "../extensions/otix-plugins/plugins",
+      "from": "../extensions/plugins",
       "to": "plugins",
       "filter": ["**/*"]
     },

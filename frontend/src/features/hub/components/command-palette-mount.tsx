@@ -1,10 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { useFeature } from '@/features/_config'
 import { registerHubProvider } from '../registry'
 import { getDefaultHubProviders } from '../providers'
 import { useCommandPalette } from '../hooks/use-command-palette'
-import { CommandPalette } from './organisms/command-palette'
+
+const CommandPalette = lazy(() =>
+  import('./organisms/command-palette').then((m) => ({ default: m.CommandPalette })),
+)
 
 /**
  * Single global mount for the command palette. Renders the Cmd+K listener,
@@ -14,16 +17,25 @@ import { CommandPalette } from './organisms/command-palette'
 export function CommandPaletteMount() {
   const enabled = useFeature('hub')
   const palette = useCommandPalette()
+  const [hasOpened, setHasOpened] = useState(false)
+
+  useEffect(() => {
+    if (palette.isOpen) {
+      setHasOpened(true)
+    }
+  }, [palette.isOpen])
 
   useEffect(() => {
     const unregisters = getDefaultHubProviders().map(registerHubProvider)
     return () => unregisters.forEach((unregister) => unregister())
   }, [])
 
-  if (!enabled) return null
+  if (!enabled || (!hasOpened && !palette.isOpen)) return null
 
   return createPortal(
-    <CommandPalette isOpen={palette.isOpen} onClose={palette.close} />,
+    <Suspense fallback={null}>
+      <CommandPalette isOpen={palette.isOpen} onClose={palette.close} />
+    </Suspense>,
     document.body,
   )
 }

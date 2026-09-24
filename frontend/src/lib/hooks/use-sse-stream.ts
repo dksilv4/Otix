@@ -26,10 +26,12 @@ export interface UseSseStreamOptions {
   enabled?: boolean
   /** Reconnection delays in ms. Defaults to [3s, 10s, 30s, 60s]. */
   reconnectDelays?: number[]
+  /** Optional delay in ms before initial connection to avoid competing with page load. */
+  initialDelayMs?: number
 }
 
 export function useSseStream(options: UseSseStreamOptions) {
-  const { url, onMessage, enabled = true, reconnectDelays = DEFAULT_RECONNECT_DELAYS } = options
+  const { url, onMessage, enabled = true, reconnectDelays = DEFAULT_RECONNECT_DELAYS, initialDelayMs } = options
 
   const abortRef = useRef<AbortController | null>(null)
   const reconnectAttemptRef = useRef(0)
@@ -38,7 +40,9 @@ export function useSseStream(options: UseSseStreamOptions) {
   const onMessageRef = useRef(onMessage)
 
   // Keep the callback ref fresh without triggering reconnects
-  onMessageRef.current = onMessage
+  useEffect(() => {
+    onMessageRef.current = onMessage
+  })
 
   const cleanup = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -106,10 +110,20 @@ export function useSseStream(options: UseSseStreamOptions) {
       return
     }
 
+    if (initialDelayMs && initialDelayMs > 0) {
+      const timer = setTimeout(() => {
+        connect()
+      }, initialDelayMs)
+      return () => {
+        clearTimeout(timer)
+        cleanup()
+      }
+    }
+
     connect()
 
     return () => {
       cleanup()
     }
-  }, [enabled, connect, cleanup])
+  }, [enabled, connect, cleanup, initialDelayMs])
 }

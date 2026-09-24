@@ -10,6 +10,7 @@ interface DiscoverMediaCardProps {
   showTypeBadge?: boolean
   subtitle?: string | null
   className?: string
+  priority?: boolean
 }
 
 export const DiscoverMediaCard = memo(function DiscoverMediaCard({
@@ -17,6 +18,7 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({
   showTypeBadge = true,
   subtitle,
   className,
+  priority = false,
 }: DiscoverMediaCardProps) {
   const navigate = useNavigate()
 
@@ -61,6 +63,7 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({
         subtitle={subtitle}
         artistName={item.albumArtistName}
         className={className}
+        priority={priority}
       />
     </ContextMenuTrigger>
   )

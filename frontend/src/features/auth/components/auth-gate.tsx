@@ -31,7 +31,6 @@ export function AuthGate({ children }: AuthGateProps) {
       <div className="flex flex-col items-center gap-6">
         <Logo
           className="h-16 animate-pulse opacity-90"
-          variant="infinity"
         />
 
         {/* Three-dot pulse indicator */}

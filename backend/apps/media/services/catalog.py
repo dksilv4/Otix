@@ -360,7 +360,13 @@ def list_media(
         if media_type == "movie":
             qs = qs.select_related("movie")
     if genre:
-        qs = qs.filter(media_genres__genre__slug=genre)
+        genre_str = str(genre).strip()
+        if genre_str.isdigit():
+            qs = qs.filter(
+                Q(media_genres__genre__slug=genre_str) | Q(media_genres__genre_id=int(genre_str))
+            )
+        else:
+            qs = qs.filter(media_genres__genre__slug=genre_str)
     if company:
         qs = qs.filter(involved_companies__company_id=company)
     if platform:

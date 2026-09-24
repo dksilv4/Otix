@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   PluginError, PluginNotFoundError, SlotError, SlotRenderError, SlotSuspendedError,
   PermissionError, PermissionDeniedError, DatabaseError, MigrationError,
-} from '../../plugins/errors'
+} from '../../plugin-runtime/errors'
 
 describe('Error hierarchy', () => {
   it('PluginNotFoundError is instanceof PluginError', () => {

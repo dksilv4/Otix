@@ -9,7 +9,6 @@ import { router } from '@/lib/router'
 import { ShaderQualityProvider } from '@/lib/providers/shader-quality'
 import { MotionPreferenceProvider } from '@/lib/providers/motion-preference'
 import { ThemeProvider } from '@/lib/providers/theme'
-import { LogoPreferenceProvider } from '@/lib/providers/logo-preference'
 import { AuthProvider } from '@/features/auth/providers/auth-provider'
 import { AuthRouterBridge } from '@/features/auth/components/auth-router-bridge'
 import { AuthGate } from '@/features/auth/components/auth-gate'
@@ -66,8 +65,7 @@ createRoot(document.getElementById('root')!).render(
         <ShaderQualityProvider>
           <MotionPreferenceProvider>
             <ThemeProvider>
-              <LogoPreferenceProvider>
-                <FeatureProvider>
+              <FeatureProvider>
                 <AuthProvider>
                   <AuthRouterBridge />
                   <AuthGate>
@@ -85,9 +83,8 @@ createRoot(document.getElementById('root')!).render(
                       </PlexAudioProvider>
                     </DkToastProvider>
                   </AuthGate>
-              </AuthProvider>
+                </AuthProvider>
               </FeatureProvider>
-              </LogoPreferenceProvider>
             </ThemeProvider>
           </MotionPreferenceProvider>
         </ShaderQualityProvider>

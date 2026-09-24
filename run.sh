@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -e
 
 echo ""
@@ -24,11 +24,11 @@ echo ""
 echo "[2/2] All Services Running with Hot Reload:"
 echo "  - Frontend (Vite HMR):   http://localhost:5173"
 echo "  - Backend API:           http://localhost:8000"
-echo "  - Storage Server:        http://localhost:8090"
+echo "  - Otix Node:             http://localhost:8090"
 echo "  - PostgreSQL:            localhost:5433"
 echo "  - Redis:                 localhost:6380"
 echo ""
-echo "Streaming logs (frontend, api, storage-server)... Press Ctrl+C to stop following logs."
+echo "Streaming logs (frontend, api, node)... Press Ctrl+C to stop following logs."
 echo ""
 
 cleanup() {
@@ -38,4 +38,5 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-docker compose logs -f frontend storage-server api
+docker compose logs -f frontend node api
+

@@ -6,9 +6,11 @@ interface DkImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallback?: ReactNode
   /** Extra classes merged onto the underlying <img> (defaults to a cover fill). */
   imgClassName?: string
+  /** Set to true for above-the-fold images to avoid lazy loading delay. */
+  priority?: boolean
 }
 
-function DkImage({ src, className, alt, fallback, imgClassName, onError, onLoad, ...props }: DkImageProps) {
+function DkImage({ src, className, alt, fallback, imgClassName, onError, onLoad, priority = false, ...props }: DkImageProps) {
   if (!src) {
     return (
       <div className={cn('flex items-center justify-center bg-muted text-xs text-muted-foreground', className)}>
@@ -28,13 +30,14 @@ function DkImage({ src, className, alt, fallback, imgClassName, onError, onLoad,
         imgClassName={imgClassName}
         onError={onError}
         onLoad={onLoad}
+        priority={priority}
         {...props}
       />
     </div>
   )
 }
 
-function DkImageInner({ src, alt, fallback, imgClassName, onError, onLoad, ...props }: DkImageProps) {
+function DkImageInner({ src, alt, fallback, imgClassName, onError, onLoad, priority = false, ...props }: DkImageProps) {
   const imgRef = useRef<HTMLImageElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -60,7 +63,8 @@ function DkImageInner({ src, alt, fallback, imgClassName, onError, onLoad, ...pr
     <>
       {isLoading && <DkSkeleton className="absolute inset-0 rounded-none" />}
       <img
-        loading="lazy"
+        loading={priority ? 'eager' : (props.loading ?? 'lazy')}
+        fetchPriority={priority ? 'high' : (props.fetchPriority ?? 'auto')}
         decoding="async"
         referrerPolicy={props.referrerPolicy ?? 'no-referrer'}
         {...props}

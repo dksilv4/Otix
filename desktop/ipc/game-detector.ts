@@ -2,7 +2,7 @@ import { ipcMain, shell } from 'electron';
 import { spawn } from 'child_process';
 import path from 'path';
 import { GameDetector } from '../game/detector';
-import type { PluginManager } from '../plugins/manager';
+import type { PluginManager } from '../plugin-runtime/manager';
 import type { LocalGame } from '../preload-api';
 
 export function registerGameDetectorIPC(

@@ -2,8 +2,7 @@ export { SlotRenderer } from './slot-renderer'
 export { ErrorBoundary } from './error-boundary'
 export { ErrorCard } from './error-card'
 export { validateWidget, isContainerWidget, getWidgetDisplayName } from './widget-catalog'
-export { useSlotData } from './useSlotData'
-export { usePluginTabs } from './usePluginTabs'
+export { useSlotData, usePluginTabs } from './hooks'
 export type {
   SlotWidget,
   SlotRenderResult,

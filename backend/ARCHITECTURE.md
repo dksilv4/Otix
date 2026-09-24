@@ -19,7 +19,7 @@ and conventional and update this file. Do not invent a parallel structure.
   machinery (cut that over with the production wave).
 - All new work lives **only** under `backend/`; never edit `../old-backend` or
   add Django code elsewhere in the repo.
-- Decision/design background: `../docs/superpowers/specs/2026-09-04-django-brain-rewrite-design.md`.
+- Decision/design background: `../docs/specs/2026-09-04-django-brain-rewrite-design.md`.
 
 ## 2. Canonical layout (and why)
 
@@ -103,7 +103,7 @@ apps/<domain>/
 The legacy FastAPI API is the source of truth for the eventual surface:
 **~263 routes** under `/api/v1` and **~86 model tables**. A full inventory and
 the reconciliation strategy live in
-`../docs/superpowers/specs/2026-09-04-django-brain-rewrite-design.md`. Planned
+`../docs/specs/2026-09-04-django-brain-rewrite-design.md`. Planned
 apps (one per domain), not all implemented yet — do **not** create empty
 installed apps; scaffold an app when its first real model/endpoint lands:
 

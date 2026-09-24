@@ -11,7 +11,7 @@ from django.urls import include, path
 
 from apps.accounts.views import UploadFileView
 from apps.library.views import GameServerHeartbeatView
-from apps.media.views import AssetFileView
+from apps.media.views import AssetFileView, MediaListView
 from apps.search.views import SearchView
 
 
@@ -38,6 +38,7 @@ urlpatterns = [
         "api/v1/servers/heartbeat", GameServerHeartbeatView.as_view(), name="game-server-heartbeat"
     ),
     path("api/v1/library/", include("apps.library.urls")),
+    path("api/v1/media", MediaListView.as_view(), name="media-root"),
     path("api/v1/media/", include("apps.media.urls")),
     path("api/v1/discover/", include("apps.discover.urls")),
     path("api/v1/calendar", include("apps.media.calendar_urls")),
@@ -53,7 +54,7 @@ urlpatterns = [
     path("api/v1/fetch/", include("apps.integrations.fetch_urls")),
     path("api/v1/proposals/", include("apps.proposals.urls")),
     path("api/v1/admin/", include("apps.proposals.admin_urls")),
-    path("api/v1/plugins/", include("plugins.urls")),
+    path("api/v1/plugins/", include("plugin_framework.urls")),
     path("api/v1/upload", UploadFileView.as_view(), name="upload"),
     path("api/v1/assets/<str:name>", AssetFileView.as_view(), name="asset-file"),
     path("api/v1/health", health, name="health"),

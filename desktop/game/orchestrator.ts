@@ -1,7 +1,7 @@
 import http from 'http';
 import { URL } from 'url';
 import { EventEmitter } from 'events';
-import type { PluginManager } from '../plugins/manager';
+import type { PluginManager } from '../plugin-runtime/manager';
 import { getApiBaseUrl } from '../config';
 import {
   getGameMatch,

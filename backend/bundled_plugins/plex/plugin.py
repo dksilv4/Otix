@@ -12,7 +12,7 @@ application/json``; the token rides the standard ``X-Plex-Token`` header.
 
 from __future__ import annotations
 
-from plugins.base import Plugin, PluginError
+from plugin_framework.base import Plugin, PluginError
 
 
 def _headers(token: str | None) -> dict:

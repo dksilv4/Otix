@@ -17,6 +17,7 @@ import { createPeopleRoutes } from '@people/router'
 import { createCharacterRoutes } from '@/features/character/router'
 import { createCompanyRoutes } from '@company/router'
 import { createNotificationRoutes } from '@/features/notifications/router'
+import { createGenreRoutes } from '@genre/router'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -29,6 +30,7 @@ const routeTree = rootRoute.addChildren([
   ...createDiscoverRoutes(rootRoute),
   ...createSearchRoutes(rootRoute),
   ...createMediaRoutes(rootRoute),
+  ...createGenreRoutes(rootRoute),
   ...createLauncherRoutes(rootRoute),
   ...createLibraryRoutes(rootRoute),
   ...createSettingsRoutes(rootRoute, []),

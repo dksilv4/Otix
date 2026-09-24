@@ -1,4 +1,4 @@
-"""Reachability of otix-server from the API process (Docker vs host URLs)."""
+"""Reachability of the otix node from the API process (Docker vs host URLs)."""
 
 import os
 from unittest import mock
@@ -15,15 +15,15 @@ User = get_user_model()
 
 class ContactUrlTests(SimpleTestCase):
     def test_loopback_is_rewritten_when_docker_host_is_set(self):
-        with mock.patch.dict(os.environ, {"OTIX_SERVER_DOCKER_HOST": "storage-server"}):
+        with mock.patch.dict(os.environ, {"OTIX_SERVER_DOCKER_HOST": "node"}):
             urls = contact_urls("http://127.0.0.1:8090")
-        self.assertEqual(urls[0], "http://storage-server:8090")
+        self.assertEqual(urls[0], "http://node:8090")
         self.assertIn("http://127.0.0.1:8090", urls)
 
     def test_localhost_is_rewritten_the_same_way(self):
-        with mock.patch.dict(os.environ, {"OTIX_SERVER_DOCKER_HOST": "storage-server"}):
+        with mock.patch.dict(os.environ, {"OTIX_SERVER_DOCKER_HOST": "node"}):
             urls = contact_urls("http://localhost:8090")
-        self.assertIn("http://storage-server:8090", urls)
+        self.assertIn("http://node:8090", urls)
 
     def test_lan_url_is_left_alone(self):
         urls = contact_urls("http://192.168.1.50:8090")
@@ -36,7 +36,7 @@ class PingLoopbackTests(TestCase):
             username="nas_user", email="nas@example.com", password="password123"
         )
 
-    @mock.patch.dict(os.environ, {"OTIX_SERVER_DOCKER_HOST": "storage-server"})
+    @mock.patch.dict(os.environ, {"OTIX_SERVER_DOCKER_HOST": "node"})
     @mock.patch("apps.library.services.game_server.httpx.Client")
     def test_ping_without_token_is_online_via_docker_hostname(self, mock_client_cls):
         server = UserGameServer.objects.create(
@@ -57,7 +57,7 @@ class PingLoopbackTests(TestCase):
         def get(url, headers=None):
             if "127.0.0.1" in url:
                 raise httpx.ConnectError("Connection refused")
-            self.assertEqual(url, "http://storage-server:8090/api/v1/status")
+            self.assertEqual(url, "http://node:8090/api/v1/status")
             self.assertFalse(headers)
             return ok
 

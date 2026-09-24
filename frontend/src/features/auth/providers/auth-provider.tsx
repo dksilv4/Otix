@@ -9,6 +9,30 @@ import { useDeepLink } from '@auth/hooks/use-deep-link'
 
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
 
+const CACHED_USER_KEY = 'otix_cached_user'
+
+function getCachedUser(): User | null {
+  try {
+    const raw = localStorage.getItem(CACHED_USER_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as User
+  } catch {
+    return null
+  }
+}
+
+function setCachedUser(user: User | null): void {
+  try {
+    if (user) {
+      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(user))
+    } else {
+      localStorage.removeItem(CACHED_USER_KEY)
+    }
+  } catch {
+    // Storage full or unavailable
+  }
+}
+
 async function fetchAuthenticatedUser(): Promise<User | null> {
   try {
     const [meRes, intRes] = await Promise.all([
@@ -17,10 +41,12 @@ async function fetchAuthenticatedUser(): Promise<User | null> {
     ])
     const user = meRes.data as User
     if (intRes?.data) Object.assign(user, intRes.data)
+    setCachedUser(user)
     return user
   } catch (error: unknown) {
     const status = (error as { response?: { status?: number } })?.response?.status
     if (status === 401 || status === 403) {
+      setCachedUser(null)
       localStorage.removeItem(ACCESS_TOKEN_KEY)
       window.desktopAPI?.plugin?.setAuthToken(null)
     }
@@ -29,8 +55,17 @@ async function fetchAuthenticatedUser(): Promise<User | null> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(() => !!localStorage.getItem(ACCESS_TOKEN_KEY))
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window === 'undefined') return null
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+    return token ? getCachedUser() : null
+  })
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+    if (!token) return false
+    return !getCachedUser()
+  })
   const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null)
 
   // Initialize auth state — runs once on mount
@@ -38,8 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem(ACCESS_TOKEN_KEY)
     if (!token) return
     window.desktopAPI?.plugin?.setAuthToken(token)
-    fetchAuthenticatedUser().then((user) => {
-      setUser(user)
+    fetchAuthenticatedUser().then((loadedUser) => {
+      setUser(loadedUser)
       setIsLoading(false)
     })
   }, [])
@@ -47,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handler = () => {
       setUser(null)
+      setCachedUser(null)
       localStorage.removeItem(ACCESS_TOKEN_KEY)
       window.desktopAPI?.plugin?.setAuthToken(null)
       queryClient.clear()
@@ -133,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // ignore errors during logout
     }
     localStorage.removeItem(ACCESS_TOKEN_KEY)
+    setCachedUser(null)
     window.desktopAPI?.plugin?.setAuthToken(null)
     setUser(null)
     setTwoFactorChallenge(null)
@@ -143,7 +180,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user])
 
   const refreshUser = useCallback(async () => {
-    setUser(await fetchAuthenticatedUser())
+    const loaded = await fetchAuthenticatedUser()
+    setUser(loaded)
   }, [])
 
   const contextValue = useMemo(() => ({

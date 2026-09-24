@@ -2,7 +2,7 @@ import { dialog, ipcMain } from 'electron';
 import * as gameService from '../game/storage';
 import type { LocalGame } from '../preload-api';
 import type { GameScanOrchestrator, ScannedGame } from '../game/orchestrator';
-import type { PluginManager } from '../plugins/manager';
+import type { PluginManager } from '../plugin-runtime/manager';
 import {
   batchCheckMatchCache,
   saveMatchCache,

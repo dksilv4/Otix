@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { PluginNotRunningError } from '../../plugins/errors'
+import { PluginNotRunningError } from '../../plugin-runtime/errors'
 
 // ── Hoisted shared mocks ──────────────────────────────────────
 
@@ -39,7 +39,7 @@ vi.mock('../../free-games/aggregator', () => ({
 
 // ── Import after mocks ────────────────────────────────────────
 
-import { PluginManager } from '../../plugins/manager'
+import { PluginManager } from '../../plugin-runtime/manager'
 
 describe('PluginManager lifecycle', () => {
   let manager: PluginManager

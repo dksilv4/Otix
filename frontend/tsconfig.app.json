@@ -45,6 +45,8 @@
       "@company": ["./src/features/company"],
       "@user/*": ["./src/features/user/*"],
       "@user": ["./src/features/user"],
+      "@genre/*": ["./src/features/genre/*"],
+      "@genre": ["./src/features/genre"],
       "@library/*": ["./src/features/library/*"],
       "@library": ["./src/features/library"],
       "@list/*": ["./src/features/list/*"],

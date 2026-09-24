@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Virtual envs
+.venv/
+venv/
+
+# Caches
+.pytest_cache/
+
+# Local storage and test data
+storage/downloads/
+storage/installers/
+storage/saves/
+storage/*.json
+
+# Local config overrides
+config.local.yaml

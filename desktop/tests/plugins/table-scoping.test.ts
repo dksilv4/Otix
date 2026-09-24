@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 // scoping logic under test never touches a real DB handle.
 vi.mock('better-sqlite3', () => ({ default: vi.fn() }))
 
-import { validateAndPrepareSql } from '../../plugins/worker-bridge'
+import { validateAndPrepareSql } from '../../plugin-runtime/worker-bridge'
 
 type Deps = Parameters<typeof validateAndPrepareSql>[2]
 

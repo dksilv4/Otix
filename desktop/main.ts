@@ -33,10 +33,10 @@ import { purgeOldDeletedDownloads } from './downloads';
 import { SaveDaemon } from './saves';
 import { registerSaveIPC } from './ipc/saves';
 import { populateKnownLocations } from './saves/export';
-import { PermissionManager } from './plugins/permissions';
-import { PluginManager } from './plugins/manager';
-import { eventBus } from './plugins/event-bus';
-import { registerPluginIPC, setPluginMainWebContents } from './plugins/ipc';
+import { PermissionManager } from './plugin-runtime/permissions';
+import { PluginManager } from './plugin-runtime/manager';
+import { eventBus } from './plugin-runtime/event-bus';
+import { registerPluginIPC, setPluginMainWebContents } from './plugin-runtime/ipc';
 import { wireOrchestratorEvents } from './ipc/plugins';
 import { GameScanOrchestrator } from './game/orchestrator'; import { FetchWorkerBridge } from './fetch/bridge';
 import { registerNotificationIPC } from './ipc/notifications';
@@ -218,6 +218,7 @@ function createWindow() {
     height: bounds.height,
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     title: 'Otix',
+    backgroundColor: '#0a0b1e',
     // macOS: hidden title bar keeps native traffic lights
     // Windows/Linux: fully frameless — we draw our own title bar
     titleBarStyle: isMac ? 'hidden' : 'default',
