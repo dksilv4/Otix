@@ -29,6 +29,15 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import httpx
 from PIL import Image
 
+# Ensure Windows terminal doesn't crash on Unicode characters or charmap encoding
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 
 class Colors:
     CYAN = "\033[96m"
@@ -858,9 +867,10 @@ class AdminComputeWorker:
         elapsed = time.time() - self.start_time
         mb_up = uploaded_bytes / (1024 * 1024)
         print(
-            f"{Colors.GREEN}[✓ Media #{mid} ({mtype})]{Colors.RESET} {Colors.BOLD}{title}{Colors.RESET} | "
+            f"{Colors.GREEN}[+ Media #{mid} ({mtype})]{Colors.RESET} {Colors.BOLD}{title}{Colors.RESET} | "
             f"Evaluated: {len(unmirrored)} -> {uploaded_count} winners ({Colors.CYAN}{saved_pct}% disk saved{Colors.RESET}) | "
-            f"{mb_up:.2f} MB{enrichment_summary}"
+            f"{mb_up:.2f} MB{enrichment_summary}",
+            flush=True,
         )
 
     def run(self):
@@ -870,7 +880,7 @@ class AdminComputeWorker:
         while self.running:
             media_jobs = self.claim_media_jobs()
             if not media_jobs:
-                print(f"{Colors.GRAY}[*] Queue empty or all media leased. Waiting 10s...{Colors.RESET}")
+                print(f"{Colors.GRAY}[*] Queue empty or all media leased. Waiting 10s...{Colors.RESET}", flush=True)
                 time.sleep(10)
                 continue
 
@@ -881,7 +891,7 @@ class AdminComputeWorker:
                     try:
                         f.result()
                     except Exception as exc:
-                        print(f"{Colors.RED}[!] Media error: {exc}{Colors.RESET}")
+                        print(f"{Colors.RED}[!] Media error: {exc}{Colors.RESET}", flush=True)
 
             # Telemetry Summary
             elapsed = time.time() - self.start_time
@@ -895,7 +905,8 @@ class AdminComputeWorker:
                 f"\n{Colors.CYAN}--- Progress: {self.total_media_processed} media items | "
                 f"{self.total_winners_uploaded}/{self.total_candidates_evaluated} assets uploaded "
                 f"({saved_total_pct}% storage saved) | {mb_total:.1f} MB uploaded | "
-                f"{self.total_enrichments} Wikidata enrichments | {media_rate:.2f} media/s ---{Colors.RESET}\n"
+                f"{self.total_enrichments} Wikidata enrichments | {media_rate:.2f} media/s ---{Colors.RESET}\n",
+                flush=True,
             )
 
 

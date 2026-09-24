@@ -88,7 +88,7 @@ class AdminComputeClaimView(APIView):
 
         batch_size = request.data.get("batch_size", 10)
         try:
-            batch_size = max(1, min(int(batch_size), 100))
+            batch_size = max(1, min(int(batch_size), 500))
         except (ValueError, TypeError):
             batch_size = 10
 
