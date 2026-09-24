@@ -576,6 +576,7 @@ class AdminComputeWorker:
         limits = httpx.Limits(max_keepalive_connections=64, max_connections=128, keepalive_expiry=30.0)
         self.http_client = httpx.Client(timeout=25.0, follow_redirects=True, limits=limits)
         self.wikidata = WikidataResolver()
+        self.auth_lock = threading.Lock()
 
     def authenticate(self, silent: bool = False):
         """Authenticates with the server and ensures the user is an admin."""
@@ -626,11 +627,22 @@ class AdminComputeWorker:
                     sys.exit(1)
                 print(f"{Colors.GREEN}[OK] Authenticated as admin '{username}'{Colors.RESET}")
 
+    def authenticated_request(self, method: str, url: str, **kwargs) -> httpx.Response:
+        """Executes an authenticated HTTP request, automatically refreshing tokens on 401."""
+        resp = self.http_client.request(method, url, **kwargs)
+        if resp.status_code == 401:
+            with self.auth_lock:
+                self.token = None
+                self.authenticate(silent=True)
+            resp = self.http_client.request(method, url, **kwargs)
+        return resp
+
     def claim_media_jobs(self) -> List[Dict[str, Any]]:
         """Claim a batch of candidate media items and their candidate artwork."""
         claim_url = f"{self.server_url}/api/v1/media/admin/compute/claim"
         try:
-            resp = self.http_client.post(
+            resp = self.authenticated_request(
+                "POST",
                 claim_url,
                 json={"batch_size": self.batch_size, "group_by_media": True},
             )
@@ -659,7 +671,8 @@ class AdminComputeWorker:
         if not payload:
             return
         try:
-            self.http_client.post(
+            self.authenticated_request(
+                "POST",
                 f"{self.server_url}/api/v1/media/admin/compute/release",
                 json=payload,
             )
@@ -801,7 +814,8 @@ class AdminComputeWorker:
             files = {"file": ("asset.webp", item["webp_bytes"], "image/webp")}
             data = {"asset_id": str(aid), "color_guess": item["theme_guess"]}
             try:
-                sub_resp = self.http_client.post(
+                sub_resp = self.authenticated_request(
+                    "POST",
                     f"{self.server_url}/api/v1/media/admin/compute/submit",
                     data=data,
                     files=files,
@@ -843,7 +857,8 @@ class AdminComputeWorker:
 
             if len(enrichment_payload) > 1:
                 try:
-                    e_resp = self.http_client.post(
+                    e_resp = self.authenticated_request(
+                        "POST",
                         f"{self.server_url}/api/v1/media/admin/compute/enrichment",
                         json=enrichment_payload,
                     )
