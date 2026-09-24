@@ -153,44 +153,56 @@ class AdminComputeClaimView(APIView):
         redis_client = _get_redis_safe()
 
         if task == "embeddings":
-            candidates = (
-                MediaItem.objects.filter(embedding__isnull=True)
-                .order_by("-popularity", "id")[: batch_size * 2]
-                .prefetch_related(
-                    "media_genres__genre",
-                    "media_keywords__keyword",
-                    "credits__person",
+            try:
+                candidates = (
+                    MediaItem.objects.filter(embedding__isnull=True)
+                    .order_by("-popularity", "id")[: batch_size * 2]
+                    .prefetch_related(
+                        "media_genres__genre",
+                        "media_keywords__keyword",
+                        "credits__person",
+                    )
+                    .select_related("movie", "show", "game")
                 )
-                .select_related("movie", "show", "game")
-            )
 
-            claimed_items = []
-            for item in candidates:
-                if _is_leased(redis_client, f"embed:{item.pk}"):
-                    continue
+                claimed_items = []
+                for item in candidates:
+                    if _is_leased(redis_client, f"embed:{item.pk}"):
+                        continue
 
-                _set_lease(redis_client, f"embed:{item.pk}", worker_info=str(request.user.pk))
-                claimed_items.append(
+                    _set_lease(redis_client, f"embed:{item.pk}", worker_info=str(request.user.pk))
+                    claimed_items.append(
+                        {
+                            "media_item_id": item.pk,
+                            "title": item.title,
+                            "media_type": item.media_type,
+                            "text": format_media_item_for_embedding(item),
+                            "lease_seconds": LEASE_TTL_SECONDS,
+                        }
+                    )
+
+                    if len(claimed_items) >= batch_size:
+                        break
+
+                return Response(
                     {
-                        "media_item_id": item.pk,
-                        "title": item.title,
-                        "media_type": item.media_type,
-                        "text": format_media_item_for_embedding(item),
+                        "count": len(claimed_items),
+                        "task": "embeddings",
                         "lease_seconds": LEASE_TTL_SECONDS,
+                        "items": claimed_items,
                     }
                 )
-
-                if len(claimed_items) >= batch_size:
-                    break
-
-            return Response(
-                {
-                    "count": len(claimed_items),
-                    "task": "embeddings",
-                    "lease_seconds": LEASE_TTL_SECONDS,
-                    "items": claimed_items,
-                }
-            )
+            except Exception as exc:
+                logger.warning("Embeddings claim failed (possible pending DB migration): %s", exc)
+                return Response(
+                    {
+                        "count": 0,
+                        "task": "embeddings",
+                        "error": "Embeddings column not migrated yet on database.",
+                        "items": [],
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
 
         if not assets_service.mirroring_enabled():
             raise PermissionDenied("Local image mirroring is disabled on the server")
@@ -760,8 +772,12 @@ class AdminComputeStatsView(APIView):
         mirrored = MediaAsset.objects.filter(local_name__isnull=False).count()
 
         total_catalog = MediaItem.objects.count()
-        embeddings_total = MediaItem.objects.filter(embedding__isnull=False).count()
-        embeddings_pending = MediaItem.objects.filter(embedding__isnull=True).count()
+        try:
+            embeddings_total = MediaItem.objects.filter(embedding__isnull=False).count()
+            embeddings_pending = MediaItem.objects.filter(embedding__isnull=True).count()
+        except Exception:
+            embeddings_total = 0
+            embeddings_pending = 0
 
         return Response(
             {

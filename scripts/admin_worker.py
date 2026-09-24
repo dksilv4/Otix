@@ -974,7 +974,7 @@ class EmbeddingWorker:
             login_url = f"{self.server_url}/api/v1/auth/login"
             self.client.headers.pop("Authorization", None)
             try:
-                resp = self.client.post(login_url, json={"username": self.username, "password": self.password})
+                resp = self.client.post(login_url, json={"identity": self.username, "password": self.password})
                 if resp.status_code != 200:
                     print(f"{Colors.RED}[!] Authentication failed (HTTP {resp.status_code}): {resp.text}{Colors.RESET}")
                     sys.exit(1)
