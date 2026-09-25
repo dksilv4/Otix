@@ -23,6 +23,9 @@ dev: ## Run all services (backend, arr, otix node, frontend) in one terminal
 
 run: dev
 
+worker: ## Run local distributed compute worker to help production
+	powershell -ExecutionPolicy Bypass -File ./start_worker.ps1
+
 # ── Dev compose lifecycle ────────────────────────────────────────────────
 up: ## Start the dev stack (api/worker/beat/db/redis)
 	docker compose up -d

@@ -8,14 +8,33 @@ const BASE_URL = CLIENT_API_BASE_URL
 
 // ── Case conversion utilities ────────────────────────────────────────
 
+const camelCache = new Map<string, string>()
+const snakeCache = new Map<string, string>()
+
 function toCamel(s: string): string {
-  return s.replace(/([-_][a-z])/gi, ($1) =>
+  let cached = camelCache.get(s)
+  if (cached !== undefined) return cached
+  if (!s.includes('_') && !s.includes('-')) {
+    camelCache.set(s, s)
+    return s
+  }
+  cached = s.replace(/([-_][a-z])/gi, ($1) =>
     $1.toUpperCase().replace('-', '').replace('_', ''),
   )
+  camelCache.set(s, cached)
+  return cached
 }
 
 function toSnake(s: string): string {
-  return s.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)
+  let cached = snakeCache.get(s)
+  if (cached !== undefined) return cached
+  if (!/[A-Z]/.test(s)) {
+    snakeCache.set(s, s)
+    return s
+  }
+  cached = s.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)
+  snakeCache.set(s, cached)
+  return cached
 }
 
 function isObject(o: unknown): o is Record<string, unknown> {

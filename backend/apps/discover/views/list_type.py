@@ -47,6 +47,21 @@ class DiscoverListView(APIView):
         platform = request.query_params.get("platform") or None
         is_anime = _bool_or_none(request.query_params.get("is_anime"))
 
+        page_num = request.query_params.get("page") or request.query_params.get("cursor") or "1"
+        page_size_val = _page_size(request)
+        user_id = request.user.id if request.user.is_authenticated else "anon"
+        theme = request.headers.get("X-Otix-Theme", "dark")
+        cache_key = (
+            f"discover:list:{media_type}:{list_type}:{genre}:{language}:"
+            f"{is_anime}:{platform}:{exclude_adult}:{user_id}:{theme}:{page_num}:{page_size_val}"
+        )
+
+        from django.core.cache import cache
+
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
         if media_type == "season" and list_type == "trending":
             # /discover/season/trending lists each eligible show's latest
             # *season* as the item (gated on the season's premiere date), not
@@ -74,7 +89,7 @@ class DiscoverListView(APIView):
             serializer_cls = MediaItemSummarySerializer
 
         paginator = self.pagination_class()
-        paginator.page_size = _page_size(request)
+        paginator.page_size = page_size_val
         page = paginator.paginate_queryset(qs, request, view=self)
         if serializer_cls is MediaItemSummarySerializer:
             context = catalog_service.request_context(request)
@@ -86,13 +101,13 @@ class DiscoverListView(APIView):
         # recommendations payloads (items + has_more/next_cursor), not the
         # DRF page envelope. The frontend discover feed flattens ``items``.
         has_more = bool(paginator.page.has_next())
-        return Response(
-            {
-                "items": serializer.data,
-                "has_more": has_more,
-                "next_cursor": str(paginator.page.next_page_number()) if has_more else None,
-            }
-        )
+        data = {
+            "items": serializer.data,
+            "has_more": has_more,
+            "next_cursor": str(paginator.page.next_page_number()) if has_more else None,
+        }
+        cache.set(cache_key, data, 180)
+        return Response(data)
 
 
 def _page_size(request) -> int:

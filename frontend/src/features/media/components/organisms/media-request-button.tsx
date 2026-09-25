@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { ArrowDownToLine, Check, ChevronDown, Clock, Loader2, Server, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useRequestMedia } from '../../hooks/use-request-media'
+import { useRequestMedia, type RequestMediaState } from '../../hooks/use-request-media'
 import type { RequestInstance } from './plugin-detail-actions'
 import { MediaRequestConfirmModal } from './media-request-confirm-modal'
 
@@ -9,8 +9,19 @@ function requestableInstances(instances: RequestInstance[]) {
   return instances.filter((item) => item.status === 'not_exists' || item.status === 'error')
 }
 
-export function RequestMediaButton() {
+export function RequestMediaButton({ state }: { state?: RequestMediaState } = {}) {
+  if (state) {
+    return <RequestMediaButtonInner state={state} />
+  }
+  return <RequestMediaButtonWithHook />
+}
+
+function RequestMediaButtonWithHook() {
   const state = useRequestMedia()
+  return <RequestMediaButtonInner state={state} />
+}
+
+function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)

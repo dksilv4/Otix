@@ -30,13 +30,23 @@ class DiscoverHeroView(APIView):
         exclude_adult = not (
             request.user.is_authenticated and getattr(request.user, "is_staff", False)
         )
+        user_id = request.user.id if request.user.is_authenticated else "anon"
+        theme = request.headers.get("X-Otix-Theme", "dark")
+        cache_key = f"discover:hero:{limit}:{exclude_adult}:{user_id}:{theme}"
+
+        from django.core.cache import cache
+
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
         items = discover_services.hero_items(exclude_adult=exclude_adult, limit=limit)
         context = catalog_service.request_context(request)
         catalog_service.enrich_summaries(items, request.user, context)
-        return Response(
-            {
-                "items": MediaItemSummarySerializer(items, many=True).data,
-                "has_more": False,
-                "next_cursor": None,
-            }
-        )
+        data = {
+            "items": MediaItemSummarySerializer(items, many=True).data,
+            "has_more": False,
+            "next_cursor": None,
+        }
+        cache.set(cache_key, data, 180)
+        return Response(data)

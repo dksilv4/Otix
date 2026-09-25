@@ -22,7 +22,7 @@ export function MediaHeroLibraryActions() {
   return (
     <>
       {mediaType === 'game' && <DownloadGameButton />}
-      {(mediaType === 'movie' || mediaType === 'show') && <RequestMediaButton />}
+      {(mediaType === 'movie' || mediaType === 'show') && <RequestMediaButton state={requestMedia} />}
 
       {hasPlayWidgets ? (
         <div className="shadow-lg shadow-amber-500/10">

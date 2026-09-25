@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
 import path from 'node:path'
+import http from 'node:http'
 
 export default defineConfig({
   base: '/',
@@ -37,6 +38,15 @@ export default defineConfig({
     allowedHosts: true,
     watch: {
       usePolling: process.env.VITE_USE_POLLING === 'true',
+      interval: 1000,
+      ignored: [
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/.git/**',
+        '**/.idea/**',
+        '**/.pytest_cache/**',
+        '**/.ruff_cache/**',
+      ],
     },
     proxy: {
       '/api': {
@@ -44,6 +54,7 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 0,
         proxyTimeout: 0,
+        agent: new http.Agent({ keepAlive: true, maxSockets: 50 }),
       },
       '/media': {
         target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',

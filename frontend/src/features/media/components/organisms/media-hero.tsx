@@ -19,7 +19,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@auth/hooks/use-auth'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { useModal } from '@/lib/modals'
-import { MediaTrailerModal } from './media-trailer-modal'
+import { TrailerVideoModal } from '@/features/discover/components/molecules/trailer-video-modal'
 import {
   backdropSrc,
   formatAlbumDuration,
@@ -113,8 +113,8 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
     if (!trailer) return
     closeTrailerRef.current?.()
     closeTrailerRef.current = openModal(
-      <MediaTrailerModal
-        embedSrc={`https://www.youtube-nocookie.com/embed/${trailer.youtubeId}?rel=0&autoplay=1`}
+      <TrailerVideoModal
+        youtubeId={trailer.youtubeId}
         title={title}
         onClose={() => closeTrailerRef.current?.()}
       />,

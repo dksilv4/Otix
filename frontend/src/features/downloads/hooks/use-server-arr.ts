@@ -181,7 +181,7 @@ export function useAddServerRadarrMovie(serverId?: number) {
   });
 }
 
-export function useServerRadarrQueue(serverId?: number, page: number = 1, pageSize: number = 50, pollingIntervalMs: number = 5000) {
+export function useServerRadarrQueue(serverId?: number, page: number = 1, pageSize: number = 50, pollingIntervalMs: number | false = 5000) {
   return useQuery<ServerArrQueueResponse>({
     queryKey: arrKeys.radarr.queue(serverId),
     queryFn: async () => {
@@ -368,7 +368,7 @@ export function useAddServerSonarrSeries(serverId?: number) {
   });
 }
 
-export function useServerSonarrQueue(serverId?: number, page: number = 1, pageSize: number = 50, pollingIntervalMs: number = 5000) {
+export function useServerSonarrQueue(serverId?: number, page: number = 1, pageSize: number = 50, pollingIntervalMs: number | false = 5000) {
   return useQuery<ServerArrQueueResponse>({
     queryKey: arrKeys.sonarr.queue(serverId),
     queryFn: async () => {

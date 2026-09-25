@@ -22,4 +22,11 @@ class DiscoverSectionsView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request) -> Response:
-        return Response({"sections": discover_services.default_sections()})
+        from django.core.cache import cache
+
+        cached = cache.get("discover:sections")
+        if cached is not None:
+            return Response(cached)
+        data = {"sections": discover_services.default_sections()}
+        cache.set("discover:sections", data, 3600)
+        return Response(data)

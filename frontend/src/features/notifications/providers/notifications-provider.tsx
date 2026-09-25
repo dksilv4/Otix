@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { useToast } from '@ui/molecules/toast'
@@ -36,7 +36,11 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
   const { toast } = useToast()
   const routerRef = useRef<NotificationRouter | null>(null)
 
-  const prefs = (user?.notificationPreferences ?? {}) as NotificationPreferences
+  const rawPrefs = user?.notificationPreferences
+  const prefs = useMemo(
+    () => (rawPrefs ?? {}) as NotificationPreferences,
+    [rawPrefs],
+  )
 
   useEffect(() => {
     const router = new NotificationRouter()

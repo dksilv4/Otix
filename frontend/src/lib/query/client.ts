@@ -76,13 +76,25 @@ function createElectronPersister(): Persister {
 }
 
 function createLocalStoragePersister(): Persister {
+  let saveTimeout: ReturnType<typeof setTimeout> | null = null
+  let pendingClient: PersistedClient | null = null
+
+  const flush = () => {
+    if (!pendingClient) return
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(pendingClient))
+    } catch {
+      // Storage full or unavailable — silently ignore
+    }
+    pendingClient = null
+    saveTimeout = null
+  }
+
   return {
     persistClient(persistedClient: PersistedClient) {
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persistedClient))
-      } catch {
-        // Storage full or unavailable — silently ignore
-      }
+      pendingClient = persistedClient
+      if (saveTimeout !== null) clearTimeout(saveTimeout)
+      saveTimeout = setTimeout(flush, 1500)
     },
     restoreClient() {
       try {
@@ -95,6 +107,11 @@ function createLocalStoragePersister(): Persister {
       }
     },
     removeClient() {
+      if (saveTimeout !== null) {
+        clearTimeout(saveTimeout)
+        saveTimeout = null
+      }
+      pendingClient = null
       try {
         window.localStorage.removeItem(STORAGE_KEY)
       } catch {
@@ -141,8 +158,8 @@ export const queryClient = new QueryClient({
         if (isAuthSessionError(error)) return false
         return failureCount < 1
       },
-      refetchOnWindowFocus: true,
-      refetchOnMount: true,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
       refetchOnReconnect: true,
       networkMode: 'always',
     },
@@ -160,7 +177,9 @@ export function shouldPersistQuery(query: {
 }): boolean {
   try {
     if (query.state.status !== 'success' || query.state.data == null) return false
-    if (query.queryKey.includes('infinite')) return false
+    const key = query.queryKey
+    if (key.includes('infinite') || key.includes('stream') || key.includes('queue') || key.includes('pending')) return false
+    if (key[0] === 'game-servers' || key[0] === 'notifications' || key[0] === 'plex') return false
     if (isEmptyQueryData(query.state.data)) return false
     const size = JSON.stringify(query.state.data).length
     if (size > MAX_QUERY_SIZE) return false

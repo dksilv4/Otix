@@ -605,6 +605,7 @@ class AdminComputeWorker:
         self.total_winners_uploaded = 0
         self.total_bytes_uploaded = 0
         self.total_enrichments = 0
+        self.processed_media_ids: Set[int] = set()
         self.stats_lock = threading.Lock()
         self.start_time = time.time()
 
@@ -698,7 +699,9 @@ class AdminComputeWorker:
                 return []
 
             data = resp.json()
-            return data.get("media_jobs", [])
+            jobs = data.get("media_jobs", [])
+            with self.stats_lock:
+                return [j for j in jobs if j.get("media_item_id") not in self.processed_media_ids]
         except Exception as exc:
             print(f"{Colors.YELLOW}Claim error: {exc}{Colors.RESET}")
             return []
@@ -918,11 +921,10 @@ class AdminComputeWorker:
                 except Exception:
                     pass
 
-        # Release media lease
-        self.release_leases(asset_ids=[], media_ids=[mid])
-
-        # Telemetry updates
+        # Keep media lease in Redis until its 300s TTL expires to prevent the server
+        # from re-offering this already-evaluated media item on subsequent claims.
         with self.stats_lock:
+            self.processed_media_ids.add(mid)
             self.total_media_processed += 1
             self.total_candidates_evaluated += len(unmirrored)
             self.total_winners_uploaded += uploaded_count
@@ -968,7 +970,9 @@ class AdminComputeWorker:
                     try:
                         f.result()
                     except Exception as exc:
-                        print(f"{Colors.RED}[!] Media error: {exc}{Colors.RESET}", flush=True)
+                        mid = futures[f]
+                        self.release_leases(asset_ids=[], media_ids=[mid])
+                        print(f"{Colors.RED}[!] Media #{mid} error: {exc}{Colors.RESET}", flush=True)
 
             # Telemetry Summary
             elapsed = time.time() - self.start_time
@@ -1350,7 +1354,7 @@ def main():
         "--threads", type=int, default=16, help="Worker threads for artwork processing (default 16)"
     )
     parser.add_argument(
-        "--batch-size", type=int, default=20, help="Batch size of items per claim (default 20)"
+        "--batch-size", type=int, default=500, help="Batch size of items per claim (default 500)"
     )
     parser.add_argument(
         "--webp-quality", type=int, default=85, help="WebP compression quality (default 85)"

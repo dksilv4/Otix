@@ -260,6 +260,15 @@ class MediaDetailView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request, media_type: str, media_id: str | int) -> Response:
+        user_id = request.user.id if request.user.is_authenticated else "anon"
+        theme = request.headers.get("X-Otix-Theme", "dark")
+        cache_key = f"media:detail:{media_type}:{media_id}:{user_id}:{theme}"
+        from django.core.cache import cache
+
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
         pk = resolve_media_pk(media_type, media_id)
         if pk is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
@@ -284,7 +293,9 @@ class MediaDetailView(APIView):
             except Exception:
                 pass
 
-        return Response(MediaItemDetailSerializer(item).data)
+        data = MediaItemDetailSerializer(item).data
+        cache.set(cache_key, data, 120)
+        return Response(data)
 
 
 class CatalogStreamView(APIView):

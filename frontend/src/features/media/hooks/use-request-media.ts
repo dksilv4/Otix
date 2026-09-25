@@ -158,8 +158,8 @@ export function useRequestMedia(): RequestMediaState {
 
   const requestable = statusQuery.data || []
   const isRequested = requestable.some((item) => item.status === 'requested')
-  const radarrQueue = useServerRadarrQueue(isMovie ? serverId : undefined, 1, 50, isRequested ? 4000 : 15_000)
-  const sonarrQueue = useServerSonarrQueue(isShow ? serverId : undefined, 1, 50, isRequested ? 4000 : 15_000)
+  const radarrQueue = useServerRadarrQueue(isMovie ? serverId : undefined, 1, 50, isRequested ? 4000 : false)
+  const sonarrQueue = useServerSonarrQueue(isShow ? serverId : undefined, 1, 50, isRequested ? 4000 : false)
   const queueRecords = (isMovie ? radarrQueue.data?.records : sonarrQueue.data?.records) || []
   const queueItem = matchArrQueueItem(queueRecords, { tmdbId, title: mediaTitle })
 

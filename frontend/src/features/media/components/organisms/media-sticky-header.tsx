@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Bookmark, CheckCircle2, Heart, Play, Star } from 'lucide-react'
 import { useAuth } from '@auth/hooks/use-auth'
 import { useModal } from '@/lib/modals'
-import { MediaTrailerModal } from './media-trailer-modal'
+import { TrailerVideoModal } from '@/features/discover/components/molecules/trailer-video-modal'
 import { useToggleInteraction, useUserInteractions } from '@/features/interaction/interaction-queries'
 import { showXPToast } from '@ui/atoms/xp-toast'
 import type { MediaItemDetail } from '@media'
@@ -118,8 +118,8 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
     if (!trailer) return
     closeTrailerRef.current?.()
     closeTrailerRef.current = openModal(
-      <MediaTrailerModal
-        embedSrc={`https://www.youtube-nocookie.com/embed/${trailer.youtubeId}?rel=0&autoplay=1`}
+      <TrailerVideoModal
+        youtubeId={trailer.youtubeId}
         title={detail.title}
         onClose={() => closeTrailerRef.current?.()}
       />,
