@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { serverKeys } from '../use-server-downloads'
 import type { RemoteDownloadProgress } from '@/lib/desktop/api'
 
@@ -33,5 +33,20 @@ describe('RemoteDownloadProgress data contract', () => {
     expect(progress.status).toBe('downloading')
     expect(progress.speedMBps).toBe(15.0)
     expect(progress.etaSeconds).toBe(150)
+  })
+})
+
+describe('useRemoteDownloads hook', () => {
+  it('defines activeTransfers as an array and exports control functions', async () => {
+    const { renderHook } = await import('@testing-library/react')
+    const { useRemoteDownloads } = await import('../use-server-downloads')
+
+    const { result } = renderHook(() => useRemoteDownloads())
+    expect(Array.isArray(result.current.activeTransfers)).toBe(true)
+    expect(result.current.activeTransfers).toEqual([])
+    expect(typeof result.current.startDownload).toBe('function')
+    expect(typeof result.current.pauseDownload).toBe('function')
+    expect(typeof result.current.resumeDownload).toBe('function')
+    expect(typeof result.current.cancelDownload).toBe('function')
   })
 })

@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
-import { isDesktop } from '@/lib/desktop/api'
+import { isDesktop, type RemoteDownloadProgress } from '@/lib/desktop/api'
 import type { GameServer, ServerGameFile, ServerGamesResponse } from '../types'
 import {
   nodeUrlKey,
@@ -11,7 +11,7 @@ import {
   type PendingNode,
 } from '../pending-nodes'
 
-export type { GameServer, ServerGameFile, ServerGamesResponse }
+export type { GameServer, ServerGameFile, ServerGamesResponse, RemoteDownloadProgress }
 
 // ── Query Keys ──
 export const serverKeys = {
@@ -294,40 +294,79 @@ export function usePingGameServer() {
   })
 }
 
-// ── Hook: Remote Downloads Management ──
+// ── Store: Remote Downloads Management ──
+
+let activeTransfersSnapshot: RemoteDownloadProgress[] = []
+const transferListeners = new Set<() => void>()
+let ipcInitialized = false
+
+function setTransfers(updater: (prev: RemoteDownloadProgress[]) => RemoteDownloadProgress[]) {
+  activeTransfersSnapshot = updater(activeTransfersSnapshot)
+  transferListeners.forEach((listener) => {
+    try {
+      listener()
+    } catch {
+      // ignore
+    }
+  })
+}
+
+function subscribeTransfers(onStoreChange: () => void) {
+  transferListeners.add(onStoreChange)
+  return () => {
+    transferListeners.delete(onStoreChange)
+  }
+}
+
+function getTransfersSnapshot(): RemoteDownloadProgress[] {
+  return activeTransfersSnapshot
+}
+
+function initRemoteDownloadIPC() {
+  if (ipcInitialized || typeof window === 'undefined' || !isDesktop()) return
+  ipcInitialized = true
+
+  window.desktopAPI?.downloadsRemoteGetActive?.().then((list) => {
+    if (Array.isArray(list)) {
+      setTransfers(() => list)
+    }
+  }).catch(() => {})
+
+  window.desktopAPI?.onRemoteDownloadProgress?.((prog) => {
+    setTransfers((prev) => {
+      const index = prev.findIndex((p) => p.id === prog.id)
+      if (index >= 0) {
+        const next = [...prev]
+        next[index] = prog
+        return next
+      }
+      return [...prev, prog]
+    })
+  })
+
+  window.desktopAPI?.onRemoteDownloadCompleted?.((data) => {
+    setTransfers((prev) => prev.filter((p) => p.id !== data.downloadId))
+  })
+}
 
 export function useRemoteDownloads() {
   const desktop = isDesktop()
 
-  // Poll / hydrate initial active transfers on mount
   useEffect(() => {
-    if (!desktop || !window.desktopAPI?.downloadsRemoteGetActive) return
-
-    window.desktopAPI.downloadsRemoteGetActive().then((list) => {
-      if (Array.isArray(list)) setActiveTransfers(list)
+    if (!desktop) return
+    initRemoteDownloadIPC()
+    window.desktopAPI?.downloadsRemoteGetActive?.().then((list) => {
+      if (Array.isArray(list)) {
+        setTransfers(() => list)
+      }
     }).catch(() => {})
-
-    const unsubProgress = window.desktopAPI.onRemoteDownloadProgress?.((prog) => {
-      setActiveTransfers((prev) => {
-        const index = prev.findIndex((p) => p.id === prog.id)
-        if (index >= 0) {
-          const next = [...prev]
-          next[index] = prog
-          return next
-        }
-        return [...prev, prog]
-      })
-    })
-
-    const unsubComplete = window.desktopAPI.onRemoteDownloadCompleted?.((data) => {
-      setActiveTransfers((prev) => prev.filter((p) => p.id !== data.downloadId))
-    })
-
-    return () => {
-      unsubProgress?.()
-      unsubComplete?.()
-    }
   }, [desktop])
+
+  const activeTransfers = useSyncExternalStore(
+    subscribeTransfers,
+    getTransfersSnapshot,
+    getTransfersSnapshot
+  )
 
   const startDownload = useCallback(
     async (file: ServerGameFile, mediaItemId?: string | null, destDir?: string | null) => {
@@ -337,7 +376,7 @@ export function useRemoteDownloads() {
 
       const assignedDir = destDir || localStorage.getItem('otix:games-download-dir') || undefined
 
-      return await window.desktopAPI.downloadsRemoteStart({
+      const downloadId = await window.desktopAPI.downloadsRemoteStart({
         serverUrl: file.serverUrl,
         fileId: file.fileId,
         filename: file.filename,
@@ -346,6 +385,14 @@ export function useRemoteDownloads() {
         mediaItemId: mediaItemId || file.catalogItem?.id || null,
         destDir: assignedDir,
       })
+
+      window.desktopAPI?.downloadsRemoteGetActive?.().then((list) => {
+        if (Array.isArray(list)) {
+          setTransfers(() => list)
+        }
+      }).catch(() => {})
+
+      return downloadId
     },
     [desktop]
   )
@@ -371,7 +418,7 @@ export function useRemoteDownloads() {
       if (!desktop || !window.desktopAPI?.downloadsRemoteCancel) return false
       const ok = await window.desktopAPI.downloadsRemoteCancel(downloadId)
       if (ok) {
-        setActiveTransfers((prev) => prev.filter((p) => p.id !== downloadId))
+        setTransfers((prev) => prev.filter((p) => p.id !== downloadId))
       }
       return ok
     },
