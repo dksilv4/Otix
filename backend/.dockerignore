@@ -13,6 +13,7 @@ graphify-out/
 .coverage
 htmlcov/
 staticfiles/
+/.api_cache/
 /media/
 /uploads/
 /celerybeat-schedule/
