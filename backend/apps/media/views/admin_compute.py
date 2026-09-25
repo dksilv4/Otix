@@ -191,12 +191,17 @@ class AdminComputeClaimView(APIView):
                     if len(claimed_items) >= batch_size:
                         break
 
+                remaining = MediaItem.objects.filter(embedding__isnull=True).count()
+                total_catalog = MediaItem.objects.count()
+
                 return Response(
                     {
                         "count": len(claimed_items),
                         "task": "embeddings",
                         "lease_seconds": LEASE_TTL_SECONDS,
                         "items": claimed_items,
+                        "remaining": remaining,
+                        "total_catalog": total_catalog,
                     }
                 )
             except Exception as exc:

@@ -1001,6 +1001,8 @@ class EmbeddingWorker:
         batch_size: int = 100,
         model_name: str = "BAAI/bge-m3",
         gpu_batch_size: int = 64,
+        sleep_between_batches: float = 0.0,
+        low_priority: bool = False,
     ):
         self.server_url = server_url.rstrip("/")
         self.token = token
@@ -1009,14 +1011,31 @@ class EmbeddingWorker:
         self.batch_size = batch_size
         self.model_name = model_name
         self.gpu_batch_size = gpu_batch_size
+        self.sleep_between_batches = sleep_between_batches
+        self.low_priority = low_priority
 
         self.running = True
         self.client = httpx.Client(timeout=90.0)
         self.auth_lock = threading.RLock()
         self.start_time = time.time()
         self.total_embedded = 0
+        self.batch_count = 0
+        self.total_catalog: Optional[int] = None
+        self.remaining_catalog: Optional[int] = None
         self.model = None
         self.device = "cpu"
+
+    def refresh_stats(self):
+        try:
+            resp = self.authenticated_request(
+                "GET", f"{self.server_url}/api/v1/media/admin/compute/stats"
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                self.total_catalog = data.get("catalog_total", self.total_catalog)
+                self.remaining_catalog = data.get("embeddings_pending", self.remaining_catalog)
+        except Exception:
+            pass
 
     def authenticate(self):
         with self.auth_lock:
@@ -1116,7 +1135,12 @@ class EmbeddingWorker:
                     json={"task": "embeddings", "batch_size": try_batch},
                 )
                 if resp.status_code == 200:
-                    items = resp.json().get("items", [])
+                    data = resp.json()
+                    if "remaining" in data:
+                        self.remaining_catalog = data.get("remaining")
+                    if "total_catalog" in data:
+                        self.total_catalog = data.get("total_catalog")
+                    items = data.get("items", [])
                     if items:
                         if len(items) > self.batch_size:
                             excess = items[self.batch_size :]
@@ -1149,7 +1173,7 @@ class EmbeddingWorker:
                 )
                 if resp.status_code != 200:
                     print(
-                        f"{Colors.RED}[!] Submit error (HTTP {resp.status_code}): {resp.text[:200]}{Colors.RESET}",
+                        f"{Colors.RED}[!] Submit chunk error (HTTP {resp.status_code}): {resp.text[:200]}{Colors.RESET}",
                         flush=True,
                     )
                     all_ok = False
@@ -1171,14 +1195,36 @@ class EmbeddingWorker:
             pass
 
     def run(self):
+        if self.low_priority:
+            try:
+                import ctypes
+
+                # BELOW_NORMAL_PRIORITY_CLASS = 0x00004000
+                ctypes.windll.kernel32.SetPriorityClass(
+                    ctypes.windll.kernel32.GetCurrentProcess(), 0x00004000
+                )
+                print(
+                    f"{Colors.GREEN}[+] Process priority set to Below Normal (Gaming Mode active){Colors.RESET}"
+                )
+            except Exception:
+                pass
+
         self.authenticate()
+        self.refresh_stats()
         self.init_model()
 
+        rem_banner = ""
+        if self.remaining_catalog is not None:
+            rem_banner = f", Pending: {self.remaining_catalog:,}"
+
         print(
-            f"{Colors.GREEN}[+] Embedding worker online. Claim batch size: {self.batch_size}, GPU encode batch: {self.gpu_batch_size}{Colors.RESET}\n"
+            f"{Colors.GREEN}[+] Embedding worker online. Claim batch size: {self.batch_size}, GPU encode batch: {self.gpu_batch_size}{rem_banner}{Colors.RESET}\n"
         )
 
         while self.running:
+            if self.batch_count > 0 and self.batch_count % 20 == 0:
+                self.refresh_stats()
+
             jobs = self.claim_jobs()
             if not jobs:
                 print(
@@ -1242,6 +1288,9 @@ class EmbeddingWorker:
             if success:
                 batch_sec = time.time() - t0
                 self.total_embedded += len(jobs)
+                self.batch_count += 1
+                if self.remaining_catalog is not None:
+                    self.remaining_catalog = max(0, self.remaining_catalog - len(jobs))
                 rate = len(jobs) / batch_sec if batch_sec > 0 else 0
                 elapsed = time.time() - self.start_time
                 avg_rate = self.total_embedded / elapsed if elapsed > 0 else 0
@@ -1256,12 +1305,27 @@ class EmbeddingWorker:
                 except Exception:
                     pass
 
+                rem_str = ""
+                if self.remaining_catalog is not None:
+                    if self.total_catalog and self.total_catalog > 0:
+                        pct_done = (
+                            (self.total_catalog - self.remaining_catalog) / self.total_catalog
+                        ) * 100
+                        rem_str = f" | {Colors.YELLOW}Remaining: {self.remaining_catalog:,} / {self.total_catalog:,} ({pct_done:.1f}% done){Colors.RESET}"
+                    else:
+                        rem_str = (
+                            f" | {Colors.YELLOW}Remaining: {self.remaining_catalog:,}{Colors.RESET}"
+                        )
+
                 print(
                     f"{Colors.GREEN}[+ Embeddings]{Colors.RESET} Processed {len(jobs)} items in {batch_sec:.2f}s "
-                    f"({Colors.CYAN}{rate:.1f} items/s{Colors.RESET}) | Total Indexed: {self.total_embedded} "
+                    f"({Colors.CYAN}{rate:.1f} items/s{Colors.RESET}){rem_str} | Session: {self.total_embedded} "
                     f"({avg_rate:.1f} avg/s){vram_str}",
                     flush=True,
                 )
+
+                if self.sleep_between_batches > 0:
+                    time.sleep(self.sleep_between_batches)
             else:
                 self.release_leases(media_ids)
 
@@ -1303,6 +1367,17 @@ def main():
         default=32,
         help="Batch size for GPU model.encode (default 32)",
     )
+    parser.add_argument(
+        "--sleep",
+        type=float,
+        default=0.0,
+        help="Seconds to pause between batches to minimize GPU contention while gaming (default 0.0)",
+    )
+    parser.add_argument(
+        "--low-priority",
+        action="store_true",
+        help="Set process priority to below-normal on Windows to avoid foreground game stutter",
+    )
     args = parser.parse_args()
 
     print_banner(args.server, args.threads, args.batch_size, task=args.task, model_name=args.model)
@@ -1322,15 +1397,16 @@ def main():
         active_workers.append(artwork_worker)
 
     if args.task in ("embeddings", "both"):
-        embed_batch = 100 if args.batch_size < 50 else args.batch_size
         embed_worker = EmbeddingWorker(
             server_url=args.server,
             token=args.token,
             username=args.username,
             password=args.password,
-            batch_size=embed_batch,
+            batch_size=args.batch_size,
             model_name=args.model,
             gpu_batch_size=args.gpu_batch_size,
+            sleep_between_batches=args.sleep,
+            low_priority=args.low_priority,
         )
         active_workers.append(embed_worker)
 

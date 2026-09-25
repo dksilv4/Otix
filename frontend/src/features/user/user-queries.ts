@@ -192,9 +192,18 @@ export const userQueries = {
         const { data } = await apiClient.get<any>('/users/search', {
           params: { q: query, limit },
         })
+        const items = Array.isArray(data?.items)
+          ? data.items
+          : Array.isArray(data?.users)
+            ? data.users
+            : Array.isArray(data)
+              ? data
+              : []
         return {
-          users: Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : [],
-          total: data?.total ?? (Array.isArray(data?.users) ? data.users.length : 0),
+          items,
+          users: items,
+          total: data?.total ?? items.length,
+          hasMore: Boolean(data?.hasMore),
         } as unknown as UserSearchListResponse
       },
       enabled: query.length > 0,

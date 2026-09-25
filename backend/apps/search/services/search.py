@@ -16,6 +16,7 @@ import logging
 import re
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
@@ -497,11 +498,11 @@ def _tmdb_show_backfill(
 def _igdb_game_backfill(
     q: str,
     *,
-    existing_count: int,
-    existing_ids: set[str],
-    limit: int,
-    include_placeholders: bool,
-    threshold: int,
+    existing_count: int = 0,
+    existing_ids: set[str] | None = None,
+    limit: int = 12,
+    include_placeholders: bool = True,
+    threshold: int = BACKFILL_THRESHOLD,
     force: bool = False,
 ) -> tuple[list[dict], bool]:
     """Search IGDB when the catalog is sparse; enqueue missing games for ingest."""
@@ -520,7 +521,7 @@ def _igdb_game_backfill(
 
     extras: list[dict] = []
     missing: list[str] = []
-    seen = set(existing_ids)
+    seen = set(existing_ids or set())
 
     if configured():
         try:
@@ -844,7 +845,13 @@ def external_payload() -> dict:
     }
 
 
-def _best_results(q: str, media: list[dict], people: list[dict], tracks: list[dict]) -> list[dict]:
+def _best_results(
+    q: str,
+    media: list[dict],
+    people: list[dict],
+    tracks: list[dict],
+    users: list[dict] | None = None,
+) -> list[dict]:
     """Top-3 blended results for ``StructuredSearchResponse.best_results``.
 
     Mirrors the legacy scoring pass: exact prefix/exact name matches rank first,
@@ -859,6 +866,9 @@ def _best_results(q: str, media: list[dict], people: list[dict], tracks: list[di
         position += 1
     for item in people[:2]:
         candidates.append((item.get("name") or "", item, 0.3, position))
+        position += 1
+    for item in (users or [])[:2]:
+        candidates.append((item.get("username") or "", item, 0.2, position))
         position += 1
     for item in tracks[:2]:
         candidates.append((item.get("title") or "", item, 0.1, position))
@@ -889,8 +899,7 @@ def grouped_payload(q: str, media_type_limit: int) -> dict:
     """Legacy ``StructuredSearchResponse`` shape for ``GET /search/grouped``.
 
     Media rows are grouped per type with per-group totals; people are matched by
-    name. Users are always empty (the accounts.User model lacks the xp/bio/level
-    columns the legacy user search needs). Music and tracks are excluded.
+    name, users by username. Music and tracks are excluded.
     """
     grouped: dict[str, list[MediaItem]] = {}
     counts: dict[str, int] = {}
@@ -901,6 +910,16 @@ def grouped_payload(q: str, media_type_limit: int) -> dict:
 
     people = _search_people(q)
     people_total = Person.objects.filter(name__icontains=q).count()
+
+    try:
+        from apps.accounts.services.user_profile import search_users
+
+        users_data = search_users(q, media_type_limit)
+        user_model = get_user_model()
+        users_total = user_model.objects.filter(username__icontains=q, is_active=True).count()
+    except Exception:
+        users_data = []
+        users_total = 0
 
     backfill_pending = False
 
@@ -930,6 +949,7 @@ def grouped_payload(q: str, media_type_limit: int) -> dict:
             existing_ids=set(),
             limit=media_type_limit,
             include_placeholders=True,
+            threshold=BACKFILL_THRESHOLD,
             force=True,
         )
         game_data = g_extras
@@ -944,17 +964,17 @@ def grouped_payload(q: str, media_type_limit: int) -> dict:
     media_data = movie_data + show_data + game_data
 
     backfill_pending = backfill_pending or _any_backfill_pending()
-    total = sum(counts.values()) + people_total
+    total = sum(counts.values()) + people_total + users_total
 
     return {
-        "best_results": _best_results(q, media_data, people_data, track_data),
+        "best_results": _best_results(q, media_data, people_data, track_data, users_data),
         "movies": movie_data,
         "shows": show_data,
         "games": game_data,
         "music": music_data,
         "tracks": track_data,
         "people": people_data,
-        "users": [],
+        "users": users_data,
         "total": total,
         "movies_count": counts["movie"],
         "shows_count": counts["show"],
@@ -962,7 +982,7 @@ def grouped_payload(q: str, media_type_limit: int) -> dict:
         "music_count": 0,
         "tracks_count": 0,
         "people_count": people_total,
-        "users_count": 0,
+        "users_count": users_total,
         "backfill_pending": backfill_pending,
     }
 

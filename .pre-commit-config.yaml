@@ -10,9 +10,11 @@ repos:
       - id: ruff
         args: [--config, backend/pyproject.toml]
         files: ^backend/
+        exclude: ^backend/scripts/
       - id: ruff-format
         args: [--config, backend/pyproject.toml]
         files: ^backend/
+        exclude: ^backend/scripts/
 
   - repo: local
     hooks:

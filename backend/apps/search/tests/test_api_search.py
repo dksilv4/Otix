@@ -191,6 +191,13 @@ class SearchApiTests(TestCase):
         self.assertGreaterEqual(data["total"], 4)
         self.assertTrue(data["best_results"])
 
+    def test_grouped_with_no_existing_media_backfills_without_error(self) -> None:
+        response = self.client.get("/api/v1/search/grouped", {"q": "nomatchanywhere"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("games", response.data)
+        self.assertIn("movies", response.data)
+        self.assertIn("shows", response.data)
+
     # --- companies ---
     def test_companies_returns_company_items(self) -> None:
         response = self.client.get("/api/v1/search/companies", {"q": "inception"})
