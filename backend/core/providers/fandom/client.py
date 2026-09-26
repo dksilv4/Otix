@@ -365,7 +365,7 @@ class FandomProvider(BaseProviderClient):
 
         # If direct title lookup failed, try normalized (unaccented) name
         if page_id <= 0 or "missing" in page:
-            from core.providers.wikidata import normalize_character_name
+            from core.providers.framework import normalize_character_name
 
             norm_name = normalize_character_name(clean_name)
             if norm_name and norm_name.lower() != clean_name.lower():

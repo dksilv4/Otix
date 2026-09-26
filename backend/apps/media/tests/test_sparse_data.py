@@ -7,6 +7,7 @@ emit ``[]``/``null`` for the missing parts instead of dereferencing a field or
 relation that is absent.
 """
 
+from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -15,6 +16,7 @@ from apps.media.models import Episode, Game, MediaItem, Movie, Season, Show
 
 class SparseCatalogTests(TestCase):
     def setUp(self) -> None:
+        cache.clear()
         self.client = APIClient()
 
     def _item(self, media_type: str, title: str) -> MediaItem:

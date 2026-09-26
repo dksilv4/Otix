@@ -79,6 +79,7 @@ from core.providers.framework.testing import (
 from core.providers.framework.transformers import (
     clamp_rating,
     compute_payload_hash,
+    normalize_character_name,
     parse_iso_date,
     sanitize_text,
 )
@@ -144,6 +145,7 @@ __all__ = [
     "sanitize_text",
     "compute_payload_hash",
     "clamp_rating",
+    "normalize_character_name",
     # Hydrators
     "safe_bulk_create",
     "prefetch_external_ids",

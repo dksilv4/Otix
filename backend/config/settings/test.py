@@ -8,6 +8,9 @@ postgres URL and rely on the runner creating a ``test_`` database.
 Run: ``DJANGO_SETTINGS_MODULE=config.settings.test manage.py test``
 """
 
+from django.core.cache import cache
+from django.test import SimpleTestCase
+
 from config.settings.base import *  # noqa: F403  (inherited shared settings)
 
 DEBUG = False
@@ -27,3 +30,16 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 # raising into the test instead of being swallowed into the result backend.
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
+
+_orig_setup_and_call = SimpleTestCase._setup_and_call
+
+
+def _setup_and_call_with_cache_clear(self, result, debug=False):
+    cache.clear()
+    return _orig_setup_and_call(self, result, debug=debug)
+
+
+SimpleTestCase._setup_and_call = _setup_and_call_with_cache_clear
+
+
+

@@ -101,3 +101,19 @@ def clamp_rating(val: float | int, min_val: float = 0.0, max_val: float = 100.0)
         return float(min_val)
 
     return max(float(min_val), min(float(max_val), fval))
+
+
+def normalize_character_name(name: str | None) -> str:
+    """Normalize a character name for resilient matching.
+
+    Folds unicode accents (e.g. 'Maëlle' -> 'maelle'), removes parenthetical
+    qualifiers (e.g. 'Gustave (English)' -> 'gustave'), and cleans whitespace.
+    """
+    if not name:
+        return ""
+    # Strip parenthetical clarifications like "(voice)" or "(English)"
+    cleaned = re.sub(r"\s*\(.*?\)", "", name).strip()
+    # Normalize unicode accents to ASCII base characters
+    nfkd = unicodedata.normalize("NFKD", cleaned)
+    ascii_str = "".join(c for c in nfkd if not unicodedata.combining(c))
+    return ascii_str.lower().strip()

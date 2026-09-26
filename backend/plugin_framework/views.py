@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from django.http import Http404
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -87,8 +86,6 @@ def _host_reload(plugin_id: str) -> dict:
 class PluginListView(APIView):
     """GET the registry (+ host status); POST to scan/discover all plugin roots."""
 
-    permission_classes = (AllowAny,)
-
     def get(self, request) -> Response:
         if Plugin.objects.count() == 0:
             scan_bundled()
@@ -128,7 +125,8 @@ class PluginCapabilitiesView(APIView):
 class PluginDetailView(APIView):
     """GET single plugin (+live describe if host reachable); DELETE unregisters."""
 
-    permission_classes = (AllowAny,)
+    authentication_classes = (PluginTokenAuthentication, JWTAuthentication, TokenAuthentication)
+    permission_classes = (PluginGatewayPermission,)
 
     def get(self, request, plugin_id: str) -> Response:
         row = _get_row_or_404(plugin_id)
@@ -155,7 +153,6 @@ class PluginDetailView(APIView):
 class PluginStateView(APIView):
     """POST enable|disable|reload — flip the registry flag then sync the host."""
 
-    permission_classes = (AllowAny,)
     _ACTIONS = ("enable", "disable", "reload")
 
     def post(self, request, plugin_id: str, action: str) -> Response:
@@ -174,8 +171,6 @@ class PluginStateView(APIView):
 
 class PluginConfigView(APIView):
     """GET config/instances (+schema); PUT replaces config and/or instances."""
-
-    permission_classes = (AllowAny,)
 
     def get(self, request, plugin_id: str) -> Response:
         row = _get_row_or_404(plugin_id)

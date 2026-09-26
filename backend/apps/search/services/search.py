@@ -1069,6 +1069,24 @@ def log_search(
     )
 
 
+def _py_cosine_distance(vec_a, vec_b) -> float:
+    import math
+
+    dot = 0.0
+    norm_a = 0.0
+    norm_b = 0.0
+    for a, b in zip(vec_a, vec_b, strict=False):
+        a_f = float(a)
+        b_f = float(b)
+        dot += a_f * b_f
+        norm_a += a_f * a_f
+        norm_b += b_f * b_f
+    if norm_a <= 0.0 or norm_b <= 0.0:
+        return 1.0
+    cos_sim = dot / (math.sqrt(norm_a) * math.sqrt(norm_b))
+    return max(0.0, 1.0 - cos_sim)
+
+
 def semantic_search_payload(
     *,
     vector: list[float],
@@ -1076,7 +1094,7 @@ def semantic_search_payload(
     limit: int = 24,
 ) -> dict:
     """Execute vector cosine distance search against MediaItem.embedding."""
-    from pgvector.django import CosineDistance
+    from django.db import connection
 
     qs = MediaItem.objects.filter(embedding__isnull=False)
     if EXCLUDE_ADULT:
@@ -1084,12 +1102,31 @@ def semantic_search_payload(
     if media_type:
         qs = qs.filter(media_type=media_type)
 
-    qs = (
-        qs.annotate(distance=CosineDistance("embedding", vector))
-        .order_by("distance")[:limit]
-        .prefetch_related("assets", "external_ids")
-    )
-    items = list(qs)
+    if connection.vendor == "postgresql":
+        from pgvector.django import CosineDistance
+
+        qs = (
+            qs.annotate(distance=CosineDistance("embedding", vector))
+            .order_by("distance")[:limit]
+            .prefetch_related("assets", "external_ids")
+        )
+        items = list(qs)
+    else:
+        # Fallback for SQLite / test environments without pgvector C extension
+        qs = qs.prefetch_related("assets", "external_ids")
+        items = list(qs)
+        for item in items:
+            emb = item.embedding
+            if isinstance(emb, str):
+                import json
+                try:
+                    emb = json.loads(emb)
+                except Exception:
+                    emb = [float(x.strip()) for x in emb.strip("[]").split(",") if x.strip()]
+            item.distance = _py_cosine_distance(emb, vector) if emb is not None else 1.0
+        items.sort(key=lambda x: getattr(x, "distance", 1.0))
+        items = items[:limit]
+
     serialized = MediaSummarySerializer(items, many=True).data
     for row, obj in zip(serialized, items, strict=False):
         dist = getattr(obj, "distance", 1.0)
@@ -1099,3 +1136,4 @@ def semantic_search_payload(
         "total": len(serialized),
         "items": serialized,
     }
+
