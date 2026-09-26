@@ -1,5 +1,4 @@
-export { ContextMenuProvider } from './context-menu-context'
-export { useMenuContext } from './context-menu-context'
+export { ContextMenuProvider, useMenuContext, useOptionalMenuContext } from './context-menu-context'
 export { ContextMenuTrigger } from './context-menu-trigger'
 export { ContextMenuPortal } from './context-menu-portal'
 export { ContextMenuContent } from './context-menu-content'

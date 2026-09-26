@@ -1,70 +1,12 @@
-import { Component, useEffect, useState, useCallback, createContext, useContext, type ReactNode } from 'react'
+import { Component, useEffect, useState, useCallback, type ReactNode } from 'react'
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-
-export type ToastVariant = 'default' | 'success' | 'error' | 'warning' | 'info' | 'destructive'
-
-export interface Toast {
-  id: string
-  title: string
-  description?: string
-  variant?: ToastVariant
-  duration?: number
-}
-
-interface ToastContextValue {
-  toast: (t: Omit<Toast, 'id'>) => void
-}
-
-const ToastContext = createContext<ToastContextValue | null>(null)
-
-const listeners: Set<(t: Omit<Toast, 'id'>) => void> = new Set()
-
-/**
- * Dispatch a toast from anywhere (React or non-React code).
- */
-export function showToast(t: Omit<Toast, 'id'>) {
-  for (const listener of listeners) {
-    listener(t)
-  }
-}
-
-/**
- * Dispatch an error toast for any Error, AppError, PluginError, or string.
- */
-export function showErrorToast(errorOrMessage: unknown, fallbackTitle = 'An error occurred') {
-  let title = fallbackTitle
-  let description: string | undefined
-
-  if (typeof errorOrMessage === 'string') {
-    description = errorOrMessage
-  } else if (errorOrMessage instanceof Error) {
-    title = errorOrMessage.name && errorOrMessage.name !== 'Error'
-      ? errorOrMessage.name.replace(/([A-Z])/g, ' $1').trim()
-      : fallbackTitle
-    description = errorOrMessage.message
-  } else if (typeof errorOrMessage === 'object' && errorOrMessage !== null) {
-    const errObj = errorOrMessage as { message?: string; name?: string; code?: string }
-    title = errObj.name || errObj.code || fallbackTitle
-    description = errObj.message || String(errorOrMessage)
-  } else {
-    description = String(errorOrMessage)
-  }
-
-  showToast({
-    title,
-    description,
-    variant: 'error',
-    duration: 5000,
-  })
-}
-
-export function useToast() {
-  const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useToast must be inside DkToastProvider')
-  return ctx
-}
+import {
+  ToastContext,
+  toastListeners,
+  type Toast,
+} from './toast-dispatcher'
 
 const variantConfig: Record<string, { icon: typeof CheckCircle; ring: string }> = {
   success: { icon: CheckCircle, ring: 'ring-green-500/30' },
@@ -95,7 +37,7 @@ class ToastErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
   }
 }
 
-function DkToastProvider({ children }: { children: ReactNode }) {
+export function DkToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const addToast = useCallback((t: Omit<Toast, 'id'>) => {
@@ -110,9 +52,9 @@ function DkToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    listeners.add(addToast)
+    toastListeners.add(addToast)
     return () => {
-      listeners.delete(addToast)
+      toastListeners.delete(addToast)
     }
   }, [addToast])
 
@@ -171,5 +113,3 @@ function ToastItem({ toast: t, onRemove }: { toast: Toast; onRemove: (id: string
     </motion.div>
   )
 }
-
-export { DkToastProvider }

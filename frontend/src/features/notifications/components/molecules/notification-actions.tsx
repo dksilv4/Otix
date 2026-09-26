@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { ActionButton } from '../../types'
 
@@ -12,6 +13,8 @@ const variants = {
 }
 
 export function NotificationActions({ actions }: NotificationActionsProps) {
+  const [pendingLabel, setPendingLabel] = useState<string | null>(null)
+
   if (actions.length === 0) return null
   return (
     <div className="flex gap-2 mt-2">
@@ -19,13 +22,22 @@ export function NotificationActions({ actions }: NotificationActionsProps) {
         <button
           key={action.label}
           type="button"
-          onClick={action.onClick}
+          disabled={pendingLabel !== null}
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            if (pendingLabel !== null) return
+            setPendingLabel(action.label)
+            void Promise.resolve(action.onClick()).finally(() => {
+              setPendingLabel(null)
+            })
+          }}
           className={cn(
-            'rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all cursor-pointer',
+            'rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
             variants[action.variant],
           )}
         >
-          {action.label}
+          {pendingLabel === action.label ? '…' : action.label}
         </button>
       ))}
     </div>

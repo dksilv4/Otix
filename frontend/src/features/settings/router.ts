@@ -1,4 +1,4 @@
-import { lazy } from 'react'
+import { lazy, createElement } from 'react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import type { PluginSettingsTab } from '@/features/_config/slots'
@@ -221,7 +221,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     createRoute({
       getParentRoute: () => settingsRoute,
       path: tab.path.replace('/settings/', ''),
-      component: () => <PluginSettingsPage tab={tab} />,
+      component: () => createElement(PluginSettingsPage, { tab }),
       loader: preload(() => import('@/features/plugins/components/PluginSettingsPage')),
     }),
   )

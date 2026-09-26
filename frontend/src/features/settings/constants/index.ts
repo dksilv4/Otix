@@ -52,7 +52,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: false,
     requiresAuth: false,
     group: 'preferences',
-    keywords: 'theme accent motion shader sidebar landing cache about general',
+    keywords: 'theme accent motion shader sidebar landing cache about general taste recommendations for you',
   },
   {
     id: 'launcher',

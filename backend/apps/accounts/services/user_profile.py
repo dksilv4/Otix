@@ -16,7 +16,7 @@ from django.contrib.auth import get_user_model
 from apps.accounts.models import User
 from apps.proposals.models import MediaEditProposal
 from apps.social.models import Review, UserStreak
-from apps.social.services import get_counts, get_friendship_status, is_following
+from apps.social.services import count_friends, get_counts, get_friendship_status, is_following
 from apps.social.services.user_rating import compute_composite_score, peer_rating_aggregates
 
 LEVEL_TITLE = "Novice"
@@ -81,6 +81,7 @@ def build_user_profile(user: User, viewer) -> dict:
         "is_private": user.is_private,
         "follower_count": counts["followers"],
         "following_count": counts["following"],
+        "friend_count": count_friends(user.id),
         "level": 1,
         "level_title": LEVEL_TITLE,
         "xp_rank": None,

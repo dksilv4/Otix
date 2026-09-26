@@ -277,7 +277,12 @@ def _preferred_release_entry(entries: list[dict[str, Any]]) -> dict[str, Any] | 
 
 
 def _upsert_releases(media: MediaItem, raw: dict[str, Any]) -> None:
-    """Map release dates and certifications onto MediaRelease rows."""
+    """Map release dates and certifications onto MediaRelease rows.
+
+    Movies store every dated TMDB release entry per country with its
+    ``release_type`` (theatrical, digital, physical, …) so the calendar can
+    label milestones. Shows store certification-only rows.
+    """
     if media.media_type == "show":
         for country in (raw.get("content_ratings") or {}).get("results") or []:
             if not isinstance(country, dict):
@@ -289,6 +294,7 @@ def _upsert_releases(media: MediaItem, raw: dict[str, Any]) -> None:
                 media_item=media,
                 country_code=code,
                 release_date=None,
+                release_type=None,
                 certification=_clean_cert(country.get("rating")),
             )
         return
@@ -298,15 +304,24 @@ def _upsert_releases(media: MediaItem, raw: dict[str, Any]) -> None:
         code = str(group.get("iso_3166_1") or "").upper()
         if not code:
             continue
-        best = _preferred_release_entry(group.get("release_dates") or [])
-        if best is None:
+        entries = group.get("release_dates") or []
+        if not isinstance(entries, list):
             continue
-        MediaRelease.objects.get_or_create(
-            media_item=media,
-            country_code=code,
-            release_date=_parse_date(str(best.get("release_date") or "")[:10]),
-            certification=_clean_cert(best.get("certification")),
-        )
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            release_date = _parse_date(str(entry.get("release_date") or "")[:10])
+            if release_date is None:
+                continue
+            raw_type = entry.get("release_type")
+            release_type = raw_type if isinstance(raw_type, int) else None
+            MediaRelease.objects.get_or_create(
+                media_item=media,
+                country_code=code,
+                release_date=release_date,
+                release_type=release_type,
+                defaults={"certification": _clean_cert(entry.get("certification"))},
+            )
 
 
 def _upsert_videos(media: MediaItem, raw: dict[str, Any]) -> None:

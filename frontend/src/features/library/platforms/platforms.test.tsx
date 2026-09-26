@@ -39,7 +39,7 @@ const mockSearch = vi.fn(() => ({}))
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: vi.fn(() => mockNavigate),
   useSearch: vi.fn(() => mockSearch()),
-  Link: ({ children, to, search, params, ...props }: any) => React.createElement("a", { href: to, ...props }, children),
+  Link: ({ children, to, search: _search, params: _params, ...props }: any) => React.createElement("a", { href: to, ...props }, children),
 }))
 
 // Mock Library Queries

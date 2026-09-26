@@ -53,6 +53,7 @@ class UserSelfSerializer(serializers.ModelSerializer):
             "is_admin",
             "total_xp",
             "onboarding_completed",
+            "taste_reset_at",
             "created_at",
             "updated_at",
         )

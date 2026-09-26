@@ -8,6 +8,8 @@ from apps.library.serializers.library import (
     SteamWishlistItemSerializer,
     UserGameServerCreateSerializer,
     UserGameServerSerializer,
+    UserNodeCreateSerializer,
+    UserNodeSerializer,
     YoutubeLikedVideoSerializer,
 )
 
@@ -19,5 +21,7 @@ __all__ = [
     "SteamWishlistItemSerializer",
     "UserGameServerCreateSerializer",
     "UserGameServerSerializer",
+    "UserNodeCreateSerializer",
+    "UserNodeSerializer",
     "YoutubeLikedVideoSerializer",
 ]

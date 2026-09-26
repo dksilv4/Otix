@@ -333,9 +333,9 @@ class SimilarMediaView(APIView):
 class RecommendationView(APIView):
     """``GET /media/{media_type}/{media_id}/recommendations`` (public).
 
-    Legacy personalised recommendations relied on pgvector embeddings + the
-    personalization service; both are deferred, so this falls back to the same
-    genre-overlap content signal as ``/similar``.
+    Authenticated callers get a taste-blended embedding neighborhood (For You).
+    Anonymous callers, or users without seeds/embeddings, fall back to the same
+    content signal as ``/similar``.
     """
 
     permission_classes = (permissions.AllowAny,)
@@ -351,10 +351,63 @@ class RecommendationView(APIView):
         source_type = catalog_service.media_type_or_none(pk)
         if source_type is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
-        items = catalog_service.similar_items(pk, source_type, min(limit, 50))
+        items = catalog_service.recommended_items(
+            pk, source_type, min(limit, 50), user=request.user
+        )
         context = catalog_service.request_context(request)
         catalog_service.enrich_summaries(items, request.user, context)
         return Response(_summary_list_payload(items))
+
+
+class DecideWatchView(APIView):
+    """``GET /media/decide`` — hero pick + shortlist from taste (auth required)."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request) -> Response:
+        try:
+            limit = int(request.query_params.get("limit", 5))
+        except ValueError:
+            raise ValidationError("limit must be an integer") from None
+        limit = max(1, min(limit, 12))
+
+        raw_types = request.query_params.get("media_types", "movie,show")
+        media_types = [t.strip() for t in raw_types.split(",") if t.strip()]
+
+        raw_genres = request.query_params.get("genre_ids", "")
+        genre_ids: list[int] = []
+        if raw_genres.strip():
+            try:
+                genre_ids = [int(x) for x in raw_genres.split(",") if x.strip()]
+            except ValueError:
+                raise ValidationError("genre_ids must be comma-separated integers") from None
+
+        runtime = request.query_params.get("runtime") or None
+        if runtime is not None and runtime not in ("short", "medium", "long"):
+            raise ValidationError("runtime must be short, medium, or long")
+
+        seed = _int_or_none(request.query_params.get("seed"))
+
+        items, cold_start = catalog_service.decide_items(
+            request.user,
+            media_types=media_types,
+            genre_ids=genre_ids or None,
+            runtime=runtime,
+            limit=limit,
+            seed=seed,
+        )
+        context = catalog_service.request_context(request)
+        catalog_service.enrich_summaries(items, request.user, context)
+        summaries = MediaItemSummarySerializer(items, many=True).data
+        pick = summaries[0] if summaries else None
+        shortlist = summaries[1:] if len(summaries) > 1 else []
+        return Response(
+            {
+                "pick": pick,
+                "shortlist": shortlist,
+                "cold_start": cold_start,
+            }
+        )
 
 
 class MediaAssetsView(APIView):

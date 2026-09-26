@@ -11,6 +11,7 @@ interface DiscoverMediaCardProps {
   subtitle?: string | null
   className?: string
   priority?: boolean
+  interactive?: boolean
 }
 
 export const DiscoverMediaCard = memo(function DiscoverMediaCard({
@@ -19,6 +20,7 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({
   subtitle,
   className,
   priority = false,
+  interactive = true,
 }: DiscoverMediaCardProps) {
   const navigate = useNavigate()
 
@@ -42,7 +44,12 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({
   ]
 
   return (
-    <ContextMenuTrigger items={menuItems} mediaType={item.mediaType as any} data={{ itemId: item.id }}>
+    <ContextMenuTrigger
+      items={menuItems}
+      mediaType={item.mediaType as any}
+      data={{ itemId: item.id }}
+      disabled={!interactive}
+    >
       <MediaCard
         id={item.id}
         mediaType={item.mediaType as 'movie' | 'show' | 'game' | 'music'}
@@ -64,6 +71,7 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({
         artistName={item.albumArtistName}
         className={className}
         priority={priority}
+        interactive={interactive}
       />
     </ContextMenuTrigger>
   )

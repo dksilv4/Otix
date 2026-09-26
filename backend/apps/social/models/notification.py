@@ -4,8 +4,8 @@ Ported from the legacy ``notification.py`` domain module. Unlike the other
 social tables the legacy ``notifications`` table was NOT a ``TimestampMixin``
 row: it carries only a ``created_at`` (server default), so this model extends
 ``BaseModel`` and declares ``created_at`` itself (no ``updated_at``). The
-legacy async Redis ``after_insert`` publisher is deliberately not ported here;
-it belongs to the future services/realtime layer.
+Realtime fan-out lives in ``apps.social.signals`` /
+``apps.social.services.realtime`` (publish to ``user:{id}:notifications``).
 """
 
 from django.conf import settings

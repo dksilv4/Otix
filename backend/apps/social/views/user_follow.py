@@ -161,3 +161,16 @@ class FollowingView(generics.ListAPIView):
     def get_queryset(self):
         target = _target_or_404(self.kwargs["username"])
         return services.get_following(target.id)
+
+
+class UserFriendsView(APIView):
+    """``GET /users/{username}/friends`` — public accepted-friends list."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request: Request, username: str) -> Response:
+        from apps.social.serializers.friend import FriendOutSerializer
+
+        target = _target_or_404(username)
+        friends = services.list_friends(target.id)
+        return Response(FriendOutSerializer(friends, many=True).data)

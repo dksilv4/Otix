@@ -213,11 +213,13 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
     const claimBtn = screen.getByRole('button', { name: /claim node/i })
     await user.click(claimBtn)
 
-    expect(mockClaimMutateAsync).toHaveBeenCalledWith({
-      claim_code: 'OTX-9999',
-      node_url: 'http://192.168.1.150:8090',
-      server_name: 'Unraid Tower',
-    })
+    expect(mockClaimMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        claim_code: 'OTX-9999',
+        node_url: 'http://192.168.1.150:8090',
+        server_name: 'Unraid Tower',
+      }),
+    )
 
     mockPendingNodes = []
   })

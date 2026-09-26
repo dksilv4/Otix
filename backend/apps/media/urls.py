@@ -25,6 +25,7 @@ from apps.media.views import (
     CertificationListView,
     ClaimView,
     CompanyLookupView,
+    DecideWatchView,
     DownloadAssetsView,
     EditProposalListCreateView,
     EditProposalModerationView,
@@ -70,6 +71,7 @@ urlpatterns = [
     # Literal catalog browse / admin routes (must precede <int:media_id> paths).
     path("", MediaListView.as_view(), name="media-list"),
     path("stream", CatalogStreamView.as_view(), name="media-stream"),
+    path("decide", DecideWatchView.as_view(), name="media-decide"),
     path("genres", GenreListView.as_view(), name="genre-list"),
     path("suggestions", SuggestionsView.as_view(), name="media-suggestions"),
     path("search-providers", ProvidersView.as_view(), name="media-search-providers"),

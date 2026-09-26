@@ -15,6 +15,7 @@ from apps.accounts.serializers import (
     UserSelfSerializer,
     UserUpdateSerializer,
 )
+from apps.accounts.services.taste import reset_user_taste
 
 
 class RegisterView(generics.GenericAPIView):
@@ -74,3 +75,16 @@ class MePreferencesView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         return Response(UserPreferencesSerializer(request.user).data)
+
+
+class MeTasteResetView(generics.GenericAPIView):
+    """``POST /auth/me/taste/reset`` — refresh For You personalization.
+
+    Sets ``taste_reset_at`` so recommendation seeds ignore prior ratings /
+    interactions, and clears preferred genres / discover emphases. Does not
+    delete library history.
+    """
+
+    def post(self, request, *args, **kwargs):
+        user = reset_user_taste(request.user)
+        return Response(UserSelfSerializer(user).data)

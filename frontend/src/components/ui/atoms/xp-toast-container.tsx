@@ -1,35 +1,14 @@
-// TODO: Review this file
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-
-interface XPToast {
-  id: number
-  amount: number
-}
-
-let toastId = 0
-const listeners: Set<(toasts: XPToast[]) => void> = new Set()
-
-function addXPToast(amount: number) {
-  const id = ++toastId
-  const toast: XPToast = { id, amount }
-  for (const fn of listeners) {
-    fn([toast])
-  }
-  return id
-}
-
-export function showXPToast(amount: number) {
-  addXPToast(amount)
-}
+import { xpListeners, type XPToast } from './xp-toast-dispatcher'
 
 export function XPToastContainer({ className }: { className?: string }) {
   const [toasts, setToasts] = useState<XPToast[]>([])
 
   useEffect(() => {
-    listeners.add(setToasts)
+    xpListeners.add(setToasts)
     return () => {
-      listeners.delete(setToasts)
+      xpListeners.delete(setToasts)
     }
   }, [])
 

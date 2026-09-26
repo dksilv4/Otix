@@ -8,6 +8,13 @@ import { NotificationGuest } from './notification-guest'
 import type { ActionCallbacks } from '../../types'
 import { apiClient } from '@/lib/api/client'
 import { useQueryClient } from '@tanstack/react-query'
+import { showErrorToast, showToast } from '@ui/molecules/toast'
+import type { AxiosError } from 'axios'
+
+function actionErrorMessage(error: unknown, fallback: string): string {
+  const detail = (error as AxiosError<{ detail?: string }>)?.response?.data?.detail
+  return typeof detail === 'string' && detail.length > 0 ? detail : fallback
+}
 
 export function NotificationList() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
@@ -18,22 +25,46 @@ export function NotificationList() {
 
   const actionCallbacks: ActionCallbacks = {
     acceptFriendRequest: async (requestId) => {
-      await apiClient.post(`/friends/requests/${requestId}/accept`)
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
-      queryClient.invalidateQueries({ queryKey: ['friends'] })
+      try {
+        await apiClient.post(`/friends/requests/${requestId}/accept`)
+        showToast({ title: 'Friend request accepted', variant: 'success' })
+        await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+        await queryClient.invalidateQueries({ queryKey: ['friends'] })
+      } catch (error) {
+        showErrorToast(actionErrorMessage(error, 'Could not accept friend request'))
+        throw error
+      }
     },
     rejectFriendRequest: async (requestId) => {
-      await apiClient.post(`/friends/requests/${requestId}/reject`)
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      try {
+        await apiClient.post(`/friends/requests/${requestId}/reject`)
+        showToast({ title: 'Friend request declined', variant: 'success' })
+        await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      } catch (error) {
+        showErrorToast(actionErrorMessage(error, 'Could not decline friend request'))
+        throw error
+      }
     },
     acceptListInvitation: async (listId) => {
-      await apiClient.post(`/list/${listId}/collaborators/accept`)
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
-      queryClient.invalidateQueries({ queryKey: ['list'] })
+      try {
+        await apiClient.post(`/list/${listId}/collaborators/accept`)
+        showToast({ title: 'Invitation accepted', variant: 'success' })
+        await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+        await queryClient.invalidateQueries({ queryKey: ['list'] })
+      } catch (error) {
+        showErrorToast(actionErrorMessage(error, 'Could not accept invitation'))
+        throw error
+      }
     },
     declineListInvitation: async (listId) => {
-      await apiClient.post(`/list/${listId}/collaborators/decline`)
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      try {
+        await apiClient.post(`/list/${listId}/collaborators/decline`)
+        showToast({ title: 'Invitation declined', variant: 'success' })
+        await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      } catch (error) {
+        showErrorToast(actionErrorMessage(error, 'Could not decline invitation'))
+        throw error
+      }
     },
   }
 

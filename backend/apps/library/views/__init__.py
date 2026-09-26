@@ -1,6 +1,21 @@
 """Library API views, re-exported for convenient imports."""
 
-from apps.library.views.game_servers import (
+from apps.library.views.library import (
+    EpicLibraryView,
+    EpicStatusView,
+    EpicUnmatchedView,
+    InstalledGamesView,
+    LibraryTabView,
+    PlexLibraryView,
+    PlexStatusView,
+    PlexThumbView,
+    SteamLibraryView,
+    SteamStatusView,
+    SteamUnmatchedView,
+    SteamWishlistView,
+    YoutubeLibraryView,
+)
+from apps.library.views.nodes import (
     GameServerClaimView,
     GameServerConnectionsSyncView,
     GameServerDesktopView,
@@ -52,27 +67,24 @@ from apps.library.views.game_servers import (
     GameServerUsenetSearchView,
     GameServerUsenetTestProwlarrView,
     GameServerUsenetTestSabnzbdView,
+    NodeClaimView,
     NodeConnectionsSyncView,
     NodeConnectionsView,
-)
-from apps.library.views.library import (
-    EpicLibraryView,
-    EpicStatusView,
-    EpicUnmatchedView,
-    InstalledGamesView,
-    LibraryTabView,
-    PlexLibraryView,
-    PlexStatusView,
-    PlexThumbView,
-    SteamLibraryView,
-    SteamStatusView,
-    SteamUnmatchedView,
-    SteamWishlistView,
-    YoutubeLibraryView,
+    NodeDetailView,
+    NodeListCreateView,
+    NodePendingView,
+    NodePingView,
+    NodeProbeView,
 )
 
 __all__ = [
     "GameServerClaimView",
+    "NodeClaimView",
+    "NodeListCreateView",
+    "NodeDetailView",
+    "NodePingView",
+    "NodePendingView",
+    "NodeProbeView",
     "GameServerDetailView",
     "GameServerProbeView",
     "GameServerDownloadsListView",

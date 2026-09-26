@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, useId, useMemo, type ReactNode } from 'react'
+import { createContext, createElement, useContext, useState, useEffect, useCallback, useRef, useId, useMemo, type ReactNode } from 'react'
 
 export interface SettingsSaveConfig {
   hasChanges: boolean
@@ -98,11 +98,7 @@ export function SettingsSaveProvider({ children }: { children: ReactNode }) {
     [combinedConfig, registerConfig, unregisterConfig, setConfig, clearConfig],
   )
 
-  return (
-    <SettingsSaveContext.Provider value={value}>
-      {children}
-    </SettingsSaveContext.Provider>
-  )
+  return createElement(SettingsSaveContext.Provider, { value }, children)
 }
 
 export function useSettingsSaveContext() {
@@ -117,9 +113,11 @@ export function useSettingsSaveBar(cfg: SettingsSaveConfig) {
   const ctx = useContext(SettingsSaveContext)
   const id = useId()
   const onSaveRef = useRef(cfg.onSave)
-  onSaveRef.current = cfg.onSave
   const onDiscardRef = useRef(cfg.onDiscard)
-  onDiscardRef.current = cfg.onDiscard
+  useEffect(() => {
+    onSaveRef.current = cfg.onSave
+    onDiscardRef.current = cfg.onDiscard
+  })
 
   const registerConfig = ctx?.registerConfig
   const unregisterConfig = ctx?.unregisterConfig

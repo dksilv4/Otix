@@ -1,1 +1,1 @@
-export * from './hooks/use-server-usenet';
+export * from './use-node-usenet'

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
 import { useModal } from '@/lib/modals'
+import { DkDialog } from '@ui/molecules/dialog'
 import {
   useGameServers,
   useCreateGameServer,
@@ -29,7 +30,7 @@ import {
   type ServerProbeResult,
 } from '@/features/downloads/use-server-downloads'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
-import { ServerFileExplorerModal } from '@/features/downloads/molecules/server-file-explorer-modal'
+import { NodeFileExplorerModal } from '@/features/downloads/molecules/node-file-explorer-modal'
 import { DownloadNodeModal } from '@/features/downloads/molecules/download-node-modal'
 import { useToast } from '@ui/molecules/toast'
 import { Link } from '@tanstack/react-router'
@@ -70,16 +71,22 @@ export function SettingsDownloadsPage({
   const [claimPin, setClaimPin] = useState('')
   const [claimNodeUrl, setClaimNodeUrl] = useState('')
   const [claimServerName, setClaimServerName] = useState('')
+  const [claimIsLocal, setClaimIsLocal] = useState(true)
   const [claimingPin, setClaimingPin] = useState(false)
 
   const [probeResults, setProbeResults] = useState<Record<number, ServerProbeResult>>({})
   const [probingServerId, setProbingServerId] = useState<number | null>(null)
 
+  const defaultAutoName = `Node ID:${(gameServers?.length || 0) + 1}`
+
   const [serverName, setServerName] = useState('')
   const [serverUrl, setServerUrl] = useState('')
   const [serverRemoteUrl, setServerRemoteUrl] = useState('')
   const [serverToken, setServerToken] = useState('')
+  const [manualIsLocal, setManualIsLocal] = useState(true)
   const [serverSubmitting, setServerSubmitting] = useState(false)
+
+  const [nodeToDelete, setNodeToDelete] = useState<{ id: number; name: string } | null>(null)
 
   const unclaimedNodes = pendingNodes.filter(
     (p) =>
@@ -90,9 +97,9 @@ export function SettingsDownloadsPage({
 
   const openServerExplorer = (server: { id: number; name: string }) => {
     const close = openModal(
-      <ServerFileExplorerModal
-        initialServerId={server.id}
-        serverName={server.name}
+      <NodeFileExplorerModal
+        initialNodeId={server.id}
+        nodeName={server.name}
         onClose={() => close()}
       />,
     )
@@ -100,19 +107,22 @@ export function SettingsDownloadsPage({
 
   const handleAddServer = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!serverName.trim() || !serverUrl.trim() || !serverToken.trim()) return
+    const targetUrl = serverUrl.trim() || (manualIsLocal ? 'http://127.0.0.1:8090' : '')
+    if (!targetUrl || !serverToken.trim()) return
+    const effectiveName = serverName.trim() || defaultAutoName
     setServerSubmitting(true)
     try {
       const server = await createServerMutation.mutateAsync({
-        name: serverName.trim(),
-        local_url: serverUrl.trim(),
+        name: effectiveName,
+        local_url: targetUrl,
         remote_url: serverRemoteUrl.trim() || undefined,
         auth_token: serverToken.trim() || undefined,
+        is_local: manualIsLocal,
       })
       if (server.isOnline) {
         toast({
           title: 'Node connected',
-          description: `Successfully linked ${serverName}.`,
+          description: `Successfully linked ${server.name || effectiveName}.`,
           variant: 'success',
         })
       } else {
@@ -120,7 +130,7 @@ export function SettingsDownloadsPage({
           title: 'Saved, but marked offline',
           description:
             server.connectError ||
-            'Otix could not reach this URL from the API. Open the node in a browser, copy its access token, and ping again.',
+            'Otix could not reach this URL from the API. Check that the node is running and ping again.',
           variant: 'error',
         })
       }
@@ -132,7 +142,10 @@ export function SettingsDownloadsPage({
     } catch (err: any) {
       toast({
         title: 'Failed to connect node',
-        description: err.message || 'Check URL and network connection.',
+        description:
+          err.response?.data?.error ||
+          err.message ||
+          'Check URL, token, and network connection.',
         variant: 'error',
       })
     } finally {
@@ -148,6 +161,7 @@ export function SettingsDownloadsPage({
         description: `Removed ${name} from your nodes.`,
         variant: 'default',
       })
+      setNodeToDelete(null)
     } catch (err: any) {
       toast({
         title: 'Error',
@@ -162,14 +176,14 @@ export function SettingsDownloadsPage({
       const res: any = await pingServerMutation.mutateAsync(id)
       if (res?.online) {
         toast({
-          title: 'Server Online',
+          title: 'Node Online',
           description: `Ping: ${res.latency_ms ?? res.latencyMs}ms · ${res.server?.total_files ?? res.server?.totalFiles ?? 0} games indexed.`,
           variant: 'success',
         })
       } else {
         toast({
-          title: 'Server Offline',
-          description: res?.error || 'Could not reach server node.',
+          title: 'Node Offline',
+          description: res?.error || 'Could not reach node.',
           variant: 'error',
         })
       }
@@ -212,16 +226,19 @@ export function SettingsDownloadsPage({
     e.preventDefault()
     const pin = claimPin.trim().toUpperCase()
     if (!pin) return
+    const effectiveName = claimServerName.trim() || defaultAutoName
+    const targetUrl = claimNodeUrl.trim() || (claimIsLocal ? 'http://127.0.0.1:8090' : undefined)
     setClaimingPin(true)
     try {
       const server = await claimServerMutation.mutateAsync({
         claim_code: pin,
-        node_url: claimNodeUrl.trim() || undefined,
-        server_name: claimServerName.trim() || undefined,
+        node_url: targetUrl,
+        server_name: effectiveName,
+        is_local: claimIsLocal,
       })
       toast({
         title: 'Node claimed successfully',
-        description: `Connected ${server.name} to your Otix account.`,
+        description: `Connected ${server.name || effectiveName} to your Otix account.`,
         variant: 'success',
       })
       setClaimPin('')
@@ -248,7 +265,8 @@ export function SettingsDownloadsPage({
       const server = await claimServerMutation.mutateAsync({
         claim_code: node.claimCode,
         node_url: node.localUrl || undefined,
-        server_name: node.serverName || undefined,
+        server_name: node.serverName || defaultAutoName,
+        is_local: true,
       })
       toast({
         title: 'Node claimed',
@@ -363,7 +381,7 @@ export function SettingsDownloadsPage({
                 type="button"
                 onClick={() => setConnectTab('claim')}
                 className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5',
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer',
                   connectTab === 'claim'
                     ? 'bg-primary text-black font-bold'
                     : 'text-white/60 hover:text-white hover:bg-white/5',
@@ -376,7 +394,7 @@ export function SettingsDownloadsPage({
                 type="button"
                 onClick={() => setConnectTab('manual')}
                 className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5',
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer',
                   connectTab === 'manual'
                     ? 'bg-primary text-black font-bold'
                     : 'text-white/60 hover:text-white hover:bg-white/5',
@@ -389,6 +407,41 @@ export function SettingsDownloadsPage({
 
             {connectTab === 'claim' ? (
               <form onSubmit={handleClaimByPin} className="space-y-3">
+                {/* Local vs Remote toggle */}
+                <div>
+                  <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1.5">
+                    Node Location
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-w-sm">
+                    <button
+                      type="button"
+                      onClick={() => setClaimIsLocal(true)}
+                      className={cn(
+                        'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
+                        claimIsLocal
+                          ? 'border-primary/50 bg-primary/10 text-white font-semibold'
+                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/[0.08]',
+                      )}
+                    >
+                      <span className="block font-bold">Local</span>
+                      <span className="text-[10px] text-white/50 block">This computer or LAN</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClaimIsLocal(false)}
+                      className={cn(
+                        'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
+                        !claimIsLocal
+                          ? 'border-primary/50 bg-primary/10 text-white font-semibold'
+                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/[0.08]',
+                      )}
+                    >
+                      <span className="block font-bold">Remote</span>
+                      <span className="text-[10px] text-white/50 block">WAN / Cloud / VPS</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
                     6-Character Claim PIN
@@ -404,7 +457,7 @@ export function SettingsDownloadsPage({
                       className="w-full sm:w-44 px-3 py-2 rounded-lg bg-black/40 text-base font-mono tracking-widest font-bold text-primary placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/40 uppercase"
                     />
                     <p className="text-[11px] text-white/50 leading-relaxed">
-                      Run <span className="font-mono text-white/80">otix-node</span> on Unraid, Docker, Linux, or Windows and open its web dashboard at{' '}
+                      Run <span className="font-mono text-white/80">otix-node</span> on Mac, Windows, Linux, or Docker and open its web dashboard at{' '}
                       <span className="font-mono text-white/80">http://&lt;node-ip&gt;:8090</span> to view your claim PIN.
                     </p>
                   </div>
@@ -413,11 +466,11 @@ export function SettingsDownloadsPage({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
                     <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
-                      Node URL <span className="normal-case font-normal text-white/30">(optional if on same LAN)</span>
+                      Node URL <span className="normal-case font-normal text-white/30">({claimIsLocal ? 'defaults to http://127.0.0.1:8090' : 'required for remote'})</span>
                     </label>
                     <input
                       type="url"
-                      placeholder="e.g. http://192.168.1.50:8090"
+                      placeholder={claimIsLocal ? 'http://127.0.0.1:8090' : 'https://node.example.com:8090'}
                       value={claimNodeUrl}
                       onChange={(e) => setClaimNodeUrl(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -425,11 +478,11 @@ export function SettingsDownloadsPage({
                   </div>
                   <div>
                     <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
-                      Server Name <span className="normal-case font-normal text-white/30">(optional override)</span>
+                      Node Name <span className="normal-case font-normal text-white/30">(defaults to {defaultAutoName})</span>
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Home Server"
+                      placeholder={defaultAutoName}
                       value={claimServerName}
                       onChange={(e) => setClaimServerName(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -441,31 +494,71 @@ export function SettingsDownloadsPage({
                   <button
                     type="button"
                     onClick={() => setShowAddServer(false)}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold"
+                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={claimingPin || !claimPin.trim()}
-                    className="px-4 py-1.5 rounded-lg bg-primary text-black text-xs font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                    className="px-4 py-1.5 rounded-lg bg-primary text-black text-xs font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                   >
                     <KeyRound size={13} />
-                    {claimingPin ? 'Verifying PIN & Claiming...' : 'Claim & Link Node'}
+                    {claimingPin ? 'Connecting & Verifying...' : 'Claim & Link Node'}
                   </button>
                 </div>
               </form>
             ) : (
               <form onSubmit={handleAddServer} className="space-y-3">
+                {/* Local vs Remote toggle */}
+                <div>
+                  <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1.5">
+                    Node Location
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-w-sm">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualIsLocal(true)
+                        if (!serverUrl) setServerUrl('http://127.0.0.1:8090')
+                      }}
+                      className={cn(
+                        'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
+                        manualIsLocal
+                          ? 'border-primary/50 bg-primary/10 text-white font-semibold'
+                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/[0.08]',
+                      )}
+                    >
+                      <span className="block font-bold">Local</span>
+                      <span className="text-[10px] text-white/50 block">This computer or LAN</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualIsLocal(false)
+                        if (serverUrl === 'http://127.0.0.1:8090') setServerUrl('')
+                      }}
+                      className={cn(
+                        'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
+                        !manualIsLocal
+                          ? 'border-primary/50 bg-primary/10 text-white font-semibold'
+                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/[0.08]',
+                      )}
+                    >
+                      <span className="block font-bold">Remote</span>
+                      <span className="text-[10px] text-white/50 block">WAN / Cloud / VPS</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
-                      Node name
+                      Node Name <span className="normal-case font-normal text-white/30">(defaults to {defaultAutoName})</span>
                     </label>
                     <input
                       type="text"
-                      required
-                      placeholder="e.g. Home NAS"
+                      placeholder={defaultAutoName}
                       value={serverName}
                       onChange={(e) => setServerName(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -473,12 +566,12 @@ export function SettingsDownloadsPage({
                   </div>
                   <div>
                     <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
-                      LAN URL
+                      {manualIsLocal ? 'Local URL' : 'Remote URL'}
                     </label>
                     <input
                       type="url"
                       required
-                      placeholder="e.g. http://192.168.1.50:8090"
+                      placeholder={manualIsLocal ? 'http://127.0.0.1:8090' : 'https://node.example.com:8090'}
                       value={serverUrl}
                       onChange={(e) => setServerUrl(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -488,17 +581,17 @@ export function SettingsDownloadsPage({
 
                 <div>
                   <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
-                    Remote URL <span className="normal-case font-normal text-white/30">(optional)</span>
+                    {manualIsLocal ? 'WAN / Remote URL (optional)' : 'Fallback Local URL (optional)'}
                   </label>
                   <input
                     type="url"
-                    placeholder="e.g. https://nas.example.com"
+                    placeholder={manualIsLocal ? 'e.g. https://node.example.com:8090' : 'e.g. http://192.168.1.50:8090'}
                     value={serverRemoteUrl}
                     onChange={(e) => setServerRemoteUrl(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                   <p className="mt-1.5 text-[11px] text-white/40 leading-relaxed">
-                    Used when you or someone you share with opens Otix away from home.
+                    Used when opening Otix away from home.
                   </p>
                 </div>
 
@@ -509,7 +602,7 @@ export function SettingsDownloadsPage({
                   <input
                     type="password"
                     required
-                    placeholder="Paste the token from the node's homepage"
+                    placeholder="Paste the token from the node's dashboard"
                     value={serverToken}
                     onChange={(e) => setServerToken(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -536,16 +629,16 @@ export function SettingsDownloadsPage({
                   <button
                     type="button"
                     onClick={() => setShowAddServer(false)}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold"
+                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={serverSubmitting}
-                    className="px-4 py-1.5 rounded-lg bg-primary text-black text-xs font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    className="px-4 py-1.5 rounded-lg bg-primary text-black text-xs font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
                   >
-                    {serverSubmitting ? 'Testing & Saving...' : 'Save & Link'}
+                    {serverSubmitting ? 'Verifying & Linking...' : 'Connect & Link Node'}
                   </button>
                 </div>
               </form>
@@ -689,8 +782,12 @@ export function SettingsDownloadsPage({
                     {!server.isActive && (
                       <button
                         type="button"
-                        onClick={() => handleSetPrimary(server.id)}
-                        className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          e.preventDefault()
+                          handleSetPrimary(server.id)
+                        }}
+                        className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors cursor-pointer"
                         title="Set as primary"
                       >
                         <Star size={12} />
@@ -699,10 +796,14 @@ export function SettingsDownloadsPage({
                     )}
                     <button
                       type="button"
-                      onClick={() => handleProbeServer(server.id, server.name)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        handleProbeServer(server.id, server.name)
+                      }}
                       disabled={probingServerId === server.id}
                       className={cn(
-                        'pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors',
+                        'pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer',
                         probeResults[server.id]?.remote_accessible
                           ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
                           : probeResults[server.id]?.remote_accessible === false
@@ -727,7 +828,8 @@ export function SettingsDownloadsPage({
                         href={server.localUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                        className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-colors cursor-pointer"
                         title="Open Node WebUI"
                       >
                         <ExternalLink size={12} />
@@ -736,17 +838,25 @@ export function SettingsDownloadsPage({
                     )}
                     <button
                       type="button"
-                      onClick={() => openServerExplorer(server)}
-                      className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-colors"
-                      title="Explore Server Storage"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        openServerExplorer(server)
+                      }}
+                      className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                      title="Explore Node Storage"
                     >
                       <HardDrive size={12} />
                       <span>Explore</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => handlePingServer(server.id)}
-                      className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        handlePingServer(server.id)
+                      }}
+                      className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors cursor-pointer"
                       title="Test Connection"
                     >
                       <Radio size={12} />
@@ -754,9 +864,13 @@ export function SettingsDownloadsPage({
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDeleteServer(server.id, server.name)}
-                      className="pointer-events-auto p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-white/50 hover:text-rose-400 transition-colors"
-                      title="Disconnect Server"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        setNodeToDelete({ id: server.id, name: server.name })
+                      }}
+                      className="pointer-events-auto p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-white/50 hover:text-rose-400 transition-colors cursor-pointer"
+                      title="Disconnect Node"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -798,6 +912,44 @@ export function SettingsDownloadsPage({
           )}
         </div>
       </SettingsCard>
+      )}
+
+      {/* Disconnect Node Confirmation Modal */}
+      {nodeToDelete && (
+        <DkDialog
+          open={Boolean(nodeToDelete)}
+          onOpenChange={(open) => {
+            if (!open) setNodeToDelete(null)
+          }}
+          title="Disconnect Node"
+          description={`Are you sure you want to disconnect ${nodeToDelete.name}?`}
+        >
+          <div className="space-y-4 pt-2">
+            <p className="text-xs text-white/70 leading-relaxed">
+              This node will be removed from your account. Any active downloads will be stopped and you will need to re-claim or add the node again to reconnect.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <DkButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={deleteServerMutation.isPending}
+                onClick={() => setNodeToDelete(null)}
+              >
+                Cancel
+              </DkButton>
+              <DkButton
+                type="button"
+                variant="destructive"
+                size="sm"
+                loading={deleteServerMutation.isPending}
+                onClick={() => handleDeleteServer(nodeToDelete.id, nodeToDelete.name)}
+              >
+                Disconnect Node
+              </DkButton>
+            </div>
+          </div>
+        </DkDialog>
       )}
     </div>
   )

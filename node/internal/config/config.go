@@ -235,7 +235,7 @@ type AppConfig struct {
 func DefaultConfig() *AppConfig {
 	return &AppConfig{
 		Server: ServerSettings{
-			Name:            "Otix Game Server",
+			Name:            "Otix Node",
 			Port:            8090,
 			Host:            "0.0.0.0",
 			AuthToken:       "",

@@ -288,6 +288,22 @@ export interface MediaListResponse {
   backfillPending?: boolean
 }
 
+export type DecideRuntime = 'short' | 'medium' | 'long'
+
+export interface DecideWatchParams {
+  mediaTypes?: string[]
+  genreIds?: Array<string | number>
+  runtime?: DecideRuntime | null
+  seed?: number
+  limit?: number
+}
+
+export interface DecideWatchResponse {
+  pick: MediaItemSummary | null
+  shortlist: MediaItemSummary[]
+  coldStart: boolean
+}
+
 export interface PersonSearchResult {
   id: string
   name: string
@@ -491,6 +507,38 @@ export const mediaQueries = {
       },
       staleTime: 1000 * 60 * 60 * 24, // 1 day — embeddings are deterministic
       gcTime: 1000 * 60 * 60 * 24 * 7,
+    }),
+
+  decide: (opts: DecideWatchParams = {}) =>
+    queryOptions({
+      queryKey: mediaKeys.decide({
+        mediaTypes: opts.mediaTypes,
+        genreIds: opts.genreIds,
+        runtime: opts.runtime ?? null,
+        seed: opts.seed,
+        limit: opts.limit,
+      }),
+      queryFn: async () => {
+        const params: Record<string, string | number> = {
+          limit: opts.limit ?? 5,
+        }
+        if (opts.mediaTypes?.length) {
+          params.mediaTypes = opts.mediaTypes.join(',')
+        }
+        if (opts.genreIds?.length) {
+          params.genreIds = opts.genreIds.join(',')
+        }
+        if (opts.runtime) {
+          params.runtime = opts.runtime
+        }
+        if (opts.seed != null) {
+          params.seed = opts.seed
+        }
+        const { data } = await apiClient.get<DecideWatchResponse>('/media/decide', { params })
+        return data
+      },
+      staleTime: 0,
+      gcTime: 1000 * 60 * 5,
     }),
 }
 

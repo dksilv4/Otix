@@ -66,9 +66,18 @@ class GameServersApiTests(TestCase):
         self.assertEqual(rows[0]["id"], -2)
         self.assertEqual(rows[1]["name"], "Home NAS")
 
-    @mock.patch("apps.library.services.game_server.ping_server_sync")
-    def test_create_same_node_twice_updates_instead_of_duplicating(self, mock_ping):
-        mock_ping.return_value = {"online": True}
+    @mock.patch("apps.library.views.nodes.httpx.Client")
+    @mock.patch("apps.library.services.node.httpx.Client")
+    def test_create_same_node_twice_updates_instead_of_duplicating(self, mock_client_service, mock_client_view):
+        for mock_c in (mock_client_service, mock_client_view):
+            mc = mock.MagicMock()
+            mr = mock.MagicMock()
+            mr.status_code = 200
+            mr.json.return_value = {"status": "online", "total_files": 0, "disk_free_bytes": 0, "disk_total_bytes": 0}
+            mc.get.return_value = mr
+            mc.__enter__.return_value = mc
+            mock_c.return_value = mc
+
         payload = {
             "name": "DK Game Storage Server",
             "local_url": "http://127.0.0.1:8090",
@@ -85,9 +94,18 @@ class GameServersApiTests(TestCase):
         self.assertEqual(first.json()["id"], second.json()["id"])
         self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 1)
 
-    @mock.patch("apps.library.services.game_server.ping_server_sync")
-    def test_create_same_token_from_lan_and_loopback_is_one_server(self, mock_ping):
-        mock_ping.return_value = {"online": True}
+    @mock.patch("apps.library.views.nodes.httpx.Client")
+    @mock.patch("apps.library.services.node.httpx.Client")
+    def test_create_same_token_from_lan_and_loopback_is_one_server(self, mock_client_service, mock_client_view):
+        for mock_c in (mock_client_service, mock_client_view):
+            mc = mock.MagicMock()
+            mr = mock.MagicMock()
+            mr.status_code = 200
+            mr.json.return_value = {"status": "online", "total_files": 0, "disk_free_bytes": 0, "disk_total_bytes": 0}
+            mc.get.return_value = mr
+            mc.__enter__.return_value = mc
+            mock_c.return_value = mc
+
         token = "otix_secret_token_abc123"
         first = self.client.post(
             "/api/v1/library/servers",
@@ -858,3 +876,46 @@ class BackendNodeApiTests(TestCase):
         )
         self.assertEqual(test_sab.status_code, 200)
         self.assertIn("ok", test_sab.json())
+
+    @mock.patch("apps.library.services.node.httpx.Client")
+    def test_create_node_unreachable_returns_400_and_does_not_commit(self, mock_client_cls):
+        mock_client = mock.MagicMock()
+        mock_client.get.side_effect = Exception("Connection refused")
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        payload = {
+            "name": "Unreachable Node",
+            "local_url": "http://192.0.2.1:8090",
+        }
+        res = self.client.post("/api/v1/library/nodes", payload, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Could not connect to node", res.json()["detail"])
+        self.assertEqual(UserGameServer.objects.filter(name="Unreachable Node").count(), 0)
+
+    @mock.patch("apps.library.services.node.httpx.Client")
+    def test_create_node_auto_names_fallback_node_id_x(self, mock_client_cls):
+        mock_client = mock.MagicMock()
+        mock_resp = mock.MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"status": "online", "total_files": 0, "disk_free_bytes": 0, "disk_total_bytes": 0}
+        mock_client.get.return_value = mock_resp
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        # No name provided
+        payload = {
+            "local_url": "http://127.0.0.1:8090",
+            "auth_token": "token123",
+            "is_local": True,
+        }
+        res = self.client.post("/api/v1/library/nodes", payload, format="json")
+        self.assertEqual(res.status_code, 201)
+        data = res.json()
+        self.assertEqual(data["name"], "Node ID:1")
+        self.assertTrue(data["is_local"])
+
+    def test_nodes_endpoint_get_lists_nodes(self):
+        res = self.client.get("/api/v1/library/nodes")
+        self.assertEqual(res.status_code, 200)
+        self.assertGreaterEqual(len(res.json()), 1)

@@ -52,6 +52,7 @@ class UserProfileHubApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["friendship_status"]["status"], "none")
         self.assertEqual(response.data["follower_count"], 0)
+        self.assertEqual(response.data["friend_count"], 0)
         self.assertEqual(response.data["profile_sections"], DEFAULT_PROFILE_SECTIONS)
         self.assertEqual(response.data["total_xp"], 0)
         self.assertFalse(response.data["is_private"])

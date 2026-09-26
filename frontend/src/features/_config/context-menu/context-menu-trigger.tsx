@@ -1,5 +1,5 @@
 import { useCallback, useRef, type ReactNode, type MouseEvent, type TouchEvent } from 'react'
-import { useMenuContext } from './context-menu-context'
+import { useOptionalMenuContext } from './context-menu-context'
 import type { ContextMenuItemDef, ContextMenuMediaType } from './types'
 
 interface ContextMenuTriggerProps {
@@ -19,19 +19,19 @@ export function ContextMenuTrigger({
   className,
   disabled,
 }: ContextMenuTriggerProps) {
-  const { open } = useMenuContext()
+  const menu = useOptionalMenuContext()
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressPos = useRef<{ x: number; y: number } | null>(null)
   const longPressTriggered = useRef(false)
 
   const handleContextMenu = useCallback((e: MouseEvent) => {
-    if (disabled || !items.length) return
+    if (disabled || !items.length || !menu) return
     e.preventDefault()
-    open(e.nativeEvent, items, { mediaType, data })
-  }, [disabled, items, mediaType, data, open])
+    menu.open(e.nativeEvent, items, { mediaType, data })
+  }, [disabled, items, mediaType, data, menu])
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (disabled || !items.length) return
+    if (disabled || !items.length || !menu) return
     longPressTriggered.current = false
     const touch = e.touches[0]
     longPressPos.current = { x: touch.clientX, y: touch.clientY }
@@ -42,9 +42,9 @@ export function ContextMenuTrigger({
         clientX: longPressPos.current!.x,
         clientY: longPressPos.current!.y,
       } as MouseEvent
-      open(fakeEvent, items, { mediaType, data })
+      menu.open(fakeEvent, items, { mediaType, data })
     }, 500)
-  }, [disabled, items, mediaType, data, open])
+  }, [disabled, items, mediaType, data, menu])
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (!longPressPos.current) return

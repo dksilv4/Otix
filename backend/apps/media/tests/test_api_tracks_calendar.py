@@ -25,6 +25,7 @@ CALENDAR_EVENT_KEYS = {
     "slug",
     "release_date",
     "event_type",
+    "release_kind",
     "reason",
     "episode_info",
     "season_number",
@@ -70,7 +71,44 @@ class CalendarApiTests(TestCase):
         self.assertEqual(events[0]["media_item_id"], sequel.pk)
         self.assertEqual(events[0]["event_type"], "sequel")
         self.assertEqual(events[0]["media_type"], "game")
+        self.assertEqual(events[0]["release_kind"], "release")
         self.assertIsNone(events[0]["episode_info"])
+
+    def test_calendar_labels_digital_vs_theatrical_releases(self) -> None:
+        movie = MediaItem.objects.create(
+            media_type="movie",
+            title="Brand New Day",
+            slug="brand-new-day",
+            release_date=date.today() - timedelta(days=5),
+        )
+        from apps.media.models import MediaRelease
+
+        MediaRelease.objects.create(
+            media_item=movie,
+            country_code="US",
+            release_date=date.today() - timedelta(days=5),
+            release_type=3,  # theatrical
+            certification="PG-13",
+        )
+        MediaRelease.objects.create(
+            media_item=movie,
+            country_code="US",
+            release_date=date.today() + timedelta(days=3),
+            release_type=4,  # digital
+        )
+        UserMediaInteraction.objects.create(
+            user=self.user, media_item=movie, interaction_type="watchlisted"
+        )
+
+        response = self.client.get("/api/v1/calendar")
+        self.assertEqual(response.status_code, 200)
+        events = response.data["events"]
+        kinds = {e["release_kind"] for e in events}
+        self.assertEqual(kinds, {"theatrical", "digital"})
+        digital = next(e for e in events if e["release_kind"] == "digital")
+        self.assertIn("Digital release", digital["reason"])
+        theatrical = next(e for e in events if e["release_kind"] == "theatrical")
+        self.assertIn("In theaters", theatrical["reason"])
 
     def test_calendar_empty_for_no_activity(self) -> None:
         response = self.client.get("/api/v1/calendar")

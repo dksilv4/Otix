@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { SettingsLibraryPage } from '../pages/settings-library-page'
 import { SettingsSaveProvider } from '../context/settings-save-context'
-import { resolveLibrarySettingsTab } from '../components/organisms/settings-library-tabs'
+import { resolveLibrarySettingsTab } from '../components/organisms/settings-library-tab-utils'
 import { clearDesktopAPICache } from '@/lib/desktop/api'
 
 vi.mock('@/lib/providers/auth', () => ({

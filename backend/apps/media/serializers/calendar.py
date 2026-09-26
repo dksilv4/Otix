@@ -19,6 +19,7 @@ class CalendarEventSerializer(serializers.Serializer):
     slug = serializers.CharField()
     release_date = serializers.DateField()
     event_type = serializers.CharField()
+    release_kind = serializers.CharField(allow_null=True)
     reason = serializers.CharField()
     episode_info = EpisodeOutSerializer(allow_null=True)
     season_number = serializers.IntegerField(allow_null=True)

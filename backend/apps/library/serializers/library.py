@@ -132,8 +132,8 @@ class MediaItemSummarySerializer(serializers.Serializer):
         return build_media_item_summary(item)
 
 
-class UserGameServerSerializer(serializers.ModelSerializer):
-    """Connected self-hosted game installer server node."""
+class UserNodeSerializer(serializers.ModelSerializer):
+    """Connected self-hosted Otix node."""
 
     primary_url = serializers.CharField(read_only=True)
 
@@ -147,6 +147,7 @@ class UserGameServerSerializer(serializers.ModelSerializer):
             "primary_url",
             "auth_token",
             "is_online",
+            "is_local",
             "last_seen_at",
             "total_files",
             "storage_free_bytes",
@@ -167,8 +168,10 @@ class UserGameServerSerializer(serializers.ModelSerializer):
         ]
 
 
-class UserGameServerCreateSerializer(serializers.ModelSerializer):
-    """Payload to register or update a self-hosted game server."""
+class UserNodeCreateSerializer(serializers.ModelSerializer):
+    """Payload to register or update an Otix node."""
+
+    name = serializers.CharField(required=False, allow_blank=True, default="")
 
     class Meta:
         model = UserGameServer
@@ -177,5 +180,11 @@ class UserGameServerCreateSerializer(serializers.ModelSerializer):
             "local_url",
             "remote_url",
             "auth_token",
+            "is_local",
             "is_active",
         ]
+
+
+# Backward compatibility aliases
+UserGameServerSerializer = UserNodeSerializer
+UserGameServerCreateSerializer = UserNodeCreateSerializer

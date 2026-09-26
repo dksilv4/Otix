@@ -25,6 +25,7 @@ from apps.accounts.views import (
     LogoutView,
     MeIntegrationsView,
     MePreferencesView,
+    MeTasteResetView,
     MeView,
     OAuthProvidersView,
     PlexDisconnectView,
@@ -79,6 +80,7 @@ urlpatterns = [
     ),
     path("me/preferences", MePreferencesView.as_view(), name="me-preferences"),
     path("me/integrations", MeIntegrationsView.as_view(), name="me-integrations"),
+    path("me/taste/reset", MeTasteResetView.as_view(), name="me-taste-reset"),
     path("me", MeView.as_view(), name="me"),
     # OAuth aggregate: five-provider linked status.
     path("oauth", OAuthProvidersView.as_view(), name="oauth-providers"),

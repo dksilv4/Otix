@@ -55,6 +55,7 @@ export const notificationQueries = {
         }
       },
       staleTime: 30_000,
+      meta: { suppressToast: true },
     }),
 
   unreadCount: () =>

@@ -19,6 +19,7 @@ import { PlexAudioProvider } from '@/lib/player/plex-audio-provider'
 import { PlayerProvider } from '@/lib/player/use-player'
 import { DkToastProvider, showErrorToast } from '@ui/molecules/toast'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
+import { ContextMenuProvider, ContextMenuPortal } from '@/features/_config/context-menu'
 import { getDesktopPlatform } from '@/lib/desktop/platform'
 import './index.css'
 
@@ -74,10 +75,13 @@ createRoot(document.getElementById('root')!).render(
                       <PlexAudioProvider>
                         <PlayerProvider>
                           <PageMetaProvider>
-                            <ModalProvider>
-                              <RouterProvider router={router} context={{ queryClient, isAuthenticated: false, isAuthLoaded: false }} />
-                              <ModalRoot />
-                            </ModalProvider>
+                            <ContextMenuProvider>
+                              <ModalProvider>
+                                <RouterProvider router={router} context={{ queryClient, isAuthenticated: false, isAuthLoaded: false }} />
+                                <ModalRoot />
+                              </ModalProvider>
+                              <ContextMenuPortal />
+                            </ContextMenuProvider>
                           </PageMetaProvider>
                         </PlayerProvider>
                       </PlexAudioProvider>

@@ -1,5 +1,7 @@
 export { createCalendarRoutes } from './router'
 export { calendarQueries, calendarKeys } from './queries/calendar-queries'
 export { CalendarPage } from './pages/calendar-page'
+export { CalendarTimelinePage } from './pages/calendar-timeline-page'
 export { CalendarGrid } from './components/organisms/calendar-grid'
+export { CalendarTimeline } from './components/organisms/calendar-timeline'
 export type { CalendarEvent, CalendarResponse } from './types'

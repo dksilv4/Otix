@@ -24,6 +24,7 @@ import { userQueries, computeReviewStats } from '../user-queries'
 import { UserRatingSection } from '../components/molecules/user-rating-section'
 import { FollowButton } from '../components/molecules/follow-button'
 import { StreakDisplay } from '../components/molecules/streak-display'
+import { UserSocialCounts } from '../components/molecules/user-social-counts'
 
 import { computeGamification, getLevelTier, pickGradient, formatMemberSince } from '@user/utils'
 import { XPProgressRing } from '@user/components/atoms/user-xp-progress-ring'
@@ -311,10 +312,14 @@ export function UserProfilePage() {
                       )}
                     </>
                   )}
-                  {/* Follower counts */}
-                  <span className="text-xs text-white/30 ml-1">
-                    {profile.followerCount ?? 0} followers · {profile.followingCount ?? 0} following
-                  </span>
+                  {/* Social counts */}
+                  <UserSocialCounts
+                    username={username}
+                    friendCount={profile.friendCount ?? 0}
+                    followerCount={profile.followerCount ?? 0}
+                    followingCount={profile.followingCount ?? 0}
+                    className="ml-1"
+                  />
                   {/* Proposal stats */}
                   {(profile.proposalCount ?? 0) > 0 && (
                     <span className="text-xs text-white/30 ml-1">
@@ -328,13 +333,18 @@ export function UserProfilePage() {
               )}
               {currentUser && currentUser.username === username && (
                 <div
-                  className="mt-4 text-xs text-white/40"
+                  className="mt-4"
                   style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '250ms' }}
                 >
-                  {profile.followerCount ?? 0} followers · {profile.followingCount ?? 0} following
+                  <UserSocialCounts
+                    username={username}
+                    friendCount={profile.friendCount ?? 0}
+                    followerCount={profile.followerCount ?? 0}
+                    followingCount={profile.followingCount ?? 0}
+                  />
                   {(profile.proposalCount ?? 0) > 0 && (
-                    <span>
-                      {' · '}{profile.proposalCount} proposal{profile.proposalCount !== 1 ? 's' : ''}
+                    <span className="mt-1 block text-xs text-white/30">
+                      {profile.proposalCount} proposal{profile.proposalCount !== 1 ? 's' : ''}
                       {profile.proposalApprovalRate != null
                         ? ` · ${Math.round(profile.proposalApprovalRate)}% approved`
                         : ''}

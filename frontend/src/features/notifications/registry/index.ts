@@ -12,11 +12,13 @@ export const NOTIFICATION_TYPES: Record<NotificationType, TypeConfig> = {
     description: 'Someone sent you a friend request',
     color: 'text-blue-400',
     getActions: (n, cbs) => {
-      const requestId = n.metadataJson.requestId as string | undefined
-      if (!requestId) return []
+      const requestId = n.metadataJson.requestId
+      // Already accepted/declined — hide buttons so retries do not 400.
+      if (requestId == null || n.metadataJson.status) return []
+      const id = String(requestId)
       return [
-        { label: 'Accept', variant: 'primary', onClick: () => cbs.acceptFriendRequest(requestId) },
-        { label: 'Decline', variant: 'secondary', onClick: () => cbs.rejectFriendRequest(requestId) },
+        { label: 'Accept', variant: 'primary', onClick: () => cbs.acceptFriendRequest(id) },
+        { label: 'Decline', variant: 'secondary', onClick: () => cbs.rejectFriendRequest(id) },
       ]
     },
     defaultChannels: { toast: true, desktop: true, web_push: true },
@@ -176,6 +178,14 @@ export const NOTIFICATION_TYPES: Record<NotificationType, TypeConfig> = {
       const mediaId = n.metadataJson.mediaId as string | number | undefined
       return mediaType && mediaId != null ? `/media/${mediaType}/${mediaId}` : null
     },
+    defaultChannels: { toast: true, desktop: true, web_push: true },
+  },
+  system: {
+    type: 'system',
+    icon: Bell,
+    label: 'System Notification',
+    description: 'System announcements and updates',
+    color: 'text-amber-400',
     defaultChannels: { toast: true, desktop: true, web_push: true },
   },
 }

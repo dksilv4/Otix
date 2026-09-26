@@ -74,4 +74,4 @@ function DkBadge({ className, variant, size, removable, onRemove, show = true, c
   )
 }
 
-export { DkBadge, DkBadge as Badge, badgeVariants }
+export { DkBadge, DkBadge as Badge }

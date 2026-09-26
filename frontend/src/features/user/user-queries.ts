@@ -39,10 +39,11 @@ export interface UserProfile {
   plex?: PlexPublicProfile | null
   tmdbUsername?: string | null
   friendshipStatus?: FriendshipStatus | null
-  // Follow
+  // Follow / friends
   isFollowing?: boolean
   followerCount?: number
   followingCount?: number
+  friendCount?: number
   // Gamification
   level?: number
   levelTitle?: string
@@ -94,6 +95,8 @@ export interface FollowUser {
   username: string
   avatarUrl: string | null
 }
+
+export type SocialListKind = 'friends' | 'followers' | 'following'
 
 export interface UserStats {
   reviewCount: number
@@ -218,6 +221,19 @@ export const userQueries = {
         return data
       },
       staleTime: 1000 * 60 * 5,
+    }),
+
+  socialList: (username: string, kind: SocialListKind) =>
+    queryOptions({
+      queryKey: ['user', username, kind],
+      queryFn: async (): Promise<FollowUser[]> => {
+        const { data } = await apiClient.get<any>(`/users/${username}/${kind}`)
+        if (Array.isArray(data)) return data as FollowUser[]
+        if (Array.isArray(data?.results)) return data.results as FollowUser[]
+        if (Array.isArray(data?.items)) return data.items as FollowUser[]
+        return []
+      },
+      staleTime: 1000 * 30,
     }),
 
   reviews: (username: string) =>

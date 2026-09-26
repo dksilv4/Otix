@@ -39,6 +39,10 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
   )
 }
 
+export function useOptionalMenuContext(): ContextMenuContextValue | null {
+  return useContext(ContextMenuCtx)
+}
+
 export function useMenuContext(): ContextMenuContextValue {
   const ctx = useContext(ContextMenuCtx)
   if (!ctx) throw new Error('useMenuContext must be used within ContextMenuProvider')

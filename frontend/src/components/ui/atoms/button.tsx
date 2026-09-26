@@ -157,5 +157,5 @@ const DkButton = forwardRef<HTMLButtonElement, DkButtonProps>(
 )
 DkButton.displayName = 'DkButton'
 
-export { DkButton, DkButton as Button, buttonVariants }
+export { DkButton, DkButton as Button }
 export type { DkButtonProps as ButtonProps }

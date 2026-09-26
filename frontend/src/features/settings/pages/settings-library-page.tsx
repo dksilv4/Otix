@@ -12,10 +12,12 @@ import { CandidateReviewModal } from '../components/organisms/settings-candidate
 import { SettingsLibraryOverviewSection } from '../components/organisms/settings-library-overview-section'
 import {
   SettingsLibraryTabs,
-  isRetiredLibraryHash,
-  resolveLibrarySettingsTab,
   type LibrarySettingsTab,
 } from '../components/organisms/settings-library-tabs'
+import {
+  isRetiredLibraryHash,
+  resolveLibrarySettingsTab,
+} from '../components/organisms/settings-library-tab-utils'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useModal } from '@/lib/modals'
 import { apiClient } from '@/lib/api/client'
@@ -155,7 +157,7 @@ function cleanTitleForDeduplication(title: string): string {
     .toLowerCase()
     .replace(/[™®©]/g, '')
     .replace(/^(a\.v\.a\.?|ava)\s*/i, '')
-    .replace(/\s*[\(\[\{-].*?[\)\]\}]/g, '')
+    .replace(/\s*[-([{].*?[)\]}]/g, '')
     .replace(/[-:\s]+(playtest|test server|public test server|closed beta|open beta|beta|alpha|demo|global|server|pts|trial|client|sdk|edition|goty|game of the year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors|special|legendary|anniversary|vr|directors? cut)\b.*/gi, '')
     .replace(/[^a-z0-9]/g, '')
     .trim()
@@ -262,14 +264,8 @@ export function SettingsLibraryPage() {
   const api = (window as any).desktopAPI
   const { openModal } = useModal()
 
-  let location: any = null
-  let navigate: any = null
-  try {
-    location = useLocation()
-    navigate = useNavigate()
-  } catch {
-    // Isolated tests outside RouterProvider
-  }
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const [activeTab, setActiveTab] = useState<LibrarySettingsTab>(() =>
     resolveLibrarySettingsTab(location?.hash || (typeof window !== 'undefined' ? window.location.hash : '')),

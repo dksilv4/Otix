@@ -28,4 +28,11 @@ export const mediaKeys = {
   searchPoll: (params: Omit<SearchParams, 'page'> & { knownIds: string }) => [...mediaKeys.all(), 'searchPoll', params] as const,
   similar: (mediaType: string, id: string) => [...mediaKeys.all(), 'similar', mediaType, id] as const,
   recommendations: (mediaType: string, id: string) => [...mediaKeys.all(), 'recommendations', mediaType, id] as const,
+  decide: (params: {
+    mediaTypes?: string[]
+    genreIds?: Array<string | number>
+    runtime?: string | null
+    seed?: number
+    limit?: number
+  }) => [...mediaKeys.all(), 'decide', params] as const,
 }

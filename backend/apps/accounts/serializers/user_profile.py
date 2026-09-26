@@ -51,6 +51,7 @@ class UserProfileSerializer(serializers.Serializer):
     is_private = serializers.BooleanField(read_only=True)
     follower_count = serializers.IntegerField(read_only=True)
     following_count = serializers.IntegerField(read_only=True)
+    friend_count = serializers.IntegerField(read_only=True)
     level = serializers.IntegerField(read_only=True)
     level_title = serializers.CharField(read_only=True)
     xp_rank = serializers.IntegerField(read_only=True, allow_null=True)

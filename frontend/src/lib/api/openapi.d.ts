@@ -8545,6 +8545,11 @@ export interface components {
              */
             following_count: number;
             /**
+             * Friend Count
+             * @default 0
+             */
+            friend_count: number;
+            /**
              * Level
              * @default 1
              */

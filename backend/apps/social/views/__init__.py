@@ -40,6 +40,7 @@ from apps.social.views.user_follow import (
     FollowRequestsView,
     FollowStatusView,
     UserFollowView,
+    UserFriendsView,
 )
 from apps.social.views.user_gamification import (
     AchievementsView,
@@ -97,6 +98,7 @@ __all__ = [
     "UserActivityView",
     "UserBadgesView",
     "UserFollowView",
+    "UserFriendsView",
     "UserHallOfFameView",
     "UserRatingView",
     "UserReputationView",

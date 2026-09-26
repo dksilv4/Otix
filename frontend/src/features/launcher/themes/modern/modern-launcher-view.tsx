@@ -32,7 +32,7 @@ export function ModernLauncherView() {
     setDetailGame(game)
   }, [])
 
-  const handleSelectGame = useCallback((game: LocalGame | DisplayGame) => {
+  const handleSelectGame = useCallback((_game: LocalGame | DisplayGame) => {
     // Spotlight selection
   }, [])
 

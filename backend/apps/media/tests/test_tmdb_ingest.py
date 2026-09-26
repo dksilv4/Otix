@@ -790,13 +790,19 @@ class TmdbRelationHydrationTests(TestCase):
         company_exts = ExternalID.objects.filter(content_type__model="company", provider="tmdb")
         self.assertEqual({e.external_id for e in company_exts}, {"508", "711"})
 
-        # country releases prefer the theatrical (type 3) date + certification
-        rows = MediaRelease.objects.filter(media_item_id=media_id).order_by("country_code")
+        # country releases store every typed milestone (theatrical + digital, …)
+        rows = MediaRelease.objects.filter(media_item_id=media_id).order_by(
+            "country_code", "release_date", "release_type"
+        )
         self.assertEqual(
-            [(r.country_code, str(r.release_date), r.certification) for r in rows],
             [
-                ("GB", "1999-11-12", "18"),
-                ("US", "1999-10-15", "R"),
+                (r.country_code, str(r.release_date), r.release_type, r.certification)
+                for r in rows
+            ],
+            [
+                ("GB", "1999-11-12", 3, "18"),
+                ("US", "1999-10-15", 3, "R"),
+                ("US", "1999-11-09", 4, "R"),
             ],
         )
 
@@ -885,7 +891,7 @@ class TmdbRelationHydrationTests(TestCase):
         self.assertEqual(
             ExternalRating.objects.filter(media_item_id=media_id, provider="tmdb").count(), 1
         )
-        self.assertEqual(MediaRelease.objects.filter(media_item_id=media_id).count(), 2)
+        self.assertEqual(MediaRelease.objects.filter(media_item_id=media_id).count(), 3)
         self.assertEqual(MediaVideo.objects.filter(media_item_id=media_id).count(), 1)
         self.assertEqual(MediaKeyword.objects.filter(media_item_id=media_id).count(), 1)
         self.assertEqual(MediaGenre.objects.filter(media_item_id=media_id).count(), 2)

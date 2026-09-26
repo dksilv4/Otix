@@ -9,6 +9,7 @@ the legacy 400/403 detail bodies.
 from apps.social.services.continue_watching import get_continue_watching
 from apps.social.services.friend import (
     accept_friend_request,
+    count_friends,
     get_friendship_status,
     get_user_by_id,
     list_friends,
@@ -77,6 +78,7 @@ __all__ = [
     "accept_friend_request",
     "claim_badge",
     "compute_composite_score",
+    "count_friends",
     "decline_follow_request",
     "delete_rating",
     "dismiss_checkin",

@@ -189,7 +189,7 @@ func (s *Server) setupRoutes() {
 		totalFiles := s.indexer.TotalFiles()
 		totalSize := s.indexer.TotalSizeBytes()
 
-		var freeBytes, totalBytes *uint64
+		var freeBytes, totalBytes uint64
 		if isAuthed {
 			storagePath := s.cfg.Saves.StoragePath
 			if len(s.cfg.GameLibraries) > 0 {
@@ -197,8 +197,8 @@ func (s *Server) setupRoutes() {
 			}
 			f, t, err := explorer.GetDiskUsage(storagePath)
 			if err == nil {
-				freeBytes = &f
-				totalBytes = &t
+				freeBytes = f
+				totalBytes = t
 			}
 		}
 

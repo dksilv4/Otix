@@ -65,7 +65,7 @@ export interface HypervisorConfirmResponse {
 
 // ── Remote Game Server & Client Downloads ("Plex for Games") ──────────────
 
-export interface GameServer {
+export interface OtixNode {
   id: number;
   name: string;
   localUrl?: string | null;
@@ -73,6 +73,7 @@ export interface GameServer {
   primaryUrl: string;
   authToken?: string | null;
   isOnline: boolean;
+  isLocal?: boolean;
   lastSeenAt?: string | null;
   totalFiles: number;
   storageFreeBytes: number;
@@ -86,6 +87,10 @@ export interface GameServer {
   /** True when this row is the Otix backend (account-hosted node). */
   isBackend?: boolean;
 }
+
+export type GameServer = OtixNode;
+export type Node = OtixNode;
+
 
 export interface ServerGameFile {
   serverId: number;

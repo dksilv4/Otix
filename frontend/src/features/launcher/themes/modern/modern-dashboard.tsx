@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react"
-import { Play, Clock, Flame, HardDrive, Gamepad2, ChevronRight, FolderCheck } from "lucide-react"
+import { Clock, Flame, Gamepad2, ChevronRight, FolderCheck } from "lucide-react"
 import { ModernHeroSpotlight } from "./modern-hero-spotlight"
 import { LauncherActionButtons } from "../common/launcher-action-buttons"
 import { PLATFORM_LABELS } from "@/constants/games"
-import { toDisplayGame, isApplicationGame } from "@/features/launcher/utils"
+import { isApplicationGame } from "@/features/launcher/utils"
 import type { LocalGame, DisplayGame } from "@/features/launcher/types"
 
 interface ModernDashboardProps {

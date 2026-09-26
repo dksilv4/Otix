@@ -146,3 +146,27 @@ class MeProfilePreferencesTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.preferred_genres, ["sci-fi", "thriller"])
         self.assertEqual(self.user.profile_sections, new_sections)
+
+    # ── POST /auth/me/taste/reset ────────────────────────────────────
+    def test_taste_reset_requires_auth(self) -> None:
+        anon = APIClient()
+        response = anon.post("/api/v1/auth/me/taste/reset")
+        self.assertEqual(response.status_code, 401)
+
+    def test_taste_reset_sets_epoch_and_clears_preference_seeds(self) -> None:
+        self.user.preferred_genres = ["sci-fi", "thriller"]
+        self.user.discover_emphases = ["fast"]
+        self.user.save(update_fields=["preferred_genres", "discover_emphases", "updated_at"])
+
+        response = self.client.post("/api/v1/auth/me/taste/reset")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.data["taste_reset_at"])
+
+        self.user.refresh_from_db()
+        self.assertIsNotNone(self.user.taste_reset_at)
+        self.assertEqual(self.user.preferred_genres, [])
+        self.assertEqual(self.user.discover_emphases, [])
+
+        me = self.client.get("/api/v1/auth/me")
+        self.assertEqual(me.status_code, 200)
+        self.assertIsNotNone(me.data["taste_reset_at"])

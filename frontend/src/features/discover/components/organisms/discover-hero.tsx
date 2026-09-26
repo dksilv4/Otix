@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { useNavigate, Link } from '@tanstack/react-router'
+import { Sparkles } from 'lucide-react'
 import { Badge } from '@ui/atoms/badge'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { MEDIA_TYPE_LABEL, MEDIA_TYPE_COLOR } from '@/constants/media'
@@ -9,6 +10,7 @@ import { DiscoverEmptyFeed } from '@discover/components/organisms/discover-empty
 import { HeroCard } from '@discover/components/molecules/discover-hero-card'
 import { HeroIndicator } from '@discover/components/molecules/discover-hero-indicator'
 import { MediaLogo } from '@/lib/media/media-logo'
+import { openDecideWatch } from '@discover/open-decide-watch'
 
 function formatSeasonBadgeText(releaseDate?: string | null): string {
   if (!releaseDate) return 'New Season'
@@ -42,7 +44,7 @@ import { heroImage } from '@/lib/utils'
  *
  * Cards fan from the left-center area with diminishing spacing per layer.
  */
-export function calculateCardTransform(
+function calculateCardTransform(
   slideOffset: number,
   cardOffset: number,
   isActive: boolean,
@@ -450,6 +452,21 @@ export function DiscoverHero({ className }: { className?: string }) {
               clipRule="evenodd"
             />
           </svg>
+        </button>
+
+        {/* Separator */}
+        <div className="h-3.5 w-px bg-white/20" />
+
+        <button
+          type="button"
+          onClick={() => openDecideWatch()}
+          className={
+            'text-[11px] font-bold text-white/80 hover:text-white ' +
+            'flex items-center gap-1.5 transition-colors'
+          }
+        >
+          <Sparkles className="h-3 w-3 text-amber-300" />
+          Decide for me
         </button>
 
         {/* Separator */}

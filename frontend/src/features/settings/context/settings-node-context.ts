@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/types'
 import { mergeBackendNode } from '../backend-node'
@@ -67,7 +67,7 @@ export function SettingsNodeProvider({ children }: { children: ReactNode }) {
     [servers, selectedNode, setSelectedNodeId, isLoading],
   )
 
-  return <SettingsNodeContext.Provider value={value}>{children}</SettingsNodeContext.Provider>
+  return createElement(SettingsNodeContext.Provider, { value }, children)
 }
 
 export function useSettingsNode(): SettingsNodeValue {

@@ -26,6 +26,7 @@ export interface User {
   hall_of_fame_media_ids?: Record<string, string[]>
   profileCardSections?: string[] | null
   onboardingCompleted?: boolean
+  tasteResetAt?: string | null
   preferredMediaTypes?: string[]
   preferredGenres?: string[]
   preferredLanguages?: string[]

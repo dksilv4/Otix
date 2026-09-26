@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { calendarQueries } from '../queries/calendar-queries'
 import { CalendarGrid } from '../components/organisms/calendar-grid'
@@ -36,12 +37,16 @@ export function CalendarPage() {
         <title>Calendar — Otix</title>
       </Helmet>
 
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-white">Calendar</h1>
+        <Link
+          to="/calendar/timeline"
+          className="rounded-md border border-white/10 px-2.5 py-1 text-[11px] font-medium text-white/45 transition-colors hover:border-white/20 hover:text-white/80"
+        >
+          Timeline <span className="text-white/30">Beta</span>
+        </Link>
       </div>
 
-      {/* Month navigation */}
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={prevMonth}
@@ -68,7 +73,6 @@ export function CalendarPage() {
         </button>
       </div>
 
-      {/* Loading state */}
       {isLoading && (
         <div className="space-y-2">
           <div className="h-64 animate-pulse rounded-lg bg-white/[0.03]" />
@@ -88,7 +92,6 @@ export function CalendarPage() {
         </div>
       )}
 
-      {/* Calendar grid or empty state */}
       {events && events.length > 0 && <CalendarGrid events={events} year={year} month={month} />}
       {events && events.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">

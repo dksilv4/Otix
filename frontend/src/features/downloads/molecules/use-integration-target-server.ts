@@ -1,1 +1,1 @@
-export * from '../hooks/use-integration-target-server';
+export * from './use-integration-target-node';

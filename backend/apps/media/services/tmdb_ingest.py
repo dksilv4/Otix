@@ -334,11 +334,12 @@ def _upsert_involved_companies(media: MediaItem, raw: dict[str, Any]) -> None:
 def _upsert_releases(media: MediaItem, raw: dict[str, Any]) -> None:
     """Map release dates/certifications onto ``MediaRelease`` rows.
 
-    Movies read ``release_dates.results`` — one row per country using the
-    theatrical (type 3) entry so premiere date and certification land together.
-    Shows read ``content_ratings.results`` — a certification-only row per
-    country. Add-only against (item, country, date, cert) since the table has no
-    natural unique constraint, so re-syncs never duplicate.
+    Movies read ``release_dates.results`` — every dated entry per country is
+    stored with its TMDB ``release_type`` (theatrical, digital, physical, …)
+    so the calendar can label milestones correctly. Shows read
+    ``content_ratings.results`` — a certification-only row per country.
+    Add-only against (item, country, date, type, cert) so re-syncs never
+    duplicate.
     """
     if media.media_type == "show":
         for country in (raw.get("content_ratings") or {}).get("results") or []:
@@ -351,6 +352,7 @@ def _upsert_releases(media: MediaItem, raw: dict[str, Any]) -> None:
                 media_item=media,
                 country_code=code,
                 release_date=None,
+                release_type=None,
                 certification=_clean_cert(country.get("rating")),
             )
         return
@@ -360,20 +362,33 @@ def _upsert_releases(media: MediaItem, raw: dict[str, Any]) -> None:
         code = str(group.get("iso_3166_1") or "").upper()
         if not code:
             continue
-        best = _preferred_release_entry(group.get("release_dates") or [])
-        if best is None:
+        entries = group.get("release_dates") or []
+        if not isinstance(entries, list):
             continue
-        MediaRelease.objects.get_or_create(
-            media_item=media,
-            country_code=code,
-            release_date=_parse_date(str(best.get("release_date") or "")[:10]),
-            certification=_clean_cert(best.get("certification")),
-        )
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            release_date = _parse_date(str(entry.get("release_date") or "")[:10])
+            if release_date is None:
+                continue
+            raw_type = entry.get("release_type")
+            release_type = raw_type if isinstance(raw_type, int) else None
+            MediaRelease.objects.get_or_create(
+                media_item=media,
+                country_code=code,
+                release_date=release_date,
+                release_type=release_type,
+                defaults={"certification": _clean_cert(entry.get("certification"))},
+            )
 
 
 def _preferred_release_entry(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
     """The theatrical (type 3) entry of a country's release list, else the first
-    dated one, else any entry — ``None`` when the list is empty."""
+    dated one, else any entry — ``None`` when the list is empty.
+
+    Kept for callers that still want a single “primary” country date; calendar
+    ingest now stores every typed entry via ``_upsert_releases``.
+    """
     if not entries:
         return None
     for entry in entries:

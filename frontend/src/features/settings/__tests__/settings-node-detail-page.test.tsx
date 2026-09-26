@@ -32,6 +32,7 @@ vi.mock('@/features/downloads/use-server-downloads', () => ({
     ],
     isLoading: false,
   }),
+  useDeleteGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 const mockNavigate = vi.fn()

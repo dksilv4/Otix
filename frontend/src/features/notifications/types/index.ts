@@ -6,6 +6,7 @@ export type NotificationType =
   | 'list_invitation' | 'list_invitation_accepted' | 'list_invitation_declined'
   | 'user_rating' | 'like' | 'comment' | 'release_available'
   | 'new_season' | 'studio_release'
+  | 'system'
 
 export interface Notification {
   id: string

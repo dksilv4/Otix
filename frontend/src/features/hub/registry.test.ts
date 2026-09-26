@@ -53,10 +53,17 @@ describe('navigation provider', () => {
 
   it('produces runnable navigation commands', async () => {
     const commands = await createNavigationProvider().search('discover')
-    expect(commands).toHaveLength(1)
-    const cmd = commands[0]
-    expect(cmd.id).toBe('nav:discover')
+    expect(commands.some((c) => c.id === 'nav:discover')).toBe(true)
+    const cmd = commands.find((c) => c.id === 'nav:discover')!
     expect(typeof cmd.run).toBe('function')
+  })
+
+  it('includes decide-for-me on empty query and keyword match', async () => {
+    const provider = createNavigationProvider()
+    const empty = await provider.search('')
+    expect(empty.some((c) => c.id === 'nav:decide-watch')).toBe(true)
+    const decide = await provider.search('tonight')
+    expect(decide.some((c) => c.id === 'nav:decide-watch')).toBe(true)
   })
 })
 

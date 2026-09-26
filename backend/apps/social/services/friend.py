@@ -9,16 +9,39 @@ views translate them to the legacy 400/403 detail bodies.
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.utils import timezone
 
 from apps.social.models import FriendRequest, Notification
 
 FR_ACCEPTED = "accepted"
 FR_PENDING = "pending"
+FR_REJECTED = "rejected"
 
 
 def get_user_by_id(user_id: int):
     """Resolve a target user by id; ``None`` when the account does not exist."""
     return get_user_model().objects.filter(pk=user_id).first()
+
+
+def _resolve_friend_request_notifications(
+    receiver_id: int, request_id: int, status: str
+) -> None:
+    """Mark receiver ``friend_request`` rows for this request as resolved.
+
+    Hides Accept/Decline in the feed after the request is no longer pending.
+    """
+    now = timezone.now()
+    for notification in Notification.objects.filter(
+        user_id=receiver_id, type="friend_request"
+    ):
+        meta = dict(notification.metadata_json or {})
+        if meta.get("request_id") != request_id:
+            continue
+        meta["status"] = status
+        notification.metadata_json = meta
+        notification.is_read = True
+        notification.read_at = now
+        notification.save(update_fields=["metadata_json", "is_read", "read_at"])
 
 
 def send_friend_request(sender_id: int, receiver_id: int) -> FriendRequest:
@@ -66,7 +89,11 @@ def send_friend_request(sender_id: int, receiver_id: int) -> FriendRequest:
 
 
 def accept_friend_request(request_id: int, user_id: int) -> FriendRequest:
-    """Mark a pending request accepted; only its receiver may accept it."""
+    """Mark a pending request accepted; only its receiver may accept it.
+
+    Re-accepting an already-accepted request is a no-op success so double-clicks
+    from the notification UI do not surface a 400.
+    """
     request = (
         FriendRequest.objects.select_related("sender", "receiver")
         .filter(pk=request_id)
@@ -76,6 +103,9 @@ def accept_friend_request(request_id: int, user_id: int) -> FriendRequest:
         raise ValueError("Friend request not found")
     if request.receiver_id != user_id:
         raise PermissionError("You can only accept requests sent to you")
+    if request.status == FR_ACCEPTED:
+        _resolve_friend_request_notifications(user_id, request_id, FR_ACCEPTED)
+        return request
     if request.status != FR_PENDING:
         raise ValueError("Request is no longer pending")
 
@@ -89,11 +119,16 @@ def accept_friend_request(request_id: int, user_id: int) -> FriendRequest:
         body=f"{receiver.username if receiver else 'Someone'} accepted your friend request",
         metadata_json={"sender_id": request.sender_id, "receiver_id": request.receiver_id},
     )
+    _resolve_friend_request_notifications(user_id, request_id, FR_ACCEPTED)
     return request
 
 
 def reject_friend_request(request_id: int, user_id: int) -> FriendRequest:
-    """Mark a pending request rejected; only its receiver may reject it."""
+    """Mark a pending request rejected; only its receiver may reject it.
+
+    Re-rejecting an already-rejected request is a no-op success so double-clicks
+    from the notification UI do not surface a 400.
+    """
     request = (
         FriendRequest.objects.select_related("sender", "receiver")
         .filter(pk=request_id)
@@ -103,10 +138,13 @@ def reject_friend_request(request_id: int, user_id: int) -> FriendRequest:
         raise ValueError("Friend request not found")
     if request.receiver_id != user_id:
         raise PermissionError("You can only reject requests sent to you")
+    if request.status == FR_REJECTED:
+        _resolve_friend_request_notifications(user_id, request_id, FR_REJECTED)
+        return request
     if request.status != FR_PENDING:
         raise ValueError("Request is no longer pending")
 
-    request.status = "rejected"
+    request.status = FR_REJECTED
     request.save(update_fields=["status", "updated_at"])
     receiver = request.receiver
     Notification.objects.create(
@@ -116,7 +154,15 @@ def reject_friend_request(request_id: int, user_id: int) -> FriendRequest:
         body=f"{receiver.username if receiver else 'Someone'} declined your friend request",
         metadata_json={"receiver_id": user_id, "request_id": request.id},
     )
+    _resolve_friend_request_notifications(user_id, request_id, FR_REJECTED)
     return request
+
+
+def count_friends(user_id: int) -> int:
+    """Number of accepted friendships for ``user_id``."""
+    return FriendRequest.objects.filter(
+        Q(sender_id=user_id) | Q(receiver_id=user_id), status=FR_ACCEPTED
+    ).count()
 
 
 def list_friends(user_id: int):

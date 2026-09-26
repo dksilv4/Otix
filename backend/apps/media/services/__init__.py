@@ -11,6 +11,7 @@ from apps.media.services.catalog import (
     attach_media_urls,
     certification_list,
     company_by_id_or_slug,
+    decide_items,
     enrich_summaries,
     external_ids_for,
     genre_list,
@@ -18,6 +19,7 @@ from apps.media.services.catalog import (
     media_detail_queryset,
     media_item_or_none,
     media_type_or_none,
+    recommended_items,
     similar_items,
 )
 from apps.media.services.edit_proposals import (
@@ -86,6 +88,7 @@ __all__ = [
     "company_by_id_or_slug",
     "create_proposal",
     "delete_rating",
+    "decide_items",
     "delete_review",
     "empty_game_match",
     "match_game_payload",
@@ -112,6 +115,7 @@ __all__ = [
     "my_rating",
     "my_review",
     "propose_match",
+    "recommended_items",
     "reject",
     "reject_match",
     "remove_episode_watched",

@@ -10,7 +10,7 @@ import { useSettingsNode } from '@/features/settings/context/settings-node-conte
 import type { GameServer } from '../types'
 import { useImportNodeInstances } from '../use-import-node-instances'
 
-export function importEligibleNodes(servers: GameServer[]): GameServer[] {
+function importEligibleNodes(servers: GameServer[]): GameServer[] {
   return servers.filter((server) => !isLocalDesktopNode(server))
 }
 

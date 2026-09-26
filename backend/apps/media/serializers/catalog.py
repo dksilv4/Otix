@@ -67,6 +67,7 @@ class MediaReleaseOutSerializer(serializers.Serializer):
     country_code = serializers.CharField()
     release_date = serializers.DateField(allow_null=True)
     certification = serializers.CharField(allow_null=True)
+    release_type = serializers.IntegerField(allow_null=True)
 
 
 class MediaVideoOutSerializer(serializers.Serializer):

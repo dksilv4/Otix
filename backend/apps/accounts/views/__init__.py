@@ -1,6 +1,6 @@
 """Accounts API views, re-exported for convenient imports."""
 
-from apps.accounts.views.auth import MePreferencesView, MeView, RegisterView
+from apps.accounts.views.auth import MePreferencesView, MeTasteResetView, MeView, RegisterView
 from apps.accounts.views.auth_recovery import (
     ForgotPasswordView,
     ResetPasswordView,
@@ -73,6 +73,7 @@ __all__ = [
     "LogoutView",
     "MeIntegrationsView",
     "MePreferencesView",
+    "MeTasteResetView",
     "MeView",
     "OAuthProvidersView",
     "PlexDisconnectView",

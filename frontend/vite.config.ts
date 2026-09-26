@@ -7,7 +7,12 @@ import http from 'node:http'
 
 export default defineConfig({
   base: '/',
-  plugins: [react(), svgr()],
+  plugins: [
+    react({
+      include: /\.(jsx|tsx)$/,
+    }),
+    svgr(),
+  ],
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
@@ -46,6 +51,10 @@ export default defineConfig({
         '**/.idea/**',
         '**/.pytest_cache/**',
         '**/.ruff_cache/**',
+        '**/.tmp/**',
+        '**/.vite/**',
+        '**/*.log',
+        '**/.DS_Store',
       ],
     },
     proxy: {

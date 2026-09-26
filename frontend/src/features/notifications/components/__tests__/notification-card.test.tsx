@@ -47,4 +47,24 @@ describe('NotificationCard', () => {
     )
     expect(screen.getByLabelText('Mark as read')).toBeInTheDocument()
   })
+
+  it('safely renders system or unknown notification types without throwing', () => {
+    const systemNotif: Notification = {
+      id: 'notif-system',
+      type: 'system',
+      title: 'System alert',
+      body: 'Maintenance scheduled',
+      metadataJson: {},
+      isRead: true,
+      createdAt: new Date().toISOString(),
+    }
+    render(
+      <NotificationCard
+        notification={systemNotif}
+        onMarkRead={vi.fn()}
+        actionCallbacks={mockCallbacks}
+      />
+    )
+    expect(screen.getByText('System alert')).toBeInTheDocument()
+  })
 })

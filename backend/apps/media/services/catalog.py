@@ -517,19 +517,199 @@ def company_by_id_or_slug(*, id: int | None = None, slug: str | None = None) -> 
     return company
 
 
-def similar_items(media_id: int, media_type: str | None, limit: int) -> list[MediaItem]:
-    """Content-based similar items.
+_EMBEDDING_DIM = 1024
+_TASTE_SEED_LIMIT = 40
+_TASTE_POSITIVE_INTERACTIONS = ("liked", "watched", "played", "owned", "watchlisted")
+_TASTE_MIN_RATING = 7
+# Blend weight for the page title vs the user's taste vector (For You).
+_FOR_YOU_SOURCE_WEIGHT = 0.4
 
-    Legacy used embedding cosine distance; our schema defers vectors, so this
-    ranks same-type catalog titles by shared-genre count then popularity (the
-    same genre-overlap signal the legacy fallback path used).
-    """
+
+def _as_float_list(value) -> list[float] | None:
+    """Coerce a stored embedding (list / memoryview / string) to 1024 floats."""
+    if value is None:
+        return None
+    if isinstance(value, memoryview):
+        value = value.tolist()
+    if isinstance(value, str):
+        import json
+
+        try:
+            value = json.loads(value)
+        except Exception:
+            value = [float(x.strip()) for x in value.strip("[]").split(",") if x.strip()]
     try:
-        source = MediaItem.objects.get(pk=media_id)
-    except MediaItem.DoesNotExist:
-        return []
+        vec = [float(x) for x in value]
+    except (TypeError, ValueError):
+        return None
+    if len(vec) != _EMBEDDING_DIM:
+        return None
+    return vec
+
+
+def _normalize(vector: list[float]) -> list[float]:
+    import math
+
+    norm = math.sqrt(sum(v * v for v in vector))
+    if norm <= 0.0:
+        return vector
+    return [v / norm for v in vector]
+
+
+def _blend_vectors(a: list[float], b: list[float], *, a_weight: float) -> list[float]:
+    """Weighted sum of two unit-ish vectors, then L2-normalize."""
+    w = max(0.0, min(1.0, a_weight))
+    mixed = [(w * x) + ((1.0 - w) * y) for x, y in zip(a, b, strict=True)]
+    return _normalize(mixed)
+
+
+def _py_cosine_distance(vec_a: list[float], vec_b: list[float]) -> float:
+    import math
+
+    dot = 0.0
+    norm_a = 0.0
+    norm_b = 0.0
+    for a, b in zip(vec_a, vec_b, strict=False):
+        a_f = float(a)
+        b_f = float(b)
+        dot += a_f * b_f
+        norm_a += a_f * a_f
+        norm_b += b_f * b_f
+    if norm_a <= 0.0 or norm_b <= 0.0:
+        return 1.0
+    cos_sim = dot / (math.sqrt(norm_a) * math.sqrt(norm_b))
+    return max(0.0, 1.0 - cos_sim)
+
+
+_RUNTIME_BUCKETS = {
+    "short": (None, 90),
+    "medium": (91, 150),
+    "long": (151, None),
+}
+_DECIDE_MEDIA_TYPES = frozenset({"movie", "show", "game"})
+
+
+def _apply_decide_filters(
+    qs: QuerySet,
+    *,
+    media_types: list[str] | None,
+    genre_ids: list[int] | None,
+    runtime: str | None,
+) -> QuerySet:
+    """Apply decide-picker filters to a MediaItem queryset."""
+    from django.db.models import Avg
+
+    from apps.media.models import MediaGenre
+
+    if media_types:
+        qs = qs.filter(media_type__in=media_types)
+    if genre_ids:
+        # Exists avoids distinct() which can scramble distance ORDER BY.
+        qs = qs.filter(
+            Exists(
+                MediaGenre.objects.filter(
+                    media_item_id=OuterRef("pk"),
+                    genre_id__in=genre_ids,
+                )
+            )
+        )
+    if runtime and runtime in _RUNTIME_BUCKETS:
+        lo, hi = _RUNTIME_BUCKETS[runtime]
+        movie_clause = Q(media_type="movie")
+        if lo is not None:
+            movie_clause &= Q(movie__runtime__gte=lo)
+        if hi is not None:
+            movie_clause &= Q(movie__runtime__lte=hi)
+
+        qs = qs.annotate(_avg_ep_runtime=Avg("show__seasons__episodes__runtime"))
+        show_clause = Q(media_type="show")
+        if lo is not None:
+            show_clause &= Q(_avg_ep_runtime__gte=lo)
+        if hi is not None:
+            show_clause &= Q(_avg_ep_runtime__lte=hi)
+
+        # Games ignore runtime; only include them when requested.
+        game_clause = Q(media_type="game")
+        qs = qs.filter(movie_clause | show_clause | game_clause)
+    return qs
+
+
+def _embedding_neighbors_ranked(
+    vector: list[float],
+    *,
+    media_type: str | None,
+    exclude_ids: set[int],
+    limit: int,
+    genre_ids: list[int] | None = None,
+    runtime: str | None = None,
+    media_types: list[str] | None = None,
+) -> list[tuple[float, MediaItem]]:
+    """Nearest catalog neighbors as (cosine_distance, item) pairs."""
+    from django.db import connection
+
+    qs = MediaItem.objects.filter(embedding__isnull=False, is_adult=False)
+    if media_type:
+        qs = qs.filter(media_type=media_type)
+    qs = _apply_decide_filters(
+        qs, media_types=media_types, genre_ids=genre_ids, runtime=runtime
+    )
+    if exclude_ids:
+        qs = qs.exclude(pk__in=exclude_ids)
+
+    fetch = max(limit * 3, limit + len(exclude_ids), limit)
+
+    if connection.vendor == "postgresql":
+        from pgvector.django import CosineDistance
+
+        qs = (
+            qs.annotate(distance=CosineDistance("embedding", vector), _has_local=local_artwork_exists())
+            .order_by("distance", "-_has_local", "-popularity")[:fetch]
+        )
+        return [(float(item.distance), item) for item in qs[:limit]]
+
+    items = list(qs.annotate(_has_local=local_artwork_exists()))
+    scored: list[tuple[float, MediaItem]] = []
+    for item in items:
+        emb = _as_float_list(item.embedding)
+        if emb is None:
+            continue
+        scored.append((_py_cosine_distance(emb, vector), item))
+    scored.sort(
+        key=lambda pair: (
+            pair[0],
+            0 if getattr(pair[1], "_has_local", False) else 1,
+            -(pair[1].popularity or 0),
+        )
+    )
+    return scored[:limit]
+
+
+def _embedding_neighbors(
+    vector: list[float],
+    *,
+    media_type: str | None,
+    exclude_ids: set[int],
+    limit: int,
+) -> list[MediaItem]:
+    """Nearest catalog neighbors by cosine distance (pgvector; Python fallback)."""
+    return [
+        item
+        for _, item in _embedding_neighbors_ranked(
+            vector,
+            media_type=media_type,
+            exclude_ids=exclude_ids,
+            limit=limit,
+        )
+    ]
+
+def _genre_similar_items(
+    source: MediaItem, media_type: str | None, exclude_ids: set[int], limit: int
+) -> list[MediaItem]:
+    """Shared-genre count then popularity — used when embeddings are missing."""
     genre_ids = list(source.media_genres.values_list("genre_id", flat=True))
-    qs = MediaItem.objects.exclude(pk=media_id).filter(is_adult=False)
+    qs = MediaItem.objects.filter(is_adult=False)
+    if exclude_ids:
+        qs = qs.exclude(pk__in=exclude_ids)
     if media_type:
         qs = qs.filter(media_type=media_type)
     elif source.media_type in ("movie", "show", "game"):
@@ -544,3 +724,265 @@ def similar_items(media_id: int, media_type: str | None, limit: int) -> list[Med
         qs = qs.annotate(_has_local=local_artwork_exists())
         qs = qs.order_by("-_has_local", "-popularity")
     return list(qs.distinct()[:limit])
+
+
+def _resolve_similar_type(source: MediaItem, media_type: str | None) -> str | None:
+    if media_type:
+        return media_type
+    if source.media_type in ("movie", "show", "game"):
+        return source.media_type
+    return None
+
+
+def similar_items(media_id: int, media_type: str | None, limit: int) -> list[MediaItem]:
+    """Content-based similar items.
+
+    Prefers pgvector cosine neighbors when the source has an embedding; falls
+    back to shared-genre count then popularity.
+    """
+    try:
+        source = MediaItem.objects.get(pk=media_id)
+    except MediaItem.DoesNotExist:
+        return []
+    filter_type = _resolve_similar_type(source, media_type)
+    exclude = {media_id}
+    source_vec = _as_float_list(source.embedding)
+    if source_vec is not None:
+        hits = _embedding_neighbors(
+            source_vec, media_type=filter_type, exclude_ids=exclude, limit=limit
+        )
+        if hits:
+            return hits
+    return _genre_similar_items(source, filter_type, exclude, limit)
+
+
+def _user_seen_media_ids(user_id: int, *, since=None) -> set[int]:
+    from apps.social.models import MediaItemRating, UserMediaInteraction
+
+    rated_qs = MediaItemRating.objects.filter(user_id=user_id)
+    touched_qs = UserMediaInteraction.objects.filter(user_id=user_id)
+    if since is not None:
+        rated_qs = rated_qs.filter(updated_at__gt=since)
+        touched_qs = touched_qs.filter(updated_at__gt=since)
+    rated = rated_qs.values_list("media_item_id", flat=True)
+    touched = touched_qs.values_list("media_item_id", flat=True)
+    return set(rated) | set(touched)
+
+
+def _user_taste_vector(user_id: int, *, since=None) -> list[float] | None:
+    """Average embedding of the user's positive ratings / interactions.
+
+    High ratings (≥7) and liked/watched/played/owned/watchlisted titles with
+    embeddings are weighted and averaged into a single 1024-d taste vector.
+    When ``since`` is set (``User.taste_reset_at``), only activity after that
+    timestamp contributes — letting users refresh For You without wiping
+    library history.
+    """
+    from apps.social.models import MediaItemRating, UserMediaInteraction
+
+    weights: dict[int, float] = {}
+
+    ratings_qs = MediaItemRating.objects.filter(user_id=user_id, score__gte=_TASTE_MIN_RATING)
+    if since is not None:
+        ratings_qs = ratings_qs.filter(updated_at__gt=since)
+    ratings = ratings_qs.order_by("-updated_at").values_list("media_item_id", "score")[
+        :_TASTE_SEED_LIMIT
+    ]
+    for media_item_id, score in ratings:
+        weights[media_item_id] = max(weights.get(media_item_id, 0.0), float(score) / 10.0)
+
+    interactions_qs = UserMediaInteraction.objects.filter(
+        user_id=user_id, interaction_type__in=_TASTE_POSITIVE_INTERACTIONS
+    )
+    if since is not None:
+        interactions_qs = interactions_qs.filter(updated_at__gt=since)
+    interactions = interactions_qs.order_by("-updated_at").values_list(
+        "media_item_id", "interaction_type"
+    )[:_TASTE_SEED_LIMIT]
+    interaction_weight = {
+        "liked": 1.0,
+        "watched": 0.75,
+        "played": 0.75,
+        "owned": 0.55,
+        "watchlisted": 0.45,
+    }
+    for media_item_id, interaction_type in interactions:
+        w = interaction_weight.get(interaction_type, 0.5)
+        weights[media_item_id] = max(weights.get(media_item_id, 0.0), w)
+
+    if not weights:
+        return None
+
+    # Prefer the highest-weighted seeds, then fill embeddings.
+    seed_ids = sorted(weights.keys(), key=lambda mid: weights[mid], reverse=True)[
+        :_TASTE_SEED_LIMIT
+    ]
+    embedded = {
+        item.pk: _as_float_list(item.embedding)
+        for item in MediaItem.objects.filter(pk__in=seed_ids, embedding__isnull=False).only(
+            "id", "embedding"
+        )
+    }
+
+    accumulator = [0.0] * _EMBEDDING_DIM
+    total_weight = 0.0
+    for media_item_id in seed_ids:
+        vec = embedded.get(media_item_id)
+        if vec is None:
+            continue
+        w = weights[media_item_id]
+        total_weight += w
+        for i, component in enumerate(vec):
+            accumulator[i] += component * w
+
+    if total_weight <= 0.0:
+        return None
+    return _normalize([v / total_weight for v in accumulator])
+
+
+def recommended_items(
+    media_id: int,
+    media_type: str | None,
+    limit: int,
+    user: _User = None,
+) -> list[MediaItem]:
+    """Personalized "For You" neighbors for a media detail page.
+
+    Blends the page title's embedding with a taste vector built from the
+    user's ratings and interactions, then runs the same cosine neighbor
+    lookup as Similar. Falls back to genre similar when embeddings or
+    taste signals are unavailable.
+    """
+    try:
+        source = MediaItem.objects.get(pk=media_id)
+    except MediaItem.DoesNotExist:
+        return []
+
+    filter_type = _resolve_similar_type(source, media_type)
+    exclude = {media_id}
+    user_id = getattr(user, "id", None) if getattr(user, "is_authenticated", False) else None
+    since = getattr(user, "taste_reset_at", None) if user_id is not None else None
+    if user_id is not None:
+        exclude |= _user_seen_media_ids(user_id, since=since)
+
+    source_vec = _as_float_list(source.embedding)
+    taste_vec = _user_taste_vector(user_id, since=since) if user_id is not None else None
+
+    query: list[float] | None = None
+    if source_vec is not None and taste_vec is not None:
+        query = _blend_vectors(source_vec, taste_vec, a_weight=_FOR_YOU_SOURCE_WEIGHT)
+    elif taste_vec is not None:
+        query = taste_vec
+    elif source_vec is not None and user_id is not None:
+        # Authenticated cold start: same semantic neighborhood, but hide titles
+        # the user already rated / interacted with (after any taste reset).
+        query = source_vec
+
+    if query is not None:
+        hits = _embedding_neighbors(
+            query, media_type=filter_type, exclude_ids=exclude, limit=limit
+        )
+        if hits:
+            return hits
+
+    return _genre_similar_items(source, filter_type, exclude, limit)
+
+
+def _popularity_candidates(
+    *,
+    exclude_ids: set[int],
+    limit: int,
+    media_types: list[str] | None,
+    genre_ids: list[int] | None,
+    runtime: str | None,
+) -> list[MediaItem]:
+    qs = MediaItem.objects.filter(is_adult=False)
+    qs = _apply_decide_filters(
+        qs, media_types=media_types, genre_ids=genre_ids, runtime=runtime
+    )
+    if exclude_ids:
+        qs = qs.exclude(pk__in=exclude_ids)
+    qs = qs.annotate(_has_local=local_artwork_exists()).order_by(
+        "-_has_local", "-popularity"
+    )
+    return list(qs[:limit])
+
+
+def _shuffle_pick_and_shortlist(
+    ranked: list[tuple[float, MediaItem]],
+    *,
+    limit: int,
+    seed: int | None,
+) -> list[MediaItem]:
+    """Pick a hero from the top neighborhood, then fill shortlist by distance."""
+    import random
+
+    if not ranked:
+        return []
+
+    pool_size = min(len(ranked), max(limit * 3, 15))
+    pool = list(ranked[:pool_size])
+    rng = random.Random(seed)
+    hero_idx = rng.randrange(len(pool))
+    hero_dist, hero = pool.pop(hero_idx)
+    _ = hero_dist
+    # Shortlist: remaining by ascending distance (original ranking).
+    pool.sort(key=lambda pair: pair[0])
+    shortlist = [item for _, item in pool[: max(0, limit - 1)]]
+    return [hero, *shortlist]
+
+
+def decide_items(
+    user: _User,
+    *,
+    media_types: list[str] | None = None,
+    genre_ids: list[int] | None = None,
+    runtime: str | None = None,
+    limit: int = 5,
+    seed: int | None = None,
+) -> tuple[list[MediaItem], bool]:
+    """Standalone "Decide for me" picks from taste (no source title).
+
+    Returns ``(items, cold_start)`` where ``items[0]`` is the hero pick and
+    the rest are the shortlist. ``cold_start`` is True when the user has no
+    taste vector and results fall back to popularity.
+    """
+    user_id = getattr(user, "id", None) if getattr(user, "is_authenticated", False) else None
+    if user_id is None:
+        return [], True
+
+    types = [t for t in (media_types or ["movie", "show"]) if t in _DECIDE_MEDIA_TYPES]
+    if not types:
+        types = ["movie", "show"]
+
+    since = getattr(user, "taste_reset_at", None)
+    exclude = _user_seen_media_ids(user_id, since=since)
+    taste_vec = _user_taste_vector(user_id, since=since)
+
+    fetch = max(limit * 4, 20)
+
+    if taste_vec is not None:
+        # Single untyped neighborhood filtered by requested types — one taste
+        # vector ranks across movies/shows/games together.
+        ranked = _embedding_neighbors_ranked(
+            taste_vec,
+            media_type=None,
+            exclude_ids=exclude,
+            limit=fetch,
+            genre_ids=genre_ids,
+            runtime=runtime,
+            media_types=types,
+        )
+        if ranked:
+            return _shuffle_pick_and_shortlist(ranked, limit=limit, seed=seed), False
+
+    # Cold start: popularity under the same filters.
+    popular = _popularity_candidates(
+        exclude_ids=exclude,
+        limit=fetch,
+        media_types=types,
+        genre_ids=genre_ids,
+        runtime=runtime,
+    )
+    ranked_pop = [(float(i), item) for i, item in enumerate(popular)]
+    return _shuffle_pick_and_shortlist(ranked_pop, limit=limit, seed=seed), True

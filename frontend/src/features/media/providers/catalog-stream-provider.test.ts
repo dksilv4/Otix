@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
-import { applyCatalogStreamEvent } from './catalog-stream-provider'
+import { applyCatalogStreamEvent } from './catalog-stream-events'
 import { discoverKeys } from '@discover/queries/discover-keys'
 import { libraryKeys } from '@library/library-keys'
 import { mediaKeys } from '@media/queries/media-keys'

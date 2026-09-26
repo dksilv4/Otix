@@ -90,13 +90,13 @@ describe('integration service modals', () => {
 
   it('shows empty-server state for SABnzbd when no game server exists', () => {
     render(<ServerSabnzbdSettingsModal onClose={vi.fn()} />)
-    expect(screen.getByText('No Game Server Connected')).toBeInTheDocument()
+    expect(screen.getByText(/No (Node|Game Server) Connected/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'SABnzbd' })).toBeInTheDocument()
   })
 
   it('shows empty-server state for Radarr when no game server exists', () => {
     render(<ServerRadarrSettingsModal onClose={vi.fn()} />)
-    expect(screen.getByText('No Game Server Connected')).toBeInTheDocument()
+    expect(screen.getByText(/No (Node|Game Server) Connected/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Radarr' })).toBeInTheDocument()
   })
 

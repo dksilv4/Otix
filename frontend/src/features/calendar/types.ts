@@ -7,6 +7,17 @@ export interface CalendarEvent {
   slug: string
   releaseDate: string
   eventType: 'watchlist_release' | 'new_episode' | 'new_season' | 'sequel'
+  /** How this date is releasing — theatrical, digital, physical, episode, … */
+  releaseKind?:
+    | 'premiere'
+    | 'theatrical_limited'
+    | 'theatrical'
+    | 'digital'
+    | 'physical'
+    | 'tv'
+    | 'release'
+    | 'episode'
+    | null
   reason: string
   episodeInfo?: {
     id: string

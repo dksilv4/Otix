@@ -36,13 +36,7 @@ export default defineConfig([
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/immutability': 'off',
       'react-hooks/preserve-manual-memoization': 'off',
-      'react-refresh/only-export-components': 'off',
-    },
-  },
-  {
-    files: ['**/router.tsx', '**/*.router.ts'],
-    rules: {
-      'react-refresh/only-export-components': 'off',
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
 ])

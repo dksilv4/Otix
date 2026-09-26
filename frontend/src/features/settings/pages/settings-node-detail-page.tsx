@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft, Loader2, Server } from 'lucide-react'
+import { ArrowLeft, Loader2, Server, Trash2 } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router'
 import { DkButton } from '@ui/atoms/button'
+import { DkDialog } from '@ui/molecules/dialog'
+import { useToast } from '@ui/molecules/toast'
 import { DkTabs, DkTabList, DkTab, DkTabPanel } from '@ui/molecules/tabs'
 import { NodeDownloaderCard } from '@/features/downloads/molecules/node-downloader-card'
 import { ImportNodeInstancesButton } from '@/features/downloads/molecules/import-node-instances-modal'
+import { useDeleteGameServer } from '@/features/downloads/use-server-downloads'
 import { isBackendNode } from '../backend-node'
 import { isLocalDesktopNode, isLocalDesktopNodeId, getLocalDesktopNodeFallback } from '../local-desktop-node'
 import { useSettingsNode } from '../context/settings-node-context'
@@ -57,6 +60,30 @@ export function SettingsNodeDetailPage() {
     [navigate, nodeId],
   )
 
+  const { toast } = useToast()
+  const deleteServerMutation = useDeleteGameServer()
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false)
+
+  const handleDisconnectNode = async () => {
+    if (!server) return
+    try {
+      await deleteServerMutation.mutateAsync(server.id)
+      toast({
+        title: 'Node disconnected',
+        description: `Removed ${server.name} from your nodes.`,
+        variant: 'default',
+      })
+      setConfirmDisconnect(false)
+      goBack()
+    } catch (err: any) {
+      toast({
+        title: 'Error disconnecting node',
+        description: err.message,
+        variant: 'error',
+      })
+    }
+  }
+
   const goBack = () => {
     void navigate({ to: '/settings/nodes' })
   }
@@ -103,12 +130,62 @@ export function SettingsNodeDetailPage() {
         title={server.name}
         description={description}
         action={
-          <DkButton size="sm" variant="ghost" onClick={goBack}>
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Nodes
-          </DkButton>
+          <div className="flex items-center gap-2">
+            {!local && !backend && (
+              <DkButton
+                size="sm"
+                variant="ghost"
+                className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer"
+                onClick={() => setConfirmDisconnect(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Disconnect Node
+              </DkButton>
+            )}
+            <DkButton size="sm" variant="ghost" onClick={goBack}>
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Nodes
+            </DkButton>
+          </div>
         }
       />
+
+      {confirmDisconnect && (
+        <DkDialog
+          open={confirmDisconnect}
+          onOpenChange={(open) => {
+            if (!open) setConfirmDisconnect(false)
+          }}
+          title="Disconnect Node"
+          description={`Are you sure you want to disconnect ${server.name}?`}
+        >
+          <div className="space-y-4 pt-2">
+            <p className="text-xs text-white/70 leading-relaxed">
+              This node will be removed from your account. Any active downloads will be stopped and you will need to re-claim or add the node again to reconnect.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <DkButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={deleteServerMutation.isPending}
+                onClick={() => setConfirmDisconnect(false)}
+              >
+                Cancel
+              </DkButton>
+              <DkButton
+                type="button"
+                variant="destructive"
+                size="sm"
+                loading={deleteServerMutation.isPending}
+                onClick={handleDisconnectNode}
+              >
+                Disconnect Node
+              </DkButton>
+            </div>
+          </div>
+        </DkDialog>
+      )}
 
       <DkTabs
         defaultValue={activeTab}

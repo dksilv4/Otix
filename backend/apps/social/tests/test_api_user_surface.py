@@ -78,6 +78,25 @@ class UserSurfaceApiTests(TestCase):
         status_ = self.alice_client.get("/api/v1/users/bob/follow/status")
         self.assertFalse(status_.data["is_following"])
 
+    def test_user_friends_list_is_public(self) -> None:
+        from apps.social.models import FriendRequest
+
+        FriendRequest.objects.create(
+            sender=self.alice, receiver=self.bob, status="accepted"
+        )
+        alice_friends = self.anon.get("/api/v1/users/alice/friends")
+        self.assertEqual(alice_friends.status_code, 200)
+        self.assertEqual(len(alice_friends.data), 1)
+        self.assertEqual(alice_friends.data[0]["username"], "bob")
+
+        bob_friends = self.anon.get("/api/v1/users/bob/friends")
+        self.assertEqual(bob_friends.status_code, 200)
+        self.assertEqual(bob_friends.data[0]["username"], "alice")
+
+        missing = self.anon.get("/api/v1/users/ghost/friends")
+        self.assertEqual(missing.status_code, 404)
+        self.assertEqual(missing.data["detail"], "User not found")
+
     def test_follow_self_is_400_and_unknown_user_is_404(self) -> None:
         self_response = self.alice_client.post("/api/v1/users/alice/follow")
         self.assertEqual(self_response.status_code, 400)

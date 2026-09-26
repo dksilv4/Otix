@@ -183,6 +183,9 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     preferred_genres = models.JSONField(default=list, blank=True)
     preferred_languages = models.JSONField(default=list, blank=True)
     discover_emphases = models.JSONField(default=list, blank=True)
+    # When set, For You / taste vectors ignore ratings & interactions at-or-before
+    # this timestamp so users can refresh recommendations without wiping library.
+    taste_reset_at = models.DateTimeField(null=True, blank=True)
 
     objects = UserManager()
 

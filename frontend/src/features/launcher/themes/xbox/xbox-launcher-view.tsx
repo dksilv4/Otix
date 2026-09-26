@@ -8,18 +8,12 @@ import {
   Search,
   ArrowLeft,
   Flame,
-  Clock,
-  Sparkles,
   Gamepad2,
-  HardDrive,
-  Users,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
 import { usePopularGames } from "@/features/launcher/data/queries"
-import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { useAuth } from "@/lib/providers/auth"
-import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
 import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
@@ -27,10 +21,8 @@ import type { LocalGame } from "@/features/launcher/types"
 export function XboxLauncherView() {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const isDesktop = hasDesktopAPI()
   const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
-  const { runningGame } = useRunningGame()
   const { toast } = useToast()
 
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)

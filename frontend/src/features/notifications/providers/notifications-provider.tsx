@@ -1,16 +1,22 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { useToast } from '@ui/molecules/toast'
 import { useSseStream } from '@/lib/hooks/use-sse-stream'
 import type { SseEvent } from '@/lib/api/sse-client'
 import { NotificationRouter } from '../channels'
-import { createBadgeChannel } from '../channels/badge-channel'
 import { createSoundChannel } from '../channels/sound-channel'
 import { createWebChannel } from '../channels/web-channel'
 import { createToastChannel } from '../channels/toast-channel'
 import { createDesktopChannel } from '../channels/desktop-channel'
-import type { NotificationEvent, NotificationType, NotificationPreferences } from '../types'
+import type {
+  Notification,
+  NotificationEvent,
+  NotificationListResponse,
+  NotificationType,
+  NotificationPreferences,
+  UnreadCount,
+} from '../types'
 
 interface NotificationsProviderProps {
   children: React.ReactNode
@@ -30,6 +36,61 @@ function isInQuietHours(prefs: NotificationPreferences): boolean {
   return current >= startMin || current < endMin
 }
 
+function toFeedItem(event: NotificationEvent): Notification {
+  return {
+    id: String(event.id),
+    type: event.type,
+    title: event.title,
+    body: event.body,
+    metadataJson: event.metadata ?? {},
+    isRead: event.isRead,
+    createdAt: event.createdAt,
+  }
+}
+
+type FeedUpdate = 'inserted' | 'duplicate' | 'no-cache'
+
+/**
+ * Insert a live notification at the top of any cached feed.
+ * Never invalidates/refetches — the page stays put and just gains a row.
+ */
+function appendNotificationToFeed(
+  queryClient: QueryClient,
+  event: NotificationEvent,
+): FeedUpdate {
+  const item = toFeedItem(event)
+  let outcome: FeedUpdate = 'no-cache'
+
+  queryClient.setQueriesData<InfiniteData<NotificationListResponse>>(
+    { queryKey: ['notifications', 'list'] },
+    (old) => {
+      if (!old?.pages?.length) return old
+      const exists = old.pages.some((page) =>
+        page.items.some((n) => String(n.id) === item.id),
+      )
+      if (exists) {
+        outcome = 'duplicate'
+        return old
+      }
+      outcome = 'inserted'
+      const [first, ...rest] = old.pages
+      return {
+        ...old,
+        pages: [{ ...first, items: [item, ...first.items] }, ...rest],
+      }
+    },
+  )
+
+  return outcome
+}
+
+function bumpUnreadCount(queryClient: QueryClient) {
+  queryClient.setQueryData<UnreadCount>(
+    ['notifications', 'unread-count'],
+    (prev) => ({ count: (prev?.count ?? 0) + 1 }),
+  )
+}
+
 export function NotificationsProvider({ children }: NotificationsProviderProps) {
   const { isAuthenticated, user } = useAuth()
   const queryClient = useQueryClient()
@@ -44,7 +105,8 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 
   useEffect(() => {
     const router = new NotificationRouter()
-    router.registerChannel(createBadgeChannel(queryClient))
+    // Unread badge is updated in handleMessage (cache-only). Do not register a
+    // badge channel that invalidates/refetches the list.
     router.registerChannel(createSoundChannel(prefs))
     router.registerChannel(createWebChannel(prefs))
     router.registerChannel(createToastChannel(prefs, (opts) => {
@@ -58,10 +120,9 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 
   const handleMessage = useCallback(
     (event: SseEvent) => {
-      // Convert snake_case SSE event to camelCase NotificationEvent
       const raw = event as Record<string, unknown>
       const n: NotificationEvent = {
-        id: (raw.id as string) || '',
+        id: String((raw.id as string | number) || ''),
         type: (raw.type as NotificationType) || '',
         title: (raw.title as string) || '',
         body: (raw.body as string) ?? null,
@@ -72,12 +133,17 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 
       if (!n.id || !n.type) return
 
+      const outcome = appendNotificationToFeed(queryClient, n)
+      if (outcome !== 'duplicate' && !n.isRead) {
+        bumpUnreadCount(queryClient)
+      }
+
       if (prefs[n.type] === false) return
       if (isInQuietHours(prefs)) return
 
       routerRef.current?.route(n)
     },
-    [prefs],
+    [prefs, queryClient],
   )
 
   useSseStream({
