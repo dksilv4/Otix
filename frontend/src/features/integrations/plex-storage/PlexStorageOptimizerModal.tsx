@@ -27,7 +27,7 @@ import {
   usePlexStorageRecommendations,
   useRefreshPlexStorage,
 } from './use-plex-storage'
-import type { PlexStorageRecommendationItem, PlexStorageSummary } from './types'
+import type { PlexStorageRecommendationItem } from './types'
 
 export interface PlexStorageOptimizerModalProps {
   open: boolean
@@ -111,7 +111,7 @@ export function PlexStorageOptimizerModal({
   const [searchFilter, setSearchFilter] = useState('')
   const [copiedPaths, setCopiedPaths] = useState(false)
 
-  const { data: summary, isLoading: summaryLoading, isFetching: summaryFetching } = usePlexStorageSummary(
+  const { data: summary, isFetching: summaryFetching } = usePlexStorageSummary(
     activeServerId,
     { enabled: open && Boolean(activeServerId) }
   )

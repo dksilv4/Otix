@@ -100,7 +100,7 @@ const DkMediaCard = memo(function DkMediaCard({
 
   return (
     <Root
-      {...(interactive ? { ...(linkProps as any), onMouseEnter: handlePrefetch } : {})}
+      {...(interactive ? { ...(linkProps as Record<string, unknown>), onMouseEnter: handlePrefetch } : {})}
       className={cn(
         'group relative block overflow-hidden rounded-lg',
         mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]',

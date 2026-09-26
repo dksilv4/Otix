@@ -15,7 +15,7 @@ interface CarouselProps {
   title?: string
   subtitle?: ReactNode
   viewAllLink?: string
-  viewAllSearch?: Record<string, any>
+  viewAllSearch?: Record<string, unknown>
   isLoading?: boolean
   skeleton?: ReactNode
   trackPaddingInline?: string
@@ -119,8 +119,8 @@ export const Carousel = forwardRef(function Carousel(
           </div>
           {viewAllLink && (
             <Link
-              to={viewAllLink as any}
-              search={viewAllSearch as any}
+              to={viewAllLink as never}
+              search={viewAllSearch as never}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-active)] transition-colors"
               style={{ background: 'var(--dk-surface-ghost-hover)' }}
             >

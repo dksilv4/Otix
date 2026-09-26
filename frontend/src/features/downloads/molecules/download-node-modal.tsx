@@ -3,7 +3,6 @@ import { DkButton } from '@ui/atoms/button'
 import {
   DownloadCloud,
   ExternalLink,
-  CheckCircle2,
   HardDrive,
   Laptop,
   Server,

@@ -116,6 +116,8 @@ describe('probeLocalGameNode', () => {
       serverName: 'DK Game Storage Server',
       localUrl: 'http://127.0.0.1:8090',
       authToken: 'otix_secret_token_abc123',
+      claimCode: '',
+      claimed: false,
     })
   })
 

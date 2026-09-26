@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Download, RefreshCw, Server, ExternalLink, FolderOpen, HardDrive, DownloadCloud, Sliders, Search } from 'lucide-react';
+import { Download, RefreshCw, Server, FolderOpen, HardDrive, DownloadCloud, Sliders, Search } from 'lucide-react';
 import { useAuth } from '@/lib/providers/auth';
 import { useFeature } from '@/features/_config';
 import { useModal } from '@/lib/modals';

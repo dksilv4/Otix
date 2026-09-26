@@ -188,7 +188,7 @@ describe('dk-ui molecules', () => {
           <button onClick={() => toast({ title: 'Destructive Msg', variant: 'destructive' })}>
             Toast Destructive
           </button>
-          <button onClick={() => toast({ title: 'Unknown Msg', variant: 'custom-unknown' as any })}>
+          <button onClick={() => toast({ title: 'Unknown Msg', variant: 'custom-unknown' as never })}>
             Toast Unknown
           </button>
         </div>

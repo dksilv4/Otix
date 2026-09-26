@@ -142,7 +142,7 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
         )}
         {game.matchSuggestion && !isMatched && (
           <div className="flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-sm px-2 py-0.5 text-[10px] font-semibold text-blue-400 shadow-lg">
-            {true ? `${Math.round(0 * 100)}%` : "?"}
+            ?
           </div>
         )}
       </div>
@@ -158,7 +158,7 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
             }}
           />
           <MediaLogo
-            src={game.data?.logoUrl!}
+            src={game.data?.logoUrl ?? ''}
             alt={game.title}
             className="relative z-10 max-h-[55%] max-w-[80%] object-contain transition-all duration-500 ease-out scale-100 group-hover:scale-105"
             colorGuess={game.data?.logoColorGuess ?? null}

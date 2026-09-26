@@ -10,7 +10,17 @@ interface DkImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   priority?: boolean
 }
 
-function DkImage({ src, className, alt, fallback, imgClassName, onError, onLoad, priority = false, ...props }: DkImageProps) {
+function DkImage({
+  src,
+  className,
+  alt,
+  fallback,
+  imgClassName,
+  onError,
+  onLoad,
+  priority = false,
+  ...props
+}: DkImageProps) {
   if (!src) {
     return (
       <div className={cn('flex items-center justify-center bg-muted text-xs text-muted-foreground', className)}>

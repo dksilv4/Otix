@@ -61,15 +61,17 @@ function Harness({
   )
 }
 
+type WindowWithDesktop = Window & { desktopAPI?: { selectDirectory: (...args: unknown[]) => Promise<string> } }
+
 describe('PathInput', () => {
   beforeEach(() => {
     mockServers = []
-    delete (window as any).desktopAPI
+    delete (window as WindowWithDesktop).desktopAPI
     clearDesktopAPICache()
   })
 
   afterEach(() => {
-    delete (window as any).desktopAPI
+    delete (window as WindowWithDesktop).desktopAPI
     clearDesktopAPICache()
   })
 
@@ -93,7 +95,7 @@ describe('PathInput', () => {
   it('uses the native folder dialog for local paths on desktop', async () => {
     const user = userEvent.setup()
     const selectDirectory = vi.fn().mockResolvedValue('D:\\Games')
-    ;(window as any).desktopAPI = { selectDirectory }
+    ;(window as WindowWithDesktop).desktopAPI = { selectDirectory }
     clearDesktopAPICache()
 
     render(<Harness />)
@@ -119,7 +121,7 @@ describe('PathInput', () => {
     const user = userEvent.setup()
     const onCommit = vi.fn()
     const selectDirectory = vi.fn().mockResolvedValue('D:\\Games')
-    ;(window as any).desktopAPI = { selectDirectory }
+    ;(window as WindowWithDesktop).desktopAPI = { selectDirectory }
     clearDesktopAPICache()
 
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
