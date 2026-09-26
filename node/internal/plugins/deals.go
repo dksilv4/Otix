@@ -70,7 +70,7 @@ func (dm *DealsMonitor) Refresh() error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "Otix-Node/0.2.0")
+	req.Header.Set("User-Agent", "Otix-Node/0.0.1")
 
 	resp, err := dm.httpClient.Do(req)
 	if err != nil {

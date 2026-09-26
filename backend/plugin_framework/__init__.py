@@ -34,7 +34,7 @@ from plugin_framework.manifest import (
 from plugin_framework.permissions import codename_for, missing_grants, unsupported_grants
 from plugin_framework.registry import PluginRegistry, default_registry, discover_and_load
 
-__version__ = "0.2.0"
+__version__ = "0.0.1"
 
 __all__ = [
     "DiscoveredPlugin",

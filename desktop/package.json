@@ -1,7 +1,7 @@
 {
   "name": "desktop",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.0.1",
   "main": "dist/main.js",
   "scripts": {
     "postinstall": "patch-package && electron-rebuild -f -w better-sqlite3",

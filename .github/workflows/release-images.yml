@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
     inputs:
       version_tag:
-        description: "Release tag (e.g. v0.2.0)"
+        description: "Release tag (e.g. v0.0.1)"
         required: false
         type: string
-        default: "v0.2.0"
+        default: "v0.0.1"
       push_images:
         description: "Push images to GHCR"
         required: true

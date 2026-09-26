@@ -320,7 +320,7 @@ class GameServerDownloadsListView(APIView):
                 "recommended": False,
             },
         ]
-        return Response({"version": "0.2.0", "downloads": downloads})
+        return Response({"version": "0.0.1", "downloads": downloads})
 
 
 class GameServerDownloadFileView(APIView):

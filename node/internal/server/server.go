@@ -150,7 +150,7 @@ func (s *Server) setupRoutes() {
 		jsonResponse(w, http.StatusOK, map[string]interface{}{
 			"status":      "online",
 			"server_name": s.cfg.Server.Name,
-			"version":     "0.2.0",
+			"version":     "0.0.1",
 		})
 	})
 
@@ -205,7 +205,7 @@ func (s *Server) setupRoutes() {
 		resp := map[string]interface{}{
 			"status":          "online",
 			"server_name":     s.cfg.Server.Name,
-			"version":         "0.2.0",
+			"version":         "0.0.1",
 			"uptime_seconds":  uptime,
 			"libraries_count": len(s.cfg.GameLibraries),
 			"total_files":     totalFiles,
