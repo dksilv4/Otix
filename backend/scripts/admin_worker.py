@@ -1110,9 +1110,14 @@ class EmbeddingWorker:
                 print(
                     f"{Colors.GREEN}[+] GPU: {gpu_name} ({vram_gb:.1f} GB VRAM) — Hardware Acceleration ACTIVE{Colors.RESET}"
                 )
+            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                self.device = "mps"
+                print(
+                    f"{Colors.GREEN}[+] Apple Silicon GPU (Metal/MPS) detected — Hardware Acceleration ACTIVE{Colors.RESET}"
+                )
             else:
                 self.device = "cpu"
-                print(f"{Colors.YELLOW}[!] CUDA not available, falling back to CPU{Colors.RESET}")
+                print(f"{Colors.YELLOW}[!] GPU/MPS not available, falling back to CPU{Colors.RESET}")
 
             self.model = SentenceTransformer(self.model_name, device=self.device)
             # Cap max_seq_length to 2048 tokens to prevent massive attention VRAM spikes on long synopses
@@ -1257,6 +1262,8 @@ class EmbeddingWorker:
 
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
+                    elif hasattr(torch, "mps") and hasattr(torch.mps, "empty_cache"):
+                        torch.mps.empty_cache()
                 except Exception:
                     pass
                 # Automatic retry with conservative batch size (16)
@@ -1306,6 +1313,9 @@ class EmbeddingWorker:
                     if self.device == "cuda" and torch.cuda.is_available():
                         vram_mb = torch.cuda.memory_allocated() / (1024 * 1024)
                         vram_str = f" | VRAM: {vram_mb:.0f} MB"
+                    elif self.device == "mps" and hasattr(torch, "mps") and hasattr(torch.mps, "current_allocated_memory"):
+                        mps_mb = torch.mps.current_allocated_memory() / (1024 * 1024)
+                        vram_str = f" | Metal RAM: {mps_mb:.0f} MB"
                 except Exception:
                     pass
 

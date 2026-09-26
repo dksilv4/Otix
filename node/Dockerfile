@@ -1,20 +1,32 @@
-FROM python:3.11-slim
+# Build Stage
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /src
+
+# Download dependencies first for caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code and build statically linked binary
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /otix-node main.go
+
+# Final Lightweight Runtime Stage
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates tzdata curl
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+# Create default storage directories
+RUN mkdir -p /app/storage/saves /app/storage/downloads /storage/installers
 
-COPY pyproject.toml README.md config.example.yaml ./
-COPY otix_server/ ./otix_server/
+COPY --from=builder /otix-node /app/otix-node
+COPY config.example.yaml /app/config.example.yaml
 
-RUN pip install --no-cache-dir .
-
-EXPOSE 8000
-
+ENV PORT=8090
 ENV CONFIG_PATH="/app/config.yaml"
 
-CMD ["python", "-m", "otix_server.main"]
+EXPOSE 8090
+
+ENTRYPOINT ["/app/otix-node"]

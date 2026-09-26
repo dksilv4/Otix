@@ -1,0 +1,153 @@
+package heartbeat
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/dksilv4/otix/node/internal/claim"
+	"github.com/dksilv4/otix/node/internal/config"
+)
+
+var LoopbackHosts = map[string]bool{
+	"127.0.0.1": true,
+	"localhost": true,
+	"::1":       true,
+}
+
+const DockerRegistry = "http://api:8000/api"
+
+func GetLocalIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return "127.0.0.1"
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String()
+}
+
+func ResolveRegistryURL(cfg *config.AppConfig) string {
+	override := strings.TrimSpace(os.Getenv("OTIX_REGISTRY_URL"))
+	if override != "" {
+		return strings.TrimRight(override, "/")
+	}
+
+	registry := strings.TrimRight(strings.TrimSpace(cfg.Server.RegistryURL), "/")
+	if registry == "" {
+		return ""
+	}
+
+	u, err := url.Parse(registry)
+	if err == nil {
+		host := strings.ToLower(u.Hostname())
+		_, errDocker := os.Stat("/.dockerenv")
+		inDocker := errDocker == nil
+		if inDocker && LoopbackHosts[host] {
+			return DockerRegistry
+		}
+	}
+
+	return registry
+}
+
+type HeartbeatPayload struct {
+	ServerName     string   `json:"server_name"`
+	LocalEndpoints []string `json:"local_endpoints"`
+	Port           int      `json:"port"`
+	AuthToken      string   `json:"auth_token"`
+	ClaimCode      string   `json:"claim_code,omitempty"`
+	Claimed        bool     `json:"claimed"`
+}
+
+type HeartbeatRunner struct {
+	cfg      *config.AppConfig
+	claimMgr *claim.ClaimManager
+	client   *http.Client
+	stopChan chan struct{}
+}
+
+func NewHeartbeatRunner(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *HeartbeatRunner {
+	return &HeartbeatRunner{
+		cfg:      cfg,
+		claimMgr: claimMgr,
+		client:   &http.Client{Timeout: 10 * time.Second},
+		stopChan: make(chan struct{}),
+	}
+}
+
+func (h *HeartbeatRunner) Start() {
+	go h.loop()
+}
+
+func (h *HeartbeatRunner) Stop() {
+	close(h.stopChan)
+}
+
+func (h *HeartbeatRunner) loop() {
+	delay := 5 * time.Second
+
+	for {
+		select {
+		case <-time.After(delay):
+			if !h.cfg.Server.EnableHeartbeat {
+				delay = 30 * time.Second
+				continue
+			}
+
+			registryURL := ResolveRegistryURL(h.cfg)
+			if registryURL == "" {
+				delay = 30 * time.Second
+				continue
+			}
+
+			localIP := GetLocalIP()
+			port := h.cfg.Server.Port
+
+			payload := HeartbeatPayload{
+				ServerName: h.cfg.Server.Name,
+				LocalEndpoints: []string{
+					fmt.Sprintf("http://%s:%d", localIP, port),
+					fmt.Sprintf("http://127.0.0.1:%d", port),
+				},
+				Port:      port,
+				AuthToken: h.cfg.Server.AuthToken,
+				ClaimCode: h.claimMgr.CurrentCode(),
+				Claimed:   h.claimMgr.IsClaimed(),
+			}
+
+			data, err := json.Marshal(payload)
+			if err != nil {
+				delay = 15 * time.Second
+				continue
+			}
+
+			targetURL := fmt.Sprintf("%s/v1/servers/heartbeat", registryURL)
+			resp, err := h.client.Post(targetURL, "application/json", bytes.NewReader(data))
+			if err != nil {
+				fmt.Printf("[Heartbeat] Failed to reach %s: %v\n", targetURL, err)
+				delay = 15 * time.Second
+				continue
+			}
+			resp.Body.Close()
+
+			if resp.StatusCode == http.StatusOK {
+				fmt.Printf("[Heartbeat] Server heartbeat announced to %s (claimed=%t)\n", targetURL, payload.Claimed)
+				delay = 5 * time.Minute
+			} else {
+				fmt.Printf("[Heartbeat] %s returned HTTP %d\n", targetURL, resp.StatusCode)
+				delay = 15 * time.Second
+			}
+
+		case <-h.stopChan:
+			return
+		}
+	}
+}

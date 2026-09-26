@@ -1,10 +1,13 @@
 """Game server API views: self-hosted otix-server node management and library indexing."""
 
 import logging
+import mimetypes
 from pathlib import Path
 
 import httpx
+from django.conf import settings
 from django.db.utils import OperationalError, ProgrammingError
+from django.http import FileResponse, Http404
 from rest_framework import status
 from rest_framework.exceptions import NotAuthenticated, NotFound
 from rest_framework.permissions import AllowAny
@@ -27,6 +30,7 @@ from apps.library.services.download_history import (
 )
 from apps.library.services.game_server import (
     apply_node_heartbeat,
+    claim_node_by_pin,
     collapse_duplicate_game_servers,
     contact_urls,
     desktop_get_settings,
@@ -40,12 +44,14 @@ from apps.library.services.game_server import (
     explorer_create_folder,
     explorer_set_download_path,
     link_or_create_game_server,
+    list_pending_nodes,
     list_pending_nodes_for,
     node_get_organize,
     node_list_libraries,
     node_replace_libraries,
     node_save_organize,
     ping_server_sync,
+    probe_node_reachability,
     provider_list,
     provider_test,
     prowlarr_get_indexers,
@@ -202,6 +208,127 @@ class GameServerPendingView(APIView):
     def get(self, request: Request) -> Response:
         user = _resolve_user(request)
         return Response(list_pending_nodes_for(user) if user else [])
+
+
+class GameServerClaimView(APIView):
+    """``POST /api/v1/library/servers/claim`` — Plex-style claim of an Otix node by PIN."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request) -> Response:
+        user = _resolve_user(request)
+        if not user:
+            raise NotAuthenticated("User authentication required to claim a server node")
+
+        payload = request.data if isinstance(request.data, dict) else {}
+        claim_code = payload.get("claim_code") or payload.get("claimCode")
+        node_url = payload.get("node_url") or payload.get("nodeUrl")
+        server_name = payload.get("server_name") or payload.get("serverName")
+
+        if not claim_code:
+            return Response({"error": "claim_code is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            server, created = claim_node_by_pin(
+                user=user,
+                claim_code=str(claim_code),
+                node_url=str(node_url) if node_url else None,
+                server_name=str(server_name) if server_name else None,
+            )
+            data = UserGameServerSerializer(server).data
+            data["created"] = created
+            return Response(data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({"error": f"Failed to claim node: {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
+
+
+class GameServerProbeView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/probe`` — test remote access reachability."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        result = probe_node_reachability(server)
+        return Response(result)
+
+
+class GameServerDownloadsListView(APIView):
+    """``GET /api/v1/library/servers/downloads`` — direct download links and metadata for Otix Node installers."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request) -> Response:
+        base_release_url = "https://github.com/dksilv4/Otix/releases/latest/download"
+        host = request.build_absolute_uri("/").rstrip("/")
+        media_downloads = Path(settings.MEDIA_ROOT) / "downloads"
+
+        def resolve_url(filename: str, fallback_url: str) -> str:
+            if (media_downloads / filename).is_file():
+                return f"{host}/api/v1/library/servers/downloads/file/{filename}"
+            return fallback_url
+
+        downloads = [
+            {
+                "platform": "macos",
+                "label": "macOS (Apple Silicon & Intel)",
+                "filename": "Otix-Node.dmg",
+                "format": "dmg",
+                "description": "Universal Mac package. Open the DMG, drag Otix Node to Applications, and double-click to start.",
+                "url": resolve_url("Otix-Node.dmg", f"{base_release_url}/Otix-Node.dmg"),
+                "recommended": True,
+            },
+            {
+                "platform": "windows",
+                "label": "Windows (64-bit)",
+                "filename": "Otix-Node-Windows-x64.zip",
+                "format": "zip",
+                "description": "Portable standalone executable. Extract and double-click to start.",
+                "url": resolve_url("Otix-Node-Windows-x64.zip", f"{base_release_url}/Otix-Node-Windows-x64.zip"),
+                "recommended": True,
+            },
+            {
+                "platform": "linux",
+                "label": "Linux (x86_64)",
+                "filename": "Otix-Node-Linux-x64.tar.gz",
+                "format": "tar.gz",
+                "description": "Standalone binary archive for Linux distributions.",
+                "url": resolve_url("Otix-Node-Linux-x64.tar.gz", f"{base_release_url}/Otix-Node-Linux-x64.tar.gz"),
+                "recommended": False,
+            },
+            {
+                "platform": "unraid",
+                "label": "Unraid / Docker",
+                "filename": "my-otix-server.xml",
+                "format": "xml",
+                "description": "Community Applications Docker template on port 8090.",
+                "url": "https://raw.githubusercontent.com/dksilv4/Otix/main/node/unraid/my-otix-server.xml",
+                "recommended": False,
+            },
+        ]
+        return Response({"version": "0.2.0", "downloads": downloads})
+
+
+class GameServerDownloadFileView(APIView):
+    """``GET /api/v1/library/servers/downloads/file/{filename}`` — download built Otix Node installer."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, filename: str) -> FileResponse:
+        media_downloads = (Path(settings.MEDIA_ROOT) / "downloads").resolve()
+        safe_path = (media_downloads / filename).resolve()
+        if not safe_path.is_file() or media_downloads not in safe_path.parents:
+            raise Http404("Installer file not found")
+
+        content_type, _ = mimetypes.guess_type(str(safe_path))
+        return FileResponse(
+            open(safe_path, "rb"),
+            as_attachment=True,
+            filename=filename,
+            content_type=content_type or "application/octet-stream",
+        )
 
 
 class GameServerDetailView(APIView):

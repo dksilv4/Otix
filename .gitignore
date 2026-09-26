@@ -51,5 +51,14 @@ otix-frontend-dist.tar.gz
 
 # Uploaded media files
 /backend/uploads/
+/backend/media/
 uploads/
+
+# Worker daemon and environments
+.venv-worker/
+.worker.pid
+worker.log
+
+# Legacy local backup
+/server/
 

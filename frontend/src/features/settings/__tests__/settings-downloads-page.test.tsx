@@ -49,12 +49,19 @@ vi.mock('@/features/downloads/use-downloads', () => ({
   useDownloads: () => ({ downloads: [], isLoading: false, cancelDownload: vi.fn() }),
 }))
 
+const mockClaimMutateAsync = vi.fn().mockResolvedValue({ id: 5, name: 'Home Server', isOnline: true })
+const mockProbeMutateAsync = vi.fn().mockResolvedValue({ remote_accessible: true, latency_ms: 25, tested_url: 'http://1.2.3.4:8090' })
+let mockPendingNodes: any[] = []
+
 vi.mock('@/features/downloads/use-server-downloads', () => ({
   useGameServers: () => ({ data: [], isLoading: false }),
   useCreateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePingGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useClaimGameServer: () => ({ mutateAsync: mockClaimMutateAsync, isPending: false }),
+  useProbeGameServer: () => ({ mutateAsync: mockProbeMutateAsync, isPending: false }),
+  usePendingGameServers: () => ({ data: mockPendingNodes, isLoading: false }),
 }))
 
 vi.mock('@/features/downloads/use-server-usenet', () => ({
@@ -159,4 +166,82 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
       '/settings/nodes/-2',
     )
   })
+
+  it('renders claim with PIN tab when opening Connect node form', async () => {
+    const user = userEvent.setup()
+    render(
+      <SettingsSaveProvider>
+        <ModalProvider>
+          <SettingsDownloadsPage />
+          <ModalRoot />
+        </ModalProvider>
+      </SettingsSaveProvider>,
+    )
+
+    const connectButton = screen.getByRole('button', { name: /connect node/i })
+    await user.click(connectButton)
+
+    expect(screen.getByRole('button', { name: /claim with pin/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /manual url & token/i })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('OTX-XXXX')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /claim & link node/i })).toBeInTheDocument()
+  })
+
+  it('renders detected unclaimed node banner and claims on click', async () => {
+    mockPendingNodes = [
+      {
+        serverName: 'Unraid Tower',
+        localUrl: 'http://192.168.1.150:8090',
+        claimCode: 'OTX-9999',
+        claimed: false,
+      },
+    ]
+
+    const user = userEvent.setup()
+    render(
+      <SettingsSaveProvider>
+        <ModalProvider>
+          <SettingsDownloadsPage />
+          <ModalRoot />
+        </ModalProvider>
+      </SettingsSaveProvider>,
+    )
+
+    expect(screen.getByText(/unclaimed otix node detected/i)).toBeInTheDocument()
+    expect(screen.getByText(/PIN: OTX-9999/i)).toBeInTheDocument()
+
+    const claimBtn = screen.getByRole('button', { name: /claim node/i })
+    await user.click(claimBtn)
+
+    expect(mockClaimMutateAsync).toHaveBeenCalledWith({
+      claim_code: 'OTX-9999',
+      node_url: 'http://192.168.1.150:8090',
+      server_name: 'Unraid Tower',
+    })
+
+    mockPendingNodes = []
+  })
+
+  it('opens Download Node modal when clicking Download node button', async () => {
+    const user = userEvent.setup()
+    render(
+      <SettingsSaveProvider>
+        <ModalProvider>
+          <SettingsDownloadsPage />
+          <ModalRoot />
+        </ModalProvider>
+      </SettingsSaveProvider>,
+    )
+
+    const downloadButtons = screen.getAllByRole('button', { name: /download node/i })
+    expect(downloadButtons.length).toBeGreaterThan(0)
+    await user.click(downloadButtons[0])
+
+    expect(screen.getByRole('heading', { name: 'Download Otix Node' })).toBeInTheDocument()
+    expect(screen.getByText('macOS')).toBeInTheDocument()
+    expect(screen.getByText('Windows')).toBeInTheDocument()
+    expect(screen.getByText('Otix-Node.dmg')).toBeInTheDocument()
+    expect(screen.getByText('Otix-Node-Windows-x64.zip')).toBeInTheDocument()
+  })
 })
+

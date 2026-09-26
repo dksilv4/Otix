@@ -109,8 +109,11 @@ def record_node_heartbeat(payload: dict) -> dict:
         "server_name": (payload.get("server_name") or "Otix Game Server").strip(),
         "local_url": browser_url_for_node(port, advertised),
         "advertised_url": advertised,
+        "wan_ip": payload.get("wan_ip") or "",
         "port": port,
         "auth_token": payload.get("auth_token") or "",
+        "claim_code": payload.get("claim_code") or "",
+        "claimed": bool(payload.get("claimed", False)),
     }
     nodes = [
         row
@@ -185,6 +188,140 @@ def list_pending_nodes_for(user) -> list[dict]:
             continue
         pending.append(node)
     return pending
+
+
+def claim_node_by_pin(
+    user,
+    claim_code: str,
+    node_url: str | None = None,
+    server_name: str | None = None,
+) -> tuple[UserGameServer, bool]:
+    """Claim a pending or specified node using its 6-character claim PIN."""
+    import secrets
+
+    code = (claim_code or "").strip().upper()
+    if not code:
+        raise ValueError("Claim PIN code is required")
+
+    target_node = None
+    target_url = (node_url or "").strip().rstrip("/")
+
+    # Search pending nodes for this PIN
+    pending_nodes = list_pending_nodes()
+    for n in pending_nodes:
+        if n.get("claim_code") and str(n.get("claim_code")).strip().upper() == code:
+            target_node = n
+            if not target_url:
+                target_url = n.get("local_url") or n.get("advertised_url")
+            break
+
+    if not target_url:
+        raise ValueError(
+            f"No pending node found for claim PIN '{code}'. Enter the node URL or ensure the node is running."
+        )
+
+    resolved_name = (
+        (server_name or "").strip()
+        or (target_node.get("server_name") if target_node else None)
+        or "Otix Game Server"
+    )
+    auth_token = secrets.token_hex(24)
+
+    confirm_payload = {
+        "claim_code": code,
+        "auth_token": auth_token,
+        "server_name": resolved_name,
+        "username": getattr(user, "username", "user"),
+    }
+
+    targets = contact_urls(target_url)
+    last_error = "Could not contact node"
+    confirmed = False
+
+    for target in targets:
+        try:
+            with httpx.Client(timeout=6.0) as client:
+                resp = client.post(f"{target}/api/v1/claim/confirm", json=confirm_payload)
+                if resp.status_code == 200:
+                    confirmed = True
+                    break
+                try:
+                    err_data = resp.json()
+                    last_error = err_data.get("error") or err_data.get("detail") or f"HTTP {resp.status_code}"
+                except Exception:
+                    last_error = f"HTTP {resp.status_code}"
+        except Exception as exc:
+            last_error = str(exc)
+
+    if not confirmed:
+        raise ValueError(f"Failed to claim node: {last_error}")
+
+    # Create / link UserGameServer
+    server_data = {
+        "name": resolved_name,
+        "local_url": target_url,
+        "auth_token": auth_token,
+    }
+    if target_node and target_node.get("wan_ip"):
+        wan_port = target_node.get("port") or 8090
+        server_data["remote_url"] = f"http://{target_node['wan_ip']}:{wan_port}"
+
+    server, created = link_or_create_game_server(user, server_data)
+    ping_server_sync(server)
+    server.refresh_from_db()
+
+    # Prune from pending cache
+    remaining = [
+        r for r in (cache.get(PENDING_CACHE_KEY) or [])
+        if str(r.get("claim_code") or "").strip().upper() != code
+    ]
+    cache.set(PENDING_CACHE_KEY, remaining, PENDING_TTL)
+
+    return server, created
+
+
+def probe_node_reachability(server: UserGameServer) -> dict:
+    """Plex-style remote connectivity probe: test if the node is accessible from WAN."""
+    from apps.library.services.backend_node import is_backend_node
+
+    if is_backend_node(server):
+        return {"reachable": True, "latency_ms": 0}
+
+    probe_target = (server.remote_url or "").strip().rstrip("/")
+    if not probe_target:
+        return {
+            "reachable": False,
+            "latency_ms": None,
+            "error": "No remote URL configured",
+            "suggestion": "Set up Port Forwarding on your router for Port 8090 TCP, or use a Cloudflare Tunnel / Tailscale.",
+        }
+
+    start_t = time.perf_counter()
+    headers = _auth_headers(server)
+    try:
+        with httpx.Client(timeout=4.0) as client:
+            resp = client.get(f"{probe_target}/api/v1/ping", headers=headers)
+            latency_ms = int((time.perf_counter() - start_t) * 1000)
+            if resp.status_code == 200:
+                return {
+                    "reachable": True,
+                    "latency_ms": latency_ms,
+                    "remote_url": probe_target,
+                }
+            return {
+                "reachable": False,
+                "latency_ms": latency_ms,
+                "error": f"HTTP {resp.status_code}",
+                "suggestion": "Remote port returned an error. Ensure port 8090 is forwarding to your node.",
+            }
+    except Exception as exc:
+        return {
+            "reachable": False,
+            "latency_ms": None,
+            "error": str(exc),
+            "suggestion": "Cannot reach node from outside the network. Ensure port 8090 TCP is forwarded on your router to your node's LAN IP.",
+        }
+
 
 
 def _normalized_url_keys(local_url: str | None, remote_url: str | None) -> set[str]:

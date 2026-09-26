@@ -1,41 +1,44 @@
-# Otix Standalone Game & Save Server (`otix-server`)
+# Otix Node (`otix-node`)
 
-A lightweight, standalone, headless server daemon for hosting game installer files (`.iso`, `.exe`, setup packages, repacks, ROMs) and managing personal cloud save file backups.
+A lightweight, high-performance Go daemon for hosting game installer files (`.iso`, `.exe`, `.dmg`, `.pkg`, setup packages, repacks, ROMs), managing cloud save backups, and integrating game downloaders (SABnzbd, Prowlarr, Radarr, Sonarr, Epic Games).
 
 ---
 
 ## Features
-- **Standalone Headless Executable**: Runs on Linux, macOS, Windows, NAS, or Docker with zero mandatory UI.
-- **Steam-Style Game Installer Node**: Multi-threaded HTTP/2 Range Request file server with full pause/resume support.
-- **SHA-256 Chunk Hashing & IGDB Matching**: Automatic installer metadata indexing and file integrity verification.
+- **Zero-Dependency Native Binary**: Single static executable in Go for macOS (Universal 2 DMG), Windows (`.zip`), Linux (x64 / ARM64), Docker, and Unraid.
+- **Plex-Style Web Claiming**: Double-clicking the app launches a local browser prompt displaying a 6-character claim PIN for instant 1-click binding to your Otix account.
+- **Multi-Threaded HTTP/2 File Server**: Chunked range-request streaming with resume support for large ISO and installer images.
+- **Background LaunchAgent & Systemd**: Native background daemons on macOS (`com.otix.node.plist`) and Linux (`otix-node.service`).
 - **Cloud Save File Backups**: Versioned game save snapshots with automatic upload on game exit and cross-device restore.
-- **Plex-Style Server Discovery**: Automatic WAN IP heartbeat announcement and smart LAN/WAN connection auto-select.
+- **Automated Usenet & Arr Services**: Direct node-managed SABnzbd, Prowlarr, Radarr, Sonarr, and Epic Games library sync.
 
 ---
 
 ## Quick Start
 
-### 1. Installation
+### 1. Run Binary
 ```bash
-cd server
-pip install -e .
+# Simply run the executable or double-click on macOS / Windows
+./otix-node
 ```
+The node automatically opens your default browser at `http://127.0.0.1:8090/` with your 6-digit claim PIN.
 
-### 2. Configuration
-Copy `config.example.yaml` to `config.yaml` and configure your installer directories:
+### 2. Headless Mode (Servers / NAS)
 ```bash
-cp config.example.yaml config.yaml
-```
-
-### 3. Run Server
-```bash
-otix-server start --config config.yaml
+./otix-node -headless -config /path/to/config.yaml
 ```
 
 ---
 
-## Docker Deployment
+## Docker & Unraid Deployment
+
 ```bash
-docker build -t otix-server .
-docker run -d -p 8000:8000 -v /path/to/config.yaml:/app/config.yaml -v /path/to/games:/storage/games otix-server
+docker run -d \
+  --name otix-node \
+  -p 8090:8090 \
+  -v /mnt/user/appdata/otix-node/config.yaml:/app/config.yaml \
+  -v /mnt/user/games:/storage/games \
+  ghcr.io/dksilv4/otix-node:latest
 ```
+Unraid users can also install using `node/unraid/my-otix-server.xml`.
+

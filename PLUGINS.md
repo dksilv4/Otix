@@ -50,7 +50,6 @@ for integrations lives.
 | `game-matching-pipeline` | Auto-resolves scanned games to known titles |
 | `fps-capture` | Intel PresentMon FPS logging + playtime |
 | `plex` | Plex library sync and remote playback |
-| `otix-syncplay` | Spotify → YouTube Music sync |
 | `deals` | CheapShark 100%-off game deal detection |
 | `shared` | Internal utility lib (not a plugin — no manifest) |
 

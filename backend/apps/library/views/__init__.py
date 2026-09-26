@@ -3,6 +3,10 @@
 from apps.library.views.game_servers import (
     GameServerDesktopView,
     GameServerDetailView,
+    GameServerClaimView,
+    GameServerProbeView,
+    GameServerDownloadsListView,
+    GameServerDownloadFileView,
     GameServerDownloadsAddView,
     GameServerDownloadsHistoryView,
     GameServerDownloadsQueueView,
@@ -68,7 +72,11 @@ from apps.library.views.library import (
 )
 
 __all__ = [
+    "GameServerClaimView",
     "GameServerDetailView",
+    "GameServerProbeView",
+    "GameServerDownloadsListView",
+    "GameServerDownloadFileView",
     "GameServerDownloadsAddView",
     "GameServerDownloadsHistoryView",
     "GameServerDownloadsQueueView",

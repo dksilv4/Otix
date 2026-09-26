@@ -2,6 +2,8 @@ export interface PendingNode {
   serverName: string
   localUrl: string
   authToken?: string
+  claimCode?: string
+  claimed?: boolean
 }
 
 function normalizeHost(host: string): string {
@@ -40,6 +42,7 @@ export function pendingNodesToClaim(
   const unique: PendingNode[] = []
   for (const node of pending) {
     if (!node.localUrl) continue
+    if (node.claimed) continue
     const key = nodeUrlKey(node.localUrl)
     if (known.has(key) || seenKeys.has(key)) continue
     if (node.authToken && (knownTokens.has(node.authToken) || seenTokens.has(node.authToken))) continue
@@ -88,10 +91,28 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
     } catch {
       // Token comes from heartbeat when the homepage cannot be read.
     }
+    let claimCode = data.claim_code || ''
+    let claimed = Boolean(data.claimed)
+    if (!claimed && !claimCode) {
+      try {
+        const claimResp = await fetcher('http://127.0.0.1:8090/api/v1/claim/status', {
+          signal: AbortSignal.timeout(1500),
+        })
+        if (claimResp.ok) {
+          const claimData = await claimResp.json()
+          claimCode = claimData.claim_code || ''
+          claimed = Boolean(claimData.claimed)
+        }
+      } catch {
+        // ignore
+      }
+    }
     return {
       serverName: data.server_name || data.serverName || 'Otix Game Server',
       localUrl: 'http://127.0.0.1:8090',
       authToken,
+      claimCode,
+      claimed,
     }
   } catch {
     return null

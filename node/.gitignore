@@ -19,3 +19,10 @@ storage/*.json
 
 # Local config overrides
 config.local.yaml
+internal/**/config.yaml
+
+# Go build outputs
+otix-node
+otix-node*
+dist/
+

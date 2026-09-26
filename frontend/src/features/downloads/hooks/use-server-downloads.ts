@@ -90,11 +90,16 @@ function mapPendingRow(row: {
   local_url?: string
   authToken?: string
   auth_token?: string
+  claimCode?: string
+  claim_code?: string
+  claimed?: boolean
 }): PendingNode {
   return {
     serverName: row.serverName || row.server_name || 'Otix Game Server',
     localUrl: row.localUrl || row.local_url || '',
     authToken: row.authToken || row.auth_token || '',
+    claimCode: row.claimCode || row.claim_code || '',
+    claimed: row.claimed ?? false,
   }
 }
 
@@ -291,6 +296,62 @@ export function usePingGameServer() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: serverKeys.lists() })
     },
+  })
+}
+
+export interface ServerProbeResult {
+  remote_accessible: boolean
+  status: 'online' | 'unreachable'
+  tested_url: string
+  latency_ms: number
+  message: string
+}
+
+export function useClaimGameServer() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: {
+      claim_code: string
+      node_url?: string
+      server_name?: string
+    }) => {
+      const { data } = await apiClient.post<GameServer>('/library/servers/claim', payload)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: serverKeys.all })
+    },
+  })
+}
+
+export function useProbeGameServer() {
+  return useMutation({
+    mutationFn: async (serverId: number) => {
+      const { data } = await apiClient.post<ServerProbeResult>(`/library/servers/${serverId}/probe`)
+      return data
+    },
+  })
+}
+
+export function usePendingGameServers(options?: { enabled?: boolean }) {
+  return useQuery<PendingNode[]>({
+    queryKey: [...serverKeys.all, 'pending'],
+    queryFn: async () => {
+      const { data } = await apiClient.get<Array<{
+        serverName?: string
+        server_name?: string
+        localUrl?: string
+        local_url?: string
+        authToken?: string
+        auth_token?: string
+        claimCode?: string
+        claim_code?: string
+        claimed?: boolean
+      }>>('/library/servers/pending')
+      return (data || []).map(mapPendingRow)
+    },
+    enabled: options?.enabled ?? true,
+    refetchInterval: 10_000,
   })
 }
 
