@@ -88,6 +88,12 @@ class RealAuthFlowTests(TestCase):
         result = self._login(identity="ALICE@example.com")
         self.assertIn("access_token", result["body"])
 
+    def test_login_accepts_username_identity_case_insensitively_and_trimmed(self) -> None:
+        result = self._login(identity="  Alice  ")
+        self.assertIn("access_token", result["body"])
+        result_upper = self._login(identity="ALICE")
+        self.assertIn("access_token", result_upper["body"])
+
     # ── Refresh rotation ─────────────────────────────────────────────────
     def test_refresh_rotates_and_old_cookie_reuse_revokes_all(self) -> None:
         login_client = APIClient()
