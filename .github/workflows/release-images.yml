@@ -6,16 +6,16 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
+      version_tag:
+        description: "Release tag (e.g. v0.2.0)"
+        required: false
+        type: string
+        default: "v0.2.0"
       push_images:
         description: "Push images to GHCR"
         required: true
         type: boolean
         default: true
-      version_tag:
-        description: "Image tag (defaults to branch/sha or v-tag)"
-        required: false
-        type: string
-        default: ""
 
 permissions:
   contents: write
@@ -76,7 +76,7 @@ jobs:
           tags: |
             type=ref,event=tag
             type=raw,value=${{ inputs.version_tag }},enable=${{ inputs.version_tag != '' }}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') || inputs.version_tag != '' }}
             type=sha,format=short
 
       - name: Build and push Frontend Docker image
@@ -92,9 +92,12 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Attach tarball to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version_tag != '') }}
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.version_tag }}
+          name: "Release ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.version_tag }}"
+          generate_release_notes: true
           files: otix-frontend-dist.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -128,7 +131,7 @@ jobs:
           tags: |
             type=ref,event=tag
             type=raw,value=${{ inputs.version_tag }},enable=${{ inputs.version_tag != '' }}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') || inputs.version_tag != '' }}
             type=sha,format=short
 
       - name: Build and push Backend Docker image
@@ -178,9 +181,12 @@ jobs:
           retention-days: 14
 
       - name: Attach Installers to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version_tag != '') }}
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.version_tag }}
+          name: "Release ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.version_tag }}"
+          generate_release_notes: true
           files: |
             node/dist/Otix-Node.dmg
             node/dist/Otix-Node-Windows-x64.zip
@@ -219,7 +225,7 @@ jobs:
           tags: |
             type=ref,event=tag
             type=raw,value=${{ inputs.version_tag }},enable=${{ inputs.version_tag != '' }}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') || inputs.version_tag != '' }}
             type=sha,format=short
 
       - name: Build and push Node Docker image
