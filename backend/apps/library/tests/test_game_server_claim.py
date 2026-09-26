@@ -1,13 +1,13 @@
 """Tests for Plex-style node claiming flow and remote access probe."""
 
 from unittest.mock import MagicMock, patch
+
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.library.models import UserGameServer
-from apps.library.services.game_server import claim_node_by_pin, probe_node_reachability
 
 User = get_user_model()
 

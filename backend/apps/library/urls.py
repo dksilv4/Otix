@@ -9,30 +9,31 @@ are declared before the generic ``<tab>`` so ``installed``/``plex``/``steam``/
 from django.urls import path, register_converter
 
 from apps.library.converters import SignedIntConverter
-
 from apps.library.views import (
     EpicLibraryView,
     EpicStatusView,
     EpicUnmatchedView,
     GameServerClaimView,
+    GameServerConnectionsSyncView,
     GameServerDesktopView,
     GameServerDetailView,
-    GameServerProbeView,
-    GameServerDownloadsListView,
     GameServerDownloadFileView,
     GameServerDownloadsAddView,
     GameServerDownloadsHistoryView,
+    GameServerDownloadsListView,
     GameServerDownloadsQueueView,
     GameServerDownloadsSearchView,
     GameServerExplorerBrowseView,
     GameServerExplorerCreateFolderView,
     GameServerExplorerSetPathView,
     GameServerFilesView,
-    GameServerListCreateView,
+    GameServerInstancesImportView,
     GameServerLibrariesView,
+    GameServerListCreateView,
     GameServerOrganizeView,
     GameServerPendingView,
     GameServerPingView,
+    GameServerProbeView,
     GameServerProvidersView,
     GameServerProviderTestView,
     GameServerProwlarrIndexersView,
@@ -62,12 +63,10 @@ from apps.library.views import (
     GameServerUsenetSearchView,
     GameServerUsenetTestProwlarrView,
     GameServerUsenetTestSabnzbdView,
-    GameServerConnectionsSyncView,
-    GameServerInstancesImportView,
-    NodeConnectionsSyncView,
-    NodeConnectionsView,
     InstalledGamesView,
     LibraryTabView,
+    NodeConnectionsSyncView,
+    NodeConnectionsView,
     PlexLibraryView,
     PlexStatusView,
     PlexThumbView,
@@ -93,11 +92,19 @@ urlpatterns = [
     path("servers", GameServerListCreateView.as_view(), name="library-servers"),
     path("servers/claim", GameServerClaimView.as_view(), name="library-servers-claim"),
     path("servers/pending", GameServerPendingView.as_view(), name="library-servers-pending"),
-    path("servers/downloads", GameServerDownloadsListView.as_view(), name="library-servers-downloads"),
-    path("servers/downloads/file/<str:filename>", GameServerDownloadFileView.as_view(), name="library-servers-download-file"),
+    path(
+        "servers/downloads", GameServerDownloadsListView.as_view(), name="library-servers-downloads"
+    ),
+    path(
+        "servers/downloads/file/<str:filename>",
+        GameServerDownloadFileView.as_view(),
+        name="library-servers-download-file",
+    ),
     path("servers/<sint:server_id>", GameServerDetailView.as_view(), name="library-server-detail"),
     path("servers/<sint:server_id>/ping", GameServerPingView.as_view(), name="library-server-ping"),
-    path("servers/<sint:server_id>/probe", GameServerProbeView.as_view(), name="library-server-probe"),
+    path(
+        "servers/<sint:server_id>/probe", GameServerProbeView.as_view(), name="library-server-probe"
+    ),
     path(
         "servers/<sint:server_id>/connections/sync",
         GameServerConnectionsSyncView.as_view(),

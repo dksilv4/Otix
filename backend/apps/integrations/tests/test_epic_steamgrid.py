@@ -1,6 +1,6 @@
 """Tests for SteamGridDB resolution of unmatched Epic games."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType

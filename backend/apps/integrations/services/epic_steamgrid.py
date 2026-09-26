@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-import time
 from typing import Any
 
 from django.conf import settings
@@ -18,8 +17,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.text import slugify
 
 from apps.integrations.models import UserEpicGame
-from apps.media.models import ExternalID, Game, MediaAsset, MediaItem
-from apps.media.services.completeness import recompute_completeness
+from apps.media.models import ExternalID, Game, MediaItem
 from apps.media.services.game_matcher import _comparison_key
 from apps.media.services.steamgrid_artwork import (
     _pick_search_match,
@@ -212,6 +210,7 @@ async def _async_fetch_all(
     finally:
         try:
             from core.providers.steamgrid.client import close_http_client
+
             await close_http_client()
         except Exception:
             pass
@@ -236,7 +235,9 @@ def resolve_unmatched_epic_with_steamgrid(
         if not api_key:
             raise ValueError("SteamGridDB API key is not configured")
 
-    queryset = UserEpicGame.objects.filter(user=user, media_item__isnull=True).order_by("title", "id")
+    queryset = UserEpicGame.objects.filter(user=user, media_item__isnull=True).order_by(
+        "title", "id"
+    )
     if limit is not None and limit > 0:
         unmatched = list(queryset[:limit])
     else:

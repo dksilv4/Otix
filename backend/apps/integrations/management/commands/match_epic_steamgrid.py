@@ -7,6 +7,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
@@ -43,17 +44,15 @@ class Command(BaseCommand):
         if username:
             try:
                 user = User.objects.get(username=username)
-            except User.DoesNotExist:
-                raise CommandError(f"User '{username}' does not exist.")
+            except User.DoesNotExist as exc:
+                raise CommandError(f"User '{username}' does not exist.") from exc
         else:
             user = User.objects.first()
             if not user:
                 raise CommandError("No users exist in the database.")
 
         self.stdout.write(
-            self.style.NOTICE(
-                f"Starting SteamGridDB resolution for user '{user.username}'..."
-            )
+            self.style.NOTICE(f"Starting SteamGridDB resolution for user '{user.username}'...")
         )
 
         def on_progress(processed: int, total: int, matched: int, assets: int) -> None:
@@ -69,10 +68,10 @@ class Command(BaseCommand):
                 on_progress=on_progress,
             )
         except ValueError as exc:
-            raise CommandError(str(exc))
+            raise CommandError(str(exc)) from exc
         except Exception as exc:
             logger.exception("SteamGridDB resolution failed")
-            raise CommandError(f"Failed to resolve games: {exc}")
+            raise CommandError(f"Failed to resolve games: {exc}") from exc
 
         self.stdout.write(
             self.style.SUCCESS(

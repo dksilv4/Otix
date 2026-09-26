@@ -1,6 +1,6 @@
 [project]
 name = "otix"
-version = "0.1.25"
+version = "0.1.26"
 description = "Django + DRF rewrite of the Otix media library/tracking platform backend."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -34,11 +34,11 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["*/migrations/*"]
+extend-exclude = ["*/migrations/*", "scripts/*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B"]
-ignore = ["B008"]  # Allow Callable() defaults used in some view signatures.
+ignore = ["B008", "E501"]  # Allow Callable() defaults and relax line-length.
 
 [tool.ruff.lint.isort]
 known-first-party = ["apps", "config", "core", "plugins"]

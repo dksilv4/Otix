@@ -37,9 +37,7 @@ urlpatterns = [
     path(
         "api/v1/servers/heartbeat", GameServerHeartbeatView.as_view(), name="game-server-heartbeat"
     ),
-    path(
-        "api/v1/servers/claim", GameServerClaimView.as_view(), name="game-server-claim"
-    ),
+    path("api/v1/servers/claim", GameServerClaimView.as_view(), name="game-server-claim"),
     path("api/v1/library/", include("apps.library.urls")),
     path("api/v1/media", MediaListView.as_view(), name="media-root"),
     path("api/v1/media/", include("apps.media.urls")),

@@ -44,7 +44,6 @@ from apps.library.services.game_server import (
     explorer_create_folder,
     explorer_set_download_path,
     link_or_create_game_server,
-    list_pending_nodes,
     list_pending_nodes_for,
     node_get_organize,
     node_list_libraries,
@@ -121,6 +120,7 @@ def _resolve_user(request: Request):
     if user and getattr(user, "is_authenticated", False):
         return user
     from django.contrib.auth import get_user_model
+
     return get_user_model().objects.filter(is_active=True).first()
 
 
@@ -241,7 +241,9 @@ class GameServerClaimView(APIView):
         except ValueError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as exc:
-            return Response({"error": f"Failed to claim node: {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response(
+                {"error": f"Failed to claim node: {exc}"}, status=status.HTTP_502_BAD_GATEWAY
+            )
 
 
 class GameServerProbeView(APIView):
@@ -256,7 +258,7 @@ class GameServerProbeView(APIView):
 
 
 class GameServerDownloadsListView(APIView):
-    """``GET /api/v1/library/servers/downloads`` — direct download links and metadata for Otix Node installers."""
+    """``GET /api/v1/library/servers/downloads`` — direct download links and metadata."""
 
     permission_classes = (AllowAny,)
 
@@ -276,7 +278,10 @@ class GameServerDownloadsListView(APIView):
                 "label": "macOS (Apple Silicon & Intel)",
                 "filename": "Otix-Node.dmg",
                 "format": "dmg",
-                "description": "Universal Mac package. Open the DMG, drag Otix Node to Applications, and double-click to start.",
+                "description": (
+                    "Universal Mac package. Open the DMG, drag Otix Node to Applications, "
+                    "and double-click to start."
+                ),
                 "url": resolve_url("Otix-Node.dmg", f"{base_release_url}/Otix-Node.dmg"),
                 "recommended": True,
             },
@@ -286,7 +291,9 @@ class GameServerDownloadsListView(APIView):
                 "filename": "Otix-Node-Windows-x64.zip",
                 "format": "zip",
                 "description": "Portable standalone executable. Extract and double-click to start.",
-                "url": resolve_url("Otix-Node-Windows-x64.zip", f"{base_release_url}/Otix-Node-Windows-x64.zip"),
+                "url": resolve_url(
+                    "Otix-Node-Windows-x64.zip", f"{base_release_url}/Otix-Node-Windows-x64.zip"
+                ),
                 "recommended": True,
             },
             {
@@ -295,7 +302,9 @@ class GameServerDownloadsListView(APIView):
                 "filename": "Otix-Node-Linux-x64.tar.gz",
                 "format": "tar.gz",
                 "description": "Standalone binary archive for Linux distributions.",
-                "url": resolve_url("Otix-Node-Linux-x64.tar.gz", f"{base_release_url}/Otix-Node-Linux-x64.tar.gz"),
+                "url": resolve_url(
+                    "Otix-Node-Linux-x64.tar.gz", f"{base_release_url}/Otix-Node-Linux-x64.tar.gz"
+                ),
                 "recommended": False,
             },
             {
@@ -304,7 +313,10 @@ class GameServerDownloadsListView(APIView):
                 "filename": "my-otix-server.xml",
                 "format": "xml",
                 "description": "Community Applications Docker template on port 8090.",
-                "url": "https://raw.githubusercontent.com/dksilv4/Otix/main/node/unraid/my-otix-server.xml",
+                "url": (
+                    "https://raw.githubusercontent.com/dksilv4/Otix/main/node/unraid/"
+                    "my-otix-server.xml"
+                ),
                 "recommended": False,
             },
         ]
@@ -312,7 +324,7 @@ class GameServerDownloadsListView(APIView):
 
 
 class GameServerDownloadFileView(APIView):
-    """``GET /api/v1/library/servers/downloads/file/{filename}`` — download built Otix Node installer."""
+    """``GET /api/v1/library/servers/downloads/file/{filename}`` — download installer."""
 
     permission_classes = (AllowAny,)
 
@@ -1206,7 +1218,9 @@ class GameServerInstancesImportView(APIView):
         try:
             source_id = int(raw_source)
         except (TypeError, ValueError):
-            return Response({"error": "from_server_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "from_server_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
         source = _get_server_or_404(request, source_id)
         kinds = payload.get("kinds")
         if isinstance(kinds, str):

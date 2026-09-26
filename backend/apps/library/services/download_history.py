@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone as dt_timezone
+from datetime import UTC, datetime, timedelta
 
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -174,7 +174,7 @@ def _parse_completed_at(value: object):
     if parsed is not None:
         return parsed
     try:
-        return datetime.fromtimestamp(float(text), tz=dt_timezone.utc)
+        return datetime.fromtimestamp(float(text), tz=UTC)
     except (TypeError, ValueError, OSError):
         return None
 

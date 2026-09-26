@@ -247,7 +247,11 @@ def claim_node_by_pin(
                     break
                 try:
                     err_data = resp.json()
-                    last_error = err_data.get("error") or err_data.get("detail") or f"HTTP {resp.status_code}"
+                    last_error = (
+                        err_data.get("error")
+                        or err_data.get("detail")
+                        or f"HTTP {resp.status_code}"
+                    )
                 except Exception:
                     last_error = f"HTTP {resp.status_code}"
         except Exception as exc:
@@ -272,7 +276,8 @@ def claim_node_by_pin(
 
     # Prune from pending cache
     remaining = [
-        r for r in (cache.get(PENDING_CACHE_KEY) or [])
+        r
+        for r in (cache.get(PENDING_CACHE_KEY) or [])
         if str(r.get("claim_code") or "").strip().upper() != code
     ]
     cache.set(PENDING_CACHE_KEY, remaining, PENDING_TTL)
@@ -321,7 +326,6 @@ def probe_node_reachability(server: UserGameServer) -> dict:
             "error": str(exc),
             "suggestion": "Cannot reach node from outside the network. Ensure port 8090 TCP is forwarded on your router to your node's LAN IP.",
         }
-
 
 
 def _normalized_url_keys(local_url: str | None, remote_url: str | None) -> set[str]:
