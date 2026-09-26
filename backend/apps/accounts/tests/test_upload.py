@@ -43,9 +43,7 @@ class UploadTestCase(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
 
     def post(self, name="avatar.png", ct="image/png", body=PNG):
-        return self.client.post(
-            URL, {"file": _file(name, body, ct)}, format="multipart"
-        )
+        return self.client.post(URL, {"file": _file(name, body, ct)}, format="multipart")
 
     def files(self):
         return list(self.tmp.iterdir())
@@ -127,3 +125,101 @@ class UploadRejectionTests(UploadTestCase):
         self.assertEqual(resp.status_code, 413)
         self.assertEqual(resp.json()["detail"], "File too large. Max 0MB")
         self.assertEqual(self.files(), [])
+
+    def test_rejection_of_riff_wave(self):
+        wave_body = b"RIFF" + b"\x00" * 4 + b"WAVE" + b"\x00" * 4
+        resp = self.post(name="fake.webp", ct="image/webp", body=wave_body)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(self.files(), [])
+
+
+class UploadServingTests(UploadTestCase):
+    def test_serve_uploaded_file(self):
+        resp = self.post(name="avatar.png", ct="image/png", body=PNG)
+        self.assertEqual(resp.status_code, 201)
+        url = resp.json()["url"]
+        filename = url.rsplit("/", 1)[-1]
+
+        # Public access without auth credentials
+        anon_client = APIClient()
+        get_resp = anon_client.get(f"/uploads/{filename}")
+        self.assertEqual(get_resp.status_code, 200)
+        self.assertEqual(get_resp.headers["Content-Type"], "image/png")
+        self.assertEqual(get_resp.headers["Cache-Control"], "public, max-age=31536000, immutable")
+        self.assertEqual(b"".join(get_resp.streaming_content), PNG)
+
+    def test_serve_via_api_v1_path(self):
+        resp = self.post(name="photo.jpg", ct="image/jpeg", body=JPEG)
+        self.assertEqual(resp.status_code, 201)
+        filename = resp.json()["url"].rsplit("/", 1)[-1]
+
+        anon_client = APIClient()
+        get_resp = anon_client.get(f"/api/v1/uploads/{filename}")
+        self.assertEqual(get_resp.status_code, 200)
+        self.assertEqual(get_resp.headers["Content-Type"], "image/jpeg")
+        self.assertEqual(b"".join(get_resp.streaming_content), JPEG)
+
+    def test_serve_nonexistent_file_404(self):
+        anon_client = APIClient()
+        get_resp = anon_client.get("/uploads/00000000000000000000000000000000.png")
+        self.assertEqual(get_resp.status_code, 404)
+
+    def test_serve_disallowed_extension_404(self):
+        # Even if a file exists in UPLOAD_DIR, only allowed image extensions are served
+        secret = self.tmp / "passwords.txt"
+        secret.write_text("secret")
+        anon_client = APIClient()
+        get_resp = anon_client.get("/uploads/passwords.txt")
+        self.assertEqual(get_resp.status_code, 404)
+
+
+class UploadToProfileEndToEndTests(UploadTestCase):
+    def test_upload_and_set_user_avatar_and_banner(self):
+        # 1. Upload avatar
+        resp_avatar = self.client.post(
+            URL,
+            {"file": _file("my_avatar.png", PNG, "image/png")},
+            format="multipart",
+            HTTP_HOST="localhost:8000",
+        )
+        self.assertEqual(resp_avatar.status_code, 201)
+        avatar_url = resp_avatar.json()["url"]
+
+        # 2. Upload cover banner
+        resp_cover = self.client.post(
+            URL,
+            {"file": _file("my_cover.jpg", JPEG, "image/jpeg")},
+            format="multipart",
+            HTTP_HOST="localhost:8000",
+        )
+        self.assertEqual(resp_cover.status_code, 201)
+        cover_url = resp_cover.json()["url"]
+
+        # 3. Update profile via PATCH /api/v1/auth/me
+        patch_resp = self.client.patch(
+            "/api/v1/auth/me",
+            {
+                "avatar_url": avatar_url,
+                "background_url": cover_url,
+                "bio": "Hello world with custom avatar",
+            },
+            format="json",
+        )
+        self.assertEqual(patch_resp.status_code, 200)
+        data = patch_resp.json()
+        self.assertEqual(data["avatar_url"], avatar_url)
+        self.assertEqual(data["background_url"], cover_url)
+
+        # 4. Verify public user profile reflects the avatar & background
+        anon_client = APIClient()
+        pub_resp = anon_client.get(f"/api/v1/users/{self.user.username}")
+        self.assertEqual(pub_resp.status_code, 200)
+        pub_data = pub_resp.json()
+        self.assertEqual(pub_data["avatar_url"], avatar_url)
+        self.assertEqual(pub_data["background_url"], cover_url)
+
+        # 5. Verify the avatar file itself can be downloaded via its URL path
+        avatar_filename = avatar_url.rsplit("/", 1)[-1]
+        file_resp = anon_client.get(f"/uploads/{avatar_filename}")
+        self.assertEqual(file_resp.status_code, 200)
+        self.assertEqual(b"".join(file_resp.streaming_content), PNG)

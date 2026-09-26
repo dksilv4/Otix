@@ -1,8 +1,10 @@
-import { useState, useCallback, lazy, Suspense } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
+import { useParams, useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '@auth/hooks/use-auth'
+import { useModal } from '@/lib/modals'
 import { useQuery } from '@tanstack/react-query'
+import { MediaManageModal } from '../components/organisms/media-manage-modal'
 
 import { MediaStickyHeader } from '../components/organisms/media-sticky-header'
 import { MediaHero } from '../components/organisms/media-hero'
@@ -77,7 +79,34 @@ export function MediaDetailPage() {
   const mediaType = mediaTypeFromParam(params.mediaType || 'movie')
   const mediaId = params.mediaId || ''
 
-  const { isAuthenticated } = useAuth()
+  const search = useSearch({ strict: false }) as { manage?: boolean; season?: number }
+  const navigate = useNavigate()
+  const { user, isAuthenticated } = useAuth()
+  const { openModal } = useModal()
+  const closeManageModalRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    if (search?.manage && user?.isAdmin && !closeManageModalRef.current) {
+      const close = openModal(
+        <MediaManageModal
+          mediaType={mediaType}
+          mediaId={mediaId}
+          onClose={() => {
+            close()
+            closeManageModalRef.current = null
+            void (navigate as any)({
+              to: '/media/$mediaType/$mediaId',
+              params: { mediaType, mediaId },
+              search: search.season ? { season: search.season } : {},
+              replace: true,
+            })
+          }}
+        />
+      )
+      closeManageModalRef.current = close
+    }
+  }, [search?.manage, user?.isAdmin, mediaType, mediaId, search?.season, openModal, navigate])
+
   const { isDesktop } = useDesktopPlatform()
   const [activeGameTab, setActiveGameTab] = useState('info')
   const [pluginTabs, setPluginTabs] = useState<Array<{ tabId: string; pluginId: string }>>([])

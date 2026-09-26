@@ -6,6 +6,36 @@ from django.db import migrations, models
 from pgvector.django import VectorExtension
 
 
+def add_hnsw_index(apps, schema_editor):
+    if schema_editor.connection.vendor == "postgresql":
+        model = apps.get_model("media", "MediaItem")
+        schema_editor.add_index(
+            model,
+            pgvector.django.indexes.HnswIndex(
+                ef_construction=128,
+                fields=['embedding'],
+                m=16,
+                name='media_items_embedding_hnsw',
+                opclasses=['vector_cosine_ops'],
+            ),
+        )
+
+
+def remove_hnsw_index(apps, schema_editor):
+    if schema_editor.connection.vendor == "postgresql":
+        model = apps.get_model("media", "MediaItem")
+        schema_editor.remove_index(
+            model,
+            pgvector.django.indexes.HnswIndex(
+                ef_construction=128,
+                fields=['embedding'],
+                m=16,
+                name='media_items_embedding_hnsw',
+                opclasses=['vector_cosine_ops'],
+            ),
+        )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -24,8 +54,21 @@ class Migration(migrations.Migration):
             name='embedding',
             field=pgvector.django.vector.VectorField(blank=True, dimensions=1024, null=True),
         ),
-        migrations.AddIndex(
-            model_name='mediaitem',
-            index=pgvector.django.indexes.HnswIndex(ef_construction=128, fields=['embedding'], m=16, name='media_items_embedding_hnsw', opclasses=['vector_cosine_ops']),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddIndex(
+                    model_name='mediaitem',
+                    index=pgvector.django.indexes.HnswIndex(
+                        ef_construction=128,
+                        fields=['embedding'],
+                        m=16,
+                        name='media_items_embedding_hnsw',
+                        opclasses=['vector_cosine_ops'],
+                    ),
+                ),
+            ],
+            database_operations=[
+                migrations.RunPython(add_hnsw_index, remove_hnsw_index),
+            ],
         ),
     ]

@@ -9,7 +9,7 @@ from django.contrib import admin
 from django.http import HttpRequest, JsonResponse
 from django.urls import include, path
 
-from apps.accounts.views import UploadFileView
+from apps.accounts.views import UploadedFileView, UploadFileView
 from apps.library.views import GameServerHeartbeatView
 from apps.media.views import AssetFileView, MediaListView
 from apps.search.views import SearchView
@@ -56,6 +56,8 @@ urlpatterns = [
     path("api/v1/admin/", include("apps.proposals.admin_urls")),
     path("api/v1/plugins/", include("plugin_framework.urls")),
     path("api/v1/upload", UploadFileView.as_view(), name="upload"),
+    path("api/v1/uploads/<str:name>", UploadedFileView.as_view(), name="api-uploaded-file"),
+    path("uploads/<str:name>", UploadedFileView.as_view(), name="uploaded-file"),
     path("api/v1/assets/<str:name>", AssetFileView.as_view(), name="asset-file"),
     path("api/v1/health", health, name="health"),
 ]

@@ -1,17 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
+import { useModal } from '@/lib/modals'
 import { useToast } from '@ui/molecules/toast'
 import { apiClient } from '@/lib/api/client'
-import { connectTaskSseStream } from '@/lib/api/sse-client'
 import { mediaKeys } from '@media/queries/media-keys'
 import { useMirroring } from '@/features/media/hooks/use-media-admin-settings'
+import { MediaManageModal } from '@/features/media/components/organisms/media-manage-modal'
 import { cn, formatBytes } from '@/lib/utils'
-import { Shield, Pencil, Download, RefreshCw, ChevronDown, X } from 'lucide-react'
+import { Shield, Pencil, Download, ChevronDown } from 'lucide-react'
 import type { MediaItemDetail } from '@media/queries/media-queries'
 import './admin-actions-menu.scss'
-import { ACCESS_TOKEN_KEY } from '@/lib/config'
 
 interface DownloadAssetsResult {
   mediaItemId: string
@@ -29,17 +28,13 @@ interface Props {
 
 export function AdminActionsMenu({ mediaId, media, variant = 'default' }: Props) {
   const { user } = useAuth()
+  const { openModal } = useModal()
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
   const mirroring = useMirroring(Boolean(user?.isAdmin))
   const [menuOpen, setMenuOpen] = useState(false)
   const [downloadingImages, setDownloadingImages] = useState(false)
-  const [rehydrating, setRehydrating] = useState(false)
-  const [rehydratePhase, setRehydratePhase] = useState<string | null>(null)
-  const [rehydrateLog, setRehydrateLog] = useState<string[]>([])
   const menuRef = useRef<HTMLDivElement>(null)
-  const abortRef = useRef<AbortController | null>(null)
 
   // Close menu on outside click
   useEffect(() => {
@@ -52,10 +47,6 @@ export function AdminActionsMenu({ mediaId, media, variant = 'default' }: Props)
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [menuOpen])
-
-  useEffect(() => {
-    return () => abortRef.current?.abort()
-  }, [])
 
   if (!user?.isAdmin) return null
 
@@ -102,175 +93,90 @@ export function AdminActionsMenu({ mediaId, media, variant = 'default' }: Props)
     }
   }
 
-  const startRehydrate = async () => {
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-    setRehydrating(true)
-    setRehydratePhase('Queueing...')
-    setRehydrateLog(['Queueing rehydration task...'])
-
-    try {
-      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
-      const terminal = await connectTaskSseStream(
-        {
-          createEndpoint: `/media/${media.mediaType}/${mediaId}/rehydrate`,
-          streamEndpoint: (taskId: string) => `/media/${media.mediaType}/${mediaId}/rehydrate/${taskId}/stream`,
-          terminalEvents: ['rehydrate_complete', 'error'],
-          token,
-          signal: controller.signal,
-        },
-        (event) => {
-          switch (event.type) {
-            case 'provider_started':
-              setRehydratePhase(`Running ${event.label}`)
-              setRehydrateLog((prev) => [...prev, `Started: ${event.label}`])
-              break
-            case 'provider_complete':
-              refreshMedia()
-              setRehydrateLog((prev) => [...prev, `Completed: ${event.label}`])
-              break
-            case 'rehydrate_complete':
-              refreshMedia()
-              setRehydratePhase(null)
-              setRehydrating(false)
-              setRehydrateLog((prev) => [...prev, 'Rehydration complete'])
-              toast({ title: 'Media rehydrated', variant: 'success' })
-              break
-            case 'error':
-              setRehydrateLog((prev) => [...prev, `Error: ${event.message}`])
-              break
-          }
-        },
-      )
-
-      if (terminal.type === 'error') {
-        throw new Error((terminal.message as string) || 'Hydration failed')
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
-      const msg = String(err)
-      setRehydrateLog((prev) => [...prev, `Failed: ${msg}`])
-      toast({ title: 'Rehydrate failed', description: msg, variant: 'error' })
-    } finally {
-      setRehydrating(false)
-      setRehydratePhase(null)
-    }
-  }
-
   return (
-    <>
-      <div className={isPill || isIcon ? 'relative' : 'dk-admin-actions'}>
-        <div ref={menuRef} className={isPill || isIcon ? 'relative' : 'dk-admin-actions__menu'}>
-          {isIcon ? (
-            <button
-              type="button"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-amber-400 hover:bg-amber-400/15 transition-all hover:scale-110 active:scale-95"
-              title="Admin actions"
-              aria-label="Admin actions"
-            >
-              <Shield className="h-4 w-4" />
-            </button>
-          ) : isPill ? (
-            <button
-              type="button"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Shield className="h-4 w-4 text-amber-400" />
-              <span className="text-amber-300">Admin</span>
-              <ChevronDown className={cn('h-3 w-3 text-amber-300/70 transition-transform', menuOpen && 'rotate-180')} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="dk-admin-actions__trigger glass-inset"
-            >
-              <Shield className="relative h-5 w-5 text-amber-400" />
-              <span className="dk-admin-actions__label">
-                Admin
-                <ChevronDown className={cn('h-3 w-3 transition-transform', menuOpen && 'rotate-180')} />
-              </span>
-            </button>
-          )}
+    <div className={isPill || isIcon ? 'relative' : 'dk-admin-actions'}>
+      <div ref={menuRef} className={isPill || isIcon ? 'relative' : 'dk-admin-actions__menu'}>
+        {isIcon ? (
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-amber-400 hover:bg-amber-400/15 transition-all hover:scale-110 active:scale-95"
+            title="Admin actions"
+            aria-label="Admin actions"
+          >
+            <Shield className="h-4 w-4" />
+          </button>
+        ) : isPill ? (
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Shield className="h-4 w-4 text-amber-400" />
+            <span className="text-amber-300">Admin</span>
+            <ChevronDown className={cn('h-3 w-3 text-amber-300/70 transition-transform', menuOpen && 'rotate-180')} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="dk-admin-actions__trigger glass-inset"
+          >
+            <Shield className="relative h-5 w-5 text-amber-400" />
+            <span className="dk-admin-actions__label">
+              Admin
+              <ChevronDown className={cn('h-3 w-3 transition-transform', menuOpen && 'rotate-180')} />
+            </span>
+          </button>
+        )}
 
-          {menuOpen && (
-            <div className={variant === 'pill' ? 'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 rounded-xl p-1.5 bg-card border border-border/40 shadow-xl z-50 space-y-0.5' : 'dk-admin-actions__dropdown'}>
-              <button
-                type="button"
-                onClick={() => {
-                  navigate({
-                    to: '/media/$mediaType/$mediaId/manage',
-                    params: { mediaType: media.mediaType, mediaId },
-                  })
-                  setMenuOpen(false)
-                }}
-                className="dk-admin-actions__dropdown-item"
-              >
-                <Pencil className="h-4 w-4 text-amber-400" />
-                Manage Media
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  downloadImages()
-                  setMenuOpen(false)
-                }}
-                disabled={downloadingImages}
-                title={
-                  mirroring.isSuccess && !mirroring.data?.enabled
-                    ? 'Mirroring is paused — enable it in Settings → Storage'
-                    : undefined
-                }
-                className={cn(
-                  'dk-admin-actions__dropdown-item',
-                  mirroring.isSuccess && !mirroring.data?.enabled && 'opacity-50',
-                )}
-              >
-                <Download className={cn('h-4 w-4 text-muted-foreground', downloadingImages && 'animate-pulse')} />
-                {downloadingImages
-                  ? 'Downloading...'
-                  : mirroring.isSuccess && !mirroring.data?.enabled
-                    ? 'Download paused'
-                    : 'Download Images'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  startRehydrate()
-                  setMenuOpen(false)
-                }}
-                disabled={rehydrating}
-                className="dk-admin-actions__dropdown-item"
-              >
-                <RefreshCw className={cn('h-4 w-4 text-muted-foreground', rehydrating && 'animate-spin')} />
-                {rehydrating ? (rehydratePhase ?? 'Hydrating...') : 'Force Rehydrate'}
-              </button>
-            </div>
-          )}
-        </div>
+        {menuOpen && (
+          <div className={variant === 'pill' ? 'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 rounded-xl p-1.5 bg-card border border-border/40 shadow-xl z-50 space-y-0.5' : 'dk-admin-actions__dropdown'}>
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false)
+                const close = openModal(
+                  <MediaManageModal
+                    mediaType={media.mediaType}
+                    mediaId={mediaId}
+                    onClose={() => close()}
+                  />
+                )
+              }}
+              className="dk-admin-actions__dropdown-item"
+            >
+              <Pencil className="h-4 w-4 text-amber-400" />
+              Manage Media
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                downloadImages()
+                setMenuOpen(false)
+              }}
+              disabled={downloadingImages}
+              title={
+                mirroring.isSuccess && !mirroring.data?.enabled
+                  ? 'Mirroring is paused — enable it in Settings → Storage'
+                  : undefined
+              }
+              className={cn(
+                'dk-admin-actions__dropdown-item',
+                mirroring.isSuccess && !mirroring.data?.enabled && 'opacity-50',
+              )}
+            >
+              <Download className={cn('h-4 w-4 text-muted-foreground', downloadingImages && 'animate-pulse')} />
+              {downloadingImages
+                ? 'Downloading...'
+                : mirroring.isSuccess && !mirroring.data?.enabled
+                  ? 'Download paused'
+                  : 'Download Images'}
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* SSE rehydration log — fixed bottom-right corner */}
-      {rehydrateLog.length > 0 && (
-        <div className="dk-admin-actions__log">
-          <div className="dk-admin-actions__log-header">
-            <p className="dk-admin-actions__log-title">Rehydration Log</p>
-            <button type="button" onClick={() => setRehydrateLog([])} className="dk-admin-actions__log-close">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <div className="dk-admin-actions__log-entries">
-            {rehydrateLog.map((entry, i) => (
-              <p key={i} className="dk-admin-actions__log-entry">
-                {entry}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   )
 }
+

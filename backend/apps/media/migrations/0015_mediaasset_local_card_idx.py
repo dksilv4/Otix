@@ -17,6 +17,33 @@ regardless of how many remote-only assets exist.
 from django.db import migrations
 
 
+def create_index(apps, schema_editor):
+    if schema_editor.connection.vendor == "postgresql":
+        schema_editor.execute(
+            """
+            CREATE INDEX CONCURRENTLY IF NOT EXISTS
+                media_assets_local_card_idx
+            ON media_assets (media_item_id, asset_type)
+            WHERE local_name IS NOT NULL
+              AND local_name != '';
+            """
+        )
+    else:
+        schema_editor.execute(
+            """
+            CREATE INDEX IF NOT EXISTS
+                media_assets_local_card_idx
+            ON media_assets (media_item_id, asset_type)
+            WHERE local_name IS NOT NULL
+              AND local_name != '';
+            """
+        )
+
+
+def drop_index(apps, schema_editor):
+    schema_editor.execute("DROP INDEX IF EXISTS media_assets_local_card_idx;")
+
+
 class Migration(migrations.Migration):
     # CREATE INDEX CONCURRENTLY cannot run inside a transaction block.
     # Django wraps each migration in a transaction by default, so we must
@@ -34,14 +61,5 @@ class Migration(migrations.Migration):
         # != '' guard. This index lets Postgres satisfy that subquery with an
         # index-only scan instead of a seqscan, dropping game-rail latency from
         # ~1.5 s to ~150 ms.
-        migrations.RunSQL(
-            sql="""
-                CREATE INDEX CONCURRENTLY IF NOT EXISTS
-                    media_assets_local_card_idx
-                ON media_assets (media_item_id, asset_type)
-                WHERE local_name IS NOT NULL
-                  AND local_name != '';
-            """,
-            reverse_sql="DROP INDEX IF EXISTS media_assets_local_card_idx;",
-        ),
+        migrations.RunPython(create_index, drop_index),
     ]

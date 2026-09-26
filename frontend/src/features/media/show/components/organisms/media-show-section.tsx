@@ -44,7 +44,11 @@ export function ShowSection({
   const seasons = useMemo(() => {
     if (!Array.isArray(show?.seasons) || show.seasons.length === 0) return []
     return [...show.seasons]
-      .filter((s) => s && (s.seasonNumber !== 0 || (Array.isArray(s.episodes) && s.episodes.length > 0) || (s.episodeCount ?? 0) > 0))
+      .filter((s) => {
+        if (!s) return false
+        const episodeCount = Array.isArray(s.episodes) ? s.episodes.length : (s.episodeCount ?? 0)
+        return episodeCount > 0
+      })
       .sort((a, b) => a.seasonNumber - b.seasonNumber)
   }, [show])
 

@@ -99,7 +99,13 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
   const languageDisplay = originalLanguage ? languageName(originalLanguage) : null
 
   // TV show season / episode count
-  const showSeasons = Array.isArray(detail.show?.seasons) ? detail.show.seasons : []
+  const showSeasons = (Array.isArray(detail.show?.seasons) ? detail.show.seasons : []).filter(
+    (s) => {
+      if (!s) return false
+      const count = Array.isArray(s.episodes) ? s.episodes.length : (s.episodeCount ?? 0)
+      return count > 0
+    },
+  )
   const seasonsCount = showSeasons.length
   const episodesCount =
     showSeasons.reduce((acc, s) => acc + (s.episodeCount || (Array.isArray(s.episodes) ? s.episodes.length : 0)), 0)

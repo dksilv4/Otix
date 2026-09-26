@@ -15,6 +15,19 @@ import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { useSettingsSaveBar } from '../context/settings-save-context'
+import { useToast } from '@ui/molecules/toast'
+
+export function normalizeUploadedUrl(rawUrl: string): string {
+  if (!rawUrl) return rawUrl
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  if (/^https?:\/\/(api|otix-api)(:\d+)?(\/.*)?$/i.test(rawUrl)) {
+    return rawUrl.replace(/^https?:\/\/(api|otix-api)(:\d+)?/i, origin)
+  }
+  if (rawUrl.startsWith('/')) {
+    return `${origin}${rawUrl}`
+  }
+  return rawUrl
+}
 
 const BIO_MAX_LENGTH = 250
 
@@ -52,7 +65,7 @@ const VISIBILITY_OPTIONS = [
   { value: 'hidden', label: 'Hidden' },
 ]
 
-function AssetEditor({
+export function AssetEditor({
   compact = false,
   onSubmit,
   onRemove,
@@ -121,15 +134,27 @@ function AssetEditor({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cropImageUrl])
 
-  // Auto-open file picker when switching to Upload mode (no file selected yet)
-  useEffect(() => {
-    if (mode === 'file' && !selectedFile) {
-      const t = setTimeout(() => fileInputRef.current?.click(), 100)
-      return () => clearTimeout(t)
-    }
-  }, [mode, selectedFile])
-
   const openFilePicker = () => fileInputRef.current?.click()
+
+  const uploadAndSubmit = async (file: File) => {
+    setUploading(true)
+    setError(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const { data } = await apiClient.post('/upload', formData)
+      const finalUrl = normalizeUploadedUrl(data.url)
+      onSubmit(finalUrl)
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+        (err as { message?: string })?.message ??
+        'Upload failed. Try a different file or paste a URL.'
+      setError(msg)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -147,38 +172,24 @@ function AssetEditor({
     }
   }
 
-  const handleCropComplete = (blob: Blob) => {
+  const handleCropComplete = async (blob: Blob) => {
     if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl)
     const croppedFile = new File([blob], 'cropped.webp', { type: 'image/webp' })
     setSelectedFile(croppedFile)
     setPreviewObjectUrl(URL.createObjectURL(blob))
     setCropImageUrl(null)
+    await uploadAndSubmit(croppedFile)
   }
 
   const handleCropCancel = () => {
     if (cropImageUrl) URL.revokeObjectURL(cropImageUrl)
     setCropImageUrl(null)
-    fileInputRef.current && (fileInputRef.current.value = '')
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleApply = async () => {
     if (mode === 'file' && selectedFile) {
-      setUploading(true)
-      setError(null)
-      try {
-        const formData = new FormData()
-        formData.append('file', selectedFile)
-        const { data } = await apiClient.post('/upload', formData)
-        onSubmit(data.url)
-      } catch (err: unknown) {
-        const msg =
-          (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-          (err as { message?: string })?.message ??
-          'Upload failed. Try a different file or paste a URL.'
-        setError(msg)
-      } finally {
-        setUploading(false)
-      }
+      await uploadAndSubmit(selectedFile)
     } else if (mode === 'url') {
       onSubmit(urlDraft.trim())
     }
@@ -338,6 +349,7 @@ function AssetEditor({
 export function SettingsProfilePage() {
   const { user, isAuthenticated, refreshUser } = useAuth()
   const queryClient = useQueryClient()
+  const { toast } = useToast()
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '')
   const [backgroundUrl, setBackgroundUrl] = useState(user?.backgroundUrl ?? '')
   const [bio, setBio] = useState(user?.bio ?? '')
@@ -447,13 +459,26 @@ export function SettingsProfilePage() {
       setUsername(data.username ?? '')
       setSaved(true)
       refreshUser()
+      toast({
+        title: 'Profile saved',
+        description: 'Your changes have been saved.',
+        variant: 'success',
+      })
       // Invalidate profile queries so public pages reflect changes
       queryClient.invalidateQueries({ queryKey: ['user'] })
       if (user?.username && data.username !== user.username) {
         queryClient.invalidateQueries({ queryKey: ['user', user.username] })
       }
-    } catch {
-      // leave fields as-is
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+        (err as { message?: string })?.message ??
+        'Failed to save profile'
+      toast({
+        title: 'Failed to save',
+        description: typeof msg === 'string' ? msg : 'An error occurred while saving your profile.',
+        variant: 'error',
+      })
     } finally {
       setSaving(false)
     }
@@ -508,20 +533,80 @@ export function SettingsProfilePage() {
     )
   }
 
-  const applyCoverEditor = (url: string) => {
+  const applyCoverEditor = async (url: string) => {
     setBackgroundUrl(url)
+    try {
+      await apiClient.patch('/auth/me', { background_url: url || null })
+      refreshUser()
+      queryClient.invalidateQueries({ queryKey: ['user'] })
+      toast({
+        title: 'Cover updated',
+        description: 'Your profile cover banner has been updated.',
+        variant: 'success',
+      })
+    } catch (err: unknown) {
+      console.error('Failed to auto-save cover:', err)
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      toast({
+        title: 'Failed to save cover',
+        description: typeof msg === 'string' ? msg : 'An error occurred while saving.',
+        variant: 'error',
+      })
+    }
   }
 
-  const applyAvatarEditor = (url: string) => {
+  const applyAvatarEditor = async (url: string) => {
     setAvatarUrl(url)
+    try {
+      await apiClient.patch('/auth/me', { avatar_url: url || null })
+      refreshUser()
+      queryClient.invalidateQueries({ queryKey: ['user'] })
+      toast({
+        title: 'Avatar updated',
+        description: 'Your profile avatar has been updated.',
+        variant: 'success',
+      })
+    } catch (err: unknown) {
+      console.error('Failed to auto-save avatar:', err)
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      toast({
+        title: 'Failed to save avatar',
+        description: typeof msg === 'string' ? msg : 'An error occurred while saving.',
+        variant: 'error',
+      })
+    }
   }
 
-  const removeCover = () => {
+  const removeCover = async () => {
     setBackgroundUrl('')
+    try {
+      await apiClient.patch('/auth/me', { background_url: null })
+      refreshUser()
+      queryClient.invalidateQueries({ queryKey: ['user'] })
+      toast({
+        title: 'Cover removed',
+        description: 'Your profile cover banner has been removed.',
+        variant: 'success',
+      })
+    } catch (err: unknown) {
+      console.error('Failed to remove cover:', err)
+    }
   }
 
-  const removeAvatar = () => {
+  const removeAvatar = async () => {
     setAvatarUrl('')
+    try {
+      await apiClient.patch('/auth/me', { avatar_url: null })
+      refreshUser()
+      queryClient.invalidateQueries({ queryKey: ['user'] })
+      toast({
+        title: 'Avatar removed',
+        description: 'Your profile avatar has been removed.',
+        variant: 'success',
+      })
+    } catch (err: unknown) {
+      console.error('Failed to remove avatar:', err)
+    }
   }
 
   return (

@@ -48,3 +48,8 @@ otix-frontend-dist.tar.gz
 /node/storage/installers/
 /node/storage/saves/
 /node/otix_server/__pycache__
+
+# Uploaded media files
+/backend/uploads/
+uploads/
+

@@ -244,6 +244,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # API routes are declared without trailing slashes (FastAPI parity).
 APPEND_SLASH = False
 
+# Reverse proxy support (honour X-Forwarded-Host and X-Forwarded-Proto from Vite/Nginx).
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # ---------------------------------------------------------------------------
 # i18n / timezone
 # ---------------------------------------------------------------------------

@@ -52,9 +52,15 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
+        xfwd: true,
         timeout: 0,
         proxyTimeout: 0,
         agent: new http.Agent({ keepAlive: true, maxSockets: 50 }),
+      },
+      '/uploads': {
+        target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        xfwd: true,
       },
       '/media': {
         target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',
