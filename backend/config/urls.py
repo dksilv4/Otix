@@ -11,6 +11,7 @@ from django.urls import include, path
 
 from apps.accounts.views import UploadedFileView, UploadFileView
 from apps.blueprint.views import BlueprintListCreateView
+from apps.gameservers.views import GameServerListCreateView
 from apps.library.views import GameServerClaimView, GameServerHeartbeatView
 from apps.lists.views import ListRootView
 from apps.media.views import AssetFileView, MediaListView
@@ -55,6 +56,7 @@ urlpatterns = [
     ),
     path("api/v1/servers/claim", GameServerClaimView.as_view(), name="game-server-claim"),
     path("api/v1/library/", include("apps.library.urls")),
+    path("api/v1/game-servers", GameServerListCreateView.as_view(), name="game-server-root"),
     path("api/v1/game-servers/", include("apps.gameservers.urls")),
     path("api/v1/media", MediaListView.as_view(), name="media-root"),
     path("api/v1/media/", include("apps.media.urls")),

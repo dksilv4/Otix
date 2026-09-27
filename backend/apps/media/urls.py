@@ -249,12 +249,12 @@ urlpatterns = [
         name="media-ratings",
     ),
     path(
-        "<str:media_type>/<int:media_id>/interactions",
+        "<str:media_type>/<str:media_id>/interactions",
         InteractionView.as_view(),
         name="media-interactions",
     ),
     path(
-        "<str:media_type>/<int:media_id>/interactions/<str:interaction_type>",
+        "<str:media_type>/<str:media_id>/interactions/<str:interaction_type>",
         InteractionView.as_view(),
         name="media-interaction-toggle",
     ),

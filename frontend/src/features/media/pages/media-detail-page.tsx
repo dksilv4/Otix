@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '@auth/hooks/use-auth'
 import { useModal } from '@/lib/modals'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { MediaManageModal } from '../components/organisms/media-manage-modal'
 
 import { MediaStickyHeader } from '../components/organisms/media-sticky-header'
@@ -82,6 +82,7 @@ export function MediaDetailPage() {
   const search = useSearch({ strict: false }) as { manage?: boolean; season?: number }
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
+  const queryClient = useQueryClient()
   const { openModal } = useModal()
   const closeManageModalRef = useRef<(() => void) | null>(null)
 
@@ -144,6 +145,21 @@ export function MediaDetailPage() {
   const { data: detail, isError, isPending, isFetching } = useQuery(
     mediaQueries.detail(mediaType, mediaId),
   )
+
+  useEffect(() => {
+    const otixId = detail?.id ? String(detail.id) : null
+    if (otixId && otixId !== mediaId) {
+      const canonicalType = (detail.mediaType || mediaType) as 'movie' | 'show' | 'game' | 'music'
+      queryClient.setQueryData(mediaQueries.detail(canonicalType, otixId).queryKey, detail)
+      void (navigate as any)({
+        to: '/media/$mediaType/$mediaId',
+        params: { mediaType: canonicalType, mediaId: otixId },
+        search: (search || {}) as any,
+        replace: true,
+      })
+    }
+  }, [detail, mediaId, mediaType, navigate, queryClient, search])
+
   if (!mediaId || isPending) return <DetailSkeleton />
   if (isError || !detail) {
     if (isFetching) return <DetailSkeleton />
@@ -339,7 +355,7 @@ export function MediaDetailPage() {
               <Suspense fallback={null}>
                 <MediaDetailLibraryPanel
                   mediaType={mediaType}
-                  mediaId={mediaId}
+                  mediaId={detail.id ? String(detail.id) : (detail.slug || mediaId)}
                   tmdbId={detail.tmdbId}
                 />
               </Suspense>

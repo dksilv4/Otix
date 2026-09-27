@@ -68,13 +68,20 @@ def claim_job(pk: int) -> SyncJob | None:
     """Atomically transition a pending job to running; ``None`` if not claimable.
 
     The conditional ``UPDATE ... WHERE status='pending'`` guarantees exactly one
-    worker wins the row even if several pick up the same task id.
+    worker wins the row even if several pick up the same task id. If a job has been
+    in status='running' for over 5 minutes without completion, it is treated as
+    abandoned and reclaimed.
     """
     claimed = SyncJob.objects.filter(pk=pk, status="pending").update(
         status="running", started_at=timezone.now()
     )
     if not claimed:
-        return None
+        stale_cutoff = timezone.now() - timezone.timedelta(minutes=5)
+        claimed = SyncJob.objects.filter(
+            pk=pk, status="running", started_at__lt=stale_cutoff
+        ).update(started_at=timezone.now())
+        if not claimed:
+            return None
     return SyncJob.objects.get(pk=pk)
 
 

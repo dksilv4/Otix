@@ -28,6 +28,7 @@ MEDIA_SUMMARY_FIELDS = (
     "slug",
     "tmdb_id",
     "poster_url",
+    "textless_poster_url",
     "backdrop_url",
     "logo_url",
     "icon_url",
@@ -69,6 +70,7 @@ class MediaSummarySerializer(serializers.ModelSerializer):
 
     tmdb_id = serializers.SerializerMethodField()
     poster_url = serializers.SerializerMethodField()
+    textless_poster_url = serializers.SerializerMethodField()
     backdrop_url = serializers.SerializerMethodField()
     logo_url = serializers.SerializerMethodField()
     icon_url = serializers.SerializerMethodField()
@@ -83,6 +85,9 @@ class MediaSummarySerializer(serializers.ModelSerializer):
 
     def get_poster_url(self, obj: MediaItem) -> str | None:
         return _asset_url(obj, "poster")
+
+    def get_textless_poster_url(self, obj: MediaItem) -> str | None:
+        return _asset_url(obj, "textless_poster")
 
     def get_backdrop_url(self, obj: MediaItem) -> str | None:
         return _asset_url(obj, "backdrop")

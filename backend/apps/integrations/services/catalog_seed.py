@@ -189,6 +189,15 @@ def ensure_catalog_job(
     if not force and _fresh_enough(provider, entity_type, ext):
         return None
 
+    stale_cutoff = dj_timezone.now() - timedelta(minutes=5)
+    SyncJob.objects.filter(
+        provider=provider,
+        entity_type=entity_type,
+        external_id=ext,
+        status="running",
+        started_at__lt=stale_cutoff,
+    ).update(status="failed", error_message="Stale job timed out")
+
     live = (
         SyncJob.objects.filter(
             provider=provider,

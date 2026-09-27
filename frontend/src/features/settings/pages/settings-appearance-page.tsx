@@ -9,6 +9,7 @@ import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
 import { SettingsGeneralPage } from './settings-general-page'
+import { applyAccentColor as applyAccentToDocument } from '@/lib/theme/accent'
 
 const ACCENTS = [
   { id: 'orange', primary: 'oklch(0.705 0.213 47.604)' },
@@ -50,11 +51,7 @@ function getInitialAccent(): string {
 }
 
 function applyAccentColor(color: string) {
-  const root = document.documentElement
-  root.style.setProperty('--primary', color)
-  root.style.setProperty('--ring', color)
-  root.style.setProperty('--sidebar-primary', color)
-  root.style.setProperty('--sidebar-ring', color)
+  applyAccentToDocument(color)
   localStorage.setItem(ACCENT_STORAGE_KEY, color)
 }
 
@@ -248,7 +245,7 @@ export function SettingsAppearancePage() {
                   <p
                     className={cn(
                       'mt-1 text-xs',
-                      isActiveOpt ? 'text-white/80' : 'text-white/60',
+                      isActiveOpt ? 'text-primary-foreground/80' : 'text-muted-foreground',
                     )}
                   >
                     {option.description}
@@ -288,7 +285,7 @@ export function SettingsAppearancePage() {
                   <p
                     className={cn(
                       'mt-1 text-xs',
-                      isActiveOpt ? 'text-white/80' : 'text-white/60',
+                      isActiveOpt ? 'text-primary-foreground/80' : 'text-muted-foreground',
                     )}
                   >
                     {option.description}

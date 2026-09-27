@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, createElement } from 'react'
 import {
   Search,
   Loader2,
@@ -22,6 +22,7 @@ import {
 import type { PluginInfo } from '@/features/plugins/types/plugins'
 import { cn } from '@/lib/utils'
 import { DkSwitch } from '@ui/atoms/switch'
+import { FeatureStatusTags, kindsFromPluginStage } from '@ui/atoms/feature-status-tag'
 import { SettingsCard } from '@/features/settings/components/molecules/settings-card'
 import { SectionHeader } from '@/features/settings/components/molecules/settings-section-header'
 import { SettingsLockedState } from '@/features/settings/components/molecules/settings-locked-state'
@@ -325,11 +326,12 @@ function InstalledPluginRow({
   onToggle: () => void
   toggling: boolean
 }) {
-  const PluginIcon = getPluginIcon(plugin.manifest.icon)
+  const icon = getPluginIcon(plugin.manifest.icon)
   const isError = plugin.status === 'error'
   const isEnabled = plugin.status === 'enabled'
   const isSystem = plugin.manifest.system === true
   const catStyle = getCategoryStyle(category)
+  const stageTags = kindsFromPluginStage(plugin.manifest.stage)
 
   const status = isError
     ? { label: 'Error', cls: 'text-red-400', dot: 'bg-red-400' }
@@ -343,11 +345,11 @@ function InstalledPluginRow({
       style={{ backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.12)' }}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        <PluginIcon className="h-5 w-5" />
+        {createElement(icon, { className: 'h-5 w-5' })}
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <h4 className="truncate text-sm font-semibold text-white">{plugin.name}</h4>
           {isSystem && (
             <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-sky-400">
@@ -355,6 +357,7 @@ function InstalledPluginRow({
               System
             </span>
           )}
+          <FeatureStatusTags kinds={stageTags} short />
         </div>
         {plugin.description && <p className="mt-0.5 truncate text-xs text-white/40">{plugin.description}</p>}
         <div className="mt-1 flex items-center gap-2">

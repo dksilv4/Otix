@@ -15,7 +15,7 @@ from apps.gameservers.serializers import (
     GameServerInviteSerializer,
     GameServerShareSerializer,
 )
-from apps.gameservers.services.query import query_game_server
+from apps.gameservers.services.query import probe_server_connection, query_game_server
 from apps.social.models import FriendRequest
 
 User = get_user_model()
@@ -86,9 +86,21 @@ class GameServerListCreateView(APIView):
         serializer = DedicatedGameServerCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        data = dict(serializer.validated_data)
+        server_name = data.get("name")
+        if not server_name or not server_name.strip():
+            game_title = data.get("game_title")
+            if not game_title and data.get("media_item_id"):
+                from apps.media.models import MediaItem
+
+                media = MediaItem.objects.filter(pk=data["media_item_id"]).first()
+                if media:
+                    game_title = media.title
+            data["name"] = f"{game_title or 'Dedicated'} Server"
+
         server = DedicatedGameServer.objects.create(
             owner=request.user,
-            **serializer.validated_data,
+            **data,
         )
         # Create an initial invite code if public link is enabled
         if server.is_public_link:
@@ -164,6 +176,40 @@ class GameServerQueryView(APIView):
             "query_result": result,
             "server": out.data,
         })
+
+
+class GameServerVerifyView(APIView):
+    """``POST /api/v1/game-servers/verify`` - transiently test connection before saving."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request: Request) -> Response:
+        host = request.data.get("host", "").strip()
+        port = request.data.get("port")
+        query_port = request.data.get("query_port")
+        server_type = request.data.get("server_type", "generic")
+
+        if not host or not port:
+            raise ValidationError("Host and port are required for verification")
+
+        try:
+            port = int(port)
+        except (ValueError, TypeError):
+            raise ValidationError("Port must be an integer") from None
+
+        if query_port:
+            try:
+                query_port = int(query_port)
+            except (ValueError, TypeError):
+                query_port = None
+
+        result = probe_server_connection(
+            host=host,
+            port=port,
+            query_port=query_port,
+            server_type=server_type,
+        )
+        return Response(result)
 
 
 class GameServerShareListCreateView(APIView):
@@ -309,10 +355,22 @@ class GameServersByGameView(APIView):
 
     def get(self, request: Request, media_id: str) -> Response:
         user = request.user
-        qs = DedicatedGameServer.objects.filter(
-            Q(owner=user) | Q(shares__user=user),
-            media_item_id=media_id,
-        ).distinct().select_related("owner", "media_item")
+        from apps.media.views.catalog import resolve_media_pk
+
+        media_pk = resolve_media_pk("game", media_id)
+        if not media_pk and media_id.isdigit():
+            media_pk = int(media_id)
+
+        if media_pk:
+            qs = DedicatedGameServer.objects.filter(
+                Q(owner=user) | Q(shares__user=user),
+                media_item_id=media_pk,
+            ).distinct().select_related("owner", "media_item")
+        else:
+            qs = DedicatedGameServer.objects.filter(
+                Q(owner=user) | Q(shares__user=user),
+                game_title__iexact=media_id,
+            ).distinct().select_related("owner", "media_item")
 
         serializer = DedicatedGameServerSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)

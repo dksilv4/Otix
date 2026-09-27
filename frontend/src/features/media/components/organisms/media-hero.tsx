@@ -56,10 +56,12 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
 
   const { data: detail } = useQuery(mediaQueries.detail(mediaType, mediaId))
 
-  const { data: userInteractions } = useUserInteractions(mediaType, mediaId, {
-    enabled: isAuthenticated,
+  const activeMediaId = detail?.id ? String(detail.id) : (detail?.slug || mediaId)
+
+  const { data: userInteractions } = useUserInteractions(mediaType, activeMediaId, {
+    enabled: isAuthenticated && Boolean(activeMediaId),
   })
-  const toggleInteraction = useToggleInteraction(mediaType, mediaId)
+  const toggleInteraction = useToggleInteraction(mediaType, activeMediaId)
 
   if (!detail) return null
 

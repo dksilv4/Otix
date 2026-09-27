@@ -4,8 +4,7 @@ import { X, Calendar, Star, HardDrive, Layers, Image as ImageIcon, BookOpen, Spa
 import { MediaLogo } from "@/lib/media/media-logo"
 import { LauncherActionButtons } from "./launcher-action-buttons"
 import { MatchGameModal } from "@/features/launcher/components/molecules/launcher-match-game-modal"
-import { LauncherGameChangelog } from "@/features/launcher/components/molecules/launcher-game-changelog"
-import { MediaGameServersSection } from "@/features/gameservers"
+import { MediaGameServersSection, useGameServersByGame } from "@/features/gameservers"
 import { useModal } from "@/lib/modals"
 import { PLATFORM_LABELS } from "@/constants/games"
 import type { LocalGame, DisplayGame } from "@/features/launcher/types"
@@ -20,9 +19,11 @@ export function LauncherGameSheet({ game, onClose }: LauncherGameSheetProps) {
   const [_selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'updates' | 'servers'>('overview')
 
-  if (!game) return null
+  const raw = game ? (("rawGame" in game && game.rawGame ? game.rawGame : game) as LocalGame) : null
+  const mediaId = raw?.otixMediaId || raw?.data?.mediaId || raw?.data?.id || ''
+  const { data: gameServers = [] } = useGameServersByGame(mediaId)
 
-  const raw = ("rawGame" in game && game.rawGame ? game.rawGame : game) as LocalGame
+  if (!game || !raw) return null
   const detail = raw.data
   const title = detail?.title || raw.title
   const overview = detail?.overview || raw.description || "No overview available for this title."
@@ -128,8 +129,8 @@ export function LauncherGameSheet({ game, onClose }: LauncherGameSheetProps) {
               onClick={() => setActiveTab("overview")}
               className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "overview"
-                  ? "border-[var(--color-accent)] text-white"
-                  : "border-transparent text-white/40 hover:text-white/80"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <BookOpen size={13} /> Overview
@@ -139,8 +140,8 @@ export function LauncherGameSheet({ game, onClose }: LauncherGameSheetProps) {
               onClick={() => setActiveTab("updates")}
               className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "updates"
-                  ? "border-[var(--color-accent)] text-white"
-                  : "border-transparent text-white/40 hover:text-white/80"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <Sparkles size={13} /> Updates & Changelog
@@ -149,25 +150,30 @@ export function LauncherGameSheet({ game, onClose }: LauncherGameSheetProps) {
               )}
             </button>
 
-            <button
-              onClick={() => setActiveTab("servers")}
-              className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
-                activeTab === "servers"
-                  ? "border-[var(--color-accent)] text-white"
-                  : "border-transparent text-white/40 hover:text-white/80"
-              }`}
-            >
-              <Server size={13} /> Dedicated Servers
-            </button>
+            {gameServers.length > 0 && (
+              <button
+                onClick={() => setActiveTab("servers")}
+                className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === "servers"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Server size={13} /> Dedicated Servers
+                <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-[10px] font-semibold">
+                  {gameServers.length}
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-none">
             {activeTab === "updates" ? (
               <LauncherGameChangelog game={game} />
-            ) : activeTab === "servers" ? (
+            ) : activeTab === "servers" && gameServers.length > 0 ? (
               <MediaGameServersSection
-                mediaId={raw.otixMediaId || raw.data?.mediaId || raw.data?.id || ''}
+                mediaId={mediaId}
                 gameTitle={title}
               />
             ) : (

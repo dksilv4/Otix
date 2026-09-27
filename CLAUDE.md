@@ -10,6 +10,14 @@ Rules:
 
 - Always use the existing modal framework that is already established in the codebase to create new modals and user interfaces. Do not create new modal styles or frameworks.
 
+## Colours / theming
+
+Never hardcode colours in UI (no raw hex, `rgb()`/`oklch()` literals, Tailwind palette classes like `bg-emerald-500` / `text-white`, or one-off inline colour styles) unless the user explicitly asks for an exception.
+
+Use existing theme tokens and CSS variables instead (`bg-primary`, `text-primary-foreground`, `text-muted-foreground`, `var(--primary)`, `var(--dk-surface-*)`, semantic media tokens, etc.). Prefer semantic pairs (`bg-primary` + `text-primary-foreground`) over guessing a foreground.
+
+If a needed colour role does not exist yet, ask the user for confirmation before introducing a new theme variable or token. Do not invent new colour tokens unilaterally.
+
 ## API casing
 
 Django and Otix Server speak **snake_case**. The web `apiClient` (`frontend/src/lib/api/client.ts`) converts automatically via axios interceptors:

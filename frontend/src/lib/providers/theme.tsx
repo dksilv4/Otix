@@ -1,5 +1,6 @@
 // TODO: Review this file
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { applyAccentColor } from '@/lib/theme/accent'
 
 type Theme = 'light' | 'dark'
 export type ThemeSetting = Theme | 'system'
@@ -50,20 +51,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [resolvedTheme, setResolvedTheme] = useState<Theme>(() => resolveTheme(theme))
   const [layoutTheme, setLayoutThemeState] = useState<string>(getInitialLayoutTheme)
 
-  /* ── Load saved accent color on startup ── */
+  /* ── Load saved accent color on startup (includes on-accent foreground) ── */
   useEffect(() => {
     const saved = localStorage.getItem('otix-accent')
-    if (saved) {
-      const root = document.documentElement
-      root.style.setProperty('--primary', saved)
-      root.style.setProperty('--ring', saved)
-      root.style.setProperty('--sidebar-primary', saved)
-      root.style.setProperty('--sidebar-ring', saved)
-    }
+    if (saved) applyAccentColor(saved)
   }, [])
-  // Track the stable setLayoutTheme to avoid unnecessary re-renders of consumers
-  const layoutThemeRef = useRef(layoutTheme)
-  layoutThemeRef.current = layoutTheme
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', resolvedTheme)

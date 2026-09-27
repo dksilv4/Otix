@@ -112,12 +112,12 @@ export function LauncherActionButtons({
         <button
           onClick={handlePlay}
           disabled={isLaunching}
-          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition-all duration-200 cursor-pointer active:scale-95 shadow-lg bg-[oklch(0.705_0.213_47.604)] hover:brightness-110 text-white shadow-[0_0_24px_oklch(0.705_0.213_47.604/0.4)] ${paddingClass}`}
+          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition-all duration-200 cursor-pointer active:scale-95 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_24px_color-mix(in_oklch,var(--primary)_40%,transparent)] ${paddingClass}`}
         >
           {isLaunching ? (
             <Loader2 size={size === "lg" ? 16 : 14} className="animate-spin" />
           ) : (
-            <Play size={size === "lg" ? 16 : 14} fill="white" />
+            <Play size={size === "lg" ? 16 : 14} fill="currentColor" />
           )}
           <span>{isLaunching ? "Starting..." : "Play Now"}</span>
         </button>

@@ -15,10 +15,13 @@ caller that already holds a client may pass it explicitly.
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Any
 
 from core.redis import get_async_client
+
+logger = logging.getLogger(__name__)
 
 # Single atomic check-and-consume: read state, refill on elapsed time, take
 # tokens or return the estimated wait, persist, and expire idle keys.
@@ -126,15 +129,19 @@ class RateLimiter:
         Returns ``(allowed, wait_seconds)``. When ``allowed`` is False,
         ``wait_seconds`` is the estimated time until enough tokens refill.
         """
-        script = await self._get_script()
-        key = self._key(bucket)
-        now = time.monotonic()
-        r = rate if rate is not None else self.default_rate
-        b = burst if burst is not None else self.default_burst
-        allowed, _remaining, wait = await script(
-            keys=[key], args=[now, r, b, tokens]
-        )
-        return bool(int(allowed)), float(wait)
+        try:
+            script = await self._get_script()
+            key = self._key(bucket)
+            now = time.monotonic()
+            r = rate if rate is not None else self.default_rate
+            b = burst if burst is not None else self.default_burst
+            allowed, _remaining, wait = await script(
+                keys=[key], args=[now, r, b, tokens]
+            )
+            return bool(int(allowed)), float(wait)
+        except Exception as exc:
+            logger.warning("Rate limiter Redis unavailable for bucket '%s' (%s); failing open", bucket, exc)
+            return True, 0.0
 
     async def wait_and_acquire(
         self,

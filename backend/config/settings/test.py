@@ -15,6 +15,17 @@ from config.settings.base import *  # noqa: F403  (inherited shared settings)
 
 DEBUG = False
 
+# Neutralize external service API keys so unit tests run hermetically isolated
+TMDB_API_KEY = ""
+TMDB_RAT = ""
+STEAMGRID_API_KEY = ""
+STEAM_GRID_API_KEY = ""
+OMDB_API_KEY = ""
+FANART_API_KEY = ""
+STEAM_API_KEY = ""
+IGDB_CLIENT_ID = ""
+IGDB_CLIENT_SECRET = ""
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",

@@ -20,8 +20,9 @@ from celery.schedules import crontab
 # backend/config/settings/base.py -> backend/
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Load .env from the project root if present. Real values (never checked in)
-# come from the process environment / deployment secrets.
+# Load .env from the project root if present, followed by backend/.env (overrides).
+# Real values (never checked in) come from the process environment / deployment secrets.
+dotenv.load_dotenv(BASE_DIR.parent / ".env")
 dotenv.load_dotenv(BASE_DIR / ".env")
 
 

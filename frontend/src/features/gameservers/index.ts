@@ -5,3 +5,4 @@ export { MediaGameServersSection } from './components/media-game-servers-section
 export { CreateGameServerModal } from './components/create-game-server-modal'
 export { ShareGameServerModal } from './components/share-game-server-modal'
 export { JoinGameServerModal } from './components/join-game-server-modal'
+export { GameServersFeatureTags } from './components/game-servers-feature-tags'

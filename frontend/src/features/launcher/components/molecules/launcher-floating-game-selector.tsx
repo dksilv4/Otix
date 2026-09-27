@@ -128,7 +128,7 @@ export function FloatingGameSelector() {
                     <button
                         title="Browse All Games (Library)"
                         onClick={goToLibrary}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white hover:scale-105 active:scale-95 cursor-pointer transition-all bg-[var(--color-accent)] shadow-md shadow-[var(--color-accent)]/20 shrink-0"
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-primary-foreground hover:scale-105 active:scale-95 cursor-pointer transition-all bg-primary shadow-md shadow-primary/20 shrink-0"
                     >
                         <Gamepad2 size={17}/>
                     </button>
@@ -146,7 +146,7 @@ export function FloatingGameSelector() {
                         }}
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
                             searchQuery
-                                ? "bg-[var(--color-accent)] text-white shadow-sm"
+                                ? "bg-primary text-primary-foreground shadow-sm"
                                 : searchOpen
                                 ? "bg-white/20 text-white"
                                 : "text-white/60 hover:text-white hover:bg-white/10"

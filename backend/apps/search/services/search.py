@@ -153,7 +153,17 @@ def _steamgrid_configured() -> bool:
 
 
 def _placeholder_game_summary(
-    *, item_id: str, title: str, slug: str, poster_url: str | None
+    *,
+    item_id: str,
+    title: str,
+    slug: str,
+    poster_url: str | None,
+    textless_poster_url: str | None = None,
+    backdrop_url: str | None = None,
+    release_date: str | None = None,
+    overview: str | None = None,
+    avg_rating: float | None = None,
+    rating_count: int = 0,
 ) -> dict:
     return {
         "id": item_id,
@@ -162,13 +172,15 @@ def _placeholder_game_summary(
         "slug": slug or "",
         "tmdb_id": None,
         "poster_url": poster_url,
-        "backdrop_url": None,
+        "textless_poster_url": textless_poster_url,
+        "backdrop_url": backdrop_url,
         "logo_url": None,
         "icon_url": None,
-        "release_date": None,
+        "release_date": release_date,
+        "overview": overview,
         "popularity": 0,
-        "avg_rating": None,
-        "rating_count": 0,
+        "avg_rating": round(avg_rating, 1) if avg_rating is not None else None,
+        "rating_count": rating_count,
         "overall_rating": None,
         "overall_rating_source": None,
         "like_count": 0,
@@ -190,6 +202,7 @@ def _placeholder_media_summary(
     slug: str,
     tmdb_id: str | None = None,
     poster_url: str | None = None,
+    textless_poster_url: str | None = None,
     backdrop_url: str | None = None,
     release_date: str | None = None,
     overview: str | None = None,
@@ -202,6 +215,7 @@ def _placeholder_media_summary(
         "slug": slug or "",
         "tmdb_id": tmdb_id,
         "poster_url": poster_url,
+        "textless_poster_url": textless_poster_url,
         "backdrop_url": backdrop_url,
         "logo_url": None,
         "icon_url": None,
@@ -525,7 +539,12 @@ def _igdb_game_backfill(
 
     if configured():
         try:
-            raw = IGDBProvider().search_games(q, limit=limit, fields="id,name,slug,cover.image_id")
+            fields = (
+                "id,name,slug,cover.image_id,first_release_date,"
+                "aggregated_rating,rating,rating_count,summary,"
+                "screenshots.image_id,artworks.image_id"
+            )
+            raw = IGDBProvider().search_games(q, limit=limit, fields=fields)
             igdb_ids = [str(game["id"]) for game in raw if game.get("id") is not None]
             mapped = _igdb_mapped(igdb_ids)
             catalog_rows = {
@@ -557,12 +576,49 @@ def _igdb_game_backfill(
                 placeholder_id = f"{IGDB_ID_PREFIX}{gid}"
                 if placeholder_id in seen:
                     continue
+
+                # Extract backdrop from artworks or screenshots
+                backdrop = None
+                artworks = game.get("artworks")
+                if isinstance(artworks, list) and artworks:
+                    first_art = artworks[0]
+                    if isinstance(first_art, dict) and first_art.get("image_id"):
+                        backdrop = f"https://images.igdb.com/igdb/image/upload/t_original/{first_art['image_id']}.jpg"
+                if not backdrop:
+                    screenshots = game.get("screenshots")
+                    if isinstance(screenshots, list) and screenshots:
+                        first_screen = screenshots[0]
+                        if isinstance(first_screen, dict) and first_screen.get("image_id"):
+                            backdrop = f"https://images.igdb.com/igdb/image/upload/t_original/{first_screen['image_id']}.jpg"
+
+                # Extract release date
+                rel_date = None
+                first_rel = game.get("first_release_date")
+                if first_rel:
+                    try:
+                        from datetime import UTC, datetime
+
+                        rel_date = datetime.fromtimestamp(int(first_rel), tz=UTC).date().isoformat()
+                    except (TypeError, ValueError, OverflowError, OSError):
+                        pass
+
+                # Extract rating
+                rating = game.get("aggregated_rating")
+                if rating is None:
+                    rating = game.get("rating")
+                rcount = game.get("rating_count") or 0
+
                 extras.append(
                     _placeholder_game_summary(
                         item_id=placeholder_id,
                         title=game.get("name") or q,
                         slug=game.get("slug") or "",
                         poster_url=cover_url(game.get("cover")),
+                        backdrop_url=backdrop,
+                        release_date=rel_date,
+                        overview=game.get("summary"),
+                        avg_rating=float(rating) if rating is not None else None,
+                        rating_count=int(rcount) if rcount else 0,
                     )
                 )
                 seen.add(placeholder_id)

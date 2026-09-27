@@ -42,6 +42,8 @@ export interface NavItem {
   group: NavGroup
   /** Extra terms for the settings sidebar search. */
   keywords?: string
+  /** Small status chips shown beside the nav label (e.g. Beta). */
+  badges?: string[]
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -61,7 +63,8 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: false,
     requiresAuth: false,
     group: 'preferences',
-    keywords: 'launcher theme layout modern xbox playstation switch forge glass minimal carousel animations transitions controller editions',
+    badges: ['Beta'],
+    keywords: 'launcher theme layout modern xbox playstation switch forge glass minimal carousel animations transitions controller editions beta',
   },
   {
     id: 'notifications',
@@ -89,6 +92,17 @@ export const NAV_ITEMS: NavItem[] = [
     requiresAuth: false,
     group: 'library',
     keywords: 'desktop tray startup minimize close always on top window node native servers nas share remote worker machine paths folders organize downloaders sabnzbd scan',
+  },
+  {
+    id: 'game-servers',
+    label: 'Game Servers',
+    icon: Gamepad2,
+    desktop: false,
+    requiresAuth: true,
+    adminOnly: false,
+    group: 'library',
+    badges: ['Beta', 'WIP'],
+    keywords: 'dedicated game servers multiplayer host connect valheim minecraft cs2 rust palworld join share steam beta',
   },
   {
     id: 'connections',

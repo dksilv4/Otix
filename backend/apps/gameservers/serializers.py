@@ -3,7 +3,6 @@
 from rest_framework import serializers
 
 from apps.gameservers.models import DedicatedGameServer, GameServerInvite, GameServerShare
-from apps.media.models import MediaItem
 
 
 class SharedUserSerializer(serializers.Serializer):
@@ -111,9 +110,12 @@ class DedicatedGameServerSerializer(serializers.ModelSerializer):
 class DedicatedGameServerCreateSerializer(serializers.ModelSerializer):
     """Payload for creating or updating a dedicated game server."""
 
-    media_item_id = serializers.PrimaryKeyRelatedField(
-        queryset=MediaItem.objects.filter(media_type="game"),
-        source="media_item",
+    name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    media_item_id = serializers.CharField(
         required=False,
         allow_null=True,
     )
@@ -132,6 +134,18 @@ class DedicatedGameServerCreateSerializer(serializers.ModelSerializer):
             "description",
             "is_public_link",
         ]
+
+    def validate_media_item_id(self, value: str | None) -> int | None:
+        if not value:
+            return None
+        from apps.media.views.catalog import resolve_media_pk
+
+        pk = resolve_media_pk("game", str(value).strip())
+        if pk is not None:
+            return pk
+        if str(value).isdigit():
+            return int(value)
+        return None
 
     def validate_port(self, value: int) -> int:
         if not (1 <= value <= 65535):

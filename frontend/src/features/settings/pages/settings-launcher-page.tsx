@@ -15,6 +15,7 @@ import { LauncherThemePreview } from '../components/molecules/launcher-theme-pre
 import { DkSwitch } from '@ui/atoms/switch'
 import { DkButton } from '@ui/atoms/button'
 import { DkDropdown } from '@ui/atoms/dropdown'
+import { FeatureStatusTag, FeatureStatusTags } from '@ui/atoms/feature-status-tag'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import { LAUNCHER_THEMES, type LauncherThemeId } from '@/features/launcher/themes/theme-context'
 import { useToast } from '@ui/molecules/toast'
@@ -61,7 +62,9 @@ export function SettingsLauncherPage() {
     try {
       const stored = localStorage.getItem('otix:launcher-theme') as LauncherThemeId | null
       if (stored && LAUNCHER_THEMES.some((t) => t.id === stored)) return stored
-    } catch {}
+    } catch {
+      // ignore unavailable localStorage (private mode / SSR)
+    }
     return 'modern'
   })
 
@@ -91,6 +94,7 @@ export function SettingsLauncherPage() {
         variant="page"
         icon={Gamepad2}
         title="Launcher"
+        badges={<FeatureStatusTags kinds={['beta']} />}
         description="Theme layouts, animations, transitions, and console experience."
         action={
           <DkButton type="button" onClick={() => navigate({ to: '/launcher' })}>
@@ -128,6 +132,7 @@ export function SettingsLauncherPage() {
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-white/10 text-white/80">
                   {selectedThemeMeta.version}
                 </span>
+                {selectedThemeMeta.isBeta && <FeatureStatusTag kind="beta" />}
                 <span className="text-xs text-white/50 font-medium">
                   {selectedThemeMeta.subtitle}
                 </span>
@@ -162,9 +167,12 @@ export function SettingsLauncherPage() {
         <SettingsCard>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
-              <h3 className="font-bold text-white tracking-tight text-sm sm:text-base">
-                Themes & Layout Editions
-              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-bold text-white tracking-tight text-sm sm:text-base">
+                  Themes & Layout Editions
+                </h3>
+                <FeatureStatusTag kind="beta" />
+              </div>
               <p className="text-white/60 mt-0.5 leading-relaxed text-xs">
                 Select your default launcher interface. All 10 themes read the same game library, user profiles, and active play sessions.
               </p>
@@ -241,6 +249,7 @@ export function SettingsLauncherPage() {
                       <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors truncate">
                         {theme.name}
                       </h4>
+                      {theme.isBeta && <FeatureStatusTag kind="beta" className="px-1.5" />}
                     </div>
 
                     {isSelected ? (

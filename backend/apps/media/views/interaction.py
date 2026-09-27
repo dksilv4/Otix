@@ -46,34 +46,46 @@ def _show_or_404(show_id: int):
     return show
 
 
+def _resolve_pk(media_type: str, media_id: str | int) -> int:
+    from apps.media.views.catalog import resolve_media_pk
+
+    pk = resolve_media_pk(media_type, media_id)
+    if pk is None:
+        raise NotFound("Media item not found")
+    return pk
+
+
 class InteractionView(APIView):
     """``GET`` + ``PUT``/``DELETE /media/{media_type}/{media_id}/interactions[...]``."""
 
-    def get(self, request, media_type: str, media_id: int) -> Response:
-        return Response(services.user_interaction_state(request.user.id, media_id))
+    def get(self, request, media_type: str, media_id: str | int) -> Response:
+        pk = _resolve_pk(media_type, media_id)
+        return Response(services.user_interaction_state(request.user.id, pk))
 
-    def put(self, request, media_type: str, media_id: int, interaction_type: str) -> Response:
+    def put(self, request, media_type: str, media_id: str | int, interaction_type: str) -> Response:
         if interaction_type not in _VALID_TOGGLE_TYPES:
             raise _toggle_type_error()
-        _media_or_404(media_id)
+        pk = _resolve_pk(media_type, media_id)
+        _media_or_404(pk)
         body = InteractionCreateBodySerializer(data=request.data)
         body.is_valid(raise_exception=True)
         interaction = services.set_interaction(
             request.user,
-            media_id,
+            pk,
             interaction_type,
             extra_data=body.validated_data.get("extra_data"),
         )
-        counts = services.interaction_counts(media_id)
+        counts = services.interaction_counts(pk)
         payload = InteractionToggleResponseSerializer(
             {"interaction": interaction, "counts": counts}
         ).data
         return Response(payload)
 
-    def delete(self, request, media_type: str, media_id: int, interaction_type: str) -> Response:
+    def delete(self, request, media_type: str, media_id: str | int, interaction_type: str) -> Response:
         if interaction_type not in _VALID_TOGGLE_TYPES:
             raise _toggle_type_error()
-        if not services.remove_interaction(request.user, media_id, interaction_type):
+        pk = _resolve_pk(media_type, media_id)
+        if not services.remove_interaction(request.user, pk, interaction_type):
             raise NotFound("Interaction not found")
         return Response(status=status.HTTP_204_NO_CONTENT)
 

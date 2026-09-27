@@ -34,12 +34,13 @@ class DedicatedGameServerTests(TestCase):
         self.client.force_authenticate(user=self.alice)
 
     def test_create_and_list_server(self):
+        # Test creation using non-trailing slash URL and slug as media_item_id
         resp = self.client.post(
-            "/api/v1/game-servers/",
+            "/api/v1/game-servers",
             {
                 "name": "Alice's Palworld World",
                 "game_title": "Palworld",
-                "media_item_id": self.game.id,
+                "media_item_id": "palworld",
                 "server_type": "steam_source",
                 "host": "192.168.1.100",
                 "port": 8211,
@@ -51,16 +52,30 @@ class DedicatedGameServerTests(TestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        server_id = resp.data["id"]
         self.assertEqual(resp.data["name"], "Alice's Palworld World")
         self.assertEqual(resp.data["connection_address"], "192.168.1.100:8211")
+        self.assertEqual(resp.data["media_item_id"], self.game.id)
         self.assertTrue(resp.data["is_owner"])
 
+        # Test creation with NO name provided -> should default to "{game_title} Server"
+        resp_no_name = self.client.post(
+            "/api/v1/game-servers",
+            {
+                "game_title": "Palworld",
+                "media_item_id": "palworld",
+                "server_type": "steam_source",
+                "host": "192.168.1.101",
+                "port": 8211,
+            },
+            format="json",
+        )
+        self.assertEqual(resp_no_name.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resp_no_name.data["name"], "Palworld Server")
+
         # List servers for Alice
-        list_resp = self.client.get("/api/v1/game-servers/")
+        list_resp = self.client.get("/api/v1/game-servers")
         self.assertEqual(list_resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(list_resp.data), 1)
-        self.assertEqual(list_resp.data[0]["id"], server_id)
+        self.assertEqual(len(list_resp.data), 2)
 
     def test_by_game_lookup(self):
         server = DedicatedGameServer.objects.create(
@@ -71,10 +86,17 @@ class DedicatedGameServerTests(TestCase):
             host="10.0.0.1",
             port=8211,
         )
+        # Test lookup by integer PK
         resp = self.client.get(f"/api/v1/game-servers/by-game/{self.game.id}")
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(resp.data), 1)
         self.assertEqual(resp.data[0]["id"], server.id)
+
+        # Test lookup by slug
+        resp_slug = self.client.get("/api/v1/game-servers/by-game/palworld")
+        self.assertEqual(resp_slug.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(resp_slug.data), 1)
+        self.assertEqual(resp_slug.data[0]["id"], server.id)
 
     def test_share_only_with_otix_friends(self):
         server = DedicatedGameServer.objects.create(
@@ -177,3 +199,67 @@ class DedicatedGameServerTests(TestCase):
         server.refresh_from_db()
         self.assertEqual(server.status, "online")
         self.assertEqual(server.current_players, 5)
+
+    @mock.patch("apps.gameservers.services.query.query_minecraft")
+    def test_verify_connection(self, mock_query):
+        mock_query.return_value = {
+            "status": "online",
+            "current_players": 3,
+            "max_players": 10,
+            "ping_ms": 15,
+        }
+
+        resp = self.client.post(
+            "/api/v1/game-servers/verify",
+            {
+                "host": "mc.example.com",
+                "port": 25565,
+                "server_type": "minecraft",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["status"], "online")
+        self.assertEqual(resp.data["ping_ms"], 15)
+
+    @mock.patch("apps.gameservers.services.query.query_generic")
+    @mock.patch("apps.gameservers.services.query.query_a2s")
+    def test_verify_steam_falls_back_to_tcp_when_a2s_times_out(self, mock_a2s, mock_generic):
+        mock_a2s.side_effect = TimeoutError("timed out")
+        mock_generic.return_value = {"status": "online", "ping_ms": 42}
+
+        resp = self.client.post(
+            "/api/v1/game-servers/verify",
+            {
+                "host": "192.168.1.50",
+                "port": 8211,
+                "server_type": "steam_source",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["status"], "online")
+        self.assertEqual(resp.data["ping_ms"], 42)
+        self.assertIn("Reachable over TCP", resp.data["query_warning"])
+        mock_a2s.assert_called_once()
+        mock_generic.assert_called_once_with("192.168.1.50", 8211, timeout=5.0)
+
+    @mock.patch("apps.gameservers.services.query.query_generic")
+    @mock.patch("apps.gameservers.services.query.query_a2s")
+    def test_verify_steam_timeout_message_when_tcp_also_fails(self, mock_a2s, mock_generic):
+        mock_a2s.side_effect = TimeoutError("timed out")
+        mock_generic.side_effect = TimeoutError("timed out")
+
+        resp = self.client.post(
+            "/api/v1/game-servers/verify",
+            {
+                "host": "192.168.1.50",
+                "port": 8211,
+                "server_type": "steam_source",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["status"], "offline")
+        self.assertIn("A2S query timed out", resp.data["error"])
+        self.assertIn("Otix backend", resp.data["error"])

@@ -57,7 +57,7 @@ const GameThumbList = ({ games, activeGameId, onSelect, onHover }: GameThumbList
                         >
                             <GameThumb icon={game.iconUrl || game.posterUrl || undefined} alt={game.title} />
                             {game.isInstalled && (
-                                <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--color-accent)] border border-black/30 shadow-sm" />
+                                <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-primary border border-background shadow-sm" />
                             )}
                             {!game.isInstalled && game.platform === 'server' && (
                                 <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-black/30 shadow-sm" title="Available on server" />

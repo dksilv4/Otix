@@ -83,10 +83,18 @@ const DkMediaCard = memo(function DkMediaCard({
     queryClient.prefetchQuery(mediaQueries.detail(mediaType, id))
   }, [queryClient, mediaType, id])
 
-  // Card art is textless poster → clean backdrop. Never fall back to a
-  // logo-bearing poster, except for music where the album cover is the art.
+  // Card art resolution:
+  // 1. Textless poster (preferred clean art)
+  // 2. Backdrop (clean scenic art)
+  // 3. Poster / cover art (primary art for games and music; fallback for movies/shows without clean art)
+  const hasCleanArt = Boolean(textlessPosterUrl || backdropUrl)
   const imageUrl =
-    textlessPosterUrl || backdropUrl || (mediaType === 'music' ? posterUrl : undefined) || undefined
+    textlessPosterUrl ||
+    backdropUrl ||
+    (mediaType === 'game' || mediaType === 'music' ? posterUrl : undefined) ||
+    posterUrl ||
+    undefined
+  const showLogo = Boolean(logoUrl && hasCleanArt)
   const position = imageUrl ? parsePositionFromUrl(imageUrl) : null
   const cleanSrc = imageUrl ? stripPositionFromUrl(imageUrl) : undefined
   const TypeIcon = MEDIA_TYPE_ICON[mediaType]
@@ -197,12 +205,12 @@ const DkMediaCard = memo(function DkMediaCard({
       )}
 
       {/* Background dark scrim layer for cards with logos to improve contrast */}
-      {logoUrl && (
+      {showLogo && (
         <div className="absolute inset-0 pointer-events-none bg-black/30 group-hover:bg-black/20 transition-colors duration-500" />
       )}
 
       {/* Logo */}
-      {logoUrl && (
+      {showLogo && (
         <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
           {/* Dedicated radial dark scrim behind logo */}
           <div
@@ -213,7 +221,7 @@ const DkMediaCard = memo(function DkMediaCard({
             }}
           />
           <MediaLogo
-            src={logoUrl}
+            src={logoUrl!}
             alt={title}
             className="relative z-10 max-w-[80%] max-h-[55%] object-contain [--dk-logo-scale:0.85] group-hover:[--dk-logo-scale:1.15]"
             colorGuess={logoColorGuess ?? null}

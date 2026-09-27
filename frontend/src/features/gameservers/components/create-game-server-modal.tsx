@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Globe, Key, Shield, Hash } from 'lucide-react'
+import { Globe, Key, Shield, Hash, Wifi, Check, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import { DkInput } from '@ui/atoms/input'
 import { useToast } from '@ui/molecules/toast'
+import { gameServersApi } from '../api/gameservers-api'
 import { useCreateGameServer } from '../queries/gameservers-queries'
-import type { GameServerType } from '../types'
+import { GameServersFeatureTags } from './game-servers-feature-tags'
+import type { GameServerType, VerifyServerResult } from '../types'
 
 interface CreateGameServerModalProps {
   isOpen: boolean
@@ -25,6 +27,11 @@ export function CreateGameServerModal({
 
   const [name, setName] = useState('')
   const [gameTitle, setGameTitle] = useState(initialGameTitle)
+  const effectivePlaceholder = gameTitle.trim()
+    ? `${gameTitle.trim()} Server`
+    : initialGameTitle
+      ? `${initialGameTitle} Server`
+      : 'Dedicated Game Server'
   const [serverType, setServerType] = useState<GameServerType>('steam_source')
   const [host, setHost] = useState('')
   const [port, setPort] = useState<number>(27015)
@@ -33,8 +40,21 @@ export function CreateGameServerModal({
   const [description, setDescription] = useState('')
   const [isPublicLink, setIsPublicLink] = useState(false)
 
+  // Verification state
+  const [isVerified, setIsVerified] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [verifyResult, setVerifyResult] = useState<VerifyServerResult | null>(null)
+
+  const resetVerification = () => {
+    if (isVerified || verifyResult) {
+      setIsVerified(false)
+      setVerifyResult(null)
+    }
+  }
+
   const handleServerTypeChange = (type: GameServerType) => {
     setServerType(type)
+    resetVerification()
     if (type === 'minecraft') {
       setPort(25565)
     } else if (type === 'steam_source') {
@@ -42,20 +62,78 @@ export function CreateGameServerModal({
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim() || !host.trim() || !port) {
+  const handleVerify = async () => {
+    if (!host.trim() || !port) {
       toast({
-        title: 'Missing information',
-        description: 'Server name, host, and port are required.',
+        title: 'Missing connection details',
+        description: 'Host and port are required to verify the server.',
         variant: 'error',
       })
       return
     }
 
+    setIsVerifying(true)
+    try {
+      const result = await gameServersApi.verify({
+        host: host.trim(),
+        port: Number(port),
+        queryPort: queryPort ? Number(queryPort) : undefined,
+        serverType,
+      })
+
+      setVerifyResult(result)
+      if (result.status === 'online') {
+        setIsVerified(true)
+        toast({
+          title: 'Server Reachable',
+          description: result.queryWarning
+            ? result.queryWarning
+            : `Connected successfully (${result.pingMs ?? 0}ms latency). You can now add the server.`,
+          variant: result.queryWarning ? 'warning' : 'success',
+        })
+      } else {
+        setIsVerified(false)
+        toast({
+          title: 'Server Unreachable',
+          description: result.error || 'Could not connect to server. Check your host and port.',
+          variant: 'error',
+        })
+      }
+    } catch (err: unknown) {
+      setIsVerified(false)
+      toast({
+        title: 'Verification Failed',
+        description: (err as { message?: string })?.message || 'Could not verify server connection.',
+        variant: 'error',
+      })
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // If not verified yet, verify first
+    if (!isVerified) {
+      await handleVerify()
+      return
+    }
+
+    if (!host.trim() || !port) {
+      toast({
+        title: 'Missing information',
+        description: 'Server host and port are required.',
+        variant: 'error',
+      })
+      return
+    }
+
+    const finalName = name.trim() || verifyResult?.name?.trim() || effectivePlaceholder
+
     try {
       await createMutation.mutateAsync({
-        name: name.trim(),
+        name: finalName,
         gameTitle: gameTitle.trim() || initialGameTitle,
         mediaItemId: initialMediaId || null,
         serverType,
@@ -69,7 +147,7 @@ export function CreateGameServerModal({
 
       toast({
         title: 'Game Server Added',
-        description: `Successfully added ${name}.`,
+        description: `Successfully added ${finalName}.`,
         variant: 'success',
       })
       onClose()
@@ -90,14 +168,19 @@ export function CreateGameServerModal({
       description="Register a dedicated multiplayer server for status monitoring and friend sharing."
       className="max-w-lg"
     >
+      <div className="mb-1">
+        <GameServersFeatureTags />
+      </div>
       <form onSubmit={handleSubmit} className="space-y-4 pt-2">
         <div>
-          <label className="text-xs font-semibold text-white/70 block mb-1">Server Name</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-semibold text-white/70">Server Name</label>
+            <span className="text-[11px] text-white/40">Optional</span>
+          </div>
           <DkInput
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. DK's Survival World"
-            required
+            placeholder={effectivePlaceholder}
             autoFocus
           />
         </div>
@@ -134,7 +217,10 @@ export function CreateGameServerModal({
             </label>
             <DkInput
               value={host}
-              onChange={(e) => setHost(e.target.value)}
+              onChange={(e) => {
+                setHost(e.target.value)
+                resetVerification()
+              }}
               placeholder="e.g. 192.168.1.100 or mc.domain.com"
               required
             />
@@ -147,7 +233,10 @@ export function CreateGameServerModal({
             <DkInput
               type="number"
               value={port}
-              onChange={(e) => setPort(Number(e.target.value))}
+              onChange={(e) => {
+                setPort(Number(e.target.value))
+                resetVerification()
+              }}
               required
               min={1}
               max={65535}
@@ -161,11 +250,19 @@ export function CreateGameServerModal({
             <DkInput
               type="number"
               value={queryPort}
-              onChange={(e) => setQueryPort(e.target.value)}
+              onChange={(e) => {
+                setQueryPort(e.target.value)
+                resetVerification()
+              }}
               placeholder={String(port)}
               min={1}
               max={65535}
             />
+            {serverType === 'steam_source' && (
+              <p className="mt-1 text-[10px] text-muted-foreground leading-snug">
+                Steam / Palworld often use a different UDP query port than the game port.
+              </p>
+            )}
           </div>
 
           <div>
@@ -180,6 +277,49 @@ export function CreateGameServerModal({
             />
           </div>
         </div>
+
+        {/* Live Verification Status Feedback */}
+        {verifyResult && (
+          <div
+            className={`p-3 rounded-2xl border text-xs flex items-center justify-between transition-all ${
+              verifyResult.status === 'online'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              {verifyResult.status === 'online' ? (
+                <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+              ) : (
+                <AlertCircle size={16} className="text-rose-400 shrink-0" />
+              )}
+              <div className="truncate">
+                <span className="font-semibold">
+                  {verifyResult.status === 'online' ? 'Connection Verified' : 'Connection Unreachable'}
+                </span>
+                {verifyResult.pingMs != null && (
+                  <span className="ml-1.5 text-white/70">• {verifyResult.pingMs}ms</span>
+                )}
+                {verifyResult.currentPlayers != null && (
+                  <span className="ml-1.5 text-white/70">
+                    • {verifyResult.currentPlayers}/{verifyResult.maxPlayers ?? '?'} players
+                  </span>
+                )}
+                {verifyResult.error && (
+                  <p className="text-[11px] opacity-80 mt-0.5 truncate">{verifyResult.error}</p>
+                )}
+                {verifyResult.queryWarning && (
+                  <p className="text-[11px] opacity-80 mt-0.5 line-clamp-2">{verifyResult.queryWarning}</p>
+                )}
+              </div>
+            </div>
+            {verifyResult.status === 'online' && (
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 shrink-0">
+                Online
+              </span>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="text-xs font-semibold text-white/70 block mb-1">Description / Notes</label>
@@ -210,13 +350,39 @@ export function CreateGameServerModal({
           />
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+        <div className="flex flex-col items-end gap-1.5 pt-3 border-t border-white/10">
+          <div className="flex items-center justify-end gap-3 w-full">
           <DkButton type="button" variant="ghost" onClick={onClose}>
             Cancel
           </DkButton>
-          <DkButton type="submit" variant="primary" disabled={createMutation.isPending}>
-            {createMutation.isPending ? 'Adding Server...' : 'Add Server'}
+          <DkButton
+            type="submit"
+            variant={isVerified ? 'primary' : 'secondary'}
+            disabled={isVerifying || createMutation.isPending}
+            className="min-w-[140px]"
+          >
+            {isVerifying ? (
+              <span className="flex items-center gap-1.5">
+                <Loader2 size={14} className="animate-spin" />
+                <span>Verifying...</span>
+              </span>
+            ) : isVerified ? (
+              <span className="flex items-center gap-1.5">
+                <Check size={14} />
+                <span>{createMutation.isPending ? 'Adding Server...' : 'Add Server'}</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5">
+                <Wifi size={14} />
+                <span>Verify Server</span>
+              </span>
+            )}
           </DkButton>
+          </div>
+          <p className="text-[10px] text-muted-foreground text-right max-w-sm leading-snug">
+            Connectivity is checked from Otix servers (not your browser).
+            The host must be reachable over the internet with the correct query port open for UDP.
+          </p>
         </div>
       </form>
     </DkDialog>

@@ -14,6 +14,7 @@ import {
   rememberSettingsSection,
   type NavItem,
 } from '../constants'
+import { FeatureStatusTag, type FeatureStatusKind } from '@ui/atoms/feature-status-tag'
 import { SettingsSaveProvider } from '../context/settings-save-context'
 import { SettingsNodeProvider } from '../context/settings-node-context'
 import { SettingsSaveBar } from '../components/molecules/settings-save-bar'
@@ -88,11 +89,29 @@ function SettingsNavGroups({
                   {!collapsed && (
                     <>
                       <span className="flex-1 truncate">{item.label}</span>
+                      {item.badges?.map((badge) => {
+                        const kind: FeatureStatusKind =
+                          badge.toLowerCase() === 'beta'
+                            ? 'beta'
+                            : badge.toLowerCase() === 'alpha'
+                              ? 'alpha'
+                              : 'wip'
+                        return <FeatureStatusTag key={badge} kind={kind} short />
+                      })}
                       {showLock && <Lock className="h-3 w-3 text-white/30 shrink-0" />}
                     </>
                   )}
-                  {collapsed && showLock && (
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400/80" />
+                  {collapsed && (showLock || (item.badges && item.badges.length > 0)) && (
+                    <span
+                      className={cn(
+                        'absolute top-1 right-1 w-1.5 h-1.5 rounded-full',
+                        showLock
+                          ? 'bg-amber-400/80'
+                          : item.badges?.some((b) => b.toLowerCase() === 'beta')
+                            ? 'bg-amber-400/80'
+                            : 'bg-sky-400/80',
+                      )}
+                    />
                   )}
                 </Link>
               )

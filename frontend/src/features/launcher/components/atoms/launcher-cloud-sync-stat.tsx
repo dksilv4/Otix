@@ -294,7 +294,7 @@ export function LauncherCloudSyncStat() {
     : sync.syncError
     ? <AlertCircle size={11} className="text-red-400" />
     : sync.cloudSettings?.isPathConfirmed
-    ? <Cloud size={11} className="text-[var(--color-accent)]" />
+    ? <Cloud size={11} className="text-primary" />
     : <Cloud size={11} className="text-white/30" />
 
   const cloudTitle = sync.syncing

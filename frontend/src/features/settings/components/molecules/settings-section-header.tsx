@@ -8,11 +8,13 @@ interface SectionHeaderProps {
   className?: string
   /** Optional leading icon displayed as a tinted badge */
   icon?: ComponentType<{ className?: string }>
+  /** Chips rendered beside the title (e.g. Beta) */
+  badges?: ReactNode
   /** 'section' (default) for card-level headers, 'page' for top-of-page titles */
   variant?: 'section' | 'page'
 }
 
-export function SectionHeader({ title, description, action, className, icon: Icon, variant = 'section' }: SectionHeaderProps) {
+export function SectionHeader({ title, description, action, className, icon: Icon, badges, variant = 'section' }: SectionHeaderProps) {
   const isPage = variant === 'page'
 
   return (
@@ -29,14 +31,17 @@ export function SectionHeader({ title, description, action, className, icon: Ico
           </div>
         )}
         <div>
-          <h3
-            className={cn(
-              'font-bold text-white tracking-tight',
-              isPage ? 'text-lg' : 'text-sm sm:text-base',
-            )}
-          >
-            {title}
-          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3
+              className={cn(
+                'font-bold text-white tracking-tight',
+                isPage ? 'text-lg' : 'text-sm sm:text-base',
+              )}
+            >
+              {title}
+            </h3>
+            {badges}
+          </div>
           {description && (
             <p className={cn('text-white/60 mt-0.5 leading-relaxed', isPage ? 'text-sm' : 'text-xs')}>
               {description}

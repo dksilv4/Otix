@@ -58,13 +58,22 @@ def _pack_packet(packet_id: int, payload: bytes) -> bytes:
     return _write_varint(len(packet_data)) + packet_data
 
 
-def query_minecraft(host: str, port: int, timeout: float = 3.0) -> dict[str, Any]:
+def _probe_error_message(err: BaseException) -> str:
+    """Human-readable probe failure; socket timeouts stringify as bare 'timed out'."""
+    if isinstance(err, TimeoutError) or isinstance(err, socket.timeout):
+        return "timed out"
+    msg = str(err).strip() or err.__class__.__name__
+    if msg.lower() in {"timed out", "timeout"}:
+        return "timed out"
+    return msg
+
+
+def query_minecraft(host: str, port: int, timeout: float = 5.0) -> dict[str, Any]:
     """Query a Minecraft server using the Server List Ping protocol."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock = socket.create_connection((host, port), timeout=timeout)
     sock.settimeout(timeout)
+    connect_time = time.monotonic()
     try:
-        sock.connect((host, port))
-        connect_time = time.monotonic()
 
         # Handshake: packet_id 0x00, protocol 765, host, port, next_state=1 (status)
         host_bytes = host.encode("utf-8")
@@ -127,15 +136,24 @@ def query_minecraft(host: str, port: int, timeout: float = 3.0) -> dict[str, Any
         sock.close()
 
 
-def query_a2s(host: str, query_port: int, timeout: float = 3.0) -> dict[str, Any]:
+def query_a2s(host: str, query_port: int, timeout: float = 5.0) -> dict[str, Any]:
     """Query a Steam / Source server using the Valve A2S_INFO protocol."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # Prefer IPv4 for A2S (most game hosts); fall back to first resolved address.
+    family = socket.AF_UNSPEC
+    addr_infos = socket.getaddrinfo(host, query_port, family, socket.SOCK_DGRAM)
+    if not addr_infos:
+        raise OSError(f"Could not resolve host {host!r}")
+    # Prefer AF_INET when available
+    addr_infos.sort(key=lambda info: 0 if info[0] == socket.AF_INET else 1)
+    family, _, _, _, sockaddr = addr_infos[0]
+
+    sock = socket.socket(family, socket.SOCK_DGRAM)
     sock.settimeout(timeout)
     try:
         start_time = time.monotonic()
         # Header: -1 (4 bytes 0xFF), 'T', "Source Engine Query\x00"
         query_payload = b"\xFF\xFF\xFF\xFFTSource Engine Query\x00"
-        sock.sendto(query_payload, (host, query_port))
+        sock.sendto(query_payload, sockaddr)
 
         response, _ = sock.recvfrom(4096)
         if len(response) < 5:
@@ -150,7 +168,7 @@ def query_a2s(host: str, query_port: int, timeout: float = 3.0) -> dict[str, Any
         if res_type == 0x41:
             challenge = response[5:9]
             query_payload = b"\xFF\xFF\xFF\xFFTSource Engine Query\x00" + challenge
-            sock.sendto(query_payload, (host, query_port))
+            sock.sendto(query_payload, sockaddr)
             response, _ = sock.recvfrom(4096)
             if len(response) < 5 or response[:4] != b"\xFF\xFF\xFF\xFF":
                 raise ValueError("Invalid response after challenge")
@@ -208,20 +226,105 @@ def query_a2s(host: str, query_port: int, timeout: float = 3.0) -> dict[str, Any
         sock.close()
 
 
-def query_generic(host: str, port: int, timeout: float = 3.0) -> dict[str, Any]:
-    """Fallback TCP ping for generic game servers."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(timeout)
+def query_generic(host: str, port: int, timeout: float = 5.0) -> dict[str, Any]:
+    """Fallback TCP ping for generic game servers (dual-stack via create_connection)."""
     start_time = time.monotonic()
-    try:
-        sock.connect((host, port))
+    with socket.create_connection((host, port), timeout=timeout):
         latency_ms = int((time.monotonic() - start_time) * 1000)
+    return {
+        "status": "online",
+        "ping_ms": latency_ms,
+    }
+
+
+def _run_protocol_query(
+    host: str,
+    port: int,
+    query_port: int,
+    server_type: str,
+    timeout: float,
+) -> dict[str, Any]:
+    if server_type == "minecraft":
+        return query_minecraft(host, port, timeout=timeout)
+    if server_type == "steam_source":
+        return query_a2s(host, query_port, timeout=timeout)
+    return query_generic(host, port, timeout=timeout)
+
+
+def _tcp_fallback_result(
+    host: str,
+    port: int,
+    server_type: str,
+    query_port: int,
+    protocol_err: BaseException,
+    timeout: float,
+) -> dict[str, Any] | None:
+    """If protocol query failed, accept a successful TCP connect as reachable."""
+    if server_type == "generic":
+        return None
+    try:
+        tcp = query_generic(host, port, timeout=timeout)
+    except Exception as tcp_err:
+        logger.debug("TCP fallback failed for %s:%s: %s", host, port, tcp_err)
+        return None
+
+    proto = "A2S UDP query" if server_type == "steam_source" else "Minecraft status query"
+    hint = ""
+    if server_type == "steam_source" and query_port == port:
+        hint = " Query port often differs from the game port — set Query Port if you have it."
+    elif server_type == "steam_source":
+        hint = f" Check query port {query_port} allows UDP."
+
+    tcp["query_warning"] = (
+        f"Reachable over TCP on port {port}, but {proto} failed "
+        f"({_probe_error_message(protocol_err)}).{hint}"
+    )
+    return tcp
+
+
+def probe_server_connection(
+    host: str,
+    port: int,
+    query_port: int | None = None,
+    server_type: str = "generic",
+    timeout: float = 5.0,
+) -> dict[str, Any]:
+    """Transient probe of a server without saving to database.
+
+    Steam/Minecraft protocol queries run first. On failure, fall back to a TCP
+    connect on the game port so a reachable host is not reported offline solely
+    because UDP A2S / status ping timed out (wrong query port, UDP blocked, etc.).
+    """
+    effective_query_port = query_port or port
+    try:
+        return _run_protocol_query(host, port, effective_query_port, server_type, timeout)
+    except Exception as err:
+        logger.debug("Transient probe failed for %s:%s: %s", host, port, err)
+        fallback = _tcp_fallback_result(
+            host, port, server_type, effective_query_port, err, timeout
+        )
+        if fallback is not None:
+            return fallback
+
+        detail = _probe_error_message(err)
+        if detail == "timed out" and server_type == "steam_source":
+            detail = (
+                f"A2S query timed out on UDP port {effective_query_port}. "
+                "Confirm the query port (often different from the game port), "
+                "that UDP is allowed, and that Otix can reach the host "
+                "(probes run from the Otix backend, not your browser)."
+            )
+        elif detail == "timed out":
+            detail = (
+                f"Connection timed out to {host}:{port}. "
+                "Confirm host/port and that Otix can reach the server "
+                "(probes run from the Otix backend, not your browser)."
+            )
         return {
-            "status": "online",
-            "ping_ms": latency_ms,
+            "status": "offline",
+            "ping_ms": None,
+            "error": detail,
         }
-    finally:
-        sock.close()
 
 
 def query_game_server(server: Any) -> dict[str, Any]:
@@ -234,15 +337,11 @@ def query_game_server(server: Any) -> dict[str, Any]:
     result: dict[str, Any] = {"status": "offline"}
 
     try:
-        if server_type == "minecraft":
-            result = query_minecraft(host, port)
-        elif server_type == "steam_source":
-            result = query_a2s(host, query_port)
-        else:
-            result = query_generic(host, port)
+        result = _run_protocol_query(host, port, query_port, server_type, timeout=5.0)
     except Exception as err:
         logger.debug("Query failed for %s (%s:%s): %s", server.name, host, port, err)
-        result = {"status": "offline", "ping_ms": None}
+        fallback = _tcp_fallback_result(host, port, server_type, query_port, err, timeout=5.0)
+        result = fallback if fallback is not None else {"status": "offline", "ping_ms": None}
 
     # Update server model fields
     server.status = result.get("status", "offline")

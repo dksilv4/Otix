@@ -8,7 +8,6 @@ import {
   Download,
   CheckCircle2,
   AlertCircle,
-  Clock,
   Filter,
   Layers,
   FileCode,
@@ -25,7 +24,7 @@ interface LauncherGameChangelogProps {
 }
 
 export function LauncherGameChangelog({ game }: LauncherGameChangelogProps) {
-  const { data, isLoading, isError } = useGameChangelog(game)
+  const { data, isLoading } = useGameChangelog(game)
   const { openModal } = useModal()
   const [filterPatchesOnly, setFilterPatchesOnly] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -77,7 +76,7 @@ export function LauncherGameChangelog({ game }: LauncherGameChangelogProps) {
       {/* ── Version & Update Status Header ── */}
       <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[var(--color-accent)]/15 border border-[var(--color-accent)]/30 flex items-center justify-center text-[var(--color-accent)] shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shrink-0">
             <Sparkles size={18} />
           </div>
           <div>
@@ -134,7 +133,7 @@ export function LauncherGameChangelog({ game }: LauncherGameChangelogProps) {
                 {!/^https?:\/\//i.test(file.path) && (
                   <button
                     onClick={() => handleApplyUpdate(file.path)}
-                    className="px-3 py-1.5 rounded-lg bg-[var(--color-accent)] hover:brightness-110 text-white font-semibold text-xs transition-all cursor-pointer shrink-0 shadow-md"
+                    className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs transition-all cursor-pointer shrink-0 shadow-md"
                   >
                     Apply Patch
                   </button>
@@ -196,7 +195,7 @@ export function LauncherGameChangelog({ game }: LauncherGameChangelogProps) {
                     <div className="space-y-1.5 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {item.version ? (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30">
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">
                             {item.version}
                           </span>
                         ) : item.isPatchNote ? (
@@ -247,7 +246,7 @@ export function LauncherGameChangelog({ game }: LauncherGameChangelogProps) {
                                 href={item.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-accent)] hover:underline"
+                                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary hover:underline"
                               >
                                 View full announcement <ExternalLink size={11} />
                               </a>

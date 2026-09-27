@@ -10,6 +10,7 @@ import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { useSettingsSaveBar } from '../context/settings-save-context'
+import { FeatureStatusTags } from '@ui/atoms/feature-status-tag'
 
 interface SessionInfo {
   sessionKey: string
@@ -683,7 +684,11 @@ export function SettingsAccountPage() {
       <SessionsCard />
 
       <SettingsCard>
-        <SectionHeader title="Danger Zone" description="Account lifecycle operations." />
+        <SectionHeader
+          title="Danger Zone"
+          description="Account lifecycle operations."
+          badges={<FeatureStatusTags kinds={['wip']} />}
+        />
         <p className="text-sm text-white/60">
           Account deactivation and deletion are not yet available. Coming soon.
         </p>

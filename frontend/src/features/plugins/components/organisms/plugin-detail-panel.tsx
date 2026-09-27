@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, createElement } from 'react'
 import {
   Activity,
   ChevronRight,
@@ -22,6 +22,7 @@ import { PluginForm } from '@/features/plugins/components/PluginForm'
 import { PluginAccessTokenCard } from '@/features/plugins/components/organisms/plugin-access-token-card'
 import { Alert, Badge, Button } from '@/features/plugins/ui'
 import { cn } from '@/lib/utils'
+import { FeatureStatusTags, kindsFromPluginStage } from '@ui/atoms/feature-status-tag'
 import type { PluginInfo, PluginStatus } from '@/features/plugins/types/plugins'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -533,7 +534,9 @@ function ActivityContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
           <p className="mt-1.5 text-sm text-white/80">
             {lastSync.title} ({lastSync.direction || 'sync'})
           </p>
-          <p className="text-xs text-white/40 mt-0.5">{new Date(lastSync.synced_at ?? Date.now()).toLocaleString()}</p>
+          <p className="text-xs text-white/40 mt-0.5">
+            {lastSync.synced_at ? new Date(lastSync.synced_at).toLocaleString() : '—'}
+          </p>
         </div>
       )}
 
@@ -688,17 +691,20 @@ export function PluginDetailPanel({
   isExiting?: boolean
 }) {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
-  const Icon = getPluginIcon(plugin.manifest.icon)
+  const icon = getPluginIcon(plugin.manifest.icon)
 
   return (
     <SlidePanel onClose={onClose} isExiting={isExiting}>
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-white/[0.06] px-6 py-4">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xl">
-          <Icon className="h-5 w-5" />
+          {createElement(icon, { className: 'h-5 w-5' })}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-base font-semibold text-white">{plugin.name}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="truncate text-base font-semibold text-white">{plugin.name}</h2>
+            <FeatureStatusTags kinds={kindsFromPluginStage(plugin.manifest.stage)} short />
+          </div>
           <p className="text-[11px] text-white/40">
             {plugin.author} &middot; v{plugin.version}
           </p>

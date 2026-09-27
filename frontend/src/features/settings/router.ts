@@ -44,6 +44,9 @@ const SettingsStoragePage = lazy(() =>
 const SettingsLibraryPage = lazy(() =>
   import('./pages/settings-library-page').then((m) => ({ default: m.SettingsLibraryPage })),
 )
+const SettingsGameServersPage = lazy(() =>
+  import('./pages/settings-game-servers-page').then((m) => ({ default: m.SettingsGameServersPage })),
+)
 const SettingsPluginsPage = lazy(() =>
   import('@/features/plugins/pages/plugins-page').then((m) => ({ default: m.SettingsPluginsPage })),
 )
@@ -195,6 +198,13 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     loader: preload(() => import('./pages/settings-library-page')),
   })
 
+  const settingsGameServersRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/game-servers',
+    component: SettingsGameServersPage,
+    loader: preload(() => import('./pages/settings-game-servers-page')),
+  })
+
   const settingsPluginsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/plugins',
@@ -251,6 +261,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       settingsNotificationsRoute,
       settingsConnectionsRoute,
       settingsLibraryRoute,
+      settingsGameServersRoute,
       settingsDownloadsRedirect,
       settingsPluginsRoute,
       settingsStorageRoute,

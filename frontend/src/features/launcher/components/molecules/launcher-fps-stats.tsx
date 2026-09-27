@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import type { LiveFpsSnapshot } from '@/lib/desktop/api'
@@ -13,20 +13,20 @@ interface LiveFpsData {
 
 function useLiveFps(gameId?: string): LiveFpsData {
   const [snapshot, setSnapshot] = useState<LiveFpsSnapshot | null>(null)
-  const historyRef = useRef<number[]>([])
+  const [history, setHistory] = useState<number[]>([])
 
   useEffect(() => {
     const api = getDesktopAPI()
     if (!api?.onFpsUpdate) return
 
     setSnapshot(null)
-    historyRef.current = []
+    setHistory([])
 
     const unsub = api.onFpsUpdate((data) => {
       if (gameId && data.gameId !== gameId) return
       setSnapshot(data)
       if (data.currentFps > 0) {
-        historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), data.currentFps]
+        setHistory((prev) => [...prev.slice(-(MAX_HISTORY - 1)), data.currentFps])
       }
     })
 
@@ -36,7 +36,7 @@ function useLiveFps(gameId?: string): LiveFpsData {
     }
   }, [gameId])
 
-  return { snapshot, history: historyRef.current }
+  return { snapshot, history }
 }
 
 export function LauncherFpsStats() {
@@ -95,12 +95,12 @@ export function LauncherFpsStats() {
         >
           <defs>
             <linearGradient id="fps-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0.5" />
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.5" />
             </linearGradient>
           </defs>
           <path d={`${sparkline.d}L${sparkline.w},${sparkline.h}L0,${sparkline.h}Z`} fill="url(#fps-grad)" />
-          <path d={sparkline.d} fill="none" stroke="var(--color-accent)" strokeWidth="0.5" opacity="1" />
+          <path d={sparkline.d} fill="none" stroke="var(--primary)" strokeWidth="0.5" opacity="1" />
         </svg>
       )}
 
@@ -108,7 +108,7 @@ export function LauncherFpsStats() {
       <div className="relative" style={{ zIndex: 1 }}>
         <div className="flex items-center gap-2">
           {displayValue?.live && (
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
           )}
           {displayValue ? (
             <>

@@ -5,6 +5,7 @@ import { useGameServersByGame, useQueryGameServer } from '../queries/gameservers
 import { CreateGameServerModal } from './create-game-server-modal'
 import { ShareGameServerModal } from './share-game-server-modal'
 import { JoinGameServerModal } from './join-game-server-modal'
+import { GameServersFeatureTags } from './game-servers-feature-tags'
 import type { DedicatedGameServer } from '../types'
 
 interface MediaGameServersSectionProps {
@@ -18,7 +19,7 @@ export function MediaGameServersSection({
   gameTitle,
   className = '',
 }: MediaGameServersSectionProps) {
-  const { data: servers = [], isLoading } = useGameServersByGame(mediaId)
+  const { data: servers = [] } = useGameServersByGame(mediaId)
   const queryMutation = useQueryGameServer()
 
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -30,12 +31,18 @@ export function MediaGameServersSection({
     void queryMutation.mutateAsync(serverId)
   }
 
+  // Hide section completely if no servers exist for this game/user
+  if (servers.length === 0) {
+    return null
+  }
+
   return (
     <div id="media-game-servers-section" className={`space-y-4 ${className}`}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Server size={18} className="text-primary" />
           <h3 className="text-base font-bold text-white tracking-tight">Dedicated Game Servers</h3>
+          <GameServersFeatureTags />
           <span className="px-2 py-0.5 rounded-full bg-white/10 text-white/70 text-xs font-semibold">
             {servers.length}
           </span>
@@ -53,34 +60,7 @@ export function MediaGameServersSection({
         </DkButton>
       </div>
 
-      {isLoading ? (
-        <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center text-xs text-white/40">
-          Loading game servers...
-        </div>
-      ) : servers.length === 0 ? (
-        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] flex flex-col items-center justify-center text-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50">
-            <Server size={20} />
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-white">No game servers tracked yet</h4>
-            <p className="text-xs text-white/50 max-w-sm">
-              Add your private or community multiplayer server to monitor live status and share access with friends.
-            </p>
-          </div>
-          <DkButton
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => setCreateModalOpen(true)}
-            className="gap-1.5 mt-1"
-          >
-            <Plus size={14} />
-            <span>Add Server</span>
-          </DkButton>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {servers.map((server) => {
             const isOnline = server.status === 'online'
             return (
@@ -177,9 +157,8 @@ export function MediaGameServersSection({
             )
           })}
         </div>
-      )}
 
-      {/* Modals */}
+        {/* Modals */}
       {createModalOpen && (
         <CreateGameServerModal
           isOpen={createModalOpen}
