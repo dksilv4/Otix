@@ -667,7 +667,7 @@ export function SettingsIntegrationsPage() {
     usePlexLibraries({ enabled: isPlexConnected })
 
   const { servers: allNodes } = useSettingsNode()
-  // Remote connection nodes include real Otix worker nodes + the Otix backend node
+  // Remote connection nodes include real Otix worker nodes
   const workerNodes = remoteConnectionNodes(allNodes)
 
   const fetchIntegrations = async () => {

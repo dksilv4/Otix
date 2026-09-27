@@ -24,7 +24,7 @@ function node(id: number, extra: Partial<GameServer> = {}): GameServer {
 }
 
 describe('connection target nodes', () => {
-  const backend = node(-2, { name: 'Otix backend', isBackend: true })
+  const backend = node(-2, { name: 'Otix backend' })
   const desktop = node(-1, { name: 'This computer', isLocalDesktop: true })
   const worker = node(4, { name: 'Home NAS' })
 

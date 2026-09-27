@@ -48,7 +48,7 @@ describe('ImportNodeInstancesButton', () => {
     mockGameServers = [
       { id: 1, name: 'Living Room PC', isOnline: true },
       { id: 2, name: 'Office NAS', isOnline: true },
-      { id: -2, name: 'Otix backend', isOnline: true },
+      { id: 3, name: 'Backup Server', isOnline: true },
     ]
   })
 
@@ -67,11 +67,11 @@ describe('ImportNodeInstancesButton', () => {
     expect(from.value).toBe('2')
     expect(to.value).toBe('1')
 
-    await user.selectOptions(to, '-2')
-    await user.click(screen.getByRole('button', { name: /import onto otix backend/i }))
+    await user.selectOptions(to, '3')
+    await user.click(screen.getByRole('button', { name: /import onto backup server/i }))
 
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith('/library/servers/-2/instances/import', {
+      expect(apiClient.post).toHaveBeenCalledWith('/library/servers/3/instances/import', {
         fromServerId: 2,
       })
     })

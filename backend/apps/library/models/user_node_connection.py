@@ -11,10 +11,11 @@ def _empty_object() -> dict:
 
 
 class UserNodeConnection(TimestampedModel):
-    """Downloader, arr, folder, and organize settings for the Otix backend node.
+    """Account-level shared downloader, *arr, and folder settings.
 
-    Worker Otix nodes keep their own copy on disk. Account OAuth (Steam, Plex,
-    TMDb, YouTube) stays on the user row.
+    Used as an account-level template / backup to sync or import settings onto
+    user Otix nodes. Worker Otix nodes keep their own active config on disk.
+    Account OAuth (Steam, Plex, TMDb, YouTube) stays on the user row.
     """
 
     user = models.OneToOneField(

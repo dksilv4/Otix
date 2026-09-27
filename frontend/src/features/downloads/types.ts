@@ -84,8 +84,6 @@ export interface OtixNode {
   connectError?: string | null;
   /** True when this row is the Otix desktop app on this computer. */
   isLocalDesktop?: boolean;
-  /** True when this row is the Otix backend (account-hosted node). */
-  isBackend?: boolean;
   isShared?: boolean;
   sharedBy?: { id: number; username: string; displayName?: string } | null;
 }

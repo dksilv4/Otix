@@ -11,7 +11,7 @@ import type { GameServer } from '../types'
 import { useImportNodeInstances } from '../use-import-node-instances'
 
 function importEligibleNodes(servers: GameServer[]): GameServer[] {
-  return servers.filter((server) => !isLocalDesktopNode(server))
+  return servers.filter((server) => !isLocalDesktopNode(server) && Number(server.id) > 0)
 }
 
 function pickDefaultPair(

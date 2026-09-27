@@ -137,7 +137,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     expect(screen.getByText('Plex')).toBeInTheDocument()
   })
 
-  it('puts connection nodes in a separate section from accounts', async () => {
+  it('puts Otix nodes in a separate section from accounts', async () => {
     renderPage()
 
     await waitFor(() => {
