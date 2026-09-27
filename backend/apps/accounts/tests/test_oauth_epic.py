@@ -92,6 +92,12 @@ class EpicInitiateTests(_EpicAuthedCase):
         self.assertEqual(row.payload["flow"], "epic-link")
         self.assertEqual(row.payload["user_id"], self.user.pk)
 
+    def test_200_with_explicit_node_id(self) -> None:
+        node = _node(self.user)
+        response = self._authed().post("/api/v1/auth/oauth/epic", {"node_id": node.id}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("auth_url", response.data)
+
     def test_initiate_unauthed_401(self) -> None:
         response = APIClient().post("/api/v1/auth/oauth/epic")
         self.assertEqual(response.status_code, 401)

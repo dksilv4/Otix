@@ -8,10 +8,10 @@ Otix is an all-in-one multi-platform media, game, and entertainment tracking sui
 
 | Component | Path | Tech Stack | Description | Default Port |
 | :--- | :--- | :--- | :--- | :--- |
-| **API Backend** | [`backend/`](backend/) | Python 3.12, Django REST Framework, Celery | Core API, relational data, search, background sync jobs, and plugin IPC gateway. | `8000` |
+| **API Backend** | [`backend/`](backend/) | Python 3.12, Django REST Framework, Celery | Public production SaaS API: user authentication, global media catalog, social features, and remote node registry. | `8000` |
 | **Web UI** | [`frontend/`](frontend/) | React 18, Vite, TypeScript, Tailwind CSS, TanStack Query | Web interface with hot module replacement and desktop IPC bridge. | `5173` |
 | **Desktop Client** | [`desktop/`](desktop/) | Electron, TypeScript, Better-SQLite3 | Native desktop launcher, local game detection, and sandboxed plugin runtime. | — |
-| **Otix Node** | [`node/`](node/) | Python, FastAPI, Uvicorn | Lightweight user-hosted storage daemon for game installers, cloud saves, and Arr proxy. | `8090` |
+| **Otix Node** | [`node/`](node/) | Go (native binary / Docker) | Lightweight user-hosted daemon for all self-hosting features: file storage, range streaming, cloud saves, SABnzbd, Prowlarr, Radarr, Sonarr, and Epic sync. | `8090` |
 | **Plugins** | [`extensions/plugins/`](extensions/plugins/) | JavaScript (CommonJS) | Community extensions for store integrations (Steam, Epic), Arr tools (Radarr, Sonarr, Prowlarr), and downloaders (SABnzbd). | — |
 
 For a complete map of all plugin-related subsystems across backend, desktop, and extensions, see [**`PLUGINS.md`**](PLUGINS.md).
@@ -65,7 +65,7 @@ Otix/
 ├── frontend/              # React / Vite web interface
 ├── desktop/               # Electron client
 │   └── plugin-runtime/    # Sandboxed worker runtime for executing extensions
-├── node/                  # User storage, installer hosting, and save backup node
+├── node/                  # User-hosted Go daemon for self-hosted files, downloads, and cloud saves
 ├── extensions/
 │   └── plugins/           # Canonical community JS extensions
 ├── deploy/                # Deployment configurations and VM provisioning scripts

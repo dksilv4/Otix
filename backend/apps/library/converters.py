@@ -1,4 +1,4 @@
-"""Signed integers so reserved Otix node ids (desktop -1, backend -2) match URL paths."""
+"""Signed integers so reserved desktop node id (-1) matches URL paths."""
 
 
 class SignedIntConverter:

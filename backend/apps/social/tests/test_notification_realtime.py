@@ -3,7 +3,7 @@
 from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import TestCase
 
 from apps.social.models import Notification
 from apps.social.services.realtime import (
@@ -58,17 +58,7 @@ class NotificationRealtimeTests(TestCase):
         self.assertIn('"type":"system"', raw)
         self.assertIn(f'"id":{notif.id}', raw)
 
-    @override_settings(ATOMIC_REQUESTS=False)
     def test_create_publishes_after_commit(self) -> None:
-        fake = _FakeRedis()
-        with mock.patch("apps.social.services.realtime.get_client", return_value=fake):
-            notif = Notification.objects.create(
-                user=self.user, type="friend_request", title="Req"
-            )
-            # Django TestCase wraps each test in a transaction; on_commit callbacks
-            # run when the test's outer transaction is captured via captureOnCommitCallbacks.
-        from django.test import TestCase as _  # noqa: F401 — keep import path clear
-
         fake = _FakeRedis()
         with mock.patch("apps.social.services.realtime.get_client", return_value=fake):
             with self.captureOnCommitCallbacks(execute=True):
@@ -78,6 +68,14 @@ class NotificationRealtimeTests(TestCase):
         self.assertEqual(len(fake.published), 1)
         self.assertEqual(fake.published[0][0], notification_channel(self.user.id))
         self.assertIn(f'"id":{notif.id}', fake.published[0][1])
+
+    @mock.patch("apps.social.signals.send_notification")
+    def test_create_sends_web_push_after_commit(self, send) -> None:
+        with self.captureOnCommitCallbacks(execute=True):
+            notif = Notification.objects.create(
+                user=self.user, type="friend_request", title="Req"
+            )
+        send.assert_called_once_with(notif)
 
     def test_update_does_not_republish(self) -> None:
         notif = Notification.objects.create(

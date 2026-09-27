@@ -85,8 +85,8 @@ def notify_company_followers(media_item_id: int, *, kind: str) -> list[Notificat
     """Create a ``studio_release`` notification per follower of the title's studios.
 
     Deduped by ``(user, media, kind)``; users who disabled the ``studio_release``
-    preference are skipped. Returns the notifications actually created, for the
-    push fan-out.
+    preference are skipped. Returns the notifications actually created (web-push
+    and SSE fan-out run via the ``Notification`` post_save signal).
     """
     media = MediaItem.objects.filter(pk=media_item_id).first()
     if media is None:

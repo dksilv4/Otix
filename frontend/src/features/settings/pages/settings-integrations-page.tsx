@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
@@ -14,7 +14,24 @@ import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
 import { isDesktop } from '@/lib/desktop/api'
 import { openExternal } from '@/lib/utils/open-external'
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
-import { Loader2, RefreshCw, Download, DownloadCloud, Link2, Film, Tv, Music, FolderOpen, Search, Pause, Play, Check, HardDrive, Server, ChevronDown, Sparkles } from 'lucide-react'
+import {
+  Loader2,
+  RefreshCw,
+  Download,
+  DownloadCloud,
+  Link2,
+  Film,
+  Tv,
+  Music,
+  FolderOpen,
+  Search,
+  Pause,
+  Play,
+  Check,
+  HardDrive,
+  Server,
+  ChevronDown,
+} from 'lucide-react'
 import { PlexStorageOptimizerModal } from '@/features/integrations/plex-storage'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
@@ -28,13 +45,10 @@ import {
 } from '../components/organisms/settings-integration-card'
 import { usePlexLibraries, streamPlexLibrarySync } from '@library/library-queries'
 import type { PlexLibraryInfo } from '@library/library-queries'
-import { useGameServers } from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/use-server-downloads'
 import {
-  workerConnectionNodes,
   remoteConnectionNodes,
 } from '@/features/downloads/molecules/use-integration-target-server'
-import { isBackendNode } from '../backend-node'
 import { useSettingsNode } from '../context/settings-node-context'
 import { useModal } from '@/lib/modals'
 import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
@@ -42,7 +56,6 @@ import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/serv
 import { ProwlarrIndexersPanel } from '@/features/downloads/molecules/prowlarr-indexers-panel'
 import { ServerRadarrSettingsModal } from '@/features/downloads/molecules/server-radarr-settings-modal'
 import { ServerSonarrSettingsModal } from '@/features/downloads/molecules/server-sonarr-settings-modal'
-import { EpicCodeModal } from '../components/organisms/epic-code-modal'
 import {
   useServerRadarrConfig,
   useServerRadarrMovies,
@@ -196,17 +209,16 @@ function NodeConnectionsGroup({
   searchQuery: string
 }) {
   const { openModal } = useModal()
-  const isBackend = isBackendNode(server)
   const [nodeOpen, setNodeOpen] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [prowlarrSyncProtocol, setProwlarrSyncProtocol] = useState<'all' | 'torrent' | 'usenet'>('all')
   const [prowlarrSyncMessage, setProwlarrSyncMessage] = useState<string | null>(null)
   const [syncedProwlarrIndexers, setSyncedProwlarrIndexers] = useState<ProwlarrIndexerItem[]>([])
 
-  const sabnzbdLiveId = !isBackend && expandedId === 'sabnzbd' ? server.id : undefined
-  const prowlarrLiveId = !isBackend && expandedId === 'prowlarr' ? server.id : undefined
-  const radarrLiveId = !isBackend && expandedId === 'radarr' ? server.id : undefined
-  const sonarrLiveId = !isBackend && expandedId === 'sonarr' ? server.id : undefined
+  const sabnzbdLiveId = expandedId === 'sabnzbd' ? server.id : undefined
+  const prowlarrLiveId = expandedId === 'prowlarr' ? server.id : undefined
+  const radarrLiveId = expandedId === 'radarr' ? server.id : undefined
+  const sonarrLiveId = expandedId === 'sonarr' ? server.id : undefined
 
   const { data: usenetConfig } = useServerUsenetConfig(server.id)
   const { data: radarrConfig } = useServerRadarrConfig(server.id)
@@ -297,12 +309,8 @@ function NodeConnectionsGroup({
       keywords: 'sabnzbd usenet nzb download downloader queue client',
       isConnected: isSabnzbdConfigured,
       description: isSabnzbdConfigured
-        ? isBackend
-          ? 'Configured on Otix backend'
-          : `Configured on ${server.name}`
-        : isBackend
-          ? 'Connect SABnzbd to store shared Usenet downloader settings.'
-          : 'Connect SABnzbd to automate Usenet downloads on this node.',
+        ? `Configured on ${server.name}`
+        : 'Connect SABnzbd to automate Usenet downloads on this node.',
       brandColor: BRAND_COLORS.sabnzbd,
       brandBg: BRAND_BG.sabnzbd,
       icon: DownloadCloud,
@@ -314,12 +322,8 @@ function NodeConnectionsGroup({
       keywords: 'prowlarr indexer search usenet torrent sync tracker',
       isConnected: isProwlarrConfigured,
       description: isProwlarrConfigured
-        ? isBackend
-          ? 'Configured on Otix backend'
-          : `Configured on ${server.name}`
-        : isBackend
-          ? 'Connect Prowlarr to store shared indexer settings.'
-          : 'Connect Prowlarr to index game releases across Usenet and Torrent trackers.',
+        ? `Configured on ${server.name}`
+        : 'Connect Prowlarr to index game releases across Usenet and Torrent trackers.',
       brandColor: BRAND_COLORS.prowlarr,
       brandBg: BRAND_BG.prowlarr,
       icon: Search,
@@ -331,12 +335,8 @@ function NodeConnectionsGroup({
       keywords: 'radarr movie movies watchlist automated download arr',
       isConnected: isRadarrConfigured,
       description: isRadarrConfigured
-        ? isBackend
-          ? 'Configured on Otix backend'
-          : `Configured on ${server.name}`
-        : isBackend
-          ? 'Connect Radarr to store shared movie downloader settings.'
-          : 'Connect Radarr to manage movie libraries and automate movie downloads.',
+        ? `Configured on ${server.name}`
+        : 'Connect Radarr to manage movie libraries and automate movie downloads.',
       brandColor: BRAND_COLORS.radarr,
       brandBg: BRAND_BG.radarr,
       icon: Film,
@@ -348,12 +348,8 @@ function NodeConnectionsGroup({
       keywords: 'sonarr tv shows series automated download arr',
       isConnected: isSonarrConfigured,
       description: isSonarrConfigured
-        ? isBackend
-          ? 'Configured on Otix backend'
-          : `Configured on ${server.name}`
-        : isBackend
-          ? 'Connect Sonarr to store shared TV series downloader settings.'
-          : 'Connect Sonarr to manage TV series and automate episode downloads.',
+        ? `Configured on ${server.name}`
+        : 'Connect Sonarr to manage TV series and automate episode downloads.',
       brandColor: BRAND_COLORS.sonarr,
       brandBg: BRAND_BG.sonarr,
       icon: Tv,
@@ -444,22 +440,16 @@ function NodeConnectionsGroup({
             <>
               <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs">
                 <span className="text-white/60">
-                  {isBackend ? (
-                    <>Stored on <span className="text-white/90 font-medium">{server.name}</span> (account settings)</>
-                  ) : (
-                    <>Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}</>
-                  )}
+                  Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}
                 </span>
-                {!isBackend && (
-                  <Link
-                    to="/downloads"
-                    className="text-amber-400 hover:text-amber-300 font-medium transition-colors duration-150 inline-flex items-center gap-1"
-                  >
-                    View Downloads Queue &rarr;
-                  </Link>
-                )}
+                <Link
+                  to="/downloads"
+                  className="text-amber-400 hover:text-amber-300 font-medium transition-colors duration-150 inline-flex items-center gap-1"
+                >
+                  View Downloads Queue &rarr;
+                </Link>
               </div>
-              {!isBackend && sabnzbdQueue && (
+              {sabnzbdQueue && (
                 <IntegrationStats items={[
                   { label: 'queue status', value: sabnzbdQueue.status || 'Idle' },
                   { label: 'download speed', value: sabnzbdQueue.speed || '0 B/s' },
@@ -467,28 +457,26 @@ function NodeConnectionsGroup({
                   ...(sabnzbdQueue.time_left ? [{ label: 'time left', value: sabnzbdQueue.time_left }] : []),
                 ]} />
               )}
-              {!isBackend && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 bg-white/[0.03]">
-                  <div>
-                    <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Queue Controls</p>
-                    <p className="text-xs text-white/70 mt-0.5">
-                      {isQueuePaused ? 'Download queue is paused.' : 'Download queue is currently active.'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DkButton
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleToggleQueuePause}
-                      loading={pauseSabnzbdMutation.isPending || resumeSabnzbdMutation.isPending}
-                      leftIcon={isQueuePaused ? Play : Pause}
-                      className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                    >
-                      {isQueuePaused ? 'Resume Queue' : 'Pause Queue'}
-                    </DkButton>
-                  </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 bg-white/[0.03]">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Queue Controls</p>
+                  <p className="text-xs text-white/70 mt-0.5">
+                    {isQueuePaused ? 'Download queue is paused.' : 'Download queue is currently active.'}
+                  </p>
                 </div>
-              )}
+                <div className="flex items-center gap-2">
+                  <DkButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleToggleQueuePause}
+                    loading={pauseSabnzbdMutation.isPending || resumeSabnzbdMutation.isPending}
+                    leftIcon={isQueuePaused ? Play : Pause}
+                    className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                  >
+                    {isQueuePaused ? 'Resume Queue' : 'Pause Queue'}
+                  </DkButton>
+                </div>
+              </div>
               <IntegrationAction
                 label="SABnzbd Settings"
                 description="Configure host, port, API key, and download category"
@@ -504,25 +492,19 @@ function NodeConnectionsGroup({
             <>
               <div className="flex items-center justify-between px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
                 <span>
-                  {isBackend ? (
-                    <>Stored on <span className="text-white/90 font-medium">{server.name}</span> (account settings)</>
-                  ) : (
-                    <>Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}</>
-                  )}
+                  Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}
                 </span>
               </div>
-              {!isBackend && (
-                <div className="px-5 py-4 space-y-3">
-                  <ProwlarrIndexersPanel
-                    protocol={prowlarrSyncProtocol}
-                    onProtocolChange={setProwlarrSyncProtocol}
-                    onSync={() => void handleProwlarrSync()}
-                    isSyncing={syncProwlarrMutation.isPending}
-                    indexers={prowlarrIndexers}
-                    syncMessage={prowlarrSyncMessage}
-                  />
-                </div>
-              )}
+              <div className="px-5 py-4 space-y-3">
+                <ProwlarrIndexersPanel
+                  protocol={prowlarrSyncProtocol}
+                  onProtocolChange={setProwlarrSyncProtocol}
+                  onSync={() => void handleProwlarrSync()}
+                  isSyncing={syncProwlarrMutation.isPending}
+                  indexers={prowlarrIndexers}
+                  syncMessage={prowlarrSyncMessage}
+                />
+              </div>
               <IntegrationAction
                 label="Prowlarr Settings"
                 description="Configure host, port, API key, and search categories"
@@ -538,14 +520,10 @@ function NodeConnectionsGroup({
             <>
               <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
                 <span>
-                  {isBackend ? (
-                    <>Stored on <span className="text-white/90 font-medium">{server.name}</span> (account settings)</>
-                  ) : (
-                    <>Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}</>
-                  )}
+                  Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}
                 </span>
               </div>
-              {!isBackend && isRadarrConfigured && (
+              {isRadarrConfigured && (
                 <IntegrationStats items={[
                   { label: 'indexed movies', value: String(radarrMovies.length) },
                   { label: 'monitored', value: String(radarrMovies.filter((m) => m.monitored).length) },
@@ -567,14 +545,10 @@ function NodeConnectionsGroup({
             <>
               <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
                 <span>
-                  {isBackend ? (
-                    <>Stored on <span className="text-white/90 font-medium">{server.name}</span> (account settings)</>
-                  ) : (
-                    <>Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}</>
-                  )}
+                  Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}
                 </span>
               </div>
-              {!isBackend && isSonarrConfigured && (
+              {isSonarrConfigured && (
                 <IntegrationStats items={[
                   { label: 'indexed series', value: String(sonarrSeries.length) },
                   { label: 'monitored', value: String(sonarrSeries.filter((s) => s.monitored).length) },
@@ -598,6 +572,8 @@ function NodeConnectionsGroup({
   )
 }
 
+let activeIntegrationAbortController: AbortController | null = null
+
 export function SettingsIntegrationsPage() {
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
@@ -615,7 +591,6 @@ export function SettingsIntegrationsPage() {
   const [plexLibraryProgress, setPlexLibraryProgress] = useState<Record<string, PlexLibraryProgress>>({})
   const [plexLibraryErrors, setPlexLibraryErrors] = useState<Record<string, string>>({})
   const [syncingLibraryIds, setSyncingLibraryIds] = useState<Set<string>>(new Set())
-  const abortRef = useRef<AbortController | null>(null)
   // Sync user state once auth profile hydrates
   useEffect(() => {
     if (user?.plexId !== undefined) {
@@ -639,25 +614,6 @@ export function SettingsIntegrationsPage() {
   const [steamConnected, setSteamConnected] = useState(Boolean(user?.steamId))
   const [steamId, setSteamId] = useState<string | null>(user?.steamId ?? null)
   const [steamProfile, setSteamProfile] = useState<SteamProfile | null>(null)
-  const [epicConnected, setEpicConnected] = useState(false)
-  const [epicDisplayName, setEpicDisplayName] = useState<string | null>(null)
-  const [epicAccountId, setEpicAccountId] = useState<string | null>(null)
-  const [epicConnecting, setEpicConnecting] = useState(false)
-  const [epicDisconnecting, setEpicDisconnecting] = useState(false)
-  const [epicScanning, setEpicScanning] = useState(false)
-  const [epicScanResult, setEpicScanResult] = useState<{
-    totalInEpic: number
-    matchedInOtix: number
-    failed: number
-  } | null>(null)
-  const [epicResolvingSteamGrid, setEpicResolvingSteamGrid] = useState(false)
-  const [epicSteamGridResult, setEpicSteamGridResult] = useState<{
-    total: number
-    matched: number
-    failed: number
-  } | null>(null)
-  const [epicMessage, setEpicMessage] = useState('')
-  const [epicError, setEpicError] = useState('')
   const [plexConnected, setPlexConnected] = useState(Boolean(user?.plexId))
   const [plex, setPlex] = useState<PlexIntegration | null>(null)
   const [plexWatchHistoryEnabled, setPlexWatchHistoryEnabled] = useState(user?.plexWatchHistoryEnabled ?? false)
@@ -710,10 +666,6 @@ export function SettingsIntegrationsPage() {
   const { data: plexLibraries, isLoading: plexLibrariesLoading, refetch: refetchLibraries } =
     usePlexLibraries({ enabled: isPlexConnected })
 
-  const { openModal } = useModal()
-  const { data: gameServers = [] } = useGameServers({ enabled: isAuthenticated })
-  const hasOnlineNode = workerConnectionNodes(gameServers).some((s) => s.isOnline)
-  const isEpicConnected = epicConnected
   const { servers: allNodes } = useSettingsNode()
   // Remote connection nodes include real Otix worker nodes + the Otix backend node
   const workerNodes = remoteConnectionNodes(allNodes)
@@ -784,38 +736,16 @@ export function SettingsIntegrationsPage() {
     }
   }
 
-  const fetchEpicStatus = async () => {
-    try {
-      const { data } = await apiClient.get<{
-        connected?: boolean
-        displayName?: string | null
-        accountId?: string | null
-      }>('/integrations/epic/status')
-      setEpicConnected(Boolean(data.connected))
-      setEpicDisplayName(data.displayName ?? null)
-      setEpicAccountId(data.accountId ?? null)
-    } catch (err) {
-      setEpicConnected(false)
-      const msg = extractIntegrationMessage(err)
-      if (msg === 'Connect an Otix Server to link Epic.' || !hasOnlineNode) {
-        setEpicError('Connect an Otix Server to link Epic.')
-      } else {
-        setEpicError(msg)
-      }
-    }
-  }
-
   useEffect(() => {
     if (authLoading) return
     queueMicrotask(() => {
       if (isAuthenticated) {
         fetchIntegrations()
-        fetchEpicStatus()
       }
       else setLoading(false)
     })
-    // fetchIntegrations / fetchEpicStatus are stable enough for mount + auth changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // fetchIntegrations is stable enough for mount + auth changes
+     
   }, [isAuthenticated, authLoading])
 
   // Re-fetch integrations when the window regains visibility — this catches
@@ -830,11 +760,10 @@ export function SettingsIntegrationsPage() {
       if (now - lastFetch < 30_000) return
       lastFetch = now
       fetchIntegrations()
-      fetchEpicStatus()
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isAuthenticated])
 
   const handleConnect = async () => {
@@ -846,106 +775,6 @@ export function SettingsIntegrationsPage() {
     } catch (err) {
       setConnecting(false)
       setSteamError(extractIntegrationMessage(err))
-    }
-  }
-
-  const handleEpicConnect = async () => {
-    setEpicConnecting(true)
-    setEpicError('')
-    try {
-      if (!hasOnlineNode) {
-        setEpicError('Connect an Otix Server to link Epic.')
-        return
-      }
-      const { data } = await apiClient.post('/auth/oauth/epic')
-      const authUrl = data.authUrl || data.auth_url
-      const state = data.state
-      const openOAuthWindow = window.desktopAPI?.plugin?.openOAuthWindow
-      if (isDesktop() && openOAuthWindow) {
-        const win = await openOAuthWindow(authUrl, 'id/api/redirect') as {
-          success?: boolean
-          code?: string
-          error?: string
-        }
-        if (!win?.success || !win.code) {
-          setEpicError((win?.error as string | undefined) || 'Login cancelled')
-          return
-        }
-        await apiClient.post('/auth/oauth/epic/callback', { code: win.code, state })
-        await fetchEpicStatus()
-        return
-      }
-      openExternal(authUrl, { newTab: true })
-      openBoundModal(openModal, (onClose) => (
-        <EpicCodeModal
-          authUrl={authUrl}
-          state={state}
-          onClose={onClose}
-          onLinked={() => { void fetchEpicStatus() }}
-        />
-      ))
-    } catch (err) {
-      setEpicError(extractIntegrationMessage(err))
-    } finally {
-      setEpicConnecting(false)
-    }
-  }
-
-  const handleEpicDisconnect = async () => {
-    setEpicDisconnecting(true)
-    setEpicError('')
-    setEpicMessage('')
-    try {
-      await apiClient.delete('/auth/oauth/epic/disconnect')
-      setEpicConnected(false)
-      setEpicDisplayName(null)
-      setEpicAccountId(null)
-      setEpicMessage('Epic Games account unlinked.')
-    } catch (err) {
-      setEpicError(extractIntegrationMessage(err))
-    } finally {
-      setEpicDisconnecting(false)
-    }
-  }
-
-  const handleEpicScan = async () => {
-    setEpicScanning(true)
-    setEpicError('')
-    setEpicScanResult(null)
-    try {
-      const { data } = await apiClient.post<{
-        totalInEpic: number
-        matchedInOtix: number
-        failed: number
-      }>('/integrations/epic/scan')
-      setEpicScanResult(data)
-      let msg = `Found ${data.matchedInOtix} matches out of ${data.totalInEpic} Epic games.`
-      if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
-      setEpicMessage(msg)
-    } catch (err) {
-      setEpicError(extractIntegrationMessage(err))
-    } finally {
-      setEpicScanning(false)
-    }
-  }
-
-  const handleEpicResolveSteamGrid = async () => {
-    setEpicResolvingSteamGrid(true)
-    setEpicError('')
-    try {
-      const { data } = await apiClient.post<{
-        total: number
-        matched: number
-        failed: number
-      }>('/integrations/epic/resolve-steamgrid')
-      setEpicSteamGridResult(data)
-      let msg = `Matched ${data.matched} out of ${data.total} Epic games with SteamGridDB.`
-      if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
-      setEpicMessage(msg)
-    } catch (err) {
-      setEpicError(extractIntegrationMessage(err))
-    } finally {
-      setEpicResolvingSteamGrid(false)
     }
   }
 
@@ -965,7 +794,7 @@ export function SettingsIntegrationsPage() {
 
   const handlePlexDisconnect = async () => {
     if (plexDisconnecting) return
-    abortRef.current?.abort()
+    activeIntegrationAbortController?.abort()
     setPlexDisconnecting(true)
     setPlexError('')
     setPlexMessage('')
@@ -1074,9 +903,9 @@ export function SettingsIntegrationsPage() {
   }
 
   const handleYouTubeSync = async () => {
-    abortRef.current?.abort()
+    activeIntegrationAbortController?.abort()
     const abortController = new AbortController()
-    abortRef.current = abortController
+    activeIntegrationAbortController = abortController
 
     setYoutubeSyncing(true)
     setYoutubeError('')
@@ -1184,9 +1013,9 @@ export function SettingsIntegrationsPage() {
 
   const handlePlexSync = async () => {
     if (plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex) return
-    abortRef.current?.abort()
+    activeIntegrationAbortController?.abort()
     const abortController = new AbortController()
-    abortRef.current = abortController
+    activeIntegrationAbortController = abortController
 
     setPlexSyncing(true)
     setPlexError('')
@@ -1316,7 +1145,7 @@ export function SettingsIntegrationsPage() {
   // Cleanup SSE on unmount
   useEffect(() => {
     return () => {
-      abortRef.current?.abort()
+      activeIntegrationAbortController?.abort()
     }
   }, [])
 
@@ -1491,6 +1320,7 @@ export function SettingsIntegrationsPage() {
   }
 
   const query = searchQuery.toLowerCase().trim()
+  const isEpicSearch = Boolean(query && ('epic games store'.includes(query) || query.includes('epic')))
 
   const integrationDefs = [
     {
@@ -1507,25 +1337,6 @@ export function SettingsIntegrationsPage() {
       onDisconnect: handleDisconnect,
       disconnecting,
       error: steamError,
-    },
-    {
-      id: 'epic',
-      name: 'Epic Games',
-      keywords: 'epic games store egs library launcher',
-      description: !hasOnlineNode && !isEpicConnected
-        ? 'Connect an Otix Server to link Epic.'
-        : isEpicConnected && epicDisplayName
-          ? `Linked as ${epicDisplayName}`
-          : 'Sign in with Epic Games to sync your game library.',
-      isConnected: isEpicConnected,
-      brandColor: BRAND_COLORS.epic,
-      brandBg: BRAND_BG.epic,
-      icon: EpicIcon,
-      onConnect: handleEpicConnect,
-      connecting: epicConnecting,
-      connectDisabled: !hasOnlineNode,
-      onDisconnect: handleEpicDisconnect,
-      disconnecting: epicDisconnecting,
     },
     {
       id: 'plex',
@@ -1625,13 +1436,13 @@ export function SettingsIntegrationsPage() {
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading integrations...
         </div>
-      ) : filteredIntegrations.length === 0 && !nodesVisible ? (
+      ) : filteredIntegrations.length === 0 && !nodesVisible && !isEpicSearch ? (
         <div className="rounded-2xl p-8 text-center bg-white/5">
           <p className="text-sm text-white/60">No integrations match &quot;{searchQuery}&quot;</p>
         </div>
       ) : (
         <>
-          {filteredIntegrations.length > 0 && (
+          {(filteredIntegrations.length > 0 || isEpicSearch) && (
             <div id="accounts" className="scroll-mt-28">
               <SettingsCard className="space-y-2">
                 <SectionHeader
@@ -1652,7 +1463,7 @@ export function SettingsIntegrationsPage() {
                     onToggle={() => toggleExpand(i.id)}
                     onConnect={i.onConnect}
                     connecting={i.connecting}
-                    connectDisabled={i.connectDisabled}
+                    connectDisabled={(i as any).connectDisabled}
                     onDisconnect={i.onDisconnect}
                     disconnecting={i.disconnecting}
                     error={i.error}
@@ -1698,55 +1509,6 @@ export function SettingsIntegrationsPage() {
                         </div>
                         {steamMessage && <p className="px-5 py-2 text-xs text-green-400">{steamMessage}</p>}
                         {steamError && <p className="px-5 py-2 text-xs text-red-400">{steamError}</p>}
-                      </>
-                    )}
-
-                    {/* Epic content */}
-                    {i.id === 'epic' && (
-                      <>
-                        <IntegrationProfile
-                          avatarAlt={epicDisplayName ?? 'Epic Games avatar'}
-                          name={epicDisplayName ?? 'Epic Games User'}
-                          detail={epicAccountId ? `Account ID: ${epicAccountId}` : 'Epic Games account linked'}
-                          brandBg={BRAND_BG.epic}
-                          icon={EpicIcon}
-                          brandColor={BRAND_COLORS.epic}
-                        />
-                        <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5 text-xs text-white/70">
-                            <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
-                            <span>
-                              Game scanning and matching are also managed under
-                              {' '}<strong>Library Settings</strong> as a Provider.
-                            </span>
-                          </div>
-                          <Link
-                            to="/settings/library"
-                            className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
-                          >
-                            Go to Library Settings &rarr;
-                          </Link>
-                        </div>
-                        <IntegrationAction
-                          label="Library Scan"
-                          description="Scan your Epic Games library"
-                          result={epicScanResult ? `${epicScanResult.matchedInOtix} matches out of ${epicScanResult.totalInEpic} Epic games` : null}
-                          buttonLabel={epicScanning ? 'Scanning...' : epicScanResult ? 'Re-scan' : 'Scan Library'}
-                          buttonIcon={RefreshCw}
-                          onPress={handleEpicScan}
-                          loading={epicScanning}
-                        />
-                        <IntegrationAction
-                          label="SteamGridDB Matching"
-                          description="Match artwork and metadata from SteamGridDB for unmatched Epic games"
-                          result={epicSteamGridResult ? `${epicSteamGridResult.matched} matched out of ${epicSteamGridResult.total} games` : null}
-                          buttonLabel={epicResolvingSteamGrid ? 'Matching...' : 'Resolve with SteamGrid'}
-                          buttonIcon={Sparkles}
-                          onPress={handleEpicResolveSteamGrid}
-                          loading={epicResolvingSteamGrid}
-                        />
-                        {epicMessage && <p className="px-5 py-2 text-xs text-green-400">{epicMessage}</p>}
-                        {epicError && <p className="px-5 py-2 text-xs text-red-400">{epicError}</p>}
                       </>
                     )}
 
@@ -2016,6 +1778,34 @@ export function SettingsIntegrationsPage() {
                     )}
                   </IntegrationCard>
                 ))}
+
+                {/* Epic Games Node Settings Notice */}
+                {(!query || isEpicSearch) && (
+                  <div className="mx-5 my-2 p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white shrink-0">
+                        <EpicIcon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-white">Epic Games</p>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/60">
+                            Node Setting
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-white/60 mt-0.5">
+                          Epic Games requires a connected Otix Node and is configured in Node Settings.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/settings/nodes"
+                      className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/90 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+                    >
+                      Open Node Settings &rarr;
+                    </Link>
+                  </div>
+                )}
               </SettingsCard>
             </div>
           )}
@@ -2024,7 +1814,7 @@ export function SettingsIntegrationsPage() {
             <div id="nodes" className="scroll-mt-28 space-y-3">
               <SectionHeader
                 icon={Server}
-                title="Connection nodes"
+                title="Otix nodes"
                 description="Manage SABnzbd, Prowlarr, Radarr, and Sonarr instances per node."
               />
               {workerNodes.length > 0 ? (

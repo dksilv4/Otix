@@ -20,6 +20,9 @@ db.sqlite3
 # Env / secrets
 .env
 
+# Auto-generated VAPID keypair (and other local runtime data)
+/data/
+
 # Local throwaway databases from validation runs
 /validate.db
 /test_validate.db

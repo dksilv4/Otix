@@ -1,28 +1,65 @@
 import { useEffect, useState, useCallback } from 'react'
+import { isAxiosError } from 'axios'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
+import { isDesktop } from '@/lib/desktop/api'
 
 interface PushSubscriptionState {
   supported: boolean
   subscribed: boolean
   permission: NotificationPermission | 'unsupported'
   registering: boolean
+  error: string | null
+  /** Why Enable is unavailable (auth / desktop / insecure origin). */
+  blockedReason: string | null
 }
 
 const VAPID_KEY_CACHE = { key: null as string | null }
 
+function pushApiAvailable(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.isSecureContext &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window
+  )
+}
+
 async function fetchVapidKey(): Promise<string> {
   if (VAPID_KEY_CACHE.key) return VAPID_KEY_CACHE.key
   const { data } = await apiClient.get<{ publicKey: string }>('/push/vapid-public-key')
+  if (!data.publicKey) throw new Error('VAPID public key missing from server')
   VAPID_KEY_CACHE.key = data.publicKey
   return data.publicKey
 }
 
-async function urlBase64ToUint8Array(base64String: string): Promise<Uint8Array> {
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
   const rawData = atob(base64)
-  return Uint8Array.from(rawData.split('').map((c) => c.charCodeAt(0)))
+  const output = new Uint8Array(rawData.length)
+  for (let i = 0; i < rawData.length; i += 1) {
+    output[i] = rawData.charCodeAt(i)
+  }
+  return output
+}
+
+/** Chrome rejects a Uint8Array whose .buffer is larger than the view. */
+function applicationServerKeyFromVapid(vapidKey: string): ArrayBuffer {
+  const key = urlBase64ToUint8Array(vapidKey)
+  return key.buffer.slice(key.byteOffset, key.byteOffset + key.byteLength) as ArrayBuffer
+}
+
+function errorMessage(err: unknown): string {
+  if (isAxiosError(err)) {
+    const data = err.response?.data as { detail?: unknown; message?: unknown } | undefined
+    if (typeof data?.detail === 'string' && data.detail) return data.detail
+    if (typeof data?.message === 'string' && data.message) return data.message
+    if (err.response?.status) return `Server error (${err.response.status})`
+    return err.message || 'Network error'
+  }
+  if (err instanceof Error && err.message) return err.message
+  return 'Failed to enable push'
 }
 
 export function usePushSubscription() {
@@ -32,35 +69,127 @@ export function usePushSubscription() {
     subscribed: false,
     permission: 'unsupported',
     registering: false,
+    error: null,
+    blockedReason: null,
   })
 
-  const register = useCallback(async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      setState((s) => ({ ...s, supported: false }))
+  const refresh = useCallback(async () => {
+    if (isDesktop()) {
+      setState({
+        supported: true,
+        subscribed: false,
+        permission: 'unsupported',
+        registering: false,
+        error: null,
+        blockedReason:
+          'Web push is not available in the desktop app — use Desktop notifications above',
+      })
       return
     }
 
-    setState((s) => ({ ...s, supported: true, registering: true }))
+    if (!pushApiAvailable()) {
+      const insecure = typeof window !== 'undefined' && !window.isSecureContext
+      setState({
+        supported: insecure,
+        subscribed: false,
+        permission: 'unsupported',
+        registering: false,
+        error: null,
+        blockedReason: insecure ? 'Push requires HTTPS (or localhost)' : null,
+      })
+      return
+    }
+
+    const permission =
+      typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+
+    let subscribed: boolean
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      await navigator.serviceWorker.ready
+      subscribed = !!(await registration.pushManager.getSubscription())
+    } catch (err) {
+      setState({
+        supported: true,
+        subscribed: false,
+        permission,
+        registering: false,
+        error: null,
+        blockedReason: errorMessage(err),
+      })
+      return
+    }
+
+    setState({
+      supported: true,
+      subscribed,
+      permission,
+      registering: false,
+      error: null,
+      blockedReason: isAuthenticated ? null : 'Sign in to enable push notifications',
+    })
+  }, [isAuthenticated])
+
+  const register = useCallback(async () => {
+    if (isDesktop()) {
+      setState((s) => ({
+        ...s,
+        error: 'Web push is not available in the desktop app',
+        registering: false,
+      }))
+      return
+    }
+    if (!isAuthenticated) {
+      setState((s) => ({
+        ...s,
+        error: 'Sign in to enable push notifications',
+        registering: false,
+      }))
+      return
+    }
+    if (!pushApiAvailable()) {
+      setState((s) => ({
+        ...s,
+        supported: false,
+        error: 'Push not supported in this browser',
+        registering: false,
+      }))
+      return
+    }
+
+    setState((s) => ({ ...s, supported: true, registering: true, error: null }))
 
     try {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        await Notification.requestPermission()
+      }
+      if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+        throw new Error(
+          'Notification permission denied — allow notifications in browser settings',
+        )
+      }
+
       const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
       await navigator.serviceWorker.ready
 
       let sub = await registration.pushManager.getSubscription()
-
       if (!sub) {
         const vapidKey = await fetchVapidKey()
         sub = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: (await urlBase64ToUint8Array(vapidKey)) as unknown as BufferSource,
+          applicationServerKey: applicationServerKeyFromVapid(vapidKey),
         })
       }
 
       const subJSON = sub.toJSON()
+      if (!subJSON.endpoint || !subJSON.keys?.p256dh || !subJSON.keys?.auth) {
+        throw new Error('Browser returned an incomplete push subscription')
+      }
+
       await apiClient.post('/push/subscribe', {
         endpoint: subJSON.endpoint,
-        p256dh: subJSON.keys!.p256dh,
-        auth: subJSON.keys!.auth,
+        p256dh: subJSON.keys.p256dh,
+        auth: subJSON.keys.auth,
       })
 
       setState({
@@ -68,11 +197,27 @@ export function usePushSubscription() {
         subscribed: true,
         permission: Notification.permission,
         registering: false,
+        error: null,
+        blockedReason: null,
       })
-    } catch {
-      setState((s) => ({ ...s, subscribed: false, registering: false }))
+    } catch (err) {
+      VAPID_KEY_CACHE.key = null
+      try {
+        const registration = await navigator.serviceWorker.ready
+        const existing = await registration.pushManager.getSubscription()
+        if (existing) await existing.unsubscribe()
+      } catch {
+        // ignore cleanup failures
+      }
+      setState((s) => ({
+        ...s,
+        subscribed: false,
+        registering: false,
+        error: errorMessage(err),
+        blockedReason: null,
+      }))
     }
-  }, [])
+  }, [isAuthenticated])
 
   const unsubscribe = useCallback(async () => {
     try {
@@ -88,25 +233,12 @@ export function usePushSubscription() {
     } catch {
       // Silently fail
     }
-    setState((s) => ({ ...s, subscribed: false }))
+    setState((s) => ({ ...s, subscribed: false, error: null }))
   }, [])
 
   useEffect(() => {
-    if (!isAuthenticated) return
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-
-    const init = async () => {
-      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      const sub = await registration.pushManager.getSubscription()
-      setState({
-        supported: true,
-        subscribed: !!sub,
-        permission: Notification.permission,
-        registering: false,
-      })
-    }
-    init()
-  }, [isAuthenticated])
+    void refresh()
+  }, [refresh])
 
   return { ...state, register, unsubscribe }
 }

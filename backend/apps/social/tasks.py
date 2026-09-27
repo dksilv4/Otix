@@ -3,8 +3,8 @@
 ``social.release_notify`` is enqueued by the TMDB sync engine the moment a
 not-previously-mapped title is seeded; ``social.notify_release_transitions``
 runs daily on beat to catch announced titles whose release date has arrived. Both
-delegate the fan-out to ``apps.social.services.release_notify`` and push the
-resulting rows through the web-push sender.
+delegate the fan-out to ``apps.social.services.release_notify``. Web-push delivery
+is handled by the ``Notification`` post_save signal (same path as SSE).
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ from __future__ import annotations
 from celery import shared_task
 
 from apps.media.models import MediaItem
-from apps.push.services.sender import send_notification
 from apps.social.services import release_notify
 
 
@@ -25,8 +24,6 @@ def release_notify_task(media_item_id: int) -> int:
     created = release_notify.notify_company_followers(
         media_item_id, kind=release_notify.kind_for(media)
     )
-    for notification in created:
-        send_notification(notification)
     return len(created)
 
 
@@ -36,7 +33,5 @@ def notify_release_transitions_task() -> int:
     created_count = 0
     for media in release_notify.transitioning_titles():
         created = release_notify.notify_company_followers(media.pk, kind="available")
-        for notification in created:
-            send_notification(notification)
         created_count += len(created)
     return created_count

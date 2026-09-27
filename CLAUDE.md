@@ -27,3 +27,12 @@ Django and Otix Server speak **snake_case**. The web `apiClient` (`frontend/src/
 
 Frontend code must read and write camelCase (`displayName`, `authUrl`, `totalInEpic`). Do not dual-read snake_case on `apiClient` results. This conversion does **not** apply to Django↔node proxy payloads, SSE/`fetch` unless those helpers also convert, or Python.
 
+## Frontend component files
+
+Frontend component files (`.tsx` under components/pages/etc.) must only contain component functions and may only export components.
+
+Do not define or export utility helpers, formatters, parsers, constants bags, or other non-component logic in a component file. Put those in:
+
+- the feature’s utils file or folder (`frontend/src/features/<feature>/utils.ts` or `frontend/src/features/<feature>/utils/`), or
+- the shared utils folder (`frontend/src/lib/utils/`) when the helper is cross-feature.
+

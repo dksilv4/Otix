@@ -15,16 +15,22 @@ self.addEventListener('push', (event) => {
   if (!data.title) return
 
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body || undefined,
-      icon: '/icon-192.png',
-      badge: '/badge-72.png',
-      data: {
-        type: data.type,
-        metadata: data.metadata || {},
-        url: resolveUrl(data),
-      },
-      tag: data.id || data.type || 'notification',
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // When the app is focused, SSE + in-page channels already deliver.
+      // Skip the OS toast so open tabs don't get duplicates.
+      if (clientList.some((client) => client.focused)) return
+
+      return self.registration.showNotification(data.title, {
+        body: data.body || undefined,
+        icon: '/icons/180.png',
+        badge: '/icons/64.png',
+        data: {
+          type: data.type,
+          metadata: data.metadata || {},
+          url: resolveUrl(data),
+        },
+        tag: data.id || data.type || 'notification',
+      })
     })
   )
 })

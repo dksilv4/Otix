@@ -129,13 +129,13 @@ WIKIDATA_DISTRIBUTOR_REQUEST_TIMEOUT_SECONDS = float(
     os.environ.get("WIKIDATA_DISTRIBUTOR_REQUEST_TIMEOUT_SECONDS", "20.0")
 )
 
-# Web-push (VAPID). The public key is served to browsers; the private key signs
-# pushes in apps.push.services.sender and is unset by default, which disables
-# sending (a benign no-op). Set both to a matching pair to enable delivery.
+# Web-push (VAPID). Prefer an explicit matching pair in production. When unset,
+# apps.push.services.vapid auto-generates a keypair under OTIX_DATA_DIR (or
+# BASE_DIR/data) so subscribe + delivery work out of the box.
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
 VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@otix.local")
-
+OTIX_DATA_DIR = os.environ.get("OTIX_DATA_DIR", str(BASE_DIR / "data"))
 # Dev-only fallback; production settings require an explicit env SECRET_KEY.
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
 

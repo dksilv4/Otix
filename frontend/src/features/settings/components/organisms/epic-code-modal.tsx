@@ -10,6 +10,7 @@ export interface EpicCodeModalProps {
   state: string
   onClose: () => void
   onLinked: () => void
+  nodeId?: number
   isExiting?: boolean
 }
 
@@ -51,6 +52,7 @@ export function EpicCodeModal({
   state: initialState,
   onClose,
   onLinked,
+  nodeId,
   isExiting,
 }: EpicCodeModalProps) {
   const [authUrl, setAuthUrl] = useState(initialAuthUrl)
@@ -64,7 +66,9 @@ export function EpicCodeModal({
     setOpening(true)
     setError('')
     try {
-      const { data } = await apiClient.post('/auth/oauth/epic')
+      const { data } = nodeId
+        ? await apiClient.post('/auth/oauth/epic', { node_id: nodeId })
+        : await apiClient.post('/auth/oauth/epic')
       const newAuthUrl = data.authUrl || data.auth_url || authUrl
       const newState = data.state || state
       setAuthUrl(newAuthUrl)
@@ -86,7 +90,11 @@ export function EpicCodeModal({
     setSubmitting(true)
     setError('')
     try {
-      await apiClient.post('/auth/oauth/epic/callback', { code, state })
+      await apiClient.post('/auth/oauth/epic/callback', {
+        code,
+        state,
+        ...(nodeId ? { node_id: nodeId } : {}),
+      })
       onLinked()
       onClose()
     } catch (err: unknown) {
@@ -94,11 +102,17 @@ export function EpicCodeModal({
       if (msg.toLowerCase().includes('session expired') || msg.toLowerCase().includes('expired')) {
         // Automatically attempt to refresh state and retry once
         try {
-          const { data } = await apiClient.post('/auth/oauth/epic')
+          const { data } = nodeId
+            ? await apiClient.post('/auth/oauth/epic', { node_id: nodeId })
+            : await apiClient.post('/auth/oauth/epic')
           const newState = data.state
           if (newState) {
             setState(newState)
-            await apiClient.post('/auth/oauth/epic/callback', { code, state: newState })
+            await apiClient.post('/auth/oauth/epic/callback', {
+              code,
+              state: newState,
+              ...(nodeId ? { node_id: nodeId } : {}),
+            })
             onLinked()
             onClose()
             return

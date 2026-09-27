@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Bell, Lock, Volume2, Monitor } from 'lucide-react'
+import { Bell, Lock, Volume2, Monitor, Radio } from 'lucide-react'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
@@ -11,7 +11,6 @@ import { SettingsCard } from '../components/molecules/settings-card'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsRow } from '../components/molecules/settings-row'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
-import { DkButton } from '@ui/atoms/button'
 
 const LOCAL_PREFS_KEY = 'otix:local-notification-preferences'
 
@@ -167,23 +166,29 @@ export function SettingsNotificationsPage() {
 
         {push.supported && (
           <SettingsRow
+            icon={<Radio className="h-5 w-5" />}
             label="Push notifications"
             description={
-              push.subscribed
-                ? 'Active — works when tab is closed'
-                : push.registering
-                  ? 'Registering...'
-                  : 'Off'
+              push.error
+                ? push.error
+                : push.blockedReason
+                  ? push.blockedReason
+                  : push.subscribed
+                    ? 'Active — works when tab is closed'
+                    : push.registering
+                      ? 'Registering...'
+                      : 'Off — works when the tab is closed'
             }
+            disabled={push.registering || (!push.subscribed && !!push.blockedReason)}
             action={
-              <DkButton
-                size="sm"
-                variant="ghost"
-                onClick={() => (push.subscribed ? push.unsubscribe() : push.register())}
-                disabled={push.registering}
-              >
-                {push.subscribed ? 'Disable' : 'Enable'}
-              </DkButton>
+              <DkSwitch
+                checked={push.subscribed}
+                disabled={push.registering || (!push.subscribed && !!push.blockedReason)}
+                onCheckedChange={(checked) => {
+                  if (checked) void push.register()
+                  else void push.unsubscribe()
+                }}
+              />
             }
           />
         )}

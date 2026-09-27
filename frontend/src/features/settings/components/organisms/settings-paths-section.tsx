@@ -15,7 +15,6 @@ import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
 import { useSettingsNode } from '../../context/settings-node-context'
-import { isBackendNodeId } from '../../backend-node'
 import { isLocalDesktopNodeId } from '../../local-desktop-node'
 import { SettingsCard } from '../molecules/settings-card'
 import { SectionHeader } from '../molecules/settings-section-header'
@@ -47,14 +46,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
   const { selectedNode } = useSettingsNode()
   const nodeId = nodeIdProp !== undefined ? nodeIdProp : (selectedNode?.id ?? null)
   const isLocalNode = isLocalDesktopNodeId(nodeId)
-  const backendNode = isBackendNodeId(nodeId)
   const remoteNodeId = isLocalNode ? null : nodeId
   const desktop = isDesktop()
   const folderTarget = remoteNodeId ? 'server' : desktop ? 'local' : 'server'
-
-  const getStorageKey = useCallback((prefix: string) => {
-    return remoteNodeId == null ? prefix : `${prefix}:node:${remoteNodeId}`
-  }, [remoteNodeId])
 
   // ── State ──
   const [scanPaths, setScanPaths] = useState<ScanPathItem[]>(() => {
@@ -79,7 +73,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         }
         if (items.length > 0) return items
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
     return []
   })
 
@@ -146,7 +142,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       } else {
         setScanPaths([])
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
   }, [remoteNodeId])
 
   // ── 1. Load scan paths from the selected node, desktop API, or localStorage ──
@@ -164,7 +162,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         setScanPaths(items)
         try {
           localStorage.setItem(`otix:scan-paths:node:${remoteNodeId}`, JSON.stringify(items))
-        } catch {}
+        } catch {
+      // ignore
+    }
         return
       } catch (err) {
         console.warn('Failed to get scan paths from Otix node:', err)
@@ -185,7 +185,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
           try {
             localStorage.setItem('otix:scan-paths', JSON.stringify(items.filter((p) => p.type === 'game').map((p) => p.path)))
             localStorage.setItem('otix:iso-scan-paths', JSON.stringify(items.filter((p) => p.type === 'iso').map((p) => p.path)))
-          } catch {}
+          } catch {
+      // ignore
+    }
           return
         }
       } catch (err) {
@@ -207,7 +209,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'iso' as const })))
       }
       setScanPaths(items)
-    } catch {}
+    } catch {
+      // ignore
+    }
   }, [remoteNodeId])
 
   useEffect(() => {
@@ -234,13 +238,17 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
               setGamesDownloadPath(gamesPath)
               try {
                 localStorage.setItem(`otix:games-download-dir:node:${remoteNodeId}`, gamesPath)
-              } catch {}
+              } catch {
+      // ignore
+    }
             }
             if (installPath) {
               setGamesInstallPath(installPath)
               try {
                 localStorage.setItem(`otix:games-install-dir:node:${remoteNodeId}`, installPath)
-              } catch {}
+              } catch {
+      // ignore
+    }
             }
           }
 
@@ -252,14 +260,18 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
               setServerDownloadPath(isoPath)
               try {
                 localStorage.setItem(`otix:iso-download-dir:node:${remoteNodeId}`, isoPath)
-              } catch {}
+              } catch {
+      // ignore
+    }
             }
             if (installPath) {
               setGamesInstallPath((prev) => {
                 const next = prev || installPath
                 try {
                   localStorage.setItem(`otix:games-install-dir:node:${remoteNodeId}`, next)
-                } catch {}
+                } catch {
+      // ignore
+    }
                 return next
               })
             }
@@ -280,19 +292,25 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
               setGamesDownloadPath(ds.gamesDownloadPath)
               try {
                 localStorage.setItem('otix:games-download-dir', ds.gamesDownloadPath)
-              } catch {}
+              } catch {
+      // ignore
+    }
             }
             if (ds.gamesInstallPath) {
               setGamesInstallPath(ds.gamesInstallPath)
               try {
                 localStorage.setItem('otix:games-install-dir', ds.gamesInstallPath)
-              } catch {}
+              } catch {
+      // ignore
+    }
             }
             if (ds.isoDownloadPath) {
               setServerDownloadPath(ds.isoDownloadPath)
               try {
                 localStorage.setItem('otix:iso-download-dir', ds.isoDownloadPath)
-              } catch {}
+              } catch {
+      // ignore
+    }
             }
           }
         } catch {
@@ -313,7 +331,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         if (prev) return prev
         try {
           localStorage.setItem('otix:iso-download-dir', dlConfig.downloadPath!)
-        } catch {}
+        } catch {
+      // ignore
+    }
         return dlConfig.downloadPath!
       })
     }
@@ -325,7 +345,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
     if (remoteNodeId) {
       try {
         localStorage.setItem(`otix:scan-paths:node:${remoteNodeId}`, JSON.stringify(updated))
-      } catch {}
+      } catch {
+      // ignore
+    }
       try {
         await apiClient.put(`/library/servers/${remoteNodeId}/libraries`, {
           libraries: updated.map((item) => ({
@@ -350,7 +372,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
     try {
       localStorage.setItem('otix:scan-paths', JSON.stringify(updated.filter((i) => i.type === 'game').map((i) => i.path)))
       localStorage.setItem('otix:iso-scan-paths', JSON.stringify(updated.filter((i) => i.type === 'iso').map((i) => i.path)))
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   // ── 3. Game Installation Directory Handler ──
@@ -362,7 +386,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       if (remoteNodeId) {
         try {
           localStorage.setItem(`otix:games-install-dir:node:${remoteNodeId}`, trimmed)
-        } catch {}
+        } catch {
+      // ignore
+    }
         await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesInstallPath: trimmed })
       } else {
         const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
@@ -371,7 +397,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         }
         try {
           localStorage.setItem('otix:games-install-dir', trimmed)
-        } catch {}
+        } catch {
+      // ignore
+    }
       }
 
       // Automatically register in scanPaths if not already present
@@ -406,7 +434,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       if (remoteNodeId) {
         try {
           localStorage.setItem(`otix:games-download-dir:node:${remoteNodeId}`, trimmed)
-        } catch {}
+        } catch {
+      // ignore
+    }
         await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesDownloadPath: trimmed })
       } else {
         const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
@@ -415,7 +445,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         }
         try {
           localStorage.setItem('otix:games-download-dir', trimmed)
-        } catch {}
+        } catch {
+      // ignore
+    }
       }
 
       // Automatically register in scanPaths if not already present
@@ -450,7 +482,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       if (remoteNodeId) {
         try {
           localStorage.setItem(`otix:iso-download-dir:node:${remoteNodeId}`, trimmed)
-        } catch {}
+        } catch {
+      // ignore
+    }
         await apiClient.post(`/library/servers/${remoteNodeId}/organize`, { isoDownloadPath: trimmed || '' })
       } else {
         const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
@@ -459,7 +493,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         }
         try {
           localStorage.setItem('otix:iso-download-dir', trimmed)
-        } catch {}
+        } catch {
+      // ignore
+    }
 
         if (user && saveConfig && dlConfig) {
           try {
@@ -468,7 +504,9 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
               userId: user.id,
               downloadPath: trimmed || null,
             })
-          } catch {}
+          } catch {
+      // ignore
+    }
         }
       }
 
@@ -658,13 +696,8 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       <SettingsCard className="space-y-4">
         <SectionHeader
           title="Scan folders"
-          description={
-            backendNode
-              ? 'Folders stored on the Otix backend. Scanning needs a worker node with those paths on disk.'
-              : 'Extra folders to index. Destinations above are linked automatically.'
-          }
+          description="Extra folders to index. Destinations above are linked automatically."
           action={
-            backendNode ? undefined : (
             <DkButton
               size="sm"
               onClick={handleTriggerScan}
@@ -675,7 +708,6 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
               <RefreshCw className="h-3.5 w-3.5" />
               {isScanning ? 'Scanning...' : 'Scan Now'}
             </DkButton>
-            )
           }
         />
 

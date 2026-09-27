@@ -51,10 +51,13 @@ vi.mock('@/features/downloads/use-downloads', () => ({
 
 const mockClaimMutateAsync = vi.fn().mockResolvedValue({ id: 5, name: 'Home Server', isOnline: true })
 const mockProbeMutateAsync = vi.fn().mockResolvedValue({ remote_accessible: true, latency_ms: 25, tested_url: 'http://1.2.3.4:8090' })
+let mockGameServers: any[] = [
+  { id: 1, name: 'Home Server', primaryUrl: 'http://192.168.1.100:8090', isOnline: true },
+]
 let mockPendingNodes: any[] = []
 
 vi.mock('@/features/downloads/use-server-downloads', () => ({
-  useGameServers: () => ({ data: [], isLoading: false }),
+  useGameServers: () => ({ data: mockGameServers, isLoading: false }),
   useCreateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePingGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -98,6 +101,9 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
       downloadsAddPathMapping: vi.fn().mockResolvedValue(undefined),
       downloadsRemovePathMapping: vi.fn().mockResolvedValue(undefined),
     }
+    mockGameServers = [
+      { id: 1, name: 'Home Server', primaryUrl: 'http://192.168.1.100:8090', isOnline: true },
+    ]
   })
 
   it('renders correctly', () => {
@@ -110,10 +116,8 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
       </SettingsSaveProvider>,
     )
     expect(screen.getByText('Downloads')).toBeInTheDocument()
-    expect(screen.getByText('Otix backend')).toBeInTheDocument()
-    expect(screen.getByText('Backend')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /explore/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /ping/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Home Server')).toBeInTheDocument()
+    expect(screen.getAllByText('Online').length).toBeGreaterThan(0)
   })
 
   it('opens Manage Downloaders modal with SABnzbd as the only downloader', async () => {
@@ -161,9 +165,9 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
       </SettingsSaveProvider>,
     )
 
-    expect(screen.getByRole('link', { name: /open otix backend/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /open home server/i })).toHaveAttribute(
       'href',
-      '/settings/nodes/-2',
+      '/settings/nodes/1',
     )
   })
 
@@ -178,8 +182,9 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
       </SettingsSaveProvider>,
     )
 
-    const connectButton = screen.getByRole('button', { name: /connect node/i })
-    await user.click(connectButton)
+    const connectButtons = screen.getAllByRole('button', { name: /connect node/i })
+    expect(connectButtons.length).toBeGreaterThan(0)
+    await user.click(connectButtons[0])
 
     expect(screen.getByRole('button', { name: /claim with pin/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /manual url & token/i })).toBeInTheDocument()

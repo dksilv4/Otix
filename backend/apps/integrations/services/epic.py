@@ -33,14 +33,15 @@ def _epic_external_id_map(ids: list[str]) -> dict[str, int]:
     return {ext: media_id for ext, media_id in rows}
 
 
-def scan_epic_library(user) -> dict:
+def scan_epic_library(user, server=None) -> dict:
     """Fetch the user's Epic library from their Otix Server and upsert rows.
 
     Returns ``{total_in_epic, matched_in_otix, failed}``. Matching uses
     ``ExternalID`` ``provider="epic"`` on catalog_item_id, then offer_id, then
     app_name. Does not call IGDB.
     """
-    server = pick_online_game_server(user)
+    if server is None:
+        server = pick_online_game_server(user)
     if server is None:
         raise ValueError(NO_EPIC_NODE)
 

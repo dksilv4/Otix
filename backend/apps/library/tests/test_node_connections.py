@@ -1,4 +1,4 @@
-"""SABnzbd / *arr connections are node-specific; the backend node is the account store."""
+"""SABnzbd / *arr connections are node-specific; nodes store their own configuration."""
 
 from unittest import mock
 
@@ -125,16 +125,13 @@ class NodeConnectionSyncTests(TestCase):
         body = res.json()
         self.assertEqual(body["sabnzbd"]["host"], "")
 
-    def test_backend_node_save_updates_account_store(self):
+    def test_backend_node_save_returns_404(self):
         res = self.client.post(
             "/api/v1/library/servers/-2/usenet/config",
             {"sabnzbd": {"host": "backend.local", "port": 8080, "api_key": "backend-secret"}},
             format="json",
         )
-        self.assertEqual(res.status_code, 200)
-        stored = UserNodeConnection.objects.get(user=self.user)
-        self.assertEqual(stored.usenet["sabnzbd"]["host"], "backend.local")
-        self.assertEqual(stored.usenet["sabnzbd"]["api_key"], "backend-secret")
+        self.assertEqual(res.status_code, 404)
 
     def test_store_connection_ignores_redacted_api_keys(self):
         store_connection(self.user, "radarr", {"host": "radarr.local", "api_key": "real-key"})
@@ -191,59 +188,59 @@ class NodeConnectionSyncTests(TestCase):
     @mock.patch("apps.library.services.game_server.sonarr_save_config")
     @mock.patch("apps.library.services.game_server.radarr_save_config")
     @mock.patch("apps.library.services.game_server.usenet_save_config")
-    def test_import_instances_from_backend_to_worker(self, mock_usenet, mock_radarr, mock_sonarr):
-        mock_usenet.return_value = (200, {"status": "ok"})
-        mock_radarr.return_value = (200, {"status": "ok"})
-        mock_sonarr.return_value = (200, {"status": "ok"})
-        store_connection(
-            self.user,
-            "usenet",
+    @mock.patch("apps.library.services.game_server.sonarr_get_config")
+    @mock.patch("apps.library.services.game_server.radarr_get_config")
+    @mock.patch("apps.library.services.game_server.usenet_get_config")
+    def test_import_instances_between_nodes(
+        self,
+        mock_u_get,
+        mock_r_get,
+        mock_s_get,
+        mock_u_save,
+        mock_r_save,
+        mock_s_save,
+    ):
+        mock_u_get.return_value = (
+            200,
             {"sabnzbd": {"host": "10.0.0.50", "port": 8080, "api_key": "sab-secret"}},
         )
-        store_connection(
-            self.user,
-            "radarr",
+        mock_r_get.return_value = (
+            200,
             {"host": "10.0.0.8", "port": 7878, "api_key": "radarr-key"},
         )
-        stored = UserNodeConnection.objects.get(user=self.user)
-        self.assertEqual(stored.radarr.get("host"), "10.0.0.8")
-        self.assertEqual(stored.radarr.get("api_key"), "radarr-key")
+        mock_s_get.return_value = (200, {})
+        mock_u_save.return_value = (200, {"status": "ok"})
+        mock_r_save.return_value = (200, {"status": "ok"})
+        mock_s_save.return_value = (200, {"status": "ok"})
 
+        res = self.client.post(
+            f"/api/v1/library/servers/{self.node_a.id}/instances/import",
+            {"from_server_id": self.node_b.id},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertIn("usenet", body["imported"])
+        self.assertIn("radarr", body["imported"])
+        self.assertEqual(mock_u_save.call_args.args[1]["sabnzbd"]["api_key"], "sab-secret")
+        self.assertEqual(mock_r_save.call_args.args[1]["api_key"], "radarr-key")
+        mock_s_save.assert_not_called()
+
+    def test_import_instances_from_backend_node_returns_404(self):
         res = self.client.post(
             f"/api/v1/library/servers/{self.node_a.id}/instances/import",
             {"from_server_id": -2},
             format="json",
         )
-        self.assertEqual(res.status_code, 200)
-        body = res.json()
-        self.assertIn("usenet", body["imported"], body)
-        self.assertIn("radarr", body["imported"], body)
-        usenet_payload = mock_usenet.call_args.args[1]
-        self.assertEqual(usenet_payload["sabnzbd"]["api_key"], "sab-secret")
-        radarr_payload = mock_radarr.call_args.args[1]
-        self.assertEqual(radarr_payload["api_key"], "radarr-key")
-        mock_sonarr.assert_not_called()
+        self.assertEqual(res.status_code, 404)
 
-    @mock.patch("apps.library.services.game_server.sonarr_get_config")
-    @mock.patch("apps.library.services.game_server.radarr_get_config")
-    @mock.patch("apps.library.services.game_server.usenet_get_config")
-    def test_import_instances_from_worker_to_backend(self, mock_usenet, mock_radarr, mock_sonarr):
-        mock_usenet.return_value = (
-            200,
-            {"sabnzbd": {"host": "10.0.0.50", "port": 8080, "api_key": "copied-key"}},
-        )
-        mock_radarr.return_value = (200, {})
-        mock_sonarr.return_value = (200, {})
-
+    def test_import_instances_to_backend_node_returns_404(self):
         res = self.client.post(
             "/api/v1/library/servers/-2/instances/import",
             {"from_server_id": self.node_a.id},
             format="json",
         )
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json()["imported"], ["usenet"])
-        stored = UserNodeConnection.objects.get(user=self.user)
-        self.assertEqual(stored.usenet["sabnzbd"]["api_key"], "copied-key")
+        self.assertEqual(res.status_code, 404)
 
     def test_import_instances_rejects_the_same_node(self):
         res = self.client.post(

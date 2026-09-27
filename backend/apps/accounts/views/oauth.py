@@ -35,6 +35,7 @@ from apps.accounts.services import oauth as oauth_service
 from apps.accounts.services import sessions as session_service
 from apps.accounts.services.cookies import set_refresh_cookie
 from apps.accounts.services.oauth import OAuthFlowError
+from apps.library.models import UserGameServer
 from apps.library.services.game_server import (
     NO_EPIC_NODE,
     pick_online_game_server,
@@ -530,7 +531,12 @@ class EpicLinkInitiateView(GenericAPIView):
     """POST /oauth/epic — start the Epic link flow via the user's Otix Server."""
 
     def post(self, request, *args, **kwargs):
-        if pick_online_game_server(request.user) is None:
+        node_id = request.data.get("node_id") or request.data.get("server_id")
+        if node_id:
+            server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
+        else:
+            server = pick_online_game_server(request.user)
+        if server is None:
             return Response({"detail": NO_EPIC_NODE}, status=status.HTTP_400_BAD_REQUEST)
         auth_url, state = oauth_service.build_epic_link_url(user_id=request.user.pk)
         return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
@@ -547,13 +553,17 @@ class EpicLinkCallbackView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         code = serializer.validated_data["code"]
         state = serializer.validated_data["state"]
+        node_id = request.data.get("node_id") or request.data.get("server_id")
         payload = oauth_service.consume_epic_link_state(state, user_id=request.user.pk)
         if payload is None:
             return Response(
                 {"detail": "Epic linking session expired. Please try again."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        server = pick_online_game_server(request.user)
+        if node_id:
+            server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
+        else:
+            server = pick_online_game_server(request.user)
         if server is None:
             return Response({"detail": NO_EPIC_NODE}, status=status.HTTP_400_BAD_REQUEST)
         status_code, data = proxy_epic_auth(server, code)
@@ -568,7 +578,16 @@ class EpicDisconnectView(GenericAPIView):
     """DELETE /oauth/epic/disconnect — unlink Epic on the user's Otix Server."""
 
     def delete(self, request, *args, **kwargs):
-        server = pick_online_game_server(request.user)
+        node_id = (
+            request.data.get("node_id")
+            or request.data.get("server_id")
+            or request.query_params.get("node_id")
+            or request.query_params.get("server_id")
+        )
+        if node_id:
+            server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
+        else:
+            server = pick_online_game_server(request.user)
         if server is None:
             return Response({"detail": NO_EPIC_NODE}, status=status.HTTP_400_BAD_REQUEST)
         proxy_epic_disconnect(server)

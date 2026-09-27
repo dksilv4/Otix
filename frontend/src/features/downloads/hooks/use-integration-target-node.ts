@@ -1,28 +1,22 @@
-import { isBackendNode } from '@/features/settings/backend-node'
 import { isLocalDesktopNode } from '@/features/settings/local-desktop-node'
 import type { OtixNode } from '../types'
 import { useGameServers, useNodes } from '@/features/downloads/use-server-downloads'
 
-/** Nodes that can store SABnzbd / *arr settings (workers + the Otix backend). */
+/** Otix worker nodes that run services and downloaders. */
 export function remoteConnectionNodes(nodes: OtixNode[]): OtixNode[] {
-  return nodes.filter((node) => !isLocalDesktopNode(node))
+  return nodes.filter((node) => !isLocalDesktopNode(node) && Number(node.id) > 0)
 }
 
-/** Worker machines only — Epic tokens and live downloaders do not run on the backend node. */
+/** Worker machines. */
 export function workerConnectionNodes(nodes: OtixNode[]): OtixNode[] {
-  return remoteConnectionNodes(nodes).filter(
-    (node) => !isBackendNode(node) && Number(node.id) > 0,
-  )
+  return remoteConnectionNodes(nodes)
 }
 
 export function pickConnectionNode(nodes: OtixNode[], preferredId?: number): OtixNode | undefined {
   const remotes = remoteConnectionNodes(nodes)
-  const workers = workerConnectionNodes(nodes)
   return (
     remotes.find((node) => node.id === preferredId) ||
-    workers.find((node) => node.isOnline) ||
-    workers[0] ||
-    remotes.find((node) => isBackendNode(node)) ||
+    remotes.find((node) => node.isOnline) ||
     remotes[0]
   )
 }

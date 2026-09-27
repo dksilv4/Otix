@@ -1,7 +1,6 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/types'
-import { mergeBackendNode } from '../backend-node'
 import { mergeLocalDesktopNode, pickSettingsNode } from '../local-desktop-node'
 
 export const SETTINGS_SELECTED_NODE_KEY = 'otix:settings-selected-node'
@@ -30,7 +29,7 @@ function readStoredNodeId(): number | null {
 export function SettingsNodeProvider({ children }: { children: ReactNode }) {
   const { data: remoteServers = [], isLoading } = useGameServers()
   const servers = useMemo(
-    () => mergeLocalDesktopNode(mergeBackendNode(remoteServers)),
+    () => mergeLocalDesktopNode(remoteServers),
     [remoteServers],
   )
   const [preferredId, setPreferredId] = useState<number | null>(readStoredNodeId)
@@ -74,7 +73,7 @@ export function useSettingsNode(): SettingsNodeValue {
   const ctx = useContext(SettingsNodeContext)
   const { data: remoteServers = [], isLoading } = useGameServers()
   const servers = useMemo(
-    () => mergeLocalDesktopNode(mergeBackendNode(remoteServers)),
+    () => mergeLocalDesktopNode(remoteServers),
     [remoteServers],
   )
   const [preferredId, setPreferredId] = useState<number | null>(readStoredNodeId)

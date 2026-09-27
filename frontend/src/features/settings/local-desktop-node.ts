@@ -1,7 +1,6 @@
 import { isDesktop } from '@/lib/desktop/api'
 import { getDesktopPlatform } from '@/lib/desktop/platform'
 import type { GameServer } from '@/features/downloads/types'
-import { isBackendNode } from './backend-node'
 
 /** Sentinel id for the Otix desktop app when it is treated as a node. */
 export const LOCAL_DESKTOP_NODE_ID = -1
@@ -52,14 +51,13 @@ export function mergeLocalDesktopNode(servers: GameServer[]): GameServer[] {
 
 export function pickSettingsNode(servers: GameServer[], preferredId: number | null): GameServer | null {
   if (!servers.length) return null
-  const workers = servers.filter((server) => !isLocalDesktopNode(server) && !isBackendNode(server))
+  const workers = servers.filter((server) => !isLocalDesktopNode(server))
   return (
     servers.find((server) => server.id === preferredId) ||
     servers.find((server) => server.isLocalDesktop) ||
     workers.find((server) => server.isActive) ||
     workers.find((server) => server.isOnline) ||
     workers[0] ||
-    servers.find((server) => isBackendNode(server)) ||
     servers[0]
   )
 }

@@ -102,8 +102,6 @@ from apps.library.services.node_connections import (
     import_instances,
     push_shared_connections,
     push_shared_to_servers,
-    read_with_shared,
-    save_store_and_node,
     serialized_store,
     store_all,
 )
@@ -137,11 +135,7 @@ def _resolve_user(request: Request):
 
 
 def _get_server_or_404(request: Request, server_id: int) -> UserGameServer:
-    from apps.library.services.backend_node import backend_server_stub, is_backend_node_id
-
     resolved_user = _resolve_user(request)
-    if is_backend_node_id(server_id):
-        return backend_server_stub(resolved_user)
     server = None
     if resolved_user:
         server = UserGameServer.objects.filter(id=server_id, user=resolved_user).first()
@@ -171,16 +165,13 @@ class GameServerListCreateView(APIView):
     permission_classes = (AllowAny,)
 
     def get(self, request: Request) -> Response:
-        from apps.library.services.backend_node import backend_node_payload
-
         user = _resolve_user(request)
         if user:
             collapse_duplicate_game_servers(user)
             servers = UserGameServer.objects.filter(user=user)
         else:
             servers = UserGameServer.objects.all()
-        payload = [backend_node_payload(user), *UserGameServerSerializer(servers, many=True).data]
-        return Response(payload)
+        return Response(UserGameServerSerializer(servers, many=True).data)
 
     def post(self, request: Request) -> Response:
         user = _resolve_user(request)
@@ -381,10 +372,6 @@ class GameServerDetailView(APIView):
     permission_classes = (AllowAny,)
 
     def _get_server(self, request: Request, server_id: int) -> UserGameServer:
-        from apps.library.services.backend_node import is_backend_node_id
-
-        if is_backend_node_id(server_id):
-            raise NotFound("The Otix backend node cannot be edited or removed.")
         user = _resolve_user(request)
         if user:
             try:
@@ -428,12 +415,8 @@ class GameServerPingView(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request: Request, server_id: int) -> Response:
-        from apps.library.services.backend_node import backend_node_payload, is_backend_node
-
         server = _get_server_or_404(request, server_id)
         result = ping_server_sync(server)
-        if is_backend_node(server):
-            return Response({**result, "server": backend_node_payload(_resolve_user(request))})
         server.refresh_from_db()
         return Response(
             {
@@ -669,8 +652,6 @@ class GameServerExplorerSetPathView(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request: Request, server_id: int) -> Response:
-        from apps.library.services.backend_node import is_backend_node
-
         server = _get_server_or_404(request, server_id)
 
         path = request.data.get("path")
@@ -683,7 +664,7 @@ class GameServerExplorerSetPathView(APIView):
         status_code, data = explorer_set_download_path(
             server, path=path, create_if_missing=create_if_missing, add_as_library=add_as_library
         )
-        if status_code == 200 and not is_backend_node(server):
+        if status_code == 200:
             ping_server_sync(server)
             server.refresh_from_db()
         return Response(data, status=status_code)
@@ -718,14 +699,12 @@ class GameServerUsenetConfigView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = read_with_shared(server.user, "usenet", server, usenet_get_config)
+        status_code, data = usenet_get_config(server)
         return Response(data, status=status_code)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = save_store_and_node(
-            server.user, "usenet", request.data, server, usenet_save_config
-        )
+        status_code, data = usenet_save_config(server, request.data)
         return Response(data, status=status_code)
 
 
@@ -983,14 +962,12 @@ class GameServerRadarrConfigView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = read_with_shared(server.user, "radarr", server, radarr_get_config)
+        status_code, data = radarr_get_config(server)
         return Response(data, status=status_code)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = save_store_and_node(
-            server.user, "radarr", request.data, server, radarr_save_config
-        )
+        status_code, data = radarr_save_config(server, request.data)
         return Response(data, status=status_code)
 
 
@@ -1120,14 +1097,12 @@ class GameServerSonarrConfigView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = read_with_shared(server.user, "sonarr", server, sonarr_get_config)
+        status_code, data = sonarr_get_config(server)
         return Response(data, status=status_code)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = save_store_and_node(
-            server.user, "sonarr", request.data, server, sonarr_save_config
-        )
+        status_code, data = sonarr_save_config(server, request.data)
         return Response(data, status=status_code)
 
 

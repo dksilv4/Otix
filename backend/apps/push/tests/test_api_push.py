@@ -67,6 +67,19 @@ class PushApiTests(TestCase):
         self.assertEqual(sub.p256dh_key, P256DH)
         self.assertEqual(sub.auth_key, AUTH)
 
+    def test_subscribe_upserts_same_endpoint(self) -> None:
+        self.client.post("/api/v1/push/subscribe", SUBSCRIPTION, format="json")
+        refreshed = {**SUBSCRIPTION, "p256dh": "new-public-key", "auth": "new-secret"}
+        response = self.client.post(
+            "/api/v1/push/subscribe", refreshed, format="json"
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(PushSubscription.objects.filter(user=self.user).count(), 1)
+        sub = PushSubscription.objects.get(user=self.user)
+        self.assertEqual(sub.p256dh_key, "new-public-key")
+        self.assertEqual(sub.auth_key, "new-secret")
+
     def test_subscribe_requires_authentication(self) -> None:
         response = self.public.post(
             "/api/v1/push/subscribe", SUBSCRIPTION, format="json"

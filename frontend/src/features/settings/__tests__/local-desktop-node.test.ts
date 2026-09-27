@@ -57,14 +57,13 @@ describe('local desktop node', () => {
     expect(merged[1].id).toBe(4)
   })
 
-  it('prefers the stored node, then this computer, then a worker, then the backend', () => {
+  it('prefers the stored node, then this computer, then a worker, then fallback', () => {
     const local = { ...remote(LOCAL_DESKTOP_NODE_ID), name: 'This PC', isLocalDesktop: true }
-    const backend = { ...remote(-2), name: 'Otix backend', isBackend: true }
     const primary = remote(7, { isActive: true })
     const other = remote(8)
-    expect(pickSettingsNode([local, backend, primary, other], 8)?.id).toBe(8)
-    expect(pickSettingsNode([local, backend, primary, other], null)?.id).toBe(LOCAL_DESKTOP_NODE_ID)
-    expect(pickSettingsNode([backend, primary, other], null)?.id).toBe(7)
-    expect(pickSettingsNode([backend], null)?.id).toBe(-2)
+    expect(pickSettingsNode([local, primary, other], 8)?.id).toBe(8)
+    expect(pickSettingsNode([local, primary, other], null)?.id).toBe(LOCAL_DESKTOP_NODE_ID)
+    expect(pickSettingsNode([primary, other], null)?.id).toBe(7)
+    expect(pickSettingsNode([other], null)?.id).toBe(8)
   })
 })

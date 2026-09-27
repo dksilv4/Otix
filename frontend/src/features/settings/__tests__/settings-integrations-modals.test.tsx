@@ -99,7 +99,9 @@ describe('Settings Integrations Modals Regression Tests', () => {
         providers: [],
       },
     })
-    mockGameServers = []
+    mockGameServers = [
+      { id: 1, name: 'Home Server', primaryUrl: 'http://192.168.1.100:8090', isOnline: true },
+    ]
     mockUsenetConfig = null
     mockRadarrConfig = null
     mockSonarrConfig = null
@@ -139,7 +141,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Connection nodes' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Otix nodes' })).toBeInTheDocument()
     })
     expect(screen.getByRole('heading', { name: 'Accounts' })).toBeInTheDocument()
     expect(document.getElementById('accounts')).toBeTruthy()
@@ -148,7 +150,17 @@ describe('Settings Integrations Modals Regression Tests', () => {
     expect(document.getElementById('accounts')!.contains(screen.getByText('Steam'))).toBe(true)
   })
 
-  it('opens SABnzbd modal via modal framework even when no server is connected', async () => {
+  it('renders no nodes connected state when no worker nodes exist', async () => {
+    mockGameServers = []
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Otix nodes' })).toBeInTheDocument()
+      expect(screen.getByText('No nodes connected')).toBeInTheDocument()
+    })
+  })
+
+  it('opens SABnzbd modal via modal framework for connected node', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -163,11 +175,11 @@ describe('Settings Integrations Modals Regression Tests', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'SABnzbd' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Otix backend/i)).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByText(/On Home Server/i)).toBeInTheDocument()
     })
   })
 
-  it('opens Prowlarr modal via modal framework even when no server is connected', async () => {
+  it('opens Prowlarr modal via modal framework for connected node', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -181,11 +193,11 @@ describe('Settings Integrations Modals Regression Tests', () => {
 
     await waitFor(() => {
       expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Prowlarr' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Otix backend/i)).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByText(/On Home Server/i)).toBeInTheDocument()
     })
   })
 
-  it('opens Radarr modal via modal framework even when no server is connected', async () => {
+  it('opens Radarr modal via modal framework for connected node', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -199,11 +211,11 @@ describe('Settings Integrations Modals Regression Tests', () => {
 
     await waitFor(() => {
       expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Radarr' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Otix backend/i)).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByText(/On Home Server/i)).toBeInTheDocument()
     })
   })
 
-  it('opens Sonarr modal via modal framework even when no server is connected', async () => {
+  it('opens Sonarr modal via modal framework for connected node', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -217,7 +229,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
 
     await waitFor(() => {
       expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Sonarr' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Otix backend/i)).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByText(/On Home Server/i)).toBeInTheDocument()
     })
   })
 
@@ -374,31 +386,20 @@ describe('Settings Integrations Modals Regression Tests', () => {
     })
   })
 
-  it('disables Epic Connect and shows a hint when no Otix Server is online', async () => {
-    mockGameServers = []
+  it('shows Epic Games notice card redirecting to Node Settings', async () => {
     renderPage()
 
     await waitFor(() => {
       expect(screen.getByText('Epic Games')).toBeInTheDocument()
     })
 
-    const card = screen.getByText('Epic Games').closest('.rounded-2xl')!
-    expect(within(card).getByRole('button', { name: /connect/i })).toBeDisabled()
-    expect(within(card).getByText('Connect an Otix Server to link Epic.')).toBeInTheDocument()
-  })
-
-  it('enables Epic Connect when an Otix Server is online', async () => {
-    mockGameServers = [
-      { id: 1, name: 'Homelab', primaryUrl: 'http://192.168.1.10:8000', isOnline: true },
-    ]
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Epic Games')).toBeInTheDocument()
-    })
-
-    const card = screen.getByText('Epic Games').closest('.rounded-2xl')!
-    expect(within(card).getByRole('button', { name: /connect/i })).toBeEnabled()
+    expect(
+      screen.getByText('Epic Games requires a connected Otix Node and is configured in Node Settings.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /open node settings/i })).toHaveAttribute(
+      'href',
+      '/settings/nodes',
+    )
   })
 })
 

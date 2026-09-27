@@ -36,7 +36,6 @@ import { useToast } from '@ui/molecules/toast'
 import { Link } from '@tanstack/react-router'
 import { ManageDownloadersModal } from '@/features/downloads/molecules/manage-downloaders-modal'
 import { useSettingsNode } from '../context/settings-node-context'
-import { isBackendNode } from '../backend-node'
 import { isLocalDesktopNode } from '../local-desktop-node'
 import { nodeSettingsNavigateOptions } from '../node-settings'
 import { SectionHeader } from '../components/molecules/settings-section-header'
@@ -200,7 +199,7 @@ export function SettingsDownloadsPage({
     try {
       await Promise.all(
         gameServers
-          .filter((server) => !isLocalDesktopNode(server) && !isBackendNode(server))
+          .filter((server) => !isLocalDesktopNode(server))
           .map((server) =>
           updateServerMutation.mutateAsync({
             id: server.id,
@@ -701,8 +700,7 @@ export function SettingsDownloadsPage({
           {gameServers.length > 0 ? (
             gameServers.map((server) => {
               const local = isLocalDesktopNode(server)
-              const backend = isBackendNode(server)
-              const reserved = local || backend
+              const reserved = local
               return (
               <div
                 key={server.id}
@@ -725,11 +723,6 @@ export function SettingsDownloadsPage({
                         {local && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400">
                             Otix app
-                          </span>
-                        )}
-                        {backend && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sky-500/10 text-sky-400">
-                            Backend
                           </span>
                         )}
                         {server.isActive && (
@@ -759,9 +752,7 @@ export function SettingsDownloadsPage({
                         <span className={cn('truncate inline-flex items-center gap-1', reserved ? 'text-white/50' : 'font-mono text-white/60')}>
                           {local
                             ? 'Otix app on this computer'
-                            : backend
-                              ? 'Account settings live on the Otix backend'
-                              : server.primaryUrl}
+                            : server.primaryUrl}
                           {probeResults[server.id]?.remote_accessible && (
                             <span className="inline-flex items-center text-emerald-400" title="Accessible from the Internet">
                               <Globe size={11} />

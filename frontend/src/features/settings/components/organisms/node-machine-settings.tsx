@@ -5,7 +5,6 @@ import { useToast } from '@ui/molecules/toast'
 import type { DesktopSettingsData } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
 import type { GameServer } from '@/features/downloads/types'
-import { isBackendNode } from '../../backend-node'
 import { isLocalDesktopNode } from '../../local-desktop-node'
 import { SettingsCard } from '../molecules/settings-card'
 import { SettingsRow } from '../molecules/settings-row'
@@ -26,7 +25,9 @@ function readStoredSettings(serverId?: number): DesktopSettingsData {
     const key = serverId != null && serverId !== -1 ? `${STORAGE_KEY}:node:${serverId}` : STORAGE_KEY
     const raw = localStorage.getItem(key)
     if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
-  } catch {}
+  } catch {
+    // ignore
+  }
   return DEFAULT_SETTINGS
 }
 
@@ -54,7 +55,6 @@ const ROWS = [
 export function NodeMachineSettings({ server }: { server: GameServer }) {
   const { toast } = useToast()
   const managingLocal = isLocalDesktopNode(server)
-  const managingBackend = isBackendNode(server)
   const storageKey = managingLocal ? STORAGE_KEY : `${STORAGE_KEY}:node:${server.id}`
   const [settings, setSettings] = useState<DesktopSettingsData>(() => readStoredSettings(server.id))
   const [loading, setLoading] = useState(true)
@@ -100,7 +100,11 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
           setSupported(fetchedSettings.supported ?? (nextPlatform === 'windows' || nextPlatform === 'linux'))
           const mapped = mapNodeSettings(fetchedSettings)
           setSettings(mapped)
-          try { localStorage.setItem(storageKey, JSON.stringify(mapped)) } catch {}
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(mapped))
+          } catch {
+            // ignore storage quota error
+          }
         }
       } catch {
         if (!cancelled) {
@@ -123,7 +127,11 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
     setSaving(key)
     const next = { ...settings, [key]: checked }
     setSettings(next)
-    try { localStorage.setItem(storageKey, JSON.stringify(next)) } catch {}
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(next))
+    } catch {
+      // ignore storage quota error
+    }
 
     if (managingLocal) {
       try {
@@ -172,20 +180,6 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
       setSaving(null)
     }
   }, [api, managingLocal, platform, server.id, server.name, settings, supported, toast])
-
-  if (managingBackend) {
-    return (
-      <SettingsCard>
-        <SectionHeader
-          title="Node machine"
-          description="Tray and autostart apply to worker machines and the Otix app, not the backend node."
-        />
-        <p className="text-xs text-white/50 leading-relaxed">
-          Use Paths, Organize, and Downloaders on this node to keep account-wide defaults. Connect a worker when you need disk scans or local downloaders.
-        </p>
-      </SettingsCard>
-    )
-  }
 
   return (
     <SettingsCard>

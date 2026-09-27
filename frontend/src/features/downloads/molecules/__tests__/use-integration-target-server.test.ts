@@ -28,20 +28,20 @@ describe('connection target nodes', () => {
   const desktop = node(-1, { name: 'This computer', isLocalDesktop: true })
   const worker = node(4, { name: 'Home NAS' })
 
-  it('includes the backend and excludes the local desktop app', () => {
+  it('filters to remote worker nodes only, excluding desktop and negative ids', () => {
     const remotes = remoteConnectionNodes([desktop, backend, worker])
-    expect(remotes.map((server) => server.id)).toEqual([-2, 4])
+    expect(remotes.map((server) => server.id)).toEqual([4])
     expect(workerConnectionNodes([desktop, backend, worker]).map((server) => server.id)).toEqual([4])
   })
 
-  it('prefers a worker over the always-online backend', () => {
-    expect(pickConnectionNode([backend, worker])?.id).toBe(4)
-    expect(pickConnectionNode([backend])?.id).toBe(-2)
-    expect(pickConnectionNode([backend, worker], -2)?.id).toBe(-2)
+  it('prefers preferred node or first online worker', () => {
+    const worker2 = node(5, { name: 'Backup NAS', isOnline: true })
+    expect(pickConnectionNode([worker, worker2])?.id).toBe(4)
+    expect(pickConnectionNode([worker, worker2], 5)?.id).toBe(5)
   })
 
   it('labels the selected node rather than claiming a sync fan-out', () => {
-    expect(connectionSyncLabel([backend, worker], 'Home NAS')).toBe('On Home NAS')
+    expect(connectionSyncLabel([worker], 'Home NAS')).toBe('On Home NAS')
     expect(connectionSyncLabel([])).toBe('Select an Otix node')
   })
 })

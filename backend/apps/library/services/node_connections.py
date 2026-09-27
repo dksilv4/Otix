@@ -244,14 +244,9 @@ def save_store_and_node(
     primary: UserGameServer | None,
     save_fn: SaveFn | None,
 ) -> tuple[int, dict | list]:
-    """Write backend-node settings to Django, or worker settings to that Otix node."""
-    from apps.library.services.backend_node import is_backend_node
-
-    if primary is None or is_backend_node(primary) or save_fn is None:
-        store_connection(user, kind, payload)
-        if primary is None or save_fn is None:
-            return 200, {"status": "ok", "stored": True}
-        return save_fn(primary, _as_dict(payload))
+    """Write settings to that Otix node."""
+    if primary is None or save_fn is None:
+        return 400, {"error": "Target node not specified"}
     return save_fn(primary, _as_dict(payload))
 
 
@@ -261,11 +256,7 @@ def read_with_shared(
     primary: UserGameServer,
     get_fn: Callable[[UserGameServer], tuple[int, dict | list]],
 ) -> tuple[int, dict | list]:
-    """Read this node's config. Worker nodes stay local; the backend node uses the account store."""
-    from apps.library.services.backend_node import is_backend_node
-
-    if is_backend_node(primary):
-        return get_fn(primary)
+    """Read this node's config."""
     return get_fn(primary)
 
 

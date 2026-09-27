@@ -3,8 +3,8 @@ and the ``apps.social.tasks`` wrappers).
 
 Covers the fan-out + dedupe, the ``studio_release`` preference gate, the
 announced/available split, the recent-release window and the beat sweep's
-followed-and-released filter. The tasks are called directly (no broker) with the
-web-push sender patched out.
+followed-and-released filter. The tasks are called directly (no broker); web-push
+is asserted via the ``Notification`` post_save signal path.
 """
 
 from __future__ import annotations
@@ -166,24 +166,24 @@ class ReleaseTaskTests(TestCase):
         InvolvedCompany.objects.create(media_item=media, company=self.company)
         return media
 
-    @mock.patch("apps.social.tasks.send_notification")
+    @mock.patch("apps.social.signals.send_notification")
     def test_task_notifies_recent_title_and_pushes(self, send) -> None:
         media = self._media(timezone.localdate() + timedelta(days=20), "upcoming")
-        created = release_notify_task(media.pk)
+        with self.captureOnCommitCallbacks(execute=True):
+            created = release_notify_task(media.pk)
         self.assertEqual(created, 1)
         send.assert_called_once()
         self.assertEqual(Notification.objects.get().metadata_json["kind"], "announced")
 
-    @mock.patch("apps.social.tasks.send_notification")
-    def test_task_skips_stale_title(self, send) -> None:
+    def test_task_skips_stale_title(self) -> None:
         media = self._media(timezone.localdate() - timedelta(days=400), "stale")
         self.assertEqual(release_notify_task(media.pk), 0)
-        send.assert_not_called()
 
-    @mock.patch("apps.social.tasks.send_notification")
+    @mock.patch("apps.social.signals.send_notification")
     def test_transition_task_sends_available(self, send) -> None:
         self._media(timezone.localdate(), "today")
-        created = notify_release_transitions_task()
+        with self.captureOnCommitCallbacks(execute=True):
+            created = notify_release_transitions_task()
         self.assertEqual(created, 1)
         send.assert_called_once()
         self.assertEqual(Notification.objects.get().metadata_json["kind"], "available")

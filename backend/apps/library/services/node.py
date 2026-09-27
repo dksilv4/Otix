@@ -325,10 +325,6 @@ def claim_node_by_pin(
 
 def probe_node_reachability(server: UserGameServer) -> dict:
     """Plex-style remote connectivity probe: test if the node is accessible from WAN."""
-    from apps.library.services.backend_node import is_backend_node
-
-    if is_backend_node(server):
-        return {"reachable": True, "latency_ms": 0}
 
     probe_target = (server.remote_url or "").strip().rstrip("/")
     if not probe_target:
@@ -491,11 +487,6 @@ def _mark_offline(server: UserGameServer, error: str) -> dict:
 
 def ping_node_sync(server: UserNode) -> dict:
     """Probe node /api/v1/status and update node model state."""
-    from apps.library.services.backend_node import is_backend_node
-
-    if is_backend_node(server):
-        return {"online": True, "latency_ms": 0}
-
     targets: list[str] = []
     if getattr(server, "is_local", False):
         if server.local_url:
@@ -574,11 +565,6 @@ def server_proxy_request(
     timeout: float = 6.0,
 ) -> tuple[int, dict | list]:
     """Generic helper to proxy requests to connected otix-server node."""
-    from apps.library.services.backend_node import handle_backend_proxy, is_backend_node
-
-    if is_backend_node(server):
-        return handle_backend_proxy(server.user, method, path, json, params)
-
     targets = contact_urls(server.primary_url)
     if not targets:
         return 400, {"error": "Server URL not configured"}

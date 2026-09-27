@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.integrations import services as integrations_services
+from apps.library.models import UserGameServer
 from apps.library.services.game_server import (
     NO_EPIC_NODE,
     pick_online_game_server,
@@ -27,7 +28,11 @@ class EpicStatusView(APIView):
     """GET /integrations/epic/status"""
 
     def get(self, request):
-        server = pick_online_game_server(request.user)
+        node_id = request.query_params.get("node_id") or request.query_params.get("server_id")
+        if node_id:
+            server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
+        else:
+            server = pick_online_game_server(request.user)
         if server is None:
             return Response({"detail": NO_EPIC_NODE}, status=400)
         status_code, data = proxy_epic_status(server)
@@ -40,8 +45,17 @@ class EpicLibraryScanView(APIView):
     """POST /integrations/epic/scan — capture the user's Epic library."""
 
     def post(self, request):
+        node_id = (
+            request.data.get("node_id")
+            or request.data.get("server_id")
+            or request.query_params.get("node_id")
+            or request.query_params.get("server_id")
+        )
+        server = None
+        if node_id:
+            server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
         try:
-            result = integrations_services.scan_epic_library(request.user)
+            result = integrations_services.scan_epic_library(request.user, server=server)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
         except Exception:

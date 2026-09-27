@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.library.models import UserGameServer, UserNodeConnection
+from apps.library.models import UserGameServer
 from apps.media.models import MediaItem
 
 User = get_user_model()
@@ -24,11 +24,7 @@ class GameServersApiTests(TestCase):
         response = self.client.get("/api/v1/library/servers")
         self.assertEqual(response.status_code, 200)
         rows = response.json()
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["id"], -2)
-        self.assertEqual(rows[0]["name"], "Otix backend")
-        self.assertTrue(rows[0]["is_backend"])
-        self.assertTrue(rows[0]["is_online"])
+        self.assertEqual(len(rows), 0)
 
     @mock.patch("apps.library.services.game_server.httpx.Client")
     def test_create_and_list_server(self, mock_client_cls):
@@ -58,13 +54,12 @@ class GameServersApiTests(TestCase):
         self.assertTrue(data["is_online"])
         self.assertEqual(data["total_files"], 12)
 
-        # List servers includes the Otix backend plus the new worker
+        # List servers includes the new worker
         list_res = self.client.get("/api/v1/library/servers")
         self.assertEqual(list_res.status_code, 200)
         rows = list_res.json()
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0]["id"], -2)
-        self.assertEqual(rows[1]["name"], "Home NAS")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["name"], "Home NAS")
 
     @mock.patch("apps.library.views.nodes.httpx.Client")
     @mock.patch("apps.library.services.node.httpx.Client")
@@ -140,9 +135,8 @@ class GameServersApiTests(TestCase):
         list_res = self.client.get("/api/v1/library/servers")
         self.assertEqual(list_res.status_code, 200)
         rows = list_res.json()
-        workers = [row for row in rows if not row.get("is_backend")]
-        self.assertEqual(len(workers), 1)
-        self.assertEqual(workers[0]["name"], "DK Game Storage Server")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["name"], "DK Game Storage Server")
         self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 1)
 
     def test_list_does_not_collapse_distinct_servers(self):
@@ -161,8 +155,7 @@ class GameServersApiTests(TestCase):
         list_res = self.client.get("/api/v1/library/servers")
         self.assertEqual(list_res.status_code, 200)
         rows = list_res.json()
-        workers = [row for row in rows if not row.get("is_backend")]
-        self.assertEqual(len(workers), 2)
+        self.assertEqual(len(rows), 2)
         self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 2)
 
     @mock.patch("apps.library.services.game_server.ping_server_sync")
@@ -768,15 +761,15 @@ class GameServersApiTests(TestCase):
         self.assertEqual(res.status_code, 200)
 
 
-class BackendNodeApiTests(TestCase):
+class NonExistentNodeApiTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
-            username="backend_node", email="backend@example.com", password="password123"
+            username="unregistered_user", email="user@example.com", password="password123"
         )
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
-    def test_backend_node_cannot_be_patched_or_deleted(self):
+    def test_nonexistent_node_cannot_be_patched_or_deleted(self):
         patch_res = self.client.patch(
             "/api/v1/library/servers/-2",
             {"name": "Renamed"},
@@ -786,96 +779,13 @@ class BackendNodeApiTests(TestCase):
         del_res = self.client.delete("/api/v1/library/servers/-2")
         self.assertEqual(del_res.status_code, 404)
 
-    def test_backend_node_stores_connections_libraries_and_organize(self):
-        usenet = self.client.post(
-            "/api/v1/library/servers/-2/usenet/config",
-            {"sabnzbd": {"host": "127.0.0.1", "port": 8080, "api_key": "sab-secret"}},
-            format="json",
-        )
-        self.assertEqual(usenet.status_code, 200)
-
-        stored = UserNodeConnection.objects.get(user=self.user)
-        self.assertEqual(stored.usenet["sabnzbd"]["host"], "127.0.0.1")
-        self.assertEqual(stored.usenet["sabnzbd"]["api_key"], "sab-secret")
-
-        fetched = self.client.get("/api/v1/library/servers/-2/usenet/config")
-        self.assertEqual(fetched.status_code, 200)
-        self.assertEqual(fetched.json()["sabnzbd"]["host"], "127.0.0.1")
-        self.assertEqual(fetched.json()["sabnzbd"]["api_key"], "***")
-
-        libraries = self.client.put(
-            "/api/v1/library/servers/-2/libraries",
-            {"libraries": [{"name": "Games", "path": "/data/games", "kind": "game"}]},
-            format="json",
-        )
-        self.assertEqual(libraries.status_code, 200)
-        listed = self.client.get("/api/v1/library/servers/-2/libraries")
-        self.assertEqual(listed.json()[0]["path"], "/data/games")
-
-        organize = self.client.post(
-            "/api/v1/library/servers/-2/organize",
-            {"autoOrganizeEnabled": True, "isoDownloadPath": "/data/isos"},
-            format="json",
-        )
-        self.assertEqual(organize.status_code, 200)
-        current = self.client.get("/api/v1/library/servers/-2/organize")
-        body = current.json()
-        self.assertTrue(body.get("autoOrganizeEnabled") or body.get("auto_organize_enabled"))
-        self.assertEqual(body.get("isoDownloadPath") or body.get("iso_download_path"), "/data/isos")
-
-        desktop = self.client.post(
-            "/api/v1/library/servers/-2/desktop",
-            {"gamesDownloadPath": "/data/downloads"},
-            format="json",
-        )
-        self.assertEqual(desktop.status_code, 200)
-        self.assertEqual(desktop.json().get("gamesDownloadPath") or desktop.json().get("games_download_path"), "/data/downloads")
-
-        tray = self.client.post(
-            "/api/v1/library/servers/-2/desktop",
-            {"launchOnStartup": True},
-            format="json",
-        )
-        self.assertEqual(tray.status_code, 400)
-
-    def test_backend_node_rejects_worker_only_actions(self):
-        scan = self.client.post("/api/v1/library/servers/-2/scan")
-        self.assertEqual(scan.status_code, 400)
-        explore = self.client.get("/api/v1/library/servers/-2/explorer")
-        self.assertEqual(explore.status_code, 400)
-        ping = self.client.post("/api/v1/library/servers/-2/ping")
-        self.assertEqual(ping.status_code, 200)
-        self.assertTrue(ping.json()["online"])
-        self.assertEqual(ping.json()["server"]["id"], -2)
-
-    def test_backend_node_arr_and_usenet_endpoints(self):
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/usenet/queue").status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/prowlarr/indexers").status_code, 200)
-        self.assertEqual(self.client.post("/api/v1/library/servers/-2/prowlarr/sync").status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/radarr/movies").status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/radarr/queue").status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/radarr/rootfolders").status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/radarr/qualityprofiles").status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/sonarr/series").status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/sonarr/queue").status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/sonarr/rootfolders").status_code, 200)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/sonarr/qualityprofiles").status_code, 200)
-        # Test endpoints return 200 with result payload
-        test_radarr = self.client.post(
-            "/api/v1/library/servers/-2/radarr/test",
-            {"host": "127.0.0.1", "port": 7878, "api_key": "test"},
-            format="json",
-        )
-        self.assertEqual(test_radarr.status_code, 200)
-        self.assertIn("ok", test_radarr.json())
-
-        test_sab = self.client.post(
-            "/api/v1/library/servers/-2/usenet/test-sabnzbd",
-            {"host": "127.0.0.1", "port": 8080, "api_key": "test"},
-            format="json",
-        )
-        self.assertEqual(test_sab.status_code, 200)
-        self.assertIn("ok", test_sab.json())
+    def test_nonexistent_node_rejects_requests_with_404(self):
+        self.assertEqual(self.client.post("/api/v1/library/servers/-2/ping").status_code, 404)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/explorer").status_code, 404)
+        self.assertEqual(self.client.post("/api/v1/library/servers/-2/scan").status_code, 404)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/usenet/config").status_code, 404)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/radarr/config").status_code, 404)
+        self.assertEqual(self.client.get("/api/v1/library/servers/-2/sonarr/config").status_code, 404)
 
     @mock.patch("apps.library.services.node.httpx.Client")
     def test_create_node_unreachable_returns_400_and_does_not_commit(self, mock_client_cls):
@@ -916,6 +826,12 @@ class BackendNodeApiTests(TestCase):
         self.assertTrue(data["is_local"])
 
     def test_nodes_endpoint_get_lists_nodes(self):
+        UserGameServer.objects.create(
+            user=self.user,
+            name="My Node",
+            local_url="http://127.0.0.1:8090",
+            auth_token="token123",
+        )
         res = self.client.get("/api/v1/library/nodes")
         self.assertEqual(res.status_code, 200)
-        self.assertGreaterEqual(len(res.json()), 1)
+        self.assertEqual(len(res.json()), 1)
