@@ -8,7 +8,7 @@ import { PanelProvider } from "@activity/providers/panel-context"
 import { NotificationsProvider } from "@/features/notifications/providers/notifications-provider"
 import { CatalogStreamProvider } from "@/features/media/providers/catalog-stream-provider"
 import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permissions"
-import { useModal } from "@/lib/modals"
+import { useModal, ModalRoot } from "@/lib/modals"
 import { DecideWatchHost } from "@/features/discover/components/organisms/decide-watch-host"
 
 const ActivityModule = lazy(() =>
@@ -99,6 +99,7 @@ export function RootLayout() {
       </PanelProvider>
       <CommandPaletteMount />
       <DecideWatchHost />
+      <ModalRoot />
     </div>
   )
 }

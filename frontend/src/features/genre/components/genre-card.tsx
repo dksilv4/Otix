@@ -19,14 +19,31 @@ import {
   Skull,
   Eye,
   Tv,
-  ArrowRight,
+  Newspaper,
+  Camera,
+  Landmark,
+  Mic,
+  Brain,
+  Target,
+  Cpu,
+  Puzzle,
+  Trophy,
+  Gauge,
+  Palette,
+  Joystick,
+  Layers,
+  Globe,
+  Radio,
+  Zap,
+  Disc,
+  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { DkImage } from '@ui/atoms/image'
 import { cn } from '@/lib/utils'
 import type { GenreOption } from '../types'
 
-interface GenreVisualConfig {
+export interface GenreVisualConfig {
   icon: LucideIcon
   image: string
   accentColor: string
@@ -34,6 +51,7 @@ interface GenreVisualConfig {
 }
 
 export const GENRE_VISUAL_MAP: Record<string, GenreVisualConfig> = {
+  // Movies & Universal
   action: {
     icon: Flame,
     image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&auto=format&fit=crop&q=80',
@@ -154,6 +172,58 @@ export const GENRE_VISUAL_MAP: Record<string, GenreVisualConfig> = {
     accentColor: '#d97706',
     gradient: 'from-amber-950/90 via-yellow-950/50 to-transparent',
   },
+
+  // TV Specific
+  'action-adventure': {
+    icon: Flame,
+    image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#f97316',
+    gradient: 'from-orange-950/90 via-emerald-950/40 to-transparent',
+  },
+  'sci-fi-fantasy': {
+    icon: Wand2,
+    image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#06b6d4',
+    gradient: 'from-cyan-950/85 via-purple-950/45 to-transparent',
+  },
+  kids: {
+    icon: Baby,
+    image: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#06b6d4',
+    gradient: 'from-cyan-950/80 via-amber-950/40 to-transparent',
+  },
+  news: {
+    icon: Newspaper,
+    image: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#38bdf8',
+    gradient: 'from-sky-950/85 via-blue-950/45 to-transparent',
+  },
+  reality: {
+    icon: Camera,
+    image: 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#d946ef',
+    gradient: 'from-fuchsia-950/85 via-pink-950/40 to-transparent',
+  },
+  soap: {
+    icon: Heart,
+    image: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#ec4899',
+    gradient: 'from-pink-950/90 via-rose-950/50 to-transparent',
+  },
+  talk: {
+    icon: Mic,
+    image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#8b5cf6',
+    gradient: 'from-violet-950/85 via-indigo-950/45 to-transparent',
+  },
+  'war-politics': {
+    icon: Landmark,
+    image: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#64748b',
+    gradient: 'from-slate-950/90 via-neutral-950/60 to-transparent',
+  },
+
+  // Games Specific
   'role-playing-rpg': {
     icon: Gamepad2,
     image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80',
@@ -167,18 +237,195 @@ export const GENRE_VISUAL_MAP: Record<string, GenreVisualConfig> = {
     gradient: 'from-purple-950/80 via-violet-950/40 to-transparent',
   },
   shooter: {
-    icon: Swords,
+    icon: Target,
     image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80',
     accentColor: '#ea580c',
     gradient: 'from-orange-950/90 via-red-950/50 to-transparent',
   },
+  strategy: {
+    icon: Brain,
+    image: 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#3b82f6',
+    gradient: 'from-blue-950/85 via-indigo-950/45 to-transparent',
+  },
+  simulation: {
+    icon: Cpu,
+    image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#0ea5e9',
+    gradient: 'from-cyan-950/85 via-teal-950/40 to-transparent',
+  },
+  puzzle: {
+    icon: Puzzle,
+    image: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#10b981',
+    gradient: 'from-emerald-950/85 via-teal-950/45 to-transparent',
+  },
+  sports: {
+    icon: Trophy,
+    image: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#eab308',
+    gradient: 'from-amber-950/85 via-yellow-950/45 to-transparent',
+  },
+  racing: {
+    icon: Gauge,
+    image: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#f97316',
+    gradient: 'from-orange-950/90 via-amber-950/50 to-transparent',
+  },
+  fighting: {
+    icon: Swords,
+    image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#ef4444',
+    gradient: 'from-red-950/90 via-rose-950/50 to-transparent',
+  },
+  indie: {
+    icon: Palette,
+    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#a855f7',
+    gradient: 'from-purple-950/85 via-fuchsia-950/45 to-transparent',
+  },
+  arcade: {
+    icon: Joystick,
+    image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#06b6d4',
+    gradient: 'from-cyan-950/90 via-pink-950/50 to-transparent',
+  },
+  platformer: {
+    icon: Layers,
+    image: 'https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#84cc16',
+    gradient: 'from-lime-950/85 via-emerald-950/45 to-transparent',
+  },
+  casual: {
+    icon: Smile,
+    image: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#facc15',
+    gradient: 'from-yellow-950/85 via-amber-950/40 to-transparent',
+  },
+  'open-world': {
+    icon: Globe,
+    image: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#14b8a6',
+    gradient: 'from-teal-950/85 via-emerald-950/45 to-transparent',
+  },
+  survival: {
+    icon: ShieldAlert,
+    image: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#b45309',
+    gradient: 'from-amber-950/90 via-stone-950/60 to-transparent',
+  },
+  mmo: {
+    icon: Users,
+    image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#6366f1',
+    gradient: 'from-indigo-950/85 via-cyan-950/45 to-transparent',
+  },
+
+  // Music Specific
+  pop: {
+    icon: Sparkles,
+    image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#ec4899',
+    gradient: 'from-pink-950/85 via-fuchsia-950/45 to-transparent',
+  },
+  rock: {
+    icon: Flame,
+    image: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#ef4444',
+    gradient: 'from-red-950/90 via-amber-950/50 to-transparent',
+  },
+  electronic: {
+    icon: Zap,
+    image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#06b6d4',
+    gradient: 'from-cyan-950/90 via-purple-950/50 to-transparent',
+  },
+  'hip-hop': {
+    icon: Disc,
+    image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#f59e0b',
+    gradient: 'from-amber-950/90 via-orange-950/50 to-transparent',
+  },
+  jazz: {
+    icon: Music,
+    image: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#d97706',
+    gradient: 'from-amber-950/90 via-yellow-950/50 to-transparent',
+  },
+  classical: {
+    icon: Music,
+    image: 'https://images.unsplash.com/photo-1520523839898-507127027581?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#38bdf8',
+    gradient: 'from-sky-950/85 via-indigo-950/45 to-transparent',
+  },
+  metal: {
+    icon: Skull,
+    image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#b91c1c',
+    gradient: 'from-red-950/95 via-neutral-950/70 to-transparent',
+  },
+  country: {
+    icon: Radio,
+    image: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#ca8a04',
+    gradient: 'from-yellow-950/90 via-stone-950/50 to-transparent',
+  },
+  soundtrack: {
+    icon: Film,
+    image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&auto=format&fit=crop&q=80',
+    accentColor: '#818cf8',
+    gradient: 'from-indigo-950/85 via-sky-950/45 to-transparent',
+  },
 }
 
-const DEFAULT_VISUAL: GenreVisualConfig = {
+export const DEFAULT_VISUAL: GenreVisualConfig = {
   icon: Film,
   image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&auto=format&fit=crop&q=80',
   accentColor: '#a1a1aa',
   gradient: 'from-neutral-950/90 via-neutral-900/50 to-transparent',
+}
+
+/**
+ * Normalizes input slugs or genre names and resolves the matching visual config.
+ * Handles ampersands, punctuation, underscores, and compound terms gracefully.
+ */
+export function getGenreVisual(slugOrName?: string | null): GenreVisualConfig {
+  if (!slugOrName) return DEFAULT_VISUAL
+
+  const raw = slugOrName.toLowerCase().trim()
+  if (GENRE_VISUAL_MAP[raw]) {
+    return GENRE_VISUAL_MAP[raw]
+  }
+
+  const normalized = raw
+    .replace(/&+/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  if (GENRE_VISUAL_MAP[normalized]) {
+    return GENRE_VISUAL_MAP[normalized]
+  }
+
+  const withoutAnd = normalized.replace(/-and-/g, '-')
+  if (GENRE_VISUAL_MAP[withoutAnd]) {
+    return GENRE_VISUAL_MAP[withoutAnd]
+  }
+
+  // Prefix or partial match for compound or localized genre names
+  for (const [key, config] of Object.entries(GENRE_VISUAL_MAP)) {
+    if (normalized.startsWith(key) || key.startsWith(normalized)) {
+      return config
+    }
+  }
+
+  return DEFAULT_VISUAL
+}
+
+const MEDIA_TYPE_LABELS: Record<string, string> = {
+  movie: 'Movies',
+  show: 'TV Shows',
+  game: 'Games',
+  music: 'Music',
 }
 
 export interface GenreCardProps {
@@ -194,9 +441,9 @@ export const GenreCard = memo(function GenreCard({
   className,
   priority = false,
 }: GenreCardProps) {
-  const slugKey = genre.slug?.toLowerCase() || ''
-  const nameKey = genre.name?.toLowerCase().replace(/\s+/g, '-') || ''
-  const visual = GENRE_VISUAL_MAP[slugKey] || GENRE_VISUAL_MAP[nameKey] || DEFAULT_VISUAL
+  const visual = getGenreVisual(genre.slug) !== DEFAULT_VISUAL
+    ? getGenreVisual(genre.slug)
+    : getGenreVisual(genre.name)
   const Icon = visual.icon
 
   return (
@@ -204,11 +451,24 @@ export const GenreCard = memo(function GenreCard({
       to="/genre/$genreId"
       params={{ genreId: genre.slug }}
       search={mediaType ? { type: mediaType } : undefined}
+      style={{
+        '--genre-accent': visual.accentColor,
+        '--genre-glow': `${visual.accentColor}33`,
+        '--genre-border': `${visual.accentColor}66`,
+      } as React.CSSProperties}
       className={cn(
-        'group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/[0.08] hover:border-white/25 transition-all duration-300 shadow-md hover:shadow-2xl select-none',
-        'aspect-[16/10] min-h-[170px]',
+        'group relative flex flex-col justify-between overflow-hidden rounded-2xl select-none p-4',
+        'aspect-[16/10] min-h-[175px]',
+        'border border-white/[0.08] hover:border-[var(--genre-border)]',
+        'bg-neutral-950/80 backdrop-blur-md',
+        'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.5)]',
+        'hover:shadow-[0_16px_36px_-6px_rgba(0,0,0,0.7),0_0_24px_0_var(--genre-glow)]',
+        'hover:-translate-y-1.5 active:scale-[0.98]',
+        'transition-all duration-300 ease-out',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         className,
       )}
+      aria-label={`Explore ${genre.name} genre`}
     >
       {/* Background Image with smooth zoom */}
       <div className="absolute inset-0 overflow-hidden">
@@ -221,44 +481,53 @@ export const GenreCard = memo(function GenreCard({
       </div>
 
       {/* Multi-stage dark vignette & genre tint gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/55 to-black/25" />
       <div
         className={cn(
-          'absolute inset-0 bg-gradient-to-br opacity-50 group-hover:opacity-75 transition-opacity duration-300',
+          'absolute inset-0 bg-gradient-to-br opacity-50 group-hover:opacity-75 transition-opacity duration-500',
           visual.gradient,
         )}
       />
 
-      {/* Background Icon Watermark */}
-      <Icon className="absolute -right-3 -bottom-3 h-28 w-28 text-white/[0.06] pointer-events-none transition-transform duration-500 group-hover:scale-125 group-hover:rotate-6" />
+      {/* Subtle diagonal glass sheen on hover */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.02] to-white/[0.07] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-      {/* Top Header Strip: Icon Badge */}
-      <div className="relative z-10 p-4 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-white/90 bg-black/40 backdrop-blur-md border border-white/[0.12] shadow-sm">
-          <Icon className="h-3.5 w-3.5" style={{ color: visual.accentColor }} />
-          <span className="text-[11px] font-medium tracking-wide">Category</span>
-        </div>
+      {/* Background Icon Watermark — kept 1rem inside border with soft mask fade on hover */}
+      <div className="absolute right-4 bottom-4 pointer-events-none overflow-hidden select-none [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_90%)]">
+        <Icon className="h-20 w-20 text-white/[0.06] group-hover:text-[var(--genre-accent)] transition-all duration-500 ease-out transform group-hover:scale-110 group-hover:opacity-25" />
+      </div>
 
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.08] border border-white/[0.1] text-white/70 group-hover:text-white group-hover:bg-white/[0.18] transition-all duration-200">
-          <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+      {/* Top Header Strip: Category/Media Type Pill */}
+      <div className="relative z-10 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white/90 bg-black/50 backdrop-blur-md border border-white/[0.12] group-hover:border-white/[0.22] shadow-sm transition-colors duration-300">
+          <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: visual.accentColor }} />
+          <span className="text-[11px] font-medium tracking-wide">
+            {mediaType ? MEDIA_TYPE_LABELS[mediaType] || mediaType : 'Category'}
+          </span>
         </div>
       </div>
 
-      {/* Bottom Content: Big Bold Genre Name & Action Prompt */}
-      <div className="relative z-10 p-4 pt-0 space-y-1">
-        <h3 className="text-xl sm:text-2xl font-black tracking-tight text-white group-hover:text-primary transition-colors leading-tight">
+      {/* Bottom Content: Bold Genre Name & Prompt without arrow */}
+      <div className="relative z-10 space-y-1">
+        <h3
+          className="text-xl sm:text-2xl font-black tracking-tight text-white transition-colors leading-tight"
+          style={{
+            textShadow: '0 2px 10px rgba(0,0,0,0.8), 0 1px 3px rgba(0,0,0,0.9)',
+          }}
+        >
           {genre.name}
         </h3>
-        <p className="text-xs font-medium text-white/60 group-hover:text-white/90 transition-colors flex items-center gap-1">
-          Explore collection <span className="opacity-70">→</span>
+        <p className="text-xs font-medium text-white/60 group-hover:text-white/95 transition-colors duration-200">
+          Explore collection
         </p>
       </div>
 
       {/* Bottom glowing accent bar */}
       <div
-        className="absolute bottom-0 inset-x-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        className="absolute bottom-0 inset-x-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
         style={{
           background: `linear-gradient(90deg, transparent, ${visual.accentColor}, transparent)`,
+          boxShadow: `0 0 12px 1px ${visual.accentColor}80`,
         }}
       />
     </Link>

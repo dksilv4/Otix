@@ -75,6 +75,8 @@ from apps.library.views.nodes import (
     NodePendingView,
     NodePingView,
     NodeProbeView,
+    NodeShareDeleteView,
+    NodeShareListCreateView,
 )
 
 __all__ = [
@@ -83,6 +85,8 @@ __all__ = [
     "NodeListCreateView",
     "NodeDetailView",
     "NodePingView",
+    "NodeShareDeleteView",
+    "NodeShareListCreateView",
     "NodePendingView",
     "NodeProbeView",
     "GameServerDetailView",

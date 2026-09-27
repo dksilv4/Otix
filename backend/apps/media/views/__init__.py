@@ -8,6 +8,10 @@ from apps.media.views.admin_compute import (
     AdminComputeSubmitEnrichmentView,
     AdminComputeSubmitView,
 )
+from apps.media.views.blocked import (
+    BlockedRecommendationListView,
+    BlockRecommendationView,
+)
 from apps.media.views.catalog import (
     CatalogStreamView,
     CertificationListView,
@@ -78,6 +82,8 @@ __all__ = [
     "ArtworkSettingsView",
     "AssetFileView",
     "AssetMirrorView",
+    "BlockRecommendationView",
+    "BlockedRecommendationListView",
     "CatalogStreamView",
     "CertificationListView",
     "ClaimView",

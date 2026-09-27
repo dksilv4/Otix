@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { mediaQueries, formatNumber, formatPlaytime, formatMinutesToHours, formatDaysAgo, useMediaParams } from '@media'
 import { Badge } from '@ui/atoms/badge'
 import { PlatformIcon } from './media-game-platform-icon'
+import { MediaGameServersSection } from '@/features/gameservers'
 
 interface GameSectionProps {
   className?: string
@@ -187,6 +188,15 @@ export function GameSection({ className }: GameSectionProps = {}) {
             )}
           </dl>
         </div>
+      )}
+
+      {/* Dedicated Game Servers */}
+      {mediaId && (
+        <MediaGameServersSection
+          mediaId={mediaId}
+          gameTitle={data.title}
+          className="pt-4 border-t border-white/[0.08]"
+        />
       )}
     </section>
   )

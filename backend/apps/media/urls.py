@@ -21,6 +21,8 @@ from apps.media.views import (
     ArtworkSelectionView,
     ArtworkSettingsView,
     AssetMirrorView,
+    BlockedRecommendationListView,
+    BlockRecommendationView,
     CatalogStreamView,
     CertificationListView,
     ClaimView,
@@ -73,6 +75,11 @@ urlpatterns = [
     path("", MediaListView.as_view(), name="media-list"),
     path("stream", CatalogStreamView.as_view(), name="media-stream"),
     path("decide", DecideWatchView.as_view(), name="media-decide"),
+    path(
+        "blocked-recommendations",
+        BlockedRecommendationListView.as_view(),
+        name="media-blocked-recommendations-list",
+    ),
     path("genres", GenreListView.as_view(), name="genre-list"),
     path("suggestions", SuggestionsView.as_view(), name="media-suggestions"),
     path("search-providers", ProvidersView.as_view(), name="media-search-providers"),
@@ -195,6 +202,11 @@ urlpatterns = [
         RehydrateStreamView.as_view(),
         name="media-rehydrate-stream",
     ),
+    path(
+        "<int:media_id>/block-recommendation",
+        BlockRecommendationView.as_view(),
+        name="media-block-recommendation-short",
+    ),
     # media_type-scoped detail + sub-resources.
     path(
         "<str:media_type>/<str:media_id>",
@@ -245,6 +257,11 @@ urlpatterns = [
         "<str:media_type>/<int:media_id>/interactions/<str:interaction_type>",
         InteractionView.as_view(),
         name="media-interaction-toggle",
+    ),
+    path(
+        "<str:media_type>/<int:media_id>/block-recommendation",
+        BlockRecommendationView.as_view(),
+        name="media-block-recommendation",
     ),
     path(
         "<str:media_type>/<int:media_id>/episode-interactions",

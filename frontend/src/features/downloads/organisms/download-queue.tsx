@@ -355,7 +355,7 @@ export function DownloadQueuePage() {
             <div className="flex items-center gap-3">
               <Server className="h-5 w-5 text-primary" />
               <div>
-                <h3 className="font-semibold text-sm">Self-Hosted Game Servers (Plex for Games)</h3>
+                <h3 className="font-semibold text-sm">Self-Hosted Otix Nodes</h3>
                 <p className="text-xs text-muted-foreground">
                   {serverData?.servers?.length} connected node{serverData?.servers?.length === 1 ? '' : 's'} · Direct browser streaming enabled
                 </p>
@@ -378,6 +378,11 @@ export function DownloadQueuePage() {
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary">
                       {file.formatCategory}
                     </span>
+                    {file.isShared && file.sharedBy && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                        Shared by @{file.sharedBy.username}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>{file.filename}</span>

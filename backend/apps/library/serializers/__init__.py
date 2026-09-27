@@ -10,6 +10,7 @@ from apps.library.serializers.library import (
     UserGameServerSerializer,
     UserNodeCreateSerializer,
     UserNodeSerializer,
+    UserNodeShareSerializer,
     YoutubeLikedVideoSerializer,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "UserGameServerSerializer",
     "UserNodeCreateSerializer",
     "UserNodeSerializer",
+    "UserNodeShareSerializer",
     "YoutubeLikedVideoSerializer",
 ]

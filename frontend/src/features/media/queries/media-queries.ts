@@ -540,6 +540,17 @@ export const mediaQueries = {
       staleTime: 0,
       gcTime: 1000 * 60 * 5,
     }),
+  blockedRecommendations: () =>
+    queryOptions({
+      queryKey: mediaKeys.blockedRecommendations(),
+      queryFn: async () => {
+        const { data } = await apiClient.get<{ items: MediaItemSummary[]; total: number }>(
+          '/media/blocked-recommendations',
+        )
+        return data
+      },
+      staleTime: 1000 * 60,
+    }),
 }
 
 export function useRateTrack() {
@@ -555,3 +566,63 @@ export function useRateTrack() {
     },
   })
 }
+
+export function useBlockRecommendation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      mediaId,
+      mediaType,
+    }: {
+      mediaId: string | number
+      mediaType?: string
+    }) => {
+      const url = mediaType
+        ? `/media/${mediaType}/${mediaId}/block-recommendation`
+        : `/media/${mediaId}/block-recommendation`
+      const { data } = await apiClient.post<{
+        blocked: boolean
+        created: boolean
+        mediaId: number
+        title?: string
+      }>(url)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mediaKeys.blockedRecommendations() })
+      queryClient.invalidateQueries({ queryKey: [...mediaKeys.all(), 'decide'] })
+      queryClient.invalidateQueries({ queryKey: [...mediaKeys.all(), 'recommendations'] })
+    },
+  })
+}
+
+export function useUnblockRecommendation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      mediaId,
+      mediaType,
+    }: {
+      mediaId: string | number
+      mediaType?: string
+    }) => {
+      const url = mediaType
+        ? `/media/${mediaType}/${mediaId}/block-recommendation`
+        : `/media/${mediaId}/block-recommendation`
+      const { data } = await apiClient.delete<{
+        blocked: boolean
+        unblocked: boolean
+        mediaId: number
+      }>(url)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mediaKeys.blockedRecommendations() })
+      queryClient.invalidateQueries({ queryKey: [...mediaKeys.all(), 'decide'] })
+      queryClient.invalidateQueries({ queryKey: [...mediaKeys.all(), 'recommendations'] })
+    },
+  })
+}
+

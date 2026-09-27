@@ -7,22 +7,24 @@ from pathlib import Path
 import httpx
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Q
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import FileResponse, Http404
-from rest_framework import status
-from rest_framework.exceptions import NotAuthenticated, NotFound
+from rest_framework import permissions, status
+from rest_framework.exceptions import NotAuthenticated, NotFound, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 import apps.library.services.node as node_service
-from apps.library.models import UserGameServer, UserNode
+from apps.library.models import UserGameServer, UserNode, UserNodeShare
 from apps.library.serializers import (
     UserGameServerCreateSerializer,
     UserGameServerSerializer,
     UserNodeCreateSerializer,
     UserNodeSerializer,
+    UserNodeShareSerializer,
 )
 from apps.library.services.download_history import (
     apply_history_slots,
@@ -107,6 +109,7 @@ from apps.library.services.node_connections import (
 )
 from apps.library.services.server_catalog import match_files_to_catalog, unmatched_scan_titles
 from apps.search.services.search import enqueue_prehydrate_titles
+from apps.social.models import FriendRequest
 
 logger = logging.getLogger(__name__)
 
@@ -447,11 +450,34 @@ class GameServerFilesView(APIView):
 
     def get(self, request: Request) -> Response:
         user = _resolve_user(request)
-        servers = (
-            UserGameServer.objects.filter(user=user, is_active=True)
+        own_servers = list(
+            UserGameServer.objects.filter(user=user, is_active=True).select_related("user")
             if user
-            else UserGameServer.objects.filter(is_active=True)
+            else UserGameServer.objects.filter(is_active=True).select_related("user")
         )
+        server_map = {s.id: s for s in own_servers}
+        node_shares_map = {}
+
+        if user and getattr(user, "is_authenticated", False):
+            user_shares = UserNodeShare.objects.filter(
+                shared_with=user, node__is_active=True
+            ).select_related("node", "node__user")
+            for sh in user_shares:
+                if sh.node_id not in server_map:
+                    server_map[sh.node_id] = sh.node
+                node_shares_map[sh.node_id] = sh
+
+        share_token = request.query_params.get("share_token")
+        if share_token:
+            token_shares = UserNodeShare.objects.filter(
+                share_token=share_token, node__is_active=True
+            ).select_related("node", "node__user")
+            for sh in token_shares:
+                if sh.node_id not in server_map:
+                    server_map[sh.node_id] = sh.node
+                node_shares_map[sh.node_id] = sh
+
+        servers = list(server_map.values())
         files_out = []
         errors = []
 
@@ -463,6 +489,18 @@ class GameServerFilesView(APIView):
             if s.auth_token:
                 headers["Authorization"] = f"Bearer {s.auth_token}"
 
+            is_shared = (s.id in node_shares_map) or (user and s.user_id != user.id)
+            share = node_shares_map.get(s.id)
+            shared_by = (
+                {
+                    "id": s.user.id,
+                    "username": s.user.username,
+                    "display_name": getattr(s.user, "display_name", None) or s.user.username,
+                }
+                if is_shared and s.user
+                else None
+            )
+
             last_error = None
             fetched = False
             for target_url in contact_urls(public_url):
@@ -472,6 +510,11 @@ class GameServerFilesView(APIView):
                     if resp.status_code == 200:
                         raw_files = resp.json()
                         for f in raw_files:
+                            library_name = f.get("library_name", "Default")
+                            if share and not share.allow_all_libraries:
+                                if library_name not in (share.allowed_libraries or []):
+                                    continue
+
                             file_id = f.get("id")
                             relative_path = f.get("relative_path") or ""
                             filepath = f.get("filepath") or ""
@@ -495,9 +538,11 @@ class GameServerFilesView(APIView):
                                     "game_title": f.get("game_title", ""),
                                     "relative_path": relative_path,
                                     "filepath": filepath,
-                                    "library_name": f.get("library_name", "Default"),
+                                    "library_name": library_name,
                                     "modified_at": f.get("modified_at"),
                                     "download_url": f"{public_url}/api/v1/files/{file_id}/download",
+                                    "is_shared": is_shared,
+                                    "shared_by": shared_by,
                                 }
                             )
                         fetched = True
@@ -518,11 +563,91 @@ class GameServerFilesView(APIView):
 
         return Response(
             {
-                "servers": UserGameServerSerializer(servers, many=True).data,
+                "servers": UserGameServerSerializer(servers, many=True, context={"request": request}).data,
                 "files": files_out,
                 "errors": errors if errors else None,
             }
         )
+
+
+class NodeShareListCreateView(APIView):
+    """``GET / POST /api/v1/library/nodes/<server_id>/shares`` - manage Otix node shares."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = UserGameServer.objects.filter(pk=server_id, user=request.user).first()
+        if not server:
+            raise NotFound("Node not found or not owned by you")
+        shares = server.shares.select_related("shared_with").order_by("-created_at")
+        serializer = UserNodeShareSerializer(shares, many=True)
+        return Response(serializer.data)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = UserGameServer.objects.filter(pk=server_id, user=request.user).first()
+        if not server:
+            raise NotFound("Node not found or not owned by you")
+
+        is_public_link = request.data.get("is_public_link", False)
+        shared_with_id = request.data.get("shared_with_id")
+
+        if is_public_link:
+            share = UserNodeShare.objects.create(
+                node=server,
+                shared_with=None,
+                is_public_link=True,
+                allow_all_libraries=request.data.get("allow_all_libraries", True),
+                allowed_libraries=request.data.get("allowed_libraries", []),
+                permission=request.data.get("permission", "read"),
+            )
+            return Response(UserNodeShareSerializer(share).data, status=status.HTTP_201_CREATED)
+
+        if not shared_with_id:
+            raise ValidationError("shared_with_id is required unless creating a public link")
+
+        if shared_with_id == request.user.id:
+            raise ValidationError("You cannot share a node with yourself")
+
+        # REQUIREMENT: Share only with Otix friends!
+        is_friend = FriendRequest.objects.filter(
+            (Q(sender_id=request.user.id, receiver_id=shared_with_id) | Q(sender_id=shared_with_id, receiver_id=request.user.id)),
+            status="accepted",
+        ).exists()
+        if not is_friend:
+            raise ValidationError("You can only share Otix nodes with Otix friends")
+
+        from django.contrib.auth import get_user_model
+        target_user = get_user_model().objects.filter(pk=shared_with_id).first()
+        if not target_user:
+            raise NotFound("Friend user not found")
+
+        share, _ = UserNodeShare.objects.update_or_create(
+            node=server,
+            shared_with=target_user,
+            defaults={
+                "is_public_link": False,
+                "allow_all_libraries": request.data.get("allow_all_libraries", True),
+                "allowed_libraries": request.data.get("allowed_libraries", []),
+                "permission": request.data.get("permission", "read"),
+            },
+        )
+        return Response(UserNodeShareSerializer(share).data, status=status.HTTP_201_CREATED)
+
+
+class NodeShareDeleteView(APIView):
+    """``DELETE /api/v1/library/nodes/<server_id>/shares/<share_id>`` - revoke a node share."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def delete(self, request: Request, server_id: int, share_id: int) -> Response:
+        server = UserGameServer.objects.filter(pk=server_id, user=request.user).first()
+        if not server:
+            raise NotFound("Node not found or not owned by you")
+
+        deleted, _ = server.shares.filter(pk=share_id).delete()
+        if not deleted:
+            raise NotFound("Share not found")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class GameServerExplorerBrowseView(APIView):

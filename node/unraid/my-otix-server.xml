@@ -8,7 +8,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/dksilv4/Otix/issues</Support>
   <Project>https://otix.io</Project>
-  <Overview>Plex for Games &amp; Cloud Saves on Unraid. Lightweight Go daemon hosting your game ISOs, installers, repacks, ROMs, and cloud save backup sync with automatic Plex-style account claiming.</Overview>
+  <Overview>Otix Node &amp; Cloud Saves on Unraid. Lightweight Go daemon hosting your game ISOs, installers, repacks, ROMs, and cloud save backup sync with automatic claim PIN onboarding.</Overview>
   <Category>MediaApp:Games Network:Web Status:Stable</Category>
   <WebUI>http://[IP]:[PORT:8090]/</WebUI>
   <Icon>https://raw.githubusercontent.com/dksilv4/Otix/main/assets/icon.png</Icon>

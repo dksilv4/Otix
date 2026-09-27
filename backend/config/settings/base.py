@@ -195,6 +195,7 @@ INSTALLED_APPS = [
     "apps.workout.apps.WorkoutConfig",
     "apps.blueprint.apps.BlueprintConfig",
     "apps.discover.apps.DiscoverConfig",
+    "apps.gameservers.apps.GameserversConfig",
     # Plugin framework host (no legacy-parity counterpart; see plugins/README.md)
     "plugin_framework.apps.PluginsConfig",
 ]

@@ -16,6 +16,7 @@ from apps.media.models.asset import (
     MediaRelease,
     MediaVideo,
 )
+from apps.media.models.blocked import BlockedRecommendation
 from apps.media.models.character import Character, CharacterAsset, MediaCharacter
 from apps.media.models.external_id import ExternalID
 from apps.media.models.franchise import Franchise, FranchiseItem
@@ -39,6 +40,7 @@ from apps.media.models.setting import MediaServerSetting
 from apps.media.models.watch_provider import MediaWatchProvider, WatchProvider
 
 __all__ = [
+    "BlockedRecommendation",
     "Character",
     "CharacterAsset",
     "Episode",

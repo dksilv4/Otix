@@ -21,6 +21,7 @@ from apps.media.models import (
     MediaCharacter,
     MediaGameMode,
     MediaGenre,
+    MediaGenreType,
     MediaItem,
     MediaPlatform,
     MediaRelease,
@@ -30,6 +31,7 @@ from apps.media.models import (
 from apps.media.services.catalog_lifecycle import finish_catalog_seed
 from apps.media.services.catalog_link import attach_igdb_store_ids
 from apps.media.services.completeness import recompute_completeness
+from apps.media.services.genre_simplification import simplify_genre_names
 from apps.media.services.identity import attach_external_id, find_media_id
 from core.providers.framework import (
     atomic_seed,
@@ -468,18 +470,20 @@ def _upsert_game_characters(media: MediaItem, raw_characters: Any) -> None:
 
 
 def _upsert_game_genres(media: MediaItem, raw_genres: Any) -> None:
-    """Link IGDB genres as genre links using safe_bulk_create."""
+    """Link IGDB genres as genre links using safe_bulk_create (simplified)."""
     if not isinstance(raw_genres, list):
         return
+    raw_names = [
+        str(entry.get("name") or "").strip()
+        for entry in raw_genres
+        if isinstance(entry, dict) and entry.get("name")
+    ]
+    simplified = simplify_genre_names(raw_names)
     existing = set(MediaGenre.objects.filter(media_item=media).values_list("genre_id", flat=True))
     to_create: list[MediaGenre] = []
-    for entry in raw_genres:
-        if not isinstance(entry, dict):
-            continue
-        name = str(entry.get("name") or "").strip()
-        if not name:
-            continue
+    for name in simplified:
         genre, _ = Genre.objects.get_or_create(name=name, defaults={"slug": slugify(name)})
+        MediaGenreType.objects.get_or_create(genre=genre, media_type="game")
         if genre.pk in existing:
             continue
         existing.add(genre.pk)

@@ -35,4 +35,5 @@ export const mediaKeys = {
     seed?: number
     limit?: number
   }) => [...mediaKeys.all(), 'decide', params] as const,
+  blockedRecommendations: () => [...mediaKeys.all(), 'blockedRecommendations'] as const,
 }

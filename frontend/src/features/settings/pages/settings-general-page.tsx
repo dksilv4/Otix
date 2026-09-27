@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { DkDropdown, type DkDropdownOption } from '@ui/atoms/dropdown'
 import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
-import { Trash2, CheckCircle2, Sparkles, RotateCcw } from 'lucide-react'
+import { Trash2, CheckCircle2, Sparkles, RotateCcw, Ban } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { isDesktop } from '@/lib/desktop/api'
@@ -11,6 +12,7 @@ import { apiClient } from '@/lib/api/client'
 import { useToast } from '@ui/molecules/toast'
 import { queryClient } from '@/lib/query/client'
 import { mediaKeys } from '@media/queries/media-keys'
+import { mediaQueries, useUnblockRecommendation } from '@media/queries/media-queries'
 
 const STORAGE_KEY = 'otix:default-landing-page'
 
@@ -45,9 +47,16 @@ export function SettingsGeneralPage() {
   const [cleared, setCleared] = useState(false)
   const [confirmTasteReset, setConfirmTasteReset] = useState(false)
   const [tasteResetting, setTasteResetting] = useState(false)
+  const [showBlockedModal, setShowBlockedModal] = useState(false)
   const desktop = isDesktop()
   const { isAuthenticated, user, refreshUser } = useAuth()
   const { toast } = useToast()
+
+  const { data: blockedData } = useQuery({
+    ...mediaQueries.blockedRecommendations(),
+    enabled: isAuthenticated,
+  })
+  const unblockMutation = useUnblockRecommendation()
 
   useEffect(() => {
     try {
@@ -178,6 +187,31 @@ export function SettingsGeneralPage() {
         </SettingsCard>
       )}
 
+      {isAuthenticated && (
+        <SettingsCard>
+          <SectionHeader
+            icon={Ban}
+            title="Blocked recommendations"
+            description={
+              blockedData?.total
+                ? `${blockedData.total} title${blockedData.total === 1 ? '' : 's'} blocked from appearing in Decide for me and For You.`
+                : 'No titles blocked from recommendations.'
+            }
+            action={
+              <DkButton
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowBlockedModal(true)}
+                className="hover:bg-white/10 text-xs font-semibold gap-2"
+                disabled={!blockedData?.items?.length}
+              >
+                <span>Manage ({blockedData?.total ?? 0})</span>
+              </DkButton>
+            }
+          />
+        </SettingsCard>
+      )}
+
       {confirmTasteReset && (
         <DkDialog
           open={confirmTasteReset}
@@ -214,6 +248,63 @@ export function SettingsGeneralPage() {
                 Reset taste
               </DkButton>
             </div>
+          </div>
+        </DkDialog>
+      )}
+
+      {showBlockedModal && (
+        <DkDialog
+          open={showBlockedModal}
+          onOpenChange={(open) => {
+            if (!open) setShowBlockedModal(false)
+          }}
+          title="Blocked recommendations"
+          description="These titles will not appear in Decide for me or For You feeds."
+          className="max-w-xl max-h-[80vh] overflow-hidden flex flex-col"
+        >
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-2">
+            {!blockedData?.items?.length ? (
+              <p className="text-xs text-white/50 py-4 text-center">No blocked recommendations.</p>
+            ) : (
+              blockedData.items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-white/5 p-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {item.posterUrl && (
+                      <img
+                        src={item.posterUrl}
+                        alt=""
+                        className="h-12 w-8 shrink-0 rounded object-cover"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{item.title}</p>
+                      <p className="text-xs text-white/50 capitalize">{item.mediaType}</p>
+                    </div>
+                  </div>
+                  <DkButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      await unblockMutation.mutateAsync({
+                        mediaId: item.id,
+                        mediaType: item.mediaType,
+                      })
+                      toast({
+                        title: 'Unblocked',
+                        description: `"${item.title}" can now be recommended again.`,
+                      })
+                    }}
+                    disabled={unblockMutation.isPending}
+                    className="text-xs text-white/70 hover:text-white"
+                  >
+                    Unblock
+                  </DkButton>
+                </div>
+              ))
+            )}
           </div>
         </DkDialog>
       )}

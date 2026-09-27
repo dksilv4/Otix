@@ -21,7 +21,7 @@ export function LauncherActionButtons({
   game,
   size = "md",
   onOpenDetails,
-  onOpenMatch,
+  _onOpenMatch,
   className = "",
 }: LauncherActionButtonsProps) {
   const { toast } = useToast()
@@ -172,7 +172,11 @@ export function LauncherActionButtons({
             }
           }}
           className={`flex items-center justify-center gap-2 rounded-xl uppercase transition-all duration-200 cursor-pointer active:scale-95 bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)] ${paddingClass}`}
-          title={`On ${matchingServerFile.serverName}, not installed on this device (${formatBytes(matchingServerFile.filesize)})`}
+          title={
+            matchingServerFile.isShared && matchingServerFile.sharedBy
+              ? `Shared by @${matchingServerFile.sharedBy.username} on ${matchingServerFile.serverName} (${formatBytes(matchingServerFile.filesize)})`
+              : `On ${matchingServerFile.serverName}, not installed on this device (${formatBytes(matchingServerFile.filesize)})`
+          }
         >
           <Server size={size === "lg" ? 16 : 14} />
           <span>Install</span>

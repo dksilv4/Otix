@@ -60,6 +60,7 @@ from apps.media.models.genre import Genre, Keyword, MediaGenre, MediaGenreType, 
 from apps.media.services.catalog_lifecycle import finish_catalog_seed, payload_hash_matches
 from apps.media.services.completeness import recompute_completeness
 from apps.media.services.fanart_ingest import fanart_enrich_images
+from apps.media.services.genre_simplification import simplify_genre_names
 from apps.media.services.omdb_ingest import omdb_enrich_ratings
 from apps.media.services.wikidata_distributor import wikidata_enrich_distributors
 from apps.people.models import MediaCredit, Person
@@ -105,13 +106,14 @@ def _is_anime(raw: dict[str, Any]) -> bool:
 
 
 def _genre_names(raw: dict[str, Any]) -> list[str]:
-    """Names from the detail response's ``genres`` list, in order."""
-    return [str(g["name"]) for g in raw.get("genres", []) if g.get("name")]
+    """Names from the detail response's ``genres`` list, in order, simplified."""
+    raw_names = [str(g["name"]) for g in raw.get("genres", []) if g.get("name")]
+    return simplify_genre_names(raw_names)
 
 
 def _upsert_genres(media: MediaItem, names: list[str], media_type: str = GENRE_MEDIA_TYPE) -> None:
     """Link canonical ``Genre`` rows to *media* (dedup by name/slug)."""
-    for name in names:
+    for name in simplify_genre_names(names):
         genre, _ = Genre.objects.get_or_create(name=name, defaults={"slug": slugify(name)})
         # Mark the genre as usable for this media type + attach it to the title.
         MediaGenreType.objects.get_or_create(genre=genre, media_type=media_type)

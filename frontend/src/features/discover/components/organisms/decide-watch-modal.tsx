@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { router } from '@/lib/router'
 import { useQuery } from '@tanstack/react-query'
-import { Dices, Loader2, RefreshCw, Sparkles } from 'lucide-react'
+import { Ban, Dices, Loader2, RefreshCw, Sparkles } from 'lucide-react'
 import { cn, heroImage } from '@/lib/utils'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
+import { showToast } from '@ui/molecules/toast'
 import { useAuth } from '@auth/hooks/use-auth'
 import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
-import { mediaQueries, type DecideRuntime, type MediaItemSummary } from '@media/queries/media-queries'
+import { mediaQueries, useBlockRecommendation, type DecideRuntime, type MediaItemSummary } from '@media/queries/media-queries'
 import { apiClient } from '@/lib/api/client'
 import type { GenreOption } from '@/features/genre/types'
 import { MEDIA_TYPE_LABEL } from '@/constants/media'
@@ -38,7 +39,6 @@ function yearOf(item: MediaItemSummary | null): string | null {
 }
 
 export function DecideWatchModal({ onClose, isExiting }: DecideWatchModalProps) {
-  const navigate = useNavigate()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [mediaTypes, setMediaTypes] = useState<MediaTypeFilter[]>(['movie', 'show'])
   const [runtime, setRuntime] = useState<DecideRuntime | 'any'>('any')
@@ -93,6 +93,9 @@ export function DecideWatchModal({ onClose, isExiting }: DecideWatchModalProps) 
     enabled: isAuthenticated && mediaTypes.length > 0,
   })
 
+  const [blockedIds, setBlockedIds] = useState<Set<number | string>>(() => new Set())
+  const blockMutation = useBlockRecommendation()
+
   // Clear local hero override whenever a fresh server pick arrives.
   const pickId = decideQuery.data?.pick?.id
   const pickIdRef = useRef(pickId)
@@ -105,12 +108,53 @@ export function DecideWatchModal({ onClose, isExiting }: DecideWatchModalProps) 
 
   const serverPick = decideQuery.data?.pick ?? null
   const shortlist = decideQuery.data?.shortlist ?? []
-  const hero = heroOverride ?? serverPick
-  const rest = heroOverride
-    ? [serverPick, ...shortlist].filter(
-        (item): item is MediaItemSummary => !!item && item.id !== heroOverride.id,
+
+  const unblockedPick = serverPick && !blockedIds.has(serverPick.id) ? serverPick : null
+  const unblockedShortlist = shortlist.filter((item) => !blockedIds.has(item.id))
+
+  const activeHeroOverride =
+    heroOverride && !blockedIds.has(heroOverride.id) ? heroOverride : null
+  const hero = activeHeroOverride ?? unblockedPick ?? unblockedShortlist[0] ?? null
+  const rest = activeHeroOverride
+    ? [unblockedPick, ...unblockedShortlist].filter(
+        (item): item is MediaItemSummary => !!item && item.id !== hero?.id,
       )
-    : shortlist
+    : unblockedPick
+      ? unblockedShortlist
+      : unblockedShortlist.slice(1)
+
+  const handleBlock = async (item: MediaItemSummary) => {
+    setBlockedIds((prev) => new Set(prev).add(item.id))
+    try {
+      await blockMutation.mutateAsync({ mediaId: item.id, mediaType: item.mediaType })
+      showToast({
+        title: 'Blocked from recommendations',
+        description: `"${item.title}" will no longer be recommended.`,
+        variant: 'default',
+      })
+    } catch {
+      showToast({
+        title: 'Failed to block',
+        description: `Could not block "${item.title}".`,
+        variant: 'error',
+      })
+      setBlockedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(item.id)
+        return next
+      })
+      return
+    }
+
+    if (hero?.id === item.id) {
+      const remainingCandidates = rest.filter((c) => !blockedIds.has(c.id) && c.id !== item.id)
+      if (remainingCandidates.length > 0) {
+        setHeroOverride(remainingCandidates[0])
+      } else {
+        pickAgain()
+      }
+    }
+  }
 
   const toggleType = (type: MediaTypeFilter) => {
     setMediaTypes((prev) => {
@@ -137,12 +181,13 @@ export function DecideWatchModal({ onClose, isExiting }: DecideWatchModalProps) 
     setSeed((s) => s + 1)
   }
 
-  const openTitle = (item: MediaItemSummary) => {
+  const openTitle = (item: MediaItemSummary | null) => {
+    if (!item) return
     canDismissRef.current = true
     onClose()
-    navigate({
+    void router.navigate({
       to: '/media/$mediaType/$mediaId',
-      params: { mediaType: item.mediaType, mediaId: item.id },
+      params: { mediaType: item.mediaType || 'movie', mediaId: String(item.id) },
     })
   }
 
@@ -248,7 +293,7 @@ export function DecideWatchModal({ onClose, isExiting }: DecideWatchModalProps) 
               onClick={() => {
                 canDismissRef.current = true
                 onClose()
-                navigate({ to: '/auth/login' })
+                void router.navigate({ to: '/auth/login' })
               }}
             >
               Sign in
@@ -287,7 +332,7 @@ export function DecideWatchModal({ onClose, isExiting }: DecideWatchModalProps) 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch">
               <button
                 type="button"
-                onClick={() => openTitle(hero)}
+                onClick={() => hero && openTitle(hero)}
                 className="relative mx-auto aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-2xl bg-black/40 shadow-xl sm:mx-0 sm:w-44"
               >
                 {(hero.posterUrl || hero.textlessPosterUrl) && (
@@ -317,11 +362,22 @@ export function DecideWatchModal({ onClose, isExiting }: DecideWatchModalProps) 
                   </p>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-                  <DkButton size="md" onClick={() => openTitle(hero)}>
+                  <DkButton size="md" onClick={() => hero && openTitle(hero)} disabled={!hero}>
                     Open
                   </DkButton>
                   <DkButton size="md" variant="glass" leftIcon={RefreshCw} onClick={pickAgain}>
                     Pick again
+                  </DkButton>
+                  <DkButton
+                    size="md"
+                    variant="ghost"
+                    leftIcon={Ban}
+                    className="text-white/60 hover:text-red-400 hover:bg-red-500/10"
+                    disabled={blockMutation.isPending}
+                    onClick={() => handleBlock(hero)}
+                    title="Block this title from future recommendations"
+                  >
+                    Don't recommend
                   </DkButton>
                 </div>
               </div>
@@ -334,14 +390,27 @@ export function DecideWatchModal({ onClose, isExiting }: DecideWatchModalProps) 
                 </p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {rest.slice(0, 4).map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className="text-left"
-                      onClick={() => setHeroOverride(item)}
-                    >
-                      <DiscoverMediaCard item={item} showTypeBadge interactive={false} />
-                    </button>
+                    <div key={item.id} className="group relative">
+                      <button
+                        type="button"
+                        className="w-full text-left"
+                        onClick={() => setHeroOverride(item)}
+                      >
+                        <DiscoverMediaCard item={item} showTypeBadge interactive={false} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Block ${item.title} from recommendations`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleBlock(item)
+                        }}
+                        className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white/60 opacity-0 backdrop-blur-md transition-all hover:bg-red-500 hover:text-white group-hover:opacity-100 focus:opacity-100"
+                        title="Don't recommend this"
+                      >
+                        <Ban className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>

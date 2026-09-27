@@ -6,4 +6,5 @@ export const discoverKeys = {
   hero: () => [...discoverKeys.all(), 'hero'] as const,
   sections: () => [...discoverKeys.all(), 'sections'] as const,
   trailers: () => [...discoverKeys.all(), 'trailers'] as const,
+  genres: (mediaType?: string) => [...discoverKeys.all(), 'genres', mediaType ?? 'all'] as const,
 }

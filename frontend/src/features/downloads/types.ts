@@ -63,7 +63,7 @@ export interface HypervisorConfirmResponse {
   error: string;
 }
 
-// ── Remote Game Server & Client Downloads ("Plex for Games") ──────────────
+// ── Remote Otix Node & Client Downloads ──────────────────────────────────
 
 export interface OtixNode {
   id: number;
@@ -86,11 +86,29 @@ export interface OtixNode {
   isLocalDesktop?: boolean;
   /** True when this row is the Otix backend (account-hosted node). */
   isBackend?: boolean;
+  isShared?: boolean;
+  sharedBy?: { id: number; username: string; displayName?: string } | null;
 }
 
 export type GameServer = OtixNode;
 export type Node = OtixNode;
 
+export interface NodeShare {
+  id: number;
+  nodeId: number;
+  sharedWith?: {
+    id: number;
+    username: string;
+    avatarUrl?: string | null;
+    displayName?: string;
+  } | null;
+  shareToken: string;
+  isPublicLink: boolean;
+  allowAllLibraries: boolean;
+  allowedLibraries: string[];
+  permission: 'read' | 'admin';
+  createdAt: string;
+}
 
 export interface ServerGameFile {
   serverId: number;
@@ -106,6 +124,8 @@ export interface ServerGameFile {
   libraryName: string;
   modifiedAt?: string | null;
   downloadUrl: string;
+  isShared?: boolean;
+  sharedBy?: { id: number; username: string; displayName?: string } | null;
   catalogItem?: {
     id: string
     title: string

@@ -4,6 +4,7 @@ import { discoverKeys } from './discover-keys'
 import { freshUnlessEmpty, retainUnlessEmpty } from '@/lib/query/empty-cache'
 import type { MediaItemSummary, SeasonSummary } from '@media/queries/media-queries'
 import type { PersonalizedSection } from '../types'
+import type { GenreOption } from '@/features/genre/types'
 
 const TWO_HOURS = 1000 * 60 * 60 * 2
 const ONE_DAY = 1000 * 60 * 60 * 24
@@ -101,4 +102,15 @@ export const discoverQueries = {
       gcTime: discoverGcTime,
     }),
 
+  genres: (mediaType?: string) =>
+    queryOptions({
+      queryKey: discoverKeys.genres(mediaType),
+      queryFn: async () => {
+        const params = mediaType ? { media_type: mediaType } : undefined
+        const { data } = await apiClient.get<GenreOption[]>('/media/genres', { params })
+        return data
+      },
+      staleTime: discoverStaleTime,
+      gcTime: discoverGcTime,
+    }),
 }

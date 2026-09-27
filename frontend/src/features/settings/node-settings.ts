@@ -1,9 +1,10 @@
-export type NodeSettingsTab = 'paths' | 'organize' | 'downloaders' | 'machine'
+export type NodeSettingsTab = 'paths' | 'organize' | 'downloaders' | 'sharing' | 'machine'
 
 export const NODE_SETTINGS_TABS: { id: NodeSettingsTab; label: string }[] = [
   { id: 'paths', label: 'Paths' },
   { id: 'organize', label: 'Organize' },
   { id: 'downloaders', label: 'Downloaders' },
+  { id: 'sharing', label: 'Sharing' },
   { id: 'machine', label: 'Machine' },
 ]
 
@@ -15,7 +16,7 @@ export function parseNodeIdParam(raw: string | undefined | null): number | null 
 
 export function resolveNodeSettingsTab(hash: string | undefined | null): NodeSettingsTab {
   const h = (hash || '').replace(/^#/, '').toLowerCase()
-  if (h === 'organize' || h === 'downloaders' || h === 'machine' || h === 'paths') return h
+  if (h === 'organize' || h === 'downloaders' || h === 'sharing' || h === 'machine' || h === 'paths') return h
   return 'paths'
 }
 

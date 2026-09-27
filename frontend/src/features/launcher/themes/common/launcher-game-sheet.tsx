@@ -1,10 +1,11 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Calendar, Clock, Star, HardDrive, Layers, ExternalLink, Image as ImageIcon, BookOpen, Sparkles } from "lucide-react"
+import { X, Calendar, Star, HardDrive, Layers, Image as ImageIcon, BookOpen, Sparkles, Server } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { LauncherActionButtons } from "./launcher-action-buttons"
 import { MatchGameModal } from "@/features/launcher/components/molecules/launcher-match-game-modal"
 import { LauncherGameChangelog } from "@/features/launcher/components/molecules/launcher-game-changelog"
+import { MediaGameServersSection } from "@/features/gameservers"
 import { useModal } from "@/lib/modals"
 import { PLATFORM_LABELS } from "@/constants/games"
 import type { LocalGame, DisplayGame } from "@/features/launcher/types"
@@ -16,8 +17,8 @@ interface LauncherGameSheetProps {
 
 export function LauncherGameSheet({ game, onClose }: LauncherGameSheetProps) {
   const { openModal } = useModal()
-  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'updates'>('overview')
+  const [_selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'overview' | 'updates' | 'servers'>('overview')
 
   if (!game) return null
 
@@ -147,12 +148,28 @@ export function LauncherGameSheet({ game, onClose }: LauncherGameSheetProps) {
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               )}
             </button>
+
+            <button
+              onClick={() => setActiveTab("servers")}
+              className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "servers"
+                  ? "border-[var(--color-accent)] text-white"
+                  : "border-transparent text-white/40 hover:text-white/80"
+              }`}
+            >
+              <Server size={13} /> Dedicated Servers
+            </button>
           </div>
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-none">
             {activeTab === "updates" ? (
               <LauncherGameChangelog game={game} />
+            ) : activeTab === "servers" ? (
+              <MediaGameServersSection
+                mediaId={raw.otixMediaId || raw.data?.mediaId || raw.data?.id || ''}
+                gameTitle={title}
+              />
             ) : (
               <>
                 {/* Overview */}
@@ -229,6 +246,18 @@ export function LauncherGameSheet({ game, onClose }: LauncherGameSheetProps) {
             )}
           </div>
         </motion.div>
+        {selectedScreenshot && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+            onClick={() => setSelectedScreenshot(null)}
+          >
+            <img
+              src={selectedScreenshot}
+              alt="Screenshot full view"
+              className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+            />
+          </div>
+        )}
       </div>
     </AnimatePresence>
   )

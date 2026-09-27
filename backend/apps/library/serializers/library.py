@@ -12,7 +12,7 @@ from datetime import date, datetime
 from rest_framework import serializers
 
 from apps.integrations.models import UserEpicGame, UserSteamGame, UserYoutubeLikedVideo
-from apps.library.models import UserGameServer, UserLocalGame
+from apps.library.models import UserGameServer, UserLocalGame, UserNodeShare
 from apps.library.services.summaries import build_media_item_summary
 from apps.media.models import MediaItem
 
@@ -136,6 +136,8 @@ class UserNodeSerializer(serializers.ModelSerializer):
     """Connected self-hosted Otix node."""
 
     primary_url = serializers.CharField(read_only=True)
+    is_shared = serializers.SerializerMethodField()
+    shared_by = serializers.SerializerMethodField()
 
     class Meta:
         model = UserGameServer
@@ -153,6 +155,8 @@ class UserNodeSerializer(serializers.ModelSerializer):
             "storage_free_bytes",
             "storage_total_bytes",
             "is_active",
+            "is_shared",
+            "shared_by",
             "created_at",
             "updated_at",
         ]
@@ -166,6 +170,25 @@ class UserNodeSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def get_is_shared(self, obj: UserGameServer) -> bool:
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.user_id != request.user.id
+
+    def get_shared_by(self, obj: UserGameServer) -> dict | None:
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated or obj.user_id == request.user.id:
+            return None
+        owner = getattr(obj, "user", None)
+        if not owner:
+            return None
+        return {
+            "id": owner.id,
+            "username": owner.username,
+            "display_name": getattr(owner, "display_name", None) or owner.username,
+        }
 
 
 class UserNodeCreateSerializer(serializers.ModelSerializer):
@@ -183,6 +206,39 @@ class UserNodeCreateSerializer(serializers.ModelSerializer):
             "is_local",
             "is_active",
         ]
+
+
+class UserNodeShareSerializer(serializers.ModelSerializer):
+    """Representation of an Otix Node share with a friend or link."""
+
+    shared_with = serializers.SerializerMethodField()
+    shared_with_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+
+    class Meta:
+        model = UserNodeShare
+        fields = [
+            "id",
+            "node_id",
+            "shared_with",
+            "shared_with_id",
+            "share_token",
+            "is_public_link",
+            "allow_all_libraries",
+            "allowed_libraries",
+            "permission",
+            "created_at",
+        ]
+        read_only_fields = ["id", "node_id", "share_token", "created_at"]
+
+    def get_shared_with(self, obj) -> dict | None:
+        if not obj.shared_with:
+            return None
+        return {
+            "id": obj.shared_with.id,
+            "username": obj.shared_with.username,
+            "avatar_url": getattr(obj.shared_with, "avatar_url", None),
+            "display_name": getattr(obj.shared_with, "display_name", None) or obj.shared_with.username,
+        }
 
 
 # Backward compatibility aliases

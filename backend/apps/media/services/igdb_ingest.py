@@ -47,6 +47,7 @@ from apps.media.models import (
     MediaAsset,
     MediaGameMode,
     MediaGenre,
+    MediaGenreType,
     MediaItem,
     MediaPlatform,
     MediaRelease,
@@ -55,6 +56,7 @@ from apps.media.models import (
 )
 from apps.media.services.catalog_lifecycle import finish_catalog_seed, payload_hash_matches
 from apps.media.services.completeness import recompute_completeness
+from apps.media.services.genre_simplification import simplify_genre_names
 from apps.media.services.igdb import _PLATFORM_NORMALIZATION
 from core.providers.igdb.hydrators import seed_game_from_igdb
 
@@ -700,17 +702,19 @@ def _hydrate_game(media: MediaItem, game: Game, raw: dict[str, Any]) -> None:
 
 
 def _upsert_game_genres(media: MediaItem, raw_genres: Any) -> None:
-    """Link IGDB ``genres`` as genre links (add-only)."""
+    """Link IGDB ``genres`` as genre links (add-only, simplified)."""
     if not isinstance(raw_genres, list):
         return
+    raw_names = [
+        str(entry.get("name") or "").strip()
+        for entry in raw_genres
+        if isinstance(entry, dict) and entry.get("name")
+    ]
+    simplified = simplify_genre_names(raw_names)
     existing = set(MediaGenre.objects.filter(media_item=media).values_list("genre_id", flat=True))
-    for entry in raw_genres:
-        if not isinstance(entry, dict):
-            continue
-        name = str(entry.get("name") or "").strip()
-        if not name:
-            continue
+    for name in simplified:
         genre, _ = Genre.objects.get_or_create(name=name, defaults={"slug": slugify(name)})
+        MediaGenreType.objects.get_or_create(genre=genre, media_type="game")
         if genre.pk in existing:
             continue
         existing.add(genre.pk)

@@ -650,9 +650,7 @@ def _embedding_neighbors_ranked(
     qs = MediaItem.objects.filter(embedding__isnull=False, is_adult=False)
     if media_type:
         qs = qs.filter(media_type=media_type)
-    qs = _apply_decide_filters(
-        qs, media_types=media_types, genre_ids=genre_ids, runtime=runtime
-    )
+    qs = _apply_decide_filters(qs, media_types=media_types, genre_ids=genre_ids, runtime=runtime)
     if exclude_ids:
         qs = qs.exclude(pk__in=exclude_ids)
 
@@ -661,10 +659,9 @@ def _embedding_neighbors_ranked(
     if connection.vendor == "postgresql":
         from pgvector.django import CosineDistance
 
-        qs = (
-            qs.annotate(distance=CosineDistance("embedding", vector), _has_local=local_artwork_exists())
-            .order_by("distance", "-_has_local", "-popularity")[:fetch]
-        )
+        qs = qs.annotate(
+            distance=CosineDistance("embedding", vector), _has_local=local_artwork_exists()
+        ).order_by("distance", "-_has_local", "-popularity")[:fetch]
         return [(float(item.distance), item) for item in qs[:limit]]
 
     items = list(qs.annotate(_has_local=local_artwork_exists()))
@@ -701,6 +698,7 @@ def _embedding_neighbors(
             limit=limit,
         )
     ]
+
 
 def _genre_similar_items(
     source: MediaItem, media_type: str | None, exclude_ids: set[int], limit: int
@@ -767,6 +765,16 @@ def _user_seen_media_ids(user_id: int, *, since=None) -> set[int]:
     rated = rated_qs.values_list("media_item_id", flat=True)
     touched = touched_qs.values_list("media_item_id", flat=True)
     return set(rated) | set(touched)
+
+
+def _user_blocked_media_ids(user_id: int) -> set[int]:
+    from apps.media.models import BlockedRecommendation
+
+    return set(
+        BlockedRecommendation.objects.filter(user_id=user_id).values_list(
+            "media_item_id", flat=True
+        )
+    )
 
 
 def _user_taste_vector(user_id: int, *, since=None) -> list[float] | None:
@@ -863,7 +871,7 @@ def recommended_items(
     user_id = getattr(user, "id", None) if getattr(user, "is_authenticated", False) else None
     since = getattr(user, "taste_reset_at", None) if user_id is not None else None
     if user_id is not None:
-        exclude |= _user_seen_media_ids(user_id, since=since)
+        exclude |= _user_seen_media_ids(user_id, since=since) | _user_blocked_media_ids(user_id)
 
     source_vec = _as_float_list(source.embedding)
     taste_vec = _user_taste_vector(user_id, since=since) if user_id is not None else None
@@ -879,9 +887,7 @@ def recommended_items(
         query = source_vec
 
     if query is not None:
-        hits = _embedding_neighbors(
-            query, media_type=filter_type, exclude_ids=exclude, limit=limit
-        )
+        hits = _embedding_neighbors(query, media_type=filter_type, exclude_ids=exclude, limit=limit)
         if hits:
             return hits
 
@@ -897,14 +903,10 @@ def _popularity_candidates(
     runtime: str | None,
 ) -> list[MediaItem]:
     qs = MediaItem.objects.filter(is_adult=False)
-    qs = _apply_decide_filters(
-        qs, media_types=media_types, genre_ids=genre_ids, runtime=runtime
-    )
+    qs = _apply_decide_filters(qs, media_types=media_types, genre_ids=genre_ids, runtime=runtime)
     if exclude_ids:
         qs = qs.exclude(pk__in=exclude_ids)
-    qs = qs.annotate(_has_local=local_artwork_exists()).order_by(
-        "-_has_local", "-popularity"
-    )
+    qs = qs.annotate(_has_local=local_artwork_exists()).order_by("-_has_local", "-popularity")
     return list(qs[:limit])
 
 
@@ -956,7 +958,7 @@ def decide_items(
         types = ["movie", "show"]
 
     since = getattr(user, "taste_reset_at", None)
-    exclude = _user_seen_media_ids(user_id, since=since)
+    exclude = _user_seen_media_ids(user_id, since=since) | _user_blocked_media_ids(user_id)
     taste_vec = _user_taste_vector(user_id, since=since)
 
     fetch = max(limit * 4, 20)
@@ -986,3 +988,63 @@ def decide_items(
     )
     ranked_pop = [(float(i), item) for i, item in enumerate(popular)]
     return _shuffle_pick_and_shortlist(ranked_pop, limit=limit, seed=seed), True
+
+
+def block_media_recommendation(user: _User, media_id: int) -> tuple[bool, MediaItem | None]:
+    """Block a media item from recommendations for this user.
+
+    Returns ``(created, item)`` where ``created`` is True if newly blocked, or
+    False if it was already blocked. If ``item`` is None, the media item was not found.
+    """
+    user_id = getattr(user, "id", None) if getattr(user, "is_authenticated", False) else None
+    if user_id is None:
+        return False, None
+    try:
+        item = MediaItem.objects.get(pk=media_id)
+    except MediaItem.DoesNotExist:
+        return False, None
+
+    from apps.media.models import BlockedRecommendation
+
+    _, created = BlockedRecommendation.objects.get_or_create(
+        user_id=user_id,
+        media_item_id=media_id,
+    )
+    return created, item
+
+
+def unblock_media_recommendation(user: _User, media_id: int) -> bool:
+    """Unblock a media item from recommendations for this user.
+
+    Returns True if an existing block was removed, False otherwise.
+    """
+    user_id = getattr(user, "id", None) if getattr(user, "is_authenticated", False) else None
+    if user_id is None:
+        return False
+
+    from apps.media.models import BlockedRecommendation
+
+    deleted, _ = BlockedRecommendation.objects.filter(
+        user_id=user_id,
+        media_item_id=media_id,
+    ).delete()
+    return bool(deleted)
+
+
+def list_blocked_recommendations(user: _User) -> list[MediaItem]:
+    """Return media items currently blocked from recommendations by this user."""
+    user_id = getattr(user, "id", None) if getattr(user, "is_authenticated", False) else None
+    if user_id is None:
+        return []
+
+    from apps.media.models import BlockedRecommendation
+
+    blocked_ids = list(
+        BlockedRecommendation.objects.filter(user_id=user_id)
+        .order_by("-created_at")
+        .values_list("media_item_id", flat=True)
+    )
+    if not blocked_ids:
+        return []
+    items_by_id = {item.pk: item for item in MediaItem.objects.filter(pk__in=blocked_ids)}
+    return [items_by_id[mid] for mid in blocked_ids if mid in items_by_id]
