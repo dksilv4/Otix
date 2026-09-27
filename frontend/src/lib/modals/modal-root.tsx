@@ -17,15 +17,16 @@ class ModalErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 }
 
 export function ModalRoot() {
-  const { modals } = useModal()
+  const { modals, closeModal } = useModal()
 
   if (modals.length === 0) return null
 
   return createPortal(
     modals.map((m) => {
       const child = isValidElement(m.component)
-        ? cloneElement(m.component as React.ReactElement<{ isExiting?: boolean }>, {
+        ? cloneElement(m.component as React.ReactElement<{ isExiting?: boolean; onClose?: () => void }>, {
             isExiting: m.exiting,
+            onClose: (m.component as any).props?.onClose ?? (() => closeModal(m.id)),
           })
         : m.component
 

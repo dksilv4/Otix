@@ -18,6 +18,16 @@ export interface MediaRatingAggregateOut {
   ratingCount: number
 }
 
+export interface MediaRatingWithUserOut {
+  userId: string
+  mediaItemId: string
+  score: number
+  createdAt: string
+  updatedAt: string
+  user: { id: string; username: string; isAdmin?: boolean }
+  hasReview: boolean
+}
+
 export const ratingKeys = {
   myRating: (mediaType: string, mediaId: string) => ['media-rating', 'my', mediaType, mediaId] as const,
   list: (mediaType: string, mediaId: string) => ['media-rating', 'list', mediaType, mediaId] as const,
@@ -32,6 +42,18 @@ export const ratingQueries = {
         return data
       },
       staleTime: 1000 * 60,
+    }),
+
+  list: (mediaType: string, mediaId: string) =>
+    queryOptions({
+      queryKey: ratingKeys.list(mediaType, mediaId),
+      queryFn: async () => {
+        const { data } = await apiClient.get<MediaRatingWithUserOut[]>(
+          `/media/${mediaType}/${mediaId}/ratings`,
+        )
+        return Array.isArray(data) ? data : []
+      },
+      staleTime: 1000 * 30,
     }),
 }
 
@@ -69,6 +91,7 @@ export function useUpsertRating(mediaType: string, mediaId: string) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
     },
   })
@@ -97,6 +120,7 @@ export function useDeleteRating(mediaType: string, mediaId: string) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
     },
   })

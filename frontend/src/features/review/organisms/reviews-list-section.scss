@@ -4,16 +4,92 @@
   /* outer section — className prop provides outer spacing via cn() */
 }
 
+.dk-review__header {
+  @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5;
+}
+
+.dk-review__header-left {
+  @apply flex items-center gap-3 flex-wrap;
+}
+
 .dk-review__heading {
-  @apply text-lg font-semibold mb-3;
+  @apply text-lg font-semibold tracking-tight;
 }
 
-.dk-review__count {
-  @apply text-sm font-normal text-muted-foreground;
+.dk-review__tabs {
+  @apply inline-flex items-center p-1 rounded-xl bg-white/[0.04] border border-white/[0.06];
 }
 
+.dk-review__tab {
+  @apply px-3 py-1 text-xs font-medium rounded-lg transition-all duration-150 text-muted-foreground cursor-pointer flex items-center gap-1.5 focus:outline-none;
+
+  &:hover {
+    @apply text-foreground bg-white/[0.04];
+  }
+
+  &--active {
+    @apply text-foreground font-semibold bg-white/[0.12] shadow-sm;
+  }
+}
+
+.dk-review__tab-count {
+  @apply text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-muted-foreground font-mono;
+}
+
+.dk-review__action-btn {
+  @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-primary text-primary-foreground shadow-sm hover:opacity-95 transition-all self-start sm:self-auto;
+}
+
+.dk-review__list {
+  @apply space-y-3;
+}
+
+/* ---------- Banner prompt (when no reviews yet, but ratings exist) ---------- */
+.dk-review__banner {
+  @apply rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent;
+}
+
+.dk-review__banner-content {
+  @apply flex items-center gap-3;
+}
+
+.dk-review__banner-icon {
+  @apply h-9 w-9 rounded-xl flex items-center justify-center shrink-0 text-amber-400 bg-amber-400/15 border border-amber-400/25;
+}
+
+.dk-review__banner-title {
+  @apply text-sm font-semibold text-foreground;
+}
+
+.dk-review__banner-subtitle {
+  @apply text-xs text-muted-foreground;
+}
+
+/* ---------- Full empty state (0 reviews & 0 ratings) ---------- */
+.dk-review__empty-state {
+  @apply rounded-2xl p-8 sm:p-10 text-center flex flex-col items-center justify-center border border-white/[0.06] relative overflow-hidden;
+  background: var(--dk-surface-ghost);
+}
+
+.dk-review__empty-glow {
+  @apply absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full pointer-events-none blur-3xl opacity-20 bg-primary;
+}
+
+.dk-review__empty-icon-wrap {
+  @apply h-12 w-12 rounded-2xl flex items-center justify-center mb-3 text-primary bg-primary/10 border border-primary/20 shadow-inner;
+}
+
+.dk-review__empty-title {
+  @apply text-base font-semibold text-foreground mb-1;
+}
+
+.dk-review__empty-desc {
+  @apply text-xs text-muted-foreground max-w-sm mb-4 leading-relaxed;
+}
+
+/* ---------- Placeholder / error ---------- */
 .dk-review__placeholder {
-  @apply rounded-2xl p-8 text-center;
+  @apply rounded-2xl p-8 text-center border border-white/[0.06];
   background: var(--dk-surface-ghost);
   box-shadow: var(--dk-shadow-xs);
 }
@@ -23,17 +99,12 @@
 }
 
 .dk-review__placeholder-text--error {
-  @apply mb-3;
-}
-
-.dk-review__list {
-  @apply space-y-3;
+  @apply mb-3 text-red-400;
 }
 
 /* ---------- skeleton loader ---------- */
-
 .dk-review__skeleton {
-  @apply rounded-2xl p-5 space-y-3;
+  @apply rounded-2xl p-5 space-y-3 border border-white/[0.04];
   background: var(--dk-surface-ghost);
   box-shadow: var(--dk-shadow-xs);
 }

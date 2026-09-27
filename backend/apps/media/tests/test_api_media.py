@@ -175,6 +175,28 @@ class MediaApiTests(TestCase):
         self.assertEqual(empty.status_code, 200)
         self.assertIsInstance(empty.data, list)
 
+    def test_ratings_public_list(self) -> None:
+        # Rate the movie
+        self.auth_client.put(
+            f"/api/v1/media/movie/{self.movie_item.pk}/rating", {"score": 9}, format="json"
+        )
+        res = self.client.get(f"/api/v1/media/movie/{self.movie_item.pk}/ratings")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["score"], 9)
+        self.assertEqual(res.data[0]["user"]["username"], self.user.username)
+        self.assertFalse(res.data[0]["has_review"])
+
+        # Write a review, then has_review flips to True
+        self.auth_client.put(
+            f"/api/v1/media/movie/{self.movie_item.pk}/review",
+            {"title": "Epic", "content": "A masterpiece worth watching."},
+            format="json",
+        )
+        res_after = self.client.get(f"/api/v1/media/movie/{self.movie_item.pk}/ratings")
+        self.assertEqual(res_after.status_code, 200)
+        self.assertTrue(res_after.data[0]["has_review"])
+
     # ── Interactions / claim ───────────────────────────────────────────
     def test_interaction_toggle_and_counts(self) -> None:
         path = f"/api/v1/media/movie/{self.movie_item.pk}/interactions"

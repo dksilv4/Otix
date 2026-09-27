@@ -23,6 +23,11 @@ class UserList(TimestampedModel):
 
     class Meta(TimestampedModel.Meta):
         db_table = "user_list"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "name"], name="uq_user_list_user_name"
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.user_id}:{self.name}"

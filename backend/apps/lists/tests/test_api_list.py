@@ -33,6 +33,7 @@ LIST_OUT_KEYS = {
     "is_public",
     "like_count",
     "is_liked",
+    "item_count",
     "created_at",
     "updated_at",
 }
@@ -128,6 +129,33 @@ class ListApiTests(TestCase):
     def test_create_list_validates_name(self) -> None:
         response = self.client.post("/api/v1/list/", {"name": ""}, format="json")
         self.assertEqual(response.status_code, 400)
+
+    def test_create_list_duplicate_name_for_same_user_fails(self) -> None:
+        response = self.client.post(
+            "/api/v1/list/", {"name": "Favorites", "is_public": False}, format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_create_list_same_name_different_user_succeeds(self) -> None:
+        response = self.other_client.post(
+            "/api/v1/list/", {"name": "Favorites", "is_public": False}, format="json"
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["name"], "Favorites")
+
+    def test_update_list_duplicate_name_fails(self) -> None:
+        response = self.client.patch(
+            f"/api/v1/list/{self.private_list.id}", {"name": "Favorites"}, format="json"
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", response.data)
+
+    def test_update_list_same_name_self_succeeds(self) -> None:
+        response = self.client.patch(
+            f"/api/v1/list/{self.public_list.id}", {"name": "Favorites"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
 
     # --- public discovery + mine ---
     def test_public_list_discovery_is_paginated_and_public_only(self) -> None:
@@ -256,11 +284,44 @@ class ListApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(set(response.data), LIST_OUT_KEYS)
+        self.assertEqual(response.data["item_count"], 1)
         self.assertTrue(
             UserListItem.objects.filter(
                 list=self.public_list, media_item=self.movie
             ).exists()
         )
+
+    def test_add_item_duplicate_is_idempotent(self) -> None:
+        UserListItem.objects.create(list=self.public_list, media_item=self.movie, sort_order=0)
+        response = self.client.post(
+            f"/api/v1/list/{self.public_list.id}/item",
+            {"media_item_id": self.movie.id},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            UserListItem.objects.filter(
+                list=self.public_list, media_item=self.movie
+            ).count(),
+            1,
+        )
+
+    def test_list_for_media_returns_matching_list_ids(self) -> None:
+        # Before adding, should return empty list
+        resp = self.client.get(f"/api/v1/list/for-media/{self.movie.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["list_ids"], [])
+
+        # Add to public list
+        UserListItem.objects.create(list=self.public_list, media_item=self.movie, sort_order=0)
+        resp = self.client.get(f"/api/v1/list/for-media/{self.movie.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["list_ids"], [self.public_list.id])
+
+        # Other client cannot see lists they don't own/collaborate on
+        other_resp = self.other_client.get(f"/api/v1/list/for-media/{self.movie.id}")
+        self.assertEqual(other_resp.status_code, 200)
+        self.assertEqual(other_resp.data["list_ids"], [])
 
     def test_add_item_to_unowned_list_is_404(self) -> None:
         response = self.other_client.post(

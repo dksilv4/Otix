@@ -11,7 +11,7 @@ from django.contrib.auth.models import AbstractBaseUser
 from django.db.models import Avg, Count
 
 from apps.media.models import MediaItem
-from apps.social.models import MediaItemRating
+from apps.social.models import MediaItemRating, Review
 
 
 def my_rating(user_id: int, media_item_id: int) -> MediaItemRating | None:
@@ -55,3 +55,39 @@ def _recalc(media_item_id: int) -> None:
     MediaItem.objects.filter(pk=media_item_id).update(
         avg_rating=avg, rating_count=aggregate["count"] or 0
     )
+
+
+def list_ratings_with_users(media_item_id: int, *, limit: int = 50) -> list[dict]:
+    """Public ratings of a media item with user profile and review presence flag."""
+    ratings = list(
+        MediaItemRating.objects.filter(media_item_id=media_item_id)
+        .order_by("-updated_at", "-created_at")
+        .select_related("user")[:limit]
+    )
+    user_ids = [r.user_id for r in ratings]
+    users_with_reviews = set(
+        Review.objects.filter(
+            media_item_id=media_item_id,
+            user_id__in=user_ids,
+            content__isnull=False,
+            is_private=False,
+        ).values_list("user_id", flat=True)
+    )
+    out = []
+    for r in ratings:
+        out.append(
+            {
+                "user_id": r.user_id,
+                "media_item_id": r.media_item_id,
+                "score": r.score,
+                "created_at": r.created_at,
+                "updated_at": r.updated_at,
+                "user": {
+                    "id": r.user.id,
+                    "username": r.user.username,
+                    "is_admin": r.user.is_staff,
+                },
+                "has_review": r.user_id in users_with_reviews,
+            }
+        )
+    return out

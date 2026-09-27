@@ -1,0 +1,70 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Rating Card (User Rating Only) ─────────────────────── */
+
+.dk-rating-card {
+  @apply rounded-xl px-4 py-3 transition-all duration-150 flex items-center justify-between gap-3 border border-white/[0.04];
+  background: var(--dk-surface-ghost);
+  box-shadow: var(--dk-shadow-xs);
+
+  &:hover {
+    background: var(--dk-surface-ghost-hover);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.dk-rating-card__left {
+  @apply flex items-center gap-3 min-w-0;
+}
+
+.dk-rating-card__avatar {
+  @apply h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold uppercase shrink-0 text-white/90 bg-white/10 border border-white/10;
+}
+
+.dk-rating-card__meta {
+  @apply min-w-0 space-y-0.5;
+}
+
+.dk-rating-card__user-row {
+  @apply flex items-center gap-2 flex-wrap;
+}
+
+.dk-rating-card__username {
+  @apply text-sm font-medium transition-colors truncate text-foreground;
+
+  &:hover {
+    @apply text-primary;
+  }
+}
+
+.dk-rating-card__separator {
+  @apply text-xs text-muted-foreground/40;
+}
+
+.dk-rating-card__date {
+  @apply text-xs text-muted-foreground/50;
+}
+
+.dk-rating-card__badge--own {
+  @apply text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary/80 border border-primary/20;
+}
+
+.dk-rating-card__action-text {
+  @apply text-[11px] text-muted-foreground/60 flex items-center gap-1;
+}
+
+.dk-rating-card__right {
+  @apply shrink-0 flex items-center gap-3;
+}
+
+.dk-rating-card__score-block {
+  @apply flex items-center gap-2;
+}
+
+.dk-rating-card__score-value {
+  @apply text-sm font-semibold tabular-nums text-amber-400;
+}
+
+.dk-rating-card__edit-btn {
+  @apply inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground/60 hover:text-foreground hover:bg-white/10 transition-colors border border-transparent hover:border-white/10;
+}

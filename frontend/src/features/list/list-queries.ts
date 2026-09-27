@@ -20,6 +20,7 @@ export interface UserListOut {
   isPublic: boolean
   likeCount: number
   isLiked: boolean
+  itemCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -150,6 +151,27 @@ export function useListDetail(listId: string) {
   return useQuery(listDetailOptions(listId))
 }
 
+export function listsForMediaOptions(mediaItemId: string) {
+  return queryOptions({
+    queryKey: listKeys.forMedia(mediaItemId),
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ listIds: (string | number)[] }>(
+        "/list/for-media/" + mediaItemId
+      )
+      return Array.isArray(data?.listIds) ? data.listIds.map(String) : []
+    },
+    enabled: !!mediaItemId,
+    staleTime: 1000 * 60 * 2,
+  })
+}
+
+export function useListsForMedia(mediaItemId: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    ...listsForMediaOptions(mediaItemId),
+    enabled: (options?.enabled ?? true) && !!mediaItemId,
+  })
+}
+
 // ── Mutations ──────────────────────────────────────────
 
 export function useCreateList() {
@@ -207,6 +229,20 @@ export function useDeleteList() {
   })
 }
 
+export function useDeleteLists() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (listIds: string[]) => {
+      await Promise.all(listIds.map((id) => apiClient.delete("/list/" + id)))
+    },
+    onSuccess: (_data, listIds) => {
+      listIds.forEach((listId) => emitOtixEvent("otix:list:deleted", { listId }))
+      qc.invalidateQueries({ queryKey: listKeys.mine() })
+      qc.invalidateQueries({ queryKey: listKeys.public() })
+    },
+  })
+}
+
 export function useAddToList() {
   const qc = useQueryClient()
   return useMutation({
@@ -227,6 +263,7 @@ export function useAddToList() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: listKeys.detail(vars.listId) })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
+      qc.invalidateQueries({ queryKey: listKeys.forMedia(vars.mediaItemId) })
       emitOtixEvent("otix:list:item_added", {
         listId: vars.listId,
         item: { mediaItemId: vars.mediaItemId, mediaType: vars.mediaType },
@@ -251,6 +288,7 @@ export function useRemoveFromList() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: listKeys.detail(vars.listId) })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
+      qc.invalidateQueries({ queryKey: listKeys.forMedia(vars.mediaItemId) })
       emitOtixEvent("otix:list:item_removed", {
         listId: vars.listId,
         item: { mediaItemId: vars.mediaItemId, mediaType: vars.mediaType },

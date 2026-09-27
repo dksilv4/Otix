@@ -13,6 +13,7 @@ from apps.lists.views import (
     ListCollaboratorsView,
     ListDetailView,
     ListExportView,
+    ListForMediaView,
     ListHistoryView,
     ListItemRemoveView,
     ListItemView,
@@ -26,6 +27,7 @@ app_name = "lists"
 urlpatterns = [
     path("", ListRootView.as_view(), name="list-root"),
     path("mine", ListMineView.as_view(), name="list-mine"),
+    path("for-media/<int:media_item_id>", ListForMediaView.as_view(), name="list-for-media"),
     path("<int:list_id>", ListDetailView.as_view(), name="list-detail"),
     path("<int:list_id>/item", ListItemView.as_view(), name="list-item"),
     path(

@@ -9,7 +9,7 @@ legacy ``ListService`` (``old-backend/otix/services/list_service.py``):
 - ``None`` / ``False`` returns signal "not found" so views can raise 404s.
 """
 
-from django.db.models import BooleanField, IntegerField, Max, Prefetch, Q, Value
+from django.db.models import BooleanField, Count, IntegerField, Max, Prefetch, Q, Value
 from django.db.models.query import QuerySet
 
 from apps.lists.models import (
@@ -28,6 +28,8 @@ def _with_empty_like_state(lst: UserList) -> UserList:
     """Attach the legacy placeholder like keys shared by every ``UserListOut``."""
     lst.like_count = 0
     lst.is_liked = False
+    if not hasattr(lst, "item_count"):
+        lst.item_count = UserListItem.objects.filter(list_id=lst.pk).count()
     return lst
 
 
@@ -35,6 +37,7 @@ def _public_annotation() -> dict:
     return {
         "like_count": Value(0, output_field=IntegerField()),
         "is_liked": Value(False, output_field=BooleanField()),
+        "item_count": Count("items", distinct=True),
     }
 
 
@@ -60,11 +63,30 @@ def list_user_lists(user_id: int) -> QuerySet[UserList]:
     )
 
 
+def get_media_list_ids(user_id: int, media_item_id: int) -> list[int]:
+    """Return the IDs of lists owned by or shared with ``user_id`` that contain ``media_item_id``."""
+    return list(
+        UserListItem.objects.filter(
+            media_item_id=media_item_id,
+        )
+        .filter(
+            Q(list__user_id=user_id)
+            | Q(list__collaborators__user_id=user_id, list__collaborators__status="accepted")
+        )
+        .values_list("list_id", flat=True)
+        .distinct()
+    )
+
+
 def create_list(user_id: int, name: str, description: str | None, is_public: bool) -> UserList:
     """Create a list owned by ``user_id``."""
+    trimmed = name.strip()
+    if UserList.objects.filter(user_id=user_id, name__iexact=trimmed).exists():
+        from rest_framework import serializers
+        raise serializers.ValidationError({"name": ["You already have a list with this name."]})
     lst = UserList.objects.create(
         user_id=user_id,
-        name=name,
+        name=trimmed,
         description=description,
         is_public=is_public,
     )
@@ -112,7 +134,17 @@ def update_list(
     if lst is None:
         return None
     if name is not None:
-        lst.name = name
+        trimmed = name.strip()
+        if (
+            UserList.objects.filter(user_id=user_id, name__iexact=trimmed)
+            .exclude(pk=list_id)
+            .exists()
+        ):
+            from rest_framework import serializers
+            raise serializers.ValidationError(
+                {"name": ["You already have a list with this name."]}
+            )
+        lst.name = trimmed
     if description is not None:
         lst.description = description
     if is_public is not None:
@@ -135,6 +167,8 @@ def add_item(list_id: int, user_id: int, media_item_id: int) -> UserList | None:
     lst = get_owner_list(list_id, user_id)
     if lst is None:
         return None
+    if UserListItem.objects.filter(list_id=list_id, media_item_id=media_item_id).exists():
+        return _with_empty_like_state(lst)
     max_order = UserListItem.objects.filter(list_id=list_id).aggregate(
         max_order=Max("sort_order")
     )["max_order"]

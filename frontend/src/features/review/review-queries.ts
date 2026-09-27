@@ -9,7 +9,7 @@ export const reviewKeys = {
   myReview: (mediaType: string, mediaId: string) => [...reviewKeys.all(), 'my', mediaType, mediaId] as const,
   list: (mediaType: string, mediaId: string) => [...reviewKeys.all(), 'list', mediaType, mediaId] as const,
 }
-import type { MediaRatingOut } from './rating-queries'
+import { ratingKeys, type MediaRatingOut } from './rating-queries'
 
 export interface ReviewOut {
   userId: string
@@ -122,6 +122,7 @@ export function useUpsertReview(mediaType: string, mediaId: string) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
     },
   })
@@ -151,6 +152,7 @@ export function useDeleteReview(mediaType: string, mediaId: string) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
     },
   })

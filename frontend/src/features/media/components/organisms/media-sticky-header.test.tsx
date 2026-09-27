@@ -38,6 +38,10 @@ vi.mock('@/features/navigation', () => ({
   useNavPillsVisibility: () => ({ showLeft: true, showRight: true, setOverride: vi.fn() }),
 }))
 
+vi.mock('@list', () => ({
+  AddToListButton: () => <button aria-label="Add to list">List</button>,
+}))
+
 const mockDetail: MediaItemDetail = {
   id: 'test-movie-1',
   title: 'Inception',

@@ -50,6 +50,7 @@ from apps.media.views import (
     MediaListView,
     MirroringView,
     PurgeAssetsView,
+    RatingListView,
     RatingView,
     RecommendationView,
     RehydrateStreamView,
@@ -229,6 +230,11 @@ urlpatterns = [
         "<str:media_type>/<str:media_id>/reviews",
         ReviewListView.as_view(),
         name="media-reviews",
+    ),
+    path(
+        "<str:media_type>/<str:media_id>/ratings",
+        RatingListView.as_view(),
+        name="media-ratings",
     ),
     path(
         "<str:media_type>/<int:media_id>/interactions",

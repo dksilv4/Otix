@@ -99,4 +99,21 @@ describe("ListComposer", () => {
       isPublic: true,
     })
   })
+
+  it("calls onClose when Escape key is pressed", async () => {
+    const onClose = vi.fn()
+    render(<ListComposer onClose={onClose} onSave={vi.fn()} />)
+    await userEvent.keyboard("{Escape}")
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it("displays error message when onSave fails", async () => {
+    const onSave = vi.fn().mockRejectedValue(new Error("Network Error"))
+    render(<ListComposer onClose={vi.fn()} onSave={onSave} />)
+    await userEvent.type(screen.getByPlaceholderText("My list name..."), "My Error List")
+    await userEvent.click(screen.getByText("Create"))
+    await waitFor(() => {
+      expect(screen.getByText("Network Error")).toBeInTheDocument()
+    })
+  })
 })

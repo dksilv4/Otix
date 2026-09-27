@@ -18,6 +18,7 @@ from apps.media.serializers.social import (
     MediaRatingAggregateOutSerializer,
     MediaRatingBodySerializer,
     MediaRatingOutSerializer,
+    MediaRatingWithUserOutSerializer,
     ReviewBodySerializer,
     ReviewOutSerializer,
     ReviewUpdateSerializer,
@@ -111,3 +112,23 @@ class ReviewListView(APIView):
         viewer_id = request.user.id if request.user.is_authenticated else None
         payload = services.list_reviews_with_ratings(pk, viewer_id=viewer_id, limit=limit)
         return Response(ReviewWithUserOutSerializer(payload, many=True).data)
+
+
+class RatingListView(APIView):
+    """``GET /media/{media_type}/{media_id}/ratings`` — public list of ratings w/ author."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, media_type: str, media_id: str | int) -> Response:
+        try:
+            limit = int(request.query_params.get("limit", 20))
+        except ValueError:
+            raise ValidationError("limit must be an integer") from None
+        limit = max(1, min(limit, 50))
+        from apps.media.views.catalog import resolve_media_pk
+
+        pk = resolve_media_pk(media_type, media_id)
+        if pk is None:
+            return Response([])
+        payload = services.list_ratings_with_users(pk, limit=limit)
+        return Response(MediaRatingWithUserOutSerializer(payload, many=True).data)

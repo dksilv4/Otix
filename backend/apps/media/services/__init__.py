@@ -67,6 +67,7 @@ from apps.media.services.interaction import (
 )
 from apps.media.services.rating import (
     delete_rating,
+    list_ratings_with_users,
     my_rating,
     upsert_rating,
 )
@@ -106,6 +107,7 @@ __all__ = [
     "list_for_media",
     "list_match_proposals",
     "list_media",
+    "list_ratings_with_users",
     "list_reviews_with_ratings",
     "match_payload_to_out",
     "media_detail_queryset",

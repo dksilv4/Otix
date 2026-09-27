@@ -197,7 +197,9 @@ export function ListDetailPage() {
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
-              onClick={() => openModal(<ShareModal list={list} />)}
+              onClick={() => {
+                const close = openModal(<ShareModal list={list} onClose={() => close()} />)
+              }}
               className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white"
             >
               <ShareIcon className="h-4 w-4" />
@@ -226,21 +228,26 @@ export function ListDetailPage() {
                   )}
                 </button>
                 <button
-                  onClick={() => openModal(
-                    <ListComposer
-                      initial={list}
-                      onSave={async (data) => {
-                        await updateList.mutateAsync({ listId, ...data })
-                      }}
-                    />
-                  )}
+                  onClick={() => {
+                    const close = openModal(
+                      <ListComposer
+                        initial={list}
+                        onClose={() => close()}
+                        onSave={async (data) => {
+                          await updateList.mutateAsync({ listId, ...data })
+                        }}
+                      />
+                    )
+                  }}
                   className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white"
                 >
                   <PencilIcon className="h-4 w-4" />
                   Edit
                 </button>
                 <button
-                  onClick={() => openModal(<CollaboratorsModal list={list} />)}
+                  onClick={() => {
+                    const close = openModal(<CollaboratorsModal list={list} onClose={() => close()} />)
+                  }}
                   className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white"
                 >
                   <UsersIcon className="h-4 w-4" />
@@ -323,15 +330,25 @@ export function ListDetailPage() {
                           tmdbId={item.tmdbId}
                         />
                         {alreadyAdded ? (
-                          <span className="absolute top-2 right-2 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handleRemoveItem(item.id, item.mediaType)
+                            }}
+                            title="Remove from list"
+                            className="absolute top-2 right-2 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/30 transition-colors"
+                          >
                             Added
-                          </span>
+                          </button>
                         ) : (
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.preventDefault()
                               addToList.mutate({ listId, mediaItemId: item.id, mediaType: item.mediaType })
                             }}
+                            title="Add to list"
                             className="absolute top-2 right-2 rounded-full p-2 backdrop-blur-md bg-black/60 text-white/70 opacity-0 group-hover:opacity-100 hover:bg-primary hover:text-white transition-all duration-200"
                           >
                             <PlusIcon className="h-4 w-4" />

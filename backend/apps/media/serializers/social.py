@@ -90,6 +90,18 @@ class ReviewWithUserOutSerializer(serializers.Serializer):
     rating = MediaRatingOutSerializer(allow_null=True)
 
 
+class MediaRatingWithUserOutSerializer(serializers.Serializer):
+    """A user rating row plus author details and review status."""
+
+    user_id = serializers.IntegerField()
+    media_item_id = serializers.IntegerField()
+    score = serializers.IntegerField()
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+    user = ReviewUserOutSerializer()
+    has_review = serializers.BooleanField(default=False)
+
+
 # ── Interactions ─────────────────────────────────────────────────────────
 
 

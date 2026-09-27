@@ -33,7 +33,7 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: vi.fn(() => ({ tab: "watchlist" })),
   useNavigate: vi.fn(() => mockNavigate),
   useSearch: vi.fn(() => ({})),
-  Link: ({ children, to, search, params, ...props }: any) => React.createElement("a", { href: to, ...props }, children),
+  Link: ({ children, to, _search, _params, ...props }: any) => React.createElement("a", { href: to, ...props }, children),
 }))
 
 // Mock auth
@@ -118,6 +118,7 @@ vi.mock("./library-queries", () => ({
 vi.mock("@list/list-queries", () => ({
   useUserLists: vi.fn(() => ({ data: [], isLoading: false })),
   useCreateList: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useDeleteLists: vi.fn(() => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })),
 }))
 
 vi.mock("@/lib/player/use-player", () => ({

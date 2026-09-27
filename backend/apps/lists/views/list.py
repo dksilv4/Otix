@@ -274,3 +274,12 @@ class ListHistoryView(APIView):
     def get(self, request: Request, list_id: int) -> Response:
         entries = services.get_rank_history(list_id)
         return Response(RankHistoryOutSerializer(entries, many=True).data)
+
+
+class ListForMediaView(APIView):
+    """``GET /list/for-media/{media_item_id}`` — lists containing this media item for the caller."""
+
+    def get(self, request: Request, media_item_id: int) -> Response:
+        list_ids = services.get_media_list_ids(request.user.id, media_item_id)
+        return Response({"list_ids": list_ids})
+

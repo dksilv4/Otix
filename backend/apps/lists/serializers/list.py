@@ -99,6 +99,7 @@ class UserListOutSerializer(serializers.ModelSerializer):
 
     like_count = serializers.IntegerField(read_only=True)
     is_liked = serializers.BooleanField(read_only=True)
+    item_count = serializers.IntegerField(read_only=True, default=0)
 
     class Meta:
         model = UserList
@@ -110,6 +111,7 @@ class UserListOutSerializer(serializers.ModelSerializer):
             "is_public",
             "like_count",
             "is_liked",
+            "item_count",
             "created_at",
             "updated_at",
         )
@@ -119,6 +121,7 @@ class UserListOutSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "is_public",
+            "item_count",
             "created_at",
             "updated_at",
         )

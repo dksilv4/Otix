@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { XIcon } from "lucide-react"
+import { XIcon, Check } from "lucide-react"
 import type { UserListOut, UserListCreate } from "../../list-queries"
 import { cn } from "@/lib/utils"
 
@@ -21,10 +21,21 @@ export function ListComposer({
   const [isPublic, setIsPublic] = useState(initial?.isPublic ?? false)
   const [animateIn, setAnimateIn] = useState(false)
   const [isSavingLocal, setIsSavingLocal] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     requestAnimationFrame(() => requestAnimationFrame(() => setAnimateIn(true)))
   }, [])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onClose?.()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onClose])
 
   const visible = animateIn && !isExiting
 
@@ -32,9 +43,17 @@ export function ListComposer({
     e.preventDefault()
     if (!name.trim()) return
     setIsSavingLocal(true)
+    setErrorMessage(null)
     try {
       await onSave({ name: name.trim(), description: description.trim() || null, isPublic })
       onClose?.()
+    } catch (err: any) {
+      setErrorMessage(
+        err?.response?.data?.detail ||
+        err?.response?.data?.name?.[0] ||
+        err?.message ||
+        "Failed to save list"
+      )
     } finally {
       setIsSavingLocal(false)
     }
@@ -74,6 +93,12 @@ export function ListComposer({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col p-6 space-y-5">
+          {errorMessage && (
+            <div className="rounded-xl bg-destructive/15 border border-destructive/25 px-4 py-2.5 text-xs text-red-400">
+              {errorMessage}
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
               Name
@@ -107,7 +132,7 @@ export function ListComposer({
               "flex items-center justify-center w-5 h-5 rounded border transition-colors",
               isPublic ? "bg-primary border-primary" : "border-white/20 group-hover:border-white/40"
             )}>
-              {isPublic && <XIcon className="h-3 w-3 text-white" style={{ clipPath: 'polygon(20% 0%, 0% 20%, 30% 50%, 0% 80%, 20% 100%, 50% 70%, 80% 100%, 100% 80%, 70% 50%, 100% 20%, 80% 0%, 50% 30%)' }} />}
+              {isPublic && <Check className="h-3 w-3 text-white" />}
               <input
                 type="checkbox"
                 checked={isPublic}

@@ -18,4 +18,8 @@ describe("listKeys", () => {
   it("returns a detail key for a specific list id", () => {
     expect(listKeys.detail("abc123")).toEqual(["lists", "detail", "abc123"])
   })
+
+  it("returns a forMedia key for a specific media item id", () => {
+    expect(listKeys.forMedia("media-123")).toEqual(["lists", "for-media", "media-123"])
+  })
 })

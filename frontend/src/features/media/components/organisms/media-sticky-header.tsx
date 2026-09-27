@@ -9,6 +9,7 @@ import type { MediaItemDetail } from '@media'
 import { formatYear, primaryTrailer } from '@media'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { useNavPillsVisibility } from '@/features/navigation'
+import { AddToListButton } from '@list'
 import { cn } from '@/lib/utils'
 
 interface MediaStickyHeaderProps {
@@ -270,6 +271,11 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
           >
             <Heart className={cn('h-3.5 w-3.5', isLiked && 'fill-current text-rose-400')} />
           </button>
+        )}
+
+        {/* Add to List */}
+        {isAuthenticated && (
+          <AddToListButton mediaItemId={detail.id} variant="icon" />
         )}
       </div>
     </div>

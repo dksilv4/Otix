@@ -61,6 +61,7 @@ from apps.media.views.proposals import (
     MatchProposeView,
 )
 from apps.media.views.rating_review import (
+    RatingListView,
     RatingView,
     ReviewListView,
     ReviewView,
@@ -106,6 +107,7 @@ __all__ = [
     "MediaListView",
     "MirroringView",
     "PurgeAssetsView",
+    "RatingListView",
     "RatingView",
     "RecommendationView",
     "RehydrateStreamView",
