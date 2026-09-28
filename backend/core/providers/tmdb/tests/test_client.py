@@ -111,9 +111,7 @@ class TMDBClientTests(SimpleTestCase):
 
     def test_get_season(self) -> None:
         async def run() -> None:
-            mapping = {
-                ("GET", "/3/tv/1399/season/1"): (200, {"season_number": 1, "episodes": []})
-            }
+            mapping = {("GET", "/3/tv/1399/season/1"): (200, {"season_number": 1, "episodes": []})}
             provider, _, calls = self._make_provider(mapping)
             async with provider.http:
                 data = await provider.get_season(1399, 1)

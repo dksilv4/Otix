@@ -35,9 +35,7 @@ class WorkoutExerciseOutSerializer(serializers.ModelSerializer):
 class WorkoutDetailSerializer(serializers.ModelSerializer):
     """Full workout payload (legacy ``WorkoutOut``)."""
 
-    exercises = WorkoutExerciseOutSerializer(
-        many=True, source="workout_exercises", read_only=True
-    )
+    exercises = WorkoutExerciseOutSerializer(many=True, source="workout_exercises", read_only=True)
 
     class Meta:
         model = Workout

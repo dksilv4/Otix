@@ -54,6 +54,39 @@ describe('GameCharacters component', () => {
     expect(screen.getByText('Ciri')).toBeDefined()
   })
 
+  it('sorts characters with images ahead of those without', () => {
+    const mockCharacters = [
+      {
+        id: 'mc-1',
+        order: 0,
+        character: {
+          id: 'char-1',
+          name: 'No Image First',
+          slug: 'no-image-first',
+          mugShotUrl: null,
+        },
+      },
+      {
+        id: 'mc-2',
+        order: 1,
+        character: {
+          id: 'char-2',
+          name: 'Has Image Second',
+          slug: 'has-image-second',
+          mugShotUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/hero.jpg',
+        },
+      },
+    ]
+
+    render(<GameCharacters characters={mockCharacters} />)
+
+    const buttons = screen.getAllByRole('button').filter((btn) =>
+      /No Image First|Has Image Second/.test(btn.textContent || ''),
+    )
+    expect(buttons[0]?.textContent).toContain('Has Image Second')
+    expect(buttons[1]?.textContent).toContain('No Image First')
+  })
+
   it('renders safely when character objects have missing/null fields', () => {
     const brokenCharacters = [
       {

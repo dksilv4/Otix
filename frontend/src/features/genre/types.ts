@@ -4,8 +4,12 @@ export interface GenreOption {
   slug: string
 }
 
+export type GenreMediaType = 'movie' | 'show' | 'game'
+
 export interface GenreSearchParams {
-  type?: 'movie' | 'show' | 'game' | 'music'
+  type?: GenreMediaType
+  /** Comma-separated genre slugs when multiple categories are selected. */
+  genres?: string
   sort?: string
   dir?: 'asc' | 'desc'
   certification?: string

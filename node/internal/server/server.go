@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,7 +22,9 @@ import (
 	"github.com/dksilv4/otix/node/internal/desktop"
 	"github.com/dksilv4/otix/node/internal/epic"
 	"github.com/dksilv4/otix/node/internal/explorer"
+	"github.com/dksilv4/otix/node/internal/heartbeat"
 	"github.com/dksilv4/otix/node/internal/indexer"
+	"github.com/dksilv4/otix/node/internal/otixmeta"
 	"github.com/dksilv4/otix/node/internal/plugins"
 	"github.com/dksilv4/otix/node/internal/providers"
 	"github.com/dksilv4/otix/node/internal/saves"
@@ -75,6 +78,11 @@ func (s *Server) Router() http.Handler {
 	return s.router
 }
 
+// Indexer exposes the storage indexer for tests and internal tooling.
+func (s *Server) Indexer() *indexer.StorageIndexer {
+	return s.indexer
+}
+
 func (s *Server) verifyToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		expected := s.cfg.Server.AuthToken
@@ -121,6 +129,21 @@ func jsonResponse(w http.ResponseWriter, statusCode int, data interface{}) {
 	_ = json.NewEncoder(w).Encode(data)
 }
 
+func matchLibraryPath(filePath string, libPaths []string) string {
+	best := ""
+	for _, libPath := range libPaths {
+		if libPath == "" {
+			continue
+		}
+		if filePath == libPath || strings.HasPrefix(filePath, strings.TrimRight(libPath, string(os.PathSeparator))+string(os.PathSeparator)) {
+			if len(libPath) > len(best) {
+				best = libPath
+			}
+		}
+	}
+	return best
+}
+
 func (s *Server) setupRoutes() {
 	r := s.router
 
@@ -147,10 +170,13 @@ func (s *Server) setupRoutes() {
 
 	// Public Health & Claim APIs
 	r.Get("/api/v1/ping", func(w http.ResponseWriter, r *http.Request) {
+		status := s.claimMgr.Status()
 		jsonResponse(w, http.StatusOK, map[string]interface{}{
 			"status":      "online",
 			"server_name": s.cfg.Server.Name,
 			"version":     "0.0.1",
+			"claimed":     status.Claimed,
+			"claimed_by":  status.Username,
 		})
 	})
 
@@ -210,6 +236,7 @@ func (s *Server) setupRoutes() {
 			"libraries_count": len(s.cfg.GameLibraries),
 			"total_files":     totalFiles,
 			"claimed":         s.claimMgr.IsClaimed(),
+			"claimed_by":      s.claimMgr.Status().Username,
 		}
 		if isAuthed {
 			resp["total_size_bytes"] = totalSize
@@ -223,6 +250,17 @@ func (s *Server) setupRoutes() {
 	r.Group(func(authed chi.Router) {
 		authed.Use(s.verifyToken)
 
+		authed.Post("/api/v1/claim/unclaim", func(w http.ResponseWriter, r *http.Request) {
+			if err := s.claimMgr.Unclaim(); err != nil {
+				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+				return
+			}
+			jsonResponse(w, http.StatusOK, map[string]interface{}{
+				"status":  "unclaimed",
+				"message": "Node successfully unclaimed and reset",
+			})
+		})
+
 		// ── Libraries ────────────────────────────────────────────────────────
 		authed.Get("/api/v1/libraries", func(w http.ResponseWriter, r *http.Request) {
 			jsonResponse(w, http.StatusOK, s.indexer.GetLibraries())
@@ -235,11 +273,7 @@ func (s *Server) setupRoutes() {
 				return
 			}
 			if len(lib.AllowedExtensions) == 0 {
-				if lib.Kind == "iso" {
-					lib.AllowedExtensions = config.IsoExtensions
-				} else {
-					lib.AllowedExtensions = config.GameExtensions
-				}
+				lib.AllowedExtensions = config.DefaultAllowedExtensions(lib.Kind)
 			}
 			s.cfg.GameLibraries = append(s.cfg.GameLibraries, lib)
 			_ = s.cfg.Save("")
@@ -257,6 +291,11 @@ func (s *Server) setupRoutes() {
 				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
 				return
 			}
+			for i := range req.Libraries {
+				if len(req.Libraries[i].AllowedExtensions) == 0 {
+					req.Libraries[i].AllowedExtensions = config.DefaultAllowedExtensions(req.Libraries[i].Kind)
+				}
+			}
 			s.cfg.GameLibraries = req.Libraries
 			_ = s.cfg.Save("")
 			s.indexer.SetLibraries(s.cfg.GameLibraries)
@@ -266,8 +305,203 @@ func (s *Server) setupRoutes() {
 		})
 
 		authed.Post("/api/v1/scan", func(w http.ResponseWriter, r *http.Request) {
-			go s.indexer.ScanAll()
+			wait := r.URL.Query().Get("wait") == "1" || r.URL.Query().Get("wait") == "true"
+			if wait {
+				files := s.indexer.ScanAll()
+				s.triggerBackendSync()
+				jsonResponse(w, http.StatusOK, map[string]any{
+					"status": "scanned",
+					"count":  len(files),
+				})
+				return
+			}
+			go func() {
+				s.indexer.ScanAll()
+				s.triggerBackendSync()
+			}()
 			jsonResponse(w, http.StatusOK, map[string]string{"status": "scanning_started"})
+		})
+
+		authed.Delete("/api/v1/files", func(w http.ResponseWriter, r *http.Request) {
+			cleared := s.indexer.Clear()
+			jsonResponse(w, http.StatusOK, map[string]any{
+				"status":  "cleared",
+				"cleared": cleared,
+			})
+		})
+
+		authed.Post("/api/v1/scan/clear", func(w http.ResponseWriter, r *http.Request) {
+			cleared := s.indexer.Clear()
+			jsonResponse(w, http.StatusOK, map[string]any{
+				"status":  "cleared",
+				"cleared": cleared,
+			})
+		})
+
+		// ── Otix sidecars ────────────────────────────────────────────────────
+		authed.Get("/api/v1/otix/settings", func(w http.ResponseWriter, r *http.Request) {
+			jsonResponse(w, http.StatusOK, map[string]any{
+				"write_otix_after_scan": s.cfg.Server.WriteOtixAfterScan,
+				"download_otix_images":  s.cfg.Server.DownloadOtixImages,
+			})
+		})
+
+		authed.Post("/api/v1/otix/settings", func(w http.ResponseWriter, r *http.Request) {
+			var req struct {
+				WriteOtixAfterScan *bool `json:"write_otix_after_scan"`
+				DownloadOtixImages *bool `json:"download_otix_images"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+			if req.WriteOtixAfterScan != nil {
+				s.cfg.Server.WriteOtixAfterScan = *req.WriteOtixAfterScan
+			}
+			if req.DownloadOtixImages != nil {
+				s.cfg.Server.DownloadOtixImages = *req.DownloadOtixImages
+			}
+			_ = s.cfg.Save("")
+			jsonResponse(w, http.StatusOK, map[string]any{
+				"write_otix_after_scan": s.cfg.Server.WriteOtixAfterScan,
+				"download_otix_images":  s.cfg.Server.DownloadOtixImages,
+			})
+		})
+
+		authed.Post("/api/v1/otix/write", func(w http.ResponseWriter, r *http.Request) {
+			var req struct {
+				DownloadImages *bool `json:"download_images"`
+				Items          []struct {
+					FileID   string          `json:"file_id"`
+					Filepath string          `json:"filepath"`
+					Sidecar  otixmeta.Sidecar `json:"sidecar"`
+				} `json:"items"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+			downloadImages := s.cfg.Server.DownloadOtixImages
+			if req.DownloadImages != nil {
+				downloadImages = *req.DownloadImages
+			}
+
+			written := 0
+			var failed []map[string]any
+			libs := s.indexer.GetLibraries()
+			libPaths := make([]string, 0, len(libs))
+			for _, lib := range libs {
+				libPaths = append(libPaths, lib.Path)
+			}
+
+			for _, item := range req.Items {
+				filePath := item.Filepath
+				if filePath == "" && item.FileID != "" {
+					if f, ok := s.indexer.GetFile(item.FileID); ok {
+						filePath = f.Filepath
+					}
+				}
+				if filePath == "" {
+					failed = append(failed, map[string]any{
+						"file_id": item.FileID,
+						"error":   "missing filepath",
+					})
+					continue
+				}
+				libraryPath := matchLibraryPath(filePath, libPaths)
+				gameRoot := indexer.GameRootForFile(filePath, libraryPath)
+				sc := item.Sidecar
+				if sc.Version == 0 {
+					sc.Version = otixmeta.Version
+				}
+				if sc.ExeRelative == "" || strings.HasSuffix(sc.ExeRelative, ".otix") {
+					if rel, err := filepath.Rel(gameRoot, filePath); err == nil && rel != "." && !strings.HasSuffix(rel, ".otix") {
+						sc.ExeRelative = filepath.ToSlash(rel)
+					}
+				}
+				if downloadImages {
+					_ = otixmeta.DownloadImages(gameRoot, &sc, nil)
+				}
+				if err := otixmeta.Write(gameRoot, &sc); err != nil {
+					failed = append(failed, map[string]any{
+						"file_id":  item.FileID,
+						"filepath": filePath,
+						"error":    err.Error(),
+					})
+					continue
+				}
+				written++
+				// Refresh in-memory index fields for all files under this game root.
+				allFiles := s.indexer.Files()
+				for _, f := range allFiles {
+					if strings.HasPrefix(f.Filepath, gameRoot) {
+						indexer.AttachOtixSidecar(&f, libraryPath)
+						s.indexer.UpsertFile(f)
+					}
+				}
+			}
+
+			jsonResponse(w, http.StatusOK, map[string]any{
+				"status":  "ok",
+				"written": written,
+				"failed":  failed,
+			})
+		})
+
+		authed.Get("/api/v1/files/{file_id}/otix", func(w http.ResponseWriter, r *http.Request) {
+			fileID := chi.URLParam(r, "file_id")
+			f, ok := s.indexer.GetFile(fileID)
+			if !ok {
+				http.Error(w, `{"detail":"Hosted file not found"}`, http.StatusNotFound)
+				return
+			}
+			libraryPath := ""
+			for _, lib := range s.indexer.GetLibraries() {
+				if strings.HasPrefix(f.Filepath, lib.Path) {
+					libraryPath = lib.Path
+					break
+				}
+			}
+			root := indexer.GameRootForFile(f.Filepath, libraryPath)
+			sc, err := otixmeta.Read(root)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"detail":%q}`, err.Error()), http.StatusInternalServerError)
+				return
+			}
+			if sc == nil {
+				http.Error(w, `{"detail":"Otix sidecar not found"}`, http.StatusNotFound)
+				return
+			}
+			jsonResponse(w, http.StatusOK, sc)
+		})
+
+		authed.Get("/api/v1/files/{file_id}/otix/asset/{role}", func(w http.ResponseWriter, r *http.Request) {
+			fileID := chi.URLParam(r, "file_id")
+			role := chi.URLParam(r, "role")
+			f, ok := s.indexer.GetFile(fileID)
+			if !ok {
+				http.Error(w, `{"detail":"Hosted file not found"}`, http.StatusNotFound)
+				return
+			}
+			libraryPath := ""
+			for _, lib := range s.indexer.GetLibraries() {
+				if strings.HasPrefix(f.Filepath, lib.Path) {
+					libraryPath = lib.Path
+					break
+				}
+			}
+			root := indexer.GameRootForFile(f.Filepath, libraryPath)
+			sc, err := otixmeta.Read(root)
+			if err != nil || sc == nil {
+				http.Error(w, `{"detail":"Otix sidecar not found"}`, http.StatusNotFound)
+				return
+			}
+			assetPath, ok := otixmeta.ResolveLocalAsset(root, sc, role)
+			if !ok {
+				http.Error(w, `{"detail":"Otix asset not found"}`, http.StatusNotFound)
+				return
+			}
+			http.ServeFile(w, r, assetPath)
 		})
 
 		// ── Files & HTTP/2 Range Streaming ────────────────────────────────────
@@ -390,6 +624,20 @@ func (s *Server) setupRoutes() {
 				"status": "created",
 				"path":   newFolder,
 			})
+		})
+
+		authed.Post("/api/v1/explorer/request-permission", func(w http.ResponseWriter, r *http.Request) {
+			var req explorer.PermissionRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+			res, err := explorer.RequestFolderPermission(req.Path)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusBadRequest)
+				return
+			}
+			jsonResponse(w, http.StatusOK, res)
 		})
 
 		authed.Get("/api/v1/explorer/download", func(w http.ResponseWriter, r *http.Request) {
@@ -1051,3 +1299,47 @@ func (s *Server) setupRoutes() {
 		})
 	})
 }
+
+func (s *Server) triggerBackendSync() {
+	if !s.cfg.Server.WriteOtixAfterScan {
+		return
+	}
+	registryURL := heartbeat.ResolveRegistryURL(s.cfg)
+	if registryURL == "" {
+		return
+	}
+	go func() {
+		client := &http.Client{Timeout: 30 * time.Second}
+		targetURL := fmt.Sprintf("%s/v1/servers/scan-complete", registryURL)
+		localIP := heartbeat.GetLocalIP()
+		payload := map[string]any{
+			"server_name": s.cfg.Server.Name,
+			"port":        s.cfg.Server.Port,
+			"auth_token":  s.cfg.Server.AuthToken,
+			"local_endpoints": []string{
+				fmt.Sprintf("http://%s:%d", localIP, s.cfg.Server.Port),
+				fmt.Sprintf("http://127.0.0.1:%d", s.cfg.Server.Port),
+			},
+			"download_images": s.cfg.Server.DownloadOtixImages,
+			"write_otix":      s.cfg.Server.WriteOtixAfterScan,
+		}
+		data, err := json.Marshal(payload)
+		if err != nil {
+			return
+		}
+		req, err := http.NewRequest("POST", targetURL, bytes.NewReader(data))
+		if err != nil {
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if s.cfg.Server.AuthToken != "" {
+			req.Header.Set("Authorization", "Bearer "+s.cfg.Server.AuthToken)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			return
+		}
+		_ = resp.Body.Close()
+	}()
+}
+

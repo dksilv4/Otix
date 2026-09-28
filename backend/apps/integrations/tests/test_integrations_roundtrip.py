@@ -23,9 +23,7 @@ class IntegrationsRoundTripTests(TestCase):
         self.user = User.objects.create_user(username="player", password="x")
 
     def test_plex_server_library_item_roundtrip(self) -> None:
-        media_item = MediaItem.objects.create(
-            media_type="movie", title="Heat", slug="heat"
-        )
+        media_item = MediaItem.objects.create(media_type="movie", title="Heat", slug="heat")
         server = UserPlexServer.objects.create(
             user=self.user,
             machine_identifier="deadbeef",

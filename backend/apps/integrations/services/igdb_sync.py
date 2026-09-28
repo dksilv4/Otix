@@ -74,18 +74,14 @@ def sync_igdb_game(job: SyncJob) -> dict[str, Any]:
         progress.store_progress(task_id, event_type, **data)
 
     if job.entity_type != "game":
-        return {
-            "error": f"IGDB sync does not yet support entity_type '{job.entity_type}'"
-        }
+        return {"error": f"IGDB sync does not yet support entity_type '{job.entity_type}'"}
     igdb_id_raw = (job.external_id or "").strip()
     if not igdb_id_raw:
         return {"error": "Invalid IGDB game id in sync job: blank"}
     try:
         igdb_id = int(igdb_id_raw)
     except (TypeError, ValueError):
-        return {
-            "error": f"Invalid IGDB game id in sync job: {igdb_id_raw!r}"
-        }
+        return {"error": f"Invalid IGDB game id in sync job: {igdb_id_raw!r}"}
 
     matched = _igdb_mapped(igdb_id)
     emit("fetching_game", igdb_id=igdb_id)

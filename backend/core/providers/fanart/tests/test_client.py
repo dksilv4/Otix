@@ -110,9 +110,7 @@ class FanartClientTests(SimpleTestCase):
     @override_settings(FANART_API_KEY="test-key")
     def test_non_200_is_normalized_to_none(self):
         async def run():
-            provider, _, _ = self._make_provider(
-                lambda req: httpx.Response(404, text="missing")
-            )
+            provider, _, _ = self._make_provider(lambda req: httpx.Response(404, text="missing"))
             async with provider.http:
                 result = await provider.get_movie_images(TMDB_ID)
             self.assertIsNone(result)
@@ -122,9 +120,7 @@ class FanartClientTests(SimpleTestCase):
     @override_settings(FANART_API_KEY="test-key")
     def test_non_dict_body_is_normalized_to_none(self):
         async def run():
-            provider, _, _ = self._make_provider(
-                lambda req: httpx.Response(200, json=[1, 2, 3])
-            )
+            provider, _, _ = self._make_provider(lambda req: httpx.Response(200, json=[1, 2, 3]))
             async with provider.http:
                 result = await provider.get_movie_images(TMDB_ID)
             self.assertIsNone(result)

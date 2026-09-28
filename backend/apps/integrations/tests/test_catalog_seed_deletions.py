@@ -36,9 +36,7 @@ def _export_file(ids: list[int]) -> Path:
     fd, name = tempfile.mkstemp(suffix=".json.gz")
     os.close(fd)
     path = Path(name)
-    body = "[\n" + "".join(
-        f'{{"id": {i}, "original_title": "T{i}"}},\n' for i in ids
-    ) + "]"
+    body = "[\n" + "".join(f'{{"id": {i}, "original_title": "T{i}"}},\n' for i in ids) + "]"
     path.write_bytes(gzip.compress(body.encode("utf-8")))
     return path
 
@@ -59,15 +57,21 @@ def _movie_row(external_id: str, *, title: str = "Gone") -> tuple[int, int, str]
 
 class DetectTmdbDeletionsTests(TestCase):
     def test_records_only_ids_missing_from_the_export(self):
-        with mock.patch.object(
-            catalog_seed, "_mapped_tmdb_rows", return_value=[
-                ("11", 100, "One"), ("12", 200, "Two"), ("13", 300, "Three"),
-            ]
-        ) as rows, mock.patch.object(
-            catalog_seed, "download_tmdb_export", new=mock.AsyncMock()
-        ) as download, mock.patch.object(
-            catalog_seed, "_record_deleted", return_value=1
-        ) as record:
+        with (
+            mock.patch.object(
+                catalog_seed,
+                "_mapped_tmdb_rows",
+                return_value=[
+                    ("11", 100, "One"),
+                    ("12", 200, "Two"),
+                    ("13", 300, "Three"),
+                ],
+            ) as rows,
+            mock.patch.object(
+                catalog_seed, "download_tmdb_export", new=mock.AsyncMock()
+            ) as download,
+            mock.patch.object(catalog_seed, "_record_deleted", return_value=1) as record,
+        ):
             path = _export_file([11, 13])
             download.return_value = path
             try:
@@ -82,11 +86,12 @@ class DetectTmdbDeletionsTests(TestCase):
         self.assertEqual(summary["recorded"], 1)
 
     def test_no_mapped_rows_skips_the_download(self):
-        with mock.patch.object(
-            catalog_seed, "_mapped_tmdb_rows", return_value=[]
-        ) as rows, mock.patch.object(
-            catalog_seed, "download_tmdb_export", new=mock.AsyncMock()
-        ) as download:
+        with (
+            mock.patch.object(catalog_seed, "_mapped_tmdb_rows", return_value=[]) as rows,
+            mock.patch.object(
+                catalog_seed, "download_tmdb_export", new=mock.AsyncMock()
+            ) as download,
+        ):
             summary = _run(catalog_seed.detect_tmdb_deletions("movie"))
 
         rows.assert_called_once_with("movie")
@@ -95,12 +100,15 @@ class DetectTmdbDeletionsTests(TestCase):
         self.assertEqual(summary["recorded"], 0)
 
     def test_unavailable_export_is_reported_not_raised(self):
-        with mock.patch.object(
-            catalog_seed, "_mapped_tmdb_rows", return_value=[("5", None, None)]
-        ), mock.patch.object(
-            catalog_seed, "download_tmdb_export",
-            new=mock.AsyncMock(return_value=None),
-        ) as download, mock.patch.object(catalog_seed, "_record_deleted") as record:
+        with (
+            mock.patch.object(catalog_seed, "_mapped_tmdb_rows", return_value=[("5", None, None)]),
+            mock.patch.object(
+                catalog_seed,
+                "download_tmdb_export",
+                new=mock.AsyncMock(return_value=None),
+            ) as download,
+            mock.patch.object(catalog_seed, "_record_deleted") as record,
+        ):
             summary = _run(catalog_seed.detect_tmdb_deletions("movie"))
 
         download.assert_awaited_once()
@@ -124,9 +132,7 @@ class DetectTmdbDeletionsTests(TestCase):
         ) as detect:
             result = catalog_seed.run_tmdb_deletion_scan()
 
-        self.assertEqual(
-            [c.args[0] for c in detect.await_args_list], ["movie", "show"]
-        )
+        self.assertEqual([c.args[0] for c in detect.await_args_list], ["movie", "show"])
         self.assertEqual(result, summaries)
 
 

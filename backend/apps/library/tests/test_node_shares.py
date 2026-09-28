@@ -47,9 +47,7 @@ class NodeSharingTests(TestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(
-            UserNodeShare.objects.filter(node=self.node, shared_with=self.bob).exists()
-        )
+        self.assertTrue(UserNodeShare.objects.filter(node=self.node, shared_with=self.bob).exists())
 
         # Share with Charlie (not friend) -> rejected
         resp_charlie = self.client.post(

@@ -113,4 +113,52 @@ export const discoverQueries = {
       staleTime: discoverStaleTime,
       gcTime: discoverGcTime,
     }),
+
+  freeGames: () =>
+    queryOptions({
+      queryKey: discoverKeys.freeGames(),
+      queryFn: async () => {
+        const { data } = await apiClient.get<FreeGamesResponse>('/free-games')
+        return data
+      },
+      // Promos rotate often; keep in sync with backend CACHE_TTL (15m).
+      // Empty `{current,upcoming}` must not sit fresh for the discover default
+      // (2h) — those keys aren't covered by `freshUnlessEmpty`.
+      staleTime: (query) => {
+        const data = query.state.data as FreeGamesResponse | undefined
+        if (!data) return 0
+        const count =
+          (Array.isArray(data.current) ? data.current.length : 0) +
+          (Array.isArray(data.upcoming) ? data.upcoming.length : 0)
+        return count === 0 ? 0 : 1000 * 60 * 15
+      },
+      gcTime: discoverGcTime,
+      refetchOnMount: 'always',
+    }),
+}
+
+export interface FreeGameItem {
+  id: string
+  store: string
+  storeName: string
+  title: string
+  description?: string | null
+  originalPrice?: string | null
+  discountPercentage?: number
+  isFreeNow: boolean
+  startDate?: string | null
+  endDate?: string | null
+  claimUrl?: string | null
+  posterUrl?: string | null
+  backdropUrl?: string | null
+  logoUrl?: string | null
+  externalId?: string | null
+  matched?: boolean
+  mediaItem?: MediaItemSummary | null
+}
+
+export interface FreeGamesResponse {
+  current: FreeGameItem[]
+  upcoming: FreeGameItem[]
+  total: number
 }

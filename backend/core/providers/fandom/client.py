@@ -341,6 +341,7 @@ class FandomProvider(BaseProviderClient):
             resp = await client.get(query_url)
             if resp.status_code == 429:
                 import asyncio
+
                 await asyncio.sleep(1.0)
                 resp = await client.get(query_url)
             if resp.status_code != 200:

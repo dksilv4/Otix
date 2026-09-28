@@ -59,9 +59,7 @@ def media_has_followed_company(media_item_id: int) -> bool:
     return has_followers(involved_company_ids(media_item_id))
 
 
-def is_recent_release(
-    media: MediaItem, window_days: int = RECENT_RELEASE_WINDOW_DAYS
-) -> bool:
+def is_recent_release(media: MediaItem, window_days: int = RECENT_RELEASE_WINDOW_DAYS) -> bool:
     """True for an undated title or one releasing within the trailing window."""
     if media.release_date is None:
         return True
@@ -104,9 +102,7 @@ def notify_company_followers(media_item_id: int, *, kind: str) -> list[Notificat
 
     user_model = get_user_model()
     prefs = dict(
-        user_model.objects.filter(pk__in=by_user).values_list(
-            "id", "notification_preferences"
-        )
+        user_model.objects.filter(pk__in=by_user).values_list("id", "notification_preferences")
     )
 
     created: list[Notification] = []

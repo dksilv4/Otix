@@ -40,9 +40,7 @@ class UserPlexLibrary(TimestampedModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="plex_libraries"
     )
-    server = models.ForeignKey(
-        UserPlexServer, on_delete=models.CASCADE, related_name="libraries"
-    )
+    server = models.ForeignKey(UserPlexServer, on_delete=models.CASCADE, related_name="libraries")
     section_key = models.CharField(max_length=64)
     title = models.CharField(max_length=500)
     library_type = models.CharField(max_length=20)
@@ -51,9 +49,7 @@ class UserPlexLibrary(TimestampedModel):
     class Meta(TimestampedModel.Meta):
         db_table = "user_plex_libraries"
         constraints = [
-            models.UniqueConstraint(
-                fields=["server", "section_key"], name="uq_user_plex_library"
-            ),
+            models.UniqueConstraint(fields=["server", "section_key"], name="uq_user_plex_library"),
         ]
 
     def __str__(self) -> str:
@@ -98,9 +94,7 @@ class UserPlexItem(TimestampedModel):
     class Meta(TimestampedModel.Meta):
         db_table = "user_plex_items"
         constraints = [
-            models.UniqueConstraint(
-                fields=["server", "rating_key"], name="uq_user_plex_item"
-            ),
+            models.UniqueConstraint(fields=["server", "rating_key"], name="uq_user_plex_item"),
         ]
 
     def __str__(self) -> str:

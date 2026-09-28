@@ -25,12 +25,17 @@ from apps.library.views import (
     GameServerDownloadsSearchView,
     GameServerExplorerBrowseView,
     GameServerExplorerCreateFolderView,
+    GameServerExplorerRequestPermissionView,
     GameServerExplorerSetPathView,
     GameServerFilesView,
     GameServerInstancesImportView,
     GameServerLibrariesView,
     GameServerListCreateView,
     GameServerOrganizeView,
+    GameServerOtixAssetView,
+    GameServerOtixMatchView,
+    GameServerOtixSettingsView,
+    GameServerOtixSyncView,
     GameServerPendingView,
     GameServerPingView,
     GameServerProbeView,
@@ -47,6 +52,7 @@ from apps.library.views import (
     GameServerRadarrRootFoldersView,
     GameServerRadarrTestView,
     GameServerSabnzbdQueueControlView,
+    GameServerScanClearView,
     GameServerScanView,
     GameServerSonarrConfigView,
     GameServerSonarrHistoryView,
@@ -95,13 +101,29 @@ urlpatterns = [
     path("nodes/claim", GameServerClaimView.as_view(), name="library-nodes-claim"),
     path("nodes/pending", GameServerPendingView.as_view(), name="library-nodes-pending"),
     path("nodes/<sint:server_id>", GameServerDetailView.as_view(), name="library-node-detail"),
-    path("nodes/<sint:server_id>/shares", NodeShareListCreateView.as_view(), name="library-node-shares"),
-    path("nodes/<sint:server_id>/shares/<int:share_id>", NodeShareDeleteView.as_view(), name="library-node-share-delete"),
+    path(
+        "nodes/<sint:server_id>/shares",
+        NodeShareListCreateView.as_view(),
+        name="library-node-shares",
+    ),
+    path(
+        "nodes/<sint:server_id>/shares/<int:share_id>",
+        NodeShareDeleteView.as_view(),
+        name="library-node-share-delete",
+    ),
     path("nodes/<sint:server_id>/ping", GameServerPingView.as_view(), name="library-node-ping"),
     path("nodes/<sint:server_id>/probe", GameServerProbeView.as_view(), name="library-node-probe"),
     path("servers", GameServerListCreateView.as_view(), name="library-servers"),
-    path("servers/<sint:server_id>/shares", NodeShareListCreateView.as_view(), name="library-server-shares"),
-    path("servers/<sint:server_id>/shares/<int:share_id>", NodeShareDeleteView.as_view(), name="library-server-share-delete"),
+    path(
+        "servers/<sint:server_id>/shares",
+        NodeShareListCreateView.as_view(),
+        name="library-server-shares",
+    ),
+    path(
+        "servers/<sint:server_id>/shares/<int:share_id>",
+        NodeShareDeleteView.as_view(),
+        name="library-server-share-delete",
+    ),
     path("servers/claim", GameServerClaimView.as_view(), name="library-servers-claim"),
     path("servers/pending", GameServerPendingView.as_view(), name="library-servers-pending"),
     path(
@@ -141,6 +163,11 @@ urlpatterns = [
         "servers/<sint:server_id>/explorer/create-folder",
         GameServerExplorerCreateFolderView.as_view(),
         name="library-server-explorer-create-folder",
+    ),
+    path(
+        "servers/<sint:server_id>/explorer/request-permission",
+        GameServerExplorerRequestPermissionView.as_view(),
+        name="library-server-explorer-request-permission",
     ),
     # Modular Providers & Downloads Framework
     path(
@@ -236,6 +263,31 @@ urlpatterns = [
         name="library-server-sabnzbd-queue-control",
     ),
     path("servers/<sint:server_id>/scan", GameServerScanView.as_view(), name="library-server-scan"),
+    path(
+        "servers/<sint:server_id>/scan/clear",
+        GameServerScanClearView.as_view(),
+        name="library-server-scan-clear",
+    ),
+    path(
+        "servers/<sint:server_id>/otix/settings",
+        GameServerOtixSettingsView.as_view(),
+        name="library-server-otix-settings",
+    ),
+    path(
+        "servers/<sint:server_id>/otix/sync",
+        GameServerOtixSyncView.as_view(),
+        name="library-server-otix-sync",
+    ),
+    path(
+        "servers/<sint:server_id>/otix/match",
+        GameServerOtixMatchView.as_view(),
+        name="library-server-otix-match",
+    ),
+    path(
+        "servers/<sint:server_id>/files/<str:file_id>/otix/asset/<str:role>",
+        GameServerOtixAssetView.as_view(),
+        name="library-server-otix-asset",
+    ),
     # Radarr routes
     path(
         "servers/<sint:server_id>/radarr/config",

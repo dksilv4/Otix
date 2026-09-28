@@ -96,16 +96,20 @@ class PersonFollowView(APIView):
     def post(self, request, person_id: int) -> Response:
         _person_or_404(person_id)
         follower_count = services.follow_person(request.user, person_id)
-        return Response(PersonFollowResponseSerializer(
-            {"followed": True, "follower_count": follower_count}
-        ).data)
+        return Response(
+            PersonFollowResponseSerializer(
+                {"followed": True, "follower_count": follower_count}
+            ).data
+        )
 
     def delete(self, request, person_id: int) -> Response:
         _person_or_404(person_id)
         follower_count = services.unfollow_person(request.user, person_id)
-        return Response(PersonFollowResponseSerializer(
-            {"followed": False, "follower_count": follower_count}
-        ).data)
+        return Response(
+            PersonFollowResponseSerializer(
+                {"followed": False, "follower_count": follower_count}
+            ).data
+        )
 
 
 class PersonRatingView(APIView):

@@ -46,9 +46,7 @@ class NotificationRealtimeTests(TestCase):
         self.assertIsNotNone(payload["created_at"])
 
     def test_publish_writes_to_user_channel(self) -> None:
-        notif = Notification.objects.create(
-            user=self.user, type="system", title="Hi", body="body"
-        )
+        notif = Notification.objects.create(user=self.user, type="system", title="Hi", body="body")
         fake = _FakeRedis()
         with mock.patch("apps.social.services.realtime.get_client", return_value=fake):
             publish_notification(notif)
@@ -72,15 +70,11 @@ class NotificationRealtimeTests(TestCase):
     @mock.patch("apps.social.signals.send_notification")
     def test_create_sends_web_push_after_commit(self, send) -> None:
         with self.captureOnCommitCallbacks(execute=True):
-            notif = Notification.objects.create(
-                user=self.user, type="friend_request", title="Req"
-            )
+            notif = Notification.objects.create(user=self.user, type="friend_request", title="Req")
         send.assert_called_once_with(notif)
 
     def test_update_does_not_republish(self) -> None:
-        notif = Notification.objects.create(
-            user=self.user, type="system", title="Hi"
-        )
+        notif = Notification.objects.create(user=self.user, type="system", title="Hi")
         fake = _FakeRedis()
         with mock.patch("apps.social.services.realtime.get_client", return_value=fake):
             with self.captureOnCommitCallbacks(execute=True):
@@ -89,9 +83,7 @@ class NotificationRealtimeTests(TestCase):
         self.assertEqual(fake.published, [])
 
     def test_publish_failure_is_swallowed(self) -> None:
-        notif = Notification.objects.create(
-            user=self.user, type="system", title="Hi"
-        )
+        notif = Notification.objects.create(user=self.user, type="system", title="Hi")
 
         class _Boom:
             def publish(self, *_a, **_k):

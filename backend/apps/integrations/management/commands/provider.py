@@ -154,9 +154,7 @@ class Command(BaseCommand):
         for p in providers:
             caps = p.capabilities.name or str(p.capabilities)
             types_str = ", ".join(p.supported_media_types)
-            self.stdout.write(
-                f"{p.id:<12} {p.name:<28} {types_str:<16} {caps}"
-            )
+            self.stdout.write(f"{p.id:<12} {p.name:<28} {types_str:<16} {caps}")
         self.stdout.write(self.style.SUCCESS(f"\nTotal: {len(providers)} providers active.\n"))
 
     def _handle_capabilities(self):
@@ -173,9 +171,7 @@ class Command(BaseCommand):
         else:
             default_type = entity_type or "movie"
             default_id = "1399" if default_type == "show" else "550"
-            self._profile_single_provider(
-                provider_id, default_type, external_id or default_id
-            )
+            self._profile_single_provider(provider_id, default_type, external_id or default_id)
 
     def _profile_all_providers(self):
         self.stdout.write(
@@ -201,23 +197,23 @@ class Command(BaseCommand):
 
             timeline = self._run_real_pipeline(p_id, e_type, ext_id)
             self.stdout.write(timeline.render_ascii_waterfall())
-            self.stdout.write(
-                self.style.SUCCESS(f"Total: {timeline.total_duration_ms:.2f}ms\n")
-            )
+            self.stdout.write(self.style.SUCCESS(f"Total: {timeline.total_duration_ms:.2f}ms\n"))
 
             fetch_span = next((s for s in timeline.spans if s.name == "fetch"), None)
             transform_span = next((s for s in timeline.spans if s.name == "transform"), None)
             hydrate_span = next((s for s in timeline.spans if s.name == "hydrate"), None)
 
-            benchmarks.append({
-                "id": p_id,
-                "name": name,
-                "target": f"{e_type}:{ext_id}",
-                "fetch_ms": fetch_span.duration_ms if fetch_span else 0.0,
-                "transform_ms": transform_span.duration_ms if transform_span else 0.0,
-                "hydrate_ms": hydrate_span.duration_ms if hydrate_span else 0.0,
-                "total_ms": timeline.total_duration_ms,
-            })
+            benchmarks.append(
+                {
+                    "id": p_id,
+                    "name": name,
+                    "target": f"{e_type}:{ext_id}",
+                    "fetch_ms": fetch_span.duration_ms if fetch_span else 0.0,
+                    "transform_ms": transform_span.duration_ms if transform_span else 0.0,
+                    "hydrate_ms": hydrate_span.duration_ms if hydrate_span else 0.0,
+                    "total_ms": timeline.total_duration_ms,
+                }
+            )
 
         # Render Benchmark Summary Table
         self.stdout.write(
@@ -255,9 +251,7 @@ class Command(BaseCommand):
         timeline = self._run_real_pipeline(provider_id, entity_type, external_id)
         self.stdout.write(timeline.render_ascii_waterfall())
         self.stdout.write(
-            self.style.SUCCESS(
-                f"\nTotal Pipeline Latency: {timeline.total_duration_ms:.2f}ms\n"
-            )
+            self.style.SUCCESS(f"\nTotal Pipeline Latency: {timeline.total_duration_ms:.2f}ms\n")
         )
 
     def _run_real_pipeline(
@@ -294,10 +288,12 @@ class Command(BaseCommand):
 
         fake_redis = FakeAsyncRedis()
 
-        transport = create_mock_transport({
-            ("GET", f"/3/movie/{external_id}"): (200, fixture_data),
-            ("GET", f"https://api.themoviedb.org/3/movie/{external_id}"): (200, fixture_data),
-        })
+        transport = create_mock_transport(
+            {
+                ("GET", f"/3/movie/{external_id}"): (200, fixture_data),
+                ("GET", f"https://api.themoviedb.org/3/movie/{external_id}"): (200, fixture_data),
+            }
+        )
 
         async def _fetch():
             async with httpx.AsyncClient(
@@ -322,6 +318,7 @@ class Command(BaseCommand):
             with timeline.measure("hydrate.completeness"):
                 from apps.media.models import MediaItem
                 from apps.media.services.completeness import recompute_completeness
+
                 media = MediaItem.objects.filter(pk=media_id).first()
                 if media:
                     recompute_completeness(media)
@@ -335,15 +332,17 @@ class Command(BaseCommand):
 
         fake_redis = FakeAsyncRedis()
 
-        transport = create_mock_transport({
-            ("GET", f"/3/tv/{external_id}"): (200, show_fixture),
-            ("GET", f"https://api.themoviedb.org/3/tv/{external_id}"): (200, show_fixture),
-            ("GET", f"/3/tv/{external_id}/season/1"): (200, season_fixture),
-            (
-                "GET",
-                f"https://api.themoviedb.org/3/tv/{external_id}/season/1",
-            ): (200, season_fixture),
-        })
+        transport = create_mock_transport(
+            {
+                ("GET", f"/3/tv/{external_id}"): (200, show_fixture),
+                ("GET", f"https://api.themoviedb.org/3/tv/{external_id}"): (200, show_fixture),
+                ("GET", f"/3/tv/{external_id}/season/1"): (200, season_fixture),
+                (
+                    "GET",
+                    f"https://api.themoviedb.org/3/tv/{external_id}/season/1",
+                ): (200, season_fixture),
+            }
+        )
 
         async def _fetch_show():
             async with httpx.AsyncClient(
@@ -385,6 +384,7 @@ class Command(BaseCommand):
             with timeline.measure("hydrate.completeness"):
                 from apps.media.models import MediaItem
                 from apps.media.services.completeness import recompute_completeness
+
                 media = MediaItem.objects.filter(pk=media_id).first()
                 if media:
                     recompute_completeness(media)
@@ -397,10 +397,12 @@ class Command(BaseCommand):
         fake_redis = FakeAsyncRedis()
         fake_redis.storage[TOKEN_KEY] = "profile-test-token"
 
-        transport = create_mock_transport({
-            ("POST", "/v4/games"): (200, fixture_data),
-            ("POST", "https://api.igdb.com/v4/games"): (200, fixture_data),
-        })
+        transport = create_mock_transport(
+            {
+                ("POST", "/v4/games"): (200, fixture_data),
+                ("POST", "https://api.igdb.com/v4/games"): (200, fixture_data),
+            }
+        )
 
         async def _fetch():
             async with httpx.AsyncClient(
@@ -424,6 +426,7 @@ class Command(BaseCommand):
             with timeline.measure("hydrate.completeness"):
                 from apps.media.models import MediaItem
                 from apps.media.services.completeness import recompute_completeness
+
                 media = MediaItem.objects.filter(pk=media_id).first()
                 if media:
                     recompute_completeness(media)
@@ -434,15 +437,18 @@ class Command(BaseCommand):
 
         fake_redis = FakeAsyncRedis()
 
-        transport = create_mock_transport({
-            ("GET", f"/api/v2/grids/game/{external_id}"): (200, fixture_data),
-            (
-                "GET",
-                f"https://www.steamgriddb.com/api/v2/grids/game/{external_id}",
-            ): (200, fixture_data),
-        })
+        transport = create_mock_transport(
+            {
+                ("GET", f"/api/v2/grids/game/{external_id}"): (200, fixture_data),
+                (
+                    "GET",
+                    f"https://www.steamgriddb.com/api/v2/grids/game/{external_id}",
+                ): (200, fixture_data),
+            }
+        )
 
         from apps.media.models import MediaItem
+
         media = MediaItem.objects.create(
             title="Half-Life", media_type="game", slug="half-life-profile"
         )
@@ -473,12 +479,15 @@ class Command(BaseCommand):
 
         fake_redis = FakeAsyncRedis()
 
-        transport = create_mock_transport({
-            ("GET", "/"): (200, fixture_data),
-            ("GET", "https://www.omdbapi.com/"): (200, fixture_data),
-        })
+        transport = create_mock_transport(
+            {
+                ("GET", "/"): (200, fixture_data),
+                ("GET", "https://www.omdbapi.com/"): (200, fixture_data),
+            }
+        )
 
         from apps.media.models import MediaItem
+
         media = MediaItem.objects.create(
             title="Fight Club", media_type="movie", slug="fight-club-omdb"
         )
@@ -507,12 +516,18 @@ class Command(BaseCommand):
 
         fake_redis = FakeAsyncRedis()
 
-        transport = create_mock_transport({
-            ("GET", f"/v3/movies/{external_id}"): (200, fixture_data),
-            ("GET", f"https://webservice.fanart.tv/v3/movies/{external_id}"): (200, fixture_data),
-        })
+        transport = create_mock_transport(
+            {
+                ("GET", f"/v3/movies/{external_id}"): (200, fixture_data),
+                ("GET", f"https://webservice.fanart.tv/v3/movies/{external_id}"): (
+                    200,
+                    fixture_data,
+                ),
+            }
+        )
 
         from apps.media.models import MediaItem
+
         media = MediaItem.objects.create(
             title="Fight Club", media_type="movie", slug="fight-club-fanart"
         )
@@ -571,15 +586,17 @@ class Command(BaseCommand):
             ratings_span = next((s for s in timeline.spans if "ratings" in s.name), None)
             audit_span = next((s for s in timeline.spans if "completeness" in s.name), None)
 
-            benchmarks.append({
-                "media_type": m_type.upper(),
-                "title": title,
-                "primary_ms": primary_span.duration_ms if primary_span else 0.0,
-                "artwork_ms": artwork_span.duration_ms if artwork_span else 0.0,
-                "ratings_ms": ratings_span.duration_ms if ratings_span else 0.0,
-                "audit_ms": audit_span.duration_ms if audit_span else 0.0,
-                "total_ms": timeline.total_duration_ms,
-            })
+            benchmarks.append(
+                {
+                    "media_type": m_type.upper(),
+                    "title": title,
+                    "primary_ms": primary_span.duration_ms if primary_span else 0.0,
+                    "artwork_ms": artwork_span.duration_ms if artwork_span else 0.0,
+                    "ratings_ms": ratings_span.duration_ms if ratings_span else 0.0,
+                    "audit_ms": audit_span.duration_ms if audit_span else 0.0,
+                    "total_ms": timeline.total_duration_ms,
+                }
+            )
 
         # Summary Table
         self.stdout.write(
@@ -632,10 +649,12 @@ class Command(BaseCommand):
         fake_redis = FakeAsyncRedis()
 
         # 1. Primary Metadata Seed (TMDB)
-        transport_tmdb = create_mock_transport({
-            ("GET", "/3/movie/550"): (200, tmdb_fixture),
-            ("GET", "https://api.themoviedb.org/3/movie/550"): (200, tmdb_fixture),
-        })
+        transport_tmdb = create_mock_transport(
+            {
+                ("GET", "/3/movie/550"): (200, tmdb_fixture),
+                ("GET", "https://api.themoviedb.org/3/movie/550"): (200, tmdb_fixture),
+            }
+        )
 
         async def _fetch_tmdb():
             async with httpx.AsyncClient(
@@ -653,10 +672,12 @@ class Command(BaseCommand):
                 media_id = seed_movie_from_tmdb(tmdb_raw)
 
         # 2. Secondary Artwork: Logos, Clear Art & Textless Backgrounds (Fanart.tv)
-        transport_fanart = create_mock_transport({
-            ("GET", "/v3/movies/550"): (200, fanart_fixture),
-            ("GET", "https://webservice.fanart.tv/v3/movies/550"): (200, fanart_fixture),
-        })
+        transport_fanart = create_mock_transport(
+            {
+                ("GET", "/v3/movies/550"): (200, fanart_fixture),
+                ("GET", "https://webservice.fanart.tv/v3/movies/550"): (200, fanart_fixture),
+            }
+        )
 
         async def _fetch_fanart():
             async with httpx.AsyncClient(
@@ -677,15 +698,15 @@ class Command(BaseCommand):
                 fanart_hydrate_assets(media_id, fanart_assets)
 
         # 3. Secondary Multi-Source Ratings: IMDb, Rotten Tomatoes, Metacritic (OMDb)
-        transport_omdb = create_mock_transport({
-            ("GET", "/"): (200, omdb_fixture),
-            ("GET", "https://www.omdbapi.com/"): (200, omdb_fixture),
-        })
+        transport_omdb = create_mock_transport(
+            {
+                ("GET", "/"): (200, omdb_fixture),
+                ("GET", "https://www.omdbapi.com/"): (200, omdb_fixture),
+            }
+        )
 
         async def _fetch_omdb():
-            async with httpx.AsyncClient(
-                transport=transport_omdb, base_url=OMDB_BASE_URL
-            ) as http:
+            async with httpx.AsyncClient(transport=transport_omdb, base_url=OMDB_BASE_URL) as http:
                 client = OMDbProvider(redis=fake_redis, http_client=http)
                 return await client.get_by_imdb_id("tt0137523")
 
@@ -720,15 +741,17 @@ class Command(BaseCommand):
         fake_redis = FakeAsyncRedis()
 
         # 1. Primary TMDB Show & Seasons Seed
-        transport_tmdb = create_mock_transport({
-            ("GET", "/3/tv/1399"): (200, show_fixture),
-            ("GET", "https://api.themoviedb.org/3/tv/1399"): (200, show_fixture),
-            ("GET", "/3/tv/1399/season/1"): (200, season_fixture),
-            (
-                "GET",
-                "https://api.themoviedb.org/3/tv/1399/season/1",
-            ): (200, season_fixture),
-        })
+        transport_tmdb = create_mock_transport(
+            {
+                ("GET", "/3/tv/1399"): (200, show_fixture),
+                ("GET", "https://api.themoviedb.org/3/tv/1399"): (200, show_fixture),
+                ("GET", "/3/tv/1399/season/1"): (200, season_fixture),
+                (
+                    "GET",
+                    "https://api.themoviedb.org/3/tv/1399/season/1",
+                ): (200, season_fixture),
+            }
+        )
 
         async def _fetch_show():
             async with httpx.AsyncClient(
@@ -764,10 +787,12 @@ class Command(BaseCommand):
                 seed_episodes_from_season(media_id, 1, season_raw)
 
         # 3. Secondary Fanart TV Artwork (Logos & Backgrounds)
-        transport_fanart = create_mock_transport({
-            ("GET", "/v3/tv/73713"): (200, fanart_fixture),
-            ("GET", "https://webservice.fanart.tv/v3/tv/73713"): (200, fanart_fixture),
-        })
+        transport_fanart = create_mock_transport(
+            {
+                ("GET", "/v3/tv/73713"): (200, fanart_fixture),
+                ("GET", "https://webservice.fanart.tv/v3/tv/73713"): (200, fanart_fixture),
+            }
+        )
 
         async def _fetch_fanart():
             async with httpx.AsyncClient(
@@ -788,15 +813,15 @@ class Command(BaseCommand):
                 fanart_hydrate_assets(media_id, fanart_assets)
 
         # 4. Secondary OMDb Ratings
-        transport_omdb = create_mock_transport({
-            ("GET", "/"): (200, omdb_fixture),
-            ("GET", "https://www.omdbapi.com/"): (200, omdb_fixture),
-        })
+        transport_omdb = create_mock_transport(
+            {
+                ("GET", "/"): (200, omdb_fixture),
+                ("GET", "https://www.omdbapi.com/"): (200, omdb_fixture),
+            }
+        )
 
         async def _fetch_omdb():
-            async with httpx.AsyncClient(
-                transport=transport_omdb, base_url=OMDB_BASE_URL
-            ) as http:
+            async with httpx.AsyncClient(transport=transport_omdb, base_url=OMDB_BASE_URL) as http:
                 client = OMDbProvider(redis=fake_redis, http_client=http)
                 return await client.get_by_imdb_id("tt0944947")
 
@@ -831,10 +856,12 @@ class Command(BaseCommand):
         fake_redis.storage[TOKEN_KEY] = "profile-test-token"
 
         # 1. Primary IGDB Game Seed
-        transport_igdb = create_mock_transport({
-            ("POST", "/v4/games"): (200, igdb_fixture),
-            ("POST", "https://api.igdb.com/v4/games"): (200, igdb_fixture),
-        })
+        transport_igdb = create_mock_transport(
+            {
+                ("POST", "/v4/games"): (200, igdb_fixture),
+                ("POST", "https://api.igdb.com/v4/games"): (200, igdb_fixture),
+            }
+        )
 
         async def _fetch_igdb():
             async with httpx.AsyncClient(
@@ -852,16 +879,18 @@ class Command(BaseCommand):
                 media_id = seed_game_from_igdb(igdb_raw, 1074)
 
         # 2. Secondary SteamGridDB Artwork (Grids, Heroes/BGs, Logos, Icons)
-        transport_sg = create_mock_transport({
-            ("GET", "/api/v2/grids/game/482"): (200, sg_grids),
-            ("GET", "https://www.steamgriddb.com/api/v2/grids/game/482"): (200, sg_grids),
-            ("GET", "/api/v2/heroes/game/482"): (200, sg_heroes),
-            ("GET", "https://www.steamgriddb.com/api/v2/heroes/game/482"): (200, sg_heroes),
-            ("GET", "/api/v2/logos/game/482"): (200, sg_logos),
-            ("GET", "https://www.steamgriddb.com/api/v2/logos/game/482"): (200, sg_logos),
-            ("GET", "/api/v2/icons/game/482"): (200, sg_icons),
-            ("GET", "https://www.steamgriddb.com/api/v2/icons/game/482"): (200, sg_icons),
-        })
+        transport_sg = create_mock_transport(
+            {
+                ("GET", "/api/v2/grids/game/482"): (200, sg_grids),
+                ("GET", "https://www.steamgriddb.com/api/v2/grids/game/482"): (200, sg_grids),
+                ("GET", "/api/v2/heroes/game/482"): (200, sg_heroes),
+                ("GET", "https://www.steamgriddb.com/api/v2/heroes/game/482"): (200, sg_heroes),
+                ("GET", "/api/v2/logos/game/482"): (200, sg_logos),
+                ("GET", "https://www.steamgriddb.com/api/v2/logos/game/482"): (200, sg_logos),
+                ("GET", "/api/v2/icons/game/482"): (200, sg_icons),
+                ("GET", "https://www.steamgriddb.com/api/v2/icons/game/482"): (200, sg_icons),
+            }
+        )
 
         async def _fetch_sg():
             async with httpx.AsyncClient(
@@ -894,4 +923,3 @@ class Command(BaseCommand):
             if media:
                 score = recompute_completeness(media)
                 timeline.spans[-1].metadata["completeness_score"] = f"{score * 100:.1f}%"
-

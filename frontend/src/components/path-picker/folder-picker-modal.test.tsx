@@ -156,7 +156,7 @@ describe('FolderPickerModal', () => {
     mockBrowse = null
     renderModal()
 
-    expect(screen.getByText(/Connect a game server to browse folders/i)).toBeInTheDocument()
+    expect(screen.getByText(/No Otix nodes connected to browse folders/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Use this folder/i })).not.toBeInTheDocument()
   })
 })

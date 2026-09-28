@@ -13,7 +13,9 @@ from apps.media.services.genre_simplification import backfill_genres
 
 
 class Command(BaseCommand):
-    help = "Simplify and normalize genres (split '&' composites and unify Sci-Fi -> Science Fiction)."
+    help = (
+        "Simplify and normalize genres (split '&' composites and unify Sci-Fi -> Science Fiction)."
+    )
 
     def handle(self, *args, **options):
         self.stdout.write("Starting genre simplification backfill...")

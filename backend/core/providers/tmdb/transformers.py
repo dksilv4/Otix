@@ -252,9 +252,7 @@ def transform_movie(raw: dict[str, Any]) -> NormalizedMediaItem:
 
     backdrop_path = raw.get("backdrop_path")
     if backdrop_path:
-        primary_backdrop = transform_asset(
-            {"file_path": backdrop_path}, "backdrop", score=100
-        )
+        primary_backdrop = transform_asset({"file_path": backdrop_path}, "backdrop", score=100)
         if primary_backdrop:
             assets_list.append(primary_backdrop)
 
@@ -387,9 +385,7 @@ def transform_show(raw: dict[str, Any]) -> NormalizedMediaItem:
 
     backdrop_path = raw.get("backdrop_path")
     if backdrop_path:
-        primary_backdrop = transform_asset(
-            {"file_path": backdrop_path}, "backdrop", score=100
-        )
+        primary_backdrop = transform_asset({"file_path": backdrop_path}, "backdrop", score=100)
         if primary_backdrop:
             assets_list.append(primary_backdrop)
 
@@ -501,13 +497,15 @@ def transform_watch_providers(raw: dict[str, Any]) -> dict[str, list[dict[str, A
             items = data.get(method) or []
             for item in items:
                 if isinstance(item, dict) and item.get("provider_id"):
-                    country_providers.append({
-                        "provider_id": item["provider_id"],
-                        "provider_name": item.get("provider_name", ""),
-                        "logo_url": image_url(item.get("logo_path"), size="w92"),
-                        "monetization_type": method,
-                        "display_priority": item.get("display_priority", 0),
-                    })
+                    country_providers.append(
+                        {
+                            "provider_id": item["provider_id"],
+                            "provider_name": item.get("provider_name", ""),
+                            "logo_url": image_url(item.get("logo_path"), size="w92"),
+                            "monetization_type": method,
+                            "display_priority": item.get("display_priority", 0),
+                        }
+                    )
         if country_providers:
             transformed[country_code.upper()] = country_providers
     return transformed

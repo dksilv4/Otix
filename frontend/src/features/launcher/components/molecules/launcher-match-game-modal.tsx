@@ -3,10 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Search, Loader2, Check, Sparkles, Gamepad2, RefreshCw, Import } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api/client'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useGameSearch, resolveCatalogGame } from '@/features/launcher/data/queries'
 import { useMatchLocalGames, useSyncLocalGames } from '@/features/launcher/data/game-queries'
 import { localGameKeys } from '@/features/launcher/data/game-queries'
+import { useServerGames, serverKeys } from '@/features/downloads/use-server-downloads'
+import { matchServerGameFile } from '@/features/downloads/server-availability'
 import { DkDialog } from '@ui/molecules/dialog'
 import { PLATFORM_LABELS } from '@/constants/games'
 import type { LocalGame, CatalogGame, Game } from '@/features/launcher/types'
@@ -35,10 +38,39 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
   const queryClient = useQueryClient()
   const matchMutation = useMatchLocalGames()
   const syncMutation = useSyncLocalGames()
+  const { data: serverGamesData, refetch: refetchServerGames } = useServerGames()
+
+  const syncToNodeServer = useCallback(async (mediaId: string, confidence = 1.0) => {
+    const matchingServer = matchServerGameFile(
+      serverGamesData?.files,
+      mediaId,
+      game.title,
+    )
+    const serverId = game.serverId ?? matchingServer?.serverId
+    const fileId = game.serverFileId ?? matchingServer?.fileId
+    const filepath = game.serverFilePath ?? matchingServer?.filepath ?? matchingServer?.relativePath
+
+    if (serverId) {
+      try {
+        await apiClient.post(`/library/servers/${serverId}/otix/match`, {
+          mediaId,
+          fileId,
+          filepath,
+          confidence,
+        })
+        refetchServerGames().catch(() => {})
+        queryClient.invalidateQueries({ queryKey: serverKeys.games() })
+      } catch (serverErr) {
+        console.warn('[MatchGameModal] Node sidecar sync failed:', serverErr)
+      }
+    }
+  }, [game.serverId, game.serverFileId, game.serverFilePath, game.title, queryClient, refetchServerGames, serverGamesData?.files])
 
   const [step, setStep] = useState<ModalStep>('matching')
   const stepRef = useRef(step)
-  stepRef.current = step
+  useEffect(() => {
+    stepRef.current = step
+  }, [step])
   const isSaving = step === 'accepting'
   const [matchConfidence, setMatchConfidence] = useState(0)
   const [matchedId, setMatchedId] = useState<string | null>(null)
@@ -174,6 +206,8 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
         console.warn('[MatchGameModal] Backend sync failed, saving match locally:', err)
       }
 
+      await syncToNodeServer(matchedId, matchConfidence || 1.0)
+
       const api = getDesktopAPI()
       if (api?.acceptSuggestion) {
         await api.acceptSuggestion(game.id, {
@@ -226,7 +260,7 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
       setError(err instanceof Error ? err.message : 'Failed to save match')
       setStep('no-match')
     }
-  }, [matchedId, matchedTitle, matchedSlug, matchedPoster, matchedBackdrop, matchedTextlessPoster, matchedIcon, matchedLogo, matchConfidence, buildSyncedGame, syncMutation, queryClient, onClose, game.id])
+  }, [matchedId, matchedTitle, matchedSlug, matchedPoster, matchedBackdrop, matchedTextlessPoster, matchedIcon, matchedLogo, matchConfidence, buildSyncedGame, syncMutation, syncToNodeServer, queryClient, onClose, game.id])
 
   // ── Accept search result as match ──
   const handleSelectSearchResult = useCallback(async (result: CatalogGame) => {
@@ -239,6 +273,8 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
       } catch (err) {
         console.warn('[MatchGameModal] Backend sync failed, saving match locally:', err)
       }
+
+      await syncToNodeServer(id, 1.0)
 
       const api = getDesktopAPI()
       if (api?.acceptSuggestion) {
@@ -303,7 +339,7 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
       setError(err instanceof Error ? err.message : 'Failed to save match')
       setStep('no-match')
     }
-  }, [buildSyncedGame, syncMutation, queryClient, onClose, game.id])
+  }, [buildSyncedGame, syncMutation, syncToNodeServer, queryClient, onClose, game.id])
 
   // ── Re-try matching ──
   const handleRetry = useCallback(() => {

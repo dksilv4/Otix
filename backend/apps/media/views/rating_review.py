@@ -26,31 +26,35 @@ from apps.media.serializers.social import (
 )
 
 
-def _media_or_404(media_id: int):
-    item = services.media_item_or_none(media_id)
-    if item is None:
+def _resolve_media_pk_or_404(media_type: str, media_id: str | int) -> int:
+    from apps.media.views.catalog import resolve_media_pk
+
+    pk = resolve_media_pk(media_type, media_id)
+    if pk is None:
         raise NotFound("Media item not found")
-    return item
+    return pk
 
 
 class RatingView(APIView):
     """``GET``/``PUT``/``DELETE /media/{media_type}/{media_id}/rating``."""
 
-    def get(self, request, media_type: str, media_id: int) -> Response:
-        rating = services.my_rating(request.user.id, media_id)
+    def get(self, request, media_type: str, media_id: str | int) -> Response:
+        pk = _resolve_media_pk_or_404(media_type, media_id)
+        rating = services.my_rating(request.user.id, pk)
         if rating is None:
             return Response(None)
         return Response(MediaRatingOutSerializer(rating).data)
 
-    def put(self, request, media_type: str, media_id: int) -> Response:
-        _media_or_404(media_id)
+    def put(self, request, media_type: str, media_id: str | int) -> Response:
+        pk = _resolve_media_pk_or_404(media_type, media_id)
         body = MediaRatingBodySerializer(data=request.data)
         body.is_valid(raise_exception=True)
-        payload = services.upsert_rating(request.user, media_id, body.validated_data["score"])
+        payload = services.upsert_rating(request.user, pk, body.validated_data["score"])
         return Response(MediaRatingAggregateOutSerializer(payload).data)
 
-    def delete(self, request, media_type: str, media_id: int) -> Response:
-        if not services.delete_rating(request.user, media_id):
+    def delete(self, request, media_type: str, media_id: str | int) -> Response:
+        pk = _resolve_media_pk_or_404(media_type, media_id)
+        if not services.delete_rating(request.user, pk):
             raise NotFound("Rating not found")
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -58,19 +62,20 @@ class RatingView(APIView):
 class ReviewView(APIView):
     """``GET``/``PUT``/``PATCH``/``DELETE /media/{media_type}/{media_id}/review``."""
 
-    def get(self, request, media_type: str, media_id: int) -> Response:
-        review = services.my_review(request.user.id, media_id)
+    def get(self, request, media_type: str, media_id: str | int) -> Response:
+        pk = _resolve_media_pk_or_404(media_type, media_id)
+        review = services.my_review(request.user.id, pk)
         if review is None:
             return Response(None)
         return Response(ReviewOutSerializer(review).data)
 
-    def put(self, request, media_type: str, media_id: int) -> Response:
-        _media_or_404(media_id)
+    def put(self, request, media_type: str, media_id: str | int) -> Response:
+        pk = _resolve_media_pk_or_404(media_type, media_id)
         body = ReviewBodySerializer(data=request.data)
         body.is_valid(raise_exception=True)
         review = services.upsert_review(
             request.user,
-            media_id,
+            pk,
             title=body.validated_data.get("title"),
             content=body.validated_data.get("content"),
             is_spoiler=body.validated_data.get("is_spoiler", False),
@@ -78,17 +83,19 @@ class ReviewView(APIView):
         )
         return Response(ReviewOutSerializer(review).data)
 
-    def patch(self, request, media_type: str, media_id: int) -> Response:
+    def patch(self, request, media_type: str, media_id: str | int) -> Response:
+        pk = _resolve_media_pk_or_404(media_type, media_id)
         body = ReviewUpdateSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         update_data = {k: v for k, v in body.validated_data.items() if v is not None}
-        review = services.update_review(request.user.id, media_id, update_data)
+        review = services.update_review(request.user.id, pk, update_data)
         if review is None:
             raise NotFound("Review not found")
         return Response(ReviewOutSerializer(review).data)
 
-    def delete(self, request, media_type: str, media_id: int) -> Response:
-        if not services.delete_review(request.user.id, media_id):
+    def delete(self, request, media_type: str, media_id: str | int) -> Response:
+        pk = _resolve_media_pk_or_404(media_type, media_id)
+        if not services.delete_review(request.user.id, pk):
             raise NotFound("Review not found")
         return Response(status=status.HTTP_204_NO_CONTENT)
 

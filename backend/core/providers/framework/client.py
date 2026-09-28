@@ -166,7 +166,6 @@ class BaseProviderClient:
                         msg = f"{self.name} request failed: {type(exc).__name__}"
                     raise ProviderError(msg) from exc
 
-
         # ── Cache successful GET responses ──
         if method == "GET" and _cache and _cache.enabled and response.status_code < 400:
             try:

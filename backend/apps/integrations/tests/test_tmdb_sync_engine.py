@@ -148,9 +148,7 @@ class TmdbSyncEngineTests(TestCase):
         self.assertIn("entity_type 'episode'", outcome["error"])
         self.assertEqual(job.status, "failed")
         self.assertIn("entity_type 'episode'", job.error_message)
-        last_frame = json.loads(
-            self.fake.published_on(f"tmdb:sync:{job.pk}:events")[-1]
-        )
+        last_frame = json.loads(self.fake.published_on(f"tmdb:sync:{job.pk}:events")[-1])
         self.assertEqual(last_frame["type"], "error")
 
     def test_non_numeric_tmdb_id_aborts_to_error(self):
@@ -174,9 +172,7 @@ class TmdbSyncEngineTests(TestCase):
         self.assertEqual(outcome["status"], "failed")
         self.assertEqual(job.status, "failed")
         self.assertEqual(job.error_message, "tmdb unreachable")  # detail stays server-side
-        last_frame = json.loads(
-            self.fake.published_on(f"tmdb:sync:{job.pk}:events")[-1]
-        )
+        last_frame = json.loads(self.fake.published_on(f"tmdb:sync:{job.pk}:events")[-1])
         self.assertEqual(last_frame["type"], "error")
         self.assertEqual(last_frame["message"], "Sync failed unexpectedly")
 
@@ -190,12 +186,13 @@ class TmdbSyncEngineTests(TestCase):
             "enqueued": 2,
             "child_job_ids": [101, 102],
         }
-        with mock.patch(
-            "apps.integrations.services.tmdb_sync.fetch_and_seed_company",
-            new=mock.AsyncMock(return_value=summary),
-        ) as fetch, mock.patch(
-            "apps.integrations.services.tmdb_sync._dispatch_child"
-        ) as dispatch:
+        with (
+            mock.patch(
+                "apps.integrations.services.tmdb_sync.fetch_and_seed_company",
+                new=mock.AsyncMock(return_value=summary),
+            ) as fetch,
+            mock.patch("apps.integrations.services.tmdb_sync._dispatch_child") as dispatch,
+        ):
             outcome = run_sync_job.delay(job.pk).get()
 
         fetch.assert_awaited_once_with(61, parent_job=job)
@@ -215,12 +212,15 @@ class TmdbSyncEngineTests(TestCase):
     def test_company_child_dispatch_failure_does_not_fail_the_job(self):
         job = self.job(entity_type="company", external_id="61")
         summary = {"company_id": 7, "tmdb_id": 61, "child_job_ids": [101]}
-        with mock.patch(
-            "apps.integrations.services.tmdb_sync.fetch_and_seed_company",
-            new=mock.AsyncMock(return_value=summary),
-        ), mock.patch(
-            "apps.integrations.services.tmdb_sync._dispatch_child",
-            side_effect=RuntimeError("broker down"),
+        with (
+            mock.patch(
+                "apps.integrations.services.tmdb_sync.fetch_and_seed_company",
+                new=mock.AsyncMock(return_value=summary),
+            ),
+            mock.patch(
+                "apps.integrations.services.tmdb_sync._dispatch_child",
+                side_effect=RuntimeError("broker down"),
+            ),
         ):
             outcome = run_sync_job.delay(job.pk).get()
 

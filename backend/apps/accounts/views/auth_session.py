@@ -108,9 +108,9 @@ class SessionsView(GenericAPIView):
     """List (GET) or revoke-others (DELETE) the user's sessions."""
 
     def get(self, request, *args, **kwargs):
-        rows = UserSession.objects.filter(
-            user=request.user, revoked_at__isnull=True
-        ).order_by("-last_seen_at", "-created_at")
+        rows = UserSession.objects.filter(user=request.user, revoked_at__isnull=True).order_by(
+            "-last_seen_at", "-created_at"
+        )
         serializer = SessionSerializer(rows, many=True)
         current = session_service.session_key_from_cookie(
             request.COOKIES.get(settings.REFRESH_COOKIE_NAME)

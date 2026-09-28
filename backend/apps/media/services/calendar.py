@@ -195,12 +195,12 @@ def _sequels(user_id: int) -> list[dict]:
     )
     if not user_item_ids:
         return []
-    collection_ids = CollectionItem.objects.filter(
-        media_item_id__in=user_item_ids
-    ).values_list("collection_id", flat=True)
-    franchise_ids = FranchiseItem.objects.filter(
-        media_item_id__in=user_item_ids
-    ).values_list("franchise_id", flat=True)
+    collection_ids = CollectionItem.objects.filter(media_item_id__in=user_item_ids).values_list(
+        "collection_id", flat=True
+    )
+    franchise_ids = FranchiseItem.objects.filter(media_item_id__in=user_item_ids).values_list(
+        "franchise_id", flat=True
+    )
 
     combined = set(
         CollectionItem.objects.filter(collection_id__in=collection_ids)
@@ -243,9 +243,7 @@ def _sequels(user_id: int) -> list[dict]:
                     "release_date": release_date,
                     "event_type": "sequel",
                     "release_kind": kind,
-                    "reason": (
-                        f"{prefix} — {label} · new in a franchise you've enjoyed"
-                    ),
+                    "reason": (f"{prefix} — {label} · new in a franchise you've enjoyed"),
                     "episode_info": None,
                     "season_number": None,
                 }

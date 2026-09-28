@@ -12,10 +12,17 @@ export interface SettingsLibraryTabsProps {
   value: LibrarySettingsTab
   onValueChange: (tab: LibrarySettingsTab) => void
   panels: Record<LibrarySettingsTab, ReactNode>
+  proposalsCount?: number
   className?: string
 }
 
-export function SettingsLibraryTabs({ value, onValueChange, panels, className }: SettingsLibraryTabsProps) {
+export function SettingsLibraryTabs({
+  value,
+  onValueChange,
+  panels,
+  proposalsCount,
+  className,
+}: SettingsLibraryTabsProps) {
   return (
     <DkTabs
       defaultValue={value}
@@ -26,7 +33,12 @@ export function SettingsLibraryTabs({ value, onValueChange, panels, className }:
       <DkTabList className="w-full sm:w-auto flex flex-wrap">
         {LIBRARY_SETTINGS_TABS.map((tab) => (
           <DkTab key={tab.id} value={tab.id} className="flex-1 sm:flex-none">
-            {tab.label}
+            <span>{tab.label}</span>
+            {tab.id === 'proposals' && proposalsCount != null && proposalsCount > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-primary/20 text-primary">
+                {proposalsCount}
+              </span>
+            )}
           </DkTab>
         ))}
       </DkTabList>

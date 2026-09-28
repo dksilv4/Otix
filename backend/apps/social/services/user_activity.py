@@ -108,8 +108,7 @@ def _episode_events(user_id: int, limit: int) -> list[dict]:
                 "type": "episode_watched",
                 "timestamp": interaction.created_at.isoformat(),
                 "summary": (
-                    f"Watched S{season.season_number}E{episode.episode_number} "
-                    f"of {media.title}"
+                    f"Watched S{season.season_number}E{episode.episode_number} of {media.title}"
                 ),
                 "media_item": _media_slice(media),
             }
@@ -119,9 +118,11 @@ def _episode_events(user_id: int, limit: int) -> list[dict]:
 
 def get_user_activity(user_id: int, limit: int = 20) -> list[dict]:
     """A user's recent activity timeline (review/interaction/episode mix)."""
-    events = _review_events(user_id, limit) + _interaction_events(
-        user_id, limit
-    ) + _episode_events(user_id, limit)
+    events = (
+        _review_events(user_id, limit)
+        + _interaction_events(user_id, limit)
+        + _episode_events(user_id, limit)
+    )
     events.sort(key=lambda e: e["timestamp"], reverse=True)
     return events[:limit]
 
@@ -143,10 +144,9 @@ def get_friends_activity(user_id: int, friends, limit: int = 20) -> list[dict]:
 
 def get_mood_timeline(user_id: int) -> dict:
     """A user's most recent 30 submitted mood check-ins (legacy ``MoodTimelineOut``)."""
-    checkins = (
-        UserMoodCheckIn.objects.filter(user_id=user_id, status="submitted")
-        .order_by("-checkin_date", "-id")[:30]
-    )
+    checkins = UserMoodCheckIn.objects.filter(user_id=user_id, status="submitted").order_by(
+        "-checkin_date", "-id"
+    )[:30]
     return {
         "checkins": [
             {
@@ -281,14 +281,10 @@ def get_daily_activity(user_id: int, day: date | None = None) -> dict:
             }
         )
 
-    mood = (
-        UserMoodCheckIn.objects.filter(
-            user_id=user_id, checkin_date=target_date, status="submitted"
-        ).first()
-    )
-    mood_out = (
-        {"mood": mood.mood, "feeling": mood.feeling, "note": mood.note} if mood else None
-    )
+    mood = UserMoodCheckIn.objects.filter(
+        user_id=user_id, checkin_date=target_date, status="submitted"
+    ).first()
+    mood_out = {"mood": mood.mood, "feeling": mood.feeling, "note": mood.note} if mood else None
 
     return {
         "date": target_date.isoformat(),

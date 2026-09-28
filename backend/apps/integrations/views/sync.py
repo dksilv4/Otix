@@ -43,9 +43,7 @@ class PlexSyncStreamView(APIView):
             f"plex:sync:{task_id}:events",
             terminal_events=("sync_complete", "error"),
             result_replay=lambda: sse_lib.read_json_key(f"plex:sync:{task_id}:result"),
-            progress_replay=lambda: sse_lib.read_json_key(
-                f"plex:sync:{task_id}:progress"
-            ),
+            progress_replay=lambda: sse_lib.read_json_key(f"plex:sync:{task_id}:progress"),
         )
 
 
@@ -72,7 +70,5 @@ class YoutubeSyncStreamView(APIView):
             f"youtube:sync:{task_id}:events",
             terminal_events=("sync_complete", "error"),
             result_replay=lambda: sse_lib.read_json_key(f"youtube:sync:{task_id}:result"),
-            progress_replay=lambda: sse_lib.read_json_key(
-                f"youtube:sync:{task_id}:progress"
-            ),
+            progress_replay=lambda: sse_lib.read_json_key(f"youtube:sync:{task_id}:progress"),
         )

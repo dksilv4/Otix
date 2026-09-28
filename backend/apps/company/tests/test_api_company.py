@@ -37,9 +37,7 @@ class CompanyApiTests(TestCase):
         self.user = User.objects.create_user(username="alice", password="pw")
         self.other = User.objects.create_user(username="bob", password="pw")
         self.token = Token.objects.create(user=self.user)
-        self.company = Company.objects.create(
-            name="Nintendo", slug="nintendo", origin_country="JP"
-        )
+        self.company = Company.objects.create(name="Nintendo", slug="nintendo", origin_country="JP")
 
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
@@ -155,18 +153,14 @@ class CompanyApiTests(TestCase):
 
         created = self.client.put(url, {"score": 5}, format="json")
         self.assertEqual(created.status_code, 204)
-        self.assertEqual(
-            CompanyRating.objects.get(user=self.user, company=self.company).score, 5
-        )
+        self.assertEqual(CompanyRating.objects.get(user=self.user, company=self.company).score, 5)
 
         updated = self.client.put(url, {"score": 3}, format="json")
         self.assertEqual(updated.status_code, 204)
         self.assertEqual(
             CompanyRating.objects.filter(user=self.user, company=self.company).count(), 1
         )
-        self.assertEqual(
-            CompanyRating.objects.get(user=self.user, company=self.company).score, 3
-        )
+        self.assertEqual(CompanyRating.objects.get(user=self.user, company=self.company).score, 3)
 
     def test_put_rating_rejects_out_of_range_score(self) -> None:
         url = f"/api/v1/company/{self.company.id}/rating"

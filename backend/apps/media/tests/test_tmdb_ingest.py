@@ -795,10 +795,7 @@ class TmdbRelationHydrationTests(TestCase):
             "country_code", "release_date", "release_type"
         )
         self.assertEqual(
-            [
-                (r.country_code, str(r.release_date), r.release_type, r.certification)
-                for r in rows
-            ],
+            [(r.country_code, str(r.release_date), r.release_type, r.certification) for r in rows],
             [
                 ("GB", "1999-11-12", 3, "18"),
                 ("US", "1999-10-15", 3, "R"),
@@ -1103,4 +1100,3 @@ class ShowEpisodeHydrationTests(TransactionTestCase):
         self.assertFalse(show_needs_episodes(media_id))
         skipped = _run(_skip_fresh_tmdb(raw, 1396, "show", force=False))
         self.assertEqual(skipped, media_id)
-

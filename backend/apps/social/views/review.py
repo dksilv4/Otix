@@ -24,9 +24,7 @@ class ReviewVoteView(APIView):
 
     def get(self, request: Request, review_user_id: int, media_item_id: int) -> Response:
         counts = services.get_vote_counts(review_user_id, media_item_id)
-        counts["my_vote"] = services.get_my_vote(
-            request.user.id, review_user_id, media_item_id
-        )
+        counts["my_vote"] = services.get_my_vote(request.user.id, review_user_id, media_item_id)
         return Response(VoteCountsSerializer(counts).data)
 
     def post(self, request: Request, review_user_id: int, media_item_id: int) -> Response:

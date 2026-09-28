@@ -54,8 +54,7 @@ def list_user_lists(user_id: int) -> QuerySet[UserList]:
     """Lists owned by or shared (accepted collaborator) with the user."""
     return (
         UserList.objects.filter(
-            Q(user_id=user_id)
-            | Q(collaborators__user_id=user_id, collaborators__status="accepted")
+            Q(user_id=user_id) | Q(collaborators__user_id=user_id, collaborators__status="accepted")
         )
         .distinct()
         .annotate(**_public_annotation())
@@ -83,6 +82,7 @@ def create_list(user_id: int, name: str, description: str | None, is_public: boo
     trimmed = name.strip()
     if UserList.objects.filter(user_id=user_id, name__iexact=trimmed).exists():
         from rest_framework import serializers
+
         raise serializers.ValidationError({"name": ["You already have a list with this name."]})
     lst = UserList.objects.create(
         user_id=user_id,
@@ -141,9 +141,8 @@ def update_list(
             .exists()
         ):
             from rest_framework import serializers
-            raise serializers.ValidationError(
-                {"name": ["You already have a list with this name."]}
-            )
+
+            raise serializers.ValidationError({"name": ["You already have a list with this name."]})
         lst.name = trimmed
     if description is not None:
         lst.description = description
@@ -169,9 +168,9 @@ def add_item(list_id: int, user_id: int, media_item_id: int) -> UserList | None:
         return None
     if UserListItem.objects.filter(list_id=list_id, media_item_id=media_item_id).exists():
         return _with_empty_like_state(lst)
-    max_order = UserListItem.objects.filter(list_id=list_id).aggregate(
-        max_order=Max("sort_order")
-    )["max_order"]
+    max_order = UserListItem.objects.filter(list_id=list_id).aggregate(max_order=Max("sort_order"))[
+        "max_order"
+    ]
     UserListItem.objects.create(
         list_id=list_id,
         media_item_id=media_item_id,
@@ -184,9 +183,7 @@ def remove_item(list_id: int, user_id: int, media_item_id: int) -> bool:
     """Remove a media item from the owner's list."""
     if get_owner_list(list_id, user_id) is None:
         return False
-    removed, _ = UserListItem.objects.filter(
-        list_id=list_id, media_item_id=media_item_id
-    ).delete()
+    removed, _ = UserListItem.objects.filter(list_id=list_id, media_item_id=media_item_id).delete()
     return removed > 0
 
 
@@ -207,9 +204,9 @@ def reorder_items(list_id: int, user_id: int, media_item_ids: list[int]) -> bool
         old_order = existing.get(media_item_id)
         if old_order is None or old_order == index:
             continue
-        UserListItem.objects.filter(
-            list_id=list_id, media_item_id=media_item_id
-        ).update(sort_order=index)
+        UserListItem.objects.filter(list_id=list_id, media_item_id=media_item_id).update(
+            sort_order=index
+        )
         ListItemRankHistory.objects.create(
             list_id=list_id,
             media_item_id=media_item_id,
@@ -223,9 +220,7 @@ def reorder_items(list_id: int, user_id: int, media_item_ids: list[int]) -> bool
 def get_collaborators(list_id: int) -> QuerySet[MediaListCollaborator]:
     """All collaborator rows for a list (any status), user joined."""
     return (
-        MediaListCollaborator.objects.filter(list_id=list_id)
-        .select_related("user")
-        .order_by("id")
+        MediaListCollaborator.objects.filter(list_id=list_id).select_related("user").order_by("id")
     )
 
 
@@ -318,8 +313,7 @@ def get_list_detail(list_id: int, user_id: int | None) -> UserList | None:
             return None
         if lst.user_id != user_id:
             allowed = any(
-                c.user_id == user_id and c.status == "accepted"
-                for c in lst.collaborators.all()
+                c.user_id == user_id and c.status == "accepted" for c in lst.collaborators.all()
             )
             if not allowed:
                 return None

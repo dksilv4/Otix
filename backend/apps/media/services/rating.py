@@ -31,9 +31,7 @@ def upsert_rating(user: AbstractBaseUser, media_item_id: int, score: int) -> dic
 
 
 def delete_rating(user: AbstractBaseUser, media_item_id: int) -> bool:
-    deleted, _ = MediaItemRating.objects.filter(
-        user=user, media_item_id=media_item_id
-    ).delete()
+    deleted, _ = MediaItemRating.objects.filter(user=user, media_item_id=media_item_id).delete()
     if deleted:
         _recalc(media_item_id)
     return bool(deleted)
@@ -62,7 +60,18 @@ def list_ratings_with_users(media_item_id: int, *, limit: int = 50) -> list[dict
     ratings = list(
         MediaItemRating.objects.filter(media_item_id=media_item_id)
         .order_by("-updated_at", "-created_at")
-        .select_related("user")[:limit]
+        .select_related("user")
+        .only(
+            "id",
+            "user_id",
+            "media_item_id",
+            "score",
+            "created_at",
+            "updated_at",
+            "user__id",
+            "user__username",
+            "user__is_staff",
+        )[:limit]
     )
     user_ids = [r.user_id for r in ratings]
     users_with_reviews = set(

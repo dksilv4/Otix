@@ -100,5 +100,3 @@ def catalog_sync_updated() -> dict:
     call time so tests patch the body.
     """
     return catalog_seed.seed_updated_catalog(limit=settings.CATALOG_UPDATED_SYNC_LIMIT)
-
-

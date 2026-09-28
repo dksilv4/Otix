@@ -1175,6 +1175,7 @@ def semantic_search_payload(
             emb = item.embedding
             if isinstance(emb, str):
                 import json
+
                 try:
                     emb = json.loads(emb)
                 except Exception:
@@ -1192,4 +1193,3 @@ def semantic_search_payload(
         "total": len(serialized),
         "items": serialized,
     }
-

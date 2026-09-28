@@ -35,9 +35,7 @@ from core import sse as sse_lib
 
 def _touch_devices(user_id: int) -> None:
     """Refresh the last-seen heartbeat for a user's active devices."""
-    ClientDevice.objects.filter(user_id=user_id, is_active=True).update(
-        last_seen=timezone.now()
-    )
+    ClientDevice.objects.filter(user_id=user_id, is_active=True).update(last_seen=timezone.now())
 
 
 class FetchRequestStreamView(APIView):
@@ -59,9 +57,7 @@ class FetchDeviceView(APIView):
         data = request.data or {}
         device_id = data.get("device_id")
         if not isinstance(device_id, str) or not device_id.strip():
-            return Response(
-                {"detail": "device_id is required"}, status=400
-            )
+            return Response({"detail": "device_id is required"}, status=400)
         device, _created = ClientDevice.objects.update_or_create(
             user=request.user,
             device_id=device_id.strip(),
@@ -99,9 +95,7 @@ class FetchResultView(APIView):
         except (TypeError, ValueError):
             return Response({"detail": "task_id must be an integer"}, status=400)
         if not isinstance(provider, str) or not isinstance(entity_type, str):
-            return Response(
-                {"detail": "provider and entity_type are required"}, status=400
-            )
+            return Response({"detail": "provider and entity_type are required"}, status=400)
 
         job = SyncJob.objects.filter(pk=job_pk, user=request.user).first()
         if job is None:

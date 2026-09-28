@@ -92,13 +92,9 @@ async def fetch_distributors(
     query = _SPARQL % {"selector": selector}
     owns_client = client is None
     if client is None:
-        client = httpx.AsyncClient(
-            timeout=_DEFAULT_TIMEOUT, headers={"User-Agent": _USER_AGENT}
-        )
+        client = httpx.AsyncClient(timeout=_DEFAULT_TIMEOUT, headers={"User-Agent": _USER_AGENT})
     try:
-        response = await client.get(
-            SPARQL_ENDPOINT, params={"query": query, "format": "json"}
-        )
+        response = await client.get(SPARQL_ENDPOINT, params={"query": query, "format": "json"})
         response.raise_for_status()
         return _parse_bindings(response.json())
     finally:
@@ -131,11 +127,15 @@ def _resolve_company(spec: dict[str, Any]) -> Company | None:
     name = str(spec.get("name") or "").strip()
     tmdb_company_id = spec.get("tmdb_company_id")
     if tmdb_company_id:
-        mapped = ExternalID.objects.filter(
-            content_type=ContentType.objects.get_for_model(Company),
-            provider="tmdb",
-            external_id=str(tmdb_company_id),
-        ).values_list("object_id", flat=True).first()
+        mapped = (
+            ExternalID.objects.filter(
+                content_type=ContentType.objects.get_for_model(Company),
+                provider="tmdb",
+                external_id=str(tmdb_company_id),
+            )
+            .values_list("object_id", flat=True)
+            .first()
+        )
         if mapped is not None:
             company = Company.objects.filter(pk=mapped).first()
             if company is not None:
@@ -208,9 +208,7 @@ async def wikidata_enrich_distributors(
             "distributors": 0,
             "reason": "no provider id",
         }
-    distributors = await fetch_distributors(
-        imdb_id=imdb_id, tmdb_id=tmdb_id, client=client
-    )
+    distributors = await fetch_distributors(imdb_id=imdb_id, tmdb_id=tmdb_id, client=client)
     if not distributors:
         return {
             "media_item_id": media_item_id,

@@ -51,6 +51,3 @@ def _setup_and_call_with_cache_clear(self, result, debug=False):
 
 
 SimpleTestCase._setup_and_call = _setup_and_call_with_cache_clear
-
-
-

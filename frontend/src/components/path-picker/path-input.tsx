@@ -1,5 +1,5 @@
 import { useId, type KeyboardEvent } from 'react'
-import { FolderOpen } from 'lucide-react'
+import { FolderOpen, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePickFolder } from './use-pick-folder'
 import type { FolderPickTarget } from './strategy'
@@ -18,10 +18,11 @@ export function PathInput({
   className,
   inputClassName,
   commitOnBlur = true,
+  allowClear = true,
 }: {
   value: string
   onChange: (value: string) => void
-  /** Called when the user browses to a folder or presses Enter to confirm a typed path. */
+  /** Called when the user browses to a folder, clears, or presses Enter to confirm a typed path. */
   onCommit?: (value: string) => void
   label?: string
   placeholder?: string
@@ -33,6 +34,7 @@ export function PathInput({
   className?: string
   inputClassName?: string
   commitOnBlur?: boolean
+  allowClear?: boolean
 }) {
   const autoId = useId()
   const inputId = id || autoId
@@ -44,6 +46,11 @@ export function PathInput({
     if (!dir) return
     onChange(dir)
     onCommit?.(dir)
+  }
+
+  const handleClear = () => {
+    onChange('')
+    onCommit?.('')
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -68,19 +75,32 @@ export function PathInput({
         </label>
       )}
       <div className="flex items-center gap-2">
-        <input
-          id={inputId}
-          type="text"
-          value={value}
-          placeholder={placeholder}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-          className={cn(
-            'h-9 min-w-0 flex-1 rounded-xl bg-white/5 px-3 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10',
-            inputClassName,
+        <div className="relative min-w-0 flex-1">
+          <input
+            id={inputId}
+            type="text"
+            value={value}
+            placeholder={placeholder}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            className={cn(
+              'h-9 w-full rounded-xl bg-white/5 pl-3 pr-8 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10',
+              inputClassName,
+            )}
+          />
+          {allowClear && Boolean(value) && (
+            <button
+              type="button"
+              onClick={handleClear}
+              title="Clear / Undo path selection"
+              aria-label="Clear path"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-white/40 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           )}
-        />
+        </div>
         <button
           type="button"
           onClick={handleBrowse}
@@ -88,7 +108,7 @@ export function PathInput({
           title={browseTitle}
           aria-label="Browse"
           className={cn(
-            'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40',
+            'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer',
           )}
         >
           <FolderOpen className="h-4 w-4" />

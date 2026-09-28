@@ -29,9 +29,7 @@ class ProposalsRoundtripTest(TestCase):
             username="proposer", email="proposer@example.com", password="pw"
         )
         self.approver = User.objects.create_user(username="approver", password="pw")
-        self.media_item = MediaItem.objects.create(
-            media_type="movie", title="Alien", slug="alien"
-        )
+        self.media_item = MediaItem.objects.create(media_type="movie", title="Alien", slug="alien")
         self.movie = Movie.objects.create(media_item=self.media_item, runtime=117)
 
     def test_match_proposal_reverse(self) -> None:
@@ -82,9 +80,7 @@ class ProposalsRoundtripTest(TestCase):
             proposer=self.user,
             payload={"field": "title"},
         )
-        skip = MatchSkip.objects.create(
-            provider="epic", external_id="EPIC-9", user=self.user
-        )
+        skip = MatchSkip.objects.create(provider="epic", external_id="EPIC-9", user=self.user)
         deleted = TMDBDeletedID.objects.create(
             tmdb_id=348, media_type="movie", media_item=self.media_item, title="Alien"
         )

@@ -84,9 +84,10 @@ def compute_composite_score(user_id: int) -> dict:
     aggregates = peer_rating_aggregates(user_id)
     avg_rating = aggregates["avg_user_rating"]
     rating_count = aggregates["user_rating_count"]
-    karma = KarmaTransaction.objects.filter(user_id=user_id).aggregate(
-        total=Sum("amount")
-    )["total"] or 0
+    karma = (
+        KarmaTransaction.objects.filter(user_id=user_id).aggregate(total=Sum("amount"))["total"]
+        or 0
+    )
     streak = UserStreak.objects.filter(user_id=user_id).first()
 
     content_reviews = Review.objects.filter(
@@ -143,9 +144,7 @@ def get_rating_distribution(user_id: int) -> tuple[list[dict], int]:
         .annotate(cnt=Count("id"))
         .order_by("score")
     )
-    buckets = {
-        score: {"movie": 0, "show": 0, "game": 0, "music": 0} for score in range(1, 11)
-    }
+    buckets = {score: {"movie": 0, "show": 0, "game": 0, "music": 0} for score in range(1, 11)}
     total = 0
     for row in rows:
         score = row["score"]

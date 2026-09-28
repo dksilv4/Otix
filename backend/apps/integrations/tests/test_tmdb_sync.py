@@ -224,9 +224,7 @@ class TmdbRatingSyncTests(TmdbSyncTestBase):
         with mock.patch(REQUEST, side_effect=urllib.error.URLError("down")):
             resp = self.post(direction="import")
         self.assertEqual(resp.status_code, 500)
-        self.assertEqual(
-            resp.json()["detail"], "Failed to sync TMDb ratings. Please try again."
-        )
+        self.assertEqual(resp.json()["detail"], "Failed to sync TMDb ratings. Please try again.")
         self.assertEqual(MediaItemRating.objects.filter(user=self.user).count(), 0)
 
     def test_unexpected_status_500(self):

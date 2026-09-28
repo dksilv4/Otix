@@ -89,11 +89,7 @@ def hydrate_normalized_ratings(media_item_id: int, ratings: list[NormalizedRatin
             added += 1
             changed = True
         else:
-            updates = {
-                key: value
-                for key, value in spec.items()
-                if getattr(row, key) != value
-            }
+            updates = {key: value for key, value in spec.items() if getattr(row, key) != value}
             if updates:
                 for key, value in updates.items():
                     setattr(row, key, value)

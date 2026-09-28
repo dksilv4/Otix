@@ -273,6 +273,8 @@ def claim_node_by_pin(
                     )
                 except Exception:
                     last_error = f"HTTP {resp.status_code}"
+                if 400 <= resp.status_code < 500:
+                    break
         except Exception as exc:
             last_error = str(exc)
 
@@ -330,8 +332,11 @@ def probe_node_reachability(server: UserGameServer) -> dict:
     if not probe_target:
         return {
             "reachable": False,
+            "remote_accessible": False,
+            "status": "unreachable",
             "latency_ms": None,
-            "error": "No remote URL configured",
+            "error": "No remote WAN URL configured",
+            "message": "Node is running locally. To access it away from home, set up Port Forwarding (8090 TCP) or enter a Remote URL.",
             "suggestion": "Set up Port Forwarding on your router for Port 8090 TCP, or use a Cloudflare Tunnel / Tailscale.",
         }
 
@@ -344,20 +349,30 @@ def probe_node_reachability(server: UserGameServer) -> dict:
             if resp.status_code == 200:
                 return {
                     "reachable": True,
+                    "remote_accessible": True,
+                    "status": "online",
                     "latency_ms": latency_ms,
                     "remote_url": probe_target,
+                    "tested_url": probe_target,
+                    "message": f"Accessible from the internet ({latency_ms}ms)",
                 }
             return {
                 "reachable": False,
+                "remote_accessible": False,
+                "status": "unreachable",
                 "latency_ms": latency_ms,
                 "error": f"HTTP {resp.status_code}",
+                "message": f"Remote port returned HTTP {resp.status_code}. Ensure port 8090 is forwarding to your node.",
                 "suggestion": "Remote port returned an error. Ensure port 8090 is forwarding to your node.",
             }
     except Exception as exc:
         return {
             "reachable": False,
+            "remote_accessible": False,
+            "status": "unreachable",
             "latency_ms": None,
             "error": str(exc),
+            "message": "Could not reach node via WAN IP. Check router port forwarding (8090).",
             "suggestion": "Cannot reach node from outside the network. Ensure port 8090 TCP is forwarded on your router to your node's LAN IP.",
         }
 
@@ -636,6 +651,17 @@ def explorer_create_folder(
     )
 
 
+def explorer_request_permission(
+    server: UserGameServer,
+    path: str,
+) -> tuple[int, dict | list]:
+    """Proxy request-permission request to connected otix-server node."""
+    payload = {"path": path}
+    return server_proxy_request(
+        server, "POST", "/api/v1/explorer/request-permission", json=payload, timeout=10.0
+    )
+
+
 # ── Usenet (SABnzbd & Prowlarr) Operations ──────────────────────────────
 
 
@@ -788,6 +814,11 @@ def sabnzbd_resume_queue(server: UserGameServer) -> tuple[int, dict | list]:
 def scan_game_libraries(server: UserGameServer) -> tuple[int, dict | list]:
     """Ask the game server to re-index installer files after a download completes."""
     return usenet_proxy_request(server, "POST", "/api/v1/scan", timeout=30.0)
+
+
+def clear_scanned_game_libraries(server: UserGameServer) -> tuple[int, dict | list]:
+    """Clear the node's in-memory hosted file index (does not delete files on disk)."""
+    return usenet_proxy_request(server, "POST", "/api/v1/scan/clear", timeout=15.0)
 
 
 # ── Radarr Operations ───────────────────────────────────────────────────
@@ -1071,6 +1102,7 @@ def proxy_epic_scan(server: UserGameServer) -> tuple[int, dict]:
 
 def proxy_epic_disconnect(server: UserGameServer) -> tuple[int, dict]:
     return server_proxy_request(server, "DELETE", "/api/v1/epic/auth")
+
 
 link_or_create_game_server = link_or_create_node
 

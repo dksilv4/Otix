@@ -93,9 +93,7 @@ def _attach_resolved_assets(items: list[MediaItem]) -> None:
                     usable = [a for a in by_item[(item.id, source_type)] if a.url]
                     if not usable:
                         continue
-                    best = _pick_best(
-                        usable, _LABEL_PREF.get(source_type, {}), prefer_png=False
-                    )
+                    best = _pick_best(usable, _LABEL_PREF.get(source_type, {}), prefer_png=False)
                     break
                 item._resolved_backdrop_url = best.url if best is not None else None
                 continue

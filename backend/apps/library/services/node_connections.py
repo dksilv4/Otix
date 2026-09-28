@@ -351,7 +351,9 @@ def import_instances(
             continue
         save_payload = save_data if isinstance(save_data, dict) else {}
         if int(save_status) >= 400:
-            detail = save_payload.get("detail") or save_payload.get("error") or f"HTTP {save_status}"
+            detail = (
+                save_payload.get("detail") or save_payload.get("error") or f"HTTP {save_status}"
+            )
             errors.append({"kind": kind, "error": str(detail)})
             continue
         imported.append(kind)

@@ -44,8 +44,9 @@ def user_votes(user_id: int, proposal_ids: list[int]) -> dict[int, str]:
     if not proposal_ids:
         return {}
     return dict(
-        ProposalVote.objects.filter(user_id=user_id, proposal_id__in=proposal_ids)
-        .values_list("proposal_id", "vote_type")
+        ProposalVote.objects.filter(user_id=user_id, proposal_id__in=proposal_ids).values_list(
+            "proposal_id", "vote_type"
+        )
     )
 
 
@@ -86,9 +87,7 @@ def approve(proposal_id: int, approver: AbstractBaseUser) -> MediaEditProposal:
     upsert_image_overrides(proposal.media_item, proposal.image_overrides, approver.id)
     proposal.status = "approved"
     proposal.approver = approver
-    proposal.save(
-        update_fields=("status", "approver", "original_values", "updated_at")
-    )
+    proposal.save(update_fields=("status", "approver", "original_values", "updated_at"))
     return proposal
 
 

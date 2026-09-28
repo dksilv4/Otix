@@ -31,7 +31,9 @@ import {
   HardDrive,
   Server,
   ChevronDown,
+  Sparkles,
 } from 'lucide-react'
+import { EpicCodeModal } from '../components/organisms/epic-code-modal'
 import { PlexStorageOptimizerModal } from '@/features/integrations/plex-storage'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
@@ -601,6 +603,38 @@ export function SettingsIntegrationsPage() {
     }
   }, [user?.plexId, user?.plexWatchHistoryEnabled])
 
+  useEffect(() => {
+    if (user?.epicAccountId !== undefined) {
+      setEpicConnected(Boolean(user.epicAccountId))
+      setEpicAccountId(user.epicAccountId ?? null)
+    }
+    if (user?.epicDisplayName !== undefined) {
+      setEpicDisplayName(user.epicDisplayName ?? null)
+    }
+  }, [user?.epicAccountId, user?.epicDisplayName])
+
+  const [epicConnected, setEpicConnected] = useState(Boolean(user?.epicAccountId))
+  const [epicDisplayName, setEpicDisplayName] = useState<string | null>(user?.epicDisplayName ?? null)
+  const [epicAccountId, setEpicAccountId] = useState<string | null>(user?.epicAccountId ?? null)
+  const [epicConnecting, setEpicConnecting] = useState(false)
+  const [epicDisconnecting, setEpicDisconnecting] = useState(false)
+  const [epicScanning, setEpicScanning] = useState(false)
+  const [epicScanResult, setEpicScanResult] = useState<{
+    totalInEpic: number
+    matchedInOtix: number
+    failed: number
+    source?: string
+  } | null>(null)
+  const [epicResolvingSteamGrid, setEpicResolvingSteamGrid] = useState(false)
+  const [epicSteamGridResult, setEpicSteamGridResult] = useState<{
+    total: number
+    matched: number
+    failed: number
+  } | null>(null)
+  const [epicMessage, setEpicMessage] = useState('')
+  const [epicError, setEpicError] = useState('')
+  const isEpicConnected = epicConnected
+
   const [steamMessage, setSteamMessage] = useState('')
   const [steamError, setSteamError] = useState('')
   const [plexMessage, setPlexMessage] = useState('')
@@ -729,10 +763,38 @@ export function SettingsIntegrationsPage() {
       if (googleDriveProvider) {
         setDriveConnected(googleDriveProvider.connected)
       }
+      const epicProvider = (data.providers as Array<{
+        name: string
+        connected: boolean
+        epicAccountId?: string | null
+        epicDisplayName?: string | null
+      }>).find((p) => p.name === 'epic')
+      if (epicProvider) {
+        setEpicConnected(epicProvider.connected)
+        setEpicAccountId(epicProvider.epicAccountId ?? null)
+        setEpicDisplayName(epicProvider.epicDisplayName ?? null)
+      } else {
+        await fetchEpicStatus()
+      }
     } catch (err) {
       setSteamError(extractIntegrationMessage(err))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchEpicStatus = async () => {
+    try {
+      const { data } = await apiClient.get<{
+        connected?: boolean
+        displayName?: string | null
+        accountId?: string | null
+      }>('/integrations/epic/status')
+      setEpicConnected(Boolean(data.connected))
+      setEpicDisplayName(data.displayName ?? null)
+      setEpicAccountId(data.accountId ?? null)
+    } catch {
+      setEpicConnected(false)
     }
   }
 
@@ -775,6 +837,106 @@ export function SettingsIntegrationsPage() {
     } catch (err) {
       setConnecting(false)
       setSteamError(extractIntegrationMessage(err))
+    }
+  }
+
+  const handleEpicConnect = async () => {
+    setEpicConnecting(true)
+    setEpicError('')
+    try {
+      const { data } = await apiClient.post('/auth/oauth/epic')
+      const authUrl = data.authUrl || data.auth_url
+      const state = data.state
+      const openOAuthWindow = window.desktopAPI?.plugin?.openOAuthWindow
+      if (isDesktop() && openOAuthWindow) {
+        const win = await openOAuthWindow(authUrl, 'id/api/redirect') as {
+          success?: boolean
+          code?: string
+          error?: string
+        }
+        if (!win?.success || !win.code) {
+          setEpicError((win?.error as string | undefined) || 'Login cancelled')
+          return
+        }
+        await apiClient.post('/auth/oauth/epic/callback', { code: win.code, state })
+        await fetchEpicStatus()
+        return
+      }
+      openExternal(authUrl, { newTab: true })
+      openBoundModal(openModal, (onClose) => (
+        <EpicCodeModal
+          authUrl={authUrl}
+          state={state}
+          onClose={onClose}
+          onLinked={() => { void fetchEpicStatus() }}
+        />
+      ))
+    } catch (err) {
+      setEpicError(extractIntegrationMessage(err))
+    } finally {
+      setEpicConnecting(false)
+    }
+  }
+
+  const handleEpicDisconnect = async () => {
+    setEpicDisconnecting(true)
+    setEpicError('')
+    setEpicMessage('')
+    try {
+      await apiClient.delete('/auth/oauth/epic/disconnect')
+      setEpicConnected(false)
+      setEpicDisplayName(null)
+      setEpicAccountId(null)
+      setEpicMessage('Epic Games account unlinked.')
+    } catch (err) {
+      setEpicError(extractIntegrationMessage(err))
+    } finally {
+      setEpicDisconnecting(false)
+    }
+  }
+
+  const handleEpicScan = async () => {
+    setEpicScanning(true)
+    setEpicError('')
+    setEpicScanResult(null)
+    try {
+      const { data } = await apiClient.post<{
+        totalInEpic: number
+        matchedInOtix: number
+        failed: number
+        source?: string
+      }>('/integrations/epic/scan')
+      setEpicScanResult(data)
+      let msg = `Found ${data.matchedInOtix} matches out of ${data.totalInEpic} Epic games.`
+      if (data.source) {
+        msg += data.source === 'node' ? ' (via node scan)' : ' (via web scan)'
+      }
+      if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
+      setEpicMessage(msg)
+    } catch (err) {
+      setEpicError(extractIntegrationMessage(err))
+    } finally {
+      setEpicScanning(false)
+    }
+  }
+
+  const handleEpicResolveSteamGrid = async () => {
+    setEpicResolvingSteamGrid(true)
+    setEpicError('')
+    try {
+      const { data } = await apiClient.post<{
+        total: number
+        matched: number
+        failed: number
+      }>('/integrations/epic/resolve-steamgrid')
+      setEpicSteamGridResult(data)
+      let msg = `Matched ${data.matched} out of ${data.total} Epic games with SteamGridDB.`
+      if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
+      setEpicMessage(msg)
+    } catch (err) {
+      setEpicError(extractIntegrationMessage(err))
+    } finally {
+      setEpicResolvingSteamGrid(false)
     }
   }
 
@@ -1320,7 +1482,6 @@ export function SettingsIntegrationsPage() {
   }
 
   const query = searchQuery.toLowerCase().trim()
-  const isEpicSearch = Boolean(query && ('epic games store'.includes(query) || query.includes('epic')))
 
   const integrationDefs = [
     {
@@ -1337,6 +1498,23 @@ export function SettingsIntegrationsPage() {
       onDisconnect: handleDisconnect,
       disconnecting,
       error: steamError,
+    },
+    {
+      id: 'epic',
+      name: 'Epic Games',
+      keywords: 'epic games store egs library launcher',
+      description: isEpicConnected && epicDisplayName
+        ? `Linked as ${epicDisplayName}`
+        : 'Sign in with Epic Games to sync your game library.',
+      isConnected: isEpicConnected,
+      brandColor: BRAND_COLORS.epic,
+      brandBg: BRAND_BG.epic,
+      icon: EpicIcon,
+      onConnect: handleEpicConnect,
+      connecting: epicConnecting,
+      onDisconnect: handleEpicDisconnect,
+      disconnecting: epicDisconnecting,
+      error: epicError,
     },
     {
       id: 'plex',
@@ -1436,13 +1614,13 @@ export function SettingsIntegrationsPage() {
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading integrations...
         </div>
-      ) : filteredIntegrations.length === 0 && !nodesVisible && !isEpicSearch ? (
+      ) : filteredIntegrations.length === 0 && !nodesVisible ? (
         <div className="rounded-2xl p-8 text-center bg-white/5">
           <p className="text-sm text-white/60">No integrations match &quot;{searchQuery}&quot;</p>
         </div>
       ) : (
         <>
-          {(filteredIntegrations.length > 0 || isEpicSearch) && (
+          {filteredIntegrations.length > 0 && (
             <div id="accounts" className="scroll-mt-28">
               <SettingsCard className="space-y-2">
                 <SectionHeader
@@ -1509,6 +1687,55 @@ export function SettingsIntegrationsPage() {
                         </div>
                         {steamMessage && <p className="px-5 py-2 text-xs text-green-400">{steamMessage}</p>}
                         {steamError && <p className="px-5 py-2 text-xs text-red-400">{steamError}</p>}
+                      </>
+                    )}
+
+                    {/* Epic content */}
+                    {i.id === 'epic' && (
+                      <>
+                        <IntegrationProfile
+                          avatarAlt={epicDisplayName ?? 'Epic Games avatar'}
+                          name={epicDisplayName ?? 'Epic Games User'}
+                          detail={epicAccountId ? `Account ID: ${epicAccountId}` : 'Epic Games account linked'}
+                          brandBg={BRAND_BG.epic}
+                          icon={EpicIcon}
+                          brandColor={BRAND_COLORS.epic}
+                        />
+                        <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 text-xs text-white/70">
+                            <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
+                            <span>
+                              Game scanning and matching are also managed under
+                              {' '}<strong>Library Settings</strong> as a Provider.
+                            </span>
+                          </div>
+                          <Link
+                            to="/settings/library"
+                            className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+                          >
+                            Go to Library Settings &rarr;
+                          </Link>
+                        </div>
+                        <IntegrationAction
+                          label="Library Scan"
+                          description="Scan your Epic Games library"
+                          result={epicScanResult ? `${epicScanResult.matchedInOtix} matches out of ${epicScanResult.totalInEpic} Epic games` : null}
+                          buttonLabel={epicScanning ? 'Scanning...' : epicScanResult ? 'Re-scan' : 'Scan Library'}
+                          buttonIcon={RefreshCw}
+                          onPress={handleEpicScan}
+                          loading={epicScanning}
+                        />
+                        <IntegrationAction
+                          label="SteamGridDB Matching"
+                          description="Match artwork and metadata from SteamGridDB for unmatched Epic games"
+                          result={epicSteamGridResult ? `${epicSteamGridResult.matched} matched out of ${epicSteamGridResult.total} games` : null}
+                          buttonLabel={epicResolvingSteamGrid ? 'Matching...' : 'Resolve with SteamGrid'}
+                          buttonIcon={Sparkles}
+                          onPress={handleEpicResolveSteamGrid}
+                          loading={epicResolvingSteamGrid}
+                        />
+                        {epicMessage && <p className="px-5 py-2 text-xs text-green-400">{epicMessage}</p>}
+                        {epicError && <p className="px-5 py-2 text-xs text-red-400">{epicError}</p>}
                       </>
                     )}
 
@@ -1779,33 +2006,6 @@ export function SettingsIntegrationsPage() {
                   </IntegrationCard>
                 ))}
 
-                {/* Epic Games Node Settings Notice */}
-                {(!query || isEpicSearch) && (
-                  <div className="mx-5 my-2 p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white shrink-0">
-                        <EpicIcon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-semibold text-white">Epic Games</p>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/60">
-                            Node Setting
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-white/60 mt-0.5">
-                          Epic Games requires a connected Otix Node and is configured in Node Settings.
-                        </p>
-                      </div>
-                    </div>
-                    <Link
-                      to="/settings/nodes"
-                      className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white/90 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
-                    >
-                      Open Node Settings &rarr;
-                    </Link>
-                  </div>
-                )}
               </SettingsCard>
             </div>
           )}

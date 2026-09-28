@@ -605,9 +605,7 @@ def seed_show_from_tmdb(raw: dict[str, Any]) -> int:
 
 
 @atomic_seed
-def seed_episodes_from_season(
-    show_id: int, season_number: int, season_raw: dict[str, Any]
-) -> int:
+def seed_episodes_from_season(show_id: int, season_number: int, season_raw: dict[str, Any]) -> int:
     """Seed a season's Episode rows from a /tv/{id}/season/{n} payload."""
     season = Season.objects.filter(show_id=show_id, season_number=season_number).first()
     if season is None:

@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect, useCallback, useId } from 'react'
+import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback, useId } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -20,7 +19,7 @@ interface DkDropdownProps<T extends string = string> {
   align?: 'left' | 'right'
 }
 
-export function DkDropdown<T extends string = string>({
+function DkDropdownInner<T extends string = string>({
   options,
   value,
   onChange,
@@ -57,49 +56,48 @@ export function DkDropdown<T extends string = string>({
     }
   }, [align])
 
-  useEffect(() => {
-    if (open) {
-      updateCoords()
-    }
+  useLayoutEffect(() => {
+    if (open) updateCoords()
   }, [open, updateCoords])
 
   useEffect(() => {
+    if (!open) return
+
     function handleClickOutside(e: MouseEvent) {
       const target = e.target as Node
       if (
-        buttonRef.current &&
-        !buttonRef.current.contains(target) &&
-        menuRef.current &&
-        !menuRef.current.contains(target)
+        buttonRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
       ) {
-        setOpen(false)
+        return
       }
+      setOpen(false)
     }
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setOpen(false)
-      }
+      if (e.key === 'Escape') setOpen(false)
     }
 
-    function handleScrollOrResize() {
-      if (open) {
-        updateCoords()
-      }
+    // Close on scroll instead of repositioning — avoids jank while the page
+    // infinite-scrolls or the layout shifts under an open menu.
+    function handleScroll() {
+      setOpen(false)
     }
 
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside)
-      document.addEventListener('keydown', handleKeyDown)
-      window.addEventListener('scroll', handleScrollOrResize, true)
-      window.addEventListener('resize', handleScrollOrResize)
+    function handleResize() {
+      updateCoords()
     }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('scroll', handleScroll, true)
+    window.addEventListener('resize', handleResize)
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('scroll', handleScrollOrResize, true)
-      window.removeEventListener('resize', handleScrollOrResize)
+      window.removeEventListener('scroll', handleScroll, true)
+      window.removeEventListener('resize', handleResize)
     }
   }, [open, updateCoords])
 
@@ -117,17 +115,19 @@ export function DkDropdown<T extends string = string>({
         ref={buttonRef}
         id={!isFilter && label ? triggerId : undefined}
         type="button"
-        onClick={() => setOpen(!open)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
         className={
           isFilter
             ? cn(
-                'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer select-none',
+                'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 cursor-pointer select-none',
                 value
                   ? 'bg-primary/20 text-primary hover:bg-primary/30'
-                  : 'bg-white/[0.05] text-white/70 hover:text-white hover:bg-white/10 active:scale-[0.98]',
+                  : 'bg-white/[0.05] text-white/70 hover:text-white hover:bg-white/10',
               )
             : cn(
-                'flex items-center justify-between gap-2.5 rounded-xl px-3.5 h-9.5 text-xs font-medium w-full transition-all duration-200 text-left cursor-pointer select-none',
+                'flex items-center justify-between gap-2.5 rounded-xl px-3.5 h-9.5 text-xs font-medium w-full transition-colors duration-150 text-left cursor-pointer select-none',
                 open
                   ? 'bg-white/10 text-white font-semibold'
                   : 'bg-white/5 hover:bg-white/10 active:bg-white/15 text-white/80 hover:text-white',
@@ -141,62 +141,57 @@ export function DkDropdown<T extends string = string>({
         </span>
         <ChevronDown
           className={cn(
-            'h-4 w-4 text-white/50 shrink-0 transition-transform duration-200',
+            'h-4 w-4 text-white/50 shrink-0 transition-transform duration-150',
             open && 'rotate-180 text-primary',
           )}
         />
       </button>
 
-      {/* Render Dropdown Floating Menu via Portal into document.body */}
-      {typeof document !== 'undefined' &&
+      {open &&
+        typeof document !== 'undefined' &&
         createPortal(
-          <AnimatePresence>
-            {open && (
-              <motion.div
-                ref={menuRef}
-                initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed p-1 rounded-2xl z-[99999] shadow-2xl backdrop-blur-2xl max-h-60 overflow-y-auto scrollbar-none"
-                style={{
-                  top: `${coords.top}px`,
-                  ...(coords.left !== undefined ? { left: `${coords.left}px` } : {}),
-                  ...(coords.right !== undefined ? { right: `${coords.right}px` } : {}),
-                  minWidth: isFilter ? '170px' : `${Math.max(coords.width, 180)}px`,
-                  backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.85)',
-                  backdropFilter: 'blur(40px)',
-                  WebkitBackdropFilter: 'blur(40px)',
-                  boxShadow: '0 20px 50px rgba(0, 0, 0, 0.75), 0 0 1px rgba(255, 255, 255, 0.1)',
-                }}
-              >
-                {options.map((opt) => {
-                  const isSelected = opt.value === value
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        onChange(opt.value as T)
-                        setOpen(false)
-                      }}
-                      className={cn(
-                        'w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 text-left cursor-pointer',
-                        isSelected
-                          ? 'bg-primary/20 text-primary font-semibold'
-                          : 'text-white/70 hover:text-white hover:bg-white/10',
-                      )}
-                    >
-                      <span className="truncate">{opt.label}</span>
-                      {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
-                    </button>
-                  )
-                })}
-              </motion.div>
-            )}
-          </AnimatePresence>,
+          <div
+            ref={menuRef}
+            role="listbox"
+            className="fixed p-1 rounded-2xl z-[99999] max-h-60 overflow-y-auto scrollbar-none"
+            style={{
+              top: coords.top,
+              ...(coords.left !== undefined ? { left: coords.left } : {}),
+              ...(coords.right !== undefined ? { right: coords.right } : {}),
+              minWidth: isFilter ? 170 : Math.max(coords.width, 180),
+              backgroundColor: 'var(--dk-surface-overlay)',
+              boxShadow: 'var(--dk-shadow-glass), 0 0 0 1px rgba(255,255,255,0.06)',
+            }}
+          >
+            {options.map((opt) => {
+              const isSelected = opt.value === value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange(opt.value as T)
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    'w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-left cursor-pointer',
+                    isSelected
+                      ? 'bg-primary/20 text-primary font-semibold'
+                      : 'text-white/70 hover:text-white hover:bg-white/10',
+                  )}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                </button>
+              )
+            })}
+          </div>,
           document.body,
         )}
     </div>
   )
 }
+
+export const DkDropdown = memo(DkDropdownInner) as typeof DkDropdownInner

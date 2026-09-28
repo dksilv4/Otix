@@ -194,9 +194,7 @@ class DiscoverCompanyTitlesTests(TestCase):
 
     def test_empty_first_page_stops_immediately(self):
         provider = mock.Mock()
-        provider.discover = mock.AsyncMock(
-            return_value={"results": [], "total_pages": 5}
-        )
+        provider.discover = mock.AsyncMock(return_value={"results": [], "total_pages": 5})
 
         titles = _run(discover_company_titles(61, provider=provider))
 
@@ -258,9 +256,12 @@ class FetchAndSeedCompanyTests(TransactionTestCase):
 class EnqueueCompanySyncTests(TransactionTestCase):
     def test_creates_and_dispatches_a_company_job(self):
         company = Company.objects.create(name="A24", slug="a24")
-        with mock.patch.object(
-            tmdb_company, "resolve_company_tmdb_id", new=mock.AsyncMock(return_value=61)
-        ), mock.patch("apps.integrations.tasks.run_sync_job") as run:
+        with (
+            mock.patch.object(
+                tmdb_company, "resolve_company_tmdb_id", new=mock.AsyncMock(return_value=61)
+            ),
+            mock.patch("apps.integrations.tasks.run_sync_job") as run,
+        ):
             job = enqueue_company_sync(company)
 
         self.assertIsNotNone(job)
@@ -275,9 +276,12 @@ class EnqueueCompanySyncTests(TransactionTestCase):
         SyncJob.objects.create(
             provider="tmdb", entity_type="company", external_id="61", status="running"
         )
-        with mock.patch.object(
-            tmdb_company, "resolve_company_tmdb_id", new=mock.AsyncMock(return_value=61)
-        ), mock.patch("apps.integrations.tasks.run_sync_job") as run:
+        with (
+            mock.patch.object(
+                tmdb_company, "resolve_company_tmdb_id", new=mock.AsyncMock(return_value=61)
+            ),
+            mock.patch("apps.integrations.tasks.run_sync_job") as run,
+        ):
             job = enqueue_company_sync(company)
 
         self.assertIsNone(job)
@@ -285,9 +289,12 @@ class EnqueueCompanySyncTests(TransactionTestCase):
 
     def test_no_resolvable_id_is_a_noop(self):
         company = Company.objects.create(name="Mystery", slug="mystery")
-        with mock.patch.object(
-            tmdb_company, "resolve_company_tmdb_id", new=mock.AsyncMock(return_value=None)
-        ), mock.patch("apps.integrations.tasks.run_sync_job") as run:
+        with (
+            mock.patch.object(
+                tmdb_company, "resolve_company_tmdb_id", new=mock.AsyncMock(return_value=None)
+            ),
+            mock.patch("apps.integrations.tasks.run_sync_job") as run,
+        ):
             job = enqueue_company_sync(company)
 
         self.assertIsNone(job)

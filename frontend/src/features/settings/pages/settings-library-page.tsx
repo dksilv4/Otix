@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Gamepad2, Loader2, CheckCircle2, Sparkles, FolderOpen, Search, X, ArrowUpDown, HardDrive } from 'lucide-react'
-import { useLocation, useNavigate } from '@tanstack/react-router'
+import { Gamepad2, Loader2, CheckCircle2, Sparkles, FolderOpen, Search, X, ArrowUpDown, HardDrive, ArrowUpRight } from 'lucide-react'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { PluginSlot } from '@/features/plugins/components/organisms/plugin-slot'
 import { getPluginAPI, type PluginAPI } from '@/features/plugins/api'
 import { DkDropdown } from '@ui/atoms/dropdown'
@@ -9,7 +9,6 @@ import { ProviderLogo } from '../components/atoms/provider-logo'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { CandidateReviewModal } from '../components/organisms/settings-candidate-review-modal'
-import { SettingsLibraryOverviewSection } from '../components/organisms/settings-library-overview-section'
 import {
   SettingsLibraryTabs,
   type LibrarySettingsTab,
@@ -513,29 +512,17 @@ export function SettingsLibraryPage() {
         icon={HardDrive}
         title="Library"
         description={
-          activeTab === 'library'
-            ? 'Match titles to Otix metadata, review candidates, and manage providers.'
-            : 'Status across matching, folders, nodes, and automation.'
+          activeTab === 'proposals'
+            ? 'Review and approve crowdsourced metadata match suggestions.'
+            : 'Match titles to Otix metadata, review candidates, and manage providers.'
         }
       />
       <SettingsLibraryTabs
         value={activeTab}
         onValueChange={handleTabChange}
         panels={{
-          overview: (
-            <SettingsLibraryOverviewSection
-              stats={{
-                total: stats.total,
-                matched: stats.matched,
-                candidates: stats.candidates,
-                unmatched: stats.unmatched,
-                loading: gamesLoading,
-              }}
-              onNavigate={handleTabChange}
-            />
-          ),
-          library: (
-            <div id="library" className="space-y-6 scroll-mt-28">
+          catalog: (
+            <div id="catalog" className="space-y-6 scroll-mt-28">
               {loading ? (
                 <div className="flex items-center justify-center py-20 text-white/50 gap-3">
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -549,37 +536,53 @@ export function SettingsLibraryPage() {
                       title="Catalog"
                       description="Local, Steam, and Epic titles Otix has found — match them, review suggestions, or leave unmatched."
                       action={
-                        <DkButton
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            const close = openModal(
-                              <DkDialog
-                                open
-                                onOpenChange={(next) => {
-                                  if (!next) close()
-                                }}
-                                title="Library Providers"
-                                description="Configure scanner paths and platform integration providers."
-                                className="max-w-4xl"
-                              >
-                                <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1 pt-1 pb-1">
-                                  {pluginApi && <PluginSlot location="library:scan" pluginApi={pluginApi} />}
-                                </div>
-                              </DkDialog>,
-                            )
-                          }}
-                        >
-                          <FolderOpen className="h-3.5 w-3.5" />
-                          Manage Providers
-                        </DkButton>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to="/settings/nodes"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
+                          >
+                            <FolderOpen className="h-3.5 w-3.5 text-white/40" />
+                            <span>Scan Folders</span>
+                            <ArrowUpRight className="h-3 w-3 text-white/30" />
+                          </Link>
+                          <DkButton
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const close = openModal(
+                                <DkDialog
+                                  open
+                                  onOpenChange={(next) => {
+                                    if (!next) close()
+                                  }}
+                                  title="Library Providers"
+                                  description="Configure scanner paths and platform integration providers."
+                                  className="max-w-4xl"
+                                >
+                                  <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1 pt-1 pb-1">
+                                    {pluginApi && <PluginSlot location="library:scan" pluginApi={pluginApi} />}
+                                  </div>
+                                </DkDialog>,
+                              )
+                            }}
+                          >
+                            Manage Providers
+                          </DkButton>
+                        </div>
                       }
                     />
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      <div
-                        className="rounded-xl px-3.5 py-3 border border-white/5"
-                        style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+                      <button
+                        type="button"
+                        onClick={() => setFilterTab('all')}
+                        className={cn(
+                          'rounded-xl px-3.5 py-3 border text-left transition-colors cursor-pointer',
+                          filterTab === 'all'
+                            ? 'border-primary/40 bg-primary/10'
+                            : 'border-white/5 hover:border-white/15 hover:bg-white/[0.04]',
+                        )}
+                        style={filterTab === 'all' ? undefined : { backgroundColor: 'var(--dk-surface-raised)' }}
                       >
                         <div className="flex items-center gap-1.5 text-white/40 mb-1">
                           <HardDrive className="h-3.5 w-3.5 text-primary" />
@@ -589,11 +592,18 @@ export function SettingsLibraryPage() {
                           {gamesLoading ? '…' : stats.total}
                         </p>
                         <p className="text-[11px] text-white/40 mt-1">All library items</p>
-                      </div>
+                      </button>
 
-                      <div
-                        className="rounded-xl px-3.5 py-3 border border-white/5"
-                        style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+                      <button
+                        type="button"
+                        onClick={() => setFilterTab('matched')}
+                        className={cn(
+                          'rounded-xl px-3.5 py-3 border text-left transition-colors cursor-pointer',
+                          filterTab === 'matched'
+                            ? 'border-emerald-500/40 bg-emerald-500/10'
+                            : 'border-white/5 hover:border-emerald-500/20 hover:bg-emerald-500/5',
+                        )}
+                        style={filterTab === 'matched' ? undefined : { backgroundColor: 'var(--dk-surface-raised)' }}
                       >
                         <div className="flex items-center gap-1.5 text-white/40 mb-1">
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
@@ -603,13 +613,13 @@ export function SettingsLibraryPage() {
                           {gamesLoading ? '…' : stats.matched}
                         </p>
                         <p className="text-[11px] text-white/40 mt-1">Linked to metadata</p>
-                      </div>
+                      </button>
 
                       <button
                         type="button"
                         onClick={() => setFilterTab('candidates')}
                         className={cn(
-                          'rounded-xl px-3.5 py-3 border text-left transition-colors',
+                          'rounded-xl px-3.5 py-3 border text-left transition-colors cursor-pointer',
                           filterTab === 'candidates'
                             ? 'border-sky-500/30 bg-sky-500/10'
                             : 'border-white/5 hover:border-sky-500/20 hover:bg-sky-500/5',
@@ -630,7 +640,7 @@ export function SettingsLibraryPage() {
                         type="button"
                         onClick={() => setFilterTab('unmatched')}
                         className={cn(
-                          'rounded-xl px-3.5 py-3 border text-left transition-colors',
+                          'rounded-xl px-3.5 py-3 border text-left transition-colors cursor-pointer',
                           filterTab === 'unmatched'
                             ? 'border-white/20 bg-white/10'
                             : 'border-white/5 hover:border-white/15 hover:bg-white/[0.04]',
@@ -648,10 +658,6 @@ export function SettingsLibraryPage() {
                       </button>
                     </div>
                   </SettingsCard>
-
-                  <div id="proposals" className="scroll-mt-28">
-                    <ProposalsPage />
-                  </div>
 
                   <SettingsCard>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
@@ -869,6 +875,11 @@ export function SettingsLibraryPage() {
                   </SettingsCard>
                 </>
               )}
+            </div>
+          ),
+          proposals: (
+            <div id="proposals" className="space-y-6 scroll-mt-28">
+              <ProposalsPage />
             </div>
           ),
         }}

@@ -1,6 +1,5 @@
-/** Utility functions for the Otix Node File Explorer. */
-
 import type {
+  ExplorerShortcut,
   FormatCategory,
   NodeExplorerBrowseResult,
   NodeExplorerEntry,
@@ -13,6 +12,16 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function pickValue(value: Record<string, unknown>, camel: string, snake: string): unknown {
   return value[camel] ?? value[snake]
+}
+
+function normalizeExplorerShortcut(raw: unknown): ExplorerShortcut {
+  const item = asRecord(raw)
+  return {
+    name: String(item.name ?? ''),
+    path: String(item.path ?? ''),
+    icon: String(item.icon ?? 'folder'),
+    exist: Boolean(pickValue(item, 'exist', 'exist') ?? true),
+  }
 }
 
 function normalizeExplorerEntry(raw: unknown): NodeExplorerEntry {
@@ -35,6 +44,12 @@ function normalizeExplorerEntry(raw: unknown): NodeExplorerEntry {
 export function normalizeExplorerBrowse(raw: unknown): NodeExplorerBrowseResult {
   const data = asRecord(raw)
   const entries = Array.isArray(data.entries) ? data.entries : []
+  const rawShortcuts = Array.isArray(pickValue(data, 'shortcuts', 'shortcuts'))
+    ? (pickValue(data, 'shortcuts', 'shortcuts') as unknown[])
+    : []
+  const permissionDenied = Boolean(pickValue(data, 'permissionDenied', 'permission_denied'))
+  const permissionMessage = pickValue(data, 'permissionMessage', 'permission_message') as string | undefined
+
   return {
     current_path: String(pickValue(data, 'currentPath', 'current_path') ?? '/'),
     parent_path: (pickValue(data, 'parentPath', 'parent_path') as string | null | undefined) ?? null,
@@ -44,6 +59,9 @@ export function normalizeExplorerBrowse(raw: unknown): NodeExplorerBrowseResult 
     total_items: Number(pickValue(data, 'totalItems', 'total_items') ?? entries.length) || 0,
     disk_free_bytes: (pickValue(data, 'diskFreeBytes', 'disk_free_bytes') as number | null | undefined) ?? null,
     disk_total_bytes: (pickValue(data, 'diskTotalBytes', 'disk_total_bytes') as number | null | undefined) ?? null,
+    shortcuts: rawShortcuts.map(normalizeExplorerShortcut),
+    permission_denied: permissionDenied,
+    permission_message: permissionMessage,
   }
 }
 
@@ -108,6 +126,13 @@ export function getFormatBadgeColor(format: FormatCategory): {
         text: 'text-emerald-400',
         border: 'border-emerald-500/30',
         label: 'INSTALLER',
+      };
+    case 'game':
+      return {
+        bg: 'bg-blue-500/15',
+        text: 'text-blue-400',
+        border: 'border-blue-500/30',
+        label: 'GAME',
       };
     case 'archive':
       return {

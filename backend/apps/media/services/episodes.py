@@ -58,8 +58,9 @@ def episode_interactions(user_id: int, show_id: int) -> dict[int, dict]:
     )
     episode_ids = [row["id"] for row in rows]
     watched_at = dict(
-        UserEpisodeInteraction.objects.filter(user_id=user_id, episode_id__in=episode_ids)
-        .values_list("episode_id", "created_at")
+        UserEpisodeInteraction.objects.filter(
+            user_id=user_id, episode_id__in=episode_ids
+        ).values_list("episode_id", "created_at")
     )
     return {
         episode_id: {
@@ -71,25 +72,21 @@ def episode_interactions(user_id: int, show_id: int) -> dict[int, dict]:
 
 
 def set_episode_watched(user: AbstractBaseUser, episode_id: int) -> bool:
-    _, created = UserEpisodeInteraction.objects.get_or_create(
-        user=user, episode_id=episode_id
-    )
+    _, created = UserEpisodeInteraction.objects.get_or_create(user=user, episode_id=episode_id)
     return created
 
 
 def remove_episode_watched(user: AbstractBaseUser, episode_id: int) -> bool:
-    deleted, _ = UserEpisodeInteraction.objects.filter(
-        user=user, episode_id=episode_id
-    ).delete()
+    deleted, _ = UserEpisodeInteraction.objects.filter(user=user, episode_id=episode_id).delete()
     return bool(deleted)
 
 
 def set_season_watched(user: AbstractBaseUser, season_id: int) -> int:
     episode_ids = list(Episode.objects.filter(season_id=season_id).values_list("id", flat=True))
     existing = set(
-        UserEpisodeInteraction.objects.filter(
-            user=user, episode_id__in=episode_ids
-        ).values_list("episode_id", flat=True)
+        UserEpisodeInteraction.objects.filter(user=user, episode_id__in=episode_ids).values_list(
+            "episode_id", flat=True
+        )
     )
     new_ids = [eid for eid in episode_ids if eid not in existing]
     if new_ids:
@@ -121,9 +118,9 @@ def set_show_watched(user: AbstractBaseUser, show_id: int) -> int:
         .values_list("id", flat=True)
     )
     existing = set(
-        UserEpisodeInteraction.objects.filter(
-            user=user, episode_id__in=episode_ids
-        ).values_list("episode_id", flat=True)
+        UserEpisodeInteraction.objects.filter(user=user, episode_id__in=episode_ids).values_list(
+            "episode_id", flat=True
+        )
     )
     new_ids = [eid for eid in episode_ids if eid not in existing]
     if new_ids:
@@ -168,8 +165,9 @@ def show_progress(user_id: int, show_id: int) -> dict:
         }
     episode_ids = [eid for eid, _ in rows]
     watched_ids = set(
-        UserEpisodeInteraction.objects.filter(user_id=user_id, episode_id__in=episode_ids)
-        .values_list("episode_id", flat=True)
+        UserEpisodeInteraction.objects.filter(
+            user_id=user_id, episode_id__in=episode_ids
+        ).values_list("episode_id", flat=True)
     )
     season_episodes: dict[int, int] = {}
     season_watched: dict[int, int] = {}

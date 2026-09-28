@@ -360,13 +360,18 @@ def list_media(
         if media_type == "movie":
             qs = qs.select_related("movie")
     if genre:
-        genre_str = str(genre).strip()
-        if genre_str.isdigit():
-            qs = qs.filter(
-                Q(media_genres__genre__slug=genre_str) | Q(media_genres__genre_id=int(genre_str))
-            )
-        else:
-            qs = qs.filter(media_genres__genre__slug=genre_str)
+        # Comma-separated slugs/ids OR together — multi-select means "any of these".
+        genre_tokens = [part.strip() for part in str(genre).split(",") if part.strip()]
+        if genre_tokens:
+            genre_q = Q()
+            for genre_str in genre_tokens:
+                if genre_str.isdigit():
+                    genre_q |= Q(media_genres__genre__slug=genre_str) | Q(
+                        media_genres__genre_id=int(genre_str)
+                    )
+                else:
+                    genre_q |= Q(media_genres__genre__slug=genre_str)
+            qs = qs.filter(genre_q)
     if company:
         qs = qs.filter(involved_companies__company_id=company)
     if platform:
@@ -374,10 +379,23 @@ def list_media(
     if language:
         qs = qs.filter(original_language=language)
     if is_anime is not None:
-        if media_type in (None, "movie"):
+        if media_type == "movie":
             qs = qs.filter(movie__is_anime=is_anime)
-        if media_type in (None, "show"):
-            qs = qs.filter(Q(show__is_anime=is_anime) | Q(movie__is_anime=is_anime))
+        elif media_type == "show":
+            qs = qs.filter(show__is_anime=is_anime)
+        elif media_type is None:
+            # Movies/shows honor the flag; games (and other types) have no
+            # anime bit — include them only when excluding anime.
+            anime_movies = Q(media_type="movie", movie__is_anime=True)
+            anime_shows = Q(media_type="show", show__is_anime=True)
+            if is_anime:
+                qs = qs.filter(anime_movies | anime_shows)
+            else:
+                qs = qs.filter(
+                    ~Q(media_type__in=("movie", "show"))
+                    | Q(media_type="movie", movie__is_anime=False)
+                    | Q(media_type="show", show__is_anime=False)
+                )
     if exclude_adult:
         qs = qs.filter(is_adult=False)
     if person_id is not None:

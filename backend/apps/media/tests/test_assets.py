@@ -135,9 +135,7 @@ class AssetTestCase(TestCase):
         self.staff_client = APIClient()
         self.staff_client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
 
-        self.item = MediaItem.objects.create(
-            media_type="movie", title="Dune", slug="dune-assets"
-        )
+        self.item = MediaItem.objects.create(media_type="movie", title="Dune", slug="dune-assets")
 
         # Keep the disk safety cap out of play for the shared fixtures; disk-cap
         # enforcement is exercised explicitly in DiskCapTests below.
@@ -188,9 +186,7 @@ class DownloadAssetTests(AssetTestCase):
 
         self.assertEqual(written, len(PNG))
         client.assert_not_called()
-        self.assertEqual(
-            {p.name for p in asset_dir().iterdir()}, {"existing.png"}
-        )
+        self.assertEqual({p.name for p in asset_dir().iterdir()}, {"existing.png"})
 
     def test_non_2xx_leaves_fields_null(self) -> None:
         asset = self.add_asset()
@@ -324,9 +320,7 @@ class AdminAssetEndpointTests(AssetTestCase):
         self.assertEqual(self.client.post(url).status_code, 401)  # anonymous
 
     def test_download_endpoint_missing_item_404(self) -> None:
-        response = self.staff_client.post(
-            "/api/v1/media/admin/media-items/999999/download-assets"
-        )
+        response = self.staff_client.post("/api/v1/media/admin/media-items/999999/download-assets")
         self.assertEqual(response.status_code, 404)
 
     def test_storage_staff_only(self) -> None:
@@ -465,9 +459,7 @@ class PrimaryReconcileTests(AssetTestCase):
         )
 
     def test_discards_stale_copy_when_a_higher_scored_asset_becomes_best(self) -> None:
-        stale = self._logo(
-            "http://img.example/old.png", score=80, local_name="old-logo.png"
-        )
+        stale = self._logo("http://img.example/old.png", score=80, local_name="old-logo.png")
         (asset_dir() / "old-logo.png").write_bytes(PNG)
         best = self._logo("http://img.example/new.png", score=90)
 
@@ -484,13 +476,9 @@ class PrimaryReconcileTests(AssetTestCase):
         self.assertTrue((asset_dir() / best.local_name).is_file())
 
     def test_collapses_existing_equal_score_duplicates(self) -> None:
-        first = self._logo(
-            "http://img.example/a.png", score=90, local_name="a.png"
-        )
+        first = self._logo("http://img.example/a.png", score=90, local_name="a.png")
         (asset_dir() / "a.png").write_bytes(PNG)
-        second = self._logo(
-            "http://img.example/b.png", score=90, local_name="b.png"
-        )
+        second = self._logo("http://img.example/b.png", score=90, local_name="b.png")
         (asset_dir() / "b.png").write_bytes(PNG)
 
         with _patch_http(_FakeResponse(PNG)):
@@ -508,9 +496,7 @@ class PrimaryReconcileTests(AssetTestCase):
     def test_keeps_existing_copy_when_best_is_already_mirrored(self) -> None:
         # Regression guard: reconcile must not purge a best that is already the
         # mirrored one (idempotent re-download keeps the file, no HTTP call).
-        best = self._logo(
-            "http://img.example/only.png", score=50, local_name="only.png"
-        )
+        best = self._logo("http://img.example/only.png", score=50, local_name="only.png")
         (asset_dir() / "only.png").write_bytes(PNG)
 
         with mock.patch("httpx.Client") as client:
@@ -556,9 +542,7 @@ class AutoMirrorArtworkTests(AssetTestCase):
 
     def test_mirror_failure_is_swallowed(self) -> None:
         self.add_asset(url="http://img.example/poster.png")
-        with mock.patch(
-            "apps.media.services.assets._best_asset", side_effect=RuntimeError("boom")
-        ):
+        with mock.patch("apps.media.services.assets._best_asset", side_effect=RuntimeError("boom")):
             ran = mirror_media_artwork(self.item.pk)
         self.assertFalse(ran)
 
@@ -779,9 +763,10 @@ class DiskCapTests(AssetTestCase):
     def test_download_skips_when_below_cap(self) -> None:
         self.add_asset(url="http://img.example/poster.png")
         set_min_free_gb(5)
-        with mock.patch(
-            "apps.media.services.assets.disk_free_bytes", return_value=1
-        ) as _free, mock.patch("httpx.Client") as client:
+        with (
+            mock.patch("apps.media.services.assets.disk_free_bytes", return_value=1) as _free,
+            mock.patch("httpx.Client") as client,
+        ):
             written = download_asset(MediaAsset.objects.get(media_item=self.item))
         self.assertIsNone(written)
         client.assert_not_called()
@@ -806,9 +791,7 @@ class LocalGameMirrorTests(AssetTestCase):
     """``mirror_local_game_artwork`` mirrors only games when its toggle is on."""
 
     def _game(self) -> MediaItem:
-        return MediaItem.objects.create(
-            media_type="game", title="Hades", slug="local-game-hades"
-        )
+        return MediaItem.objects.create(media_type="game", title="Hades", slug="local-game-hades")
 
     def test_mirrors_game_when_enabled(self) -> None:
         game = self._game()
@@ -951,9 +934,7 @@ class ArtworkSelectionServiceTests(AssetTestCase):
         set_mirroring_enabled(False)
         low = self.add_asset(url="http://img.example/a.png", score=50)
         high = self.add_asset(url="http://img.example/b.png", score=90)
-        backdrop = self.add_asset(
-            asset_type="backdrop", url="http://img.example/bd.png", score=10
-        )
+        backdrop = self.add_asset(asset_type="backdrop", url="http://img.example/bd.png", score=10)
         select_asset(self.item, low, "general")
         low.refresh_from_db()
         high.refresh_from_db()
@@ -1019,21 +1000,13 @@ class ArtworkSelectionServiceTests(AssetTestCase):
         set_mirroring_enabled(False)
         best = self.add_asset(url="http://img.example/a.png", score=90)
         dark = self.add_asset(url="http://img.example/dark.png", score=10)
-        backdrop = self.add_asset(
-            asset_type="backdrop", url="http://img.example/bd.png", score=70
-        )
+        backdrop = self.add_asset(asset_type="backdrop", url="http://img.example/bd.png", score=70)
         select_asset(self.item, dark, "dark")
-        self.assertEqual(
-            current_primary_asset_ids(self.item, "dark"), {dark.pk, backdrop.pk}
-        )
+        self.assertEqual(current_primary_asset_ids(self.item, "dark"), {dark.pk, backdrop.pk})
         # general context falls back to the score winner
-        self.assertEqual(
-            current_primary_asset_ids(self.item, "general"), {best.pk, backdrop.pk}
-        )
+        self.assertEqual(current_primary_asset_ids(self.item, "general"), {best.pk, backdrop.pk})
         clear_asset_selection(dark)
-        self.assertEqual(
-            current_primary_asset_ids(self.item, "dark"), {best.pk, backdrop.pk}
-        )
+        self.assertEqual(current_primary_asset_ids(self.item, "dark"), {best.pk, backdrop.pk})
 
     def test_select_mirrors_choice_and_discards_stale_local(self) -> None:
         stale_file = "stale-poster.png"
@@ -1134,12 +1107,8 @@ class TextlessPickServiceTests(AssetTestCase):
         set_textless_pick(self.item, a, True)
         first = _best_asset(self.item, "textless_poster", "general")
         set_textless_pick(self.item, b, True)
-        self.assertFalse(
-            MediaAsset.objects.filter(pk=first.pk, media_item=self.item).exists()
-        )
-        self.assertEqual(
-            _best_asset(self.item, "textless_poster", "general").url, b.url
-        )
+        self.assertFalse(MediaAsset.objects.filter(pk=first.pk, media_item=self.item).exists())
+        self.assertEqual(_best_asset(self.item, "textless_poster", "general").url, b.url)
 
     def test_undesignate_clears_and_prunes_materialized_row(self) -> None:
         poster = self._image("poster", "http://img.example/p.png")
@@ -1148,9 +1117,7 @@ class TextlessPickServiceTests(AssetTestCase):
         self.assertFalse(result["active"])
         self.assertIsNone(_best_asset(self.item, "textless_poster", "general"))
         self.assertFalse(
-            MediaAsset.objects.filter(
-                media_item=self.item, asset_type="textless_poster"
-            ).exists()
+            MediaAsset.objects.filter(media_item=self.item, asset_type="textless_poster").exists()
         )
         poster.refresh_from_db()
         self.assertIsNone(poster.selected_context)
@@ -1183,9 +1150,7 @@ class TextlessPickServiceTests(AssetTestCase):
         self.assertEqual(existing.selected_context, "general")
         self.assertIsNone(existing.label)  # provider row, not a materialized twin
         self.assertEqual(
-            MediaAsset.objects.filter(
-                media_item=self.item, asset_type="textless_poster"
-            ).count(),
+            MediaAsset.objects.filter(media_item=self.item, asset_type="textless_poster").count(),
             1,
         )
 
@@ -1226,10 +1191,7 @@ class ArtworkSelectionEndpointTests(AssetTestCase):
         set_mirroring_enabled(False)  # pin semantics here, downloads tested below
 
     def _url(self, asset_id: int) -> str:
-        return (
-            f"/api/v1/media/admin/media-items/{self.item.pk}"
-            f"/assets/{asset_id}/select"
-        )
+        return f"/api/v1/media/admin/media-items/{self.item.pk}/assets/{asset_id}/select"
 
     def test_put_defaults_to_general_and_delete_clears(self) -> None:
         asset = self.add_asset(url="http://img.example/p.png", score=50)
@@ -1281,9 +1243,7 @@ class ArtworkSelectionEndpointTests(AssetTestCase):
         set_mirroring_enabled(True)
         asset = self.add_asset(url="http://img.example/p.png", score=50)
         with _patch_http(_FakeResponse(PNG)):
-            response = self.staff_client.put(
-                self._url(asset.pk), {"context": "general"}
-            )
+            response = self.staff_client.put(self._url(asset.pk), {"context": "general"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["mirrored"], True)
         asset.refresh_from_db()
@@ -1309,9 +1269,7 @@ class ArtworkSelectionEndpointTests(AssetTestCase):
         self.assertEqual(self.user_client.put(self._url(asset.pk)).status_code, 403)
 
         # only selectable artwork types can be pinned
-        shot = self.add_asset(
-            asset_type="screenshot", url="http://img.example/sh.png", score=5
-        )
+        shot = self.add_asset(asset_type="screenshot", url="http://img.example/sh.png", score=5)
         self.assertEqual(self.staff_client.put(self._url(shot.pk)).status_code, 400)
 
         # asset must belong to the media item
@@ -1325,9 +1283,7 @@ class ArtworkSelectionEndpointTests(AssetTestCase):
             score=5,
         )
         self.assertEqual(self.staff_client.put(self._url(foreign.pk)).status_code, 404)
-        self.assertEqual(
-            self.staff_client.delete(self._url(foreign.pk)).status_code, 404
-        )
+        self.assertEqual(self.staff_client.delete(self._url(foreign.pk)).status_code, 404)
 
 
 class TextlessPickEndpointTests(AssetTestCase):
@@ -1338,10 +1294,7 @@ class TextlessPickEndpointTests(AssetTestCase):
         set_mirroring_enabled(False)
 
     def _url(self, asset_id: int) -> str:
-        return (
-            f"/api/v1/media/admin/media-items/{self.item.pk}"
-            f"/assets/{asset_id}/textless"
-        )
+        return f"/api/v1/media/admin/media-items/{self.item.pk}/assets/{asset_id}/textless"
 
     def test_put_designates_a_poster_as_the_family_textless(self) -> None:
         poster = self.add_asset(
@@ -1361,9 +1314,7 @@ class TextlessPickEndpointTests(AssetTestCase):
         self.assertIsNone(poster.selected_context)
 
     def test_put_backdrop_designates_textless_backdrop(self) -> None:
-        backdrop = self.add_asset(
-            asset_type="backdrop", url="http://img.example/bd.png", score=50
-        )
+        backdrop = self.add_asset(asset_type="backdrop", url="http://img.example/bd.png", score=50)
         put = self.staff_client.put(self._url(backdrop.pk))
         self.assertEqual(put.status_code, 200)
         self.assertIs(put.data["active"], True)
@@ -1371,24 +1322,18 @@ class TextlessPickEndpointTests(AssetTestCase):
         self.assertEqual(twin.url, backdrop.url)
 
     def test_delete_clears_the_designation_and_prunes_the_row(self) -> None:
-        poster = self.add_asset(
-            asset_type="poster", url="http://img.example/p.png", score=50
-        )
+        poster = self.add_asset(asset_type="poster", url="http://img.example/p.png", score=50)
         self.staff_client.put(self._url(poster.pk))
         delete = self.staff_client.delete(self._url(poster.pk))
         self.assertEqual(delete.status_code, 200)
         self.assertIs(delete.data["active"], False)
         self.assertIsNone(_best_asset(self.item, "textless_poster", "general"))
         self.assertFalse(
-            MediaAsset.objects.filter(
-                media_item=self.item, asset_type="textless_poster"
-            ).exists()
+            MediaAsset.objects.filter(media_item=self.item, asset_type="textless_poster").exists()
         )
 
     def test_list_hides_the_twin_and_marks_the_source_image(self) -> None:
-        poster = self.add_asset(
-            asset_type="poster", url="http://img.example/p.png", score=50
-        )
+        poster = self.add_asset(asset_type="poster", url="http://img.example/p.png", score=50)
         self.staff_client.put(self._url(poster.pk))
         got = self.staff_client.get(f"/api/v1/media/movie/{self.item.pk}/assets")
         self.assertEqual(got.status_code, 200)
@@ -1396,19 +1341,13 @@ class TextlessPickEndpointTests(AssetTestCase):
         self.assertIn(poster.pk, rows)
         self.assertIs(rows[poster.pk]["is_textless"], True)
         # the materialized twin is hidden so the grid shows the source card only
-        self.assertTrue(
-            all(row["asset_type"] != "textless_poster" for row in got.data["items"])
-        )
+        self.assertTrue(all(row["asset_type"] != "textless_poster" for row in got.data["items"]))
 
     def test_gating_and_validation(self) -> None:
-        poster = self.add_asset(
-            asset_type="poster", url="http://img.example/p.png", score=50
-        )
+        poster = self.add_asset(asset_type="poster", url="http://img.example/p.png", score=50)
         self.assertEqual(self.client.put(self._url(poster.pk)).status_code, 401)
         self.assertEqual(self.user_client.put(self._url(poster.pk)).status_code, 403)
-        self.assertEqual(
-            self.user_client.delete(self._url(poster.pk)).status_code, 403
-        )
+        self.assertEqual(self.user_client.delete(self._url(poster.pk)).status_code, 403)
 
         # a logo has no textless slot
         logo = self.add_asset(asset_type="logo", url="http://img.example/l.png", score=50)
@@ -1515,10 +1454,7 @@ class KeepMirrorEndpointTests(AssetTestCase):
         set_mirroring_enabled(True)
 
     def _url(self, asset_id: int) -> str:
-        return (
-            f"/api/v1/media/admin/media-items/{self.item.pk}"
-            f"/assets/{asset_id}/mirror"
-        )
+        return f"/api/v1/media/admin/media-items/{self.item.pk}/assets/{asset_id}/mirror"
 
     def test_put_mirrors_and_keeps(self) -> None:
         asset = self.add_asset(url="http://img.example/p.png", score=50)
@@ -1571,9 +1507,7 @@ class KeepMirrorEndpointTests(AssetTestCase):
         self.assertEqual(self.client.put(self._url(asset.pk)).status_code, 401)
         self.assertEqual(self.user_client.put(self._url(asset.pk)).status_code, 403)
         self.assertEqual(self.client.delete(self._url(asset.pk)).status_code, 401)
-        self.assertEqual(
-            self.user_client.delete(self._url(asset.pk)).status_code, 403
-        )
+        self.assertEqual(self.user_client.delete(self._url(asset.pk)).status_code, 403)
 
         other_item = MediaItem.objects.create(
             media_type="movie", title="Other", slug="other-mirror"
@@ -1585,9 +1519,7 @@ class KeepMirrorEndpointTests(AssetTestCase):
             score=5,
         )
         self.assertEqual(self.staff_client.put(self._url(foreign.pk)).status_code, 404)
-        self.assertEqual(
-            self.staff_client.delete(self._url(foreign.pk)).status_code, 404
-        )
+        self.assertEqual(self.staff_client.delete(self._url(foreign.pk)).status_code, 404)
 
 
 class ArtworkBudgetTests(AssetTestCase):
@@ -1619,9 +1551,7 @@ class ArtworkBudgetTests(AssetTestCase):
     def _cap_gb(self, cap_bytes: int) -> mock.patch:
         # The real cap is whole GiB; expose it at byte granularity so the test
         # fixtures stay tiny.
-        return mock.patch(
-            "apps.media.services.assets.max_gb", return_value=cap_bytes / 1024**3
-        )
+        return mock.patch("apps.media.services.assets.max_gb", return_value=cap_bytes / 1024**3)
 
     def test_defaults_to_unlimited(self) -> None:
         self.assertEqual(max_gb(), 0)
@@ -1651,8 +1581,9 @@ class ArtworkBudgetTests(AssetTestCase):
             url="http://img.example/new.png",
             score=50,
         )
-        with self._cap_gb(1100), mock.patch(
-            "httpx.Client", return_value=_FakeClient(_FakeResponse(b"x" * 100))
+        with (
+            self._cap_gb(1100),
+            mock.patch("httpx.Client", return_value=_FakeClient(_FakeResponse(b"x" * 100))),
         ):
             written = download_asset(target)
 
@@ -1676,8 +1607,9 @@ class ArtworkBudgetTests(AssetTestCase):
             url="http://img.example/new2.png",
             score=50,
         )
-        with self._cap_gb(1100), mock.patch(
-            "httpx.Client", return_value=_FakeClient(_FakeResponse(b"x" * 100))
+        with (
+            self._cap_gb(1100),
+            mock.patch("httpx.Client", return_value=_FakeClient(_FakeResponse(b"x" * 100))),
         ):
             written = download_asset(target)
 
@@ -1694,10 +1626,9 @@ class ArtworkBudgetTests(AssetTestCase):
             url="http://img.example/new3.png",
             score=50,
         )
-        with mock.patch(
-            "apps.media.services.assets.max_gb", return_value=0
-        ), mock.patch(
-            "httpx.Client", return_value=_FakeClient(_FakeResponse(b"y" * 200))
+        with (
+            mock.patch("apps.media.services.assets.max_gb", return_value=0),
+            mock.patch("httpx.Client", return_value=_FakeClient(_FakeResponse(b"y" * 200))),
         ):
             written = download_asset(target)
 

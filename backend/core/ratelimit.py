@@ -135,12 +135,12 @@ class RateLimiter:
             now = time.monotonic()
             r = rate if rate is not None else self.default_rate
             b = burst if burst is not None else self.default_burst
-            allowed, _remaining, wait = await script(
-                keys=[key], args=[now, r, b, tokens]
-            )
+            allowed, _remaining, wait = await script(keys=[key], args=[now, r, b, tokens])
             return bool(int(allowed)), float(wait)
         except Exception as exc:
-            logger.warning("Rate limiter Redis unavailable for bucket '%s' (%s); failing open", bucket, exc)
+            logger.warning(
+                "Rate limiter Redis unavailable for bucket '%s' (%s); failing open", bucket, exc
+            )
             return True, 0.0
 
     async def wait_and_acquire(

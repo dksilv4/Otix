@@ -38,9 +38,7 @@ class ClientDevice(TimestampedModel):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="client_devices"
     )
     device_id = models.CharField(max_length=128)
-    kind = models.CharField(
-        max_length=20, default="desktop"
-    )  # desktop | browser | extension
+    kind = models.CharField(max_length=20, default="desktop")  # desktop | browser | extension
     name = models.CharField(max_length=200, blank=True, default="")
     provider_keys = models.JSONField(default=dict, blank=True)
     capabilities = models.JSONField(default=dict, blank=True)
@@ -50,9 +48,7 @@ class ClientDevice(TimestampedModel):
     class Meta(TimestampedModel.Meta):
         db_table = "client_devices"
         constraints = [
-            models.UniqueConstraint(
-                fields=["user", "device_id"], name="uq_user_client_device"
-            ),
+            models.UniqueConstraint(fields=["user", "device_id"], name="uq_user_client_device"),
         ]
 
     def __str__(self) -> str:
@@ -79,10 +75,7 @@ class ClientDevice(TimestampedModel):
         """True when this device is able+keyed to fetch for *provider*."""
         caps = self.capabilities.get("providers") or []
         return (
-            self.is_active
-            and self.online
-            and provider in caps
-            and self.has_provider_key(provider)
+            self.is_active and self.online and provider in caps and self.has_provider_key(provider)
         )
 
     @classmethod
@@ -92,13 +85,10 @@ class ClientDevice(TimestampedModel):
         Dispatch picks the head of this list to own a parked fetch job.
         """
         cutoff = timezone.now() - timedelta(seconds=ONLINE_TTL_SECONDS)
-        devices = cls.objects.filter(
-            is_active=True, last_seen__gte=cutoff
-        ).order_by("-last_seen")
+        devices = cls.objects.filter(is_active=True, last_seen__gte=cutoff).order_by("-last_seen")
         capable = [
             d
             for d in devices
-            if provider in (d.capabilities.get("providers") or [])
-            and d.has_provider_key(provider)
+            if provider in (d.capabilities.get("providers") or []) and d.has_provider_key(provider)
         ]
         return capable

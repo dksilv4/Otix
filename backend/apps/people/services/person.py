@@ -88,9 +88,11 @@ def build_person_context(person_id: int, user: _User) -> dict:
     user_rating: int | None = None
     if user is not None and user.is_authenticated:
         is_followed = UserPersonFollow.objects.filter(user=user, person_id=person_id).exists()
-        user_rating = PersonRating.objects.filter(user=user, person_id=person_id).values_list(
-            "score", flat=True
-        ).first()
+        user_rating = (
+            PersonRating.objects.filter(user=user, person_id=person_id)
+            .values_list("score", flat=True)
+            .first()
+        )
     context["is_followed"] = is_followed
     context["user_rating"] = user_rating
     return context

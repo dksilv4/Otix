@@ -34,9 +34,7 @@ _MEDIA_SUBTYPE_SELECT = (
     "media_item__game",
 )
 
-UNKNOWN_TAB_DETAIL = (
-    "Unknown library tab. Must be one of: " + ", ".join(sorted(_LIBRARY_TYPES))
-)
+UNKNOWN_TAB_DETAIL = "Unknown library tab. Must be one of: " + ", ".join(sorted(_LIBRARY_TYPES))
 
 
 def resolve_interaction_type(tab: str) -> str | None:

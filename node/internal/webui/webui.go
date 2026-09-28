@@ -244,8 +244,14 @@ func renderDashboard(cfg *config.AppConfig, idx *indexer.StorageIndexer, uptimeS
     </div>
   </div>
 
-  <div class="card">
-    <h2 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Hosted Game Installers &amp; ISOs</h2>
+	<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap;">
+      <h2 style="font-size: 1.1rem; font-weight: 700; margin: 0;">Hosted Game Installers &amp; ISOs</h2>
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="button" id="btn-clear-scan" style="background: transparent; color: #f4f4f5; border: 1px solid #3f3f46; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">Clear list</button>
+        <button type="button" id="btn-rescan" style="background: #0284c7; color: #fff; border: none; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">Rescan</button>
+      </div>
+    </div>
     <table>
       <thead>
         <tr>
@@ -261,8 +267,30 @@ func renderDashboard(cfg *config.AppConfig, idx *indexer.StorageIndexer, uptimeS
       </tbody>
     </table>
   </div>
+  <script>
+    const TOKEN = %q;
+    async function authed(path, method) {
+      const res = await fetch(path + (path.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(TOKEN), { method });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json().catch(() => ({}));
+    }
+    document.getElementById('btn-clear-scan')?.addEventListener('click', async () => {
+      if (!confirm('Clear the indexed hosted file list? Files on disk are not deleted.')) return;
+      try {
+        await authed('/api/v1/scan/clear', 'POST');
+        window.location.reload();
+      } catch (e) { alert('Clear failed: ' + e.message); }
+    });
+    document.getElementById('btn-rescan')?.addEventListener('click', async () => {
+      try {
+        await authed('/api/v1/scan', 'POST');
+        alert('Scan started. Refresh in a moment.');
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (e) { alert('Scan failed: ' + e.message); }
+    });
+  </script>
 </body>
-</html>`, serverName, serverName, claimedText, len(files), hours, minutes, cfg.Server.Port, rows)
+</html>`, serverName, serverName, claimedText, len(files), hours, minutes, cfg.Server.Port, rows, cfg.Server.AuthToken)
 }
 
 func CleanPath(path string) string {

@@ -102,9 +102,7 @@ class DecideItemsServiceTests(TestCase):
             seed=1,
         )
         for item in items:
-            self.assertTrue(
-                item.media_genres.filter(genre_id=self.genre_b.pk).exists()
-            )
+            self.assertTrue(item.media_genres.filter(genre_id=self.genre_b.pk).exists())
 
     def test_runtime_filter_short(self) -> None:
         items, _ = catalog_service.decide_items(
@@ -121,9 +119,7 @@ class DecideItemsServiceTests(TestCase):
             self.assertLessEqual(item.movie.runtime, 90)
 
     def test_media_type_filter(self) -> None:
-        items, _ = catalog_service.decide_items(
-            self.user, media_types=["show"], limit=5, seed=1
-        )
+        items, _ = catalog_service.decide_items(self.user, media_types=["show"], limit=5, seed=1)
         self.assertTrue(all(item.media_type == "show" for item in items))
         self.assertIn(self.show_hit.pk, [item.pk for item in items])
 

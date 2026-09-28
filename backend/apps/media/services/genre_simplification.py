@@ -107,9 +107,9 @@ def backfill_genres() -> dict[str, int]:
             expected_slug = slugify(simplified[0]) if len(simplified) == 1 else None
 
             # Needs migration if it splits into multiple genres OR if its name/slug differs from canonical
-            needs_migration = (
-                len(simplified) > 1
-                or (len(simplified) == 1 and (simplified[0] != genre.name or expected_slug != genre.slug))
+            needs_migration = len(simplified) > 1 or (
+                len(simplified) == 1
+                and (simplified[0] != genre.name or expected_slug != genre.slug)
             )
 
             if not needs_migration:
@@ -129,13 +129,17 @@ def backfill_genres() -> dict[str, int]:
                 target_genres.append(target_g)
 
             # Copy media types
-            media_types = list(MediaGenreType.objects.filter(genre=genre).values_list("media_type", flat=True))
+            media_types = list(
+                MediaGenreType.objects.filter(genre=genre).values_list("media_type", flat=True)
+            )
             for tg in target_genres:
                 for mt in media_types:
                     MediaGenreType.objects.get_or_create(genre=tg, media_type=mt)
 
             # Copy media item links
-            media_item_ids = list(MediaGenre.objects.filter(genre=genre).values_list("media_item_id", flat=True))
+            media_item_ids = list(
+                MediaGenre.objects.filter(genre=genre).values_list("media_item_id", flat=True)
+            )
             for tg in target_genres:
                 for item_id in media_item_ids:
                     _, created = MediaGenre.objects.get_or_create(media_item_id=item_id, genre=tg)

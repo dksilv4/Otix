@@ -237,7 +237,8 @@ class UserNodeShareSerializer(serializers.ModelSerializer):
             "id": obj.shared_with.id,
             "username": obj.shared_with.username,
             "avatar_url": getattr(obj.shared_with, "avatar_url", None),
-            "display_name": getattr(obj.shared_with, "display_name", None) or obj.shared_with.username,
+            "display_name": getattr(obj.shared_with, "display_name", None)
+            or obj.shared_with.username,
         }
 
 

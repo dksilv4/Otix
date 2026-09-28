@@ -29,27 +29,29 @@ export interface MediaRatingWithUserOut {
 }
 
 export const ratingKeys = {
-  myRating: (mediaType: string, mediaId: string) => ['media-rating', 'my', mediaType, mediaId] as const,
-  list: (mediaType: string, mediaId: string) => ['media-rating', 'list', mediaType, mediaId] as const,
+  myRating: (mediaType: string, mediaId: string | number) => ['media-rating', 'my', mediaType, String(mediaId)] as const,
+  list: (mediaType: string, mediaId: string | number) => ['media-rating', 'list', mediaType, String(mediaId)] as const,
 }
 
 export const ratingQueries = {
-  myRating: (mediaType: string, mediaId: string) =>
+  myRating: (mediaType: string, mediaId: string | number) =>
     queryOptions({
       queryKey: ratingKeys.myRating(mediaType, mediaId),
       queryFn: async () => {
-        const { data } = await apiClient.get<MediaRatingOut | null>(`/media/${mediaType}/${mediaId}/rating`)
+        const idStr = String(mediaId)
+        const { data } = await apiClient.get<MediaRatingOut | null>(`/media/${mediaType}/${idStr}/rating`)
         return data
       },
       staleTime: 1000 * 60,
     }),
 
-  list: (mediaType: string, mediaId: string) =>
+  list: (mediaType: string, mediaId: string | number) =>
     queryOptions({
       queryKey: ratingKeys.list(mediaType, mediaId),
       queryFn: async () => {
+        const idStr = String(mediaId)
         const { data } = await apiClient.get<MediaRatingWithUserOut[]>(
-          `/media/${mediaType}/${mediaId}/ratings`,
+          `/media/${mediaType}/${idStr}/ratings`,
         )
         return Array.isArray(data) ? data : []
       },
@@ -57,23 +59,24 @@ export const ratingQueries = {
     }),
 }
 
-export function useUpsertRating(mediaType: string, mediaId: string) {
+export function useUpsertRating(mediaType: string, mediaId: string | number) {
   const qc = useQueryClient()
+  const idStr = String(mediaId)
   return useMutation({
     mutationFn: async (score: number) => {
       const { data } = await apiClient.put<MediaRatingAggregateOut>(
-        `/media/${mediaType}/${mediaId}/rating`,
+        `/media/${mediaType}/${idStr}/rating`,
         { score },
       )
       return data
     },
     onMutate: async (score) => {
-      const ratingKey = ratingKeys.myRating(mediaType, mediaId)
+      const ratingKey = ratingKeys.myRating(mediaType, idStr)
       await qc.cancelQueries({ queryKey: ratingKey })
       const prevRating = qc.getQueryData<MediaRatingOut | null>(ratingKey)
       const optimistic: MediaRatingOut = {
         userId: '',
-        mediaItemId: mediaId,
+        mediaItemId: idStr,
         score,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -83,45 +86,46 @@ export function useUpsertRating(mediaType: string, mediaId: string) {
     },
     onError: (_err, _vars, context) => {
       if (context?.prevRating !== undefined) {
-        qc.setQueryData(ratingKeys.myRating(mediaType, mediaId), context.prevRating)
+        qc.setQueryData(ratingKeys.myRating(mediaType, idStr), context.prevRating)
       }
     },
     onSuccess: (_data, variables) => {
-      emitOtixEvent('otix:interaction:rated', { mediaId, mediaType, rating: variables })
+      emitOtixEvent('otix:interaction:rated', { mediaId: idStr, mediaType, rating: variables })
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaType, mediaId) })
-      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, mediaId) })
-      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaType, idStr) })
+      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, idStr) })
+      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, idStr) })
     },
   })
 }
 
-export function useDeleteRating(mediaType: string, mediaId: string) {
+export function useDeleteRating(mediaType: string, mediaId: string | number) {
   const qc = useQueryClient()
+  const idStr = String(mediaId)
   return useMutation({
     mutationFn: async () => {
-      await apiClient.delete(`/media/${mediaType}/${mediaId}/rating`)
+      await apiClient.delete(`/media/${mediaType}/${idStr}/rating`)
     },
     onMutate: async () => {
-      const ratingKey = ratingKeys.myRating(mediaType, mediaId)
+      const ratingKey = ratingKeys.myRating(mediaType, idStr)
       await qc.cancelQueries({ queryKey: ratingKey })
       const prevRating = qc.getQueryData<MediaRatingOut | null>(ratingKey)
       qc.setQueryData<MediaRatingOut | null>(ratingKey, null)
-      return { prevRating }
+      return { prevReview: prevRating }
     },
     onError: (_err, _vars, context) => {
-      if (context?.prevRating !== undefined) {
-        qc.setQueryData(ratingKeys.myRating(mediaType, mediaId), context.prevRating)
+      if (context?.prevReview !== undefined) {
+        qc.setQueryData(ratingKeys.myRating(mediaType, idStr), context.prevReview)
       }
     },
     onSuccess: () => {
-      emitOtixEvent('otix:interaction:rated', { mediaId, mediaType, rating: 0 })
+      emitOtixEvent('otix:interaction:rated', { mediaId: idStr, mediaType, rating: 0 })
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaType, mediaId) })
-      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, mediaId) })
-      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaType, idStr) })
+      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, idStr) })
+      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, idStr) })
     },
   })
 }

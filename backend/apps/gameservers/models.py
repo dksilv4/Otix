@@ -165,6 +165,7 @@ class GameServerInvite(TimestampedModel):
             return False
         if self.expires_at is not None:
             from django.utils import timezone
+
             if timezone.now() > self.expires_at:
                 return False
         return True

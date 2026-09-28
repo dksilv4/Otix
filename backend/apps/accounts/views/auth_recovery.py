@@ -228,9 +228,7 @@ class VerifyEmailView(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            user = consume_action_token(
-                serializer.validated_data["token"], PURPOSE_VERIFY_EMAIL
-            )
+            user = consume_action_token(serializer.validated_data["token"], PURPOSE_VERIFY_EMAIL)
         except ActionTokenError:
             return Response(
                 {"detail": "Invalid or expired verification token"},

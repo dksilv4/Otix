@@ -70,9 +70,7 @@ class RecommendationEmbeddingTests(TestCase):
 
     def test_recommended_blends_toward_user_taste(self) -> None:
         similar = catalog_service.similar_items(self.source.pk, "movie", 5)
-        for_you = catalog_service.recommended_items(
-            self.source.pk, "movie", 5, user=self.user
-        )
+        for_you = catalog_service.recommended_items(self.source.pk, "movie", 5, user=self.user)
         similar_ids = [item.pk for item in similar]
         for_you_ids = [item.pk for item in for_you]
 
@@ -86,9 +84,7 @@ class RecommendationEmbeddingTests(TestCase):
         self.user.taste_reset_at = timezone.now() + timedelta(seconds=1)
         self.user.save(update_fields=["taste_reset_at", "updated_at"])
 
-        for_you = catalog_service.recommended_items(
-            self.source.pk, "movie", 5, user=self.user
-        )
+        for_you = catalog_service.recommended_items(self.source.pk, "movie", 5, user=self.user)
         for_you_ids = [item.pk for item in for_you]
         # After reset, the liked seed no longer pulls recommendations toward
         # its neighborhood — near_source should lead again.

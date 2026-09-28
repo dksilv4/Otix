@@ -1,6 +1,6 @@
 /** Types for the Otix Node File Explorer & Remote Download Location. */
 
-export type FormatCategory = 'folder' | 'iso' | 'installer' | 'archive' | 'rom' | 'file';
+export type FormatCategory = 'folder' | 'iso' | 'installer' | 'game' | 'archive' | 'rom' | 'file';
 
 export interface NodeExplorerEntry {
   name: string;
@@ -16,6 +16,13 @@ export interface NodeExplorerEntry {
 
 export type ServerExplorerEntry = NodeExplorerEntry;
 
+export interface ExplorerShortcut {
+  name: string;
+  path: string;
+  icon: 'home' | 'downloads' | 'documents' | 'desktop' | 'volumes' | 'root' | string;
+  exist?: boolean;
+}
+
 export interface NodeExplorerBrowseResult {
   current_path: string;
   parent_path?: string | null;
@@ -25,6 +32,20 @@ export interface NodeExplorerBrowseResult {
   total_items: number;
   disk_free_bytes?: number | null;
   disk_total_bytes?: number | null;
+  shortcuts?: ExplorerShortcut[];
+  permission_denied?: boolean;
+  permission_message?: string;
+}
+
+export interface RequestNodePermissionPayload {
+  path: string;
+}
+
+export interface RequestNodePermissionResult {
+  path: string;
+  granted: boolean;
+  prompted: boolean;
+  message: string;
 }
 
 export type ServerExplorerBrowseResult = NodeExplorerBrowseResult;

@@ -116,14 +116,64 @@ class MatchFilesToCatalogTests(TestCase):
         self.assertIsNotNone(files[0]["catalog_item"])
         self.assertEqual(files[0]["catalog_item"]["id"], str(media.id))
 
+    def test_prefers_otix_media_id_over_title_match(self):
+        wanted = MediaItem.objects.create(
+            media_type="game",
+            title="Portal",
+            slug="portal",
+        )
+        MediaItem.objects.create(
+            media_type="game",
+            title="Portal Prelude",
+            slug="portal-prelude",
+        )
+        files = [
+            {
+                "filename": "Portal.exe",
+                "game_title": "Portal Prelude",
+                "otix_media_id": str(wanted.id),
+                "id": "file_1",
+                "server_id": 9,
+                "otix_images": {
+                    "poster": {"url": "https://cdn/p.jpg", "local": ".otix-poster.jpg"}
+                },
+            }
+        ]
+        match_files_to_catalog(files)
+        self.assertEqual(files[0]["catalog_item"]["id"], str(wanted.id))
+        self.assertEqual(
+            files[0]["catalog_item"]["poster_url"],
+            "/api/v1/library/servers/9/files/file_1/otix/asset/poster",
+        )
+
 
 class UnmatchedScanTitlesTests(SimpleTestCase):
     def test_skips_matched_addons_and_bin_files(self):
         files = [
-            {"filename": "Portal.iso", "game_title": "Portal", "catalog_item": None, "extension": ".iso"},
-            {"filename": "Half.Life.2.iso", "game_title": "Half Life 2", "catalog_item": {"id": "1"}, "extension": ".iso"},
-            {"filename": "track.bin", "game_title": "Cue Dump", "catalog_item": None, "extension": ".bin"},
-            {"filename": "Portal.Update.1.iso", "game_title": "Portal Update 1", "catalog_item": None, "extension": ".iso"},
+            {
+                "filename": "Portal.iso",
+                "game_title": "Portal",
+                "catalog_item": None,
+                "extension": ".iso",
+            },
+            {
+                "filename": "Half.Life.2.iso",
+                "game_title": "Half Life 2",
+                "catalog_item": {"id": "1"},
+                "extension": ".iso",
+            },
+            {
+                "filename": "track.bin",
+                "game_title": "Cue Dump",
+                "catalog_item": None,
+                "extension": ".bin",
+            },
+            {
+                "filename": "Portal.Update.1.iso",
+                "game_title": "Portal Update 1",
+                "catalog_item": None,
+                "extension": ".iso",
+            },
         ]
         titles = unmatched_scan_titles(files)
         self.assertEqual(titles, ["Portal"])

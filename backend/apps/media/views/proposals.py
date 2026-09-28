@@ -50,9 +50,7 @@ class EditProposalListCreateView(APIView):
     def get(self, request, media_id: int) -> Response:
         _media_or_404(media_id)
         proposals = services.list_for_media(media_id)
-        votes = (
-            services.user_votes(request.user.id, [p.id for p in proposals]) if proposals else {}
-        )
+        votes = services.user_votes(request.user.id, [p.id for p in proposals]) if proposals else {}
         items = []
         for proposal in proposals:
             proposal.my_vote = votes.get(proposal.id)

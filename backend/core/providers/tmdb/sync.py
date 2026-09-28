@@ -106,16 +106,12 @@ def sync_tmdb_media(job: SyncJob) -> dict[str, Any]:
     }
     fetcher = fetcher_map.get(job.entity_type)
     if fetcher is None:
-        return {
-            "error": f"TMDB sync does not yet support entity_type '{job.entity_type}'"
-        }
+        return {"error": f"TMDB sync does not yet support entity_type '{job.entity_type}'"}
 
     try:
         tmdb_id = int(job.external_id)
     except (TypeError, ValueError):
-        return {
-            "error": f"Invalid TMDB {job.entity_type} id in sync job: {job.external_id!r}"
-        }
+        return {"error": f"Invalid TMDB {job.entity_type} id in sync job: {job.external_id!r}"}
 
     matched = _tmdb_mapped(tmdb_id, job.entity_type)
     emit(f"fetching_{job.entity_type}", tmdb_id=tmdb_id)

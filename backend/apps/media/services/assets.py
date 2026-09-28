@@ -325,9 +325,12 @@ def _make_room(needed_bytes: int) -> bool:
         return True
     if needed_bytes > cap:
         return False
-    used = MediaAsset.objects.filter(local_name__isnull=False).aggregate(
-        total=Sum("local_size")
-    )["total"] or 0
+    used = (
+        MediaAsset.objects.filter(local_name__isnull=False).aggregate(total=Sum("local_size"))[
+            "total"
+        ]
+        or 0
+    )
     if used + needed_bytes <= cap:
         return True
     evictable = (
@@ -346,9 +349,7 @@ def _make_room(needed_bytes: int) -> bool:
         if used - freed + needed_bytes <= cap:
             break
     if removed:
-        logger.info(
-            "artwork budget: evicted %d image(s) (%d bytes) to make room", removed, freed
-        )
+        logger.info("artwork budget: evicted %d image(s) (%d bytes) to make room", removed, freed)
     return used - freed + needed_bytes <= cap
 
 
@@ -429,9 +430,7 @@ def _wanted_for_type(media_item: MediaItem, asset_type: str) -> list[MediaAsset]
     return list(wanted.values())
 
 
-def _discard_type_stale(
-    media_item: MediaItem, asset_type: str, wanted: list[MediaAsset]
-) -> None:
+def _discard_type_stale(media_item: MediaItem, asset_type: str, wanted: list[MediaAsset]) -> None:
     """Free same-type local copies that aren't a winner for any context.
 
     Admin-kept variants (``keep_local``) are exempt so localized extras the
@@ -563,9 +562,7 @@ def mirror_local_game_artwork(media_item_id: int) -> bool:
     return _mirror_item(media_item_id, "local game")
 
 
-def current_primary_asset_ids(
-    media_item: MediaItem, context: str = "general"
-) -> set[int]:
+def current_primary_asset_ids(media_item: MediaItem, context: str = "general") -> set[int]:
     """Pks of the winning asset per selectable type for ``context`` (UI serves)."""
     return {
         best.pk
@@ -582,9 +579,7 @@ def textless_winner_urls(media_item: MediaItem) -> dict[str, str | None]:
     }
 
 
-def select_asset(
-    media_item: MediaItem, asset: MediaAsset, context: str = "general"
-) -> bool:
+def select_asset(media_item: MediaItem, asset: MediaAsset, context: str = "general") -> bool:
     """Pin ``asset`` for ``context`` as the chosen artwork for its type.
 
     Clears any sibling pinned for the same context first; pins (and mirrors) for
@@ -606,9 +601,7 @@ def select_asset(
     return True
 
 
-def _prune_unpinned_materialized(
-    media_item: MediaItem, asset_type: str
-) -> None:
+def _prune_unpinned_materialized(media_item: MediaItem, asset_type: str) -> None:
     """Delete admin-materialized rows for ``asset_type`` with no remaining pin.
 
     Materialized rows exist only to carry an admin pin; once no context is
@@ -637,9 +630,7 @@ def clear_asset_selection(asset: MediaAsset) -> None:
     _prune_unpinned_materialized(asset.media_item, asset.asset_type)
 
 
-def set_textless_pick(
-    media_item: MediaItem, asset: MediaAsset, on: bool = True
-) -> dict:
+def set_textless_pick(media_item: MediaItem, asset: MediaAsset, on: bool = True) -> dict:
     """Mark ``asset``'s image as (or clear it from) the family textless art.
 
     The textless pick is theme-agnostic: it is recorded as the ``general``
@@ -658,9 +649,7 @@ def set_textless_pick(
         if not asset.url:
             raise ValueError("asset has no url to mirror")
         row = (
-            MediaAsset.objects.filter(
-                media_item=media_item, asset_type=target, url=asset.url
-            )
+            MediaAsset.objects.filter(media_item=media_item, asset_type=target, url=asset.url)
             .order_by("pk")
             .first()
         )
@@ -722,9 +711,7 @@ def sweep_unmirrored_media(limit: int | None = None) -> dict:
         if local_name:
             covered[media_item_id].add(asset_type)
     candidate_ids = [
-        item_id
-        for item_id, types in present.items()
-        if types.difference(covered[item_id])
+        item_id for item_id, types in present.items() if types.difference(covered[item_id])
     ]
     candidates = (
         MediaItem.objects.filter(pk__in=candidate_ids)

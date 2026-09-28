@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender=Notification)
-def publish_notification_on_create(
-    sender, instance: Notification, created: bool, **kwargs
-) -> None:
+def publish_notification_on_create(sender, instance: Notification, created: bool, **kwargs) -> None:
     """Fan out new rows to SSE and web-push after the DB commit."""
     if not created:
         return
@@ -29,8 +27,6 @@ def publish_notification_on_create(
         try:
             send_notification(notification)
         except Exception:  # noqa: BLE001 — push must never break the write path
-            logger.exception(
-                "web-push fan-out failed for notification %s", notification.pk
-            )
+            logger.exception("web-push fan-out failed for notification %s", notification.pk)
 
     transaction.on_commit(_fanout)

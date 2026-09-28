@@ -54,9 +54,7 @@ class UserSurfaceApiTests(TestCase):
         follow = self.alice_client.post("/api/v1/users/bob/follow")
         self.assertEqual(follow.status_code, 201)
         self.assertEqual(follow.data["status"], "following")
-        self.assertTrue(
-            Follow.objects.filter(follower=self.alice, followed=self.bob).exists()
-        )
+        self.assertTrue(Follow.objects.filter(follower=self.alice, followed=self.bob).exists())
 
         status_ = self.alice_client.get("/api/v1/users/bob/follow/status")
         self.assertTrue(status_.data["is_following"])
@@ -72,18 +70,14 @@ class UserSurfaceApiTests(TestCase):
 
         unfollow = self.alice_client.delete("/api/v1/users/bob/follow")
         self.assertEqual(unfollow.status_code, 204)
-        self.assertFalse(
-            Follow.objects.filter(follower=self.alice, followed=self.bob).exists()
-        )
+        self.assertFalse(Follow.objects.filter(follower=self.alice, followed=self.bob).exists())
         status_ = self.alice_client.get("/api/v1/users/bob/follow/status")
         self.assertFalse(status_.data["is_following"])
 
     def test_user_friends_list_is_public(self) -> None:
         from apps.social.models import FriendRequest
 
-        FriendRequest.objects.create(
-            sender=self.alice, receiver=self.bob, status="accepted"
-        )
+        FriendRequest.objects.create(sender=self.alice, receiver=self.bob, status="accepted")
         alice_friends = self.anon.get("/api/v1/users/alice/friends")
         self.assertEqual(alice_friends.status_code, 200)
         self.assertEqual(len(alice_friends.data), 1)
@@ -110,36 +104,26 @@ class UserSurfaceApiTests(TestCase):
         request = FollowRequest.objects.create(
             requester=self.alice, target=self.bob, status="pending"
         )
-        accept = self.bob_client.post(
-            f"/api/v1/users/bob/follow/requests/{request.id}/accept"
-        )
+        accept = self.bob_client.post(f"/api/v1/users/bob/follow/requests/{request.id}/accept")
         self.assertEqual(accept.status_code, 200)
         self.assertEqual(accept.data["message"], "Follow request accepted")
         request.refresh_from_db()
         self.assertEqual(request.status, "accepted")
-        self.assertTrue(
-            Follow.objects.filter(follower=self.alice, followed=self.bob).exists()
-        )
+        self.assertTrue(Follow.objects.filter(follower=self.alice, followed=self.bob).exists())
 
     def test_follow_request_decline_flow(self) -> None:
         request = FollowRequest.objects.create(
             requester=self.alice, target=self.bob, status="pending"
         )
-        decline = self.bob_client.post(
-            f"/api/v1/users/bob/follow/requests/{request.id}/decline"
-        )
+        decline = self.bob_client.post(f"/api/v1/users/bob/follow/requests/{request.id}/decline")
         self.assertEqual(decline.status_code, 200)
         self.assertEqual(decline.data["message"], "Follow request declined")
         request.refresh_from_db()
         self.assertEqual(request.status, "declined")
-        self.assertFalse(
-            Follow.objects.filter(follower=self.alice, followed=self.bob).exists()
-        )
+        self.assertFalse(Follow.objects.filter(follower=self.alice, followed=self.bob).exists())
 
     def test_follow_requests_are_owner_only(self) -> None:
-        FollowRequest.objects.create(
-            requester=self.alice, target=self.bob, status="pending"
-        )
+        FollowRequest.objects.create(requester=self.alice, target=self.bob, status="pending")
         own = self.bob_client.get("/api/v1/users/bob/follow/requests")
         self.assertEqual(own.status_code, 200)
         self.assertEqual(own.data["total"], 1)
@@ -147,9 +131,7 @@ class UserSurfaceApiTests(TestCase):
 
         denied = self.alice_client.get("/api/v1/users/bob/follow/requests")
         self.assertEqual(denied.status_code, 403)
-        self.assertEqual(
-            denied.data["detail"], "You can only view your own follow requests"
-        )
+        self.assertEqual(denied.data["detail"], "You can only view your own follow requests")
 
     # ── Peer user rating ───────────────────────────────────────────────────
 
@@ -158,30 +140,22 @@ class UserSurfaceApiTests(TestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_peer_rating_put_get_delete_flow(self) -> None:
-        put = self.alice_client.put(
-            "/api/v1/users/bob/rating", {"score": 9}, format="json"
-        )
+        put = self.alice_client.put("/api/v1/users/bob/rating", {"score": 9}, format="json")
         self.assertEqual(put.status_code, 200)
         self.assertEqual(put.data["rater_id"], self.alice.id)
         self.assertEqual(put.data["rated_user_id"], self.bob.id)
         self.assertEqual(put.data["score"], 9)
-        self.assertTrue(
-            UserRating.objects.filter(rater=self.alice, rated_user=self.bob).exists()
-        )
+        self.assertTrue(UserRating.objects.filter(rater=self.alice, rated_user=self.bob).exists())
 
         get = self.alice_client.get("/api/v1/users/bob/rating")
         self.assertEqual(get.data["score"], 9)
 
-        update = self.alice_client.put(
-            "/api/v1/users/bob/rating", {"score": 8}, format="json"
-        )
+        update = self.alice_client.put("/api/v1/users/bob/rating", {"score": 8}, format="json")
         self.assertEqual(update.data["score"], 8)
 
         delete = self.alice_client.delete("/api/v1/users/bob/rating")
         self.assertEqual(delete.status_code, 204)
-        self.assertFalse(
-            UserRating.objects.filter(rater=self.alice, rated_user=self.bob).exists()
-        )
+        self.assertFalse(UserRating.objects.filter(rater=self.alice, rated_user=self.bob).exists())
 
         missing = self.alice_client.delete("/api/v1/users/bob/rating")
         self.assertEqual(missing.status_code, 404)
@@ -190,9 +164,7 @@ class UserSurfaceApiTests(TestCase):
     def test_rating_self_is_null_get_and_400_put(self) -> None:
         get = self.alice_client.get("/api/v1/users/alice/rating")
         self.assertIsNone(get.data)
-        put = self.alice_client.put(
-            "/api/v1/users/alice/rating", {"score": 9}, format="json"
-        )
+        put = self.alice_client.put("/api/v1/users/alice/rating", {"score": 9}, format="json")
         self.assertEqual(put.status_code, 400)
         self.assertEqual(put.data["detail"], "Cannot rate yourself")
 

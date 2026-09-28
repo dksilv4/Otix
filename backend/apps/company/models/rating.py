@@ -33,9 +33,7 @@ class CompanyRating(BaseModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="company_ratings"
     )
-    company = models.ForeignKey(
-        "company.Company", on_delete=models.CASCADE, related_name="ratings"
-    )
+    company = models.ForeignKey("company.Company", on_delete=models.CASCADE, related_name="ratings")
     score = models.IntegerField()
 
     class Meta(BaseModel.Meta):

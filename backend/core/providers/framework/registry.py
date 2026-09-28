@@ -45,9 +45,7 @@ class ProviderRegistry:
         """Query all registered manifests that implement the specified capability flag."""
         autodiscover_providers()
         return [
-            manifest
-            for manifest in self._manifests.values()
-            if manifest.has_capability(capability)
+            manifest for manifest in self._manifests.values() if manifest.has_capability(capability)
         ]
 
     def all_manifests(self) -> list[ProviderManifest]:
@@ -92,7 +90,9 @@ def register_provider(
 
     return decorator
 
+
 _discovered = False
+
 
 def autodiscover_providers(force: bool = False) -> None:
     """Import built-in provider packages so their manifests register."""
@@ -100,6 +100,7 @@ def autodiscover_providers(force: bool = False) -> None:
     if _discovered and not force:
         return
     import importlib
+
     all_ok = True
     for name in ("tmdb", "igdb", "steamgrid", "omdb", "fanart"):
         try:

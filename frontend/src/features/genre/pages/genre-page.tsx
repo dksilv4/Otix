@@ -1,9 +1,8 @@
-import { useMemo, useRef, useEffect } from 'react'
+import { useMemo, useRef, useEffect, startTransition } from 'react'
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router'
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { ArrowLeft, Film, Tv, Gamepad2, Music, Loader2, RotateCcw } from 'lucide-react'
-import { motion, useInView } from 'framer-motion'
+import { RotateCcw } from 'lucide-react'
 import { mediaQueries, type MediaItemSummary } from '@media/queries/media-queries'
 import { DkDropdown, type DkDropdownOption } from '@ui/atoms/dropdown'
 import { MediaGrid } from '@ui/molecules/media-grid'
@@ -12,14 +11,28 @@ import { DiscoverMediaCard } from '@discover/components/molecules/discover-media
 import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { cn } from '@/lib/utils'
-import type { GenreOption, GenreSearchParams } from '../types'
+import type { GenreMediaType, GenreOption, GenreSearchParams } from '../types'
+import {
+  LANGUAGE_ALL,
+  animeFilterValue,
+  buildLanguageOptions,
+  formatTitleCase,
+  genreLanguageDropdownValue,
+  parseAnimeFilter,
+  parseMediaType,
+  resolveGenreLanguageFilter,
+  resolveSelectedGenres,
+  resolveUserLanguage,
+  serializeGenreSlugs,
+  toggleGenreSelection,
+} from '../utils'
 
-const MEDIA_TYPES = [
-  { value: 'movie', label: 'Movies', icon: Film },
-  { value: 'show', label: 'Shows', icon: Tv },
-  { value: 'game', label: 'Games', icon: Gamepad2 },
-  { value: 'music', label: 'Music', icon: Music },
-] as const
+const MEDIA_TYPE_OPTIONS: readonly DkDropdownOption[] = [
+  { value: '', label: 'All' },
+  { value: 'movie', label: 'Movies' },
+  { value: 'show', label: 'Shows' },
+  { value: 'game', label: 'Games' },
+]
 
 const SORT_OPTIONS: readonly DkDropdownOption[] = [
   { value: 'popularity', label: 'Most Popular' },
@@ -28,10 +41,16 @@ const SORT_OPTIONS: readonly DkDropdownOption[] = [
   { value: 'title', label: 'Title (A–Z)' },
 ]
 
-function formatTitleCase(str: string): string {
-  return str
-    .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+const ANIME_OPTIONS: readonly DkDropdownOption[] = [
+  { value: '', label: 'With anime' },
+  { value: 'false', label: 'Without anime' },
+  { value: 'true', label: 'Anime only' },
+]
+
+const MEDIA_TYPE_LABELS: Record<GenreMediaType, string> = {
+  movie: 'Movies',
+  show: 'Shows',
+  game: 'Games',
 }
 
 export function GenrePage() {
@@ -42,34 +61,64 @@ export function GenrePage() {
   const countryCode = ((user as { country?: string })?.country || 'us').toLowerCase()
 
   const rawGenreId = params.genreId || 'action'
-  const mediaType = search.type || 'movie'
+  const mediaType = parseMediaType(search.type)
+  const isAnime = parseAnimeFilter(search.isAnime)
+  const showAnimeFilter = mediaType !== 'game'
   const activeSort = search.sort || 'popularity'
   const activeDir = search.dir || (activeSort === 'title' ? 'asc' : 'desc')
+  const selectedGenres = useMemo(
+    () => resolveSelectedGenres(rawGenreId, search.genres),
+    [rawGenreId, search.genres],
+  )
+  const selectedGenreSet = useMemo(() => new Set(selectedGenres), [selectedGenres])
+  const genreFilterParam = selectedGenres.join(',')
 
-  // Fetch genres for this media type
+  const userLanguage = useMemo(
+    () =>
+      resolveUserLanguage(
+        user?.preferredLanguages,
+        typeof navigator !== 'undefined' ? navigator.language : null,
+      ),
+    [user?.preferredLanguages],
+  )
+
+  const languageOptions = useMemo(
+    () => buildLanguageOptions(user?.preferredLanguages),
+    [user?.preferredLanguages],
+  )
+
+  const activeLanguage = resolveGenreLanguageFilter(search.language, userLanguage)
+  const languageDropdownValue = genreLanguageDropdownValue(search.language, userLanguage)
+  const hasCustomLanguage =
+    search.language === LANGUAGE_ALL ||
+    (Boolean(search.language) && search.language !== userLanguage)
+
   const { data: genres = [], isLoading: isLoadingGenres } = useQuery<GenreOption[]>({
-    queryKey: ['genres', mediaType],
+    queryKey: ['genres', mediaType || 'all'],
     queryFn: async () => {
-      const { data } = await apiClient.get<GenreOption[]>('/media/genres', {
-        params: { media_type: mediaType },
-      })
+      const params = mediaType ? { media_type: mediaType } : undefined
+      const { data } = await apiClient.get<GenreOption[]>('/media/genres', { params })
       return data
     },
-    staleTime: 1000 * 60 * 60, // 1 hour
+    staleTime: 1000 * 60 * 60,
   })
 
-  // Match the active genre from the list or format fallback
-  const matchedGenre = useMemo(() => {
-    const target = rawGenreId.toLowerCase().trim()
-    return genres.find(
-      (g) => g.slug.toLowerCase() === target || String(g.id) === target,
-    )
-  }, [genres, rawGenreId])
+  const genreNameBySlug = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const g of genres) {
+      map.set(g.slug.toLowerCase(), g.name)
+      map.set(String(g.id), g.name)
+    }
+    return map
+  }, [genres])
 
-  const genreName = matchedGenre?.name || formatTitleCase(rawGenreId)
-  const currentGenreSlug = matchedGenre?.slug || rawGenreId
+  const pageTitle = useMemo(() => {
+    if (selectedGenres.length === 0) return formatTitleCase(rawGenreId)
+    return selectedGenres
+      .map((slug) => genreNameBySlug.get(slug) || formatTitleCase(slug))
+      .join(', ')
+  }, [selectedGenres, genreNameBySlug, rawGenreId])
 
-  // Fetch certifications for this media type + user's country
   const { data: certifications = [] } = useQuery<string[]>({
     queryKey: ['certifications', mediaType, countryCode],
     queryFn: async () => {
@@ -79,6 +128,7 @@ export function GenrePage() {
       return data
     },
     staleTime: 1000 * 60 * 60,
+    enabled: Boolean(mediaType),
   })
 
   const certificationOptions: readonly DkDropdownOption[] = useMemo(() => [
@@ -86,7 +136,6 @@ export function GenrePage() {
     ...certifications.map((c) => ({ value: c, label: c })),
   ], [certifications])
 
-  // Fetch media items with infinite scroll
   const {
     data,
     isLoading,
@@ -98,12 +147,12 @@ export function GenrePage() {
   } = useInfiniteQuery({
     ...mediaQueries.infiniteList({
       type: mediaType,
-      genre: currentGenreSlug,
+      genre: genreFilterParam,
       sortBy: activeSort,
       sortDir: activeDir,
       certification: search.certification || undefined,
-      language: search.language,
-      isAnime: search.isAnime,
+      language: activeLanguage,
+      isAnime: showAnimeFilter ? isAnime : undefined,
       limit: 48,
     }),
   })
@@ -118,43 +167,97 @@ export function GenrePage() {
 
   const total = data?.pages?.[0]?.total ?? items.length
 
-  // Infinite scroll sentinel
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const isSentinelInView = useInView(sentinelRef, { margin: '600px 0px 600px 0px' })
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
+  // Native IntersectionObserver — more reliable than framer useInView for
+  // chaining pages while the sentinel stays near the viewport.
   useEffect(() => {
-    if (isSentinelInView && hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage()
-    }
-  }, [isSentinelInView, hasNextPage, isFetchingNextPage, fetchNextPage])
+    const node = sentinelRef.current
+    if (!node || !hasNextPage || isLoading) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !isFetchingNextPage) {
+          void fetchNextPage()
+        }
+      },
+      { root: null, rootMargin: '800px 0px', threshold: 0 },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, isLoading, fetchNextPage, items.length])
 
-  const typeConfig = MEDIA_TYPES.find((t) => t.value === mediaType) ?? MEDIA_TYPES[0]
-  const pageTitle = `${genreName} ${typeConfig.label}`
+  const typeLabel = mediaType ? MEDIA_TYPE_LABELS[mediaType] : 'Titles'
+  const primaryGenreId = selectedGenres[0] || rawGenreId
+
+  const navigateFilters = (nextSearch: GenreSearchParams, genreId = primaryGenreId) => {
+    startTransition(() => {
+      navigate({
+        to: '/genre/$genreId',
+        params: { genreId },
+        search: nextSearch,
+        replace: true,
+      })
+    })
+  }
 
   const updateSearch = (updates: Partial<GenreSearchParams>) => {
-    navigate({
-      to: '/genre/$genreId',
-      params: { genreId: rawGenreId },
-      search: { ...search, ...updates },
-      replace: true,
-    })
+    navigateFilters({ ...search, ...updates })
   }
 
-  const handleMediaTypeChange = (newType: 'movie' | 'show' | 'game' | 'music') => {
-    navigate({
-      to: '/genre/$genreId',
-      params: { genreId: rawGenreId },
-      search: { ...search, type: newType, certification: undefined },
-      replace: true,
-    })
+  const clearFilters = () => {
+    const nextSearch: GenreSearchParams = { ...search }
+    delete nextSearch.sort
+    delete nextSearch.dir
+    delete nextSearch.certification
+    delete nextSearch.isAnime
+    delete nextSearch.language
+    navigateFilters(nextSearch)
   }
 
-  const handleGenreSelect = (newGenreSlug: string) => {
-    navigate({
-      to: '/genre/$genreId',
-      params: { genreId: newGenreSlug },
-      search,
-    })
+  const handleMediaTypeChange = (value: string) => {
+    const nextType = parseMediaType(value)
+    const nextSearch: GenreSearchParams = { ...search }
+    delete nextSearch.certification
+    if (nextType) nextSearch.type = nextType
+    else delete nextSearch.type
+    if (nextType === 'game') delete nextSearch.isAnime
+    navigateFilters(nextSearch)
+  }
+
+  const handleAnimeChange = (value: string) => {
+    const next = parseAnimeFilter(value)
+    const nextSearch: GenreSearchParams = { ...search }
+    if (next === undefined) delete nextSearch.isAnime
+    else nextSearch.isAnime = next
+    navigateFilters(nextSearch)
+  }
+
+  const handleLanguageChange = (value: string) => {
+    const nextSearch: GenreSearchParams = { ...search }
+    if (value === LANGUAGE_ALL) {
+      nextSearch.language = LANGUAGE_ALL
+    } else if (value === userLanguage) {
+      // Match the auto-selected default — keep the URL clean.
+      delete nextSearch.language
+    } else {
+      nextSearch.language = value
+    }
+    navigateFilters(nextSearch)
+  }
+
+  const handleGenreSelect = (slug: string) => {
+    const next = toggleGenreSelection(selectedGenres, slug)
+    if (next.length === 0) {
+      startTransition(() => {
+        navigate({ to: '/genres' })
+      })
+      return
+    }
+    const nextSearch: GenreSearchParams = { ...search }
+    const serialized = serializeGenreSlugs(next)
+    if (serialized) nextSearch.genres = serialized
+    else delete nextSearch.genres
+    navigateFilters(nextSearch, next[0])
   }
 
   const handleSortChange = (value: string) => {
@@ -166,170 +269,141 @@ export function GenrePage() {
     updateSearch({ certification: value || undefined })
   }
 
-  const hasActiveFilters = Boolean(search.certification || search.language || search.sort)
+  const hasActiveFilters = Boolean(
+    search.certification ||
+      search.sort ||
+      isAnime !== undefined ||
+      hasCustomLanguage,
+  )
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div id="genre-page" className="w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <Helmet>
         <title>{pageTitle} — Otix</title>
         <meta
           name="description"
-          content={`Browse ${genreName} ${typeConfig.label.toLowerCase()} on Otix.`}
+          content={`Browse ${pageTitle} on Otix.`}
         />
       </Helmet>
 
-      {/* ── Breadcrumb & Page Header ── */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full"
-            style={{ background: 'var(--dk-surface-ghost-hover)' }}
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Discover
-          </Link>
-          <span className="text-white/20">/</span>
-          <Link
-            to="/genres"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full"
-            style={{ background: 'var(--dk-surface-ghost-hover)' }}
-          >
-            All Genres
-          </Link>
-        </div>
-
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-white/[0.08] pb-5">
+        <div className="flex items-baseline justify-between border-b border-white/[0.08] pb-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Genre
-              </span>
-              <span className="text-white/30">•</span>
-              <span className="text-xs text-muted-foreground capitalize">
-                {typeConfig.label}
-              </span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               {pageTitle}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1.5">
-              Explore the continuous feed of {genreName.toLowerCase()}{' '}
-              {typeConfig.label.toLowerCase()} in your catalog.
+            <p className="text-sm text-muted-foreground mt-1">
+              {mediaType
+                ? `${MEDIA_TYPE_LABELS[mediaType]} in ${pageTitle}`
+                : `All media in ${pageTitle}`}
             </p>
           </div>
-
-          {items.length > 0 && (
-            <div className="shrink-0 text-left sm:text-right">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-muted-foreground bg-white/[0.04] border border-white/[0.06]">
-                {total.toLocaleString()} {typeConfig.label.toLowerCase()}
-              </span>
+          {(items.length > 0 || (!isLoading && total > 0)) && (
+            <div className="shrink-0 text-right space-y-0.5">
+              <p className="text-sm font-semibold text-white tabular-nums">
+                {total.toLocaleString()} {typeLabel.toLowerCase()}
+              </p>
+              {items.length > 0 && (
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  Showing {items.length.toLocaleString()} of {total.toLocaleString()}
+                </p>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Media Type Switcher Tabs ── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {MEDIA_TYPES.map(({ value, label, icon: Icon }) => {
-          const isActive = mediaType === value
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => handleMediaTypeChange(value)}
-              className={cn(
-                'inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all shrink-0',
-                isActive
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'glass-card text-muted-foreground hover:text-white hover:bg-white/[0.08]',
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* ── Horizontal Genre Pill Bar ── */}
       <div className="relative">
         <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
           <Link
             to="/genres"
             className="glass-inset px-3.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-white hover:bg-white/[0.08] transition-all shrink-0 inline-flex items-center gap-1.5 border border-white/[0.06]"
           >
-            All Categories →
+            All
           </Link>
           {isLoadingGenres
             ? Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton key={i} className="h-8 w-24 rounded-full shrink-0" />
               ))
             : genres.map((g) => {
-                const isSelected =
-                  g.slug.toLowerCase() === rawGenreId.toLowerCase() ||
-                  String(g.id) === rawGenreId
+                const isSelected = selectedGenreSet.has(g.slug.toLowerCase())
                 return (
                   <button
                     key={g.slug}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => handleGenreSelect(g.slug)}
                     className={cn(
-                      'relative inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 cursor-pointer',
+                      'inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 cursor-pointer',
                       isSelected
                         ? 'bg-white/20 text-white font-semibold shadow-inner border border-white/25'
                         : 'glass-inset text-muted-foreground hover:text-white hover:bg-white/[0.08]',
                     )}
                   >
-                    {isSelected && (
-                      <motion.div
-                        layoutId="activeGenrePill"
-                        className="absolute inset-0 rounded-full bg-white/10"
-                        transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                      />
-                    )}
-                    <span className="relative z-10">{g.name}</span>
+                    {g.name}
                   </button>
                 )
               })}
         </div>
       </div>
 
-      {/* ── Filters and Sort Bar ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <DkDropdown
+          variant="filter"
+          label="Type"
+          options={MEDIA_TYPE_OPTIONS}
+          value={mediaType || ''}
+          onChange={handleMediaTypeChange}
+        />
+
+        <DkDropdown
+          variant="filter"
+          label="Language"
+          options={languageOptions}
+          value={languageDropdownValue}
+          onChange={handleLanguageChange}
+        />
+
+        {showAnimeFilter && (
           <DkDropdown
             variant="filter"
-            label="Sort"
-            options={SORT_OPTIONS}
-            value={activeSort}
-            onChange={handleSortChange}
+            label="Anime"
+            options={ANIME_OPTIONS}
+            value={animeFilterValue(isAnime)}
+            onChange={handleAnimeChange}
           />
+        )}
 
-          {certifications.length > 0 && (
-            <DkDropdown
-              variant="filter"
-              label="Rating"
-              options={certificationOptions}
-              value={search.certification || ''}
-              onChange={handleCertificationChange}
-            />
-          )}
+        {mediaType && certifications.length > 0 && (
+          <DkDropdown
+            variant="filter"
+            label="Rating"
+            options={certificationOptions}
+            value={search.certification || ''}
+            onChange={handleCertificationChange}
+          />
+        )}
 
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={() => updateSearch({ sort: undefined, dir: undefined, certification: undefined })}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground transition-colors border border-white/[0.08] hover:bg-white/[0.06]"
-            >
-              <RotateCcw className="h-3 w-3" />
-              Reset Filters
-            </button>
-          )}
-        </div>
+        <DkDropdown
+          variant="filter"
+          label="Sort"
+          options={SORT_OPTIONS}
+          value={activeSort}
+          onChange={handleSortChange}
+        />
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hover:bg-white/[0.06]"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Reset
+          </button>
+        )}
       </div>
 
-      {/* ── Media Grid / States ── */}
       {isLoading ? (
         <MediaGrid>
           {Array.from({ length: 18 }).map((_, i) => (
@@ -337,10 +411,10 @@ export function GenrePage() {
           ))}
         </MediaGrid>
       ) : isError ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center glass-card rounded-2xl border border-white/[0.06]">
-          <p className="text-base font-semibold text-white">Failed to load {genreName} titles</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            There was an error communicating with the catalog service.
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-base font-semibold text-muted-foreground">Failed to load {pageTitle}</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">
+            Please try again in a few moments.
           </p>
           <button
             type="button"
@@ -351,17 +425,17 @@ export function GenrePage() {
           </button>
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center glass-card rounded-2xl border border-white/[0.06]">
-          <p className="text-base font-semibold text-white">
-            No {typeConfig.label.toLowerCase()} found in {genreName}
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-base font-semibold text-muted-foreground">
+            No titles found
           </p>
-          <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-            We couldn't find any {typeConfig.label.toLowerCase()} matching your current filters.
+          <p className="mt-1 text-xs text-muted-foreground/60">
+            Nothing matches {pageTitle} with the current filters.
           </p>
           {hasActiveFilters && (
             <button
               type="button"
-              onClick={() => updateSearch({ certification: undefined, sort: undefined })}
+              onClick={clearFilters}
               className="mt-4 px-4 py-2 rounded-full text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition-colors"
             >
               Clear Filters
@@ -369,35 +443,29 @@ export function GenrePage() {
           )}
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-6">
           <MediaGrid>
             {items.map((item) => (
               <DiscoverMediaCard key={item.id} item={item} />
             ))}
           </MediaGrid>
 
-          {/* Infinite Scroll Sentinel / Loading More */}
-          <div ref={sentinelRef} className="h-16 flex items-center justify-center">
-            {isFetchingNextPage ? (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span>Loading more titles...</span>
-              </div>
-            ) : hasNextPage ? (
-              <button
-                type="button"
-                onClick={() => void fetchNextPage()}
-                className="px-5 py-2.5 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-all hover:bg-white/[0.08]"
-                style={{ background: 'var(--dk-surface-ghost-hover)' }}
-              >
-                Load More
-              </button>
-            ) : items.length > 0 ? (
-              <p className="text-xs text-muted-foreground/60 py-4 font-medium">
-                All {total.toLocaleString()} {typeConfig.label.toLowerCase()} loaded
-              </p>
-            ) : null}
-          </div>
+          {isFetchingNextPage && (
+            <MediaGrid>
+              {Array.from({ length: 12 }).map((_, i) => (
+                <Skeleton key={i} className="aspect-[2/3] rounded-xl" />
+              ))}
+            </MediaGrid>
+          )}
+
+          {!hasNextPage && items.length > 0 && (
+            <p className="text-xs text-muted-foreground/60 py-4 font-medium text-center tabular-nums">
+              Showing {items.length.toLocaleString()} of {total.toLocaleString()}
+            </p>
+          )}
+
+          {/* Infinite scroll sentinel — loads the next page as it nears the viewport */}
+          <div ref={sentinelRef} className="h-8 w-full" aria-hidden />
         </div>
       )}
     </div>

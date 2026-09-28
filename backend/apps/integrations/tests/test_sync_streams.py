@@ -56,9 +56,7 @@ class SyncEnqueueEndpointTests(TestCase):
 
     def test_plex_library_sync_202_returns_task_id_equal_pk(self):
         with mock.patch("apps.integrations.views.sync.run_sync_job") as task:
-            resp = self.client.post(
-                self.plex_url, {"library_id": "lib-9"}, format="json"
-            )
+            resp = self.client.post(self.plex_url, {"library_id": "lib-9"}, format="json")
         self.assertEqual(resp.status_code, 202)
         job = SyncJob.objects.get()
         self.assertEqual(resp.json(), {"task_id": str(job.pk)})
@@ -108,12 +106,8 @@ class SyncStreamViewTests(TestCase):
         self.job = SyncJob.objects.create(
             provider="plex", entity_type="user", external_id=str(self.user.id)
         )
-        self.plex_stream = (
-            f"/api/v1/integrations/plex/sync/{self.job.pk}/stream"
-        )
-        self.youtube_stream = (
-            f"/api/v1/integrations/youtube/sync/{self.job.pk}/stream"
-        )
+        self.plex_stream = f"/api/v1/integrations/plex/sync/{self.job.pk}/stream"
+        self.youtube_stream = f"/api/v1/integrations/youtube/sync/{self.job.pk}/stream"
 
     def test_streams_require_auth(self):
         for url in (self.plex_stream, self.youtube_stream):
@@ -130,8 +124,9 @@ class SyncStreamViewTests(TestCase):
         stored_key = f"plex:sync:{self.job.pk}:result"
         fake = FakeRedis(stored={stored_key: b'{"phase":"done","total":10}'})
         resp = self.client.get(self.plex_stream)
-        with mock.patch("core.sse.get_client", return_value=fake), mock.patch(
-            "core.sse.get_async_client", return_value=fake
+        with (
+            mock.patch("core.sse.get_client", return_value=fake),
+            mock.patch("core.sse.get_async_client", return_value=fake),
         ):
             chunks = collect_stream(resp.streaming_content)
         self.assertEqual(
@@ -141,12 +136,11 @@ class SyncStreamViewTests(TestCase):
         self.assertEqual(fake.pubsubs, [])  # replay short-circuits subscribe
 
     def test_stream_closes_on_terminal_live_frame(self):
-        fake = FakeRedis(
-            messages=[_terminal_bytes(type="sync_complete", phase="done")]
-        )
+        fake = FakeRedis(messages=[_terminal_bytes(type="sync_complete", phase="done")])
         resp = self.client.get(self.plex_stream)
-        with mock.patch("core.sse.get_client", return_value=fake), mock.patch(
-            "core.sse.get_async_client", return_value=fake
+        with (
+            mock.patch("core.sse.get_client", return_value=fake),
+            mock.patch("core.sse.get_async_client", return_value=fake),
         ):
             chunks = collect_stream(resp.streaming_content)
         self.assertEqual(
@@ -164,8 +158,9 @@ class SyncStreamViewTests(TestCase):
             messages=[_terminal_bytes(type="sync_complete", phase="done")],
         )
         resp = self.client.get(self.youtube_stream)
-        with mock.patch("core.sse.get_client", return_value=fake), mock.patch(
-            "core.sse.get_async_client", return_value=fake
+        with (
+            mock.patch("core.sse.get_client", return_value=fake),
+            mock.patch("core.sse.get_async_client", return_value=fake),
         ):
             chunks = collect_stream(resp.streaming_content)
         self.assertEqual(
@@ -179,22 +174,20 @@ class SyncStreamViewTests(TestCase):
     def test_error_frame_closes_stream(self):
         fake = FakeRedis(messages=[_terminal_bytes(type="error", message="boom")])
         resp = self.client.get(self.plex_stream)
-        with mock.patch("core.sse.get_client", return_value=fake), mock.patch(
-            "core.sse.get_async_client", return_value=fake
+        with (
+            mock.patch("core.sse.get_client", return_value=fake),
+            mock.patch("core.sse.get_async_client", return_value=fake),
         ):
             chunks = collect_stream(resp.streaming_content)
-        self.assertEqual(
-            _data_payloads(chunks), [{"type": "error", "message": "boom"}]
-        )
+        self.assertEqual(_data_payloads(chunks), [{"type": "error", "message": "boom"}])
 
     def test_stream_content_is_an_async_generator(self):
         """SSE responses stream over ASGI without pinning a worker thread."""
-        fake = FakeRedis(
-            messages=[_terminal_bytes(type="sync_complete", phase="done")]
-        )
+        fake = FakeRedis(messages=[_terminal_bytes(type="sync_complete", phase="done")])
         resp = self.client.get(self.plex_stream)
-        with mock.patch("core.sse.get_client", return_value=fake), mock.patch(
-            "core.sse.get_async_client", return_value=fake
+        with (
+            mock.patch("core.sse.get_client", return_value=fake),
+            mock.patch("core.sse.get_async_client", return_value=fake),
         ):
             content = resp.streaming_content
         self.assertTrue(hasattr(content, "__aiter__"))
@@ -223,17 +216,13 @@ class NotificationStreamTests(TestCase):
 
     def test_non_terminal_frame_keeps_stream_open_then_clean_close(self):
         """No terminal_events: a notification frame streams, close is manual."""
-        fake = FakeRedis(
-            messages=[_terminal_bytes(type="notification", id=7, text="hi")]
-        )
+        fake = FakeRedis(messages=[_terminal_bytes(type="notification", id=7, text="hi")])
         with mock.patch("core.sse.get_async_client", return_value=fake):
             stream = sse_lib.sse_event_generator(f"user:{self.user.id}:notifications")
             first = take_first_and_close(stream)
         # Generator is still alive after a non-terminal frame; closing it must
         # unsubscribe + close the pubsub.
-        self.assertEqual(
-            _data_payloads([first]), [{"type": "notification", "id": 7, "text": "hi"}]
-        )
+        self.assertEqual(_data_payloads([first]), [{"type": "notification", "id": 7, "text": "hi"}])
         self.assertEqual(fake.pubsubs[0].subscribed, f"user:{self.user.id}:notifications")
         self.assertTrue(fake.pubsubs[0].unsubscribed)
         self.assertTrue(fake.pubsubs[0].closed)

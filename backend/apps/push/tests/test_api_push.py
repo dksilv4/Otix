@@ -55,9 +55,7 @@ class PushApiTests(TestCase):
         self.assertTrue(response.data["public_key"])
 
     def test_subscribe_creates_subscription_201(self) -> None:
-        response = self.client.post(
-            "/api/v1/push/subscribe", SUBSCRIPTION, format="json"
-        )
+        response = self.client.post("/api/v1/push/subscribe", SUBSCRIPTION, format="json")
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data, {"message": "Subscribed"})
@@ -70,9 +68,7 @@ class PushApiTests(TestCase):
     def test_subscribe_upserts_same_endpoint(self) -> None:
         self.client.post("/api/v1/push/subscribe", SUBSCRIPTION, format="json")
         refreshed = {**SUBSCRIPTION, "p256dh": "new-public-key", "auth": "new-secret"}
-        response = self.client.post(
-            "/api/v1/push/subscribe", refreshed, format="json"
-        )
+        response = self.client.post("/api/v1/push/subscribe", refreshed, format="json")
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(PushSubscription.objects.filter(user=self.user).count(), 1)
@@ -81,15 +77,11 @@ class PushApiTests(TestCase):
         self.assertEqual(sub.auth_key, "new-secret")
 
     def test_subscribe_requires_authentication(self) -> None:
-        response = self.public.post(
-            "/api/v1/push/subscribe", SUBSCRIPTION, format="json"
-        )
+        response = self.public.post("/api/v1/push/subscribe", SUBSCRIPTION, format="json")
         self.assertEqual(response.status_code, 401)
 
     def test_subscribe_rejects_missing_fields(self) -> None:
-        response = self.client.post(
-            "/api/v1/push/subscribe", {"endpoint": ENDPOINT}, format="json"
-        )
+        response = self.client.post("/api/v1/push/subscribe", {"endpoint": ENDPOINT}, format="json")
         self.assertEqual(response.status_code, 400)
 
     def test_unsubscribe_removes_matching_subscription_200(self) -> None:

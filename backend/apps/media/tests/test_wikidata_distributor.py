@@ -53,9 +53,7 @@ def _client(payload):
 
 
 def _media(slug: str = "the-death-of-robin-hood") -> MediaItem:
-    return MediaItem.objects.create(
-        media_type="movie", title="The Death of Robin Hood", slug=slug
-    )
+    return MediaItem.objects.create(media_type="movie", title="The Death of Robin Hood", slug=slug)
 
 
 def _link_media_id(media: MediaItem, provider: str, external_id: str) -> None:
@@ -88,9 +86,7 @@ class SelectorTests(TestCase):
 
 class ParseBindingsTests(TestCase):
     def test_dedupes_and_parses_tmdb_ids(self) -> None:
-        specs = _parse_bindings(
-            _payload([("A24", None), ("A24", None), ("Lyrical Media", 180839)])
-        )
+        specs = _parse_bindings(_payload([("A24", None), ("A24", None), ("Lyrical Media", 180839)]))
         self.assertEqual(
             specs,
             [
@@ -100,9 +96,7 @@ class ParseBindingsTests(TestCase):
         )
 
     def test_skips_unlabelled_and_bad_tmdb(self) -> None:
-        specs = _parse_bindings(
-            {"results": {"bindings": [{"tmdbCompany": {"value": "5"}}]}}
-        )
+        specs = _parse_bindings({"results": {"bindings": [{"tmdbCompany": {"value": "5"}}]}})
         self.assertEqual(specs, [])
 
 
@@ -147,13 +141,9 @@ class AttachDistributorsTests(TestCase):
             provider="tmdb",
             external_id="41077",
         )
-        linked = attach_distributors(
-            media.pk, [{"name": "A24", "tmdb_company_id": 41077}]
-        )
+        linked = attach_distributors(media.pk, [{"name": "A24", "tmdb_company_id": 41077}])
         self.assertEqual(linked, 1)
-        self.assertEqual(
-            InvolvedCompany.objects.get(media_item=media).company_id, company.pk
-        )
+        self.assertEqual(InvolvedCompany.objects.get(media_item=media).company_id, company.pk)
 
     def test_rerun_is_idempotent(self) -> None:
         media = _media()
@@ -185,16 +175,12 @@ class EnrichDistributorsDriverTests(TestCase):
         self.assertEqual(result["reason"], "disabled")
         self.assertFalse(result["enriched"])
 
-    @mock.patch(
-        "apps.media.services.wikidata_distributor._stored_ids", return_value=(None, None)
-    )
+    @mock.patch("apps.media.services.wikidata_distributor._stored_ids", return_value=(None, None))
     def test_no_provider_id_is_noop(self, _stored) -> None:
         result = _run(wikidata_enrich_distributors(1))
         self.assertEqual(result["reason"], "no provider id")
 
-    @mock.patch(
-        "apps.media.services.wikidata_distributor.attach_distributors", return_value=1
-    )
+    @mock.patch("apps.media.services.wikidata_distributor.attach_distributors", return_value=1)
     @mock.patch(
         "apps.media.services.wikidata_distributor.fetch_distributors",
         new_callable=mock.AsyncMock,

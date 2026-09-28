@@ -43,24 +43,27 @@ class SendNotificationTests(TestCase):
 
     def test_unconfigured_key_is_noop(self) -> None:
         self._subscription()
-        with mock.patch(
-            "apps.push.services.sender.get_vapid_private_key", return_value=""
-        ), mock.patch("pywebpush.webpush") as webpush:
+        with (
+            mock.patch("apps.push.services.sender.get_vapid_private_key", return_value=""),
+            mock.patch("pywebpush.webpush") as webpush,
+        ):
             self.assertEqual(send_notification(self.notification), 0)
             webpush.assert_not_called()
 
     def test_missing_dependency_is_noop(self) -> None:
         self._subscription()
-        with mock.patch(
-            "apps.push.services.sender.get_vapid_private_key", return_value="priv"
-        ), mock.patch.dict(sys.modules, {"pywebpush": None}):
+        with (
+            mock.patch("apps.push.services.sender.get_vapid_private_key", return_value="priv"),
+            mock.patch.dict(sys.modules, {"pywebpush": None}),
+        ):
             self.assertEqual(send_notification(self.notification), 0)
 
     def test_successful_send(self) -> None:
         self._subscription()
-        with mock.patch(
-            "apps.push.services.sender.get_vapid_private_key", return_value="priv"
-        ), mock.patch("pywebpush.webpush") as webpush:
+        with (
+            mock.patch("apps.push.services.sender.get_vapid_private_key", return_value="priv"),
+            mock.patch("pywebpush.webpush") as webpush,
+        ):
             self.assertEqual(send_notification(self.notification), 1)
             webpush.assert_called_once()
             self.assertEqual(PushSubscription.objects.count(), 1)
@@ -68,10 +71,10 @@ class SendNotificationTests(TestCase):
     def test_expired_endpoint_is_pruned(self) -> None:
         self._subscription()
         error = _FakeWebPushError(response=mock.Mock(status_code=410))
-        with mock.patch(
-            "apps.push.services.sender.get_vapid_private_key", return_value="priv"
-        ), mock.patch("pywebpush.webpush", side_effect=error), mock.patch(
-            "pywebpush.WebPushException", _FakeWebPushError
+        with (
+            mock.patch("apps.push.services.sender.get_vapid_private_key", return_value="priv"),
+            mock.patch("pywebpush.webpush", side_effect=error),
+            mock.patch("pywebpush.WebPushException", _FakeWebPushError),
         ):
             self.assertEqual(send_notification(self.notification), 0)
             self.assertEqual(PushSubscription.objects.count(), 0)
@@ -79,10 +82,10 @@ class SendNotificationTests(TestCase):
     def test_failed_send_keeps_subscription(self) -> None:
         self._subscription()
         error = _FakeWebPushError(response=mock.Mock(status_code=500))
-        with mock.patch(
-            "apps.push.services.sender.get_vapid_private_key", return_value="priv"
-        ), mock.patch("pywebpush.webpush", side_effect=error), mock.patch(
-            "pywebpush.WebPushException", _FakeWebPushError
+        with (
+            mock.patch("apps.push.services.sender.get_vapid_private_key", return_value="priv"),
+            mock.patch("pywebpush.webpush", side_effect=error),
+            mock.patch("pywebpush.WebPushException", _FakeWebPushError),
         ):
             self.assertEqual(send_notification(self.notification), 0)
             self.assertEqual(PushSubscription.objects.count(), 1)

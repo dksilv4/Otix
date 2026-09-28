@@ -27,9 +27,9 @@ def _token_hash(raw: str) -> str:
 def create_action_token(user: User, purpose: str) -> str:
     """Issue a new token for ``purpose``; returns the raw (hashed) value."""
     now = timezone.now()
-    AuthActionToken.objects.filter(
-        user=user, purpose=purpose, used_at__isnull=True
-    ).update(used_at=now)
+    AuthActionToken.objects.filter(user=user, purpose=purpose, used_at__isnull=True).update(
+        used_at=now
+    )
     raw = secrets.token_urlsafe(48)
     AuthActionToken.objects.create(
         user=user,

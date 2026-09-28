@@ -318,7 +318,6 @@ class HydratorsTests(SimpleTestCase):
             self.assertEqual(res, {"550": 123, "680": 456})
             mock_external_id_cls.objects.filter.assert_called_once()
 
-
     def test_atomic_seed_sync(self) -> None:
         with mock.patch("django.db.transaction.atomic") as mock_atomic:
             mock_atomic.return_value.__enter__ = mock.MagicMock()
@@ -501,7 +500,6 @@ class MetricsTests(SimpleTestCase):
         self.assertEqual(g.value(), 42.0)
 
 
-
 class MockTransportAndFixtureTests(SimpleTestCase):
     """Test testing utilities: mock transport routing and fixture loading."""
 
@@ -552,13 +550,14 @@ class ClientResilienceTests(SimpleTestCase):
     def _restore_cache(self) -> None:
         BaseProviderClient._api_cache = self._orig_cache
 
-
     def test_client_request_with_timeline(self) -> None:
         from core.providers.framework.testing import FakeAsyncRedis
 
-        transport = create_mock_transport({
-            ("GET", "https://api.test/data"): (200, {"success": True}),
-        })
+        transport = create_mock_transport(
+            {
+                ("GET", "https://api.test/data"): (200, {"success": True}),
+            }
+        )
 
         async def run() -> None:
             fake_redis = FakeAsyncRedis()
@@ -577,13 +576,14 @@ class ClientResilienceTests(SimpleTestCase):
 
         asyncio.run(run())
 
-
     def test_circuit_tripped_rejects_subsequent_requests(self) -> None:
         from core.providers.framework.testing import FakeAsyncRedis
 
-        transport = create_mock_transport({
-            ("GET", "https://api.test/fail"): (500, {"error": "server error"}),
-        })
+        transport = create_mock_transport(
+            {
+                ("GET", "https://api.test/fail"): (500, {"error": "server error"}),
+            }
+        )
 
         async def run() -> None:
             fake_redis = FakeAsyncRedis()
@@ -602,4 +602,3 @@ class ClientResilienceTests(SimpleTestCase):
                     await provider._get("https://api.test/fail")
 
         asyncio.run(run())
-

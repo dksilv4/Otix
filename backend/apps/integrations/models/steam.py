@@ -60,9 +60,7 @@ class UserSteamWishlist(TimestampedModel):
     class Meta(TimestampedModel.Meta):
         db_table = "user_steam_wishlist"
         constraints = [
-            models.UniqueConstraint(
-                fields=["user", "steam_app_id"], name="uq_user_steam_wishlist"
-            ),
+            models.UniqueConstraint(fields=["user", "steam_app_id"], name="uq_user_steam_wishlist"),
         ]
 
     def __str__(self) -> str:

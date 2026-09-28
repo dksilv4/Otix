@@ -191,9 +191,7 @@ class LibraryApiTests(TestCase):
             media_item=self.movie,
             match_suggestion_media_id=self.movie.id,
         )
-        UserLocalGame.objects.create(
-            user=self.user, title="Mystery App", platform="windows"
-        )
+        UserLocalGame.objects.create(user=self.user, title="Mystery App", platform="windows")
 
         response = self.client.get("/api/v1/library/installed")
 
@@ -205,9 +203,7 @@ class LibraryApiTests(TestCase):
         self.assertEqual(by_title["Her"]["catalog_title"], "Her")
         self.assertEqual(by_title["Her"]["catalog_slug"], "her-2013")
         self.assertEqual(by_title["Her"]["catalog_avg_rating"], 8.0)
-        self.assertEqual(
-            by_title["Her"]["catalog_poster_url"], "https://cdn.example/her.jpg"
-        )
+        self.assertEqual(by_title["Her"]["catalog_poster_url"], "https://cdn.example/her.jpg")
         self.assertEqual(by_title["Mystery App"]["catalog_title"], None)
         self.assertEqual(matched.last_seen_at.isoformat(), by_title["Her"]["last_seen_at"])
 

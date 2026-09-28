@@ -45,20 +45,26 @@ class SaveApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["game_id"], self.game.pk)
-        self.assertEqual(response.data["verified"], [
-            {
-                "platform": "windows",
-                "path_pattern": "C:/Saves/official",
-                "is_verified": True,
-            }
-        ])
-        self.assertEqual(response.data["suggested"], [
-            {
-                "platform": "windows",
-                "path_pattern": "C:/Users/%USER%/Saves",
-                "count": 2,
-            }
-        ])
+        self.assertEqual(
+            response.data["verified"],
+            [
+                {
+                    "platform": "windows",
+                    "path_pattern": "C:/Saves/official",
+                    "is_verified": True,
+                }
+            ],
+        )
+        self.assertEqual(
+            response.data["suggested"],
+            [
+                {
+                    "platform": "windows",
+                    "path_pattern": "C:/Users/%USER%/Saves",
+                    "count": 2,
+                }
+            ],
+        )
 
     def test_locations_missing_game_is_404(self) -> None:
         response = self.client.get("/api/v1/saves/locations/99999999")

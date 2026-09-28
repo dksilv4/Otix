@@ -6,8 +6,8 @@ import { mediaKeys } from '@media/queries/media-keys'
 
 export const reviewKeys = {
   all: () => ['reviews'] as const,
-  myReview: (mediaType: string, mediaId: string) => [...reviewKeys.all(), 'my', mediaType, mediaId] as const,
-  list: (mediaType: string, mediaId: string) => [...reviewKeys.all(), 'list', mediaType, mediaId] as const,
+  myReview: (mediaType: string, mediaId: string | number) => [...reviewKeys.all(), 'my', mediaType, String(mediaId)] as const,
+  list: (mediaType: string, mediaId: string | number) => [...reviewKeys.all(), 'list', mediaType, String(mediaId)] as const,
 }
 import { ratingKeys, type MediaRatingOut } from './rating-queries'
 
@@ -45,24 +45,26 @@ export interface ReviewCreatePayload {
 }
 
 export const reviewQueries = {
-  myReview: (mediaType: string, mediaId: string) =>
+  myReview: (mediaType: string, mediaId: string | number) =>
     queryOptions({
       queryKey: reviewKeys.myReview(mediaType, mediaId),
       queryFn: async () => {
-        const { data } = await apiClient.get<ReviewOut | null>(`/media/${mediaType}/${mediaId}/review`)
+        const idStr = String(mediaId)
+        const { data } = await apiClient.get<ReviewOut | null>(`/media/${mediaType}/${idStr}/review`)
         return data
       },
       staleTime: 1000 * 60,
     }),
 
-  list: (mediaType: string, mediaId: string, cursor?: string) =>
+  list: (mediaType: string, mediaId: string | number, cursor?: string) =>
     queryOptions({
       queryKey: [...reviewKeys.list(mediaType, mediaId), cursor],
       queryFn: async () => {
+        const idStr = String(mediaId)
         const params: Record<string, string> = { limit: '20' }
         if (cursor) params.cursor = cursor
         const { data } = await apiClient.get<any>(
-          `/media/${mediaType}/${mediaId}/reviews`,
+          `/media/${mediaType}/${idStr}/reviews`,
           { params },
         )
         if (Array.isArray(data)) return data as ReviewWithUserOut[]
@@ -74,23 +76,24 @@ export const reviewQueries = {
     }),
 }
 
-export function useUpsertReview(mediaType: string, mediaId: string) {
+export function useUpsertReview(mediaType: string, mediaId: string | number) {
   const qc = useQueryClient()
+  const idStr = String(mediaId)
   return useMutation({
     mutationFn: async (payload: ReviewCreatePayload) => {
       const { data } = await apiClient.put<ReviewOut>(
-        `/media/${mediaType}/${mediaId}/review`,
+        `/media/${mediaType}/${idStr}/review`,
         payload,
       )
       return data
     },
     onMutate: async (payload) => {
-      const myReviewKey = reviewKeys.myReview(mediaType, mediaId)
+      const myReviewKey = reviewKeys.myReview(mediaType, idStr)
       await qc.cancelQueries({ queryKey: myReviewKey })
       const prevReview = qc.getQueryData<ReviewOut | null>(myReviewKey)
       const optimistic: ReviewOut = {
         userId: '',
-        mediaItemId: mediaId,
+        mediaItemId: idStr,
         title: payload.title ?? null,
         content: payload.content ?? null,
         isSpoiler: payload.isSpoiler ?? false,
@@ -104,12 +107,12 @@ export function useUpsertReview(mediaType: string, mediaId: string) {
     },
     onError: (_err, _vars, context) => {
       if (context?.prevReview !== undefined) {
-        qc.setQueryData(reviewKeys.myReview(mediaType, mediaId), context.prevReview)
+        qc.setQueryData(reviewKeys.myReview(mediaType, idStr), context.prevReview)
       }
     },
     onSuccess: (_data, payload, context) => {
       emitOtixEvent(context?.prevReview ? 'otix:review:updated' : 'otix:review:created', {
-        mediaId,
+        mediaId: idStr,
         mediaType,
         review: {
           title: payload.title ?? null,
@@ -120,22 +123,23 @@ export function useUpsertReview(mediaType: string, mediaId: string) {
       })
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, mediaId) })
-      qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, mediaId) })
-      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, mediaId) })
-      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, idStr) })
+      qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, idStr) })
+      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, idStr) })
+      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, idStr) })
     },
   })
 }
 
-export function useDeleteReview(mediaType: string, mediaId: string) {
+export function useDeleteReview(mediaType: string, mediaId: string | number) {
   const qc = useQueryClient()
+  const idStr = String(mediaId)
   return useMutation({
     mutationFn: async () => {
-      await apiClient.delete(`/media/${mediaType}/${mediaId}/review`)
+      await apiClient.delete(`/media/${mediaType}/${idStr}/review`)
     },
     onMutate: async () => {
-      const myReviewKey = reviewKeys.myReview(mediaType, mediaId)
+      const myReviewKey = reviewKeys.myReview(mediaType, idStr)
       await qc.cancelQueries({ queryKey: myReviewKey })
       const prevReview = qc.getQueryData<ReviewOut | null>(myReviewKey)
       qc.setQueryData<ReviewOut | null>(myReviewKey, null)
@@ -143,17 +147,17 @@ export function useDeleteReview(mediaType: string, mediaId: string) {
     },
     onError: (_err, _vars, context) => {
       if (context?.prevReview !== undefined) {
-        qc.setQueryData(reviewKeys.myReview(mediaType, mediaId), context.prevReview)
+        qc.setQueryData(reviewKeys.myReview(mediaType, idStr), context.prevReview)
       }
     },
     onSuccess: () => {
-      emitOtixEvent('otix:review:deleted', { mediaId, mediaType })
+      emitOtixEvent('otix:review:deleted', { mediaId: idStr, mediaType })
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, mediaId) })
-      qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, mediaId) })
-      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, mediaId) })
-      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, idStr) })
+      qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, idStr) })
+      qc.invalidateQueries({ queryKey: ratingKeys.list(mediaType, idStr) })
+      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, idStr) })
     },
   })
 }

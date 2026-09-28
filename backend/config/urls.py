@@ -11,8 +11,13 @@ from django.urls import include, path
 
 from apps.accounts.views import UploadedFileView, UploadFileView
 from apps.blueprint.views import BlueprintListCreateView
+from apps.freegames.views import FreeGamesListView
 from apps.gameservers.views import GameServerListCreateView
-from apps.library.views import GameServerClaimView, GameServerHeartbeatView
+from apps.library.views import (
+    GameServerClaimView,
+    GameServerHeartbeatView,
+    GameServerScanCompleteView,
+)
 from apps.lists.views import ListRootView
 from apps.media.views import AssetFileView, MediaListView
 from apps.media.views.character import CharacterListView
@@ -54,6 +59,11 @@ urlpatterns = [
     path(
         "api/v1/servers/heartbeat", GameServerHeartbeatView.as_view(), name="game-server-heartbeat"
     ),
+    path(
+        "api/v1/servers/scan-complete",
+        GameServerScanCompleteView.as_view(),
+        name="game-server-scan-complete",
+    ),
     path("api/v1/servers/claim", GameServerClaimView.as_view(), name="game-server-claim"),
     path("api/v1/library/", include("apps.library.urls")),
     path("api/v1/game-servers", GameServerListCreateView.as_view(), name="game-server-root"),
@@ -61,6 +71,8 @@ urlpatterns = [
     path("api/v1/media", MediaListView.as_view(), name="media-root"),
     path("api/v1/media/", include("apps.media.urls")),
     path("api/v1/discover/", include("apps.discover.urls")),
+    path("api/v1/free-games", FreeGamesListView.as_view(), name="free-games-root"),
+    path("api/v1/free-games/", include("apps.freegames.urls")),
     path("api/v1/calendar", include("apps.media.calendar_urls")),
     path("api/v1/saves/", include("apps.track.saves_urls")),
     path("api/v1/workout", WorkoutCollectionView.as_view(), name="workout-root"),

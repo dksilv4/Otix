@@ -12,10 +12,15 @@ import {
   FolderPlus,
   Gamepad2,
   HardDrive,
+  Home,
+  Lock,
+  Monitor,
   Package,
   RefreshCw,
+  RotateCcw,
   Search,
   Server,
+  ShieldAlert,
   X,
 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
@@ -25,6 +30,7 @@ import { useNodes } from '../use-node-downloads'
 import {
   useCreateNodeFolder,
   useNodeExplorer,
+  useRequestNodePermission,
   useSetNodeDownloadPath,
 } from '../use-node-explorer'
 import {
@@ -87,6 +93,26 @@ export function NodeFileExplorer({
 
   const setDownloadPathMutation = useSetNodeDownloadPath(nodeId)
   const createFolderMutation = useCreateNodeFolder(nodeId)
+  const requestPermissionMutation = useRequestNodePermission(nodeId)
+
+  const handleRequestPermission = async (path?: string) => {
+    const target = path || browseData?.current_path || currentPath || ''
+    try {
+      const res = await requestPermissionMutation.mutateAsync({ path: target })
+      toast({
+        title: res.granted ? 'Permission Granted' : 'Mac Permission Requested',
+        description: res.message || 'Check your Mac screen for the system permission prompt.',
+        variant: res.granted ? 'success' : 'default',
+      })
+      refetch()
+    } catch (err: any) {
+      toast({
+        title: 'Permission Request Failed',
+        description: err.message || 'Could not communicate with node.',
+        variant: 'error',
+      })
+    }
+  }
 
   const breadcrumbs = useMemo(() => {
     const raw = browseData?.current_path || currentPath || ''
@@ -129,6 +155,28 @@ export function NodeFileExplorer({
     } catch (err: any) {
       toast({
         title: 'Failed to set download path',
+        description: err.message || 'Could not update node configuration.',
+        variant: 'error',
+      })
+    }
+  }
+
+  const handleResetDownloadLocation = async () => {
+    try {
+      await setDownloadPathMutation.mutateAsync({
+        path: './storage/downloads',
+        create_if_missing: true,
+        add_as_library: false,
+      })
+      toast({
+        title: 'Download Folder Reset',
+        description: 'Reverted download location to node default storage/downloads.',
+        variant: 'default',
+      })
+      refetch()
+    } catch (err: any) {
+      toast({
+        title: 'Reset Failed',
         description: err.message || 'Could not update node configuration.',
         variant: 'error',
       })
@@ -211,6 +259,8 @@ export function NodeFileExplorer({
         return <Disc className="h-4 w-4 text-purple-400 shrink-0" />
       case 'installer':
         return <Package className="h-4 w-4 text-emerald-400 shrink-0" />
+      case 'game':
+        return <Gamepad2 className="h-4 w-4 text-blue-400 shrink-0" />
       case 'archive':
         return <Archive className="h-4 w-4 text-amber-400 shrink-0" />
       case 'rom':
@@ -341,6 +391,22 @@ export function NodeFileExplorer({
           )}
           <button
             type="button"
+            onClick={() => handleRequestPermission()}
+            disabled={requestPermissionMutation.isPending}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors',
+              isModal
+                ? 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+                : 'border border-border bg-muted/60 text-foreground/80 hover:bg-muted hover:text-foreground',
+            )}
+            title="Request Mac folder permissions or open settings"
+            aria-label="Request Mac folder permissions"
+          >
+            <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Permissions</span>
+          </button>
+          <button
+            type="button"
             onClick={() => refetch()}
             disabled={isRefetching}
             className={cn(
@@ -372,7 +438,7 @@ export function NodeFileExplorer({
         className={cn(
           'flex shrink-0 flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between',
           isModal
-            ? 'mx-4 mb-3 rounded-2xl bg-white/[0.04] px-3 py-2.5'
+            ? 'mx-4 mb-2 rounded-2xl bg-white/[0.04] px-3 py-2.5'
             : 'border-b border-border bg-muted/20 px-4 py-2.5',
         )}
       >
@@ -391,23 +457,89 @@ export function NodeFileExplorer({
           </span>
         </div>
 
-        {isCurrentFolderDownloadTarget ? (
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Current folder
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => handleSetDownloadLocation()}
-            disabled={setDownloadPathMutation.isPending}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
-          >
-            <Check className="h-3 w-3" />
-            {setDownloadPathMutation.isPending ? 'Saving…' : 'Use this folder'}
-          </button>
-        )}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {isCurrentFolderDownloadTarget ? (
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Current folder
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleSetDownloadLocation()}
+              disabled={setDownloadPathMutation.isPending}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-1 text-[11px] font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+            >
+              <Check className="h-3 w-3" />
+              {setDownloadPathMutation.isPending ? 'Saving…' : 'Use this folder'}
+            </button>
+          )}
+
+          {browseData?.active_download_path && browseData.active_download_path !== './storage/downloads' && (
+            <button
+              type="button"
+              onClick={handleResetDownloadLocation}
+              disabled={setDownloadPathMutation.isPending}
+              title="Reset download location to default storage/downloads"
+              className={cn(
+                'inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] transition-colors cursor-pointer',
+                isModal
+                  ? 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                  : 'border border-border/60 bg-background/60 text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+            >
+              <RotateCcw className="h-3 w-3" />
+              <span>Reset</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Quick shortcuts */}
+      {browseData?.shortcuts && browseData.shortcuts.length > 0 && (
+        <div
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 overflow-x-auto no-scrollbar py-1.5',
+            isModal ? 'mx-4 mb-2' : 'border-b border-border/40 bg-muted/10 px-4',
+          )}
+        >
+          <span
+            className={cn(
+              'shrink-0 text-[10px] font-semibold uppercase tracking-wider',
+              isModal ? 'text-white/35' : 'text-muted-foreground/60',
+            )}
+          >
+            Quick access:
+          </span>
+          {browseData.shortcuts.map((sc) => {
+            const isActive = isPathEqual(currentPath || browseData.current_path, sc.path)
+            return (
+              <button
+                key={sc.path}
+                type="button"
+                onClick={() => handleNavigate(sc.path)}
+                className={cn(
+                  'inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                    : isModal
+                      ? 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+                      : 'border border-border/60 bg-background/60 text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+                title={sc.path}
+              >
+                {sc.icon === 'home' && <Home className="h-3 w-3 shrink-0" />}
+                {sc.icon === 'downloads' && <Download className="h-3 w-3 shrink-0" />}
+                {sc.icon === 'documents' && <FileText className="h-3 w-3 shrink-0" />}
+                {sc.icon === 'desktop' && <Monitor className="h-3 w-3 shrink-0" />}
+                {sc.icon === 'volumes' && <HardDrive className="h-3 w-3 shrink-0" />}
+                {sc.icon === 'root' && <Server className="h-3 w-3 shrink-0" />}
+                <span>{sc.name}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Breadcrumbs + actions */}
       <div
@@ -441,15 +573,17 @@ export function NodeFileExplorer({
             type="button"
             onClick={() => handleNavigate(undefined)}
             className={cn(
-              'shrink-0 rounded-lg px-2 py-1 font-medium transition-colors',
+              'inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-medium transition-colors',
               !currentPath
                 ? 'bg-primary/15 font-semibold text-primary'
                 : isModal
                   ? 'text-white/50 hover:text-white'
                   : 'text-muted-foreground hover:text-foreground',
             )}
+            title="Go to Home folder"
           >
-            Root
+            <Home className="h-3 w-3 shrink-0" />
+            <span>Home</span>
           </button>
 
           {breadcrumbs.map((crumb, idx) => (
@@ -584,13 +718,148 @@ export function NodeFileExplorer({
             <RefreshCw className="h-5 w-5 animate-spin text-primary" />
             <span>Scanning node storage…</span>
           </div>
-        ) : browseError ? (
-          <div className="space-y-1 p-8 text-center text-xs text-rose-400">
-            <p className="font-semibold">Unable to access directory</p>
-            <p className={cn('text-[11px]', isModal ? 'text-white/45' : 'text-muted-foreground')}>
-              {(browseError as any)?.response?.data?.detail || browseError.message}
-            </p>
+        ) : browseData?.permission_denied ? (
+          <div className="mx-auto max-w-md space-y-4 p-8 text-center text-xs">
+            <div
+              className={cn(
+                'mx-auto flex h-12 w-12 items-center justify-center rounded-2xl',
+                isModal ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-500/10 text-amber-500',
+              )}
+            >
+              <ShieldAlert className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <p className={cn('text-sm font-semibold', isModal ? 'text-white' : 'text-foreground')}>
+                Mac Folder Permission Required
+              </p>
+              <p className={cn('text-[11px] leading-relaxed', isModal ? 'text-white/60' : 'text-muted-foreground')}>
+                {browseData.permission_message ||
+                  `Otix Node running on your Mac needs permission to access "${browseData.current_path}".`}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => handleRequestPermission(browseData.current_path)}
+                disabled={requestPermissionMutation.isPending}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
+              >
+                <Lock className="h-3.5 w-3.5" />
+                {requestPermissionMutation.isPending ? 'Requesting…' : 'Prompt Node for Permission'}
+              </button>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors',
+                  isModal
+                    ? 'bg-white/10 text-white hover:bg-white/15'
+                    : 'border border-border bg-muted/60 text-foreground hover:bg-muted',
+                )}
+              >
+                <RefreshCw className={cn('h-3.5 w-3.5', isRefetching && 'animate-spin')} />
+                Retry
+              </button>
+            </div>
+            <div className="pt-2 text-[11px]">
+              <span className={isModal ? 'text-white/40' : 'text-muted-foreground'}>
+                Or return to:{' '}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleNavigate(undefined)}
+                className="font-semibold text-primary underline underline-offset-2 hover:opacity-80"
+              >
+                Home folder
+              </button>
+            </div>
           </div>
+        ) : browseError ? (
+          (() => {
+            const errDetail = String((browseError as any)?.response?.data?.detail || browseError.message || '').toLowerCase()
+            const isDisconnectedOrNotFound =
+              (browseError as any)?.response?.status === 404 ||
+              errDetail.includes('not found') ||
+              errDetail.includes('unreachable') ||
+              errDetail.includes('could not contact')
+
+            if (isDisconnectedOrNotFound) {
+              return (
+                <div className="space-y-3 p-8 text-center text-xs">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
+                    <Server className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className={cn('text-sm font-semibold', isModal ? 'text-white' : 'text-foreground')}>
+                      Node Disconnected or Removed
+                    </p>
+                    <p className={cn('text-[11px]', isModal ? 'text-white/45' : 'text-muted-foreground')}>
+                      {(browseError as any)?.response?.data?.detail || 'This node is no longer connected to your account.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    {nodes.length > 0 && nodes[0].id !== nodeId ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedNodeId(nodes[0].id)
+                          handleNavigate(undefined)
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                      >
+                        Switch to {nodes[0].name}
+                      </button>
+                    ) : (
+                      <a
+                        href="/settings/library#downloads"
+                        onClick={onClose}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                      >
+                        Connect / Claim Node
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+
+            return (
+              <div className="space-y-3 p-8 text-center text-xs">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400">
+                  <ShieldAlert className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-rose-400">Unable to access directory</p>
+                  <p className={cn('text-[11px]', isModal ? 'text-white/45' : 'text-muted-foreground')}>
+                    {(browseError as any)?.response?.data?.detail || browseError.message}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleRequestPermission(currentPath)}
+                    disabled={requestPermissionMutation.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    <Lock className="h-3 w-3" />
+                    Prompt Permission
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleNavigate(undefined)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors',
+                      isModal
+                        ? 'bg-white/10 text-white hover:bg-white/15'
+                        : 'border border-border bg-muted/60 text-foreground hover:bg-muted',
+                    )}
+                  >
+                    Back to Home
+                  </button>
+                </div>
+              </div>
+            )
+          })()
         ) : sortedEntries.length === 0 ? (
           <div
             className={cn(

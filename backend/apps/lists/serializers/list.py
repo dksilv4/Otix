@@ -143,9 +143,7 @@ class UserListDetailSerializer(UserListOutSerializer):
         read_only_fields = UserListOutSerializer.Meta.read_only_fields + ("items", "collaborators")
 
     def get_items(self, obj: UserList) -> list[dict]:
-        return MediaItemSummarySerializer(
-            getattr(obj, "ordered_media_items", []), many=True
-        ).data
+        return MediaItemSummarySerializer(getattr(obj, "ordered_media_items", []), many=True).data
 
     def get_collaborators(self, obj: UserList) -> list[dict]:
         return CollaboratorOutSerializer(

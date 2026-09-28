@@ -24,7 +24,10 @@ User = get_user_model()
 def _is_friend(user_a_id: int, user_b_id: int) -> bool:
     """Check if two users are accepted Otix friends."""
     return FriendRequest.objects.filter(
-        (Q(sender_id=user_a_id, receiver_id=user_b_id) | Q(sender_id=user_b_id, receiver_id=user_a_id)),
+        (
+            Q(sender_id=user_a_id, receiver_id=user_b_id)
+            | Q(sender_id=user_b_id, receiver_id=user_a_id)
+        ),
         status="accepted",
     ).exists()
 
@@ -69,9 +72,7 @@ class GameServerListCreateView(APIView):
         server_type = request.query_params.get("server_type")
 
         # Owned or directly shared with this user
-        qs = DedicatedGameServer.objects.filter(
-            Q(owner=user) | Q(shares__user=user)
-        ).distinct()
+        qs = DedicatedGameServer.objects.filter(Q(owner=user) | Q(shares__user=user)).distinct()
 
         if media_id:
             qs = qs.filter(media_item_id=media_id)
@@ -172,10 +173,12 @@ class GameServerQueryView(APIView):
         server = _get_accessible_server(server_id, request.user)
         result = query_game_server(server)
         out = DedicatedGameServerSerializer(server, context={"request": request})
-        return Response({
-            "query_result": result,
-            "server": out.data,
-        })
+        return Response(
+            {
+                "query_result": result,
+                "server": out.data,
+            }
+        )
 
 
 class GameServerVerifyView(APIView):
@@ -317,20 +320,18 @@ class GameServerInviteResolveView(APIView):
 
         server = invite.server
         serializer = DedicatedGameServerSerializer(server, context={"request": request})
-        return Response({
-            "invite": GameServerInviteSerializer(invite).data,
-            "server": serializer.data,
-        })
+        return Response(
+            {
+                "invite": GameServerInviteSerializer(invite).data,
+                "server": serializer.data,
+            }
+        )
 
     def post(self, request: Request, code: str) -> Response:
         if not request.user.is_authenticated:
             raise PermissionDenied("You must be logged in to join via invite")
 
-        invite = (
-            GameServerInvite.objects.select_related("server")
-            .filter(code=code)
-            .first()
-        )
+        invite = GameServerInvite.objects.select_related("server").filter(code=code).first()
         if not invite or not invite.is_valid:
             raise NotFound("Invalid or expired invite link")
 
@@ -362,15 +363,23 @@ class GameServersByGameView(APIView):
             media_pk = int(media_id)
 
         if media_pk:
-            qs = DedicatedGameServer.objects.filter(
-                Q(owner=user) | Q(shares__user=user),
-                media_item_id=media_pk,
-            ).distinct().select_related("owner", "media_item")
+            qs = (
+                DedicatedGameServer.objects.filter(
+                    Q(owner=user) | Q(shares__user=user),
+                    media_item_id=media_pk,
+                )
+                .distinct()
+                .select_related("owner", "media_item")
+            )
         else:
-            qs = DedicatedGameServer.objects.filter(
-                Q(owner=user) | Q(shares__user=user),
-                game_title__iexact=media_id,
-            ).distinct().select_related("owner", "media_item")
+            qs = (
+                DedicatedGameServer.objects.filter(
+                    Q(owner=user) | Q(shares__user=user),
+                    game_title__iexact=media_id,
+                )
+                .distinct()
+                .select_related("owner", "media_item")
+            )
 
         serializer = DedicatedGameServerSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)

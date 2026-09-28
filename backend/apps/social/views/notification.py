@@ -69,9 +69,7 @@ class NotificationReadAllView(APIView):
 
     def post(self, request: Request) -> Response:
         services.mark_all_read(request.user.id)
-        return Response(
-            {"message": "All notifications marked as read"}, status=status.HTTP_200_OK
-        )
+        return Response({"message": "All notifications marked as read"}, status=status.HTTP_200_OK)
 
 
 class NotificationReadView(APIView):
@@ -81,9 +79,7 @@ class NotificationReadView(APIView):
         notification = services.mark_notification_read(notification_id, request.user.id)
         if notification is None:
             raise NotFound("Notification not found")
-        return Response(
-            {"message": "Notification marked as read"}, status=status.HTTP_200_OK
-        )
+        return Response({"message": "Notification marked as read"}, status=status.HTTP_200_OK)
 
 
 class NotificationStreamView(APIView):

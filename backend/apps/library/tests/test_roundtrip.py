@@ -20,9 +20,7 @@ User = get_user_model()
 class LibraryTrackSearchRoundTripTests(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create_user(username="roundtrip", password="x")
-        self.item = MediaItem.objects.create(
-            media_type="movie", title="Her", slug="her-2013"
-        )
+        self.item = MediaItem.objects.create(media_type="movie", title="Her", slug="her-2013")
         self.movie = Movie.objects.create(media_item=self.item, runtime=126)
 
     def test_user_local_game_linked_to_movie(self) -> None:
@@ -45,13 +43,9 @@ class LibraryTrackSearchRoundTripTests(TestCase):
         self.assertIsNotNone(game.last_seen_at)
 
     def test_user_local_game_unique_per_user_title_platform(self) -> None:
-        UserLocalGame.objects.create(
-            user=self.user, title="Her", platform="windows"
-        )
+        UserLocalGame.objects.create(user=self.user, title="Her", platform="windows")
         with self.assertRaises(IntegrityError):
-            UserLocalGame.objects.create(
-                user=self.user, title="Her", platform="windows"
-            )
+            UserLocalGame.objects.create(user=self.user, title="Her", platform="windows")
 
     def test_save_path_suggestion_reverses(self) -> None:
         suggestion = GameSavePathSuggestion.objects.create(

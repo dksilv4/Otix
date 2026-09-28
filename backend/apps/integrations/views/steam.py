@@ -29,9 +29,7 @@ class SteamOwnedAppIdsView(APIView):
 
     def get(self, request):
         appids = list(
-            UserSteamGame.objects.filter(user=request.user).values_list(
-                "steam_app_id", flat=True
-            )
+            UserSteamGame.objects.filter(user=request.user).values_list("steam_app_id", flat=True)
         )
         return Response({"appids": appids})
 
@@ -82,9 +80,7 @@ class SteamResolveUnmatchedView(APIView):
         if not igdb.configured():
             return Response({"detail": _IGDB_NOT_CONFIGURED}, status=503)
         try:
-            result = integrations_services.resolve_unmatched_steam_games(
-                request.user
-            )
+            result = integrations_services.resolve_unmatched_steam_games(request.user)
         except Exception:
             logger.exception("steam resolve-unmatched failed")
             return Response(

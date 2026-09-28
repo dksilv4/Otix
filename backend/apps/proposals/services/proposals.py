@@ -92,11 +92,7 @@ def filter_proposals(
 
 
 def get_proposal(proposal_id: int) -> Proposal | None:
-    return (
-        Proposal.objects.select_related("proposer", "reviewer")
-        .filter(pk=proposal_id)
-        .first()
-    )
+    return Proposal.objects.select_related("proposer", "reviewer").filter(pk=proposal_id).first()
 
 
 # ── Create / review / undo ───────────────────────────────────────────
@@ -158,9 +154,7 @@ def approve_proposal(proposal: Proposal, reviewer) -> Proposal:
     return proposal
 
 
-def reject_proposal(
-    proposal: Proposal, reviewer, reason: str | None = None
-) -> Proposal:
+def reject_proposal(proposal: Proposal, reviewer, reason: str | None = None) -> Proposal:
     """Reject a pending proposal and run its type-specific side effects."""
     if proposal.status != "pending":
         raise ProposalError("Proposal is not pending")
@@ -315,9 +309,7 @@ def _validate_payload(proposal_type: str, payload: dict) -> None:
     if proposal_type == "match":
         for field in MATCH_REQUIRED_FIELDS:
             if field not in payload:
-                raise ProposalError(
-                    f"Match proposal payload missing required field: {field!r}"
-                )
+                raise ProposalError(f"Match proposal payload missing required field: {field!r}")
         return
     changes = payload.get("changes")
     if not isinstance(changes, dict):
@@ -337,8 +329,7 @@ def _validate_payload(proposal_type: str, payload: dict) -> None:
                 raise ProposalError("Each image override must be a dict")
             if required_keys - override.keys():
                 raise ProposalError(
-                    "Image override missing field: "
-                    "image_type, language_code or url"
+                    "Image override missing field: image_type, language_code or url"
                 )
             if override.get("image_type") not in ("poster", "backdrop", "logo", "textless_poster"):
                 raise ProposalError(f"Invalid image_type: {override.get('image_type')!r}")

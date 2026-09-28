@@ -55,9 +55,7 @@ class RedisProgress:
     def publish(self, task_id: str, event_type: str, **data: Any) -> None:
         """Publish a progress event to the task's Redis pub/sub channel."""
         channel = self.channel_name(task_id)
-        payload = json.dumps(
-            {"type": event_type, **data}, default=str, separators=(",", ":")
-        )
+        payload = json.dumps({"type": event_type, **data}, default=str, separators=(",", ":"))
         try:
             get_client().publish(channel, payload)
         except Exception:  # noqa: BLE001 - a progress write must never break the sync
@@ -68,9 +66,7 @@ class RedisProgress:
     def store_progress(self, task_id: str, event_type: str, **data: Any) -> None:
         """Store the latest intermediate progress for late-joining replay."""
         key = self._progress_tpl.format(task_id)
-        payload = json.dumps(
-            {"type": event_type, **data}, default=str, separators=(",", ":")
-        )
+        payload = json.dumps({"type": event_type, **data}, default=str, separators=(",", ":"))
         try:
             get_client().set(key, payload, ex=self._ttl)
         except Exception:  # noqa: BLE001

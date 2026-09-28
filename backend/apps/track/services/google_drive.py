@@ -113,9 +113,7 @@ class GoogleDriveService:
         for item in _json(body).get("files", []):
             if item.get("mimeType") == _FOLDER_MIME:
                 sub_path = f"{parent_path}{item['name']}/" if parent_path else f"{item['name']}/"
-                all_files.extend(
-                    self.list_files_recursive(access_token, item["id"], sub_path)
-                )
+                all_files.extend(self.list_files_recursive(access_token, item["id"], sub_path))
             else:
                 item["name"] = f"{parent_path}{item['name']}" if parent_path else item["name"]
                 all_files.append(item)
@@ -145,12 +143,16 @@ class GoogleDriveService:
         boundary = "otix_saves_boundary"
         metadata = {"name": filename, "parents": [folder_id]}
         multipart = (
-            f"--{boundary}\r\n"
-            "Content-Type: application/json; charset=UTF-8\r\n\r\n"
-            f"{json.dumps(metadata)}\r\n"
-            f"--{boundary}\r\n"
-            "Content-Type: application/octet-stream\r\n\r\n"
-        ).encode() + content + f"\r\n--{boundary}--\r\n".encode()
+            (
+                f"--{boundary}\r\n"
+                "Content-Type: application/json; charset=UTF-8\r\n\r\n"
+                f"{json.dumps(metadata)}\r\n"
+                f"--{boundary}\r\n"
+                "Content-Type: application/octet-stream\r\n\r\n"
+            ).encode()
+            + content
+            + f"\r\n--{boundary}--\r\n".encode()
+        )
         _, body = _request(
             "POST",
             url,

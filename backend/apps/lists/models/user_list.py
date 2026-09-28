@@ -24,9 +24,7 @@ class UserList(TimestampedModel):
     class Meta(TimestampedModel.Meta):
         db_table = "user_list"
         constraints = [
-            models.UniqueConstraint(
-                fields=["user", "name"], name="uq_user_list_user_name"
-            )
+            models.UniqueConstraint(fields=["user", "name"], name="uq_user_list_user_name")
         ]
 
     def __str__(self) -> str:
@@ -96,9 +94,7 @@ class MediaListLike(BaseModel):
 
     class Meta(BaseModel.Meta):
         db_table = "media_list_likes"
-        constraints = [
-            models.UniqueConstraint(fields=["list", "user"], name="uq_list_like")
-        ]
+        constraints = [models.UniqueConstraint(fields=["list", "user"], name="uq_list_like")]
 
     def __str__(self) -> str:
         return f"{self.list_id}:{self.user_id}"

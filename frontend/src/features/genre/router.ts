@@ -32,26 +32,39 @@ export function createGenreRoutes(rootRoute: AnyRoute) {
     component: GenrePage,
     validateSearch: (search: Record<string, unknown>): GenreSearchParams => {
       const result: GenreSearchParams = {}
-      if (search?.type) result.type = search.type as GenreSearchParams['type']
+      if (search?.type === 'movie' || search?.type === 'show' || search?.type === 'game') {
+        result.type = search.type
+      }
       if (search?.sort) result.sort = search.sort as string
       if (search?.dir) result.dir = search.dir as 'asc' | 'desc'
       if (search?.certification) result.certification = search.certification as string
-      if (search?.language) result.language = search.language as string
-      if (typeof search?.isAnime === 'boolean') result.isAnime = search.isAnime
+      if (typeof search?.genres === 'string' && search.genres.trim()) {
+        result.genres = search.genres.trim().toLowerCase()
+      }
+      if (typeof search?.language === 'string' && search.language.trim()) {
+        result.language = search.language.trim().toLowerCase()
+      }
+      if (search?.isAnime === true || search?.isAnime === 'true') result.isAnime = true
+      if (search?.isAnime === false || search?.isAnime === 'false') result.isAnime = false
       return result
     },
     loader: ({ context, params, location }) => {
       void import('./pages/genre-page')
       const search = location.search as GenreSearchParams
-      const mediaType = search?.type || 'movie'
+      const mediaType = search?.type
       const genreId = params.genreId || 'action'
+      const genreFilter = search?.genres || genreId
+      const language =
+        search?.language && search.language !== 'all' ? search.language : undefined
       void context.queryClient.prefetchInfiniteQuery(
         mediaQueries.infiniteList({
           type: mediaType,
-          genre: genreId,
+          genre: genreFilter,
           sortBy: search?.sort || 'popularity',
           sortDir: search?.dir || 'desc',
           certification: search?.certification,
+          language,
+          isAnime: mediaType === 'game' ? undefined : search?.isAnime,
           limit: 48,
         }),
       )

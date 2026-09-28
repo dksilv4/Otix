@@ -70,9 +70,7 @@ class SteamgridSyncEngineTests(TestCase):
         )
 
     def steam_linked_game(self):
-        media = MediaItem.objects.create(
-            media_type="game", title="Hades", slug="hades"
-        )
+        media = MediaItem.objects.create(media_type="game", title="Hades", slug="hades")
         ExternalID.objects.create(
             content_type=_media_ct(),
             object_id=media.pk,
@@ -119,9 +117,7 @@ class SteamgridSyncEngineTests(TestCase):
             types,
             ["sync_started", "attaching_artwork", "artwork_attached", "sync_complete"],
         )
-        stored = progress_lib.RedisProgress("steamgrid:sync").get_stored_result(
-            job.pk
-        )
+        stored = progress_lib.RedisProgress("steamgrid:sync").get_stored_result(job.pk)
         self.assertEqual(stored["media_item_id"], media.pk)
         self.assertEqual(stored["task_id"], str(job.pk))
 
@@ -182,9 +178,7 @@ class SteamgridSyncEngineTests(TestCase):
         self.assertEqual(outcome["status"], "failed")
         self.assertIn("No catalog game linked to Steam App ID 999999", outcome["error"])
         self.assertEqual(job.status, "failed")
-        last_frame = json.loads(
-            self.fake.published_on(f"steamgrid:sync:{job.pk}:events")[-1]
-        )
+        last_frame = json.loads(self.fake.published_on(f"steamgrid:sync:{job.pk}:events")[-1])
         self.assertEqual(last_frame["type"], "error")
 
     def test_unsupported_entity_type_aborts_to_error(self):
@@ -200,9 +194,7 @@ class SteamgridSyncEngineTests(TestCase):
         self.assertEqual(outcome["status"], "failed")
         self.assertIn("entity_type 'movie'", outcome["error"])
         self.assertEqual(job.status, "failed")
-        last_frame = json.loads(
-            self.fake.published_on(f"steamgrid:sync:{job.pk}:events")[-1]
-        )
+        last_frame = json.loads(self.fake.published_on(f"steamgrid:sync:{job.pk}:events")[-1])
         self.assertEqual(last_frame["type"], "error")
 
     def test_blank_id_aborts_to_error(self):

@@ -220,9 +220,7 @@ class GoogleLinkFlowTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.data["detail"], "Unable to connect to Google. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Unable to connect to Google. Please try again.")
 
 
 class GoogleDriveLinkFlowTests(TestCase):
@@ -298,9 +296,7 @@ class GoogleDriveLinkFlowTests(TestCase):
         self.user.save(update_fields=("drive_access_token", "drive_refresh_token"))
         response = self._authed().delete("/api/v1/auth/oauth/google-drive/disconnect")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.data["message"], "Google Drive account unlinked successfully"
-        )
+        self.assertEqual(response.data["message"], "Google Drive account unlinked successfully")
         self.user.refresh_from_db()
         self.assertIsNone(self.user.drive_refresh_token)
 

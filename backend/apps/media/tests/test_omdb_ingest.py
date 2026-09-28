@@ -42,9 +42,7 @@ def _run(coro):
 
 
 def _media():
-    return MediaItem.objects.create(
-        media_type="movie", title="Fight Club", slug="fight-club"
-    )
+    return MediaItem.objects.create(media_type="movie", title="Fight Club", slug="fight-club")
 
 
 def _omdb_raw(**overrides):
@@ -156,12 +154,8 @@ class OmdbRatingSpecsTests(TestCase):
             {"Source": "Internet Movie Database", "Value": "N/A"},
             {"Source": "Rotten Tomatoes", "Value": "79%"},
         ]
-        specs = _rating_specs(
-            _omdb_raw(Ratings=ratings, imdbRating="N/A", imdbVotes="N/A")
-        )
-        self.assertEqual(
-            [spec["provider"] for spec in specs], ["rotten_tomatoes"]
-        )
+        specs = _rating_specs(_omdb_raw(Ratings=ratings, imdbRating="N/A", imdbVotes="N/A"))
+        self.assertEqual([spec["provider"] for spec in specs], ["rotten_tomatoes"])
 
     def test_unknown_sources_ignored_empty_payloads_produce_nothing(self):
         ratings = [{"Source": "Some Website", "Value": "9/10"}]
@@ -258,16 +252,17 @@ class OmdbEnrichRatingsTests(TestCase):
 
     def _provider(self, raw=None, *, side_effect=None):
         provider = mock.Mock()
-        provider.get_by_imdb_id = mock.AsyncMock(
-            return_value=raw, side_effect=side_effect
-        )
+        provider.get_by_imdb_id = mock.AsyncMock(return_value=raw, side_effect=side_effect)
         return provider
 
     def test_unconfigured_key_skips_everything(self):
         provider = self._provider()
-        with override_settings(OMDB_API_KEY=""), mock.patch(
-            "apps.media.services.omdb_ingest._stored_imdb_id",
-            return_value=IMDB_TT,
+        with (
+            override_settings(OMDB_API_KEY=""),
+            mock.patch(
+                "apps.media.services.omdb_ingest._stored_imdb_id",
+                return_value=IMDB_TT,
+            ),
         ):
             result = _run(omdb_enrich_ratings(self.media.pk, provider=provider))
 
@@ -277,11 +272,13 @@ class OmdbEnrichRatingsTests(TestCase):
 
     def test_fetches_ratings_and_upserts(self):
         provider = self._provider(_omdb_raw())
-        with override_settings(OMDB_API_KEY="test-key"), mock.patch(
-            "apps.media.services.omdb_ingest._stored_imdb_id", return_value=IMDB_TT
-        ), mock.patch(
-            "apps.media.services.omdb_ingest.upsert_omdb_ratings", return_value=3
-        ) as upsert:
+        with (
+            override_settings(OMDB_API_KEY="test-key"),
+            mock.patch("apps.media.services.omdb_ingest._stored_imdb_id", return_value=IMDB_TT),
+            mock.patch(
+                "apps.media.services.omdb_ingest.upsert_omdb_ratings", return_value=3
+            ) as upsert,
+        ):
             result = _run(omdb_enrich_ratings(self.media.pk, provider=provider))
 
         provider.get_by_imdb_id.assert_awaited_once_with(IMDB_TT)
@@ -293,8 +290,9 @@ class OmdbEnrichRatingsTests(TestCase):
 
     def test_missing_imdb_id_is_benign_noop(self):
         provider = self._provider()
-        with override_settings(OMDB_API_KEY="test-key"), mock.patch(
-            "apps.media.services.omdb_ingest._stored_imdb_id", return_value=None
+        with (
+            override_settings(OMDB_API_KEY="test-key"),
+            mock.patch("apps.media.services.omdb_ingest._stored_imdb_id", return_value=None),
         ):
             result = _run(omdb_enrich_ratings(self.media.pk, provider=provider))
 
@@ -304,11 +302,11 @@ class OmdbEnrichRatingsTests(TestCase):
 
     def test_provider_miss_is_benign_noop(self):
         provider = self._provider(None)
-        with override_settings(OMDB_API_KEY="test-key"), mock.patch(
-            "apps.media.services.omdb_ingest._stored_imdb_id", return_value=IMDB_TT
-        ), mock.patch(
-            "apps.media.services.omdb_ingest.upsert_omdb_ratings"
-        ) as upsert:
+        with (
+            override_settings(OMDB_API_KEY="test-key"),
+            mock.patch("apps.media.services.omdb_ingest._stored_imdb_id", return_value=IMDB_TT),
+            mock.patch("apps.media.services.omdb_ingest.upsert_omdb_ratings") as upsert,
+        ):
             result = _run(omdb_enrich_ratings(self.media.pk, provider=provider))
 
         provider.get_by_imdb_id.assert_awaited_once_with(IMDB_TT)
@@ -355,9 +353,7 @@ class OMDbProviderTests(TestCase):
 
     def test_response_false_is_normalized_to_none(self):
         def handler(request):
-            return httpx.Response(
-                200, json={"Response": "False", "Error": "Movie not found!"}
-            )
+            return httpx.Response(200, json={"Response": "False", "Error": "Movie not found!"})
 
         with override_settings(OMDB_API_KEY="test-key"):
             result = _run(self._client(handler).get_by_imdb_id(IMDB_TT))

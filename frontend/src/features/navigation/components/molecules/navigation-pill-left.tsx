@@ -27,7 +27,7 @@ export function NavPillLeft() {
             {
                 !navLogo &&
                 <Link to="/" className="flex items-center pr-2">
-                    <DkLogo/>
+                    <DkLogo animateInfinity={false} />
                 </Link>
             }
 

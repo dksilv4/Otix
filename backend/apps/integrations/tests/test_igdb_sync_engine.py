@@ -92,9 +92,7 @@ class IgdbSyncEngineTests(TestCase):
         self.assertEqual(stored["task_id"], str(job.pk))
 
     def test_existing_igdb_mapping_reports_matched(self):
-        media = MediaItem.objects.create(
-            media_type="game", title="Hades", slug="hades"
-        )
+        media = MediaItem.objects.create(media_type="game", title="Hades", slug="hades")
         ExternalID.objects.create(
             content_type=ContentType.objects.get_for_model(MediaItem),
             object_id=media.pk,
@@ -132,9 +130,7 @@ class IgdbSyncEngineTests(TestCase):
         self.assertEqual(outcome["status"], "failed")
         self.assertIn("entity_type 'movie'", outcome["error"])
         self.assertEqual(job.status, "failed")
-        last_frame = json.loads(
-            self.fake.published_on(f"igdb:sync:{job.pk}:events")[-1]
-        )
+        last_frame = json.loads(self.fake.published_on(f"igdb:sync:{job.pk}:events")[-1])
         self.assertEqual(last_frame["type"], "error")
 
     def test_blank_id_aborts_to_error(self):
@@ -167,8 +163,6 @@ class IgdbSyncEngineTests(TestCase):
         self.assertEqual(outcome["status"], "failed")
         self.assertEqual(job.status, "failed")
         self.assertEqual(job.error_message, "igdb unreachable")
-        last_frame = json.loads(
-            self.fake.published_on(f"igdb:sync:{job.pk}:events")[-1]
-        )
+        last_frame = json.loads(self.fake.published_on(f"igdb:sync:{job.pk}:events")[-1])
         self.assertEqual(last_frame["type"], "error")
         self.assertEqual(last_frame["message"], "Sync failed unexpectedly")

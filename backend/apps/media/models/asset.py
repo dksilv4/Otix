@@ -9,9 +9,7 @@ from core.models import BaseModel
 class MediaAsset(BaseModel):
     """A poster/backdrop/logo image variant for a media item."""
 
-    media_item = models.ForeignKey(
-        MediaItem, on_delete=models.CASCADE, related_name="assets"
-    )
+    media_item = models.ForeignKey(MediaItem, on_delete=models.CASCADE, related_name="assets")
     asset_type = models.CharField(max_length=20)
     url = models.CharField(max_length=2000)
     width = models.IntegerField(null=True, blank=True)
@@ -27,9 +25,7 @@ class MediaAsset(BaseModel):
     # unguessable filename under ``MEDIA_DIR/assets``; when set, catalog
     # ``_pick_asset`` returns the local ``/api/v1/assets/<name>`` URL instead of
     # the provider's remote ``url``. Null until downloaded.
-    local_name = models.CharField(
-        max_length=64, null=True, blank=True, db_index=True
-    )
+    local_name = models.CharField(max_length=64, null=True, blank=True, db_index=True)
     local_size = models.BigIntegerField(null=True, blank=True)
     downloaded_at = models.DateTimeField(null=True, blank=True)
 
@@ -68,9 +64,7 @@ class MediaAsset(BaseModel):
 class MediaVideo(BaseModel):
     """A trailer/teaser video for a media item."""
 
-    media_item = models.ForeignKey(
-        MediaItem, on_delete=models.CASCADE, related_name="videos"
-    )
+    media_item = models.ForeignKey(MediaItem, on_delete=models.CASCADE, related_name="videos")
     video_type = models.CharField(max_length=50, null=True, blank=True)
     url = models.CharField(max_length=2000)
     provider = models.CharField(max_length=20, null=True, blank=True)
@@ -90,9 +84,7 @@ class MediaRelease(BaseModel):
     1 Premiere, 2 Theatrical (limited), 3 Theatrical, 4 Digital, 5 Physical, 6 TV.
     """
 
-    media_item = models.ForeignKey(
-        MediaItem, on_delete=models.CASCADE, related_name="releases"
-    )
+    media_item = models.ForeignKey(MediaItem, on_delete=models.CASCADE, related_name="releases")
     country_code = models.CharField(max_length=2)
     release_date = models.DateField(null=True, blank=True)
     certification = models.CharField(max_length=20, null=True, blank=True)
@@ -134,8 +126,7 @@ class ExternalRating(BaseModel):
         db_table = "external_ratings"
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(media_item__isnull=False)
-                | models.Q(episode__isnull=False),
+                condition=models.Q(media_item__isnull=False) | models.Q(episode__isnull=False),
                 name="ck_external_rating_target",
             )
         ]

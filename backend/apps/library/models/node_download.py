@@ -47,7 +47,9 @@ class NodeDownload(TimestampedModel):
         db_table = "game_server_downloads"
         ordering = ["-created_at"]
         constraints = [
-            models.UniqueConstraint(fields=("server", "nzo_id"), name="uq_game_server_download_nzo"),
+            models.UniqueConstraint(
+                fields=("server", "nzo_id"), name="uq_game_server_download_nzo"
+            ),
         ]
 
     def __str__(self) -> str:

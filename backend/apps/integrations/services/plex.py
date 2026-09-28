@@ -101,9 +101,7 @@ def _get_alternative_plex_urls(server: UserPlexServer, user) -> list[str]:
 
     machine_id = server.machine_identifier
     for resource in _as_list(data):
-        client_id = str(
-            resource.get("clientIdentifier") or resource.get("machineIdentifier") or ""
-        )
+        client_id = str(resource.get("clientIdentifier") or resource.get("machineIdentifier") or "")
         if client_id != machine_id:
             continue
         urls: list[str] = []
@@ -163,8 +161,7 @@ def get_plex_connect_info(user, media_item_id: int) -> dict:
     album_thumb_url = None
     if base_urls and token and plex_item.rating_key:
         album_thumb_url = (
-            f"{base_urls[0]}/library/metadata/{plex_item.rating_key}/thumb"
-            f"?X-Plex-Token={token}"
+            f"{base_urls[0]}/library/metadata/{plex_item.rating_key}/thumb?X-Plex-Token={token}"
         )
     return {
         "base_url": base_urls[0] if base_urls else None,
@@ -197,9 +194,7 @@ def list_plex_libraries(user) -> list[dict]:
         UserPlexLibrary.objects.filter(user=user)
         .select_related("server")
         .annotate(
-            item_count=Coalesce(
-                Subquery(item_count_subq, output_field=IntegerField()), Value(0)
-            ),
+            item_count=Coalesce(Subquery(item_count_subq, output_field=IntegerField()), Value(0)),
             last_synced_at=Subquery(last_synced_subq, output_field=DateTimeField()),
         )
         .order_by("server__name", "title")
@@ -214,9 +209,7 @@ def list_plex_libraries(user) -> list[dict]:
             "library_type": lib.library_type,
             "selected": lib.selected,
             "item_count": lib.item_count,
-            "last_synced_at": lib.last_synced_at.isoformat()
-            if lib.last_synced_at
-            else None,
+            "last_synced_at": lib.last_synced_at.isoformat() if lib.last_synced_at else None,
         }
         for lib in libraries
     ]
@@ -512,13 +505,9 @@ def discover_plex_servers(user) -> list[UserPlexServer]:
         )
         if not machine_id:
             continue
-        server = UserPlexServer.objects.filter(
-            user=user, machine_identifier=machine_id
-        ).first()
+        server = UserPlexServer.objects.filter(user=user, machine_identifier=machine_id).first()
         if server is None:
-            server = UserPlexServer(
-                user=user, machine_identifier=machine_id, name="Plex Server"
-            )
+            server = UserPlexServer(user=user, machine_identifier=machine_id, name="Plex Server")
         server.name = str(resource.get("name") or server.name)
         server.product = resource.get("product")
         server.platform = resource.get("platform")
@@ -558,9 +547,7 @@ def discover_plex_libraries(user, server: UserPlexServer) -> list[UserPlexLibrar
         key = str(item.get("key") or "")
         if not key:
             continue
-        library = UserPlexLibrary.objects.filter(
-            user=user, server=server, section_key=key
-        ).first()
+        library = UserPlexLibrary.objects.filter(user=user, server=server, section_key=key).first()
         if library is None:
             library = UserPlexLibrary(
                 user=user,
@@ -577,6 +564,7 @@ def discover_plex_libraries(user, server: UserPlexServer) -> list[UserPlexLibrar
 
 
 # ── Stream URL (GET /integrations/plex/stream/{rating_key}) ──────────────
+
 
 def _signed_stream_url(base_url: str, token: str, data: dict) -> str | None:
     """Build the signed Plex media-file URL from a metadata payload's first part."""

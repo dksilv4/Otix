@@ -48,12 +48,16 @@ def _media_ct() -> ContentType:
 
 def _catalog_media_for_steam_app(app_id: int) -> int | None:
     """Map a Steam App ID to its linked catalog ``MediaItem`` id (``None`` if none)."""
-    return ExternalID.objects.filter(
-        content_type=_media_ct(),
-        provider="steam",
-        media_type="game",
-        external_id=str(app_id),
-    ).values_list("object_id", flat=True).first()
+    return (
+        ExternalID.objects.filter(
+            content_type=_media_ct(),
+            provider="steam",
+            media_type="game",
+            external_id=str(app_id),
+        )
+        .values_list("object_id", flat=True)
+        .first()
+    )
 
 
 def _steamgrid_mapped(media_item_id: int) -> bool:
@@ -84,9 +88,7 @@ def sync_steamgrid_artwork(job: SyncJob) -> dict[str, Any]:
         progress.store_progress(task_id, event_type, **data)
 
     if job.entity_type != "game":
-        return {
-            "error": f"SteamGrid sync does not yet support entity_type '{job.entity_type}'"
-        }
+        return {"error": f"SteamGrid sync does not yet support entity_type '{job.entity_type}'"}
     app_id_raw = (job.external_id or "").strip()
     if not app_id_raw:
         return {"error": "Invalid Steam App ID in sync job: blank"}

@@ -288,6 +288,36 @@ export interface MediaListResponse {
   backfillPending?: boolean
 }
 
+/** DRF page envelope returned by ``GET /media/``. */
+interface DrfMediaPage {
+  count?: number
+  next?: string | null
+  previous?: string | null
+  results?: MediaItemSummary[]
+}
+
+function normalizeMediaListPage(data: MediaListResponse | DrfMediaPage): MediaListResponse {
+  if (data && Array.isArray((data as MediaListResponse).items)) {
+    const page = data as MediaListResponse
+    return {
+      ...page,
+      tracks: page.tracks ?? [],
+      nextCursor: page.nextCursor ?? null,
+      hasMore: Boolean(page.hasMore),
+      total: page.total ?? null,
+    }
+  }
+  const page = data as DrfMediaPage
+  const items = Array.isArray(page.results) ? page.results : []
+  return {
+    items,
+    tracks: [],
+    nextCursor: null,
+    hasMore: Boolean(page.next),
+    total: typeof page.count === 'number' ? page.count : null,
+  }
+}
+
 export type DecideRuntime = 'short' | 'medium' | 'long'
 
 export interface DecideWatchParams {
@@ -376,7 +406,11 @@ export const mediaQueries = {
     queryOptions({
       queryKey: mediaKeys.list(opts?.type, opts),
       queryFn: async () => {
-        const params: Record<string, string | number | boolean> = { limit: opts?.limit ?? 50 }
+        // Catalog browse is DRF-paginated ({count, next, results}); use page_size.
+        const params: Record<string, string | number | boolean> = {
+          page_size: opts?.limit ?? 50,
+          page: opts?.page ?? 1,
+        }
         if (opts?.type) params.media_type = opts.type
         if (opts?.genre) params.genre = opts.genre
         if (opts?.company) params.company = opts.company
@@ -387,14 +421,13 @@ export const mediaQueries = {
         if (opts?.sortBy) {
           params.sort_by = opts.sortBy
           if (opts?.sortDir) params.sort_dir = opts.sortDir
-          if (opts?.page) params.page = opts.page
         }
         if (opts?.personId) {
           params.person_id = opts.personId
           if (opts?.creditRole) params.credit_role = opts.creditRole
         }
-        const { data } = await apiClient.get<MediaListResponse>('/media', { params })
-        return data
+        const { data } = await apiClient.get<MediaListResponse | DrfMediaPage>('/media/', { params })
+        return normalizeMediaListPage(data)
       },
       staleTime: 1000 * 60 * 5,
     }),
@@ -414,7 +447,11 @@ export const mediaQueries = {
     infiniteQueryOptions({
       queryKey: mediaKeys.infiniteList(opts?.type, opts),
       queryFn: async ({ pageParam }) => {
-        const params: Record<string, string | number | boolean> = { limit: opts?.limit ?? 48 }
+        // Catalog browse is DRF-paginated ({count, next, results}); use page_size.
+        const params: Record<string, string | number | boolean> = {
+          page_size: opts?.limit ?? 48,
+          page: pageParam,
+        }
         if (opts?.type) params.media_type = opts.type
         if (opts?.genre) params.genre = opts.genre
         if (opts?.company) params.company = opts.company
@@ -426,11 +463,27 @@ export const mediaQueries = {
           params.sort_by = opts.sortBy
           if (opts?.sortDir) params.sort_dir = opts.sortDir
         }
-        params.page = pageParam
-        const { data } = await apiClient.get<MediaListResponse>('/media', { params })
-        return data
+        const { data } = await apiClient.get<MediaListResponse | DrfMediaPage>('/media/', { params })
+        return normalizeMediaListPage(data)
       },
-      getNextPageParam: (lastPage, allPages) => lastPage.hasMore ? allPages.length + 1 : undefined,
+      getNextPageParam: (lastPage, allPages) => {
+        if (!lastPage.items.length) return undefined
+        // Trust DRF's next link first.
+        if (lastPage.hasMore) return allPages.length + 1
+        const loaded = allPages.reduce((sum, page) => sum + page.items.length, 0)
+        if (typeof lastPage.total === 'number' && loaded >= lastPage.total) return undefined
+        // Fallback when DRF omits `next` but this page looks full and count remains.
+        const firstPageSize = allPages[0]?.items.length ?? 0
+        if (
+          typeof lastPage.total === 'number' &&
+          loaded < lastPage.total &&
+          firstPageSize > 0 &&
+          lastPage.items.length >= firstPageSize
+        ) {
+          return allPages.length + 1
+        }
+        return undefined
+      },
       initialPageParam: 1,
       staleTime: 1000 * 60 * 5,
     }),

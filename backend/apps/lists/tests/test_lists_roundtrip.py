@@ -17,9 +17,7 @@ from apps.media.models import MediaItem, Movie
 
 class ListsRoundTripTests(TestCase):
     def setUp(self) -> None:
-        self.user = get_user_model().objects.create_user(
-            username="lists_tester", password="secret"
-        )
+        self.user = get_user_model().objects.create_user(username="lists_tester", password="secret")
 
     def test_collection_and_movie_fk_round_trip(self) -> None:
         collection = Collection.objects.create(

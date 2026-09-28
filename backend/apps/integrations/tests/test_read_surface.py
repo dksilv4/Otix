@@ -170,7 +170,9 @@ class PlexConnectInfoTests(_ApiTestBase):
         self.server.access_token = None
         self.server.save(update_fields=("access_token",))
         with mock.patch.object(
-            integrations_services.plex, "_get_alternative_plex_urls", return_value=["https://relay.plex"]
+            integrations_services.plex,
+            "_get_alternative_plex_urls",
+            return_value=["https://relay.plex"],
         ):
             resp = self.client.get(self.url)
         body = resp.json()
@@ -201,9 +203,7 @@ class PlexAltUrlParsingTests(TestCase):
             "_request",
             return_value=(200, __import__("json").dumps(payload)),
         ):
-            urls = integrations_services.plex._get_alternative_plex_urls(
-                self.server, self.user
-            )
+            urls = integrations_services.plex._get_alternative_plex_urls(self.server, self.user)
         self.assertEqual(urls, ["https://a.plex"])
 
     def test_no_matching_resource_returns_empty(self):
@@ -213,15 +213,11 @@ class PlexAltUrlParsingTests(TestCase):
             "_request",
             return_value=(200, __import__("json").dumps(payload)),
         ):
-            urls = integrations_services.plex._get_alternative_plex_urls(
-                self.server, self.user
-            )
+            urls = integrations_services.plex._get_alternative_plex_urls(self.server, self.user)
         self.assertEqual(urls, [])
 
     def test_non_200_or_network_error_returns_empty(self):
-        with mock.patch.object(
-            integrations_services.plex, "_request", return_value=(500, "boom")
-        ):
+        with mock.patch.object(integrations_services.plex, "_request", return_value=(500, "boom")):
             self.assertEqual(
                 integrations_services.plex._get_alternative_plex_urls(self.server, self.user), []
             )
@@ -408,15 +404,41 @@ class PlexSessionsTests(_ApiTestBase):
         sessions = resp.json()["sessions"]
         self.assertEqual(len(sessions), 2)  # photo filtered out
         movie = sessions[0]
-        self.assertEqual(set(movie), {
-            "session_id", "media_type", "title", "grandparent_title", "parent_title",
-            "index", "thumb", "duration", "view_offset", "state", "user_name",
-            "user_thumb", "player_title", "player_device", "player_platform",
-            "server_name", "server_id", "library_section", "year", "content_rating",
-            "summary", "video_resolution", "video_codec", "audio_codec",
-            "audio_channels", "bitrate", "video_decision", "audio_decision",
-            "transcode_reason", "throttled",
-        })
+        self.assertEqual(
+            set(movie),
+            {
+                "session_id",
+                "media_type",
+                "title",
+                "grandparent_title",
+                "parent_title",
+                "index",
+                "thumb",
+                "duration",
+                "view_offset",
+                "state",
+                "user_name",
+                "user_thumb",
+                "player_title",
+                "player_device",
+                "player_platform",
+                "server_name",
+                "server_id",
+                "library_section",
+                "year",
+                "content_rating",
+                "summary",
+                "video_resolution",
+                "video_codec",
+                "audio_codec",
+                "audio_channels",
+                "bitrate",
+                "video_decision",
+                "audio_decision",
+                "transcode_reason",
+                "throttled",
+            },
+        )
         self.assertEqual(movie["session_id"], "abcd1234")
         self.assertEqual(movie["media_type"], "movie")
         self.assertEqual(movie["title"], "Inception")
@@ -466,9 +488,7 @@ class PlexSessionsTests(_ApiTestBase):
         self.assertEqual(resp.json(), {"sessions": []})
 
     def test_erroring_and_tokenless_servers_are_skipped(self):
-        _make_server(
-            self.user, name="Bad", base_url="http://bad.example:32400", machine="srv-bad"
-        )
+        _make_server(self.user, name="Bad", base_url="http://bad.example:32400", machine="srv-bad")
         UserPlexServer.objects.create(
             user=self.user, machine_identifier="srv-nourl", name="NoUrl", selected=True
         )
@@ -477,14 +497,10 @@ class PlexSessionsTests(_ApiTestBase):
             if "bad.example" in url:
                 return 500, "{}"
             if self.server.base_url in url:
-                return 200, json.dumps(
-                    {"MediaContainer": {"Metadata": [SESSION_TRACK_ITEM]}}
-                )
+                return 200, json.dumps({"MediaContainer": {"Metadata": [SESSION_TRACK_ITEM]}})
             raise AssertionError(f"unexpected url: {url}")
 
-        with mock.patch.object(
-            integrations_services.plex, "_request", side_effect=_fake
-        ):
+        with mock.patch.object(integrations_services.plex, "_request", side_effect=_fake):
             resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 200)
         sessions = resp.json()["sessions"]
@@ -496,9 +512,7 @@ class PlexSessionsTests(_ApiTestBase):
         def _fake(url, *args, **kwargs):
             raise OSError("server unreachable")
 
-        with mock.patch.object(
-            integrations_services.plex, "_request", side_effect=_fake
-        ):
+        with mock.patch.object(integrations_services.plex, "_request", side_effect=_fake):
             resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {"sessions": []})
@@ -548,9 +562,7 @@ class PlexWebhookTests(TestCase):
                 HTTP_X_PLEX_SIGNATURE=self._sign(body),
             )
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(
-            resp.json(), {"status": "accepted", "event": "media.play"}
-        )
+        self.assertEqual(resp.json(), {"status": "accepted", "event": "media.play"})
 
     def test_json_without_event_returns_none(self):
         body = b'{"Metadata": {}}'
@@ -826,14 +838,18 @@ class PlexServersDiscoveryTests(_ApiTestBase):
             resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 504)
         detail = resp.json()["detail"]
-        self.assertTrue(detail.startswith("Connection to Plex timed out (https://plex.tv/api/v2/resources"))
+        self.assertTrue(
+            detail.startswith("Connection to Plex timed out (https://plex.tv/api/v2/resources")
+        )
 
     def test_connection_refused_502(self):
         with self._get(raise_resources=urllib.error.URLError(ConnectionRefusedError("refused"))):
             resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 502)
         detail = resp.json()["detail"]
-        self.assertTrue(detail.startswith("Could not connect to Plex at https://plex.tv/api/v2/resources"))
+        self.assertTrue(
+            detail.startswith("Could not connect to Plex at https://plex.tv/api/v2/resources")
+        )
 
 
 STREAM_METADATA = {
@@ -878,9 +894,7 @@ class PlexStreamTests(_ApiTestBase):
         return fake
 
     def test_fast_path_redirects_with_base_url_query(self):
-        with mock.patch(
-            "apps.integrations.services.plex._request", side_effect=self._fake()
-        ):
+        with mock.patch("apps.integrations.services.plex._request", side_effect=self._fake()):
             resp = self.client.get(self.URL + "?base_url=http://192.168.1.5:32400")
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(
@@ -909,9 +923,7 @@ class PlexStreamTests(_ApiTestBase):
             self.user, name="NAS", base_url="http://server:32400", token="srv-tok"
         )
         self._synced_item(server)
-        with mock.patch(
-            "apps.integrations.services.plex._request", side_effect=self._fake()
-        ):
+        with mock.patch("apps.integrations.services.plex._request", side_effect=self._fake()):
             resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(
@@ -932,9 +944,7 @@ class PlexStreamTests(_ApiTestBase):
                 return None
             return STREAM_METADATA, server.base_url
 
-        with mock.patch(
-            "apps.integrations.services.plex._plex_server_get", side_effect=fake
-        ):
+        with mock.patch("apps.integrations.services.plex._plex_server_get", side_effect=fake):
             resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(
@@ -949,9 +959,7 @@ class PlexStreamTests(_ApiTestBase):
         self.assertEqual(resp.json(), {"detail": "Stream URL not available"})
 
     def test_with_base_non_200_returns_none(self):
-        with mock.patch(
-            "apps.integrations.services.plex._request", return_value=(500, "boom")
-        ):
+        with mock.patch("apps.integrations.services.plex._request", return_value=(500, "boom")):
             url = integrations_services.resolve_stream_url_for_server_with_base(
                 "http://x:32400", "tok", "9"
             )

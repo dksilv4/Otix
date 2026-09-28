@@ -47,9 +47,7 @@ class PlexLibrariesView(APIView):
     """GET /integrations/plex/libraries"""
 
     def get(self, request):
-        return Response(
-            {"libraries": integrations_services.list_plex_libraries(request.user)}
-        )
+        return Response({"libraries": integrations_services.list_plex_libraries(request.user)})
 
 
 class PlexConnectInfoView(APIView):
@@ -57,9 +55,7 @@ class PlexConnectInfoView(APIView):
 
     def get(self, request, media_item_id: int):
         try:
-            data = integrations_services.get_plex_connect_info(
-                request.user, media_item_id
-            )
+            data = integrations_services.get_plex_connect_info(request.user, media_item_id)
         except integrations_services.PlexConnectInfoNotFound as exc:
             raise NotFound(exc.detail) from None
         return Response(data)
@@ -71,9 +67,7 @@ class PlexSessionsView(APIView):
     def get(self, request):
         if not request.user.plex_auth_token:
             return Response({"detail": "No Plex account linked"}, status=400)
-        return Response(
-            {"sessions": integrations_services.get_plex_sessions(request.user)}
-        )
+        return Response({"sessions": integrations_services.get_plex_sessions(request.user)})
 
 
 class PlexWatchlistSyncView(APIView):
@@ -136,17 +130,13 @@ class PlexServersView(APIView):
         except integrations_services.PlexDiscoveryConnectError as exc:
             return Response({"detail": exc.detail}, status=502)
         except Exception:
-            return Response(
-                {"detail": integrations_services.DISCOVER_UNEXPECTED}, status=500
-            )
+            return Response({"detail": integrations_services.DISCOVER_UNEXPECTED}, status=500)
 
         libraries = []
         unreachable_servers = []
         for server in servers:
             try:
-                libraries.extend(
-                    integrations_services.discover_plex_libraries(user, server)
-                )
+                libraries.extend(integrations_services.discover_plex_libraries(user, server))
             except (
                 integrations_services.PlexDiscoveryHttpError,
                 integrations_services.PlexDiscoveryTimeout,

@@ -266,12 +266,8 @@ class RealAuthFlowTests(TestCase):
         secret = self._setup_2fa()
         result = self._login(self.client)
         bearer = self._bearer(result["access"])
-        bearer.post(
-            "/api/v1/auth/2fa/enable", {"code": pyotp.TOTP(secret).now()}, format="json"
-        )
-        wrong = bearer.post(
-            "/api/v1/auth/2fa/disable", {"password": "nope"}, format="json"
-        )
+        bearer.post("/api/v1/auth/2fa/enable", {"code": pyotp.TOTP(secret).now()}, format="json")
+        wrong = bearer.post("/api/v1/auth/2fa/disable", {"password": "nope"}, format="json")
         self.assertEqual(wrong.status_code, 400)
         good = bearer.post(
             "/api/v1/auth/2fa/disable", {"password": "Correct-Horse-1"}, format="json"
@@ -327,9 +323,7 @@ class RealAuthFlowTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         raw = TOKEN_RE.search(mail.outbox[0].message().as_bytes()).group(1).decode()
 
-        verified = self.client.post(
-            "/api/v1/auth/verify-email", {"token": raw}, format="json"
-        )
+        verified = self.client.post("/api/v1/auth/verify-email", {"token": raw}, format="json")
         self.assertEqual(verified.status_code, 200)
         self.user.refresh_from_db()
         self.assertTrue(self.user.is_verified)

@@ -179,9 +179,7 @@ def classify_image(image: Image.Image, asset_type: str = "logo") -> str | None:
     For logos and transparent icons, uses alpha-aware HSL quantization.
     For backdrops, posters, and opaque icons, uses perceived luminance and saturation.
     """
-    has_alpha = image.mode in ("RGBA", "LA") or (
-        image.mode == "P" and "transparency" in image.info
-    )
+    has_alpha = image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info)
 
     if asset_type in ("logo", "icon") and has_alpha:
         # Check if alpha is actually used

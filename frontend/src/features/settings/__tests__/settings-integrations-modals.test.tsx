@@ -386,20 +386,63 @@ describe('Settings Integrations Modals Regression Tests', () => {
     })
   })
 
-  it('shows Epic Games notice card redirecting to Node Settings', async () => {
+  it('renders Epic Games as a first-class connection card under accounts', async () => {
     renderPage()
 
     await waitFor(() => {
       expect(screen.getByText('Epic Games')).toBeInTheDocument()
     })
 
+    const accountsSection = document.getElementById('accounts')!
+    expect(within(accountsSection).getByText('Epic Games')).toBeInTheDocument()
     expect(
-      screen.getByText('Epic Games requires a connected Otix Node and is configured in Node Settings.'),
+      screen.getByText('Sign in with Epic Games to sync your game library.'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open node settings/i })).toHaveAttribute(
-      'href',
-      '/settings/nodes',
-    )
+
+    const epicCard = screen.getByText('Epic Games').closest('.rounded-2xl') as HTMLElement
+    expect(within(epicCard).getByRole('button', { name: /connect/i })).toBeInTheDocument()
+  })
+
+  it('renders connected Epic Games card with profile and scan action', async () => {
+    vi.mocked(apiClient.get).mockImplementation((url: string) => {
+      if (String(url).includes('/integrations/epic/status')) {
+        return Promise.resolve({
+          data: {
+            connected: true,
+            displayName: 'EpicGamer123',
+            accountId: 'epic-acc-999',
+          },
+        })
+      }
+      return Promise.resolve({
+        data: {
+          providers: [
+            {
+              name: 'epic',
+              connected: true,
+              epicDisplayName: 'EpicGamer123',
+              epicAccountId: 'epic-acc-999',
+            },
+          ],
+        },
+      })
+    })
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Linked as EpicGamer123')).toBeInTheDocument()
+    })
+
+    const epicCard = screen.getByText('Epic Games').closest('.rounded-2xl') as HTMLElement
+    const user = userEvent.setup()
+    await user.click(screen.getByText('Linked as EpicGamer123'))
+
+    await waitFor(() => {
+      expect(within(epicCard).getByText('Account ID: epic-acc-999')).toBeInTheDocument()
+      expect(within(epicCard).getByRole('button', { name: /scan library/i })).toBeInTheDocument()
+      expect(within(epicCard).getByRole('button', { name: /resolve with steamgrid/i })).toBeInTheDocument()
+    })
   })
 })
 

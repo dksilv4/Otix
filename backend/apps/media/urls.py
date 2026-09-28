@@ -229,12 +229,12 @@ urlpatterns = [
         name="media-recommendations",
     ),
     path(
-        "<str:media_type>/<int:media_id>/rating",
+        "<str:media_type>/<str:media_id>/rating",
         RatingView.as_view(),
         name="media-rating",
     ),
     path(
-        "<str:media_type>/<int:media_id>/review",
+        "<str:media_type>/<str:media_id>/review",
         ReviewView.as_view(),
         name="media-review",
     ),

@@ -20,7 +20,4 @@ def get_karma_balance(user_id: int) -> int:
 
 def get_karma_transactions(user_id: int):
     """A user's karma transaction history, newest first."""
-    return (
-        KarmaTransaction.objects.filter(user_id=user_id)
-        .order_by("-created_at", "-id")
-    )
+    return KarmaTransaction.objects.filter(user_id=user_id).order_by("-created_at", "-id")

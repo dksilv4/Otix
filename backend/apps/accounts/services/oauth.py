@@ -1394,6 +1394,8 @@ def oauth_providers_payload(user: User) -> list[dict]:
             "google_email": None,
             "google_name": None,
             "google_avatar_url": None,
+            "epic_account_id": None,
+            "epic_display_name": None,
         }
         fields.update(overrides)
         return fields
@@ -1442,6 +1444,14 @@ def oauth_providers_payload(user: User) -> list[dict]:
                 "connected": user.drive_refresh_token is not None,
             }
         ),
+        row(
+            {
+                "name": "epic",
+                "connected": user.epic_refresh_token is not None,
+                "epic_account_id": user.epic_account_id,
+                "epic_display_name": user.epic_display_name,
+            }
+        ),
     ]
 
 
@@ -1488,4 +1498,3 @@ def delete_epic_link_states(*, user_id: int) -> None:
     for row in OAuthState.objects.filter(payload__flow=EPIC_OAUTH_FLOW):
         if row.payload.get("user_id") == user_id:
             row.delete()
-

@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 import { useAuth } from '@auth/hooks/use-auth'
-import { Logo } from '@ui/atoms/logo'
+import { OtixLoadingScreen } from '@ui/atoms/otix-loading-screen'
 
 interface AuthGateProps {
   children: ReactNode
@@ -22,33 +22,5 @@ export function AuthGate({ children }: AuthGateProps) {
 
   if (!isLoading) return <>{children}</>
 
-  return (
-    <div
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[var(--background)]"
-      aria-label="Loading Otix…"
-      aria-live="polite"
-    >
-      <div className="flex flex-col items-center gap-6">
-        <Logo
-          className="h-16 animate-pulse opacity-90"
-        />
-
-        {/* Three-dot pulse indicator */}
-        <div className="flex items-center gap-1.5" aria-hidden>
-          <span
-            className="h-1.5 w-1.5 rounded-full bg-foreground/30 animate-bounce"
-            style={{ animationDelay: '0ms' }}
-          />
-          <span
-            className="h-1.5 w-1.5 rounded-full bg-foreground/30 animate-bounce"
-            style={{ animationDelay: '150ms' }}
-          />
-          <span
-            className="h-1.5 w-1.5 rounded-full bg-foreground/30 animate-bounce"
-            style={{ animationDelay: '300ms' }}
-          />
-        </div>
-      </div>
-    </div>
-  )
+  return <OtixLoadingScreen className="fixed inset-0 z-[9999]" />
 }

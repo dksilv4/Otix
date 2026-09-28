@@ -84,13 +84,9 @@ def _generate_and_persist() -> tuple[str, str]:
             format=serialization.PublicFormat.UncompressedPoint,
         )
     )
-    private = b64urlencode(
-        vapid.private_key.private_numbers().private_value.to_bytes(32, "big")
-    )
+    private = b64urlencode(vapid.private_key.private_numbers().private_value.to_bytes(32, "big"))
     path = _keypair_path()
-    path.write_text(
-        json.dumps({"public_key": public, "private_key": private}, indent=2) + "\n"
-    )
+    path.write_text(json.dumps({"public_key": public, "private_key": private}, indent=2) + "\n")
     logger.info("generated VAPID keypair at %s", path)
     return public, private
 

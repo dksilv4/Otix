@@ -286,9 +286,7 @@ class ListApiTests(TestCase):
         self.assertEqual(set(response.data), LIST_OUT_KEYS)
         self.assertEqual(response.data["item_count"], 1)
         self.assertTrue(
-            UserListItem.objects.filter(
-                list=self.public_list, media_item=self.movie
-            ).exists()
+            UserListItem.objects.filter(list=self.public_list, media_item=self.movie).exists()
         )
 
     def test_add_item_duplicate_is_idempotent(self) -> None:
@@ -300,9 +298,7 @@ class ListApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(
-            UserListItem.objects.filter(
-                list=self.public_list, media_item=self.movie
-            ).count(),
+            UserListItem.objects.filter(list=self.public_list, media_item=self.movie).count(),
             1,
         )
 
@@ -334,20 +330,14 @@ class ListApiTests(TestCase):
 
     def test_remove_item_returns_204(self) -> None:
         UserListItem.objects.create(list=self.public_list, media_item=self.movie, sort_order=0)
-        response = self.client.delete(
-            f"/api/v1/list/{self.public_list.id}/item/{self.movie.id}"
-        )
+        response = self.client.delete(f"/api/v1/list/{self.public_list.id}/item/{self.movie.id}")
         self.assertEqual(response.status_code, 204)
         self.assertFalse(
-            UserListItem.objects.filter(
-                list=self.public_list, media_item=self.movie
-            ).exists()
+            UserListItem.objects.filter(list=self.public_list, media_item=self.movie).exists()
         )
 
     def test_remove_missing_item_is_404(self) -> None:
-        response = self.client.delete(
-            f"/api/v1/list/{self.public_list.id}/item/{self.movie.id}"
-        )
+        response = self.client.delete(f"/api/v1/list/{self.public_list.id}/item/{self.movie.id}")
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.data["detail"], "Item not found")
 
@@ -368,9 +358,7 @@ class ListApiTests(TestCase):
         )
         self.assertEqual(orders[self.movie2.id], 0)
         self.assertEqual(orders[self.movie.id], 1)
-        self.assertEqual(
-            ListItemRankHistory.objects.filter(list=self.public_list).count(), 2
-        )
+        self.assertEqual(ListItemRankHistory.objects.filter(list=self.public_list).count(), 2)
 
     def test_reorder_unowned_list_is_404(self) -> None:
         response = self.other_client.put(
@@ -490,9 +478,7 @@ class ListApiTests(TestCase):
         self.assertEqual(payload["list_name"], "Favorites")
         self.assertEqual(len(payload["items"]), 1)
         item = payload["items"][0]
-        self.assertEqual(
-            set(item), {"rank", "title", "media_type", "release_date", "avg_rating"}
-        )
+        self.assertEqual(set(item), {"rank", "title", "media_type", "release_date", "avg_rating"})
         self.assertEqual(item["rank"], 1)
         self.assertEqual(item["title"], "Iron Man")
         self.assertEqual(item["release_date"], "2008-05-02")
@@ -500,9 +486,7 @@ class ListApiTests(TestCase):
 
     def test_export_public_list_as_csv(self) -> None:
         UserListItem.objects.create(list=self.public_list, media_item=self.movie, sort_order=0)
-        response = self.public.get(
-            f"/api/v1/list/{self.public_list.id}/export", {"format": "csv"}
-        )
+        response = self.public.get(f"/api/v1/list/{self.public_list.id}/export", {"format": "csv"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "text/csv")
         body = response.content.decode()

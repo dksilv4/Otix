@@ -126,9 +126,7 @@ class BlueprintApiTests(TestCase):
         self.bobs.likes.create(user=self.user)
 
         response = self.public.get(LIST_URL)
-        bobs_result = next(
-            r for r in response.data["results"] if r["id"] == self.bobs.id
-        )
+        bobs_result = next(r for r in response.data["results"] if r["id"] == self.bobs.id)
 
         self.assertEqual(bobs_result["likes_count"], 1)
         self.assertIs(bobs_result["has_liked"], False)
@@ -137,9 +135,7 @@ class BlueprintApiTests(TestCase):
         self.bobs.likes.create(user=self.user)
 
         response = self.client.get(LIST_URL)
-        bobs_result = next(
-            r for r in response.data["results"] if r["id"] == self.bobs.id
-        )
+        bobs_result = next(r for r in response.data["results"] if r["id"] == self.bobs.id)
 
         self.assertEqual(bobs_result["likes_count"], 1)
         self.assertIs(bobs_result["has_liked"], True)
@@ -217,9 +213,7 @@ class BlueprintApiTests(TestCase):
         self.assertEqual(response.data["detail"], "Blueprint not found or not owned by user")
 
     def test_patch_requires_authentication(self) -> None:
-        response = self.public.patch(
-            self._detail_url(self.own.id), {"title": "X"}, format="json"
-        )
+        response = self.public.patch(self._detail_url(self.own.id), {"title": "X"}, format="json")
         self.assertEqual(response.status_code, 401)
 
     # --- delete ---

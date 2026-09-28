@@ -113,7 +113,7 @@ function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectio
       <DkDialog
         open={true}
         onOpenChange={() => close()}
-        title="Edit Your Review"
+        title="Delete Your Review"
       >
         <ReviewComposer
           mediaType={mediaType}
@@ -207,16 +207,11 @@ function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectio
   if (!hasAnyFeedback) {
     return (
       <section className={cn('dk-review', className)}>
-        <div className="dk-review__header">
-          <h2 className="dk-review__heading">Community Reviews &amp; Ratings</h2>
-        </div>
-
         <div className="dk-review__empty-state">
-          <div className="dk-review__empty-glow" />
           <div className="dk-review__empty-icon-wrap">
             <MessageSquareQuote className="w-6 h-6" />
           </div>
-          <h3 className="dk-review__empty-title">No reviews or ratings yet</h3>
+          <h2 className="dk-review__empty-title">No reviews or ratings yet</h2>
           <p className="dk-review__empty-desc">
             Be the first to share your thoughts or score this title to help fellow fans and friends discover it!
           </p>
@@ -300,13 +295,22 @@ function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectio
       {/* ── Reviews Tab Content ── */}
       {activeTab === 'reviews' && (
         <>
-          {reviewList.length > 0 ? (
+          {reviewsQuery.isError ? (
+            <div className="dk-review__placeholder">
+              <p className="dk-review__placeholder-text dk-review__placeholder-text--error mb-3">
+                Failed to load reviews.
+              </p>
+              <DkButton variant="outline" size="sm" onClick={() => reviewsQuery.refetch()}>
+                Retry
+              </DkButton>
+            </div>
+          ) : reviewList.length > 0 ? (
             <div className="dk-review__list">
               {reviewList.map((review) => (
                 <ReviewCard
                   key={`${review.userId}-${review.createdAt}`}
                   review={review}
-                  isOwn={user?.id === review.userId}
+                  isOwn={Boolean(user?.id && String(user.id) === String(review.userId))}
                   onEdit={() => handleEditReview(review)}
                   onDelete={() => handleDeleteReview(review)}
                 />
@@ -331,7 +335,7 @@ function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectio
       {/* ── Ratings Tab Content (People who rated) ── */}
       {activeTab === 'ratings' && (
         <>
-          {reviewList.length === 0 && (
+          {reviewList.length === 0 && !ratingsQuery.isError && (
             <div className="dk-review__banner">
               <div className="dk-review__banner-content">
                 <div className="dk-review__banner-icon">
@@ -357,13 +361,22 @@ function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectio
             </div>
           )}
 
-          {displayRatings.length > 0 ? (
+          {ratingsQuery.isError ? (
+            <div className="dk-review__placeholder">
+              <p className="dk-review__placeholder-text dk-review__placeholder-text--error mb-3">
+                Failed to load ratings.
+              </p>
+              <DkButton variant="outline" size="sm" onClick={() => ratingsQuery.refetch()}>
+                Retry
+              </DkButton>
+            </div>
+          ) : displayRatings.length > 0 ? (
             <div className="dk-review__list">
               {displayRatings.map((rating) => (
                 <RatingCard
                   key={`${rating.userId}-${rating.createdAt}`}
                   rating={rating}
-                  isOwn={user?.id === rating.userId}
+                  isOwn={Boolean(user?.id && String(user.id) === String(rating.userId))}
                   onEdit={handleOpenComposer}
                 />
               ))}

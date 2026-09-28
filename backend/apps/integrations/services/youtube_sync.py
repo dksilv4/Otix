@@ -88,8 +88,8 @@ def _extract_music_videos(liked_videos: list[dict]) -> list[dict]:
                 "channel_title": snippet.get("channelTitle", ""),
                 "description": snippet.get("description", ""),
                 "thumbnail_url": thumbs.get("high", {}).get("url")
-                    or thumbs.get("medium", {}).get("url")
-                    or thumbs.get("default", {}).get("url"),
+                or thumbs.get("medium", {}).get("url")
+                or thumbs.get("default", {}).get("url"),
                 "published_at": snippet.get("publishedAt", ""),
             }
         )

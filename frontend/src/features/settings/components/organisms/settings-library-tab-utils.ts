@@ -1,15 +1,15 @@
 export const LIBRARY_SETTINGS_TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'library', label: 'Library' },
+  { id: 'catalog', label: 'Catalog' },
+  { id: 'proposals', label: 'Match Proposals' },
 ] as const
 
 export type LibrarySettingsTab = (typeof LIBRARY_SETTINGS_TABS)[number]['id']
 
-/** Map hashes onto tabs. Empty / overview → Overview; legacy paths/downloads/organize stay on overview. */
+/** Map hashes onto tabs. Empty / catalog / legacy hashes → catalog; proposals → proposals. */
 export function resolveLibrarySettingsTab(hash: string | undefined | null): LibrarySettingsTab {
   const h = (hash || '').replace(/^#/, '').toLowerCase()
-  if (h === 'library' || h === 'games' || h === 'proposals') return 'library'
-  return 'overview'
+  if (h === 'proposals') return 'proposals'
+  return 'catalog'
 }
 
 export function isRetiredLibraryHash(hash: string | undefined | null): boolean {

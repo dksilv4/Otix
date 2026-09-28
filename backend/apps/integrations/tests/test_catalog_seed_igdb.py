@@ -156,5 +156,3 @@ class EnqueueIgdbDiscoverTests(TestCase):
         provider = _fanout_provider()
         with self.assertRaises(ValueError):
             _run(enqueue_igdb_discover(provider=provider, sources=("bogus",)))
-
-

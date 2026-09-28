@@ -64,8 +64,7 @@ def transform_ratings(raw: dict[str, Any]) -> list[NormalizedRating]:
     omits the IMDb entry.
     """
     known = {
-        name: (provider, max_score, r_type)
-        for name, provider, max_score, r_type in _RATING_SOURCES
+        name: (provider, max_score, r_type) for name, provider, max_score, r_type in _RATING_SOURCES
     }
     ratings: list[NormalizedRating] = []
 

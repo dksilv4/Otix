@@ -14,7 +14,7 @@ beforeAll(() => {
 
 const mockNavigate = vi.fn()
 let mockParams = { genreId: 'action' }
-let mockSearch = { type: 'movie', sort: 'popularity' }
+let mockSearch: Record<string, unknown> = { sort: 'popularity' }
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, ...props }: any) => (
@@ -28,7 +28,9 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 vi.mock('@/features/auth/hooks/use-auth', () => ({
-  useAuth: () => ({ user: { id: '1', country: 'US' } }),
+  useAuth: () => ({
+    user: { id: '1', country: 'US', preferredLanguages: ['en'] },
+  }),
 }))
 
 vi.mock('@/lib/api/client', () => ({
@@ -104,25 +106,22 @@ describe('GenrePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockParams = { genreId: 'action' }
-    mockSearch = { type: 'movie', sort: 'popularity' }
+    mockSearch = { sort: 'popularity' }
   })
 
-  it('renders header, breadcrumbs, and media type switchers', async () => {
+  it('renders simplified header without back button', async () => {
     renderWithClient(<GenrePage />)
 
-    expect(screen.getByText('Discover')).toBeDefined()
-    expect(screen.getByText('All Genres')).toBeDefined()
-    expect(await screen.findByText('Action Movies')).toBeDefined()
-    expect(screen.getByRole('button', { name: /Movies/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Shows/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Games/i })).toBeDefined()
+    expect(screen.queryByText('Discover')).toBeNull()
+    expect(screen.queryByText('All Genres')).toBeNull()
+    expect(await screen.findByRole('heading', { name: 'Action' })).toBeDefined()
+    expect(screen.getByText('All media in Action')).toBeDefined()
   })
 
   it('renders genre pills and highlights active genre', async () => {
     renderWithClient(<GenrePage />)
 
-    expect(await screen.findByText('Action')).toBeDefined()
-    expect(screen.getByText('Comedy')).toBeDefined()
+    expect(await screen.findByText('Comedy')).toBeDefined()
     expect(screen.getByText('Science Fiction')).toBeDefined()
   })
 
@@ -133,7 +132,7 @@ describe('GenrePage', () => {
     expect(screen.getByText('John Wick')).toBeDefined()
   })
 
-  it('navigates when clicking a different genre pill', async () => {
+  it('adds a genre when clicking another category pill', async () => {
     renderWithClient(<GenrePage />)
 
     const comedyPill = await screen.findByText('Comedy')
@@ -141,22 +140,19 @@ describe('GenrePage', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/genre/$genreId',
-      params: { genreId: 'comedy' },
-      search: mockSearch,
+      params: { genreId: 'action' },
+      search: { ...mockSearch, genres: 'action,comedy' },
+      replace: true,
     })
   })
 
-  it('navigates when clicking a different media type tab', async () => {
+  it('defaults type, language, and anime filters', async () => {
     renderWithClient(<GenrePage />)
 
-    const showsTab = screen.getByRole('button', { name: /Shows/i })
-    fireEvent.click(showsTab)
-
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/genre/$genreId',
-      params: { genreId: 'action' },
-      search: { ...mockSearch, type: 'show', certification: undefined },
-      replace: true,
-    })
+    expect(await screen.findByRole('heading', { name: 'Action' })).toBeDefined()
+    expect(screen.getByText('Type: All')).toBeDefined()
+    expect(screen.getByText('Language: English')).toBeDefined()
+    expect(screen.getByText('Anime: With anime')).toBeDefined()
+    expect(screen.queryByText('Music')).toBeNull()
   })
 })

@@ -32,9 +32,7 @@ def get_unread_count(user_id: int) -> int:
 
 def mark_notification_read(notification_id: int, user_id: int) -> Notification | None:
     """Mark one notification read; ``None`` when it is not the user's."""
-    notification = (
-        Notification.objects.filter(pk=notification_id, user_id=user_id).first()
-    )
+    notification = Notification.objects.filter(pk=notification_id, user_id=user_id).first()
     if notification is None:
         return None
     notification.is_read = True

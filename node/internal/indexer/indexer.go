@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dksilv4/otix/node/internal/config"
+	"github.com/dksilv4/otix/node/internal/otixmeta"
 )
 
 var SkipExtensions = map[string]bool{
@@ -27,7 +28,8 @@ var GenericInstallerStems = map[string]bool{
 var GenericFolderNames = map[string]bool{
 	"setup": true, "install": true, "installer": true, "autorun": true,
 	"start": true, "play": true, "unins000": true, "uninstall": true,
-	"bin": true, "crack": true, "cracks": true, "redist": true, "commonredist": true,
+	"bin": true, "x64": true, "x86": true, "win64": true, "win32": true, "binaries": true,
+	"crack": true, "cracks": true, "redist": true, "commonredist": true, "_commonredist": true,
 	"directx": true, "vcredist": true, "windows": true, "win": true, "files": true,
 	"data": true, "game": true, "games": true, "disk1": true, "disc1": true, "cd1": true,
 	"dvd": true, "iso": true, "unpacked": true, "extracted": true, "temp": true, "tmp": true,
@@ -35,41 +37,364 @@ var GenericFolderNames = map[string]bool{
 	"docs": true, "documentation": true, "payloads": true,
 }
 
+var NoiseExecutablePatterns = []string{
+	"unins000", "uninstall", "uninst",
+	"crashreporter", "crash_reporter", "crashreport", "crashhandler", "crash_handler",
+	"unitycrashhandler", "unitycrashhandler32", "unitycrashhandler64", "crashpad", "crashing",
+	"vcredist", "dxsetup", "directx", "dotnetfx", "oalinst", "physx", "redist",
+	"easyanticheat", "battleye", "epic_online_services", "eosbootstrapper",
+	"unrealcefsubprocessor", "cefsimple",
+	"dedicatedserver", "benchmark",
+	"bugreporter", "restarter", "dowser", "quicksfv", "launcher-installer",
+	"ereg", "easyinfo",
+}
+
+var NoiseDirectoryNames = map[string]bool{
+	"_commonredist": true, "commonredist": true, "redist": true, "_redist": true,
+	"support": true, "directx": true, "vcredist": true, "vc_redist": true,
+	"prerequisites": true, "prereq": true, "engine": true, "crashreports": true,
+	"mono": true, "dependencies": true, ".git": true, "__macosx": true,
+	"content": true, "assets": true, "textures": true, "sounds": true, "audio": true,
+	"video": true, "movies": true, "shaders": true, "levels": true, "maps": true,
+	"res": true, "resources": true, "localization": true, "languages": true,
+	"locale": true, "save": true, "saves": true, "cache": true,
+	"runtimetools": true, "md5": true, "emulators": true,
+}
+
+var InstallerHeaderSignatures = []string{
+	"Inno Setup", "SetupForm", "SetupLdr",
+	"Nullsoft", "NSIS", "nVisi",
+	"InstallShield", "ishield", "IKernel",
+	"Wise", "WISE",
+	"Burn", "WiX",
+	"7-Zip",
+}
+
 var StripExtensions = map[string]bool{
 	".iso": true, ".img": true, ".bin": true, ".cue": true, ".exe": true, ".msi": true, ".pkg": true, ".dmg": true,
 	".zip": true, ".7z": true, ".rar": true, ".tar": true, ".gz": true,
 	".nsp": true, ".xci": true, ".cia": true, ".3ds": true, ".nds": true, ".gba": true, ".sfc": true,
-	".smc": true, ".nes": true, ".chd": true, ".rvz": true, ".wbfs": true,
+	".smc": true, ".nes": true, ".chd": true, ".rvz": true, ".wbfs": true, ".app": true,
+}
+
+type OtixImageRef struct {
+	URL   string `json:"url,omitempty"`
+	Local string `json:"local,omitempty"`
 }
 
 type HostedFile struct {
-	ID             string `json:"id"`
-	Filename       string `json:"filename"`
-	Filepath       string `json:"filepath"`
-	RelativePath   string `json:"relative_path"`
-	Filesize       int64  `json:"filesize"`
-	SHA256Head     string `json:"sha256_head"`
-	Extension      string `json:"extension"`
-	FormatCategory string `json:"format_category"`
-	LibraryName    string `json:"library_name"`
-	GameTitle      string `json:"game_title"`
-	ModifiedAt     string `json:"modified_at"`
+	ID             string                  `json:"id"`
+	Filename       string                  `json:"filename"`
+	Filepath       string                  `json:"filepath"`
+	RelativePath   string                  `json:"relative_path"`
+	Filesize       int64                   `json:"filesize"`
+	SHA256Head     string                  `json:"sha256_head"`
+	Extension      string                  `json:"extension"`
+	FormatCategory string                  `json:"format_category"`
+	LibraryName    string                  `json:"library_name"`
+	GameTitle      string                  `json:"game_title"`
+	ModifiedAt     string                  `json:"modified_at"`
+	OtixMediaID    string                  `json:"otix_media_id,omitempty"`
+	OtixTitle      string                  `json:"otix_title,omitempty"`
+	OtixSlug       string                  `json:"otix_slug,omitempty"`
+	OtixConfidence float64                 `json:"otix_confidence,omitempty"`
+	OtixImages     map[string]OtixImageRef `json:"otix_images,omitempty"`
+	OtixPath       string                  `json:"otix_path,omitempty"`
+	OtixOverview   string                  `json:"otix_overview,omitempty"`
 }
 
+// DetermineFormatCategory maps a file extension to its baseline category.
 func DetermineFormatCategory(ext string) string {
 	ext = strings.ToLower(strings.TrimPrefix(ext, "."))
 	switch ext {
-	case "iso", "img", "bin", "cue":
+	case "iso", "img", "bin", "cue", "cso", "nkit", "gcm":
 		return "iso"
-	case "exe", "msi", "pkg", "dmg", "app":
+	case "msi", "pkg", "dmg":
 		return "installer"
+	case "app":
+		return "game"
 	case "zip", "7z", "rar", "tar", "gz":
 		return "archive"
-	case "nsp", "xci", "cia", "3ds", "nds", "gba", "sfc", "smc", "nes", "chd", "rvz", "wbfs":
+	case "nsp", "xci", "cia", "3ds", "nds", "gba", "sfc", "smc", "nes", "z64", "n64", "v64", "pbp", "chd", "rvz", "wbfs":
 		return "rom"
+	case "exe":
+		return "installer"
 	default:
 		return "file"
 	}
+}
+
+// DetermineFileFormatCategory inspects the filename, path, and headers to classify format.
+func DetermineFileFormatCategory(fullPath, filename string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	cleanExt := strings.TrimPrefix(ext, ".")
+
+	switch cleanExt {
+	case "iso", "img", "cso", "nkit", "gcm", "cue":
+		return "iso"
+	case "msi", "pkg", "dmg":
+		return "installer"
+	case "app":
+		lower := strings.ToLower(filename)
+		if strings.Contains(lower, "install") || strings.Contains(lower, "setup") {
+			return "installer"
+		}
+		return "game"
+	case "zip", "7z", "rar", "tar", "gz":
+		return "archive"
+	case "nsp", "xci", "cia", "3ds", "nds", "gba", "sfc", "smc", "nes", "z64", "n64", "v64", "pbp", "chd", "rvz", "wbfs":
+		return "rom"
+	case "exe":
+		if DetectInstallerType(fullPath, filename) != "" {
+			return "installer"
+		}
+		return "game"
+	case "bin":
+		return "iso"
+	default:
+		return "file"
+	}
+}
+
+// DetectInstallerType checks filename patterns, companion files, and binary headers.
+func DetectInstallerType(filePath, filename string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == ".msi" || ext == ".pkg" || ext == ".dmg" {
+		return "installer"
+	}
+
+	stem := strings.ToLower(strings.TrimSuffix(filename, ext))
+	if GenericInstallerStems[stem] {
+		return "installer"
+	}
+
+	lower := strings.ToLower(filename)
+	if strings.HasPrefix(lower, "setup") || strings.HasPrefix(lower, "install") ||
+		strings.Contains(lower, "_setup") || strings.Contains(lower, "-setup") ||
+		strings.Contains(lower, "setup_") || strings.Contains(lower, "setup-") ||
+		strings.Contains(lower, "_install") || strings.Contains(lower, "-install") ||
+		strings.Contains(lower, "install_") || strings.Contains(lower, "install-") ||
+		strings.Contains(lower, "installer") || strings.Contains(lower, "repack") ||
+		strings.Contains(lower, "fitgirl") || strings.Contains(lower, "dodi") ||
+		strings.Contains(lower, "elamigos") {
+		return "installer"
+	}
+
+	// Companion installer data check (e.g. setup-1.bin, setup.bin)
+	if filePath != "" {
+		dir := filepath.Dir(filePath)
+		if entries, err := os.ReadDir(dir); err == nil {
+			for _, entry := range entries {
+				name := strings.ToLower(entry.Name())
+				if strings.HasPrefix(name, "setup") && (strings.HasSuffix(name, ".bin") || strings.HasSuffix(name, ".cab")) {
+					return "installer"
+				}
+			}
+		}
+	}
+
+	// Header sniffing on executables
+	if filePath != "" && (ext == ".exe" || ext == "") {
+		if hasInstallerHeader(filePath) {
+			return "installer"
+		}
+	}
+
+	return ""
+}
+
+func hasInstallerHeader(filePath string) bool {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	buf := make([]byte, 65536) // 64KB
+	n, err := f.Read(buf)
+	if err != nil && err != io.EOF {
+		return false
+	}
+	header := string(buf[:n])
+
+	for _, sig := range InstallerHeaderSignatures {
+		if strings.Contains(header, sig) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsNoiseOrUtilityExecutable returns true if an executable is an uninstaller, crash reporter, or redistributable.
+func IsNoiseOrUtilityExecutable(filename, fullPath string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext != ".exe" {
+		return false
+	}
+
+	stem := strings.ToLower(strings.TrimSuffix(filename, ext))
+	for _, pattern := range NoiseExecutablePatterns {
+		if strings.Contains(stem, pattern) {
+			return true
+		}
+	}
+
+	if fullPath != "" {
+		parts := strings.Split(filepath.ToSlash(fullPath), "/")
+		for _, part := range parts {
+			if NoiseDirectoryNames[strings.ToLower(part)] {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// IsUpdateOrPatchArtifact is true for patch/update installers belonging to a base game.
+func IsUpdateOrPatchArtifact(filename, fullPath string) bool {
+	lowerName := strings.ToLower(filename)
+	lowerPath := strings.ToLower(filepath.ToSlash(fullPath))
+	if strings.Contains(lowerName, "update") || strings.Contains(lowerName, "hotfix") {
+		return true
+	}
+	for _, part := range strings.Split(lowerPath, "/") {
+		if part == "updates" {
+			return true
+		}
+		if strings.HasPrefix(part, "_unpack") && strings.Contains(part, "update") {
+			return true
+		}
+		if strings.Contains(part, "_update_") || strings.Contains(part, "-update-") || strings.Contains(part, " update ") {
+			ext := strings.ToLower(filepath.Ext(filename))
+			if ext == ".exe" || ext == ".pkg" || ext == ".msi" || ext == ".dmg" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// IsNoiseHostedPackage skips tiny DLC unlocker pkgs / emulator tooling archives.
+func IsNoiseHostedPackage(filename, fullPath string) bool {
+	lowerName := strings.ToLower(filename)
+	lowerPath := strings.ToLower(filepath.ToSlash(fullPath))
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	case ".pkg":
+		if strings.Contains(lowerName, "keyblade") || strings.Contains(lowerName, "unlocker") {
+			return true
+		}
+	case ".zip", ".7z", ".rar":
+		if strings.Contains(lowerPath, "/emulators/") {
+			return true
+		}
+		if strings.Contains(lowerName, "prodkeys") || strings.Contains(lowerName, "yuzu") {
+			return true
+		}
+		if strings.Contains(lowerName, "fix") && strings.Contains(lowerName, "repair") {
+			return true
+		}
+	}
+	return false
+}
+
+// StripUpdateSuffixFromTitle removes trailing "update …" / "hotfix …" version noise.
+func StripUpdateSuffixFromTitle(title string) string {
+	lower := strings.ToLower(title)
+	for _, marker := range []string{" update ", " hotfix ", " patch "} {
+		if idx := strings.Index(lower, marker); idx > 0 {
+			return strings.TrimSpace(title[:idx])
+		}
+	}
+	// Also handle "Foo_update_1.2" style already cleaned to "Foo Update 1 2"
+	return strings.TrimSpace(title)
+}
+
+func stripUpdateTokenFromFolder(name string) string {
+	lower := strings.ToLower(name)
+	for _, sep := range []string{"_update_", "-update-", " update "} {
+		if idx := strings.Index(lower, sep); idx > 0 {
+			return name[:idx]
+		}
+	}
+	return name
+}
+
+// CleanFolderTitle lightly normalizes a directory name without stripping scene tags
+// (so "RuneScape Dragonwilds" is not destroyed by the "rune" release tag).
+func CleanFolderTitle(name string) string {
+	cleaned := strings.ReplaceAll(name, ".", " ")
+	cleaned = strings.ReplaceAll(cleaned, "_", " ")
+	cleaned = strings.ReplaceAll(cleaned, "-", " ")
+	fields := strings.Fields(cleaned)
+	if len(fields) == 0 {
+		return name
+	}
+	for i, f := range fields {
+		if len(f) > 0 {
+			fields[i] = strings.ToUpper(f[:1]) + strings.ToLower(f[1:])
+		}
+	}
+	return strings.Join(fields, " ")
+}
+
+// ParentGameTitleForUpdate resolves which base game an update/patch belongs to.
+func ParentGameTitleForUpdate(filename, fullPath, libraryPath string) string {
+	rel := RelativeLibraryPath(fullPath, libraryPath)
+	parts := strings.Split(rel, "/")
+
+	// Prefer the folder that owns an Updates/ directory.
+	for i := len(parts) - 2; i >= 0; i-- {
+		if strings.EqualFold(parts[i], "updates") && i > 0 {
+			return CleanFolderTitle(parts[i-1])
+		}
+	}
+
+	// Folder names like Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos
+	for i := len(parts) - 2; i >= 0; i-- {
+		pl := strings.ToLower(parts[i])
+		if strings.Contains(pl, "update") && !strings.EqualFold(parts[i], "updates") {
+			stripped := stripUpdateTokenFromFolder(parts[i])
+			if stripped != parts[i] && stripped != "" {
+				return CleanFolderTitle(stripped)
+			}
+		}
+	}
+
+	// Filename: "Elden Ring update 1.12.3 - 1.13.0.exe"
+	fromFile := StripUpdateSuffixFromTitle(CleanTitleFromFilename(filename))
+	cleanedFile := CleanTitleFromFilename(filename)
+	if fromFile != "" && !strings.EqualFold(fromFile, cleanedFile) {
+		return fromFile
+	}
+
+	// Nearest non-generic ancestor
+	for i := len(parts) - 2; i >= 0; i-- {
+		p := parts[i]
+		pl := strings.ToLower(p)
+		if GenericFolderNames[pl] || strings.Contains(pl, "update") {
+			continue
+		}
+		return CleanFolderTitle(p)
+	}
+
+	if fromFile != "" {
+		return fromFile
+	}
+	return cleanedFile
+}
+
+// IsInstallerPayloadFile checks if a file is an installer chunk rather than a standalone game.
+func IsInstallerPayloadFile(filename string) bool {
+	lower := strings.ToLower(filename)
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == ".bin" || ext == ".cab" || ext == ".sfv" || ext == ".nfo" || ext == ".md5" || ext == ".sha" {
+		if strings.HasPrefix(lower, "setup") || strings.HasPrefix(lower, "data") || ext == ".sfv" || ext == ".nfo" || ext == ".cab" {
+			return true
+		}
+	}
+	return false
 }
 
 func ComputeHeadHash(filepath string) string {
@@ -149,20 +474,143 @@ func TitleFromInstallerPath(filename, fullPath, libraryPath string) string {
 		rel := RelativeLibraryPath(fullPath, libraryPath)
 		parts := strings.Split(rel, "/")
 		if len(parts) > 1 {
-			// Check parent folder
-			parent := parts[len(parts)-2]
-			if !GenericFolderNames[strings.ToLower(parent)] {
-				return CleanTitleFromFilename(parent)
+			// Find nearest non-generic ancestor folder
+			for i := len(parts) - 2; i >= 0; i-- {
+				ancestor := parts[i]
+				if !GenericFolderNames[strings.ToLower(ancestor)] {
+					return CleanTitleFromFilename(ancestor)
+				}
 			}
 		}
 	}
 	return CleanTitleFromFilename(filename)
 }
 
+// FindGameRootFolder walks up from candidatePath towards libraryPath to find the game folder.
+func FindGameRootFolder(candidatePath, libraryPath string) (rootDir string, rootName string) {
+	rel := RelativeLibraryPath(candidatePath, libraryPath)
+	parts := strings.Split(rel, "/")
+	if len(parts) <= 1 {
+		return filepath.Dir(candidatePath), filepath.Base(candidatePath)
+	}
+
+	for i := len(parts) - 2; i >= 0; i-- {
+		part := parts[i]
+		if !GenericFolderNames[strings.ToLower(part)] {
+			sub := parts[:i+1]
+			fullRoot := filepath.Join(libraryPath, filepath.Join(sub...))
+			return fullRoot, part
+		}
+	}
+
+	return filepath.Dir(candidatePath), parts[0]
+}
+
+// GameRootForFile resolves the folder that should hold a `.otix` sidecar.
+func GameRootForFile(filepathAbs, libraryPath string) string {
+	if strings.EqualFold(filepath.Ext(filepathAbs), ".app") {
+		return filepathAbs
+	}
+	if libraryPath != "" {
+		root, _ := FindGameRootFolder(filepathAbs, libraryPath)
+		if root != "" {
+			return root
+		}
+	}
+	return filepath.Dir(filepathAbs)
+}
+
+// AttachOtixSidecar loads `.otix` next to the game root and fills HostedFile otix_* fields.
+func AttachOtixSidecar(hf *HostedFile, libraryPath string) {
+	if hf == nil || hf.Filepath == "" {
+		return
+	}
+	root := GameRootForFile(hf.Filepath, libraryPath)
+	sc, err := otixmeta.Read(root)
+	if err != nil || sc == nil {
+		return
+	}
+	hf.OtixPath = otixmeta.Path(root)
+	hf.OtixMediaID = sc.MediaID
+	hf.OtixTitle = sc.Title
+	hf.OtixSlug = sc.Slug
+	hf.OtixConfidence = sc.Confidence
+	hf.OtixOverview = sc.Overview
+	if len(sc.Images) > 0 {
+		hf.OtixImages = make(map[string]OtixImageRef, len(sc.Images))
+		for role, ref := range sc.Images {
+			if ref == nil {
+				continue
+			}
+			local := ""
+			if ref.Local != nil {
+				local = *ref.Local
+			}
+			hf.OtixImages[role] = OtixImageRef{URL: ref.URL, Local: local}
+		}
+	}
+}
+
+// ScoreGameCandidate evaluates how likely an executable is to be the primary game binary.
+func ScoreGameCandidate(candidatePath string, gameRootName string, info os.FileInfo, isInstaller bool) int {
+	if isInstaller || strings.HasPrefix(filepath.Base(candidatePath), ".") {
+		return -1000
+	}
+
+	score := 0
+	filename := filepath.Base(candidatePath)
+	ext := filepath.Ext(filename)
+	stem := strings.ToLower(strings.TrimSuffix(filename, ext))
+	normGame := strings.ToLower(CleanTitleFromFilename(gameRootName))
+	normStem := strings.ToLower(CleanTitleFromFilename(stem))
+
+	// Direct match against the game folder title
+	if stem == strings.ToLower(gameRootName) || normStem == normGame {
+		score += 150
+	} else if strings.Contains(normStem, normGame) || strings.Contains(normGame, normStem) {
+		score += 80
+	}
+
+	// Launchers / prelaunchers
+	if strings.Contains(stem, "launcher") || strings.Contains(stem, "prelauncher") {
+		score -= 15
+	}
+
+	// Path location
+	lowerPath := strings.ToLower(candidatePath)
+	if strings.Contains(lowerPath, "bin/x64") || strings.Contains(lowerPath, "binaries/win64") {
+		score += 40
+	} else if strings.Contains(lowerPath, "bin/") || strings.Contains(lowerPath, "binaries/") {
+		score += 25
+	}
+
+	// File size bonus (installed game binaries are typically > 10MB)
+	size := info.Size()
+	if size > 30*1024*1024 {
+		score += 35
+	} else if size > 10*1024*1024 {
+		score += 25
+	} else if size > 2*1024*1024 {
+		score += 10
+	} else if size < 500*1024 {
+		score -= 20
+	}
+
+	return score
+}
+
+type candidateExe struct {
+	path        string
+	filename    string
+	info        os.FileInfo
+	isInstaller bool
+	score       int
+}
+
 type StorageIndexer struct {
-	mu         sync.RWMutex
-	libraries  []config.LibraryConfig
-	filesByID  map[string]HostedFile
+	mu          sync.RWMutex
+	libraries   []config.LibraryConfig
+	filesByID   map[string]HostedFile
 	lastScanned time.Time
 }
 
@@ -204,6 +652,26 @@ func (si *StorageIndexer) GetFile(id string) (HostedFile, bool) {
 	return f, ok
 }
 
+// UpsertFile replaces or inserts a hosted file in the in-memory index.
+func (si *StorageIndexer) UpsertFile(f HostedFile) {
+	if f.ID == "" {
+		return
+	}
+	si.mu.Lock()
+	defer si.mu.Unlock()
+	si.filesByID[f.ID] = f
+}
+
+// Clear drops the in-memory hosted file index without deleting files on disk.
+func (si *StorageIndexer) Clear() int {
+	si.mu.Lock()
+	defer si.mu.Unlock()
+	n := len(si.filesByID)
+	si.filesByID = make(map[string]HostedFile)
+	si.lastScanned = time.Time{}
+	return n
+}
+
 func (si *StorageIndexer) TotalFiles() int {
 	si.mu.RLock()
 	defer si.mu.RUnlock()
@@ -239,60 +707,262 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 			continue
 		}
 
-		allowedMap := make(map[string]bool)
-		for _, ext := range lib.AllowedExtensions {
+		allowedExts := lib.AllowedExtensions
+		if len(allowedExts) == 0 {
+			// Settings PUT often omits allowlists — never treat empty as "index everything".
+			allowedExts = config.DefaultAllowedExtensions(lib.Kind)
+		}
+		allowedMap := make(map[string]bool, len(allowedExts))
+		for _, ext := range allowedExts {
 			allowedMap[strings.ToLower(ext)] = true
 		}
 
+		// Group candidates per game root folder
+		dirCandidates := make(map[string][]candidateExe)
+		dirRootNames := make(map[string]string)
+
 		_ = filepath.Walk(libPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil || info.IsDir() {
+			if err != nil {
 				return nil
 			}
 
-			filename := filepath.Base(path)
-			if strings.HasPrefix(filename, ".") {
+			name := info.Name()
+			if strings.HasPrefix(name, ".") {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+
+			// Handle macOS .app bundle at directory level
+			if info.IsDir() {
+				if strings.HasSuffix(strings.ToLower(name), ".app") {
+					// Check if valid Mac bundle
+					plist := filepath.Join(path, "Contents", "Info.plist")
+					macosDir := filepath.Join(path, "Contents", "MacOS")
+					if _, errP := os.Stat(plist); errP == nil || func() bool { _, errM := os.Stat(macosDir); return errM == nil }() {
+						// Valid app bundle
+						modTime := info.ModTime().UTC().Format(time.RFC3339)
+						hasher := md5.New()
+						hasher.Write([]byte(path))
+						fileID := fmt.Sprintf("file_%s", hex.EncodeToString(hasher.Sum(nil))[:12])
+						rel := RelativeLibraryPath(path, libPath)
+						title := CleanTitleFromFilename(strings.TrimSuffix(name, ".app"))
+						cat := "game"
+						if strings.Contains(strings.ToLower(name), "install") || strings.Contains(strings.ToLower(name), "setup") {
+							cat = "installer"
+						}
+
+						hf := HostedFile{
+							ID:             fileID,
+							Filename:       name,
+							Filepath:       path,
+							RelativePath:   rel,
+							Filesize:       info.Size(),
+							SHA256Head:     "0000000000000000000000000000000000000000000000000000000000000000",
+							Extension:      ".app",
+							FormatCategory: cat,
+							LibraryName:    libName,
+							GameTitle:      title,
+							ModifiedAt:     modTime,
+						}
+						AttachOtixSidecar(&hf, libPath)
+						newFiles[fileID] = hf
+						indexed = append(indexed, hf)
+						return filepath.SkipDir
+					}
+				}
+
+				if strings.HasPrefix(name, ".") && path != libPath {
+					return filepath.SkipDir
+				}
+				if NoiseDirectoryNames[strings.ToLower(name)] {
+					return filepath.SkipDir
+				}
+				if path != libPath {
+					rel := RelativeLibraryPath(path, libPath)
+					parts := strings.Split(rel, "/")
+					if len(parts) > 4 {
+						return filepath.SkipDir
+					}
+				}
+				return nil
+			}
+
+			// Skip hidden files, sidecars, and system files starting with dot
+			if strings.HasPrefix(name, ".") {
 				return nil
 			}
 
 			ext := strings.ToLower(filepath.Ext(path))
-			if SkipExtensions[ext] {
-				return nil
-			}
+
+			// Check allowed extensions filter
 			if len(allowedMap) > 0 && !allowedMap[ext] {
 				return nil
 			}
 
-			fileSize := info.Size()
-			modTime := info.ModTime().UTC().Format(time.RFC3339)
-			headHash := ComputeHeadHash(path)
+			// Skip installer companion payload chunks
+			if IsInstallerPayloadFile(name) {
+				return nil
+			}
 
-			// ID based on MD5 of path
+			// Skip standalone .bin if in SkipExtensions
+			if ext == ".bin" && SkipExtensions[ext] {
+				return nil
+			}
+
+			// Skip DLC unlocker pkgs / emulator tooling archives
+			if IsNoiseHostedPackage(name, path) {
+				return nil
+			}
+
+			indexFile := func(cat, title string) {
+				fileSize := info.Size()
+				modTime := info.ModTime().UTC().Format(time.RFC3339)
+				headHash := ComputeHeadHash(path)
+				hasher := md5.New()
+				hasher.Write([]byte(path))
+				fileID := fmt.Sprintf("file_%s", hex.EncodeToString(hasher.Sum(nil))[:12])
+				rel := RelativeLibraryPath(path, libPath)
+				hf := HostedFile{
+					ID:             fileID,
+					Filename:       name,
+					Filepath:       path,
+					RelativePath:   rel,
+					Filesize:       fileSize,
+					SHA256Head:     headHash,
+					Extension:      ext,
+					FormatCategory: cat,
+					LibraryName:    libName,
+					GameTitle:      title,
+					ModifiedAt:     modTime,
+				}
+				AttachOtixSidecar(&hf, libPath)
+				newFiles[fileID] = hf
+				indexed = append(indexed, hf)
+			}
+
+			// Updates/patches: index each one, tagged as "update" with parent game title.
+			if IsUpdateOrPatchArtifact(name, path) {
+				indexFile("update", ParentGameTitleForUpdate(name, path, libPath))
+				return nil
+			}
+
+			// If it's an executable, evaluate noise and group by game root
+			if ext == ".exe" {
+				if IsNoiseOrUtilityExecutable(name, path) {
+					return nil
+				}
+
+				isInst := DetectInstallerType(path, name) != ""
+				rootDir, rootName := FindGameRootFolder(path, libPath)
+				dirCandidates[rootDir] = append(dirCandidates[rootDir], candidateExe{
+					path:        path,
+					filename:    name,
+					info:        info,
+					isInstaller: isInst,
+				})
+				dirRootNames[rootDir] = rootName
+				return nil
+			}
+
+			// Disc images, archives, ROMs, or explicit installers (.msi, .pkg, .dmg).
+			// Never index unclassified junk (dll/pdb/jpg/txt/…) even if allowlist is wrong.
+			cat := DetermineFileFormatCategory(path, name)
+			if cat == "file" {
+				return nil
+			}
+
+			indexFile(cat, TitleFromInstallerPath(name, path, libPath))
+			return nil
+		})
+
+		// Process collected executable candidates per game directory
+		for rootDir, candidates := range dirCandidates {
+			if len(candidates) == 0 {
+				continue
+			}
+
+			rootName := dirRootNames[rootDir]
+			if rootName == "" {
+				rootName = filepath.Base(rootDir)
+			}
+
+			// Check if any candidate is a non-installer (i.e. installed game executable)
+			var gameCandidates []candidateExe
+			var installerCandidates []candidateExe
+
+			for _, c := range candidates {
+				if c.isInstaller {
+					installerCandidates = append(installerCandidates, c)
+				} else {
+					c.score = ScoreGameCandidate(c.path, rootName, c.info, false)
+					gameCandidates = append(gameCandidates, c)
+				}
+			}
+
+			var elected candidateExe
+			var formatCategory string
+
+			if len(gameCandidates) > 0 {
+				// Elect top scoring game executable
+				best := gameCandidates[0]
+				for _, gc := range gameCandidates[1:] {
+					if gc.score > best.score {
+						best = gc
+					}
+				}
+				elected = best
+				formatCategory = "game"
+			} else {
+				// All candidates are installers — pick the best installer
+				best := installerCandidates[0]
+				for _, ic := range installerCandidates[1:] {
+					stem := strings.ToLower(strings.TrimSuffix(ic.filename, filepath.Ext(ic.filename)))
+					if stem == "setup" || stem == "install" {
+						best = ic
+						break
+					}
+				}
+				elected = best
+				formatCategory = "installer"
+			}
+
+			fileSize := elected.info.Size()
+			modTime := elected.info.ModTime().UTC().Format(time.RFC3339)
+			headHash := ComputeHeadHash(elected.path)
+
 			hasher := md5.New()
-			hasher.Write([]byte(path))
+			hasher.Write([]byte(elected.path))
 			fileID := fmt.Sprintf("file_%s", hex.EncodeToString(hasher.Sum(nil))[:12])
 
-			rel := RelativeLibraryPath(path, libPath)
-			title := TitleFromInstallerPath(filename, path, libPath)
-			cat := DetermineFormatCategory(ext)
+			rel := RelativeLibraryPath(elected.path, libPath)
+			title := TitleFromInstallerPath(elected.filename, elected.path, libPath)
+			if formatCategory == "game" {
+				if !GenericFolderNames[strings.ToLower(rootName)] && rootName != "." {
+					title = CleanTitleFromFilename(rootName)
+				}
+			}
 
+			ext := strings.ToLower(filepath.Ext(elected.filename))
 			hf := HostedFile{
 				ID:             fileID,
-				Filename:       filename,
-				Filepath:       path,
+				Filename:       elected.filename,
+				Filepath:       elected.path,
 				RelativePath:   rel,
 				Filesize:       fileSize,
 				SHA256Head:     headHash,
 				Extension:      ext,
-				FormatCategory: cat,
+				FormatCategory: formatCategory,
 				LibraryName:    libName,
 				GameTitle:      title,
 				ModifiedAt:     modTime,
 			}
+			AttachOtixSidecar(&hf, libPath)
 
 			newFiles[fileID] = hf
 			indexed = append(indexed, hf)
-			return nil
-		})
+		}
 	}
 
 	si.mu.Lock()

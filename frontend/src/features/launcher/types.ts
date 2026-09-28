@@ -88,6 +88,10 @@ export interface LocalGame {
   otixMatchVerified?: boolean
   otixClaimed?: boolean
   lastPlayedAt?: string | null
+  serverId?: number
+  serverFileId?: string
+  serverFilePath?: string
+  serverName?: string
 }
 
 export const LAUNCHER_PLATFORMS = [

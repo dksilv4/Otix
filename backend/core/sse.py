@@ -188,6 +188,4 @@ def sse_response(
         result_replay=result_replay,
         progress_replay=progress_replay,
     )
-    return StreamingHttpResponse(
-        stream, content_type="text/event-stream", headers=sse_headers()
-    )
+    return StreamingHttpResponse(stream, content_type="text/event-stream", headers=sse_headers())

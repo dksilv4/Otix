@@ -207,4 +207,3 @@ class FakeAsyncRedis:
             self._expires.pop(key, None)
             return True
         return False
-

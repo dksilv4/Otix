@@ -31,9 +31,7 @@ _TOKEN_TTL_SECONDS = 60 * 24 * 60 * 60  # 60 days (legacy Redis TTL)
 # Field set the matcher searches/seeds with. Full-game hydration
 # (``GAME_FIELDS``: summary/storyline/companies/screenshots/...) is deferred;
 # seeded rows carry the search shape and are enriched by later platform work.
-SEARCH_FIELDS = (
-    "id,name,slug,cover.image_id,first_release_date,platforms.name"
-)
+SEARCH_FIELDS = "id,name,slug,cover.image_id,first_release_date,platforms.name"
 
 # Module-level token cache: {token, expires_at (monotonic)}.
 _token_cache: dict[str, float | None] = {"token": None, "expires_at": 0.0}

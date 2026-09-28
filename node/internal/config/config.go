@@ -10,20 +10,35 @@ import (
 )
 
 var (
-	GameExtensions = []string{".iso", ".img", ".exe", ".zip", ".7z", ".rar"}
-	IsoExtensions  = []string{".iso", ".img", ".chd", ".rvz", ".nkit", ".cso"}
+	GameExtensions = []string{".iso", ".img", ".exe", ".msi", ".dmg", ".pkg", ".app", ".zip", ".7z", ".rar", ".chd", ".rvz", ".nsp", ".xci"}
+	IsoExtensions  = []string{".iso", ".img", ".chd", ".rvz", ".nkit", ".cso", ".cue", ".wbfs", ".gcm"}
 )
 
+// DefaultAllowedExtensions returns the default extension allowlist for a library kind.
+func DefaultAllowedExtensions(kind string) []string {
+	if kind == "iso" {
+		out := make([]string, len(IsoExtensions))
+		copy(out, IsoExtensions)
+		return out
+	}
+	out := make([]string, len(GameExtensions))
+	copy(out, GameExtensions)
+	return out
+}
+
 type ServerSettings struct {
-	Name            string `yaml:"name" json:"name"`
-	Port            int    `yaml:"port" json:"port"`
-	Host            string `yaml:"host" json:"host"`
-	AuthToken       string `yaml:"auth_token" json:"auth_token"`
-	RegistryURL     string `yaml:"registry_url" json:"registry_url"`
-	EnableUPnP      bool   `yaml:"enable_upnp" json:"enable_upnp"`
-	EnableHeartbeat bool   `yaml:"enable_heartbeat" json:"enable_heartbeat"`
-	DownloadsPath   string `yaml:"downloads_path" json:"downloads_path"`
-	Claimed         bool   `yaml:"claimed,omitempty" json:"claimed"`
+	Name               string `yaml:"name" json:"name"`
+	Port               int    `yaml:"port" json:"port"`
+	Host               string `yaml:"host" json:"host"`
+	AuthToken          string `yaml:"auth_token" json:"auth_token"`
+	RegistryURL        string `yaml:"registry_url" json:"registry_url"`
+	EnableUPnP         bool   `yaml:"enable_upnp" json:"enable_upnp"`
+	EnableHeartbeat    bool   `yaml:"enable_heartbeat" json:"enable_heartbeat"`
+	DownloadsPath      string `yaml:"downloads_path" json:"downloads_path"`
+	Claimed            bool   `yaml:"claimed,omitempty" json:"claimed"`
+	ClaimedBy          string `yaml:"claimed_by,omitempty" json:"claimed_by,omitempty"`
+	WriteOtixAfterScan bool   `yaml:"write_otix_after_scan" json:"write_otix_after_scan"`
+	DownloadOtixImages bool   `yaml:"download_otix_images" json:"download_otix_images"`
 }
 
 type LibraryConfig struct {
@@ -235,14 +250,16 @@ type AppConfig struct {
 func DefaultConfig() *AppConfig {
 	return &AppConfig{
 		Server: ServerSettings{
-			Name:            "Otix Node",
-			Port:            8090,
-			Host:            "0.0.0.0",
-			AuthToken:       "",
-			RegistryURL:     "http://127.0.0.1:8000/api",
-			EnableUPnP:      false,
-			EnableHeartbeat: true,
-			DownloadsPath:   "./storage/downloads",
+			Name:               "Otix Node",
+			Port:               8090,
+			Host:               "0.0.0.0",
+			AuthToken:          "",
+			RegistryURL:        "http://127.0.0.1:8000/api",
+			EnableUPnP:         false,
+			EnableHeartbeat:    true,
+			DownloadsPath:      "./storage/downloads",
+			WriteOtixAfterScan: true,
+			DownloadOtixImages: false,
 		},
 		GameLibraries: []LibraryConfig{},
 		Saves: SavesConfig{
@@ -287,9 +304,11 @@ func FindDefaultConfigPath() string {
 	if env := os.Getenv("CONFIG_PATH"); env != "" {
 		return env
 	}
-	// 1. Current working directory
-	if _, err := os.Stat("config.yaml"); err == nil {
-		return "config.yaml"
+	// 1. Current working directory (only if not root and config.yaml exists)
+	if cwd, err := os.Getwd(); err == nil && cwd != "/" {
+		if _, err := os.Stat("config.yaml"); err == nil {
+			return "config.yaml"
+		}
 	}
 	// 2. User config directory (macOS: ~/Library/Application Support/otix/config.yaml, Linux: ~/.config/otix/config.yaml)
 	if userConfig, err := os.UserConfigDir(); err == nil {
@@ -301,6 +320,10 @@ func FindDefaultConfigPath() string {
 	// 3. System-wide /etc/otix/config.yaml
 	if _, err := os.Stat("/etc/otix/config.yaml"); err == nil {
 		return "/etc/otix/config.yaml"
+	}
+	// 4. Fallback for newly created config: prefer user config directory so it is writable
+	if userConfig, err := os.UserConfigDir(); err == nil {
+		return filepath.Join(userConfig, "otix", "config.yaml")
 	}
 	return "config.yaml"
 }
@@ -339,6 +362,12 @@ func LoadConfig(customPath string) *AppConfig {
 	return cfg
 }
 
+func (c *AppConfig) SetConfigPath(p string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.configPath = p
+}
+
 func (c *AppConfig) Save(customPath string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -346,10 +375,21 @@ func (c *AppConfig) Save(customPath string) error {
 	targetPath := customPath
 	if targetPath == "" {
 		targetPath = c.configPath
+		if targetPath == "" || targetPath == "config.yaml" {
+			if cwd, err := os.Getwd(); err == nil && cwd == "/" {
+				if userConfig, err := os.UserConfigDir(); err == nil {
+					targetPath = filepath.Join(userConfig, "otix", "config.yaml")
+				}
+			}
+		}
 		if targetPath == "" {
 			targetPath = os.Getenv("CONFIG_PATH")
 			if targetPath == "" {
-				targetPath = "config.yaml"
+				if userConfig, err := os.UserConfigDir(); err == nil {
+					targetPath = filepath.Join(userConfig, "otix", "config.yaml")
+				} else {
+					targetPath = "config.yaml"
+				}
 			}
 		}
 	}

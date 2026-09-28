@@ -61,15 +61,13 @@ function renderWithClient(ui: React.ReactElement) {
 }
 
 describe('GenresDirectoryPage', () => {
-  it('renders header, description, and type tabs', async () => {
+  it('renders simplified header without back button', async () => {
     renderWithClient(<GenresDirectoryPage />)
 
-    expect(screen.getByText('Back to Discover')).toBeDefined()
-    expect(screen.getByText('Genres & Categories')).toBeDefined()
-    expect(screen.getByRole('button', { name: /All/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Movies/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Shows/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Games/i })).toBeDefined()
+    expect(screen.queryByText('Back to Discover')).toBeNull()
+    expect(await screen.findByRole('heading', { name: 'Genres' })).toBeDefined()
+    expect(screen.getByText('Browse the catalog by genre')).toBeDefined()
+    expect(screen.queryByText('Music')).toBeNull()
   })
 
   it('renders genre cards in a grid', async () => {
@@ -86,7 +84,7 @@ describe('GenresDirectoryPage', () => {
 
     await screen.findByText('Action')
 
-    const searchInput = screen.getByPlaceholderText('Filter categories...')
+    const searchInput = screen.getByPlaceholderText('Filter genres...')
     fireEvent.change(searchInput, { target: { value: 'scien' } })
 
     expect(screen.getByText('Science Fiction')).toBeDefined()

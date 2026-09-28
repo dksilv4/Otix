@@ -71,7 +71,10 @@ class NodeConnectionSyncTests(TestCase):
 
         urls = self._posted_urls(mock_client)
         self.assertTrue(
-            any("10.0.0.10:8090" in (url or "") and url.endswith("/api/v1/usenet/config") for url in urls)
+            any(
+                "10.0.0.10:8090" in (url or "") and url.endswith("/api/v1/usenet/config")
+                for url in urls
+            )
         )
         self.assertFalse(any("10.0.0.20:8090" in (url or "") for url in urls))
 
@@ -96,16 +99,28 @@ class NodeConnectionSyncTests(TestCase):
 
         urls = self._posted_urls(mock_client)
         self.assertTrue(
-            any(url and url.endswith("/api/v1/radarr/config") and "10.0.0.10:8090" in url for url in urls)
+            any(
+                url and url.endswith("/api/v1/radarr/config") and "10.0.0.10:8090" in url
+                for url in urls
+            )
         )
         self.assertFalse(
-            any(url and url.endswith("/api/v1/radarr/config") and "10.0.0.20:8090" in url for url in urls)
+            any(
+                url and url.endswith("/api/v1/radarr/config") and "10.0.0.20:8090" in url
+                for url in urls
+            )
         )
         self.assertTrue(
-            any(url and url.endswith("/api/v1/sonarr/config") and "10.0.0.20:8090" in url for url in urls)
+            any(
+                url and url.endswith("/api/v1/sonarr/config") and "10.0.0.20:8090" in url
+                for url in urls
+            )
         )
         self.assertFalse(
-            any(url and url.endswith("/api/v1/sonarr/config") and "10.0.0.10:8090" in url for url in urls)
+            any(
+                url and url.endswith("/api/v1/sonarr/config") and "10.0.0.10:8090" in url
+                for url in urls
+            )
         )
 
     @mock.patch("apps.library.services.game_server.httpx.Client")

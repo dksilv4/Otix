@@ -38,9 +38,7 @@ class ReleaseNotifyTests(TestCase):
             slug=slug,
             release_date=release_date,
         )
-        InvolvedCompany.objects.create(
-            media_item=media, company=self.company, distributor=True
-        )
+        InvolvedCompany.objects.create(media_item=media, company=self.company, distributor=True)
         return media
 
     # ── fan-out ────────────────────────────────────────────────────────────
@@ -73,16 +71,12 @@ class ReleaseNotifyTests(TestCase):
         self.user.notification_preferences = {"studio_release": False}
         self.user.save(update_fields=["notification_preferences"])
         media = self._media()
-        self.assertEqual(
-            release_notify.notify_company_followers(media.pk, kind="announced"), []
-        )
+        self.assertEqual(release_notify.notify_company_followers(media.pk, kind="announced"), [])
 
     def test_no_followers_is_noop(self) -> None:
         UserCompanyFollow.objects.all().delete()
         media = self._media()
-        self.assertEqual(
-            release_notify.notify_company_followers(media.pk, kind="announced"), []
-        )
+        self.assertEqual(release_notify.notify_company_followers(media.pk, kind="announced"), [])
 
     def test_missing_media_is_noop(self) -> None:
         self.assertEqual(release_notify.notify_company_followers(999999, kind="announced"), [])

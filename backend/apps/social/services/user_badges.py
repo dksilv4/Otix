@@ -44,9 +44,10 @@ def build_badge_context(user_id: int) -> dict:
         .count()
     )
     upvotes_received = ReviewVote.objects.filter(review__user_id=user_id, vote_type="up").count()
-    karma_total = KarmaTransaction.objects.filter(user_id=user_id).aggregate(
-        total=Sum("amount")
-    )["total"] or 0
+    karma_total = (
+        KarmaTransaction.objects.filter(user_id=user_id).aggregate(total=Sum("amount"))["total"]
+        or 0
+    )
     return {
         "review_count": review_count,
         "interaction_count": interaction_count,

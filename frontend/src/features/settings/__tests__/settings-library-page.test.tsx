@@ -50,8 +50,9 @@ vi.mock('../components/organisms/settings-library-overview-section', () => ({
 }))
 
 vi.mock('@tanstack/react-router', () => ({
-  useLocation: () => ({ hash: 'library', pathname: '/settings/library' }),
+  useLocation: () => ({ hash: 'catalog', pathname: '/settings/library' }),
   useNavigate: () => vi.fn(),
+  Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }))
 
 vi.mock('@/features/downloads/use-server-downloads', () => ({

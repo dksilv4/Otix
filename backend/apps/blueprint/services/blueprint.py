@@ -39,9 +39,7 @@ def _base_queryset(user_id: int | None) -> BlueprintQuerySet:
     author row is ``select_related`` so ``author_name`` never triggers a per-row
     query in serializers.
     """
-    queryset = Blueprint.objects.select_related("user").annotate(
-        likes_count=Count("likes")
-    )
+    queryset = Blueprint.objects.select_related("user").annotate(likes_count=Count("likes"))
     if user_id is None:
         return queryset.annotate(has_liked=Value(False, output_field=BooleanField()))
     liked = BlueprintLike.objects.filter(blueprint=OuterRef("pk"), user_id=user_id)
@@ -97,9 +95,7 @@ def list_blueprints(
     """
     queryset = _base_queryset(user_id)
     if search:
-        queryset = queryset.filter(
-            Q(title__icontains=search) | Q(description__icontains=search)
-        )
+        queryset = queryset.filter(Q(title__icontains=search) | Q(description__icontains=search))
     if sort == "downloads":
         return queryset.order_by("-downloads", "-created_at")
     return queryset.order_by("-created_at")

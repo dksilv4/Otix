@@ -88,9 +88,7 @@ class ArtworkSelectionView(APIView):
         if asset is None:
             raise NotFound("Asset not found for this media item")
         if asset.asset_type.lower() not in _PINNABLE_ASSET_TYPES:
-            raise ValidationError(
-                {"asset_id": f"asset_type '{asset.asset_type}' cannot be pinned"}
-            )
+            raise ValidationError({"asset_id": f"asset_type '{asset.asset_type}' cannot be pinned"})
         return asset
 
     def put(self, request, media_id: int, asset_id: int) -> Response:
@@ -99,10 +97,7 @@ class ArtworkSelectionView(APIView):
         context = data.get("context") or "general"
         if context not in assets_service.SELECTION_CONTEXTS:
             raise ValidationError(
-                {
-                    "context": "must be one of "
-                    + ", ".join(assets_service.SELECTION_CONTEXTS)
-                }
+                {"context": "must be one of " + ", ".join(assets_service.SELECTION_CONTEXTS)}
             )
         assets_service.select_asset(asset.media_item, asset, context)
         # select_asset reconciles via freshly re-resolved asset rows, so the
@@ -274,12 +269,12 @@ class ArtworkSettingsView(APIView):
             getattr(assets_service, f"set_{field}")(value)
         if "asset_types" in data:
             types = data["asset_types"]
-            if not isinstance(types, list) or not types or not all(
-                isinstance(t, str) for t in types
+            if (
+                not isinstance(types, list)
+                or not types
+                or not all(isinstance(t, str) for t in types)
             ):
-                raise ValidationError(
-                    {"asset_types": "must be a non-empty list of strings"}
-                )
+                raise ValidationError({"asset_types": "must be a non-empty list of strings"})
             try:
                 assets_service.set_asset_types(types)
             except ValueError as exc:

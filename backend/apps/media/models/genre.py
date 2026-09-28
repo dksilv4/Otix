@@ -87,9 +87,7 @@ class MediaKeyword(BaseModel):
     media_item = models.ForeignKey(
         MediaItem, on_delete=models.CASCADE, related_name="media_keywords"
     )
-    keyword = models.ForeignKey(
-        Keyword, on_delete=models.CASCADE, related_name="media_keywords"
-    )
+    keyword = models.ForeignKey(Keyword, on_delete=models.CASCADE, related_name="media_keywords")
 
     class Meta(BaseModel.Meta):
         db_table = "media_keywords"

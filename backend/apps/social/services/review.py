@@ -33,9 +33,7 @@ def get_vote_counts(review_user_id: int, media_item_id: int) -> dict:
     return counts
 
 
-def get_my_vote(
-    voter_id: int, review_user_id: int, media_item_id: int
-) -> str | None:
+def get_my_vote(voter_id: int, review_user_id: int, media_item_id: int) -> str | None:
     """Return the voter's current ``up``/``down`` on the review, if any."""
     return (
         ReviewVote.objects.filter(

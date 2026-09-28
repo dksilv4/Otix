@@ -59,6 +59,7 @@ export function DiscoverFeed() {
             />
           ))}
           <TrendingSeasonsSection eager />
+          <FreeGamesSection />
           <DiscoverGenresSection />
           {hasFeedContent && (
             <>
@@ -71,7 +72,6 @@ export function DiscoverFeed() {
                   platform={'platform' in rail ? rail.platform : undefined}
                 />
               ))}
-              <FreeGamesSection />
             </>
           )}
         </>

@@ -103,9 +103,9 @@ def list_edit_proposals(status_filter: str | None, limit: int, offset: int, user
     items = list(qs.order_by("-created_at")[offset : offset + limit])
     votes: dict[int, str] = {}
     if user is not None and user.is_authenticated and items:
-        vote_rows = ProposalVote.objects.filter(
-            user=user, proposal__in=items
-        ).values_list("proposal_id", "vote_type")
+        vote_rows = ProposalVote.objects.filter(user=user, proposal__in=items).values_list(
+            "proposal_id", "vote_type"
+        )
         votes = dict(vote_rows)
     context: dict[int, dict] = {}
     for item in items:
@@ -270,8 +270,7 @@ def get_stats() -> dict:
         "media_counts": media_counts,
         "enrichment": enrichment,
         "deltas": {
-            mt: {**{p: 0 for p in _ENRICHMENT_PROVIDERS}, "total": 0}
-            for mt in MEDIA_TYPE_VALUES
+            mt: {**{p: 0 for p in _ENRICHMENT_PROVIDERS}, "total": 0} for mt in MEDIA_TYPE_VALUES
         },
         "stub_counts": {"total": 0},
         "people_count": people_count,

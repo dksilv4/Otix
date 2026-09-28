@@ -97,7 +97,7 @@ def repair_bare_steam_links(user) -> int:
     return repaired
 
 
-def resolve_unmatched_steam_games(user) -> ResolverResult:
+def resolve_unmatched_steam_games(user, seed_now: bool = True) -> ResolverResult:
     """Resolve the user's unmatched Steam games via the GameMatcher pipeline."""
     try:
         repaired = repair_bare_steam_links(user)
@@ -135,16 +135,31 @@ def resolve_unmatched_steam_games(user) -> ResolverResult:
             else:
                 result.synced += 1
         elif auto is not None and auto.provider_id:
-            from apps.integrations.services.catalog_seed import ensure_catalog_job
+            imported = None
+            if seed_now:
+                from apps.media.services.imports import import_igdb_game
 
-            ensure_catalog_job(
-                auto.provider or "igdb",
-                "game",
-                str(auto.provider_id),
-                priority=1,
-                dispatch=False,
-            )
-            result.synced += 1
+                try:
+                    imported = import_igdb_game(int(auto.provider_id))
+                except Exception:
+                    logger.exception("Failed to import IGDB game id=%s", auto.provider_id)
+
+            if imported is not None:
+                game.media_item_id = imported.id
+                game.save(update_fields=("media_item_id", "updated_at"))
+                _ensure_steam_external(imported.id, game.steam_app_id)
+                result.synced += 1
+            else:
+                from apps.integrations.services.catalog_seed import ensure_catalog_job
+
+                ensure_catalog_job(
+                    auto.provider or "igdb",
+                    "game",
+                    str(auto.provider_id),
+                    priority=1,
+                    dispatch=False,
+                )
+                result.synced += 1
         else:
             result.failed += 1
 

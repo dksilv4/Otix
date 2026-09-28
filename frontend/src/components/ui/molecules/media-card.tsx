@@ -1,4 +1,4 @@
-import { memo, useMemo, useCallback } from 'react'
+import { memo, useMemo, useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Star } from 'lucide-react'
@@ -94,7 +94,8 @@ const DkMediaCard = memo(function DkMediaCard({
     (mediaType === 'game' || mediaType === 'music' ? posterUrl : undefined) ||
     posterUrl ||
     undefined
-  const showLogo = Boolean(logoUrl && hasCleanArt)
+  const [logoFailed, setLogoFailed] = useState(false)
+  const showLogo = Boolean(logoUrl && hasCleanArt && !logoFailed)
   const position = imageUrl ? parsePositionFromUrl(imageUrl) : null
   const cleanSrc = imageUrl ? stripPositionFromUrl(imageUrl) : undefined
   const TypeIcon = MEDIA_TYPE_ICON[mediaType]
@@ -119,11 +120,10 @@ const DkMediaCard = memo(function DkMediaCard({
       <div
         className={cn(
           'absolute inset-0',
-          zoomed ? '[--dk-img-scale:1.1]' : '[--dk-img-scale:1]',
-          'group-hover:[--dk-img-scale:1]',
+          zoomed && '[--dk-img-scale:1.1] group-hover:[--dk-img-scale:1]',
         )}
         style={{
-          transform: 'scale(var(--dk-img-scale))',
+          transform: zoomed ? 'scale(var(--dk-img-scale))' : undefined,
           transition: zoomed ? 'transform 700ms var(--dk-ease-out)' : undefined,
         }}
       >
@@ -227,6 +227,7 @@ const DkMediaCard = memo(function DkMediaCard({
             colorGuess={logoColorGuess ?? null}
             background="dark"
             shadow="drop-shadow(0 2px 4px rgba(0,0,0,0.95)) drop-shadow(0 6px 20px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))"
+            onError={() => setLogoFailed(true)}
             style={{
               transform: 'scale(var(--dk-logo-scale))',
               transition: 'transform 700ms var(--dk-ease-out)',

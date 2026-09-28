@@ -286,16 +286,26 @@ export function SettingsDownloadsPage({
     try {
       const result = await probeServerMutation.mutateAsync(id)
       setProbeResults((prev) => ({ ...prev, [id]: result }))
-      if (result.remote_accessible) {
+      const isReachable = Boolean(
+        result.remote_accessible ||
+        result.remoteAccessible ||
+        result.reachable ||
+        result.status === 'online',
+      )
+      if (isReachable) {
         toast({
           title: 'Remote Access Verified',
-          description: `${name} is accessible from the internet (${result.latency_ms}ms).`,
+          description: `${name} is accessible from the internet (${result.latency_ms ?? result.latencyMs}ms).`,
           variant: 'success',
         })
       } else {
         toast({
           title: 'Remote Access Not Reachable',
-          description: result.message || 'Could not reach node via WAN IP. Check router port forwarding (8090).',
+          description:
+            result.message ||
+            result.error ||
+            result.suggestion ||
+            'Could not reach node via WAN IP. Check router port forwarding (8090).',
           variant: 'error',
         })
       }
@@ -753,7 +763,7 @@ export function SettingsDownloadsPage({
                           {local
                             ? 'Otix app on this computer'
                             : server.primaryUrl}
-                          {probeResults[server.id]?.remote_accessible && (
+                          {(probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable) && (
                             <span className="inline-flex items-center text-emerald-400" title="Accessible from the Internet">
                               <Globe size={11} />
                             </span>
@@ -795,9 +805,9 @@ export function SettingsDownloadsPage({
                       disabled={probingServerId === server.id}
                       className={cn(
                         'pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer',
-                        probeResults[server.id]?.remote_accessible
+                        probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable
                           ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                          : probeResults[server.id]?.remote_accessible === false
+                          : probeResults[server.id] && !(probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable)
                             ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
                             : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white',
                       )}
@@ -807,10 +817,10 @@ export function SettingsDownloadsPage({
                       <span>
                         {probingServerId === server.id
                           ? 'Probing WAN...'
-                          : probeResults[server.id]?.remote_accessible
-                            ? `Remote OK (${probeResults[server.id].latency_ms}ms)`
-                            : probeResults[server.id]?.remote_accessible === false
-                              ? 'Port 8090 Closed'
+                          : (probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable)
+                            ? `Remote OK (${probeResults[server.id]?.latency_ms ?? probeResults[server.id]?.latencyMs}ms)`
+                            : probeResults[server.id] && !(probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable)
+                              ? 'Local Only'
                               : 'Remote Access'}
                       </span>
                     </button>

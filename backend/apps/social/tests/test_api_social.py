@@ -51,9 +51,7 @@ class SocialApiTests(TestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_friend_request_send_accept_list_unfriend_flow(self) -> None:
-        send = self.alice_client.post(
-            f"/api/v1/friends/requests/{self.bob.id}", {}, format="json"
-        )
+        send = self.alice_client.post(f"/api/v1/friends/requests/{self.bob.id}", {}, format="json")
         self.assertEqual(send.status_code, 201)
         self.assertEqual(send.data["message"], "Friend request sent")
         request = FriendRequest.objects.get(sender=self.alice, receiver=self.bob)
@@ -153,9 +151,7 @@ class SocialApiTests(TestCase):
         unread = self.alice_client.get("/api/v1/notifications/unread-count")
         self.assertEqual(unread.data, {"count": 2})
 
-        unread_id = Notification.objects.get(
-            user=self.alice, is_read=False, type="review"
-        ).id
+        unread_id = Notification.objects.get(user=self.alice, is_read=False, type="review").id
         read_one = self.alice_client.post(f"/api/v1/notifications/{unread_id}/read")
         self.assertEqual(read_one.status_code, 200)
         self.assertEqual(read_one.data["message"], "Notification marked as read")
@@ -193,9 +189,7 @@ class SocialApiTests(TestCase):
             ReviewVote.objects.filter(voter=self.alice, review=review, vote_type="up").exists()
         )
 
-        counts = self.alice_client.get(
-            f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote"
-        )
+        counts = self.alice_client.get(f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote")
         self.assertEqual(counts.status_code, 200)
         self.assertEqual(counts.data, {"up": 1, "down": 0, "my_vote": "up"})
 
@@ -206,23 +200,15 @@ class SocialApiTests(TestCase):
         )
         self.assertEqual(flip.status_code, 204)
         review.refresh_from_db()
-        counts = self.alice_client.get(
-            f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote"
-        )
+        counts = self.alice_client.get(f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote")
         self.assertEqual(counts.data, {"up": 0, "down": 1, "my_vote": "down"})
 
-        remove = self.alice_client.delete(
-            f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote"
-        )
+        remove = self.alice_client.delete(f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote")
         self.assertEqual(remove.status_code, 204)
-        counts = self.alice_client.get(
-            f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote"
-        )
+        counts = self.alice_client.get(f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote")
         self.assertEqual(counts.data, {"up": 0, "down": 0, "my_vote": None})
 
-        missing = self.alice_client.delete(
-            f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote"
-        )
+        missing = self.alice_client.delete(f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote")
         self.assertEqual(missing.status_code, 404)
         self.assertEqual(missing.data["detail"], "Vote not found")
 
@@ -238,9 +224,7 @@ class SocialApiTests(TestCase):
             {"vote_type": "up"},
             format="json",
         )
-        counts = self.alice_client.get(
-            f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote"
-        )
+        counts = self.alice_client.get(f"/api/v1/reviews/{self.bob.id}/{self.movie.id}/vote")
         self.assertEqual(counts.data, {"up": 0, "down": 0, "my_vote": None})
 
     def test_review_vote_on_own_review_is_400(self) -> None:
@@ -302,9 +286,7 @@ class SocialApiTests(TestCase):
         self.assertEqual(today.data["checkin"]["status"], "dismissed")
 
     def test_mood_checkin_submit_after_dismiss_resubmits(self) -> None:
-        self.alice_client.post(
-            "/api/v1/mood-checkins/", {"mood": "good"}, format="json"
-        )
+        self.alice_client.post("/api/v1/mood-checkins/", {"mood": "good"}, format="json")
         self.alice_client.post("/api/v1/mood-checkins/dismiss")
         resubmit = self.alice_client.post(
             "/api/v1/mood-checkins/", {"mood": "great"}, format="json"

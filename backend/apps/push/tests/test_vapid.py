@@ -34,16 +34,18 @@ class VapidKeyResolutionTests(SimpleTestCase):
         (self.data_dir / "vapid-keys.json").write_text(
             json.dumps({"public_key": "file-pub", "private_key": "file-priv"})
         )
-        with mock.patch.object(vapid_mod, "_env_keypair", return_value=None), mock.patch.object(
-            vapid_mod, "_data_dir", return_value=self.data_dir
+        with (
+            mock.patch.object(vapid_mod, "_env_keypair", return_value=None),
+            mock.patch.object(vapid_mod, "_data_dir", return_value=self.data_dir),
         ):
             vapid_mod.clear_vapid_cache()
             self.assertEqual(vapid_mod.get_vapid_public_key(), "file-pub")
             self.assertEqual(vapid_mod.get_vapid_private_key(), "file-priv")
 
     def test_auto_generates_valid_application_server_key(self) -> None:
-        with mock.patch.object(vapid_mod, "_env_keypair", return_value=None), mock.patch.object(
-            vapid_mod, "_data_dir", return_value=self.data_dir
+        with (
+            mock.patch.object(vapid_mod, "_env_keypair", return_value=None),
+            mock.patch.object(vapid_mod, "_data_dir", return_value=self.data_dir),
         ):
             vapid_mod.clear_vapid_cache()
             public = vapid_mod.get_vapid_public_key()

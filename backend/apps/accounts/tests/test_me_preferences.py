@@ -89,21 +89,22 @@ class MeProfilePreferencesTests(TestCase):
     def test_preferences_returns_defaults(self) -> None:
         response = self.client.get("/api/v1/auth/me/preferences")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(set(response.data), {
-            "preferred_media_types",
-            "preferred_genres",
-            "preferred_languages",
-            "discover_emphases",
-            "daily_mood_checkins_enabled",
-            "hall_of_fame_media_ids",
-            "profile_sections",
-            "profile_card_sections",
-            "integration_visibility",
-            "notification_preferences",
-        })
         self.assertEqual(
-            response.data["preferred_media_types"], ["movie", "show", "game"]
+            set(response.data),
+            {
+                "preferred_media_types",
+                "preferred_genres",
+                "preferred_languages",
+                "discover_emphases",
+                "daily_mood_checkins_enabled",
+                "hall_of_fame_media_ids",
+                "profile_sections",
+                "profile_card_sections",
+                "integration_visibility",
+                "notification_preferences",
+            },
         )
+        self.assertEqual(response.data["preferred_media_types"], ["movie", "show", "game"])
         self.assertEqual(response.data["preferred_genres"], [])
         self.assertEqual(response.data["preferred_languages"], [])
         self.assertEqual(response.data["discover_emphases"], [])

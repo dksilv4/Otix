@@ -113,9 +113,7 @@ class SteamLinkInitiateTests(TestCase):
         self.assertEqual(params["openid.mode"], "checkid_setup")
         self.assertEqual(params["openid.realm"], "http://localhost:5173")
         self.assertIn("/auth/callback/steam-connect", params["openid.return_to"])
-        return_to_params = dict(
-            urllib.parse.parse_qsl(params["openid.return_to"].split("?", 1)[1])
-        )
+        return_to_params = dict(urllib.parse.parse_qsl(params["openid.return_to"].split("?", 1)[1]))
         self.assertEqual(return_to_params["state"], state)
         row = OAuthState.objects.get(key=state)
         self.assertEqual(row.payload["flow"], "link")
@@ -127,9 +125,7 @@ class SteamLinkInitiateTests(TestCase):
             "/api/v1/auth/oauth/steam", {"source": "settings"}, format="json"
         )
         self.assertEqual(response.status_code, 200)
-        params = dict(
-            urllib.parse.parse_qsl(response.data["auth_url"].split("?", 1)[1])
-        )
+        params = dict(urllib.parse.parse_qsl(response.data["auth_url"].split("?", 1)[1]))
         self.assertIn("source=settings", params["openid.return_to"])
 
     def test_initiate_400_when_already_linked(self) -> None:
@@ -165,13 +161,9 @@ class SteamLinkCallbackTests(TestCase):
     @override_settings(**STEAM_SETTINGS)
     def test_callback_links_steam_to_state_owner(self) -> None:
         _store_state(key="steam-link-a", link=True, user_id=self.user.pk)
-        body = _openid_callback(
-            state="steam-link-a", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="steam-link-a", callback="/auth/callback/steam-connect")
         with _mock_steam():
-            response = APIClient().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = APIClient().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["message"], "Steam account linked successfully")
         self.user.refresh_from_db()
@@ -181,13 +173,9 @@ class SteamLinkCallbackTests(TestCase):
     @override_settings(**STEAM_SETTINGS)
     def test_callback_resolves_authenticated_user_first(self) -> None:
         _store_state(key="steam-link-b", link=True)  # no user_id
-        body = _openid_callback(
-            state="steam-link-b", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="steam-link-b", callback="/auth/callback/steam-connect")
         with _mock_steam():
-            response = self._authed().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = self._authed().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 200)
         self.user.refresh_from_db()
         self.assertEqual(self.user.steam_id, STEAM_ID)
@@ -195,13 +183,9 @@ class SteamLinkCallbackTests(TestCase):
     @override_settings(**STEAM_SETTINGS)
     def test_callback_unauthed_no_state_user_401(self) -> None:
         _store_state(key="steam-link-c", link=True)  # no user_id
-        body = _openid_callback(
-            state="steam-link-c", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="steam-link-c", callback="/auth/callback/steam-connect")
         with _mock_steam():
-            response = APIClient().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = APIClient().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 401)
         self.assertEqual(
             response.data["detail"],
@@ -213,18 +197,13 @@ class SteamLinkCallbackTests(TestCase):
         self.user.steam_id = STEAM_ID2
         self.user.save(update_fields=("steam_id",))
         _store_state(key="steam-link-d", link=True, user_id=self.user.pk)
-        body = _openid_callback(
-            state="steam-link-d", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="steam-link-d", callback="/auth/callback/steam-connect")
         with _mock_steam():
-            response = APIClient().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = APIClient().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 409)
         self.assertEqual(
             response.data["detail"],
-            "Your account is already linked to a different Steam account. "
-            "Unlink it first.",
+            "Your account is already linked to a different Steam account. Unlink it first.",
         )
 
     @override_settings(**STEAM_SETTINGS)
@@ -235,13 +214,9 @@ class SteamLinkCallbackTests(TestCase):
         other.steam_id = STEAM_ID
         other.save(update_fields=("steam_id",))
         _store_state(key="steam-link-e", link=True, user_id=self.user.pk)
-        body = _openid_callback(
-            state="steam-link-e", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="steam-link-e", callback="/auth/callback/steam-connect")
         with _mock_steam():
-            response = APIClient().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = APIClient().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 409)
         self.assertEqual(
             response.data["detail"],
@@ -250,13 +225,9 @@ class SteamLinkCallbackTests(TestCase):
 
     @override_settings(**STEAM_SETTINGS)
     def test_callback_bad_state_400(self) -> None:
-        body = _openid_callback(
-            state="bogus", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="bogus", callback="/auth/callback/steam-connect")
         with _mock_steam():
-            response = APIClient().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = APIClient().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.data["detail"],
@@ -266,16 +237,12 @@ class SteamLinkCallbackTests(TestCase):
     @override_settings(**STEAM_SETTINGS)
     def test_callback_wrong_mode_400(self) -> None:
         _store_state(key="steam-link-f", link=True, user_id=self.user.pk)
-        body = _openid_callback(
-            state="steam-link-f", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="steam-link-f", callback="/auth/callback/steam-connect")
         body["params"]["openid.mode"] = "checkid_setup"
         body["params"]["state"] = "steam-link-f"
         body["raw_query"] = urllib.parse.urlencode(body["params"])
         with _mock_steam():
-            response = APIClient().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = APIClient().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.data["detail"],
@@ -285,17 +252,13 @@ class SteamLinkCallbackTests(TestCase):
     @override_settings(**STEAM_SETTINGS)
     def test_callback_invalid_claimed_id_400(self) -> None:
         _store_state(key="steam-link-g", link=True, user_id=self.user.pk)
-        body = _openid_callback(
-            state="steam-link-g", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="steam-link-g", callback="/auth/callback/steam-connect")
         body["params"]["openid.claimed_id"] = "https://steamcommunity.com/openid/id/abc"
         body["params"]["openid.identity"] = "https://steamcommunity.com/openid/id/abc"
         body["params"]["state"] = "steam-link-g"
         body["raw_query"] = urllib.parse.urlencode(body["params"])
         with _mock_steam():
-            response = APIClient().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = APIClient().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.data["detail"], "Invalid Steam identity in callback. Please try again."
@@ -304,13 +267,9 @@ class SteamLinkCallbackTests(TestCase):
     @override_settings(**STEAM_SETTINGS)
     def test_callback_steam_rejects_authentication_400(self) -> None:
         _store_state(key="steam-link-h", link=True, user_id=self.user.pk)
-        body = _openid_callback(
-            state="steam-link-h", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="steam-link-h", callback="/auth/callback/steam-connect")
         with _mock_steam(validated=False):
-            response = APIClient().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = APIClient().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.data["detail"],
@@ -320,18 +279,12 @@ class SteamLinkCallbackTests(TestCase):
     @override_settings(**STEAM_SETTINGS)
     def test_callback_validation_network_failure_502(self) -> None:
         _store_state(key="steam-link-i", link=True, user_id=self.user.pk)
-        body = _openid_callback(
-            state="steam-link-i", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="steam-link-i", callback="/auth/callback/steam-connect")
         with patch.object(oauth_service, "_request") as mock_request:
             mock_request.side_effect = oauth_service.OAuthProviderError("connection refused")
-            response = APIClient().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = APIClient().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.data["detail"], "Unable to verify with Steam. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Unable to verify with Steam. Please try again.")
 
 
 class SteamDisconnectTests(TestCase):
@@ -382,9 +335,7 @@ class SteamLoginInitiateTests(TestCase):
         params = dict(urllib.parse.parse_qsl(auth_url.split("?", 1)[1]))
         self.assertEqual(params["openid.realm"], "http://localhost:5173")
         self.assertIn("/auth/callback/steam", params["openid.return_to"])
-        return_to_params = dict(
-            urllib.parse.parse_qsl(params["openid.return_to"].split("?", 1)[1])
-        )
+        return_to_params = dict(urllib.parse.parse_qsl(params["openid.return_to"].split("?", 1)[1]))
         self.assertEqual(return_to_params["state"], state)
         row = OAuthState.objects.get(key=state)
         self.assertEqual(row.payload["flow"], "login")
@@ -414,14 +365,13 @@ class SteamLoginCallbackTests(TestCase):
         _store_state(key="steam-login-b", link=False)
         body = _openid_callback(state="steam-login-b", callback="/auth/callback/steam")
         with patch.object(oauth_service, "_request") as mock_request:
+
             def only_openid_replay(
                 url, *, method="GET", form=None, data=None, headers=None, timeout=15.0
             ):
                 if url.startswith(oauth_service.STEAM_OPENID_URL):
                     return 200, "is_valid:true"
-                raise AssertionError(
-                    f"GetPlayerSummaries must not run without an API key: {url}"
-                )
+                raise AssertionError(f"GetPlayerSummaries must not run without an API key: {url}")
 
             mock_request.side_effect = only_openid_replay
             response = APIClient().post("/api/v1/auth/steam/callback", body, format="json")
@@ -476,13 +426,9 @@ class SteamLoginCallbackTests(TestCase):
     @override_settings(**STEAM_SETTINGS)
     def test_callback_login_state_rejected_by_link_flow_400(self) -> None:
         _store_state(key="steam-login-e", link=False)  # login flow state
-        body = _openid_callback(
-            state="steam-login-e", callback="/auth/callback/steam-connect"
-        )
+        body = _openid_callback(state="steam-login-e", callback="/auth/callback/steam-connect")
         with _mock_steam():
-            response = APIClient().post(
-                "/api/v1/auth/oauth/steam/callback", body, format="json"
-            )
+            response = APIClient().post("/api/v1/auth/oauth/steam/callback", body, format="json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
             response.data["detail"],

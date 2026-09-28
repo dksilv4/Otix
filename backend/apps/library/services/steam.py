@@ -108,9 +108,8 @@ def get_unmatched_steam_games(
     limit: int = 48,
 ) -> tuple[list[UserSteamGame], bool, str | None]:
     """Return Steam rows with no Otix match (``media_item`` is null)."""
-    queryset = (
-        UserSteamGame.objects.filter(user=user, media_item__isnull=True)
-        .order_by("-playtime_forever", "steam_app_id")
+    queryset = UserSteamGame.objects.filter(user=user, media_item__isnull=True).order_by(
+        "-playtime_forever", "steam_app_id"
     )
     parts = _steam_cursor_parts(cursor)
     if parts is not None:

@@ -26,13 +26,46 @@ _NOISE_TAIL = re.compile(
 
 
 GENERIC_INSTALLER_STEMS = {
-    "setup", "install", "installer", "autorun", "start", "play", "unins000", "uninstall",
+    "setup",
+    "install",
+    "installer",
+    "autorun",
+    "start",
+    "play",
+    "unins000",
+    "uninstall",
 }
 GENERIC_FOLDER_NAMES = GENERIC_INSTALLER_STEMS | {
-    "bin", "crack", "cracks", "redist", "commonredist", "directx", "vcredist",
-    "windows", "win", "files", "data", "game", "games", "disk1", "disc1", "cd1",
-    "dvd", "iso", "unpacked", "extracted", "temp", "tmp", "update", "updates",
-    "patch", "dlc", "support", "docs", "documentation", "payloads",
+    "bin",
+    "crack",
+    "cracks",
+    "redist",
+    "commonredist",
+    "directx",
+    "vcredist",
+    "windows",
+    "win",
+    "files",
+    "data",
+    "game",
+    "games",
+    "disk1",
+    "disc1",
+    "cd1",
+    "dvd",
+    "iso",
+    "unpacked",
+    "extracted",
+    "temp",
+    "tmp",
+    "update",
+    "updates",
+    "patch",
+    "dlc",
+    "support",
+    "docs",
+    "documentation",
+    "payloads",
 }
 
 
@@ -66,7 +99,17 @@ def folder_titles_from_path(path: str | None) -> list[str]:
         return []
     parts = list(Path(str(path).replace("\\", "/")).parts)
     if parts and Path(parts[-1]).suffix.lower() in {
-        ".iso", ".img", ".bin", ".cue", ".exe", ".msi", ".zip", ".7z", ".rar", ".chd", ".rvz",
+        ".iso",
+        ".img",
+        ".bin",
+        ".cue",
+        ".exe",
+        ".msi",
+        ".zip",
+        ".7z",
+        ".rar",
+        ".chd",
+        ".rvz",
     }:
         parts = parts[:-1]
     titles: list[str] = []
@@ -179,9 +222,8 @@ def match_files_to_catalog(files: list[dict]) -> None:
     if not files:
         return
 
-    catalog_rows = list(
-        MediaItem.objects.filter(media_type="game").values("id", "title", "slug")
-    )
+    catalog_rows = list(MediaItem.objects.filter(media_type="game").values("id", "title", "slug"))
+    by_id: dict[int, dict] = {row["id"]: row for row in catalog_rows}
     by_key: dict[str, dict] = {}
     for row in catalog_rows:
         for extra in _match_keys(row["title"] or ""):
@@ -191,6 +233,18 @@ def match_files_to_catalog(files: list[dict]) -> None:
     matched_ids: set[int] = set()
     file_match: dict[int, int] = {}
     for index, file in enumerate(files):
+        # Prefer an existing `.otix` media id when present and valid.
+        raw_otix_id = file.get("otix_media_id")
+        if raw_otix_id not in (None, ""):
+            try:
+                otix_id = int(raw_otix_id)
+            except (TypeError, ValueError):
+                otix_id = None
+            if otix_id is not None and otix_id in by_id:
+                matched_ids.add(otix_id)
+                file_match[index] = otix_id
+                continue
+
         filename = file.get("filename")
         game_title = file.get("game_title")
         row = match_catalog_row(
@@ -209,16 +263,35 @@ def match_files_to_catalog(files: list[dict]) -> None:
 
     items_by_id: dict[int, MediaItem] = {}
     if matched_ids:
-        items = list(
-            MediaItem.objects.filter(id__in=matched_ids).prefetch_related("assets")
-        )
+        items = list(MediaItem.objects.filter(id__in=matched_ids).prefetch_related("assets"))
         attach_media_urls(items)
         items_by_id = {item.id: item for item in items}
 
     for index, file in enumerate(files):
         media_id = file_match.get(index)
         item = items_by_id.get(media_id) if media_id is not None else None
-        file["catalog_item"] = catalog_payload(item) if item is not None else None
+        payload = catalog_payload(item) if item is not None else None
+        # Prefer local sidecar artwork paths when present (node serves via otix/asset).
+        if payload is not None:
+            otix_images = file.get("otix_images") or {}
+            file_id = file.get("id") or file.get("file_id")
+            server_id = file.get("server_id")
+            for role, field in (
+                ("poster", "poster_url"),
+                ("backdrop", "backdrop_url"),
+                ("logo", "logo_url"),
+                ("textlessPoster", "textless_poster_url"),
+                ("icon", "icon_url"),
+            ):
+                ref = otix_images.get(role) if isinstance(otix_images, dict) else None
+                local = None
+                if isinstance(ref, dict):
+                    local = ref.get("local")
+                if local and file_id and server_id:
+                    payload[field] = (
+                        f"/api/v1/library/servers/{server_id}/files/{file_id}/otix/asset/{role}"
+                    )
+        file["catalog_item"] = payload
 
 
 def _is_bin_file(file: dict) -> bool:

@@ -1,6 +1,7 @@
 package claim_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/dksilv4/otix/node/internal/claim"
@@ -9,6 +10,7 @@ import (
 
 func TestClaimManagerFlow(t *testing.T) {
 	cfg := config.DefaultConfig()
+	cfg.SetConfigPath(filepath.Join(t.TempDir(), "config.yaml"))
 	cfg.Server.AuthToken = ""
 	cfg.Server.Claimed = false
 

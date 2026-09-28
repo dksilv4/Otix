@@ -65,9 +65,7 @@ class YouTubeClient:
         url = f"{API_BASE}/{path.lstrip('/')}"
         if params:
             url = f"{url}?{urllib.parse.urlencode(params)}"
-        status, text = _request(
-            url, headers={"Authorization": f"Bearer {self._token}"}
-        )
+        status, text = _request(url, headers={"Authorization": f"Bearer {self._token}"})
         if status >= 400:
             raise _error_for(status, path, text)
         return json.loads(text) if text else {}

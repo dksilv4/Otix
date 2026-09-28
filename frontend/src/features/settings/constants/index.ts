@@ -91,6 +91,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: false,
     requiresAuth: false,
     group: 'library',
+    badges: ['Beta', 'WIP'],
     keywords: 'desktop tray startup minimize close always on top window node native servers nas share remote worker machine paths folders organize downloaders sabnzbd scan epic games store egs',
   },
   {

@@ -50,9 +50,9 @@ def get_company_detail(company_id: str | int, user_id: int | None) -> Company | 
         company.is_followed = UserCompanyFollow.objects.filter(
             user_id=user_id, company=company
         ).exists()
-        company.user_rating = company.ratings.filter(user_id=user_id).values_list(
-            "score", flat=True
-        ).first()
+        company.user_rating = (
+            company.ratings.filter(user_id=user_id).values_list("score", flat=True).first()
+        )
     else:
         company.is_followed = None
         company.user_rating = None
@@ -68,9 +68,7 @@ def follow_company(user_id: int, company: Company) -> bool:
     broker failure is logged, never raised — a follow must not fail because the
     queue is down. Returns whether the follow was newly created.
     """
-    _follow, created = UserCompanyFollow.objects.get_or_create(
-        user_id=user_id, company=company
-    )
+    _follow, created = UserCompanyFollow.objects.get_or_create(user_id=user_id, company=company)
     if created:
         try:
             from apps.integrations.tasks import sync_company

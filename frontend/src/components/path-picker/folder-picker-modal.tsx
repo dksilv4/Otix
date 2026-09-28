@@ -61,7 +61,17 @@ export function FolderPickerModal({
       className="max-w-2xl"
     >
       {servers.length === 0 ? (
-        <p className="text-sm text-white/60">Connect a game server to browse folders.</p>
+        <div className="space-y-4 py-2">
+          <p className="text-sm text-white/60">No Otix nodes connected to browse folders.</p>
+          <div className="flex justify-end gap-2">
+            <DkButton size="sm" variant="ghost" onClick={() => onSelect('')}>
+              Clear Path Selection
+            </DkButton>
+            <DkButton size="sm" variant="secondary" onClick={onClose}>
+              Close
+            </DkButton>
+          </div>
+        </div>
       ) : (
         <div className="space-y-3">
           {servers.length > 1 && (
@@ -137,7 +147,12 @@ export function FolderPickerModal({
                 Scanning folders...
               </div>
             ) : error ? (
-              <p className="px-4 py-8 text-center text-xs text-rose-400">Unable to access directory</p>
+              <div className="space-y-1 px-4 py-8 text-center text-xs text-rose-400">
+                <p className="font-semibold">Unable to access directory</p>
+                <p className="text-[11px] text-white/50">
+                  {(error as any)?.response?.data?.detail || error.message || 'Node may be offline or disconnected.'}
+                </p>
+              </div>
             ) : folders.length === 0 ? (
               <div className="px-4 py-10 text-center text-xs text-white/40">
                 <Folder className="mx-auto mb-2 h-7 w-7 text-white/20" />
@@ -166,13 +181,23 @@ export function FolderPickerModal({
               <HardDrive className="h-3.5 w-3.5 shrink-0 text-primary" />
               <span className="truncate font-mono text-[11px] text-white/70">{currentFolderPath}</span>
             </div>
-            <DkButton
-              size="sm"
-              onClick={() => onSelect(currentFolderPath)}
-              disabled={!browseData}
-            >
-              Use this folder
-            </DkButton>
+            <div className="flex items-center gap-2 shrink-0">
+              <DkButton
+                size="sm"
+                variant="ghost"
+                onClick={() => onSelect('')}
+                title="Clear or undo path selection"
+              >
+                Clear Selection
+              </DkButton>
+              <DkButton
+                size="sm"
+                onClick={() => onSelect(currentFolderPath)}
+                disabled={!browseData}
+              >
+                Use this folder
+              </DkButton>
+            </div>
           </div>
         </div>
       )}

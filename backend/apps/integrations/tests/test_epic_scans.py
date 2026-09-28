@@ -84,7 +84,7 @@ class EpicScanTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
             resp.json(),
-            {"total_in_epic": 1, "matched_in_otix": 1, "failed": 0},
+            {"total_in_epic": 1, "matched_in_otix": 1, "failed": 0, "source": "node"},
         )
         row = UserEpicGame.objects.get(user=self.user, app_name="Jaguar")
         self.assertEqual(row.media_item_id, media.pk)
@@ -185,8 +185,33 @@ class EpicScanTests(TestCase):
         row = UserEpicGame.objects.get(user=self.user, app_name="app123")
         self.assertEqual(row.media_item_id, media.pk)
         self.assertTrue(
-            ExternalID.objects.filter(provider="epic", external_id="cid999", object_id=media.pk).exists()
+            ExternalID.objects.filter(
+                provider="epic", external_id="cid999", object_id=media.pk
+            ).exists()
         )
+
+    @patch("apps.integrations.services.epic_client.scan_epic_cloud_library")
+    def test_cloud_scan_when_no_node_online(self, mock_cloud_scan):
+        self.user.epic_refresh_token = "mock-refresh"
+        self.user.save()
+        media = _catalog_game(external_id="c_cloud", title="Cloud Game")
+        mock_cloud_scan.return_value = [
+            {
+                "app_name": "CloudApp",
+                "catalog_item_id": "c_cloud",
+                "offer_id": "o_cloud",
+                "namespace": "ns_cloud",
+                "title": "Cloud Game",
+            }
+        ]
+        resp = self.post()
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.json(),
+            {"total_in_epic": 1, "matched_in_otix": 1, "failed": 0, "source": "cloud"},
+        )
+        row = UserEpicGame.objects.get(user=self.user, app_name="CloudApp")
+        self.assertEqual(row.media_item_id, media.pk)
 
 
 class EpicStatusTests(TestCase):
@@ -196,10 +221,24 @@ class EpicStatusTests(TestCase):
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
 
-    def test_400_without_node(self):
+    def test_disconnected_status_without_node(self):
         resp = self.client.get(STATUS_URL)
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(resp.json()["detail"], NO_EPIC_NODE)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.json(), {"connected": False, "account_id": None, "display_name": None}
+        )
+
+    def test_user_connected_status(self):
+        self.user.epic_refresh_token = "mock-ref"
+        self.user.epic_account_id = "acc-123"
+        self.user.epic_display_name = "AliceGamer"
+        self.user.save()
+        resp = self.client.get(STATUS_URL)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.json(),
+            {"connected": True, "account_id": "acc-123", "display_name": "AliceGamer"},
+        )
 
     @patch("apps.integrations.views.epic.proxy_epic_status")
     def test_strips_refresh_token(self, proxy):

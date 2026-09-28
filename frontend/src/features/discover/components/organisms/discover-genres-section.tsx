@@ -42,7 +42,7 @@ export const DiscoverGenresSection = memo(function DiscoverGenresSection({
       {showSkeleton ? (
         <MediaSectionSkeleton
           cardAspectRatio="aspect-[16/10]"
-          cardWidth="w-[260px]"
+          cardWidth="w-[250px]"
           cardClassName="rounded-2xl"
         />
       ) : isError && items.length === 0 ? (
@@ -52,8 +52,8 @@ export const DiscoverGenresSection = memo(function DiscoverGenresSection({
           title={title}
           subtitle="Browse catalog by category"
           viewAllLink="/genres"
-          minItemWidth={260}
-          gap={14}
+          minItemWidth={250}
+          gap={12}
           showArrows
         >
           {items.map((genre, index) => (
@@ -62,7 +62,7 @@ export const DiscoverGenresSection = memo(function DiscoverGenresSection({
               genre={genre}
               mediaType={mediaType}
               priority={eager && index < 4}
-              className="min-w-[260px] w-full"
+              className="min-w-[250px] w-full"
             />
           ))}
         </Carousel>

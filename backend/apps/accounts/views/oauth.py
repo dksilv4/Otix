@@ -37,7 +37,6 @@ from apps.accounts.services.cookies import set_refresh_cookie
 from apps.accounts.services.oauth import OAuthFlowError
 from apps.library.models import UserGameServer
 from apps.library.services.game_server import (
-    NO_EPIC_NODE,
     pick_online_game_server,
     proxy_epic_auth,
     proxy_epic_disconnect,
@@ -528,22 +527,17 @@ class TMDbLoginCallbackView(GenericAPIView):
 
 
 class EpicLinkInitiateView(GenericAPIView):
-    """POST /oauth/epic — start the Epic link flow via the user's Otix Server."""
+    """POST /oauth/epic — start the Epic link flow."""
+
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
-        node_id = request.data.get("node_id") or request.data.get("server_id")
-        if node_id:
-            server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
-        else:
-            server = pick_online_game_server(request.user)
-        if server is None:
-            return Response({"detail": NO_EPIC_NODE}, status=status.HTTP_400_BAD_REQUEST)
         auth_url, state = oauth_service.build_epic_link_url(user_id=request.user.pk)
         return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
 
 
 class EpicLinkCallbackView(GenericAPIView):
-    """POST /oauth/epic/callback — proxy the authorization code to the node."""
+    """POST /oauth/epic/callback — exchange authorization code and store credentials on user."""
 
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = OAuthCallbackSerializer
@@ -553,44 +547,100 @@ class EpicLinkCallbackView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         code = serializer.validated_data["code"]
         state = serializer.validated_data["state"]
-        node_id = request.data.get("node_id") or request.data.get("server_id")
+
         payload = oauth_service.consume_epic_link_state(state, user_id=request.user.pk)
         if payload is None:
             return Response(
                 {"detail": "Epic linking session expired. Please try again."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        from apps.integrations.services import epic_client
+
+        try:
+            tokens = epic_client.exchange_authorization_code(code)
+        except epic_client.EpicAuthError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        user.epic_account_id = tokens["account_id"]
+        user.epic_display_name = tokens["display_name"]
+        user.epic_access_token = tokens["access_token"]
+        user.epic_refresh_token = tokens["refresh_token"]
+        user.epic_token_expires_at = tokens["expires_at"]
+        user.save(
+            update_fields=[
+                "epic_account_id",
+                "epic_display_name",
+                "epic_access_token",
+                "epic_refresh_token",
+                "epic_token_expires_at",
+            ]
+        )
+
+        # If a worker node is specified or online, sync with the node as well
+        node_id = request.data.get("node_id") or request.data.get("server_id")
+        server = None
         if node_id:
-            server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
-        else:
-            server = pick_online_game_server(request.user)
+            server = UserGameServer.objects.filter(user=user, id=node_id).first()
         if server is None:
-            return Response({"detail": NO_EPIC_NODE}, status=status.HTTP_400_BAD_REQUEST)
-        status_code, data = proxy_epic_auth(server, code)
-        if isinstance(data, dict):
-            data.pop("refresh_token", None)
-        if 200 <= status_code < 300:
-            oauth_service.delete_epic_link_states(user_id=request.user.pk)
-        return Response(data, status=status_code)
+            server = pick_online_game_server(user)
+        if server:
+            try:
+                proxy_epic_auth(server, code)
+            except Exception:
+                pass
+
+        oauth_service.delete_epic_link_states(user_id=request.user.pk)
+        return Response(
+            {
+                "connected": True,
+                "account_id": user.epic_account_id,
+                "display_name": user.epic_display_name,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class EpicDisconnectView(GenericAPIView):
-    """DELETE /oauth/epic/disconnect — unlink Epic on the user's Otix Server."""
+    """DELETE /oauth/epic/disconnect — unlink Epic from the user's account."""
+
+    permission_classes = (permissions.IsAuthenticated,)
 
     def delete(self, request, *args, **kwargs):
+        user = request.user
+        user.epic_account_id = None
+        user.epic_display_name = None
+        user.epic_access_token = None
+        user.epic_refresh_token = None
+        user.epic_token_expires_at = None
+        user.save(
+            update_fields=[
+                "epic_account_id",
+                "epic_display_name",
+                "epic_access_token",
+                "epic_refresh_token",
+                "epic_token_expires_at",
+            ]
+        )
+
         node_id = (
             request.data.get("node_id")
             or request.data.get("server_id")
             or request.query_params.get("node_id")
             or request.query_params.get("server_id")
         )
+        server = None
         if node_id:
-            server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
-        else:
-            server = pick_online_game_server(request.user)
+            server = UserGameServer.objects.filter(user=user, id=node_id).first()
         if server is None:
-            return Response({"detail": NO_EPIC_NODE}, status=status.HTTP_400_BAD_REQUEST)
-        proxy_epic_disconnect(server)
+            server = pick_online_game_server(user)
+        if server:
+            try:
+                proxy_epic_disconnect(server)
+            except Exception:
+                pass
+
         return Response(
             {"message": "Epic account unlinked successfully"}, status=status.HTTP_200_OK
         )

@@ -144,18 +144,10 @@ class EpicSteamGridResolutionTests(TestCase):
         )
 
         # Check Artwork assets
-        self.assertTrue(
-            MediaAsset.objects.filter(media_item=media, asset_type="poster").exists()
-        )
-        self.assertTrue(
-            MediaAsset.objects.filter(media_item=media, asset_type="backdrop").exists()
-        )
-        self.assertTrue(
-            MediaAsset.objects.filter(media_item=media, asset_type="logo").exists()
-        )
-        self.assertTrue(
-            MediaAsset.objects.filter(media_item=media, asset_type="icon").exists()
-        )
+        self.assertTrue(MediaAsset.objects.filter(media_item=media, asset_type="poster").exists())
+        self.assertTrue(MediaAsset.objects.filter(media_item=media, asset_type="backdrop").exists())
+        self.assertTrue(MediaAsset.objects.filter(media_item=media, asset_type="logo").exists())
+        self.assertTrue(MediaAsset.objects.filter(media_item=media, asset_type="icon").exists())
 
     def test_falls_back_to_title_search(self):
         epic_game = UserEpicGame.objects.create(
@@ -239,7 +231,9 @@ class EpicSteamGridResolutionTests(TestCase):
         )
         MockProvider.return_value = mock_instance
 
-        resp = self.client.post("/api/v1/integrations/epic/resolve-steamgrid", {"limit": 10}, format="json")
+        resp = self.client.post(
+            "/api/v1/integrations/epic/resolve-steamgrid", {"limit": 10}, format="json"
+        )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["matched"], 1)
         self.assertEqual(resp.json()["total"], 1)

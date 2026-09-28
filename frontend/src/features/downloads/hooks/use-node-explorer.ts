@@ -5,6 +5,8 @@ import { normalizeExplorerBrowse } from '../node-explorer-utils';
 import type {
   CreateNodeFolderPayload,
   NodeExplorerBrowseResult,
+  RequestNodePermissionPayload,
+  RequestNodePermissionResult,
   SetNodeDownloadPathPayload,
 } from '../node-explorer-types';
 
@@ -79,3 +81,23 @@ export function useCreateNodeFolder(nodeId?: number) {
 }
 
 export const useCreateServerFolder = useCreateNodeFolder;
+
+/** Hook to request or trigger macOS folder permissions on the node. */
+export function useRequestNodePermission(nodeId?: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: RequestNodePermissionPayload) => {
+      if (!nodeId) throw new Error('No node selected');
+      const { data } = await apiClient.post<RequestNodePermissionResult>(
+        `/library/servers/${nodeId}/explorer/request-permission`,
+        payload,
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: nodeExplorerKeys.all });
+    },
+  });
+}
+
+export const useRequestServerPermission = useRequestNodePermission;

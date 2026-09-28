@@ -75,12 +75,8 @@ def _entry(url, lang=None, width=None, height=None):
 
 def _movie_art():
     return {
-        "hdmovielogo": [
-            _entry("https://a.fanart.tv/art/movies/550/hdmovielogo/1.png", lang="en")
-        ],
-        "movielogo": [
-            _entry("https://a.fanart.tv/art/movies/550/movielogo/1.png", lang="")
-        ],
+        "hdmovielogo": [_entry("https://a.fanart.tv/art/movies/550/hdmovielogo/1.png", lang="en")],
+        "movielogo": [_entry("https://a.fanart.tv/art/movies/550/movielogo/1.png", lang="")],
         "movieposter": [
             _entry("https://a.fanart.tv/art/movies/550/movieposter/1.png", lang="en"),
             _entry("https://a.fanart.tv/art/movies/550/movieposter/2.png", lang="zxx"),
@@ -94,16 +90,12 @@ def _movie_art():
 def _show_art():
     return {
         "hdtvlogo": [_entry("https://a.fanart.tv/art/tv/73713/hdtvlogo/1.png", lang="en")],
-        "clearlogo": [
-            _entry("https://a.fanart.tv/art/tv/73713/clearlogo/1.png", lang="en")
-        ],
+        "clearlogo": [_entry("https://a.fanart.tv/art/tv/73713/clearlogo/1.png", lang="en")],
         "tvposter": [
             _entry("https://a.fanart.tv/art/tv/73713/tvposter/1.png", lang="en"),
             _entry("https://a.fanart.tv/art/tv/73713/tvposter/2.png", lang="00"),
         ],
-        "seasonposter": [
-            _entry("https://a.fanart.tv/art/tv/73713/seasonposter/1.png", lang="en")
-        ],
+        "seasonposter": [_entry("https://a.fanart.tv/art/tv/73713/seasonposter/1.png", lang="en")],
         "showbackground": [
             _entry("https://a.fanart.tv/art/tv/73713/showbackground/1.png", lang="en")
         ],
@@ -263,9 +255,7 @@ class ApplyFanartAssetsTests(TestCase):
         assets = MediaAsset.objects.filter(media_item=media)
         self.assertEqual(assets.count(), 5)
         self.assertTrue(assets.filter(asset_type="logo").exists())
-        self.assertTrue(
-            all(a.provider == "fanart" for a in assets)
-        )
+        self.assertTrue(all(a.provider == "fanart" for a in assets))
 
     def test_adding_logo_and_textless_flips_completeness_flags(self):
         media = _media()
@@ -301,9 +291,7 @@ class FanartEnrichImagesTests(TestCase):
 
     def test_no_context_is_benign_noop(self):
         provider = self._provider(_movie_art())
-        with mock.patch(
-            "apps.media.services.fanart_ingest._context", return_value=None
-        ):
+        with mock.patch("apps.media.services.fanart_ingest._context", return_value=None):
             result = _run(fanart_enrich_images(self.media.pk, provider=provider))
 
         provider.get_movie_images.assert_not_called()
@@ -313,12 +301,13 @@ class FanartEnrichImagesTests(TestCase):
 
     def test_movie_fetches_by_tmdb_id_and_applies_assets(self):
         provider = self._provider(_movie_art())
-        with mock.patch(
-            "apps.media.services.fanart_ingest._context",
-            return_value=self._context(),
-        ), mock.patch(
-            "apps.media.services.fanart_ingest._apply_assets", return_value=4
-        ) as apply:
+        with (
+            mock.patch(
+                "apps.media.services.fanart_ingest._context",
+                return_value=self._context(),
+            ),
+            mock.patch("apps.media.services.fanart_ingest._apply_assets", return_value=4) as apply,
+        ):
             result = _run(fanart_enrich_images(self.media.pk, provider=provider))
 
         provider.get_movie_images.assert_awaited_once_with(TMDB_ID)
@@ -332,11 +321,10 @@ class FanartEnrichImagesTests(TestCase):
     def test_show_fetches_by_tvdb_id(self):
         provider = self._provider(_show_art())
         context = {"kind": "show", "lookup_id": TVDB_ID}
-        with mock.patch(
-            "apps.media.services.fanart_ingest._context", return_value=context
-        ), mock.patch(
-            "apps.media.services.fanart_ingest._apply_assets", return_value=2
-        ) as apply:
+        with (
+            mock.patch("apps.media.services.fanart_ingest._context", return_value=context),
+            mock.patch("apps.media.services.fanart_ingest._apply_assets", return_value=2) as apply,
+        ):
             result = _run(fanart_enrich_images(self.media.pk, provider=provider))
 
         provider.get_show_images.assert_awaited_once_with(TVDB_ID)
@@ -347,12 +335,13 @@ class FanartEnrichImagesTests(TestCase):
 
     def test_provider_miss_is_benign_noop(self):
         provider = self._provider(None)
-        with mock.patch(
-            "apps.media.services.fanart_ingest._context",
-            return_value=self._context(),
-        ), mock.patch(
-            "apps.media.services.fanart_ingest._apply_assets"
-        ) as apply:
+        with (
+            mock.patch(
+                "apps.media.services.fanart_ingest._context",
+                return_value=self._context(),
+            ),
+            mock.patch("apps.media.services.fanart_ingest._apply_assets") as apply,
+        ):
             result = _run(fanart_enrich_images(self.media.pk, provider=provider))
 
         provider.get_movie_images.assert_awaited_once()
@@ -362,12 +351,13 @@ class FanartEnrichImagesTests(TestCase):
 
     def test_payload_without_tracked_artwork_is_benign_noop(self):
         provider = self._provider({"tvbanner": [_entry("https://a.fanart.tv/banner.png")]})
-        with mock.patch(
-            "apps.media.services.fanart_ingest._context",
-            return_value=self._context(),
-        ), mock.patch(
-            "apps.media.services.fanart_ingest._apply_assets"
-        ) as apply:
+        with (
+            mock.patch(
+                "apps.media.services.fanart_ingest._context",
+                return_value=self._context(),
+            ),
+            mock.patch("apps.media.services.fanart_ingest._apply_assets") as apply,
+        ):
             result = _run(fanart_enrich_images(self.media.pk, provider=provider))
 
         apply.assert_not_called()

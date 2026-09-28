@@ -74,9 +74,7 @@ class GoogleLoginInitiateTests(TestCase):
     def test_initiate_503_when_unconfigured(self) -> None:
         response = APIClient().post("/api/v1/auth/google/initiate")
         self.assertEqual(response.status_code, 503)
-        self.assertEqual(
-            response.data["detail"], "Google authentication is not configured."
-        )
+        self.assertEqual(response.data["detail"], "Google authentication is not configured.")
 
 
 class GoogleLoginCallbackTests(TestCase):
@@ -223,9 +221,7 @@ class GoogleLoginCallbackTests(TestCase):
                 format="json",
             )
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(
-            response.data["detail"], "Unable to connect to Google. Please try again."
-        )
+        self.assertEqual(response.data["detail"], "Unable to connect to Google. Please try again.")
 
     @override_settings(**GOOGLE_SETTINGS)
     def test_callback_unexpected_error_500(self) -> None:

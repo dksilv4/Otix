@@ -151,37 +151,197 @@ class MatchScanView(APIView):
 
 
 class MatchConfirmView(APIView):
-    """``POST /media/match/confirm`` — link a local game to a catalog item.
-
-    Deferred: confirmation writes live on the SteamGrid matcher + Celery sync,
-    which the Django backend does not run yet.
-    """
+    """``POST /media/match/confirm`` — link a local, Steam, or Epic game to a catalog item."""
 
     def post(self, request) -> Response:
+        from django.contrib.contenttypes.models import ContentType
+
+        from apps.integrations.models import UserEpicGame, UserSteamGame
+        from apps.library.models import UserLocalGame
+        from apps.media.models import ExternalID, MediaItem
+
         data = request.data or {}
-        return Response(
-            {
-                "success": False,
-                "media_item_id": data.get("media_item_id"),
-                "error": "Match confirmation is not available in the Django backend yet.",
-            }
-        )
+        query_id = str(data.get("query_id") or "").strip()
+        media_item_id = data.get("media_item_id")
+        igdb_id = data.get("igdb_id")
+        rejected = bool(data.get("rejected") or data.get("rejected_permanently"))
+
+        if rejected:
+            return Response({"success": True, "media_item_id": None})
+
+        media_item = None
+        if media_item_id is not None:
+            try:
+                media_item = MediaItem.objects.filter(pk=int(media_item_id)).first()
+            except (TypeError, ValueError):
+                pass
+
+        if media_item is None and igdb_id is not None:
+            try:
+                media_item = import_service.import_igdb_game(int(igdb_id))
+            except (TypeError, ValueError):
+                pass
+
+        if media_item is None:
+            return Response(
+                {
+                    "success": False,
+                    "error": "Catalog media item not found or could not be imported.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        content_type = ContentType.objects.get_for_model(MediaItem)
+
+        # 1. Steam matching
+        if query_id.startswith("steam:"):
+            target = query_id.split(":", 1)[1].strip()
+            steam_row = None
+            if target.startswith("steam-unmatched-"):
+                try:
+                    steam_row = UserSteamGame.objects.filter(
+                        user=request.user, id=int(target.replace("steam-unmatched-", ""))
+                    ).first()
+                except (TypeError, ValueError):
+                    pass
+            elif target.startswith("steam-"):
+                try:
+                    steam_row = UserSteamGame.objects.filter(
+                        user=request.user, id=int(target.replace("steam-", ""))
+                    ).first()
+                except (TypeError, ValueError):
+                    pass
+            if steam_row is None:
+                try:
+                    appid = int(target)
+                    steam_row = UserSteamGame.objects.filter(
+                        user=request.user, steam_app_id=appid
+                    ).first()
+                    if steam_row is None:
+                        steam_row = UserSteamGame.objects.filter(
+                            user=request.user, id=appid
+                        ).first()
+                except (TypeError, ValueError):
+                    pass
+
+            if steam_row is not None:
+                steam_row.media_item_id = media_item.id
+                steam_row.save(update_fields=("media_item_id", "updated_at"))
+                ExternalID.objects.get_or_create(
+                    content_type=content_type,
+                    provider="steam",
+                    external_id=str(steam_row.steam_app_id),
+                    media_type="game",
+                    defaults={"object_id": media_item.id},
+                )
+                from apps.media.services.interaction import set_interaction
+
+                set_interaction(request.user, media_item.id, "owned")
+                return Response({"success": True, "media_item_id": str(media_item.id)})
+
+        # 2. Epic matching
+        elif query_id.startswith("epic:"):
+            target = query_id.split(":", 1)[1].strip()
+            epic_row = None
+            if target.startswith("epic-unmatched-"):
+                try:
+                    epic_row = UserEpicGame.objects.filter(
+                        user=request.user, id=int(target.replace("epic-unmatched-", ""))
+                    ).first()
+                except (TypeError, ValueError):
+                    pass
+            if epic_row is None:
+                epic_row = UserEpicGame.objects.filter(user=request.user, app_name=target).first()
+            if epic_row is None:
+                epic_row = UserEpicGame.objects.filter(
+                    user=request.user, catalog_item_id=target
+                ).first()
+
+            if epic_row is not None:
+                epic_row.media_item_id = media_item.id
+                epic_row.save(update_fields=("media_item_id", "updated_at"))
+                ExternalID.objects.get_or_create(
+                    content_type=content_type,
+                    provider="epic",
+                    external_id=str(epic_row.app_name),
+                    media_type="game",
+                    defaults={"object_id": media_item.id},
+                )
+                from apps.media.services.interaction import set_interaction
+
+                set_interaction(request.user, media_item.id, "owned")
+                return Response({"success": True, "media_item_id": str(media_item.id)})
+
+        # 3. Local game matching
+        local_row = None
+        if query_id:
+            platform = "pc"
+            title_part = query_id
+            if ":" in query_id:
+                platform, title_part = query_id.split(":", 1)
+            local_row = UserLocalGame.objects.filter(
+                user=request.user, title__iexact=title_part
+            ).first()
+
+        if local_row is not None:
+            local_row.media_item_id = media_item.id
+            local_row.save(update_fields=("media_item_id", "updated_at"))
+            from apps.media.services.interaction import set_interaction
+
+            set_interaction(request.user, media_item.id, "owned")
+            return Response({"success": True, "media_item_id": str(media_item.id)})
+
+        if request.user.is_authenticated:
+            from apps.media.services.interaction import set_interaction
+
+            set_interaction(request.user, media_item.id, "owned")
+
+        return Response({"success": True, "media_item_id": str(media_item.id)})
 
 
 class MatchUnlinkView(APIView):
-    """``POST /media/match/unlink?query_id=...`` — deferred (see confirm)."""
+    """``POST /media/match/unlink?query_id=...`` — unlink a game from catalog."""
 
     def post(self, request) -> Response:
-        query_id = request.query_params.get("query_id")
+        from apps.integrations.models import UserEpicGame, UserSteamGame
+
+        query_id = request.query_params.get("query_id") or request.data.get("query_id")
         if not query_id:
-            raise ValidationError("query_id query parameter is required")
-        return Response(
-            {
-                "success": False,
-                "media_item_id": None,
-                "error": "Match unlink is not available in the Django backend yet.",
-            }
-        )
+            raise ValidationError("query_id parameter is required")
+
+        if query_id.startswith("steam:"):
+            target = query_id.split(":", 1)[1].strip()
+            steam_row = None
+            if target.startswith("steam-"):
+                try:
+                    steam_row = UserSteamGame.objects.filter(
+                        user=request.user,
+                        id=int(target.replace("steam-unmatched-", "").replace("steam-", "")),
+                    ).first()
+                except (TypeError, ValueError):
+                    pass
+            if steam_row is None:
+                try:
+                    appid = int(target)
+                    steam_row = UserSteamGame.objects.filter(
+                        user=request.user, steam_app_id=appid
+                    ).first()
+                except (TypeError, ValueError):
+                    pass
+            if steam_row is not None:
+                steam_row.media_item_id = None
+                steam_row.save(update_fields=("media_item_id", "updated_at"))
+                return Response({"success": True, "media_item_id": None})
+
+        elif query_id.startswith("epic:"):
+            target = query_id.split(":", 1)[1].strip()
+            epic_row = UserEpicGame.objects.filter(user=request.user, app_name=target).first()
+            if epic_row is not None:
+                epic_row.media_item_id = None
+                epic_row.save(update_fields=("media_item_id", "updated_at"))
+                return Response({"success": True, "media_item_id": None})
+
+        return Response({"success": True, "media_item_id": None})
 
 
 class SyncLocalGamesView(APIView):

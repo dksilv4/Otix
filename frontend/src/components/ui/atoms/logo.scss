@@ -1,0 +1,17 @@
+/*
+  Static: .otix-logo-mark (full logo)
+  Animated: hide mark, show .otix-logo-ring + snake (logo.tsx)
+*/
+
+.otix-logo-ring,
+.otix-logo-infinity-solid,
+.otix-logo-snake-track,
+.otix-logo-snake,
+.otix-logo-snake-head {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.otix-logo-infinity-fill {
+  display: none;
+}

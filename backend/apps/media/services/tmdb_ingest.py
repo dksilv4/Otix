@@ -611,14 +611,15 @@ def show_needs_episodes(show_id: int) -> bool:
         return True
 
     today = date.today()
-    return Season.objects.filter(
-        show_id=show_id,
-        season_number__gt=0,
-    ).filter(
-        Q(air_date__lte=today) | Q(air_date__isnull=True)
-    ).filter(
-        episodes__isnull=True
-    ).exists()
+    return (
+        Season.objects.filter(
+            show_id=show_id,
+            season_number__gt=0,
+        )
+        .filter(Q(air_date__lte=today) | Q(air_date__isnull=True))
+        .filter(episodes__isnull=True)
+        .exists()
+    )
 
 
 async def _omdb_enrich_after_seed(media_id: int) -> None:

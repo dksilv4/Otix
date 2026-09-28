@@ -19,9 +19,7 @@ class TopicChannelTests(SimpleTestCase):
         self.assertEqual(parsed.confidence, 0.95)
 
     def test_topic_channel_strips_bracket_markers_from_song(self):
-        parsed = parse_music_title(
-            "Blinding Lights (Official Music Video)", "The Weeknd - Topic"
-        )
+        parsed = parse_music_title("Blinding Lights (Official Music Video)", "The Weeknd - Topic")
         self.assertEqual(parsed.artist, "The Weeknd")
         self.assertEqual(parsed.song_title, "Blinding Lights")
 
@@ -38,9 +36,7 @@ class ArtistSongSplitTests(SimpleTestCase):
         self.assertEqual(parsed.confidence, 0.9)
 
     def test_parenthesized_marker_is_stripped_from_song(self):
-        parsed = parse_music_title(
-            "Kendrick Lamar - HUMBLE. (Official Video)"
-        )
+        parsed = parse_music_title("Kendrick Lamar - HUMBLE. (Official Video)")
         self.assertEqual(parsed.artist, "Kendrick Lamar")
         self.assertEqual(parsed.song_title, "HUMBLE.")
 
@@ -50,9 +46,7 @@ class ArtistSongSplitTests(SimpleTestCase):
         self.assertEqual(parsed.song_title, "Get Lucky")
 
     def test_featuring_artist_from_bracket(self):
-        parsed = parse_music_title(
-            "Post Malone - Sunflower (feat. Swae Lee)"
-        )
+        parsed = parse_music_title("Post Malone - Sunflower (feat. Swae Lee)")
         self.assertEqual(parsed.artist, "Post Malone")
         self.assertEqual(parsed.song_title, "Sunflower")
         self.assertEqual(parsed.featuring_artists, ["Swae Lee"])

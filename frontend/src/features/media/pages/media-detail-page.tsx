@@ -334,7 +334,7 @@ export function MediaDetailPage() {
           <div className="lg:col-span-4 space-y-6">
             {/* Unified 10-point Ratings Hub V4 */}
             <RatingsHub
-              mediaId={detail.id}
+              mediaId={String(detail.id)}
               mediaType={displayType}
               overallRating={detail.overallRating}
               overallRatingSource={detail.overallRatingSource}
@@ -367,7 +367,7 @@ export function MediaDetailPage() {
         <DeferredSection fallback={<SectionSkeleton height={260} />} rootMargin="400px 0px">
           <div className="glass-card p-6 sm:p-8">
             <Suspense fallback={<SectionSkeleton height={260} />}>
-              <ReviewsListSection mediaType={displayType} mediaId={detail.id} />
+              <ReviewsListSection mediaType={displayType} mediaId={String(detail.id)} />
             </Suspense>
           </div>
         </DeferredSection>

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { PathInput } from '@/components/path-picker'
 import { DkButton } from '@ui/atoms/button'
+import { DkSwitch } from '@ui/atoms/switch'
 import { useToast } from '@ui/molecules/toast'
 import { useAuth } from '@/lib/providers/auth'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
@@ -17,6 +18,7 @@ import { apiClient } from '@/lib/api/client'
 import { useSettingsNode } from '../../context/settings-node-context'
 import { isLocalDesktopNodeId } from '../../local-desktop-node'
 import { SettingsCard } from '../molecules/settings-card'
+import { SettingsRow } from '../molecules/settings-row'
 import { SectionHeader } from '../molecules/settings-section-header'
 import { cn } from '@/lib/utils'
 
@@ -107,6 +109,10 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
   })
 
   const [isScanning, setIsScanning] = useState(false)
+  const [isClearingScan, setIsClearingScan] = useState(false)
+  const [isSyncingOtix, setIsSyncingOtix] = useState(false)
+  const [writeOtixAfterScan, setWriteOtixAfterScan] = useState(true)
+  const [downloadOtixImages, setDownloadOtixImages] = useState(false)
   const [draftScanPath, setDraftScanPath] = useState('')
   const [draftScanType, setDraftScanType] = useState<'game' | 'iso'>('game')
 
@@ -217,6 +223,53 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
   useEffect(() => {
     loadScanPaths()
   }, [loadScanPaths])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadOtixSettings() {
+      if (!remoteNodeId) {
+        setWriteOtixAfterScan(true)
+        setDownloadOtixImages(false)
+        return
+      }
+      try {
+        const { data } = await apiClient.get<{
+          writeOtixAfterScan?: boolean
+          downloadOtixImages?: boolean
+        }>(`/library/servers/${remoteNodeId}/otix/settings`)
+        if (cancelled) return
+        if (typeof data?.writeOtixAfterScan === 'boolean') {
+          setWriteOtixAfterScan(data.writeOtixAfterScan)
+        }
+        if (typeof data?.downloadOtixImages === 'boolean') {
+          setDownloadOtixImages(data.downloadOtixImages)
+        }
+      } catch {
+        // Node may be offline or on an older build.
+      }
+    }
+    void loadOtixSettings()
+    return () => {
+      cancelled = true
+    }
+  }, [remoteNodeId])
+
+  const persistOtixSettings = async (next: {
+    writeOtixAfterScan?: boolean
+    downloadOtixImages?: boolean
+  }) => {
+    if (!remoteNodeId) return
+    const { data } = await apiClient.post<{
+      writeOtixAfterScan?: boolean
+      downloadOtixImages?: boolean
+    }>(`/library/servers/${remoteNodeId}/otix/settings`, next)
+    if (typeof data?.writeOtixAfterScan === 'boolean') {
+      setWriteOtixAfterScan(data.writeOtixAfterScan)
+    }
+    if (typeof data?.downloadOtixImages === 'boolean') {
+      setDownloadOtixImages(data.downloadOtixImages)
+    }
+  }
 
   // ── 2. Load destination folders from the node or this device ──
   useEffect(() => {
@@ -380,26 +433,41 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
   // ── 3. Game Installation Directory Handler ──
   const handleSaveGamesInstallPath = async (path: string) => {
     const trimmed = path.trim()
+    const isClearing = !trimmed
+    let remoteFailed = false
     setGamesInstallPath(trimmed)
 
     try {
       if (remoteNodeId) {
         try {
-          localStorage.setItem(`otix:games-install-dir:node:${remoteNodeId}`, trimmed)
+          if (isClearing) {
+            localStorage.removeItem(`otix:games-install-dir:node:${remoteNodeId}`)
+          } else {
+            localStorage.setItem(`otix:games-install-dir:node:${remoteNodeId}`, trimmed)
+          }
         } catch {
-      // ignore
-    }
-        await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesInstallPath: trimmed })
+          // ignore
+        }
+        try {
+          await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesInstallPath: trimmed })
+        } catch (err) {
+          console.warn('Node is disconnected or unreachable while updating gamesInstallPath:', err)
+          remoteFailed = true
+        }
       } else {
         const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
         if (api?.setDesktopSettings) {
           await api.setDesktopSettings({ gamesInstallPath: trimmed })
         }
         try {
-          localStorage.setItem('otix:games-install-dir', trimmed)
+          if (isClearing) {
+            localStorage.removeItem('otix:games-install-dir')
+          } else {
+            localStorage.setItem('otix:games-install-dir', trimmed)
+          }
         } catch {
-      // ignore
-    }
+          // ignore
+        }
       }
 
       // Automatically register in scanPaths if not already present
@@ -411,11 +479,23 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         }
       }
 
-      toast({
-        title: 'Installation Directory Updated',
-        description: `Saved: ${trimmed || 'Not configured'}`,
-        variant: 'success',
-      })
+      if (isClearing) {
+        toast({
+          title: 'Installation Directory Cleared',
+          description: remoteFailed
+            ? 'Cleared locally (node is disconnected/offline).'
+            : 'Installation directory has been reset.',
+          variant: 'default',
+        })
+      } else {
+        toast({
+          title: 'Installation Directory Updated',
+          description: remoteFailed
+            ? `Saved locally: ${trimmed} (node is offline; will sync when reconnected)`
+            : `Saved: ${trimmed}`,
+          variant: remoteFailed ? 'default' : 'success',
+        })
+      }
     } catch {
       toast({
         title: 'Save Failed',
@@ -428,26 +508,41 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
   // ── 4. Games Download Directory Handler ──
   const handleSaveGamesPath = async (path: string) => {
     const trimmed = path.trim()
+    const isClearing = !trimmed
+    let remoteFailed = false
     setGamesDownloadPath(trimmed)
 
     try {
       if (remoteNodeId) {
         try {
-          localStorage.setItem(`otix:games-download-dir:node:${remoteNodeId}`, trimmed)
+          if (isClearing) {
+            localStorage.removeItem(`otix:games-download-dir:node:${remoteNodeId}`)
+          } else {
+            localStorage.setItem(`otix:games-download-dir:node:${remoteNodeId}`, trimmed)
+          }
         } catch {
-      // ignore
-    }
-        await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesDownloadPath: trimmed })
+          // ignore
+        }
+        try {
+          await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesDownloadPath: trimmed })
+        } catch (err) {
+          console.warn('Node is disconnected or unreachable while updating gamesDownloadPath:', err)
+          remoteFailed = true
+        }
       } else {
         const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
         if (api?.setDesktopSettings) {
           await api.setDesktopSettings({ gamesDownloadPath: trimmed })
         }
         try {
-          localStorage.setItem('otix:games-download-dir', trimmed)
+          if (isClearing) {
+            localStorage.removeItem('otix:games-download-dir')
+          } else {
+            localStorage.setItem('otix:games-download-dir', trimmed)
+          }
         } catch {
-      // ignore
-    }
+          // ignore
+        }
       }
 
       // Automatically register in scanPaths if not already present
@@ -459,11 +554,23 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         }
       }
 
-      toast({
-        title: 'Games Directory Updated',
-        description: `Saved: ${trimmed || 'System default (~/Downloads/Games)'}`,
-        variant: 'success',
-      })
+      if (isClearing) {
+        toast({
+          title: 'Download Directory Cleared',
+          description: remoteFailed
+            ? 'Cleared locally (node is disconnected/offline).'
+            : 'Download directory has been reset.',
+          variant: 'default',
+        })
+      } else {
+        toast({
+          title: 'Games Directory Updated',
+          description: remoteFailed
+            ? `Saved locally: ${trimmed} (node is offline; will sync when reconnected)`
+            : `Saved: ${trimmed}`,
+          variant: remoteFailed ? 'default' : 'success',
+        })
+      }
     } catch {
       toast({
         title: 'Save Failed',
@@ -476,26 +583,41 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
   // ── 5. ISOs Directory Handler ──
   const handleSaveServerIsoPath = async (path: string) => {
     const trimmed = path.trim()
+    const isClearing = !trimmed
+    let remoteFailed = false
     setServerDownloadPath(trimmed)
 
     try {
       if (remoteNodeId) {
         try {
-          localStorage.setItem(`otix:iso-download-dir:node:${remoteNodeId}`, trimmed)
+          if (isClearing) {
+            localStorage.removeItem(`otix:iso-download-dir:node:${remoteNodeId}`)
+          } else {
+            localStorage.setItem(`otix:iso-download-dir:node:${remoteNodeId}`, trimmed)
+          }
         } catch {
-      // ignore
-    }
-        await apiClient.post(`/library/servers/${remoteNodeId}/organize`, { isoDownloadPath: trimmed || '' })
+          // ignore
+        }
+        try {
+          await apiClient.post(`/library/servers/${remoteNodeId}/organize`, { isoDownloadPath: trimmed || '' })
+        } catch (err) {
+          console.warn('Node is disconnected or unreachable while updating isoDownloadPath:', err)
+          remoteFailed = true
+        }
       } else {
         const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
         if (api?.setDesktopSettings) {
           await api.setDesktopSettings({ isoDownloadPath: trimmed })
         }
         try {
-          localStorage.setItem('otix:iso-download-dir', trimmed)
+          if (isClearing) {
+            localStorage.removeItem('otix:iso-download-dir')
+          } else {
+            localStorage.setItem('otix:iso-download-dir', trimmed)
+          }
         } catch {
-      // ignore
-    }
+          // ignore
+        }
 
         if (user && saveConfig && dlConfig) {
           try {
@@ -505,8 +627,8 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
               downloadPath: trimmed || null,
             })
           } catch {
-      // ignore
-    }
+            // ignore
+          }
         }
       }
 
@@ -519,11 +641,23 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         }
       }
 
-      toast({
-        title: 'ISO Directory Updated',
-        description: `Saved: ${trimmed || 'Not configured'}`,
-        variant: 'success',
-      })
+      if (isClearing) {
+        toast({
+          title: 'ISO Directory Cleared',
+          description: remoteFailed
+            ? 'Cleared locally (node is disconnected/offline).'
+            : 'ISO directory has been reset.',
+          variant: 'default',
+        })
+      } else {
+        toast({
+          title: 'ISO Directory Updated',
+          description: remoteFailed
+            ? `Saved locally: ${trimmed} (node is offline; will sync when reconnected)`
+            : `Saved: ${trimmed}`,
+          variant: remoteFailed ? 'default' : 'success',
+        })
+      }
     } catch (err) {
       console.error('Failed to save ISO path:', err)
       toast({
@@ -595,7 +729,49 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
     setIsScanning(true)
     try {
       if (remoteNodeId) {
-        await apiClient.post(`/library/servers/${remoteNodeId}/scan`)
+        if (writeOtixAfterScan) {
+          setIsSyncingOtix(true)
+          try {
+            const { data } = await apiClient.post<{
+              written?: number
+              matched?: number
+              status?: string
+              reason?: string
+            }>(`/library/servers/${remoteNodeId}/otix/sync`, {
+              writeOtix: true,
+              downloadImages: downloadOtixImages,
+            })
+            const written = data?.written ?? 0
+            const matched = data?.matched ?? written
+            toast({
+              title: 'Library scanned',
+              description:
+                data?.status === 'skipped'
+                  ? 'Scan finished. Sidecar write is disabled on this node.'
+                  : `Matched ${matched} game${matched === 1 ? '' : 's'}, wrote ${written} .otix sidecar${written === 1 ? '' : 's'}.`,
+              variant: 'success',
+            })
+          } catch (syncErr: any) {
+            console.error('Otix sync failed:', syncErr)
+            toast({
+              title: 'Scan / metadata sync failed',
+              description:
+                syncErr?.response?.data?.detail ||
+                syncErr?.message ||
+                'Could not scan and write .otix sidecars.',
+              variant: 'error',
+            })
+          } finally {
+            setIsSyncingOtix(false)
+          }
+        } else {
+          await apiClient.post(`/library/servers/${remoteNodeId}/scan`)
+          toast({
+            title: 'Library Scanned',
+            description: 'Completed scanning configured library and download paths.',
+            variant: 'success',
+          })
+        }
       } else {
         const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
         if (api?.scanPaths) {
@@ -603,13 +779,13 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
           const isoDirs = scanPaths.filter((p) => p.type === 'iso').map((p) => p.path)
           await api.scanPaths(gameDirs, isoDirs)
         }
+        toast({
+          title: 'Library Scanned',
+          description: 'Completed scanning configured library and download paths.',
+          variant: 'success',
+        })
       }
       onScanComplete?.()
-      toast({
-        title: 'Library Scanned',
-        description: 'Completed scanning configured library and download paths.',
-        variant: 'success',
-      })
     } catch (err) {
       console.error('Library scan failed:', err)
       toast({
@@ -619,6 +795,41 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       })
     } finally {
       setIsScanning(false)
+      setIsSyncingOtix(false)
+    }
+  }
+
+  const handleClearScannedList = async () => {
+    if (!remoteNodeId) return
+    setIsClearingScan(true)
+    try {
+      await apiClient.post(`/library/servers/${remoteNodeId}/scan/clear`)
+      onScanComplete?.()
+      toast({
+        title: 'Scan list cleared',
+        description: 'Indexed hosted files were cleared. Files on disk were not deleted.',
+        variant: 'success',
+      })
+    } catch (err: any) {
+      console.error('Clear scan list failed:', err)
+      const status = err?.response?.status
+      const detail =
+        err?.response?.data?.detail ||
+        err?.response?.data?.error ||
+        err?.message ||
+        'Could not clear the indexed file list.'
+      const needsUpdate =
+        status === 404 ||
+        (typeof detail === 'string' && /not found|404/i.test(detail))
+      toast({
+        title: 'Clear failed',
+        description: needsUpdate
+          ? 'This Otix Node build is missing the clear endpoint. Rebuild/restart Otix Node, then try again.'
+          : String(detail),
+        variant: 'error',
+      })
+    } finally {
+      setIsClearingScan(false)
     }
   }
 
@@ -698,18 +909,87 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
           title="Scan folders"
           description="Extra folders to index. Destinations above are linked automatically."
           action={
-            <DkButton
-              size="sm"
-              onClick={handleTriggerScan}
-              disabled={isScanning}
-              loading={isScanning}
-              className="h-8 shrink-0"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              {isScanning ? 'Scanning...' : 'Scan Now'}
-            </DkButton>
+            <div className="flex items-center gap-2">
+              {remoteNodeId ? (
+                <DkButton
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleClearScannedList}
+                  disabled={isScanning || isClearingScan || isSyncingOtix}
+                  loading={isClearingScan}
+                  className="h-8 shrink-0"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {isClearingScan ? 'Clearing…' : 'Clear list'}
+                </DkButton>
+              ) : null}
+              <DkButton
+                size="sm"
+                onClick={handleTriggerScan}
+                disabled={isScanning || isClearingScan || isSyncingOtix}
+                loading={isScanning || isSyncingOtix}
+                className="h-8 shrink-0"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                {isSyncingOtix ? 'Matching…' : isScanning ? 'Scanning...' : 'Scan Now'}
+              </DkButton>
+            </div>
           }
         />
+
+        {remoteNodeId ? (
+          <div className="space-y-3 pb-2 border-b border-white/5">
+            <SettingsRow
+              label="Write .otix after scan"
+              description="Match and hydrate games, then save an invisible .otix sidecar next to each folder."
+              action={
+                <DkSwitch
+                  checked={writeOtixAfterScan}
+                  onCheckedChange={async (checked) => {
+                    setWriteOtixAfterScan(checked)
+                    if (!checked) setDownloadOtixImages(false)
+                    try {
+                      await persistOtixSettings({
+                        writeOtixAfterScan: checked,
+                        downloadOtixImages: checked ? downloadOtixImages : false,
+                      })
+                    } catch (err) {
+                      console.error('Failed to save otix settings:', err)
+                      toast({
+                        title: 'Could not save setting',
+                        description: 'Otix Node may be offline or needs an update.',
+                        variant: 'error',
+                      })
+                    }
+                  }}
+                />
+              }
+            />
+            <SettingsRow
+              label="Download images locally"
+              description="Save poster/backdrop/logo as .otix-*.jpg next to each game and reference them in the sidecar."
+              action={
+                <DkSwitch
+                  checked={downloadOtixImages}
+                  disabled={!writeOtixAfterScan}
+                  onCheckedChange={async (checked) => {
+                    setDownloadOtixImages(checked)
+                    try {
+                      await persistOtixSettings({ downloadOtixImages: checked })
+                    } catch (err) {
+                      console.error('Failed to save otix settings:', err)
+                      toast({
+                        title: 'Could not save setting',
+                        description: 'Otix Node may be offline or needs an update.',
+                        variant: 'error',
+                      })
+                    }
+                  }}
+                />
+              }
+            />
+          </div>
+        ) : null}
 
         <div className="space-y-1.5">
           {scanPaths.map((item, idx) => {

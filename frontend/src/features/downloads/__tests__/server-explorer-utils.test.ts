@@ -58,6 +58,7 @@ describe('Server File Explorer Utilities', () => {
     it('returns appropriate badges for all format categories', () => {
       expect(getFormatBadgeColor('iso').label).toBe('ISO');
       expect(getFormatBadgeColor('installer').label).toBe('INSTALLER');
+      expect(getFormatBadgeColor('game').label).toBe('GAME');
       expect(getFormatBadgeColor('archive').label).toBe('ARCHIVE');
       expect(getFormatBadgeColor('rom').label).toBe('ROM');
       expect(getFormatBadgeColor('folder').label).toBe('FOLDER');

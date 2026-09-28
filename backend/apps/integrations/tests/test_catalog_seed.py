@@ -346,7 +346,6 @@ class EnqueueDueAndIncompleteTests(TestCase):
         self.assertEqual(summary["skipped"], 1)
 
 
-
 class EnqueueTmdbPopularTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -472,4 +471,3 @@ class EnqueueTmdbDiscoverTests(TestCase):
             entity_type="movie",
             external_ids=["101", "102", "103"],
         )
-

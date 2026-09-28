@@ -197,6 +197,7 @@ INSTALLED_APPS = [
     "apps.blueprint.apps.BlueprintConfig",
     "apps.discover.apps.DiscoverConfig",
     "apps.gameservers.apps.GameserversConfig",
+    "apps.freegames.apps.FreegamesConfig",
     # Plugin framework host (no legacy-parity counterpart; see plugins/README.md)
     "plugin_framework.apps.PluginsConfig",
 ]

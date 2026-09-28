@@ -37,9 +37,7 @@ def _run(coro):
 
 
 def _media():
-    return MediaItem.objects.create(
-        media_type="game", title="Hades", slug="hades"
-    )
+    return MediaItem.objects.create(media_type="game", title="Hades", slug="hades")
 
 
 class AttachSteamgridAssetsTests(TestCase):
@@ -86,12 +84,8 @@ class AttachSteamgridAssetsTests(TestCase):
 
         self.assertEqual(self._assets().count(), 4)  # 2 posters + 2 textless
         for url in ("g1", "g2"):
-            self.assertTrue(
-                self._assets().filter(url=url, asset_type="poster").exists()
-            )
-            self.assertTrue(
-                self._assets().filter(url=url, asset_type="textless_poster").exists()
-            )
+            self.assertTrue(self._assets().filter(url=url, asset_type="poster").exists())
+            self.assertTrue(self._assets().filter(url=url, asset_type="textless_poster").exists())
 
     def test_other_grid_styles_do_not_duplicate(self):
         media = _media()
@@ -205,9 +199,7 @@ class FetchAndAttachGameArtworkTests(TestCase):
             return_value=3,
         ) as attach:
             result = _run(
-                fetch_and_attach_game_artwork(
-                    self.media.pk, STEAM_APP_ID, provider=provider
-                )
+                fetch_and_attach_game_artwork(self.media.pk, STEAM_APP_ID, provider=provider)
             )
 
         provider.get_game_by_steam_app_id.assert_awaited_once_with(STEAM_APP_ID)
@@ -241,14 +233,16 @@ class FetchAndAttachGameArtworkTests(TestCase):
             ],
         )
         stored, title_getter = self._resolution_patches(stored_id=None)
-        with stored, title_getter, mock.patch(
-            "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
-            return_value=1,
-        ) as attach:
+        with (
+            stored,
+            title_getter,
+            mock.patch(
+                "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
+                return_value=1,
+            ) as attach,
+        ):
             result = _run(
-                fetch_and_attach_game_artwork(
-                    self.media.pk, STEAM_APP_ID, provider=provider
-                )
+                fetch_and_attach_game_artwork(self.media.pk, STEAM_APP_ID, provider=provider)
             )
 
         provider.search_games.assert_awaited_once_with("Hades")
@@ -269,14 +263,16 @@ class FetchAndAttachGameArtworkTests(TestCase):
     def test_stored_steamgrid_id_reused_without_platform_lookup(self):
         provider = self._provider()
         stored, title_getter = self._resolution_patches(stored_id=SGDB_GAME_ID)
-        with stored, title_getter, mock.patch(
-            "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
-            return_value=2,
-        ) as attach:
+        with (
+            stored,
+            title_getter,
+            mock.patch(
+                "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
+                return_value=2,
+            ) as attach,
+        ):
             result = _run(
-                fetch_and_attach_game_artwork(
-                    self.media.pk, STEAM_APP_ID, provider=provider
-                )
+                fetch_and_attach_game_artwork(self.media.pk, STEAM_APP_ID, provider=provider)
             )
 
         provider.get_game_by_steam_app_id.assert_not_called()
@@ -297,13 +293,13 @@ class FetchAndAttachGameArtworkTests(TestCase):
     def test_no_steamgrid_entry_at_all_is_benign_noop(self):
         provider = self._provider(game=None, candidates=[])
         stored, title_getter = self._resolution_patches(stored_id=None)
-        with stored, title_getter, mock.patch(
-            "apps.media.services.steamgrid_artwork.attach_steamgrid_assets"
-        ) as attach:
+        with (
+            stored,
+            title_getter,
+            mock.patch("apps.media.services.steamgrid_artwork.attach_steamgrid_assets") as attach,
+        ):
             result = _run(
-                fetch_and_attach_game_artwork(
-                    self.media.pk, STEAM_APP_ID, provider=provider
-                )
+                fetch_and_attach_game_artwork(self.media.pk, STEAM_APP_ID, provider=provider)
             )
 
         provider.search_games.assert_awaited_once_with("Hades")
@@ -343,14 +339,16 @@ class FetchAndAttachGameLogosTests(TestCase):
         title_getter = mock.patch(
             "apps.media.services.steamgrid_artwork._media_title", return_value="Hades"
         )
-        with stored, title_getter, mock.patch(
-            "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
-            return_value=2,
-        ) as attach:
+        with (
+            stored,
+            title_getter,
+            mock.patch(
+                "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
+                return_value=2,
+            ) as attach,
+        ):
             result = _run(
-                fetch_and_attach_game_logos(
-                    self.media.pk, STEAM_APP_ID, provider=provider
-                )
+                fetch_and_attach_game_logos(self.media.pk, STEAM_APP_ID, provider=provider)
             )
 
         provider.get_game_by_steam_app_id.assert_awaited_once_with(STEAM_APP_ID)
@@ -366,9 +364,7 @@ class FetchAndAttachGameLogosTests(TestCase):
         self.assertTrue(result["attached"])
 
     def test_missing_steam_id_falls_back_to_title_search(self):
-        provider = self._provider(
-            game=None, candidates=[{"id": SGDB_GAME_ID, "name": "Hades"}]
-        )
+        provider = self._provider(game=None, candidates=[{"id": SGDB_GAME_ID, "name": "Hades"}])
         stored = mock.patch(
             "apps.media.services.steamgrid_artwork._stored_steamgrid_game_id",
             return_value=None,
@@ -376,13 +372,15 @@ class FetchAndAttachGameLogosTests(TestCase):
         title_getter = mock.patch(
             "apps.media.services.steamgrid_artwork._media_title", return_value="Hades"
         )
-        with stored, title_getter, mock.patch(
-            "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
-            return_value=1,
-        ) as attach:
-            result = _run(
-                fetch_and_attach_game_logos(self.media.pk, None, provider=provider)
-            )
+        with (
+            stored,
+            title_getter,
+            mock.patch(
+                "apps.media.services.steamgrid_artwork.attach_steamgrid_assets",
+                return_value=1,
+            ) as attach,
+        ):
+            result = _run(fetch_and_attach_game_logos(self.media.pk, None, provider=provider))
 
         provider.get_game_by_steam_app_id.assert_not_called()
         provider.search_games.assert_awaited_once_with("Hades")

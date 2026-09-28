@@ -33,8 +33,9 @@ func NewClaimManager(cfg *config.AppConfig) *ClaimManager {
 	// and not a generic default like "otix_secret_token"
 	isClaimed := cfg.Server.Claimed || (cfg.Server.AuthToken != "" && cfg.Server.AuthToken != "otix_secret_token")
 	cm := &ClaimManager{
-		cfg:     cfg,
-		claimed: isClaimed,
+		cfg:       cfg,
+		claimed:   isClaimed,
+		claimedBy: cfg.Server.ClaimedBy,
 	}
 	if !isClaimed {
 		cm.generateCode()
@@ -130,18 +131,48 @@ func (cm *ClaimManager) Confirm(code string, authToken string, serverName string
 		return fmt.Errorf("valid auth token is required")
 	}
 
+	// Backup current config state in case save fails
+	prevToken := cm.cfg.Server.AuthToken
+	prevName := cm.cfg.Server.Name
+	prevClaimed := cm.cfg.Server.Claimed
+	prevClaimedBy := cm.cfg.Server.ClaimedBy
+
 	// Update config
 	cm.cfg.Server.AuthToken = strings.TrimSpace(authToken)
 	if strings.TrimSpace(serverName) != "" {
 		cm.cfg.Server.Name = strings.TrimSpace(serverName)
 	}
 	cm.cfg.Server.Claimed = true
-	cm.claimed = true
-	cm.claimedBy = username
+	cm.cfg.Server.ClaimedBy = strings.TrimSpace(username)
 
 	// Persist
 	if err := cm.cfg.Save(""); err != nil {
+		// Roll back config to avoid leaving server in corrupted/unclaimable state
+		cm.cfg.Server.AuthToken = prevToken
+		cm.cfg.Server.Name = prevName
+		cm.cfg.Server.Claimed = prevClaimed
+		cm.cfg.Server.ClaimedBy = prevClaimedBy
 		return fmt.Errorf("failed to save claimed configuration: %w", err)
+	}
+
+	cm.claimed = true
+	cm.claimedBy = strings.TrimSpace(username)
+	return nil
+}
+
+func (cm *ClaimManager) Unclaim() error {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	cm.cfg.Server.AuthToken = ""
+	cm.cfg.Server.Claimed = false
+	cm.cfg.Server.ClaimedBy = ""
+	cm.claimed = false
+	cm.claimedBy = ""
+	cm.generateCode()
+
+	if err := cm.cfg.Save(""); err != nil {
+		return fmt.Errorf("failed to save unclaimed configuration: %w", err)
 	}
 
 	return nil

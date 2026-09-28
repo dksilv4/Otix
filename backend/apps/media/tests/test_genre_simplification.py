@@ -86,10 +86,16 @@ class GenreSimplificationTests(TestCase):
 
         # Links must be migrated
         self.assertTrue(MediaGenre.objects.filter(media_item=game_item, genre=scifi_genre).exists())
-        self.assertTrue(MediaGenre.objects.filter(media_item=show_item, genre=action_genre).exists())
+        self.assertTrue(
+            MediaGenre.objects.filter(media_item=show_item, genre=action_genre).exists()
+        )
         self.assertTrue(MediaGenre.objects.filter(media_item=show_item, genre=adv_genre).exists())
 
         # MediaGenreTypes must be preserved
-        self.assertTrue(MediaGenreType.objects.filter(genre=scifi_genre, media_type="game").exists())
-        self.assertTrue(MediaGenreType.objects.filter(genre=action_genre, media_type="show").exists())
+        self.assertTrue(
+            MediaGenreType.objects.filter(genre=scifi_genre, media_type="game").exists()
+        )
+        self.assertTrue(
+            MediaGenreType.objects.filter(genre=action_genre, media_type="show").exists()
+        )
         self.assertTrue(MediaGenreType.objects.filter(genre=adv_genre, media_type="show").exists())

@@ -322,9 +322,7 @@ class TMDBProvider(BaseProviderClient):
 
     # ── Watch Providers ─────────────────────────────────────────
 
-    async def get_watch_providers(
-        self, media_type: str, tmdb_id: int
-    ) -> dict[str, JSONValue]:
+    async def get_watch_providers(self, media_type: str, tmdb_id: int) -> dict[str, JSONValue]:
         """Fetch streaming watch providers for a movie or show."""
         endpoint = "movie" if media_type in ("movie", "movies") else "tv"
         response = await self._get(f"/{endpoint}/{tmdb_id}/watch/providers")

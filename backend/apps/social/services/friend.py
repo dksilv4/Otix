@@ -23,17 +23,13 @@ def get_user_by_id(user_id: int):
     return get_user_model().objects.filter(pk=user_id).first()
 
 
-def _resolve_friend_request_notifications(
-    receiver_id: int, request_id: int, status: str
-) -> None:
+def _resolve_friend_request_notifications(receiver_id: int, request_id: int, status: str) -> None:
     """Mark receiver ``friend_request`` rows for this request as resolved.
 
     Hides Accept/Decline in the feed after the request is no longer pending.
     """
     now = timezone.now()
-    for notification in Notification.objects.filter(
-        user_id=receiver_id, type="friend_request"
-    ):
+    for notification in Notification.objects.filter(user_id=receiver_id, type="friend_request"):
         meta = dict(notification.metadata_json or {})
         if meta.get("request_id") != request_id:
             continue
@@ -95,9 +91,7 @@ def accept_friend_request(request_id: int, user_id: int) -> FriendRequest:
     from the notification UI do not surface a 400.
     """
     request = (
-        FriendRequest.objects.select_related("sender", "receiver")
-        .filter(pk=request_id)
-        .first()
+        FriendRequest.objects.select_related("sender", "receiver").filter(pk=request_id).first()
     )
     if request is None:
         raise ValueError("Friend request not found")
@@ -130,9 +124,7 @@ def reject_friend_request(request_id: int, user_id: int) -> FriendRequest:
     from the notification UI do not surface a 400.
     """
     request = (
-        FriendRequest.objects.select_related("sender", "receiver")
-        .filter(pk=request_id)
-        .first()
+        FriendRequest.objects.select_related("sender", "receiver").filter(pk=request_id).first()
     )
     if request is None:
         raise ValueError("Friend request not found")
@@ -208,8 +200,7 @@ def get_friendship_status(user_a: int, user_b: int) -> dict:
     """Legacy ``FriendshipStatusOut`` keys for a pair of users."""
     edge = (
         FriendRequest.objects.filter(
-            Q(sender_id=user_a, receiver_id=user_b)
-            | Q(sender_id=user_b, receiver_id=user_a)
+            Q(sender_id=user_a, receiver_id=user_b) | Q(sender_id=user_b, receiver_id=user_a)
         )
         .order_by("id")
         .first()
@@ -226,13 +217,10 @@ def get_friendship_status(user_a: int, user_b: int) -> dict:
 
 def remove_friend(user_id: int, friend_id: int) -> bool:
     """Delete an accepted edge; returns whether anything was removed."""
-    deleted, _ = (
-        FriendRequest.objects.filter(
-            Q(sender_id=user_id, receiver_id=friend_id)
-            | Q(sender_id=friend_id, receiver_id=user_id),
-            status=FR_ACCEPTED,
-        ).delete()
-    )
+    deleted, _ = FriendRequest.objects.filter(
+        Q(sender_id=user_id, receiver_id=friend_id) | Q(sender_id=friend_id, receiver_id=user_id),
+        status=FR_ACCEPTED,
+    ).delete()
     if deleted:
         remover = get_user_model().objects.filter(pk=user_id).first()
         Notification.objects.create(

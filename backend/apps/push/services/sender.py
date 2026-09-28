@@ -75,11 +75,7 @@ def send_notification(notification: Any) -> int:
             if status in _EXPIRED_STATUS_CODES:
                 subscription.delete()
             else:
-                logger.warning(
-                    "web push failed for subscription %s: %s", subscription.pk, exc
-                )
+                logger.warning("web push failed for subscription %s: %s", subscription.pk, exc)
         except Exception:
-            logger.exception(
-                "unexpected web push error for subscription %s", subscription.pk
-            )
+            logger.exception("unexpected web push error for subscription %s", subscription.pk)
     return sent

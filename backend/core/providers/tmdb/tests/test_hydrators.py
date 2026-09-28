@@ -84,9 +84,9 @@ class TMDBHydratorTests(TestCase):
 
         # Genres
         genres = list(
-            Genre.objects.filter(
-                media_genres__media_item_id=media_id
-            ).values_list("name", flat=True)
+            Genre.objects.filter(media_genres__media_item_id=media_id).values_list(
+                "name", flat=True
+            )
         )
         self.assertIn("Drama", genres)
         self.assertIn("Thriller", genres)

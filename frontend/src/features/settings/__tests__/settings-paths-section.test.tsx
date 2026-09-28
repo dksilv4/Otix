@@ -448,6 +448,9 @@ describe('SettingsPathsSection', () => {
       if (url.includes('/libraries')) {
         return { data: { libraries: [{ path: '/remote/scan', kind: 'game' }] } } as any
       }
+      if (url.includes('/otix/settings')) {
+        return { data: { writeOtixAfterScan: true, downloadOtixImages: false } } as any
+      }
       return { data: {} } as any
     })
 
@@ -463,6 +466,56 @@ describe('SettingsPathsSection', () => {
     expect(localStorage.getItem('otix:games-install-dir:node:2')).toBe('/remote/installed')
     expect(localStorage.getItem('otix:games-download-dir:node:2')).toBe('/remote/downloads')
     expect(localStorage.getItem('otix:iso-download-dir:node:2')).toBe('/remote/isos')
+  })
+
+  it('shows otix toggles for remote nodes and syncs sidecars after scan', async () => {
+    const user = userEvent.setup()
+    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      if (url.includes('/otix/settings')) {
+        return { data: { writeOtixAfterScan: true, downloadOtixImages: false } } as any
+      }
+      if (url.includes('/desktop')) {
+        return { data: { gamesDownloadPath: '/g', gamesInstallPath: '/i' } } as any
+      }
+      if (url.includes('/organize')) {
+        return { data: { isoDownloadPath: '/iso' } } as any
+      }
+      if (url.includes('/libraries')) {
+        return { data: { libraries: [] } } as any
+      }
+      return { data: {} } as any
+    })
+    vi.mocked(apiClient.post).mockImplementation(async (url: string) => {
+      if (url.includes('/scan') && !url.includes('clear')) {
+        return { data: { status: 'scanning_started' } } as any
+      }
+      if (url.includes('/otix/sync')) {
+        return { data: { status: 'ok', written: 3, matched: 3 } } as any
+      }
+      return { data: {} } as any
+    })
+
+    render(<SettingsPathsSection nodeId={7} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Write .otix after scan')).toBeInTheDocument()
+      expect(screen.getByText('Download images locally')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /scan now/i }))
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/library/servers/7/otix/sync',
+        expect.objectContaining({ writeOtix: true, downloadImages: false }),
+      )
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Library scanned',
+          description: expect.stringContaining('wrote 3 .otix'),
+        }),
+      )
+    })
   })
 
   it('still loads desktop paths even if organize endpoint rejects for remote node', async () => {

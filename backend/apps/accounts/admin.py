@@ -21,7 +21,8 @@ class UserCreateForm(forms.ModelForm):
 
     password1 = forms.CharField(label="Password", widget=forms.PasswordInput)
     password2 = forms.CharField(
-        label="Password confirmation", widget=forms.PasswordInput,
+        label="Password confirmation",
+        widget=forms.PasswordInput,
         help_text="Enter the same password as before, for verification.",
     )
 
@@ -84,9 +85,17 @@ class UserAdmin(BaseUserAdmin):
         (
             _("Permissions"),
             {
-                "fields": ("is_active", "is_staff", "is_superuser", "two_factor_enabled",
-                           "two_factor_secret", "is_verified", "global_logout_marker",
-                           "groups", "user_permissions"),
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "two_factor_enabled",
+                    "two_factor_secret",
+                    "is_verified",
+                    "global_logout_marker",
+                    "groups",
+                    "user_permissions",
+                ),
                 "classes": ("wide",),
             },
         ),

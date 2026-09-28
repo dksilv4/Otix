@@ -67,13 +67,11 @@ def suggest_save_location(
         platform=platform,
         defaults={"path_pattern": path_pattern},
     )
-    suggestion_count = (
-        GameSavePathSuggestion.objects.filter(
-            game_id=media_item_id,
-            platform=platform,
-            path_pattern=path_pattern,
-        ).count()
-    )
+    suggestion_count = GameSavePathSuggestion.objects.filter(
+        game_id=media_item_id,
+        platform=platform,
+        path_pattern=path_pattern,
+    ).count()
 
     promoted = False
     if suggestion_count >= CONSENSUS_THRESHOLD:

@@ -176,11 +176,7 @@ def _stored_steamgrid_game_id(media_item_id: int) -> int | None:
 
 def _media_title(media_item_id: int) -> str | None:
     """The catalog title used for the name-search fallback (blank-safe)."""
-    title = (
-        MediaItem.objects.filter(pk=media_item_id)
-        .values_list("title", flat=True)
-        .first()
-    )
+    title = MediaItem.objects.filter(pk=media_item_id).values_list("title", flat=True).first()
     return str(title).strip() if title else None
 
 
@@ -215,9 +211,7 @@ async def _resolve_sgdb_game(
         if game is not None:
             return int(game.get("id")), "steam"
     title = await sync_to_async(_media_title)(media_item_id)
-    game = _pick_search_match(
-        await provider.search_games(title) if title else [], title or ""
-    )
+    game = _pick_search_match(await provider.search_games(title) if title else [], title or "")
     if game is None:
         return None, "name"
     return int(game.get("id")), "name"
@@ -234,9 +228,7 @@ async def fetch_and_attach_game_artwork(
         from core.providers.steamgrid.client import SteamGridDBProvider
 
         provider = SteamGridDBProvider()
-    sgdb_game_id, resolved_by = await _resolve_sgdb_game(
-        provider, media_item_id, steam_app_id
-    )
+    sgdb_game_id, resolved_by = await _resolve_sgdb_game(provider, media_item_id, steam_app_id)
     if sgdb_game_id is None:
         return {
             "steam_app_id": steam_app_id,
@@ -276,9 +268,7 @@ async def fetch_and_attach_game_logos(
         from core.providers.steamgrid.client import SteamGridDBProvider
 
         provider = SteamGridDBProvider()
-    sgdb_game_id, resolved_by = await _resolve_sgdb_game(
-        provider, media_item_id, steam_app_id
-    )
+    sgdb_game_id, resolved_by = await _resolve_sgdb_game(provider, media_item_id, steam_app_id)
     if sgdb_game_id is None:
         return {
             "steam_app_id": steam_app_id,

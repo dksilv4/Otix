@@ -249,6 +249,4 @@ class FetchStreamTests(TestCase):
 
         device = ClientDevice.objects.get(user=self.user, device_id="desktop-1")
         self.assertIsNotNone(device.last_seen)
-        self.assertGreaterEqual(
-            device.last_seen, timezone.now() - timedelta(seconds=5)
-        )
+        self.assertGreaterEqual(device.last_seen, timezone.now() - timedelta(seconds=5))

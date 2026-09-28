@@ -67,9 +67,7 @@ class ProposalListCreateView(APIView):
         body = ProposalCreateSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         if not services.is_trusted_user(request.user):
-            raise PermissionDenied(
-                "Minimum 500 XP required to create proposals"
-            )
+            raise PermissionDenied("Minimum 500 XP required to create proposals")
         try:
             proposal = services.create_proposal(
                 proposal_type=body.validated_data["proposal_type"],

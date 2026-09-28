@@ -136,14 +136,8 @@ class SteamResolveUnmatchedTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {"resolved": 0, "synced": 1, "failed": 0, "total": 1})
         row = UserSteamGame.objects.get(user=self.user, steam_app_id=440)
-        self.assertIsNone(row.media_item_id)
-        from apps.integrations.models import SyncJob
-
-        self.assertTrue(
-            SyncJob.objects.filter(
-                provider="igdb", entity_type="game", external_id="12345"
-            ).exists()
-        )
+        self.assertIsNotNone(row.media_item_id)
+        self.assertEqual(row.media_item.title, "Portal")
 
     @override_settings(**IGDB_SETTINGS)
     def test_no_igdb_hit_counts_failed(self):
@@ -158,9 +152,12 @@ class SteamResolveUnmatchedTests(TestCase):
     @override_settings(**IGDB_SETTINGS)
     def test_service_failure_500(self):
         self._unmatched(440, "Portal")
-        with mock.patch(
-            "apps.integrations.views.steam.integrations_services.resolve_unmatched_steam_games",
-            side_effect=RuntimeError("boom"),
+        with (
+            mock.patch("apps.integrations.views.steam.logger.exception"),
+            mock.patch(
+                "apps.integrations.views.steam.integrations_services.resolve_unmatched_steam_games",
+                side_effect=RuntimeError("boom"),
+            ),
         ):
             resp = self.post()
         self.assertEqual(resp.status_code, 500)

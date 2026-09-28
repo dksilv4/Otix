@@ -63,9 +63,9 @@ class Command(BaseCommand):
             qs = qs.filter(pk=game_id)
         elif not force:
             # Exclude games that already have attached characters
-            has_chars_ids = (
-                MediaCharacter.objects.values_list("media_item_id", flat=True).distinct()
-            )
+            has_chars_ids = MediaCharacter.objects.values_list(
+                "media_item_id", flat=True
+            ).distinct()
             qs = qs.exclude(pk__in=has_chars_ids)
 
         # Only games that have an IGDB external ID

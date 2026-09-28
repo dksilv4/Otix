@@ -1,0 +1,148 @@
+@reference "../../../../_tailwind-ref.css";
+
+@keyframes dk-free-kenburns {
+  0% {
+    transform: scale(1.06) translate3d(0%, 0%, 0);
+  }
+  40% {
+    transform: scale(1.14) translate3d(-2.5%, 1.5%, 0);
+  }
+  70% {
+    transform: scale(1.1) translate3d(1.5%, -1%, 0);
+  }
+  100% {
+    transform: scale(1.06) translate3d(0%, 0%, 0);
+  }
+}
+
+@keyframes dk-free-sweep {
+  0%,
+  72% {
+    transform: translate3d(-120%, 0, 0) skewX(-18deg);
+    opacity: 0;
+  }
+  78% {
+    opacity: 0.55;
+  }
+  88% {
+    transform: translate3d(140%, 0, 0) skewX(-18deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(140%, 0, 0) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes dk-free-logo-breathe {
+  0%,
+  100% {
+    transform: scale(0.96);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
+.dk-free-spotlight__cover {
+  @apply absolute inset-0 w-full h-full object-cover;
+  transform-origin: 45% 40%;
+  animation: dk-free-kenburns 22s ease-in-out infinite;
+  transition:
+    filter 500ms var(--dk-ease-out, ease),
+    opacity 500ms var(--dk-ease-out, ease);
+}
+
+.dk-free-spotlight__media:hover .dk-free-spotlight__cover {
+  filter: brightness(0.82) blur(2px);
+  opacity: 0.92;
+}
+
+.dk-free-spotlight__wash {
+  @apply absolute inset-0 pointer-events-none;
+  background: radial-gradient(
+    ellipse 70% 60% at 42% 48%,
+    color-mix(in srgb, var(--free-accent, transparent) 42%, transparent) 0%,
+    transparent 70%
+  );
+  mix-blend-mode: soft-light;
+  opacity: 0.85;
+  transition: opacity 500ms var(--dk-ease-out, ease);
+}
+
+.dk-free-spotlight__media:hover .dk-free-spotlight__wash {
+  opacity: 1;
+}
+
+.dk-free-spotlight__sweep-wrap {
+  @apply absolute inset-0 pointer-events-none overflow-hidden;
+}
+
+.dk-free-spotlight__sweep {
+  position: absolute;
+  inset: -20% auto -20% 0;
+  width: 35%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.08) 40%,
+    rgb(255 255 255 / 0.22) 50%,
+    rgb(255 255 255 / 0.08) 60%,
+    transparent 100%
+  );
+  animation: dk-free-sweep 9s ease-in-out infinite;
+}
+
+.dk-free-spotlight__logo-wrap {
+  @apply absolute inset-0 z-[5] flex items-center justify-center p-6 sm:p-8 pointer-events-none;
+}
+
+.dk-free-spotlight__logo-scrim {
+  @apply absolute inset-0;
+  background: radial-gradient(
+    ellipse at center,
+    rgb(0 0 0 / 0.55) 0%,
+    rgb(0 0 0 / 0.2) 50%,
+    transparent 75%
+  );
+  opacity: 0.85;
+  transition: opacity 500ms var(--dk-ease-out, ease);
+}
+
+.dk-free-spotlight__media:hover .dk-free-spotlight__logo-scrim {
+  opacity: 0.95;
+}
+
+.dk-free-spotlight__logo-frame {
+  @apply relative z-10 flex items-center justify-center max-w-[38%] max-h-[24%];
+  --dk-logo-scale: 0.96;
+  transform: scale(var(--dk-logo-scale));
+  animation: dk-free-logo-breathe 6s ease-in-out infinite;
+  transition:
+    transform 700ms var(--dk-ease-out, ease),
+    filter 500ms var(--dk-ease-out, ease);
+}
+
+.dk-free-spotlight__media:hover .dk-free-spotlight__logo-frame {
+  --dk-logo-scale: 1.04;
+  animation-play-state: paused;
+  filter: drop-shadow(
+    0 0 24px color-mix(in srgb, var(--free-accent, transparent) 45%, transparent)
+  );
+}
+
+.dk-free-spotlight__logo {
+  @apply max-w-full max-h-full object-contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dk-free-spotlight__cover,
+  .dk-free-spotlight__sweep,
+  .dk-free-spotlight__logo-frame {
+    animation: none !important;
+  }
+
+  .dk-free-spotlight__media:hover .dk-free-spotlight__cover {
+    filter: brightness(0.88);
+  }
+}

@@ -85,7 +85,7 @@ describe('ReviewsListSection', () => {
     })
 
     renderWithClient(<ReviewsListSection mediaType="movie" mediaId="1" />)
-    expect(screen.getByText('Community Reviews & Ratings')).toBeInTheDocument()
+    expect(screen.queryByText('Community Reviews & Ratings')).not.toBeInTheDocument()
     expect(screen.getByText('No reviews or ratings yet')).toBeInTheDocument()
     expect(screen.getByText('Write the First Review')).toBeInTheDocument()
   })
@@ -172,5 +172,57 @@ describe('ReviewsListSection', () => {
     // Now elena's rating should be visible
     expect(screen.getByText('elena')).toBeInTheDocument()
     expect(screen.getByText('8/10')).toBeInTheDocument()
+  })
+
+  it('renders section error placeholder when both queries fail', () => {
+    const reviewsRefetch = vi.fn()
+    const ratingsRefetch = vi.fn()
+
+    mockUseQuery.mockImplementation(({ queryKey }: { queryKey: any[] }) => {
+      if (queryKey[0] === 'reviews' && queryKey[1] === 'list') {
+        return { data: undefined, isLoading: false, isError: true, refetch: reviewsRefetch }
+      }
+      if (queryKey[0] === 'media-rating' && queryKey[1] === 'list') {
+        return { data: undefined, isLoading: false, isError: true, refetch: ratingsRefetch }
+      }
+      return { data: null, isLoading: false, isError: false, refetch: vi.fn() }
+    })
+
+    renderWithClient(<ReviewsListSection mediaType="movie" mediaId="1" />)
+    expect(screen.getByText('Failed to load community feedback.')).toBeInTheDocument()
+
+    const retryBtn = screen.getByRole('button', { name: /Retry/i })
+    fireEvent.click(retryBtn)
+    expect(reviewsRefetch).toHaveBeenCalledOnce()
+    expect(ratingsRefetch).toHaveBeenCalledOnce()
+  })
+
+  it('renders tab error placeholder when only reviews query fails', () => {
+    const sampleRatings: MediaRatingWithUserOut[] = [
+      {
+        userId: 'user-5',
+        mediaItemId: '1',
+        score: 8,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        user: { id: 'user-5', username: 'elena', isAdmin: false },
+        hasReview: false,
+      },
+    ]
+
+    mockUseQuery.mockImplementation(({ queryKey }: { queryKey: any[] }) => {
+      if (queryKey[0] === 'reviews' && queryKey[1] === 'list') {
+        return { data: undefined, isLoading: false, isError: true, refetch: vi.fn() }
+      }
+      if (queryKey[0] === 'media-rating' && queryKey[1] === 'list') {
+        return { data: sampleRatings, isLoading: false, isError: false, refetch: vi.fn() }
+      }
+      return { data: null, isLoading: false, isError: false, refetch: vi.fn() }
+    })
+
+    renderWithClient(<ReviewsListSection mediaType="movie" mediaId="1" />)
+    const reviewsTab = screen.getByRole('tab', { name: /Reviews/i })
+    fireEvent.click(reviewsTab)
+    expect(screen.getByText('Failed to load reviews.')).toBeInTheDocument()
   })
 })

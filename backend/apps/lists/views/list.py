@@ -74,9 +74,7 @@ class ListRootView(generics.ListAPIView):
             description=body.validated_data.get("description"),
             is_public=body.validated_data.get("is_public", False),
         )
-        return Response(
-            UserListOutSerializer(lst).data, status=status.HTTP_201_CREATED
-        )
+        return Response(UserListOutSerializer(lst).data, status=status.HTTP_201_CREATED)
 
 
 class ListMineView(generics.ListAPIView):
@@ -129,21 +127,15 @@ class ListItemView(APIView):
     def post(self, request: Request, list_id: int) -> Response:
         body = ListItemAddSerializer(data=request.data)
         body.is_valid(raise_exception=True)
-        lst = services.add_item(
-            list_id, request.user.id, body.validated_data["media_item_id"]
-        )
+        lst = services.add_item(list_id, request.user.id, body.validated_data["media_item_id"])
         if lst is None:
             raise NotFound(LIST_NOT_FOUND)
-        return Response(
-            UserListOutSerializer(lst).data, status=status.HTTP_201_CREATED
-        )
+        return Response(UserListOutSerializer(lst).data, status=status.HTTP_201_CREATED)
 
     def put(self, request: Request, list_id: int) -> Response:
         body = ListItemReorderSerializer(data=request.data)
         body.is_valid(raise_exception=True)
-        ok = services.reorder_items(
-            list_id, request.user.id, body.validated_data["media_item_ids"]
-        )
+        ok = services.reorder_items(list_id, request.user.id, body.validated_data["media_item_ids"])
         if not ok:
             raise NotFound(LIST_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -282,4 +274,3 @@ class ListForMediaView(APIView):
     def get(self, request: Request, media_item_id: int) -> Response:
         list_ids = services.get_media_list_ids(request.user.id, media_item_id)
         return Response({"list_ids": list_ids})
-

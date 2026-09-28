@@ -82,12 +82,13 @@ def _data_payloads(chunks):
             chunk = chunk.decode("utf-8")
         for line in chunk.splitlines():
             if line.startswith("data: "):
-                payloads.append(json.loads(line[len("data: "):]))
+                payloads.append(json.loads(line[len("data: ") :]))
     return payloads
 
 
 def collect_stream(agen):
     """Run an async SSE generator to completion synchronously; return chunks."""
+
     async def _run():
         return [chunk async for chunk in agen]
 

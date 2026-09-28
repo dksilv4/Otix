@@ -253,5 +253,7 @@ def serialize_download(row: GameServerDownload) -> dict:
 
 
 def list_download_history(server: UserGameServer, limit: int = 50) -> list[dict]:
-    rows = GameServerDownload.objects.filter(server=server).order_by("-created_at")[: max(1, min(int(limit), 200))]
+    rows = GameServerDownload.objects.filter(server=server).order_by("-created_at")[
+        : max(1, min(int(limit), 200))
+    ]
     return [serialize_download(row) for row in rows]

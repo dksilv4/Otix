@@ -174,9 +174,7 @@ class YoutubeSyncEngineTests(TestCase):
         self.artist.refresh_from_db()
         self.assertEqual(self.artist.youtube_channel_title, "Song Artist - Topic")
         self.assertTrue(
-            ExternalID.objects.filter(
-                provider="youtube_channel", external_id="UC-artist"
-            ).exists()
+            ExternalID.objects.filter(provider="youtube_channel", external_id="UC-artist").exists()
         )
 
     def test_no_token_aborts_to_error_terminal_state(self):
@@ -193,9 +191,7 @@ class YoutubeSyncEngineTests(TestCase):
         self.assertEqual(job.status, "failed")
         self.assertEqual(job.error_message, NO_TOKEN_ERROR)
 
-        last_frame = json.loads(
-            self.fake.published_on(f"youtube:sync:{job.pk}:events")[-1]
-        )
+        last_frame = json.loads(self.fake.published_on(f"youtube:sync:{job.pk}:events")[-1])
         self.assertEqual(last_frame["type"], "error")
         self.assertEqual(last_frame["message"], NO_TOKEN_ERROR)
         stored = progress_lib.RedisProgress("youtube:sync").get_stored_result(job.pk)
@@ -208,12 +204,8 @@ class YoutubeSyncEngineTests(TestCase):
         outcome = run_sync_job.delay(second.pk).get()
 
         self.assertEqual(outcome["matched"], 0)
+        self.assertEqual(UserYoutubeLikedVideo.objects.filter(user=self.user).count(), 2)
         self.assertEqual(
-            UserYoutubeLikedVideo.objects.filter(user=self.user).count(), 2
-        )
-        self.assertEqual(
-            UserYoutubeLikedVideo.objects.filter(
-                user=self.user, video_id="v1"
-            ).count(),
+            UserYoutubeLikedVideo.objects.filter(user=self.user, video_id="v1").count(),
             1,
         )

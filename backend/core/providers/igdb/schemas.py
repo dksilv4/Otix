@@ -24,8 +24,7 @@ GAME_FIELDS = (
     "involved_companies.developer,involved_companies.publisher,"
     "involved_companies.porting,involved_companies.supporting,"
     "age_ratings,"
-    "franchise.name,franchise.id,"
-    "characters"
+    "franchise.name,franchise.id"
 )
 
 # Field set consumed during catalog hydration / seed pass.
@@ -42,7 +41,7 @@ GAME_HYDRATION_FIELDS = (
     "involved_companies.company.name,involved_companies.company.slug,"
     "aggregated_rating,aggregated_rating_count,rating,rating_count,"
     "external_games.external_game_source,external_games.uid,"
-    "similar_games,characters"
+    "similar_games"
 )
 
 # Minimal field set for search queries.
@@ -268,4 +267,3 @@ def character_mug_shot_url(mug_shot: Any, size: str = "t_cover_big") -> str | No
     if isinstance(mug_shot, str):
         return image_url(mug_shot, size)
     return None
-

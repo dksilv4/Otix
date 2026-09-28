@@ -15,21 +15,47 @@ from dataclasses import dataclass, field
 
 _BRACKET_MARKERS = [
     # Parenthesized
-    "Official Music Video", "Official Video", "Official Audio",
-    "Official Lyric Video", "Official Performance Video",
-    "Lyric Video", "Lyrics", "Lyric",
-    "Visualizer", "Visualizer Video",
-    "Music Video", "MV",
-    "Audio", "Audio Only",
-    "Performance Video", "Performance",
-    "Official", "Video", "HD", "4K", "HQ", "High Quality",
-    "Explicit", "Clean", "Edited",
-    "Remix", "Extended Mix", "Radio Edit", "Club Mix", "Short Version",
+    "Official Music Video",
+    "Official Video",
+    "Official Audio",
+    "Official Lyric Video",
+    "Official Performance Video",
+    "Lyric Video",
+    "Lyrics",
+    "Lyric",
+    "Visualizer",
+    "Visualizer Video",
+    "Music Video",
+    "MV",
+    "Audio",
+    "Audio Only",
+    "Performance Video",
+    "Performance",
+    "Official",
+    "Video",
+    "HD",
+    "4K",
+    "HQ",
+    "High Quality",
+    "Explicit",
+    "Clean",
+    "Edited",
+    "Remix",
+    "Extended Mix",
+    "Radio Edit",
+    "Club Mix",
+    "Short Version",
     "Extended Version",
-    "Album Version", "Single Version", "Single Edit",
-    "Slowed", "Sped Up", "Nightcore",
-    "Live", "Live Performance",
-    "prod.", "produced by",
+    "Album Version",
+    "Single Version",
+    "Single Edit",
+    "Slowed",
+    "Sped Up",
+    "Nightcore",
+    "Live",
+    "Live Performance",
+    "prod.",
+    "produced by",
     "with",
 ]
 
@@ -93,7 +119,7 @@ def parse_music_title(raw_title: str, channel_title: str | None = None) -> Parse
         return result
 
     left = normalized[:sep_pos].strip()
-    right = normalized[sep_pos + 3:].strip()
+    right = normalized[sep_pos + 3 :].strip()
 
     # Determine orientation.
     if _looks_like_artist(left) and _looks_like_song(right):
@@ -220,20 +246,12 @@ def _extract_feat_from_brackets(s: str) -> list[str]:
             closing = r"\)" if bracket == r"\(" else r"\]"
             inner = bracket[1:] + closing[1:]
             pattern = re.compile(
-                bracket
-                + r"\s*"
-                + re.escape(marker)
-                + r"\s+([^"
-                + inner
-                + r"]+)\s*"
-                + closing,
+                bracket + r"\s*" + re.escape(marker) + r"\s+([^" + inner + r"]+)\s*" + closing,
                 re.IGNORECASE,
             )
             for m in pattern.finditer(s):
                 feat_text = m.group(1).strip()
-                feats.extend(
-                    [x.strip() for x in re.split(r"\s*,\s*|\s+&\s+", feat_text)]
-                )
+                feats.extend([x.strip() for x in re.split(r"\s*,\s*|\s+&\s+", feat_text)])
     return feats
 
 
@@ -261,9 +279,7 @@ def _strip_trailing_feat(song: str) -> str:
 
 def _strip_single_trailing_feat(s: str) -> str:
     for marker in _FEAT_MARKERS:
-        pattern = re.compile(
-            r"\s*\(\s*" + re.escape(marker) + r"\s+[^)]*\s*\)\s*$", re.IGNORECASE
-        )
+        pattern = re.compile(r"\s*\(\s*" + re.escape(marker) + r"\s+[^)]*\s*\)\s*$", re.IGNORECASE)
         s = pattern.sub("", s).strip()
     return s
 

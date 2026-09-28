@@ -110,6 +110,4 @@ class VoteBodySerializer(serializers.Serializer):
 class RejectBodySerializer(serializers.Serializer):
     """Request body for ``POST /proposals/{id}/reject`` (all-optional)."""
 
-    rejection_reason = serializers.CharField(
-        required=False, allow_null=True, default=None
-    )
+    rejection_reason = serializers.CharField(required=False, allow_null=True, default=None)

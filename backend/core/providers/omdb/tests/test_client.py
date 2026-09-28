@@ -81,9 +81,7 @@ class OMDbClientTests(SimpleTestCase):
         }
 
         async def run():
-            provider, _, calls = self._make_provider(
-                lambda req: httpx.Response(200, json=body)
-            )
+            provider, _, calls = self._make_provider(lambda req: httpx.Response(200, json=body))
             async with provider.http:
                 result = await provider.get_by_imdb_id(IMDB_TT)
 
@@ -121,9 +119,7 @@ class OMDbClientTests(SimpleTestCase):
     @override_settings(OMDB_API_KEY="test-key")
     def test_invalid_json_is_normalized_to_none(self):
         async def run():
-            provider, _, _ = self._make_provider(
-                lambda req: httpx.Response(200, text="not json")
-            )
+            provider, _, _ = self._make_provider(lambda req: httpx.Response(200, text="not json"))
             async with provider.http:
                 result = await provider.get_by_imdb_id(IMDB_TT)
             self.assertIsNone(result)

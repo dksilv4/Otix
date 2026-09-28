@@ -116,7 +116,7 @@ export interface ServerGameFile {
   filename: string;
   filesize: number;
   extension: string;
-  formatCategory: 'iso' | 'installer' | 'archive' | 'rom';
+  formatCategory: 'iso' | 'installer' | 'game' | 'archive' | 'rom' | 'update';
   gameTitle: string;
   relativePath?: string;
   libraryName: string;

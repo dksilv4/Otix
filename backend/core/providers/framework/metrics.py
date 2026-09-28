@@ -262,7 +262,6 @@ def track_entity_duration(
 ) -> Callable[[], Generator[None, None, None]]:
     """Context manager to track entity processing duration."""
 
-
     @contextmanager
     def _track() -> Generator[None, None, None]:
         start = time.monotonic()

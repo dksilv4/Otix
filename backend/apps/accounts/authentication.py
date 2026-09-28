@@ -30,18 +30,14 @@ class JWTAuthentication(authentication.BaseAuthentication):
         try:
             payload = decode_token(token)
         except TokenError as exc:
-            raise exceptions.AuthenticationFailed(
-                "Invalid or expired access token"
-            ) from exc
+            raise exceptions.AuthenticationFailed("Invalid or expired access token") from exc
         if payload.get("type") != "access":
             raise exceptions.AuthenticationFailed("Invalid token type")
         user_id = payload.get("sub")
         try:
             user = User.objects.get(pk=user_id)
         except User.DoesNotExist as exc:
-            raise exceptions.AuthenticationFailed(
-                "Invalid or expired access token"
-            ) from exc
+            raise exceptions.AuthenticationFailed("Invalid or expired access token") from exc
         if not user.is_active:
             raise exceptions.AuthenticationFailed("User account is disabled.")
         return (user, token)

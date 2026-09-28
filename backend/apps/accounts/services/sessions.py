@@ -33,6 +33,7 @@ from apps.accounts.services.tokens import (
 if TYPE_CHECKING:
     from django.http import HttpRequest
 
+
 class AuthServiceError(Exception):
     """Raised for login/refresh failures; carries a client-facing message."""
 

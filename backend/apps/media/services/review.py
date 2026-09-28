@@ -111,6 +111,21 @@ def list_reviews_with_ratings(
         )
         .order_by("-created_at", "user_id")
         .select_related("user")
+        .only(
+            "id",
+            "user_id",
+            "media_item_id",
+            "title",
+            "content",
+            "is_spoiler",
+            "is_private",
+            "created_at",
+            "updated_at",
+            "cooldown_until",
+            "user__id",
+            "user__username",
+            "user__is_staff",
+        )
     )
     if viewer_id is not None:
         qs = qs.filter(Q(cooldown_until__lte=now) | Q(user_id=viewer_id))
@@ -120,9 +135,7 @@ def list_reviews_with_ratings(
     user_ids = [r.user_id for r in reviews]
     ratings = {
         r.user_id: r
-        for r in MediaItemRating.objects.filter(
-            user_id__in=user_ids, media_item_id=media_item_id
-        )
+        for r in MediaItemRating.objects.filter(user_id__in=user_ids, media_item_id=media_item_id)
     }
     out = []
     for review in reviews:

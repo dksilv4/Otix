@@ -37,9 +37,7 @@ class MediaPlatform(BaseModel):
     class Meta(BaseModel.Meta):
         db_table = "media_platforms"
         constraints = [
-            models.UniqueConstraint(
-                fields=["media_item", "platform"], name="uq_media_platform"
-            )
+            models.UniqueConstraint(fields=["media_item", "platform"], name="uq_media_platform")
         ]
 
     def __str__(self) -> str:
@@ -62,9 +60,7 @@ class GameMode(BaseModel):
 class MediaGameMode(BaseModel):
     """Link: a media item (game) supports a game mode."""
 
-    media_item = models.ForeignKey(
-        MediaItem, on_delete=models.CASCADE, related_name="game_modes"
-    )
+    media_item = models.ForeignKey(MediaItem, on_delete=models.CASCADE, related_name="game_modes")
     game_mode = models.ForeignKey(
         GameMode, on_delete=models.CASCADE, related_name="media_game_modes"
     )
@@ -72,9 +68,7 @@ class MediaGameMode(BaseModel):
     class Meta(BaseModel.Meta):
         db_table = "media_game_modes"
         constraints = [
-            models.UniqueConstraint(
-                fields=["media_item", "game_mode"], name="uq_media_game_mode"
-            )
+            models.UniqueConstraint(fields=["media_item", "game_mode"], name="uq_media_game_mode")
         ]
 
     def __str__(self) -> str:

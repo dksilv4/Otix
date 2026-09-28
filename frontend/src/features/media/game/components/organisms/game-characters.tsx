@@ -1,24 +1,13 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, UserRound, Users, ExternalLink } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { Image } from '@ui/atoms/image'
 import { Badge } from '@ui/atoms/badge'
 import { DkDialog } from '@ui/molecules/dialog'
 import { cn } from '@/lib/utils'
+import { sortCharactersByImage, type CharacterItem } from '../../utils/characters'
 
-export interface CharacterItem {
-  id: string
-  character: {
-    id: string
-    name: string
-    slug: string
-    description?: string | null
-    gender?: string | null
-    species?: string | null
-    mugShotUrl?: string | null
-  }
-  order: number
-}
+export type { CharacterItem }
 
 interface GameCharactersProps {
   characters?: CharacterItem[]
@@ -32,9 +21,13 @@ export function GameCharacters({ characters = [], className = '' }: GameCharacte
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterItem['character'] | null>(null)
   const [isAllModalOpen, setIsAllModalOpen] = useState(false)
 
-  const validCharacters = (Array.isArray(characters) ? characters : []).filter(
-    (c) => Boolean(c && c.character && c.character.name),
-  )
+  // Characters with mugshots first, then preserve original order within each group.
+  const validCharacters = useMemo(() => {
+    const valid = (Array.isArray(characters) ? characters : []).filter(
+      (c) => Boolean(c && c.character && c.character.name),
+    )
+    return sortCharactersByImage(valid)
+  }, [characters])
 
   const checkScroll = useCallback(() => {
     const el = scrollRef.current

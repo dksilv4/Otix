@@ -81,7 +81,9 @@ class InteractionView(APIView):
         ).data
         return Response(payload)
 
-    def delete(self, request, media_type: str, media_id: str | int, interaction_type: str) -> Response:
+    def delete(
+        self, request, media_type: str, media_id: str | int, interaction_type: str
+    ) -> Response:
         if interaction_type not in _VALID_TOGGLE_TYPES:
             raise _toggle_type_error()
         pk = _resolve_pk(media_type, media_id)

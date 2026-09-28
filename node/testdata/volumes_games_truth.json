@@ -1,0 +1,397 @@
+{
+  "root": "/Volumes/Games",
+  "description": "Source-of-truth unique base games on /Volumes/Games. One primary artifact per game (prefer iso/rom > installer > archive > game exe). Updates are indexed separately as format_category=update with game_title set to the parent game. Crackfixes, DLC unlockers, and emulator tooling are excluded.",
+  "count": 55,
+  "games": [
+    {
+      "title": "AI Limit",
+      "franchise_folder": "AI Limit",
+      "kind": "iso",
+      "path": "AI Limit/AI Limit/AI Limit.iso",
+      "file": "AI Limit.iso"
+    },
+    {
+      "title": "Balatro",
+      "franchise_folder": "Balatro",
+      "kind": "game",
+      "path": "Balatro/Balatro.v1.0.0L-Unleashed/Balatro/Balatro.exe",
+      "file": "Balatro.exe"
+    },
+    {
+      "title": "Baldur's Gate 3",
+      "franchise_folder": "Baldurs Gate",
+      "kind": "iso",
+      "path": "Baldurs Gate/Baldurs Gate 3/Baldurs Gate 3.iso",
+      "file": "Baldurs Gate 3.iso"
+    },
+    {
+      "title": "Black Myth Wukong",
+      "franchise_folder": "TODO",
+      "kind": "iso",
+      "path": "TODO/Black.Myth.Wukong-voices38/Black.Myth.Wukong-voices38.iso",
+      "file": "Black.Myth.Wukong-voices38.iso"
+    },
+    {
+      "title": "Blade and Sorcery VR",
+      "franchise_folder": "Blade and Sorcery",
+      "kind": "iso",
+      "path": "Blade and Sorcery/Blade and Sorcery VR v1.0.7.682/Blade and Sorcery VR.iso",
+      "file": "Blade and Sorcery VR.iso"
+    },
+    {
+      "title": "Call of Duty: Black Ops 2",
+      "franchise_folder": "TODO",
+      "kind": "archive",
+      "path": "TODO/Call Of Duty Black Ops 2.rar",
+      "file": "Call Of Duty Black Ops 2.rar"
+    },
+    {
+      "title": "Clair Obscur Expedition 33",
+      "franchise_folder": "Clair Obscur Expedition 33",
+      "kind": "iso",
+      "path": "Clair Obscur Expedition 33/Clair Obscur Expedition 33.iso",
+      "file": "Clair Obscur Expedition 33.iso"
+    },
+    {
+      "title": "Cyberpunk 2077",
+      "franchise_folder": "Cyberpunk 2077",
+      "kind": "iso",
+      "path": "Cyberpunk 2077/Cyberpunk 2077 Ultimate Edition/Cyberpunk 2077.iso",
+      "file": "Cyberpunk 2077.iso"
+    },
+    {
+      "title": "Dead or Alive 6 Deluxe Edition",
+      "franchise_folder": "Dead or Alive",
+      "kind": "iso",
+      "path": "Dead or Alive/Dead or Alive 6 Deluxe Edition/Dead or Alive 6 Deluxe Edition.iso",
+      "file": "Dead or Alive 6 Deluxe Edition.iso"
+    },
+    {
+      "title": "Deus Ex Mankind Divided",
+      "franchise_folder": "Deus Ex",
+      "kind": "iso",
+      "path": "Deus Ex/Deus Ex Mankind Divided 1.19.801.0/Deus Ex Mankind Divided.iso",
+      "file": "Deus Ex Mankind Divided.iso"
+    },
+    {
+      "title": "Dispatch",
+      "franchise_folder": "Dispatch",
+      "kind": "iso",
+      "path": "Dispatch/Dispatch.iso",
+      "file": "Dispatch.iso"
+    },
+    {
+      "title": "DOOM Eternal",
+      "franchise_folder": "DOOM",
+      "kind": "iso",
+      "path": "DOOM/DOOM Eternal/DOOM Eternal (build 05.09.2023)/DOOM Eternal.iso",
+      "file": "DOOM Eternal.iso"
+    },
+    {
+      "title": "Dyson Sphere Program",
+      "franchise_folder": "Dyson Sphere Program",
+      "kind": "game",
+      "path": "Dyson Sphere Program/DSPGAME.exe",
+      "file": "DSPGAME.exe"
+    },
+    {
+      "title": "Elden Ring (Deluxe Edition)",
+      "franchise_folder": "Elden Ring",
+      "kind": "iso",
+      "path": "Elden Ring/Elden Ring Deluxe Edition v1.12.0/Elden Ring Deluxe Edition.iso",
+      "file": "Elden Ring Deluxe Edition.iso"
+    },
+    {
+      "title": "Final Fantasy VII Rebirth",
+      "franchise_folder": "Final Fantasy",
+      "kind": "iso",
+      "path": "Final Fantasy/Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos/Final Fantasy VII Rebirth/Final Fantasy VII Rebirth.iso",
+      "file": "Final Fantasy VII Rebirth.iso"
+    },
+    {
+      "title": "Five Hearts Under One Roof",
+      "franchise_folder": "TODO",
+      "kind": "iso",
+      "path": "TODO/Five.Hearts.Under.One.Roof..MULTi13-ElAmigos/Five Hearts Under One Roof.iso",
+      "file": "Five Hearts Under One Roof.iso"
+    },
+    {
+      "title": "Five Hearts Under One Roof 2",
+      "franchise_folder": "TODO",
+      "kind": "iso",
+      "path": "TODO/Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos/Five Hearts Under One Roof 2.iso",
+      "file": "Five Hearts Under One Roof 2.iso"
+    },
+    {
+      "title": "FOUNDRY",
+      "franchise_folder": "FOUNDRY",
+      "kind": "game",
+      "path": "FOUNDRY/FOUNDRY/Foundry.exe",
+      "file": "Foundry.exe"
+    },
+    {
+      "title": "God of War",
+      "franchise_folder": "God of War",
+      "kind": "iso",
+      "path": "God of War/Gof of War/God of War.iso",
+      "file": "God of War.iso"
+    },
+    {
+      "title": "God of War Ragnarok",
+      "franchise_folder": "God of War",
+      "kind": "iso",
+      "path": "God of War/God of War - Ragnarok/God of War Ragnarok.iso",
+      "file": "God of War Ragnarok.iso"
+    },
+    {
+      "title": "Hades II",
+      "franchise_folder": "Hades",
+      "kind": "iso",
+      "path": "Hades/Hades II v1.132940-ElAmigos/Hades II.iso",
+      "file": "Hades II.iso"
+    },
+    {
+      "title": "High On Life",
+      "franchise_folder": "High On Life",
+      "kind": "iso",
+      "path": "High On Life/High On Life (build 03.10.2023)/High On Life.iso",
+      "file": "High On Life.iso"
+    },
+    {
+      "title": "High On Life 2",
+      "franchise_folder": "High On Life 2",
+      "kind": "iso",
+      "path": "High On Life 2/High.On.Life.2.MULTi7-ElAmigos/High On Life 2.iso",
+      "file": "High On Life 2.iso"
+    },
+    {
+      "title": "High On Life: High On Knife",
+      "franchise_folder": "High On Life",
+      "kind": "iso",
+      "path": "High On Life/High_On_Life_High_On_Knife-Razor1911/High_On_Life_High_On_Knife-Razor1911/High_On_Life_High_On_Knife-Razor1911.iso",
+      "file": "High_On_Life_High_On_Knife-Razor1911.iso"
+    },
+    {
+      "title": "Hogwarts Legacy",
+      "franchise_folder": "Hogwarts Legacy",
+      "kind": "iso",
+      "path": "Hogwarts Legacy/Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos/Hogwarts Legacy Deluxe Edition.iso",
+      "file": "Hogwarts Legacy Deluxe Edition.iso"
+    },
+    {
+      "title": "Invincible VS",
+      "franchise_folder": "Invincible",
+      "kind": "iso",
+      "path": "Invincible/Invincible.VS.MULTi6-ElAmigos/Invincible VS.iso",
+      "file": "Invincible VS.iso"
+    },
+    {
+      "title": "Kiborg",
+      "franchise_folder": "Kiborg",
+      "kind": "iso",
+      "path": "Kiborg/Kiborg/Kiborg.iso",
+      "file": "Kiborg.iso"
+    },
+    {
+      "title": "Kingdom Come Deliverance II",
+      "franchise_folder": "TODO",
+      "kind": "iso",
+      "path": "TODO/Kingdom Come Deliverance II v1.5.0 ElAmigos/Kingdom Come Deliverance II.iso",
+      "file": "Kingdom Come Deliverance II.iso"
+    },
+    {
+      "title": "Kingdom Hearts III and Re-Mind",
+      "franchise_folder": "TODO",
+      "kind": "iso",
+      "path": "TODO/Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos/Kingdom Hearts III and Re-Mind (build 13.06.2024)/Kingdom Hearts III and Re-Mind.iso",
+      "file": "Kingdom Hearts III and Re-Mind.iso"
+    },
+    {
+      "title": "Lies of P",
+      "franchise_folder": "Lies of P",
+      "kind": "iso",
+      "path": "Lies of P/Lies_of_P__v1.5.0.0_H1__Deluxe_Edition_MULTi12_ElAmigos/Lies of P v1.5.0.0 H1/Lies of P.iso",
+      "file": "Lies of P.iso"
+    },
+    {
+      "title": "Lords of the Fallen",
+      "franchise_folder": "Lords Of The Fallen",
+      "kind": "iso",
+      "path": "Lords Of The Fallen/Lords of the Fallen/Lords of the Fallen 2023.iso",
+      "file": "Lords of the Fallen 2023.iso"
+    },
+    {
+      "title": "Marvel's Spider-Man 2",
+      "franchise_folder": "Marvel's Spider Man",
+      "kind": "installer",
+      "path": "Marvel's Spider Man/Marvel's Spider Man 2 Deluxe Edition/Marvels SpiderMan 2/setup.exe",
+      "file": "setup.exe"
+    },
+    {
+      "title": "Marvel's Spider-Man Miles Morales",
+      "franchise_folder": "Marvel's Spider Man",
+      "kind": "iso",
+      "path": "Marvel's Spider Man/Marvel's Spider Man Miles Morales/Marvels SpiderMan Miles Morales.iso",
+      "file": "Marvels SpiderMan Miles Morales.iso"
+    },
+    {
+      "title": "Marvel's Spider-Man Remastered",
+      "franchise_folder": "Marvel's Spider Man",
+      "kind": "iso",
+      "path": "Marvel's Spider Man/Marvel's Spider Man Remastered/Marvels SpiderMan Remastered.iso",
+      "file": "Marvels SpiderMan Remastered.iso"
+    },
+    {
+      "title": "Metroid Prime 4: Beyond",
+      "franchise_folder": "Metroid Prime",
+      "kind": "rom",
+      "path": "Metroid Prime/Metroid Prime 4 Beyond NSW-HR/Metroid Prime 4 Beyond NSW-HR.xci",
+      "file": "Metroid Prime 4 Beyond NSW-HR.xci"
+    },
+    {
+      "title": "Need for Speed Most Wanted (Black Edition)",
+      "franchise_folder": "Need for Speed",
+      "kind": "game",
+      "path": "Need for Speed/Need for Speed - Most Wanted (Black Edition)/speed.exe",
+      "file": "speed.exe"
+    },
+    {
+      "title": "Pragmata",
+      "franchise_folder": "Pragmata",
+      "kind": "iso",
+      "path": "Pragmata/Pragmata-ElAmigos/Pragmata.iso",
+      "file": "Pragmata.iso"
+    },
+    {
+      "title": "Red Dead Redemption",
+      "franchise_folder": "Red Dead Redemption",
+      "kind": "iso",
+      "path": "Red Dead Redemption/Red.Dead.Redemption.MULTi13-ElAmigos/Red Dead Redemption/Red Dead Redemption.iso",
+      "file": "Red Dead Redemption.iso"
+    },
+    {
+      "title": "Red Dead Redemption 2",
+      "franchise_folder": "Red Dead Redemption",
+      "kind": "iso",
+      "path": "Red Dead Redemption/Red_Dead_Redemption_2_Ultimate_Edition-Razor1911/Red_Dead_Redemption_2_Ultimate_Edition-Razor1911/Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso",
+      "file": "Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso"
+    },
+    {
+      "title": "Remnant II",
+      "franchise_folder": "Remnant",
+      "kind": "iso",
+      "path": "Remnant/Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos/Remnant II v444.163/Remnant II.iso",
+      "file": "Remnant II.iso"
+    },
+    {
+      "title": "RuneScape Dragonwilds",
+      "franchise_folder": "Runescape",
+      "kind": "iso",
+      "path": "Runescape/Dragonwilds/RuneScape.Dragonwilds.Deluxe.Edition.v240163.MULTi11-ElAmigos/RuneScape Dragonwilds.iso",
+      "file": "RuneScape Dragonwilds.iso"
+    },
+    {
+      "title": "Satisfactory",
+      "franchise_folder": "Satisfactory",
+      "kind": "iso",
+      "path": "Satisfactory/Satisfactory (build 365306)/Satisfactory.iso",
+      "file": "Satisfactory.iso"
+    },
+    {
+      "title": "Sifu (Deluxe Edition)",
+      "franchise_folder": "Sifu",
+      "kind": "iso",
+      "path": "Sifu/Sifu (Deluxe Edition)/Sifu Deluxe Edition.iso",
+      "file": "Sifu Deluxe Edition.iso"
+    },
+    {
+      "title": "Split Fiction",
+      "franchise_folder": "Split Fiction",
+      "kind": "iso",
+      "path": "Split Fiction/Split Fiction/Split Fiction.iso",
+      "file": "Split Fiction.iso"
+    },
+    {
+      "title": "Stellar Blade",
+      "franchise_folder": "Stellar Blade",
+      "kind": "iso",
+      "path": "Stellar Blade/Stellar.Blade-voices38/Stellar.Blade-voices38.iso",
+      "file": "Stellar.Blade-voices38.iso"
+    },
+    {
+      "title": "Summer's Heartbeat Deluxe Edition",
+      "franchise_folder": "TODO",
+      "kind": "iso",
+      "path": "TODO/Summers.Heartbeat.Deluxe.Edition-I KnoW/Summers.Heartbeat.Deluxe.Edition-I KnoW.iso",
+      "file": "Summers.Heartbeat.Deluxe.Edition-I KnoW.iso"
+    },
+    {
+      "title": "Tainted Grail The Fall of Avalon",
+      "franchise_folder": "Tainted Grail The Fall of Avalon",
+      "kind": "iso",
+      "path": "Tainted Grail The Fall of Avalon/Tainted  Grail The Fall of Avalon/Tainted Grail The Fall of Avalon.iso",
+      "file": "Tainted Grail The Fall of Avalon.iso"
+    },
+    {
+      "title": "The Alters",
+      "franchise_folder": "The Alters",
+      "kind": "iso",
+      "path": "The Alters/The Alters/The Alters.iso",
+      "file": "The Alters.iso"
+    },
+    {
+      "title": "The Elder Scrolls IV: Oblivion Remastered",
+      "franchise_folder": "The Elder Scrolls",
+      "kind": "iso",
+      "path": "The Elder Scrolls/The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos/The Elder Scrolls IV Oblivion Remastered/The Elder Scrolls IV Oblivion Remastered.iso",
+      "file": "The Elder Scrolls IV Oblivion Remastered.iso"
+    },
+    {
+      "title": "The Last of Us Part I",
+      "franchise_folder": "The Last of Us",
+      "kind": "iso",
+      "path": "The Last of Us/The Last of Us Part I/The Last of Us Part I.iso",
+      "file": "The Last of Us Part I.iso"
+    },
+    {
+      "title": "The Last of Us Part II Remastered",
+      "franchise_folder": "The Last of Us",
+      "kind": "installer",
+      "path": "The Last of Us/The Last of Us Part II Remastered/The Last of Us Part II Remastered/setup.exe",
+      "file": "setup.exe"
+    },
+    {
+      "title": "The Legend of Zelda: Tears of the Kingdom",
+      "franchise_folder": "Legend of Zelda",
+      "kind": "rom",
+      "path": "Legend of Zelda/The_Legend_Of_Zelda_Tears_Of_The_Kingdom_NSW-NiiNTENDO/The_Legend_Of_Zelda_Tears_Of_The_Kingdom_NSW-NiiNTENDO.xci",
+      "file": "The_Legend_Of_Zelda_Tears_Of_The_Kingdom_NSW-NiiNTENDO.xci"
+    },
+    {
+      "title": "The Universim",
+      "franchise_folder": "The Universim",
+      "kind": "iso",
+      "path": "The Universim/The_Universim_v47416_MULTi8_ElAmigos/The Universim v47416/The Universim.iso",
+      "file": "The Universim.iso"
+    },
+    {
+      "title": "Tomb Raider IV-VI Remastered",
+      "franchise_folder": "Tomb Raider",
+      "kind": "iso",
+      "path": "Tomb Raider/Tomb Raider IV-VI Remastered.iso",
+      "file": "Tomb Raider IV-VI Remastered.iso"
+    },
+    {
+      "title": "Warhammer 40,000: Space Marine 2",
+      "franchise_folder": "TODO",
+      "kind": "installer",
+      "path": "TODO/Warhammer 40,000 Space Marine 2 1-Year Anniversary Edition v11.2.0.1 + 19 DLCs Bonuses [FitGirl Repack]/setup.exe",
+      "file": "setup.exe"
+    }
+  ],
+  "update_policy": {
+    "format_category": "update",
+    "game_title": "Parent base game title (folder owning Updates/, or stripped from filename)",
+    "filename": "Original update installer filename"
+  }
+}

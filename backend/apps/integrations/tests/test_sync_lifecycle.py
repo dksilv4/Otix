@@ -62,12 +62,8 @@ class RedisProgressWriteTests(TestCase):
         )
 
     def test_store_result_writes_bare_dict_no_type(self):
-        progress_lib.RedisProgress("plex:sync").store_result(
-            "42", {"phase": "done", "total": 10}
-        )
-        self.assertEqual(
-            self.fake.stored["plex:sync:42:result"], '{"phase":"done","total":10}'
-        )
+        progress_lib.RedisProgress("plex:sync").store_result("42", {"phase": "done", "total": 10})
+        self.assertEqual(self.fake.stored["plex:sync:42:result"], '{"phase":"done","total":10}')
         self.assertEqual(
             progress_lib.RedisProgress("plex:sync").get_stored_result("42"),
             {"phase": "done", "total": 10},
@@ -140,9 +136,7 @@ class SyncJobExecutionTests(TestCase):
         self.assertIsNone(job.error_message)
 
         channel = f"demo:sync:{job.pk}:events"
-        types = [
-            json.loads(msg)["type"] for msg in self.fake.published_on(channel)
-        ]
+        types = [json.loads(msg)["type"] for msg in self.fake.published_on(channel)]
         self.assertEqual(types, ["sync_started", "sync_progress", "sync_complete"])
         complete = json.loads(
             [msg for msg in self.fake.published_on(channel) if "sync_complete" in msg][0]
@@ -160,9 +154,7 @@ class SyncJobExecutionTests(TestCase):
                 sse_lib.sse_event_generator(
                     f"demo:sync:{job.pk}:events",
                     terminal_events=("sync_complete", "error"),
-                    result_replay=lambda: sse_lib.read_json_key(
-                        f"demo:sync:{job.pk}:result"
-                    ),
+                    result_replay=lambda: sse_lib.read_json_key(f"demo:sync:{job.pk}:result"),
                 )
             )
         )
@@ -180,9 +172,7 @@ class SyncJobExecutionTests(TestCase):
         channel = f"demo:sync:{job.pk}:events"
         payloads = _data_payloads(
             collect_stream(
-                sse_lib.sse_event_generator(
-                    channel, terminal_events=("sync_complete", "error")
-                )
+                sse_lib.sse_event_generator(channel, terminal_events=("sync_complete", "error"))
             )
         )
         self.assertEqual(

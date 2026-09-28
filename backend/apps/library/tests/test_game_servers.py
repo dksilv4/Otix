@@ -63,12 +63,19 @@ class GameServersApiTests(TestCase):
 
     @mock.patch("apps.library.views.nodes.httpx.Client")
     @mock.patch("apps.library.services.node.httpx.Client")
-    def test_create_same_node_twice_updates_instead_of_duplicating(self, mock_client_service, mock_client_view):
+    def test_create_same_node_twice_updates_instead_of_duplicating(
+        self, mock_client_service, mock_client_view
+    ):
         for mock_c in (mock_client_service, mock_client_view):
             mc = mock.MagicMock()
             mr = mock.MagicMock()
             mr.status_code = 200
-            mr.json.return_value = {"status": "online", "total_files": 0, "disk_free_bytes": 0, "disk_total_bytes": 0}
+            mr.json.return_value = {
+                "status": "online",
+                "total_files": 0,
+                "disk_free_bytes": 0,
+                "disk_total_bytes": 0,
+            }
             mc.get.return_value = mr
             mc.__enter__.return_value = mc
             mock_c.return_value = mc
@@ -91,12 +98,19 @@ class GameServersApiTests(TestCase):
 
     @mock.patch("apps.library.views.nodes.httpx.Client")
     @mock.patch("apps.library.services.node.httpx.Client")
-    def test_create_same_token_from_lan_and_loopback_is_one_server(self, mock_client_service, mock_client_view):
+    def test_create_same_token_from_lan_and_loopback_is_one_server(
+        self, mock_client_service, mock_client_view
+    ):
         for mock_c in (mock_client_service, mock_client_view):
             mc = mock.MagicMock()
             mr = mock.MagicMock()
             mr.status_code = 200
-            mr.json.return_value = {"status": "online", "total_files": 0, "disk_free_bytes": 0, "disk_total_bytes": 0}
+            mr.json.return_value = {
+                "status": "online",
+                "total_files": 0,
+                "disk_free_bytes": 0,
+                "disk_total_bytes": 0,
+            }
             mc.get.return_value = mr
             mc.__enter__.return_value = mc
             mock_c.return_value = mc
@@ -751,7 +765,9 @@ class GameServersApiTests(TestCase):
         res = self.client.get(f"/api/v1/library/servers/{server.id}/organize")
         self.assertEqual(res.status_code, 200)
         organize = res.json()
-        self.assertTrue(organize.get("auto_organize_enabled") or organize.get("autoOrganizeEnabled"))
+        self.assertTrue(
+            organize.get("auto_organize_enabled") or organize.get("autoOrganizeEnabled")
+        )
 
         res = self.client.post(
             f"/api/v1/library/servers/{server.id}/organize",
@@ -783,9 +799,15 @@ class NonExistentNodeApiTests(TestCase):
         self.assertEqual(self.client.post("/api/v1/library/servers/-2/ping").status_code, 404)
         self.assertEqual(self.client.get("/api/v1/library/servers/-2/explorer").status_code, 404)
         self.assertEqual(self.client.post("/api/v1/library/servers/-2/scan").status_code, 404)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/usenet/config").status_code, 404)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/radarr/config").status_code, 404)
-        self.assertEqual(self.client.get("/api/v1/library/servers/-2/sonarr/config").status_code, 404)
+        self.assertEqual(
+            self.client.get("/api/v1/library/servers/-2/usenet/config").status_code, 404
+        )
+        self.assertEqual(
+            self.client.get("/api/v1/library/servers/-2/radarr/config").status_code, 404
+        )
+        self.assertEqual(
+            self.client.get("/api/v1/library/servers/-2/sonarr/config").status_code, 404
+        )
 
     @mock.patch("apps.library.services.node.httpx.Client")
     def test_create_node_unreachable_returns_400_and_does_not_commit(self, mock_client_cls):
@@ -808,7 +830,12 @@ class NonExistentNodeApiTests(TestCase):
         mock_client = mock.MagicMock()
         mock_resp = mock.MagicMock()
         mock_resp.status_code = 200
-        mock_resp.json.return_value = {"status": "online", "total_files": 0, "disk_free_bytes": 0, "disk_total_bytes": 0}
+        mock_resp.json.return_value = {
+            "status": "online",
+            "total_files": 0,
+            "disk_free_bytes": 0,
+            "disk_total_bytes": 0,
+        }
         mock_client.get.return_value = mock_resp
         mock_client.__enter__.return_value = mock_client
         mock_client_cls.return_value = mock_client

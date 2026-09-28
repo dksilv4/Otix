@@ -40,9 +40,7 @@ class UserRatingView(APIView):
         if target is None:
             raise NotFound(USER_NOT_FOUND)
         if target.id == request.user.id:
-            return Response(
-                {"detail": "Cannot rate yourself"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "Cannot rate yourself"}, status=status.HTTP_400_BAD_REQUEST)
         body = UserRatingBodySerializer(data=request.data)
         body.is_valid(raise_exception=True)
         rating = services.upsert_rating(request.user.id, target.id, body.validated_data["score"])

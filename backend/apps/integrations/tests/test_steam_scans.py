@@ -164,21 +164,23 @@ class SteamLibraryScanTests(SteamScanTestBase):
         self.assertEqual(resp.json()["total_in_steam"], 0)
 
     def test_network_failure_500(self):
-        with mock.patch(REQUEST, side_effect=urllib.error.URLError("down")):
+        with (
+            mock.patch("apps.integrations.views.steam.logger.exception"),
+            mock.patch(REQUEST, side_effect=urllib.error.URLError("down")),
+        ):
             resp = self.post()
         self.assertEqual(resp.status_code, 500)
-        self.assertEqual(
-            resp.json()["detail"], "Failed to scan Steam library. Please try again."
-        )
+        self.assertEqual(resp.json()["detail"], "Failed to scan Steam library. Please try again.")
         self.assertEqual(UserSteamGame.objects.filter(user=self.user).count(), 0)
 
     def test_unexpected_status_500(self):
-        with self._fake(status=500, body="oops"):
+        with (
+            mock.patch("apps.integrations.views.steam.logger.exception"),
+            self._fake(status=500, body="oops"),
+        ):
             resp = self.post()
         self.assertEqual(resp.status_code, 500)
-        self.assertEqual(
-            resp.json()["detail"], "Failed to scan Steam library. Please try again."
-        )
+        self.assertEqual(resp.json()["detail"], "Failed to scan Steam library. Please try again.")
 
 
 @override_settings(STEAM_API_KEY="test-key")
@@ -260,14 +262,18 @@ class SteamWishlistScanTests(SteamScanTestBase):
         self.assertEqual(resp.json(), {"total": 0, "matched": 0, "private": True})
 
     def test_network_failure_500(self):
-        with mock.patch(REQUEST, side_effect=urllib.error.URLError("down")):
+        with (
+            mock.patch("apps.integrations.views.steam.logger.exception"),
+            mock.patch(REQUEST, side_effect=urllib.error.URLError("down")),
+        ):
             resp = self.post()
         self.assertEqual(resp.status_code, 500)
-        self.assertEqual(
-            resp.json()["detail"], "Failed to scan Steam wishlist. Please try again."
-        )
+        self.assertEqual(resp.json()["detail"], "Failed to scan Steam wishlist. Please try again.")
 
     def test_unexpected_status_500(self):
-        with self._fake(status=500, body="oops"):
+        with (
+            mock.patch("apps.integrations.views.steam.logger.exception"),
+            self._fake(status=500, body="oops"),
+        ):
             resp = self.post()
         self.assertEqual(resp.status_code, 500)

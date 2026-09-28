@@ -189,9 +189,13 @@ class ImageDimsParsingTests(TestCase):
         from apps.media.management.commands.cleanup_igdb_backdrops import _probe_alpha
 
         # PNG color_type 6 = RGBA
-        rgba_png = bytearray(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x01\x00\x00\x00\x01\x00\x08\x06\x00\x00\x00")
+        rgba_png = bytearray(
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x01\x00\x00\x00\x01\x00\x08\x06\x00\x00\x00"
+        )
         self.assertTrue(_probe_alpha(bytes(rgba_png)))
 
         # PNG color_type 2 = RGB (no alpha)
-        rgb_png = bytearray(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x01\x00\x00\x00\x01\x00\x08\x02\x00\x00\x00")
+        rgb_png = bytearray(
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x01\x00\x00\x00\x01\x00\x08\x02\x00\x00\x00"
+        )
         self.assertFalse(_probe_alpha(bytes(rgb_png)))

@@ -32,7 +32,7 @@ export function LauncherActionButtons({
   const [isLaunching, setIsLaunching] = useState(false)
 
   const raw = ("rawGame" in game && game.rawGame ? game.rawGame : game) as LocalGame
-  const isInstalled = !!raw.exePath && raw.platform !== "iso"
+  const isInstalled = !!raw.exePath && raw.platform !== "iso" && !raw.exePath.toLowerCase().endsWith(".otix")
   const isIso = raw.platform === "iso"
   const isIncompatible = isIso && osName !== "Windows" && !PREVIEW_INCOMPATIBLE_AS_AVAILABLE
   const mediaId = raw.otixMediaId || raw.data?.id
@@ -45,7 +45,7 @@ export function LauncherActionButtons({
   const handlePlay = async (e?: React.MouseEvent) => {
     e?.stopPropagation()
     const api = getDesktopAPI()
-    if (!api?.launchGame) {
+    if (!api?.launchGame || raw.exePath?.toLowerCase().endsWith(".otix")) {
       toast({
         title: "Desktop App Required",
         description: "Download the Otix desktop client to launch local games natively.",

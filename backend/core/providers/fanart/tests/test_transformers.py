@@ -107,9 +107,7 @@ class FanartTransformersTests(SimpleTestCase):
         self.assertEqual(assets[0].url, "https://a.fanart.tv/valid.png")
 
     def test_capping_per_type(self) -> None:
-        raw = {
-            "hdmovielogo": [_entry(f"https://a.fanart.tv/logo/{i}.png") for i in range(15)]
-        }
+        raw = {"hdmovielogo": [_entry(f"https://a.fanart.tv/logo/{i}.png") for i in range(15)]}
         assets = transform_movie_assets(raw, max_per_type=5)
         self.assertEqual(len(assets), 5)
 

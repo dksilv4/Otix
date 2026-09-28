@@ -96,9 +96,7 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     plex_id = models.CharField(
         max_length=MAX_EXTERNAL_ID_LENGTH, null=True, blank=True, unique=True, db_index=True
     )
-    steam_id = models.CharField(
-        max_length=17, null=True, blank=True, unique=True, db_index=True
-    )
+    steam_id = models.CharField(max_length=17, null=True, blank=True, unique=True, db_index=True)
 
     # --- TMDb integration profile (request_token -> session_id dance; no OAuth) ---
     # Legacy ``User`` carries no plain ``tmdb_id`` — the account is identified by
@@ -119,9 +117,7 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     # (``old-backend/otix/domain/user.py``).
     google_email = models.CharField(max_length=MAX_EMAIL_LENGTH, null=True, blank=True)
     google_name = models.CharField(max_length=MAX_DISPLAY_NAME_LENGTH, null=True, blank=True)
-    google_avatar_url = models.CharField(
-        max_length=MAX_AVATAR_URL_LENGTH, null=True, blank=True
-    )
+    google_avatar_url = models.CharField(max_length=MAX_AVATAR_URL_LENGTH, null=True, blank=True)
     google_access_token = models.TextField(null=True, blank=True)
     google_refresh_token = models.TextField(null=True, blank=True)
     google_token_expires_at = models.DateTimeField(null=True, blank=True)
@@ -130,13 +126,20 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     drive_token_expires_at = models.DateTimeField(null=True, blank=True)
 
     # --- Plex integration profile (PIN auth is public; no token expiry) ---
-    plex_username = models.CharField(
-        max_length=MAX_DISPLAY_NAME_LENGTH, null=True, blank=True
-    )
+    plex_username = models.CharField(max_length=MAX_DISPLAY_NAME_LENGTH, null=True, blank=True)
     plex_email = models.CharField(max_length=MAX_EMAIL_LENGTH, null=True, blank=True)
     plex_thumb = models.CharField(max_length=MAX_AVATAR_URL_LENGTH, null=True, blank=True)
     plex_auth_token = models.TextField(null=True, blank=True)
     plex_watch_history_enabled = models.BooleanField(default=False)
+
+    # --- Epic Games integration profile ---
+    epic_account_id = models.CharField(
+        max_length=64, null=True, blank=True, unique=True, db_index=True
+    )
+    epic_display_name = models.CharField(max_length=150, null=True, blank=True)
+    epic_access_token = models.TextField(null=True, blank=True)
+    epic_refresh_token = models.TextField(null=True, blank=True)
+    epic_token_expires_at = models.DateTimeField(null=True, blank=True)
 
     # --- Security ---
     two_factor_enabled = models.BooleanField(default=False)
@@ -157,9 +160,7 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     # google_*/drive_*) land with their OAuth slices, and the pgvector
     # ``embedding`` stays deferred (sqlite-safe schema).
     bio = models.TextField(null=True, blank=True)
-    background_url = models.URLField(
-        max_length=MAX_BACKGROUND_URL_LENGTH, null=True, blank=True
-    )
+    background_url = models.URLField(max_length=MAX_BACKGROUND_URL_LENGTH, null=True, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     country = models.CharField(max_length=MAX_COUNTRY_LENGTH, null=True, blank=True)
     is_private = models.BooleanField(default=False)
@@ -169,17 +170,11 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     daily_mood_checkins_enabled = models.BooleanField(default=True)
     onboarding_completed = models.BooleanField(default=False)
     integration_visibility = models.JSONField(default=dict, blank=True)
-    profile_sections = models.JSONField(
-        default=default_profile_sections, blank=True
-    )
-    profile_card_sections = models.JSONField(
-        default=default_profile_card_sections, blank=True
-    )
+    profile_sections = models.JSONField(default=default_profile_sections, blank=True)
+    profile_card_sections = models.JSONField(default=default_profile_card_sections, blank=True)
     hall_of_fame_media_ids = models.JSONField(default=dict, blank=True)
     notification_preferences = models.JSONField(default=dict, blank=True)
-    preferred_media_types = models.JSONField(
-        default=default_preferred_media_types, blank=True
-    )
+    preferred_media_types = models.JSONField(default=default_preferred_media_types, blank=True)
     preferred_genres = models.JSONField(default=list, blank=True)
     preferred_languages = models.JSONField(default=list, blank=True)
     discover_emphases = models.JSONField(default=list, blank=True)

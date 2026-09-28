@@ -117,16 +117,18 @@ class ExecutionTimeline:
                 "entity_type": self.entity_type,
                 "external_id": self.external_id,
             }
-            events.append({
-                "name": span.name,
-                "cat": self.provider,
-                "ph": "X",
-                "ts": ts_us,
-                "dur": dur_us,
-                "pid": 1,
-                "tid": 1,
-                "args": args,
-            })
+            events.append(
+                {
+                    "name": span.name,
+                    "cat": self.provider,
+                    "ph": "X",
+                    "ts": ts_us,
+                    "dur": dur_us,
+                    "pid": 1,
+                    "tid": 1,
+                    "args": args,
+                }
+            )
             for child in span.children:
                 _collect(child)
 

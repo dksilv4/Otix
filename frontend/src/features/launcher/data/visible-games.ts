@@ -102,8 +102,9 @@ export function parseServerFile(file: ServerGameFile): ClassifiedServerFile {
 
 function rankPrimary(item: ClassifiedServerFile): number {
   const isoBonus = item.file.formatCategory === 'iso' ? 1_000_000_000_000 : 0
+  const gameFormatBonus = item.file.formatCategory === 'game' ? 500_000_000_000 : 0
   const gameBonus = item.parsed.kind === 'game' ? 1_000_000_000 : 0
-  return isoBonus + gameBonus + (item.file.filesize || 0)
+  return isoBonus + gameFormatBonus + gameBonus + (item.file.filesize || 0)
 }
 
 function sortUpdates(items: ClassifiedServerFile[]): ClassifiedServerFile[] {
@@ -274,11 +275,43 @@ function mergeUpdateFiles(existing: UpdateFile[] | undefined, incoming: UpdateFi
 }
 
 function catalogFromGroup(group: GroupedServerGame) {
-  return group.primary.file.catalogItem
+  const fromCatalog = group.primary.file.catalogItem
     || group.games.find((item) => item.file.catalogItem)?.file.catalogItem
     || group.updates.find((item) => item.file.catalogItem)?.file.catalogItem
     || group.dlc.find((item) => item.file.catalogItem)?.file.catalogItem
     || null
+  if (fromCatalog) return fromCatalog
+
+  const allFiles = [
+    group.primary.file,
+    ...group.games.map((g) => g.file),
+    ...group.updates.map((u) => u.file),
+    ...group.dlc.map((d) => d.file),
+  ]
+  const withOtix = allFiles.find((f: any) => f.otix_media_id || f.otixMediaId) as any
+  if (withOtix) {
+    const id = String(withOtix.otix_media_id || withOtix.otixMediaId || '')
+    const title = withOtix.otix_title || withOtix.otixTitle || group.title
+    const slug = withOtix.otix_slug || withOtix.otixSlug || group.gameKey
+    const images = withOtix.otix_images || withOtix.otixImages || {}
+    const poster = images.poster?.url || undefined
+    const backdrop = images.backdrop?.url || undefined
+    const logo = images.logo?.url || undefined
+    const textlessPoster = images.textlessPoster?.url || undefined
+    const icon = images.icon?.url || undefined
+    return {
+      id,
+      title,
+      slug,
+      overview: withOtix.otix_overview || withOtix.otixOverview || null,
+      posterUrl: poster,
+      backdropUrl: backdrop,
+      logoUrl: logo,
+      textlessPosterUrl: textlessPoster,
+      iconUrl: icon,
+    }
+  }
+  return null
 }
 
 function applyCatalogToLocal(game: LocalGame, group: GroupedServerGame): void {
@@ -340,6 +373,10 @@ export function groupedServerGameToLocalGame(group: GroupedServerGame): LocalGam
     id: serverGameId(group.gameKey),
     title,
     platform: 'server',
+    serverId: group.primary.file.serverId,
+    serverFileId: group.primary.file.fileId,
+    serverFilePath: group.primary.file.filepath || group.primary.file.relativePath,
+    serverName: group.primary.file.serverName,
     exePath: '',
     installDir: '',
     description: extraCount
@@ -392,6 +429,12 @@ export function mergeLocalAndServerGames(
     if (existing) {
       existing.updateFiles = mergeUpdateFiles(existing.updateFiles, updates)
       applyCatalogToLocal(existing, group)
+      if (group.primary?.file?.serverId) {
+        existing.serverId = group.primary.file.serverId
+        existing.serverFileId = group.primary.file.fileId
+        existing.serverFilePath = group.primary.file.filepath || group.primary.file.relativePath
+        existing.serverName = group.primary.file.serverName
+      }
       if (existing.platform === 'server' && group.games.length > 0) claimedServer.add(existing.id)
       continue
     }

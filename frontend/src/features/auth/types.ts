@@ -7,6 +7,8 @@ export interface User {
   isVerified: boolean
   twoFactorEnabled: boolean
   steamId?: string | null
+  epicAccountId?: string | null
+  epicDisplayName?: string | null
   plexId?: string | null
   tmdbAccountId?: number | null
   tmdbUsername?: string | null

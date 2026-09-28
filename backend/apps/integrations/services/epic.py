@@ -7,6 +7,7 @@ import logging
 from django.contrib.contenttypes.models import ContentType
 
 from apps.integrations.models import UserEpicGame
+from apps.integrations.services import epic_client
 from apps.library.services.game_server import (
     NO_EPIC_NODE,
     pick_online_game_server,
@@ -34,27 +35,47 @@ def _epic_external_id_map(ids: list[str]) -> dict[str, int]:
 
 
 def scan_epic_library(user, server=None) -> dict:
-    """Fetch the user's Epic library from their Otix Server and upsert rows.
+    """Fetch the user's Epic library from their Otix Server or direct cloud scan.
 
-    Returns ``{total_in_epic, matched_in_otix, failed}``. Matching uses
+    Returns ``{total_in_epic, matched_in_otix, failed, source}``. Matching uses
     ``ExternalID`` ``provider="epic"`` on catalog_item_id, then offer_id, then
     app_name. Does not call IGDB.
     """
     if server is None:
         server = pick_online_game_server(user)
-    if server is None:
-        raise ValueError(NO_EPIC_NODE)
 
-    status, data = proxy_epic_scan(server)
-    if status != 200:
-        if status == 400:
-            detail = _SCAN_FAILED
-            if isinstance(data, dict) and data.get("detail"):
-                detail = data["detail"]
-            raise ValueError(detail)
+    games: list[dict] = []
+    scanned = False
+    source = "cloud"
+
+    if server is not None:
+        status, data = proxy_epic_scan(server)
+        if status == 200 and isinstance(data, dict):
+            games = data.get("games") or []
+            scanned = True
+            source = "node"
+        elif not getattr(user, "epic_refresh_token", None):
+            if status == 400:
+                detail = _SCAN_FAILED
+                if isinstance(data, dict) and data.get("detail"):
+                    detail = data["detail"]
+                raise ValueError(detail)
+            raise RuntimeError(_SCAN_FAILED)
+
+    if not scanned and getattr(user, "epic_refresh_token", None):
+        try:
+            games = epic_client.scan_epic_cloud_library(user)
+            scanned = True
+            source = "cloud"
+        except epic_client.EpicAuthError as exc:
+            raise ValueError(str(exc)) from exc
+        except epic_client.EpicScanError as exc:
+            raise RuntimeError(str(exc)) from exc
+
+    if not scanned:
+        if server is None and not getattr(user, "epic_refresh_token", None):
+            raise ValueError(NO_EPIC_NODE)
         raise RuntimeError(_SCAN_FAILED)
-
-    games = (data.get("games") or []) if isinstance(data, dict) else []
     ids: list[str] = []
     for game in games:
         ids.extend(
@@ -126,4 +147,5 @@ def scan_epic_library(user, server=None) -> dict:
         "total_in_epic": len(games),
         "matched_in_otix": matched,
         "failed": len(games) - matched,
+        "source": source,
     }

@@ -39,6 +39,7 @@ from apps.library.services.node import (
     PENDING_TTL,
     apply_node_heartbeat,
     claim_node_by_pin,
+    clear_scanned_game_libraries,
     collapse_duplicate_game_servers,
     contact_urls,
     desktop_get_settings,
@@ -50,6 +51,7 @@ from apps.library.services.node import (
     downloads_search,
     explorer_browse,
     explorer_create_folder,
+    explorer_request_permission,
     explorer_set_download_path,
     link_or_create_game_server,
     list_pending_nodes_for,
@@ -194,7 +196,9 @@ class GameServerListCreateView(APIView):
             if created:
                 server.delete()
             return Response(
-                {"detail": f"Could not connect to node at {target_endpoint} ({result.get('error') or 'unreachable'}). Ensure the node is online and reachable."},
+                {
+                    "detail": f"Could not connect to node at {target_endpoint} ({result.get('error') or 'unreachable'}). Ensure the node is online and reachable."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         server.refresh_from_db()
@@ -217,6 +221,49 @@ class GameServerHeartbeatView(APIView):
     def post(self, request: Request) -> Response:
         apply_node_heartbeat(request.data if isinstance(request.data, dict) else {})
         return Response({"status": "ok"})
+
+
+class GameServerScanCompleteView(APIView):
+    """``POST /api/v1/servers/scan-complete`` — node announces finished library scan."""
+
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request) -> Response:
+        from apps.library.services.otix_sync import sync_otix_sidecars
+
+        payload = request.data if isinstance(request.data, dict) else {}
+        token = payload.get("auth_token") or ""
+        endpoints = payload.get("local_endpoints") or []
+        write_otix = payload.get("write_otix", True)
+        download_images = payload.get("download_images", False)
+
+        query = Q()
+        if token:
+            query |= Q(auth_token=token)
+        for url in endpoints:
+            clean = url.rstrip("/")
+            query |= (
+                Q(local_url=clean)
+                | Q(local_url=f"{clean}/")
+                | Q(remote_url=clean)
+                | Q(remote_url=f"{clean}/")
+            )
+
+        servers = list(UserNode.objects.filter(query).distinct()) if query else []
+        if not servers:
+            return Response({"status": "ignored", "reason": "server not registered"}, status=200)
+
+        results = []
+        for server in servers:
+            status_code, sync_data = sync_otix_sidecars(
+                server,
+                download_images=bool(download_images),
+                write_otix=bool(write_otix),
+            )
+            results.append({"server_id": server.id, "status": status_code, "data": sync_data})
+
+        return Response({"status": "ok", "results": results})
 
 
 class GameServerPendingView(APIView):
@@ -397,7 +444,7 @@ class GameServerDetailView(APIView):
         deleted_urls = {server.local_url, server.remote_url}
         token = server.auth_token
         remaining = []
-        for r in (cache.get(PENDING_CACHE_KEY) or []):
+        for r in cache.get(PENDING_CACHE_KEY) or []:
             if token and r.get("auth_token") == token:
                 continue
             if any(u in deleted_urls for u in (r.get("local_url"), r.get("advertised_url")) if u):
@@ -514,6 +561,7 @@ class GameServerFilesView(APIView):
                                     "server_name": s.name,
                                     "server_url": public_url,
                                     "file_id": file_id,
+                                    "id": file_id,
                                     "filename": f.get("filename"),
                                     "filesize": f.get("filesize", 0),
                                     "extension": f.get("extension", ""),
@@ -526,6 +574,13 @@ class GameServerFilesView(APIView):
                                     "download_url": f"{public_url}/api/v1/files/{file_id}/download",
                                     "is_shared": is_shared,
                                     "shared_by": shared_by,
+                                    "otix_media_id": f.get("otix_media_id"),
+                                    "otix_title": f.get("otix_title"),
+                                    "otix_slug": f.get("otix_slug"),
+                                    "otix_confidence": f.get("otix_confidence"),
+                                    "otix_images": f.get("otix_images"),
+                                    "otix_path": f.get("otix_path"),
+                                    "otix_overview": f.get("otix_overview"),
                                 }
                             )
                         fetched = True
@@ -546,7 +601,9 @@ class GameServerFilesView(APIView):
 
         return Response(
             {
-                "servers": UserGameServerSerializer(servers, many=True, context={"request": request}).data,
+                "servers": UserGameServerSerializer(
+                    servers, many=True, context={"request": request}
+                ).data,
                 "files": files_out,
                 "errors": errors if errors else None,
             }
@@ -593,13 +650,17 @@ class NodeShareListCreateView(APIView):
 
         # REQUIREMENT: Share only with Otix friends!
         is_friend = FriendRequest.objects.filter(
-            (Q(sender_id=request.user.id, receiver_id=shared_with_id) | Q(sender_id=shared_with_id, receiver_id=request.user.id)),
+            (
+                Q(sender_id=request.user.id, receiver_id=shared_with_id)
+                | Q(sender_id=shared_with_id, receiver_id=request.user.id)
+            ),
             status="accepted",
         ).exists()
         if not is_friend:
             raise ValidationError("You can only share Otix nodes with Otix friends")
 
         from django.contrib.auth import get_user_model
+
         target_user = get_user_model().objects.filter(pk=shared_with_id).first()
         if not target_user:
             raise NotFound("Friend user not found")
@@ -687,6 +748,21 @@ class GameServerExplorerCreateFolderView(APIView):
         status_code, data = explorer_create_folder(
             server, parent_path=parent_path, folder_name=folder_name
         )
+        return Response(data, status=status_code)
+
+
+class GameServerExplorerRequestPermissionView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/explorer/request-permission`` — request macOS folder access."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        path = request.data.get("path", "")
+        if not path:
+            return Response({"detail": "path is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        status_code, data = explorer_request_permission(server, path=path)
         return Response(data, status=status_code)
 
 
@@ -948,6 +1024,129 @@ class GameServerScanView(APIView):
         server = _get_server_or_404(request, server_id)
         status_code, data = scan_game_libraries(server)
         return Response(data, status=status_code)
+
+
+class GameServerScanClearView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/scan/clear`` — clear indexed hosted files."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = clear_scanned_game_libraries(server)
+        return Response(data, status=status_code)
+
+
+class GameServerOtixSettingsView(APIView):
+    """``GET/POST /api/v1/library/servers/{server_id}/otix/settings`` — node `.otix` prefs."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        from apps.library.services.otix_sync import node_get_otix_settings
+
+        server = _get_server_or_404(request, server_id)
+        status_code, data = node_get_otix_settings(server)
+        return Response(data, status=status_code)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        from apps.library.services.otix_sync import node_save_otix_settings
+
+        server = _get_server_or_404(request, server_id)
+        status_code, data = node_save_otix_settings(server, request.data)
+        return Response(data, status=status_code)
+
+
+class GameServerOtixSyncView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/otix/sync`` — match, hydrate, write `.otix`."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        from apps.library.services.otix_sync import sync_otix_sidecars
+
+        server = _get_server_or_404(request, server_id)
+        download_images = request.data.get("download_images")
+        write_otix = request.data.get("write_otix")
+        if download_images is not None:
+            download_images = bool(download_images)
+        if write_otix is not None:
+            write_otix = bool(write_otix)
+        status_code, data = sync_otix_sidecars(
+            server,
+            download_images=download_images,
+            write_otix=write_otix,
+        )
+        return Response(data, status=status_code)
+
+
+class GameServerOtixMatchView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/otix/match`` — manually match a game file and write `.otix`."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        from apps.library.services.otix_sync import node_match_and_write_otix
+
+        server = _get_server_or_404(request, server_id)
+        media_id = request.data.get("media_id") or request.data.get("mediaId")
+        if not media_id:
+            return Response({"detail": "media_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        file_id = request.data.get("file_id") or request.data.get("fileId")
+        filepath = request.data.get("filepath")
+        confidence = request.data.get("confidence", 1.0)
+        download_images = request.data.get("download_images")
+        if download_images is not None:
+            download_images = bool(download_images)
+
+        status_code, data = node_match_and_write_otix(
+            server,
+            media_id=media_id,
+            file_id=file_id,
+            filepath=filepath,
+            confidence=confidence,
+            download_images=download_images,
+            user=request.user
+            if getattr(request, "user", None) and request.user.is_authenticated
+            else None,
+        )
+        return Response(data, status=status_code)
+
+
+class GameServerOtixAssetView(APIView):
+    """``GET …/files/{file_id}/otix/asset/{role}`` — proxy local sidecar image from the node."""
+
+    permission_classes = (AllowAny,)
+
+    def get(self, request: Request, server_id: int, file_id: str, role: str) -> Response:
+        from django.http import HttpResponse
+
+        from apps.library.services.node import _auth_headers, contact_urls
+
+        server = _get_server_or_404(request, server_id)
+        if role not in {"poster", "backdrop", "logo", "textlessPoster", "icon"}:
+            return Response({"detail": "Unknown asset role"}, status=status.HTTP_400_BAD_REQUEST)
+
+        headers = _auth_headers(server)
+        last_error = "unreachable"
+        for target_url in contact_urls(server.primary_url or ""):
+            try:
+                with httpx.Client(timeout=30.0) as client:
+                    resp = client.get(
+                        f"{target_url}/api/v1/files/{file_id}/otix/asset/{role}",
+                        headers=headers,
+                    )
+                if resp.status_code == 200:
+                    content_type = resp.headers.get("content-type") or "application/octet-stream"
+                    return HttpResponse(resp.content, content_type=content_type, status=200)
+                last_error = f"HTTP {resp.status_code}"
+                if resp.status_code == 404:
+                    break
+            except Exception as exc:  # noqa: BLE001
+                last_error = str(exc)
+                continue
+        return Response({"detail": last_error}, status=status.HTTP_502_BAD_GATEWAY)
 
 
 # ── Radarr Views ────────────────────────────────────────────────────────
@@ -1373,6 +1572,7 @@ class GameServerInstancesImportView(APIView):
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
         return Response(result)
 
+
 # Modern Node view aliases
 NodeListCreateView = GameServerListCreateView
 NodeDetailView = GameServerDetailView
@@ -1395,3 +1595,4 @@ NodeHeartbeatView = GameServerHeartbeatView
 NodeLibrariesView = GameServerLibrariesView
 NodeOrganizeView = GameServerOrganizeView
 NodeScanView = GameServerScanView
+NodeScanClearView = GameServerScanClearView

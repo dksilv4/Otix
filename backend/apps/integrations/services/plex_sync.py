@@ -169,9 +169,7 @@ def _fetch_library_items(user, server, library, token: str) -> list[dict] | None
         if offset >= total_size or not page:
             break
     return [
-        item
-        for item in all_items
-        if _media_type(item, library.library_type) in {"movie", "show"}
+        item for item in all_items if _media_type(item, library.library_type) in {"movie", "show"}
     ]
 
 

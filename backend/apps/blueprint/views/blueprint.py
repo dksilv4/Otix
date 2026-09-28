@@ -55,9 +55,7 @@ class BlueprintListCreateView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         blueprint = services.create_blueprint(request.user, **serializer.validated_data)
         detail = services.get_blueprint(blueprint.pk, request.user.id)
-        return Response(
-            BlueprintDetailSerializer(detail).data, status=status.HTTP_201_CREATED
-        )
+        return Response(BlueprintDetailSerializer(detail).data, status=status.HTTP_201_CREATED)
 
 
 class BlueprintDetailView(APIView):
@@ -102,9 +100,7 @@ class BlueprintLikeView(APIView):
             raise NotFound(BLUEPRINT_NOT_FOUND)
         is_liked, like_count = services.toggle_blueprint_like(request.user, blueprint)
         return Response(
-            BlueprintLikeResponseSerializer(
-                {"is_liked": is_liked, "like_count": like_count}
-            ).data
+            BlueprintLikeResponseSerializer({"is_liked": is_liked, "like_count": like_count}).data
         )
 
 

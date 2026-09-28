@@ -98,10 +98,9 @@ def build_user_profile(user: User, viewer) -> dict:
 def search_users(query: str, limit: int) -> list[dict]:
     """Username substring search over active users (legacy order: prefix first)."""
     user_model = get_user_model()
-    users = (
-        user_model.objects.filter(username__icontains=query, is_active=True)
-        .order_by("username", "id")[:limit]
-    )
+    users = user_model.objects.filter(username__icontains=query, is_active=True).order_by(
+        "username", "id"
+    )[:limit]
     return [
         {
             "id": user.id,

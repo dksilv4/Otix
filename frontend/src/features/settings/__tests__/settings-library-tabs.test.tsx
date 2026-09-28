@@ -103,17 +103,20 @@ vi.mock('../components/organisms/settings-free-games-section', () => ({
 }))
 
 describe('resolveLibrarySettingsTab', () => {
-  it('defaults empty and overview to overview; maps legacy hashes onto library or overview', () => {
-    expect(resolveLibrarySettingsTab('')).toBe('overview')
-    expect(resolveLibrarySettingsTab(undefined)).toBe('overview')
-    expect(resolveLibrarySettingsTab('overview')).toBe('overview')
-    expect(resolveLibrarySettingsTab('#overview')).toBe('overview')
-    expect(resolveLibrarySettingsTab('games')).toBe('library')
-    expect(resolveLibrarySettingsTab('#proposals')).toBe('library')
-    expect(resolveLibrarySettingsTab('library')).toBe('library')
-    expect(resolveLibrarySettingsTab('paths')).toBe('overview')
-    expect(resolveLibrarySettingsTab('downloads')).toBe('overview')
-    expect(resolveLibrarySettingsTab('organize')).toBe('overview')
+  it('defaults empty and legacy hashes to catalog; maps #proposals onto proposals', () => {
+    expect(resolveLibrarySettingsTab('')).toBe('catalog')
+    expect(resolveLibrarySettingsTab(undefined)).toBe('catalog')
+    expect(resolveLibrarySettingsTab('overview')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('#overview')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('games')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('library')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('catalog')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('#catalog')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('proposals')).toBe('proposals')
+    expect(resolveLibrarySettingsTab('#proposals')).toBe('proposals')
+    expect(resolveLibrarySettingsTab('paths')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('downloads')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('organize')).toBe('catalog')
   })
 })
 
@@ -131,7 +134,7 @@ describe('SettingsLibraryPage tabs', () => {
     clearDesktopAPICache()
   })
 
-  it('renders tablist and Overview tab by default', async () => {
+  it('renders tablist and Catalog tab by default', async () => {
     render(
       <SettingsSaveProvider>
         <ModalProvider>
@@ -143,34 +146,23 @@ describe('SettingsLibraryPage tabs', () => {
 
     expect(screen.getAllByRole('heading', { name: 'Library' }).length).toBeGreaterThan(0)
     expect(
-      screen.getByText('Status across matching, folders, nodes, and automation.'),
+      screen.getByText('Match titles to Otix metadata, review candidates, and manage providers.'),
     ).toBeInTheDocument()
     expect(screen.getByRole('tablist')).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('tab', { name: 'Library' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Catalog' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Match Proposals' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Overview' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Paths' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Downloads' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Organize' })).not.toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Open Library' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Go to Paths' })).toHaveAttribute(
-        'href',
-        '/settings/nodes/-1',
-      )
-      expect(screen.getByRole('link', { name: 'Go to Downloads' })).toHaveAttribute(
-        'href',
-        '/settings/nodes/-1#downloaders',
-      )
-      expect(screen.getByRole('link', { name: 'Go to Organize' })).toHaveAttribute(
-        'href',
-        '/settings/nodes/-1#organize',
-      )
+      expect(screen.getByRole('heading', { name: 'Catalog' })).toBeInTheDocument()
+      expect(screen.getByText('Scan Folders')).toBeInTheDocument()
     })
   })
 
-  it('navigates from overview card to the selected node settings page', async () => {
+  it('provides direct link to scan folders on nodes', async () => {
     render(
       <SettingsSaveProvider>
         <ModalProvider>
@@ -181,10 +173,8 @@ describe('SettingsLibraryPage tabs', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: 'Go to Paths' })).toHaveAttribute(
-        'href',
-        '/settings/nodes/-1',
-      )
+      const scanLink = screen.getByRole('link', { name: /scan folders/i })
+      expect(scanLink).toHaveAttribute('href', '/settings/nodes')
     })
   })
 
@@ -218,8 +208,8 @@ describe('SettingsLibraryPage tabs', () => {
     })
   })
 
-  it('opens Library tab from #library hash', async () => {
-    mockHash = '#library'
+  it('opens Match Proposals tab from #proposals hash', async () => {
+    mockHash = '#proposals'
     render(
       <SettingsSaveProvider>
         <ModalProvider>
@@ -230,7 +220,10 @@ describe('SettingsLibraryPage tabs', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Library' })).toHaveAttribute('aria-selected', 'true')
+      expect(screen.getByRole('tab', { name: 'Match Proposals' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
     })
   })
 })

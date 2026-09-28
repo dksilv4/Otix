@@ -14,7 +14,6 @@ from rest_framework.views import APIView
 from apps.integrations import services as integrations_services
 from apps.library.models import UserGameServer
 from apps.library.services.game_server import (
-    NO_EPIC_NODE,
     pick_online_game_server,
     proxy_epic_status,
 )
@@ -28,17 +27,33 @@ class EpicStatusView(APIView):
     """GET /integrations/epic/status"""
 
     def get(self, request):
+        if request.user.epic_refresh_token:
+            return Response(
+                {
+                    "connected": True,
+                    "account_id": request.user.epic_account_id,
+                    "display_name": request.user.epic_display_name,
+                },
+                status=200,
+            )
+
         node_id = request.query_params.get("node_id") or request.query_params.get("server_id")
+        server = None
         if node_id:
             server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
-        else:
-            server = pick_online_game_server(request.user)
         if server is None:
-            return Response({"detail": NO_EPIC_NODE}, status=400)
-        status_code, data = proxy_epic_status(server)
-        if isinstance(data, dict):
-            data.pop("refresh_token", None)
-        return Response(data, status=status_code)
+            server = pick_online_game_server(request.user)
+
+        if server:
+            status_code, data = proxy_epic_status(server)
+            if isinstance(data, dict):
+                data.pop("refresh_token", None)
+            return Response(data, status=status_code)
+
+        return Response(
+            {"connected": False, "account_id": None, "display_name": None},
+            status=200,
+        )
 
 
 class EpicLibraryScanView(APIView):
@@ -90,4 +105,3 @@ class EpicResolveSteamGridView(APIView):
                 status=500,
             )
         return Response(result)
-

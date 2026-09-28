@@ -46,7 +46,7 @@
 
 /* ---------- Banner prompt (when no reviews yet, but ratings exist) ---------- */
 .dk-review__banner {
-  @apply rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent;
+  @apply py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4;
 }
 
 .dk-review__banner-content {
@@ -54,7 +54,7 @@
 }
 
 .dk-review__banner-icon {
-  @apply h-9 w-9 rounded-xl flex items-center justify-center shrink-0 text-amber-400 bg-amber-400/15 border border-amber-400/25;
+  @apply h-8 w-8 rounded-xl flex items-center justify-center shrink-0 text-amber-400;
 }
 
 .dk-review__banner-title {
@@ -67,31 +67,28 @@
 
 /* ---------- Full empty state (0 reviews & 0 ratings) ---------- */
 .dk-review__empty-state {
-  @apply rounded-2xl p-8 sm:p-10 text-center flex flex-col items-center justify-center border border-white/[0.06] relative overflow-hidden;
-  background: var(--dk-surface-ghost);
+  @apply py-10 sm:py-12 text-center flex flex-col items-center justify-center;
 }
 
 .dk-review__empty-glow {
-  @apply absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full pointer-events-none blur-3xl opacity-20 bg-primary;
+  @apply hidden;
 }
 
 .dk-review__empty-icon-wrap {
-  @apply h-12 w-12 rounded-2xl flex items-center justify-center mb-3 text-primary bg-primary/10 border border-primary/20 shadow-inner;
+  @apply h-10 w-10 rounded-2xl flex items-center justify-center mb-3 text-muted-foreground;
 }
 
 .dk-review__empty-title {
-  @apply text-base font-semibold text-foreground mb-1;
+  @apply text-base font-semibold text-muted-foreground mb-1;
 }
 
 .dk-review__empty-desc {
-  @apply text-xs text-muted-foreground max-w-sm mb-4 leading-relaxed;
+  @apply text-xs text-muted-foreground/60 max-w-sm mb-4 leading-relaxed;
 }
 
 /* ---------- Placeholder / error ---------- */
 .dk-review__placeholder {
-  @apply rounded-2xl p-8 text-center border border-white/[0.06];
-  background: var(--dk-surface-ghost);
-  box-shadow: var(--dk-shadow-xs);
+  @apply py-10 text-center;
 }
 
 .dk-review__placeholder-text {

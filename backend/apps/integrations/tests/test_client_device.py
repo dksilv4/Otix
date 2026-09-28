@@ -31,9 +31,7 @@ class ClientDeviceModelTests(TestCase):
 
     def test_str_and_storage(self):
         device = self._device()
-        self.assertEqual(
-            str(device), f"DK's MacBook ({self.user.pk})"
-        )
+        self.assertEqual(str(device), f"DK's MacBook ({self.user.pk})")
         self.assertIsNone(device.last_seen)
         self.assertTrue(device.is_active)
 

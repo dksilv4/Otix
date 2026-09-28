@@ -83,6 +83,59 @@ class MediaApiTests(TestCase):
         keys = set(response.data["results"][0].keys())
         self.assertLessEqual(DETAIL_SUMMARY_KEYS, keys)
 
+    def test_list_filters_multiple_genres_with_or(self) -> None:
+        from apps.media.models import Genre, MediaGenre
+
+        action = Genre.objects.create(name="Action", slug="action")
+        comedy = Genre.objects.create(name="Comedy", slug="comedy")
+        drama = Genre.objects.create(name="Drama", slug="drama")
+        both = MediaItem.objects.create(media_type="movie", title="Both", slug="both")
+        Movie.objects.create(media_item=both, runtime=100)
+        only_action = MediaItem.objects.create(
+            media_type="movie", title="Only Action", slug="only-action"
+        )
+        Movie.objects.create(media_item=only_action, runtime=100)
+        only_drama = MediaItem.objects.create(
+            media_type="movie", title="Only Drama", slug="only-drama"
+        )
+        Movie.objects.create(media_item=only_drama, runtime=100)
+        MediaGenre.objects.create(media_item=both, genre=action)
+        MediaGenre.objects.create(media_item=both, genre=comedy)
+        MediaGenre.objects.create(media_item=only_action, genre=action)
+        MediaGenre.objects.create(media_item=only_drama, genre=drama)
+
+        response = self.client.get("/api/v1/media/", {"genre": "action,comedy"})
+        self.assertEqual(response.status_code, 200)
+        ids = {item["id"] for item in response.data["results"]}
+        self.assertIn(both.pk, ids)
+        self.assertIn(only_action.pk, ids)
+        self.assertNotIn(only_drama.pk, ids)
+
+    def test_list_filters_anime_across_media_types(self) -> None:
+        anime_movie = MediaItem.objects.create(
+            media_type="movie", title="Akira", slug="akira", release_date=date(1988, 7, 16)
+        )
+        Movie.objects.create(media_item=anime_movie, runtime=124, is_anime=True)
+        anime_show = MediaItem.objects.create(
+            media_type="show", title="Cowboy Bebop", slug="cowboy-bebop"
+        )
+        Show.objects.create(media_item=anime_show, is_anime=True)
+        game = MediaItem.objects.create(media_type="game", title="Hades", slug="hades")
+
+        only = self.client.get("/api/v1/media/", {"is_anime": "true"})
+        self.assertEqual(only.status_code, 200)
+        only_ids = {item["id"] for item in only.data["results"]}
+        self.assertEqual(only_ids, {anime_movie.pk, anime_show.pk})
+
+        without = self.client.get("/api/v1/media/", {"is_anime": "false"})
+        self.assertEqual(without.status_code, 200)
+        without_ids = {item["id"] for item in without.data["results"]}
+        self.assertIn(self.movie_item.pk, without_ids)
+        self.assertIn(self.show_item.pk, without_ids)
+        self.assertIn(game.pk, without_ids)
+        self.assertNotIn(anime_movie.pk, without_ids)
+        self.assertNotIn(anime_show.pk, without_ids)
+
     def test_genres_and_certifications_public(self) -> None:
         genres = self.client.get("/api/v1/media/genres", {"media_type": "movie"})
         self.assertEqual(genres.status_code, 200)
@@ -141,8 +194,11 @@ class MediaApiTests(TestCase):
         self.assertEqual(created.data["rating_count"], 1)
         seen = self.auth_client.get(f"/api/v1/media/movie/{self.movie_item.pk}/rating")
         self.assertEqual(seen.status_code, 200)
-        self.assertEqual(seen.data["user_id"], self.user.pk)
-        deleted = self.auth_client.delete(f"/api/v1/media/movie/{self.movie_item.pk}/rating")
+        # Rating endpoint also resolves slugs
+        seen_slug = self.auth_client.get(f"/api/v1/media/movie/{self.movie_item.slug}/rating")
+        self.assertEqual(seen_slug.status_code, 200)
+        self.assertEqual(seen_slug.data["user_id"], self.user.pk)
+        deleted = self.auth_client.delete(f"/api/v1/media/movie/{self.movie_item.slug}/rating")
         self.assertEqual(deleted.status_code, 204)
         again = self.auth_client.delete(f"/api/v1/media/movie/{self.movie_item.pk}/rating")
         self.assertEqual(again.status_code, 404)
@@ -165,9 +221,17 @@ class MediaApiTests(TestCase):
         seen = self.auth_client.get(path)
         self.assertEqual(seen.status_code, 200)
         self.assertEqual(seen.data["title"], "Great")
-        patched = self.auth_client.patch(path, {"content": "Edited"}, format="json")
+        # Review endpoint also resolves slugs
+        seen_slug = self.auth_client.get(f"/api/v1/media/movie/{self.movie_item.slug}/review")
+        self.assertEqual(seen_slug.status_code, 200)
+        self.assertEqual(seen_slug.data["title"], "Great")
+        patched = self.auth_client.patch(
+            f"/api/v1/media/movie/{self.movie_item.slug}/review",
+            {"content": "Edited"},
+            format="json",
+        )
         self.assertEqual(patched.status_code, 200)
-        deleted = self.auth_client.delete(path)
+        deleted = self.auth_client.delete(f"/api/v1/media/movie/{self.movie_item.slug}/review")
         self.assertEqual(deleted.status_code, 204)
         again = self.auth_client.delete(path)
         self.assertEqual(again.status_code, 404)

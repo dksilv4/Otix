@@ -74,7 +74,6 @@ def query_minecraft(host: str, port: int, timeout: float = 5.0) -> dict[str, Any
     sock.settimeout(timeout)
     connect_time = time.monotonic()
     try:
-
         # Handshake: packet_id 0x00, protocol 765, host, port, next_state=1 (status)
         host_bytes = host.encode("utf-8")
         handshake_payload = (
@@ -152,7 +151,7 @@ def query_a2s(host: str, query_port: int, timeout: float = 5.0) -> dict[str, Any
     try:
         start_time = time.monotonic()
         # Header: -1 (4 bytes 0xFF), 'T', "Source Engine Query\x00"
-        query_payload = b"\xFF\xFF\xFF\xFFTSource Engine Query\x00"
+        query_payload = b"\xff\xff\xff\xffTSource Engine Query\x00"
         sock.sendto(query_payload, sockaddr)
 
         response, _ = sock.recvfrom(4096)
@@ -160,17 +159,17 @@ def query_a2s(host: str, query_port: int, timeout: float = 5.0) -> dict[str, Any
             raise ValueError("Response too short")
 
         header = response[:4]
-        if header != b"\xFF\xFF\xFF\xFF":
+        if header != b"\xff\xff\xff\xff":
             raise ValueError("Invalid header")
 
         res_type = response[4]
         # Challenge response 0x41 ('A') -> re-send with challenge
         if res_type == 0x41:
             challenge = response[5:9]
-            query_payload = b"\xFF\xFF\xFF\xFFTSource Engine Query\x00" + challenge
+            query_payload = b"\xff\xff\xff\xffTSource Engine Query\x00" + challenge
             sock.sendto(query_payload, sockaddr)
             response, _ = sock.recvfrom(4096)
-            if len(response) < 5 or response[:4] != b"\xFF\xFF\xFF\xFF":
+            if len(response) < 5 or response[:4] != b"\xff\xff\xff\xff":
                 raise ValueError("Invalid response after challenge")
             res_type = response[4]
 
@@ -300,9 +299,7 @@ def probe_server_connection(
         return _run_protocol_query(host, port, effective_query_port, server_type, timeout)
     except Exception as err:
         logger.debug("Transient probe failed for %s:%s: %s", host, port, err)
-        fallback = _tcp_fallback_result(
-            host, port, server_type, effective_query_port, err, timeout
-        )
+        fallback = _tcp_fallback_result(host, port, server_type, effective_query_port, err, timeout)
         if fallback is not None:
             return fallback
 

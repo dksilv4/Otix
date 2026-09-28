@@ -36,9 +36,7 @@ export const companyQueries = {
       staleTime: 1000 * 60 * 10,
     }),
 
-  // The catalog browse endpoint is DRF-paginated (``{count, next, results}``)
-  // and lives at ``/media/`` (trailing slash) — distinct from the stale
-  // ``mediaQueries.infiniteList`` contract.
+  // Catalog browse is DRF-paginated ({count, next, results}) at ``/media/``.
   titles: (id: string, limit = 24) =>
     infiniteQueryOptions({
       queryKey: companyKeys.titles(id, limit),

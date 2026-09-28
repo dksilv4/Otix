@@ -1,9 +1,7 @@
 """Endpoint tests for the Epic OAuth link family.
 
 Covers POST /auth/oauth/epic (initiate + callback + disconnect) against the
-real URLconf. The node leaf (``server_proxy_request``) is mocked; Django must
-never store Epic tokens or User.epic_* columns. GET /auth/oauth stays five
-providers.
+user account model and optional node synchronization.
 """
 
 from __future__ import annotations
@@ -12,40 +10,40 @@ import urllib.parse
 from unittest.mock import patch
 
 from django.test import TestCase
-from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import OAuthState, User
 from apps.integrations.models import UserEpicGame
+from apps.integrations.services import epic_client
 from apps.library.models import UserGameServer
 
-NO_EPIC_NODE = "Connect an Otix Server to link Epic."
-EPIC_CLIENT_ID = "34a02cf8f4414e29b15921876da36f9a"
 
-
-def _node(user, **kwargs):
-    defaults = dict(
-        name="nas",
-        local_url="http://127.0.0.1:8090",
-        is_online=True,
-        is_active=True,
-        last_seen_at=timezone.now(),
+def _node(user: User, *, is_online: bool = True, is_active: bool = True) -> UserGameServer:
+    return UserGameServer.objects.create(
+        user=user,
+        name="Homelab",
+        local_url="http://192.168.1.50:8000",
+        is_online=is_online,
+        is_active=is_active,
     )
-    defaults.update(kwargs)
-    return UserGameServer.objects.create(user=user, **defaults)
 
 
 def _expected_auth_url() -> str:
-    redirect = (
-        f"https://www.epicgames.com/id/api/redirect?clientId={EPIC_CLIENT_ID}&responseType=code"
+    redirect_target = (
+        "https://www.epicgames.com/id/api/redirect"
+        f"?clientId={epic_client.EPIC_CLIENT_ID}&responseType=code"
     )
-    return "https://www.epicgames.com/id/login?redirectUrl=" + urllib.parse.quote(redirect, safe="")
+    return "https://www.epicgames.com/id/login?redirectUrl=" + urllib.parse.quote(
+        redirect_target, safe=""
+    )
 
 
 class _EpicAuthedCase(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create_user(
-            username="epiclover", email="epiclover@example.com", password="Correct-Horse-1"
+            username="epiclover",
+            email="epic@example.com",
+            password="Correct-Horse-1",
         )
         self.client = APIClient()
         login = self.client.post(
@@ -62,23 +60,16 @@ class _EpicAuthedCase(TestCase):
 
 
 class EpicInitiateTests(_EpicAuthedCase):
-    def test_400_without_node(self) -> None:
+    def test_200_without_node_stores_state(self) -> None:
         response = self._authed().post("/api/v1/auth/oauth/epic")
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], NO_EPIC_NODE)
-        self.assertFalse(OAuthState.objects.exists())
-
-    def test_400_when_node_offline(self) -> None:
-        _node(self.user, is_online=False)
-        response = self._authed().post("/api/v1/auth/oauth/epic")
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], NO_EPIC_NODE)
-
-    def test_400_when_node_inactive(self) -> None:
-        _node(self.user, is_active=False)
-        response = self._authed().post("/api/v1/auth/oauth/epic")
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], NO_EPIC_NODE)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(sorted(response.data.keys()), ["auth_url", "state"])
+        state = response.data["state"]
+        self.assertEqual(response.data["auth_url"], _expected_auth_url())
+        self.assertIn("epicgames.com/id/login", response.data["auth_url"])
+        row = OAuthState.objects.get(key=state)
+        self.assertEqual(row.payload["flow"], "epic-link")
+        self.assertEqual(row.payload["user_id"], self.user.pk)
 
     def test_200_with_online_node_stores_state(self) -> None:
         _node(self.user)
@@ -94,7 +85,9 @@ class EpicInitiateTests(_EpicAuthedCase):
 
     def test_200_with_explicit_node_id(self) -> None:
         node = _node(self.user)
-        response = self._authed().post("/api/v1/auth/oauth/epic", {"node_id": node.id}, format="json")
+        response = self._authed().post(
+            "/api/v1/auth/oauth/epic", {"node_id": node.id}, format="json"
+        )
         self.assertEqual(response.status_code, 200)
         self.assertIn("auth_url", response.data)
 
@@ -109,20 +102,19 @@ class EpicCallbackTests(_EpicAuthedCase):
         OAuthState.objects.create(key=key, payload=payload)
         return key
 
-    @patch(
-        "apps.library.services.game_server.server_proxy_request",
-        return_value=(
-            200,
-            {
-                "connected": True,
-                "account_id": "acc",
-                "display_name": "D",
-                "refresh_token": "leak",
-            },
-        ),
-    )
-    def test_strips_token_and_does_not_write_user(self, _proxy) -> None:
-        _node(self.user)
+    @patch("apps.integrations.services.epic_client.exchange_authorization_code")
+    def test_exchanges_code_and_stores_on_user(self, mock_exchange) -> None:
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        mock_exchange.return_value = {
+            "account_id": "epic-acc-123",
+            "display_name": "EpicGamer",
+            "access_token": "mock-access-token",
+            "refresh_token": "mock-refresh-token",
+            "expires_at": timezone.now() + timedelta(hours=8),
+        }
         state = self._store_state()
         response = self._authed().post(
             "/api/v1/auth/oauth/epic/callback",
@@ -130,54 +122,43 @@ class EpicCallbackTests(_EpicAuthedCase):
             format="json",
         )
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn("refresh_token", response.data)
         self.assertEqual(response.data["connected"], True)
-        self.assertEqual(response.data["account_id"], "acc")
-        self.assertEqual(response.data["display_name"], "D")
+        self.assertEqual(response.data["account_id"], "epic-acc-123")
+        self.assertEqual(response.data["display_name"], "EpicGamer")
+
         self.user.refresh_from_db()
-        self.assertFalse(
-            hasattr(self.user, "epic_refresh_token")
-            and getattr(self.user, "epic_refresh_token", None)
-        )
-        credential_fields = [
-            field.name for field in self.user._meta.fields if field.name.startswith("epic_")
-        ]
-        self.assertEqual(credential_fields, [])
+        self.assertEqual(self.user.epic_account_id, "epic-acc-123")
+        self.assertEqual(self.user.epic_display_name, "EpicGamer")
+        self.assertEqual(self.user.epic_refresh_token, "mock-refresh-token")
         self.assertFalse(OAuthState.objects.filter(key=state).exists())
-        _proxy.assert_called_once()
-        args, kwargs = _proxy.call_args
-        self.assertEqual(args[1], "POST")
-        self.assertEqual(args[2], "/api/v1/epic/auth")
-        self.assertEqual(kwargs["json"], {"code": "auth-code"})
-        self.assertEqual(kwargs["timeout"], 20.0)
 
     def test_callback_bad_state_400(self) -> None:
-        _node(self.user)
-        with patch("apps.library.services.game_server.server_proxy_request") as proxy:
-            response = self._authed().post(
-                "/api/v1/auth/oauth/epic/callback",
-                {"code": "auth-code", "state": "bogus"},
-                format="json",
-            )
+        response = self._authed().post(
+            "/api/v1/auth/oauth/epic/callback",
+            {"code": "auth-code", "state": "bogus"},
+            format="json",
+        )
         self.assertEqual(response.status_code, 400)
-        proxy.assert_not_called()
 
     def test_callback_wrong_user_state_400(self) -> None:
-        _node(self.user)
         other = User.objects.create_user(
             username="other", email="other@example.com", password="Correct-Horse-1"
         )
         self._store_state(user_id=other.pk)
-        with patch("apps.library.services.game_server.server_proxy_request") as proxy:
-            response = self._authed().post(
-                "/api/v1/auth/oauth/epic/callback",
-                {"code": "auth-code", "state": "epic-state"},
-                format="json",
-            )
+        response = self._authed().post(
+            "/api/v1/auth/oauth/epic/callback",
+            {"code": "auth-code", "state": "epic-state"},
+            format="json",
+        )
         self.assertEqual(response.status_code, 400)
-        proxy.assert_not_called()
 
-    def test_callback_400_without_node(self) -> None:
+    @patch(
+        "apps.integrations.services.epic_client.exchange_authorization_code",
+        side_effect=epic_client.EpicAuthError(
+            "Authorization code is invalid or expired. Please sign in again."
+        ),
+    )
+    def test_callback_maps_auth_error(self, _exchange) -> None:
         self._store_state()
         response = self._authed().post(
             "/api/v1/auth/oauth/epic/callback",
@@ -185,7 +166,7 @@ class EpicCallbackTests(_EpicAuthedCase):
             format="json",
         )
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], NO_EPIC_NODE)
+        self.assertIn("invalid or expired", response.data["detail"])
 
     def test_callback_unauthed_401(self) -> None:
         response = APIClient().post(
@@ -195,43 +176,24 @@ class EpicCallbackTests(_EpicAuthedCase):
         )
         self.assertEqual(response.status_code, 401)
 
-    @patch(
-        "apps.library.services.game_server.server_proxy_request",
-        return_value=(400, {"detail": "Code expired or invalid. Sign in again."}),
-    )
-    def test_callback_maps_node_status(self, _proxy) -> None:
-        _node(self.user)
-        self._store_state()
-        response = self._authed().post(
-            "/api/v1/auth/oauth/epic/callback",
-            {"code": "auth-code", "state": "epic-state"},
-            format="json",
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], "Code expired or invalid. Sign in again.")
-
 
 class EpicDisconnectTests(_EpicAuthedCase):
-    @patch(
-        "apps.library.services.game_server.server_proxy_request",
-        return_value=(200, {"connected": False}),
-    )
-    def test_disconnect_unlinks_without_deleting_rows(self, _proxy) -> None:
-        _node(self.user)
+    def test_disconnect_unlinks_user_and_preserves_games(self) -> None:
+        self.user.epic_account_id = "epic-acc-123"
+        self.user.epic_display_name = "EpicGamer"
+        self.user.epic_refresh_token = "mock-token"
+        self.user.save()
+
         UserEpicGame.objects.create(user=self.user, app_name="Jaguar", title="Rocket League")
         response = self._authed().delete("/api/v1/auth/oauth/epic/disconnect")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["message"], "Epic account unlinked successfully")
         self.assertEqual(UserEpicGame.objects.filter(user=self.user).count(), 1)
-        _proxy.assert_called_once()
-        args, kwargs = _proxy.call_args
-        self.assertEqual(args[1], "DELETE")
-        self.assertEqual(args[2], "/api/v1/epic/auth")
 
-    def test_disconnect_400_without_node(self) -> None:
-        response = self._authed().delete("/api/v1/auth/oauth/epic/disconnect")
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["detail"], NO_EPIC_NODE)
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.epic_account_id)
+        self.assertIsNone(self.user.epic_display_name)
+        self.assertIsNone(self.user.epic_refresh_token)
 
     def test_disconnect_unauthed_401(self) -> None:
         response = APIClient().delete("/api/v1/auth/oauth/epic/disconnect")
@@ -239,11 +201,19 @@ class EpicDisconnectTests(_EpicAuthedCase):
 
 
 class EpicOauthListTests(_EpicAuthedCase):
-    def test_auth_oauth_still_five_providers(self) -> None:
+    def test_auth_oauth_includes_epic(self) -> None:
         response = self._authed().get("/api/v1/auth/oauth")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            [p["name"] for p in response.data["providers"]],
-            ["steam", "plex", "tmdb", "google", "google_drive"],
-        )
-        self.assertNotIn("epic", [p["name"] for p in response.data["providers"]])
+        provider_names = [p["name"] for p in response.data["providers"]]
+        self.assertIn("epic", provider_names)
+        epic_data = next(p for p in response.data["providers"] if p["name"] == "epic")
+        self.assertFalse(epic_data["connected"])
+
+        self.user.epic_refresh_token = "mock-ref"
+        self.user.epic_account_id = "acc-99"
+        self.user.save()
+
+        response2 = self._authed().get("/api/v1/auth/oauth")
+        epic_data2 = next(p for p in response2.data["providers"] if p["name"] == "epic")
+        self.assertTrue(epic_data2["connected"])
+        self.assertEqual(epic_data2["epic_account_id"], "acc-99")

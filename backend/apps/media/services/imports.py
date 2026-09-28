@@ -205,9 +205,7 @@ def sync_local_games(user: AbstractBaseUser, games: list[dict]) -> dict:
     the private ``owned`` interaction.
     """
     user_local_games = UserLocalGame.objects.filter(user=user)
-    existing_by_key = {
-        _local_key(g.title, g.platform): g for g in user_local_games
-    }
+    existing_by_key = {_local_key(g.title, g.platform): g for g in user_local_games}
     incoming_keys: set[str] = set()
     upserted = 0
     for game in games:

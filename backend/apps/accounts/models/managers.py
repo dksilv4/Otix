@@ -30,7 +30,10 @@ class UserManager(BaseUserManager):
         return user
 
     def create_user(
-        self, username: str, email: str | None = None, password: str | None = None,
+        self,
+        username: str,
+        email: str | None = None,
+        password: str | None = None,
         **extra_fields,
     ) -> User:
         extra_fields.setdefault("is_staff", False)
@@ -39,7 +42,10 @@ class UserManager(BaseUserManager):
         return self._create_user(username, email, password, **extra_fields)
 
     def create_superuser(
-        self, username: str, email: str | None = None, password: str | None = None,
+        self,
+        username: str,
+        email: str | None = None,
+        password: str | None = None,
         **extra_fields,
     ) -> User:
         extra_fields.setdefault("is_staff", True)

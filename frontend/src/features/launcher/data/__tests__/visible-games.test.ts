@@ -142,6 +142,8 @@ describe('mergeLocalAndServerGames', () => {
     expect(result.map((game) => game.title)).toEqual(['Portal', 'Half-Life 2'])
     expect(result[1].platform).toBe('server')
     expect(result[1].id).toBe(serverGameId('half life 2'))
+    expect(result[1].serverId).toBe(1)
+    expect(result[1].serverFileId).toBe('file-1')
   })
 
   it('does not duplicate a local game that matches a scanned release', () => {

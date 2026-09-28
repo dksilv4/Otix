@@ -34,9 +34,7 @@ def _encode(payload: dict[str, Any]) -> str:
 
 def _decode(token: str) -> dict[str, Any]:
     try:
-        return jwt.decode(
-            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
-        )
+        return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
     except jwt.PyJWTError as exc:  # expired, bad sig, malformed
         raise TokenError("Invalid or expired token") from exc
 

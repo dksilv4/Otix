@@ -24,9 +24,7 @@ class WatchProvider(BaseModel):
 
     class Meta(BaseModel.Meta):
         db_table = "watch_providers"
-        constraints = [
-            models.UniqueConstraint(fields=["slug"], name="uq_watch_provider_slug")
-        ]
+        constraints = [models.UniqueConstraint(fields=["slug"], name="uq_watch_provider_slug")]
 
     def __str__(self) -> str:
         return self.name

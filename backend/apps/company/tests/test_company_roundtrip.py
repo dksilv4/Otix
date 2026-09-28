@@ -24,9 +24,7 @@ class CompanyRoundTripTests(TestCase):
             media_type="game", title="Disco Elysium", slug="disco-elysium"
         )
         Game.objects.create(media_item=media_item)
-        company = Company.objects.create(
-            name="ZA/UM", slug="zaum", origin_country="EE"
-        )
+        company = Company.objects.create(name="ZA/UM", slug="zaum", origin_country="EE")
 
         involvement = InvolvedCompany.objects.create(
             media_item=media_item, company=company, developer=True, publisher=True

@@ -92,16 +92,9 @@ def complete_from_client(job: SyncJob, raw: dict[str, Any]) -> dict[str, Any]:
     """
     seeder = get_seeder(job.provider, job.entity_type)
     if seeder is None:
-        return {
-            "error": (
-                f"Proxy-fetch has no seeder for "
-                f"'{job.provider}'/'{job.entity_type}'"
-            )
-        }
+        return {"error": (f"Proxy-fetch has no seeder for '{job.provider}'/'{job.entity_type}'")}
 
-    adopted = SyncJob.objects.filter(pk=job.pk, status=AWAITING_CLIENT).update(
-        status="running"
-    )
+    adopted = SyncJob.objects.filter(pk=job.pk, status=AWAITING_CLIENT).update(status="running")
     if not adopted:
         return {"error": "Fetch job is no longer awaiting a client result"}
 

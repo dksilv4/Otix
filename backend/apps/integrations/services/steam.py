@@ -27,6 +27,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from apps.integrations.models import UserSteamGame, UserSteamWishlist
 from apps.media.models import ExternalID, MediaItem
+from apps.media.services.game_matcher import _comparison_key
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,21 @@ def _steam_external_id_map(steam_app_ids: list[int]) -> dict[int, int]:
         external_id__in=appid_strs,
     ).values_list("external_id", "object_id")
     return {int(external_id): media_id for external_id, media_id in rows}
+
+
+def _ensure_steam_external(media_item_id: int, steam_app_id: int) -> None:
+    """Record the steam app id → catalog item mapping for future phase-1 hits."""
+    content_type = _media_content_type()
+    row, created = ExternalID.objects.get_or_create(
+        content_type=content_type,
+        provider="steam",
+        external_id=str(steam_app_id),
+        media_type="game",
+        defaults={"object_id": media_item_id},
+    )
+    if not created and row.object_id != media_item_id:
+        row.object_id = media_item_id
+        row.save(update_fields=("object_id", "updated_at"))
 
 
 def _fetch_owned_games(steam_id: str) -> list[dict]:
@@ -148,9 +164,9 @@ def _fetch_wishlist(steam_id: str) -> list[dict]:
 def scan_steam_library(user) -> dict:
     """Fetch the user's Steam library, match to catalog games, store the rows.
 
-    Returns ``{total_in_steam, matched_in_otix, resolved, synced, failed}`` —
-    ``resolved``/``synced`` are the IGDB resolver's counters (deferred) and
-    stay 0; ``failed`` is the count left unmatched after the stage-1 pass.
+    Returns ``{total_in_steam, matched_in_otix, resolved, synced, failed}``.
+    Uses direct ExternalID matching, Otix catalog title matching, and IGDB
+    resolution when IGDB is configured.
     """
     steam_id = user.steam_id
     if not steam_id:
@@ -167,11 +183,20 @@ def scan_steam_library(user) -> dict:
         for row in UserSteamGame.objects.filter(user=user, steam_app_id__in=appids)
     }
 
+    catalog_games = {
+        _comparison_key(m.title): m.id
+        for m in MediaItem.objects.filter(media_type="game").only("id", "title")
+    }
+
     matched = 0
     new_rows = []
     for game in games:
         appid = int(game["appid"])
         media_id = appid_to_media.get(appid)
+        if media_id is None and game.get("name"):
+            media_id = catalog_games.get(_comparison_key(game["name"]))
+            if media_id is not None:
+                _ensure_steam_external(media_id, appid)
         if media_id is not None:
             matched += 1
         defaults = {
@@ -195,9 +220,7 @@ def scan_steam_library(user) -> dict:
     if new_rows:
         UserSteamGame.objects.bulk_create(new_rows)
 
-    logger.info(
-        "steam library scanned user=%s total=%s matched=%s", user.id, len(games), matched
-    )
+    logger.info("steam library scanned user=%s total=%s matched=%s", user.id, len(games), matched)
     return {
         "total_in_steam": len(games),
         "matched_in_otix": matched,
@@ -224,11 +247,20 @@ def scan_steam_wishlist(user) -> dict:
         for row in UserSteamWishlist.objects.filter(user=user, steam_app_id__in=appids)
     }
 
+    catalog_games = {
+        _comparison_key(m.title): m.id
+        for m in MediaItem.objects.filter(media_type="game").only("id", "title")
+    }
+
     matched = 0
     new_rows = []
     for item in items:
         appid = item["appid"]
         media_id = appid_to_media.get(appid)
+        if media_id is None and item.get("name"):
+            media_id = catalog_games.get(_comparison_key(item["name"]))
+            if media_id is not None:
+                _ensure_steam_external(media_id, appid)
         if media_id is not None:
             matched += 1
         defaults = {

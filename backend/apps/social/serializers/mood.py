@@ -45,6 +45,4 @@ class MoodCreateBodySerializer(serializers.Serializer):
     feeling = serializers.ChoiceField(
         choices=FEELING_VALUES, required=False, allow_null=True, allow_blank=True
     )
-    note = serializers.CharField(
-        required=False, allow_null=True, allow_blank=True, max_length=280
-    )
+    note = serializers.CharField(required=False, allow_null=True, allow_blank=True, max_length=280)
