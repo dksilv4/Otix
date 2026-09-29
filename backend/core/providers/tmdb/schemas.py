@@ -251,3 +251,22 @@ class TMDBPersonDetail(TypedDict):
     known_for_department: NotRequired[str | None]
     popularity: NotRequired[float]
     external_ids: NotRequired[TMDBExternalIds]
+
+
+class TMDBCollectionPart(TypedDict):
+    id: int
+    title: NotRequired[str]
+    overview: NotRequired[str | None]
+    poster_path: NotRequired[str | None]
+    backdrop_path: NotRequired[str | None]
+    release_date: NotRequired[str | None]
+    adult: NotRequired[bool]
+
+
+class TMDBCollection(TypedDict):
+    id: int
+    name: str
+    overview: NotRequired[str | None]
+    poster_path: NotRequired[str | None]
+    backdrop_path: NotRequired[str | None]
+    parts: NotRequired[list[TMDBCollectionPart]]

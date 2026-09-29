@@ -148,7 +148,7 @@ export function MediaDetailPage() {
 
   useEffect(() => {
     const otixId = detail?.id ? String(detail.id) : null
-    if (otixId && otixId !== mediaId) {
+    if (detail && otixId && otixId !== mediaId) {
       const canonicalType = (detail.mediaType || mediaType) as 'movie' | 'show' | 'game' | 'music'
       queryClient.setQueryData(mediaQueries.detail(canonicalType, otixId).queryKey, detail)
       void (navigate as any)({
@@ -313,11 +313,9 @@ export function MediaDetailPage() {
 
             {/* Franchise / Movie Collections */}
             {detail.collection && (
-              <div className="glass-card p-6 sm:p-7">
-                <Suspense fallback={<SectionSkeleton height={180} />}>
-                  <CollectionSection />
-                </Suspense>
-              </div>
+              <Suspense fallback={<SectionSkeleton height={180} />}>
+                <CollectionSection />
+              </Suspense>
             )}
 
             {/* Music Artist Discography */}

@@ -187,6 +187,7 @@ class CollectionMovieOutSerializer(serializers.Serializer):
     poster_url = serializers.CharField(allow_null=True)
     release_date = serializers.DateField(allow_null=True)
     slug = serializers.CharField()
+    is_adult = serializers.BooleanField(default=False)
 
 
 class CollectionOutSerializer(serializers.Serializer):
@@ -203,13 +204,19 @@ class CollectionOutSerializer(serializers.Serializer):
         out = []
         for movie in movies:
             item = movie.media_item
+            poster = getattr(item, "poster_url", None)
+            if not poster and hasattr(item, "assets"):
+                from apps.media.services.catalog import _pick_asset
+
+                poster = _pick_asset(item, "poster", self.context.get("theme", "general"))
             out.append(
                 {
                     "id": item.id,
                     "title": item.title,
-                    "poster_url": getattr(item, "poster_url", None),
+                    "poster_url": poster,
                     "release_date": item.release_date,
                     "slug": item.slug,
+                    "is_adult": item.is_adult,
                 }
             )
         return out

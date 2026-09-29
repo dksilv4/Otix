@@ -176,6 +176,16 @@ class TMDBProvider(BaseProviderClient):
         )
         return response.json()
 
+    # ── Collections ─────────────────────────────────────────────
+
+    async def get_collection(self, tmdb_id: int, language: str = "en-US") -> dict[str, JSONValue]:
+        """Fetch collection details by TMDB collection ID."""
+        response = await self._get(
+            f"/collection/{tmdb_id}",
+            params={"language": language},
+        )
+        return response.json()
+
     # ── Shows ───────────────────────────────────────────────────
 
     async def get_show(self, tmdb_id: int, language: str = "en-US") -> dict[str, JSONValue]:
@@ -299,13 +309,6 @@ class TMDBProvider(BaseProviderClient):
             f"/person/{tmdb_id}/combined_credits",
             params={"language": language},
         )
-        return response.json()
-
-    # ── Collections ─────────────────────────────────────────────
-
-    async def get_collection(self, tmdb_id: int, language: str = "en-US") -> dict[str, JSONValue]:
-        """Fetch collection details including its member parts."""
-        response = await self._get(f"/collection/{tmdb_id}", params={"language": language})
         return response.json()
 
     # ── Companies / Networks ────────────────────────────────────

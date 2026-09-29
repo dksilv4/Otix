@@ -62,7 +62,8 @@ def parse_database_url(url: str) -> dict:
         else:
             name = str((BASE_DIR / path_part.lstrip("/")).resolve())
         return {"ENGINE": "django.db.backends.sqlite3", "NAME": name}
-    if parsed.scheme not in {"postgres", "postgresql"}:
+    raw_scheme = parsed.scheme.split("+")[0]
+    if raw_scheme not in {"postgres", "postgresql"}:
         raise ValueError(f"Unsupported DATABASE_URL scheme: {parsed.scheme!r}")
     return {
         "ENGINE": "django.db.backends.postgresql",

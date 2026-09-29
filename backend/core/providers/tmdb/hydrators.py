@@ -464,6 +464,15 @@ def _upsert_seasons(show_pk: int, raw: dict[str, Any]) -> None:
 # ── Public Hydrator Entry Points ─────────────────────────────────
 
 
+def _upsert_movie_collection(media: MediaItem, raw: dict[str, Any]) -> None:
+    coll_data = raw.get("belongs_to_collection")
+    if not coll_data or not isinstance(coll_data, dict):
+        return
+    from apps.lists.services.collection import upsert_collection_from_tmdb
+
+    upsert_collection_from_tmdb(coll_data, media)
+
+
 @atomic_seed
 def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
     """Create (or reuse) a MediaItem+Movie from TMDB movie detail.
@@ -481,6 +490,7 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
             _upsert_credits(media, raw)
             _hydrate_relations(media, raw)
             _attach_tmdb_crosswalk(media.pk, raw, "movie")
+            _upsert_movie_collection(media, raw)
             finish_catalog_seed(
                 media, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=False
             )
@@ -509,6 +519,7 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
         winner = MediaItem.objects.get(pk=media_id)
         _upsert_credits(winner, raw)
         _hydrate_relations(winner, raw)
+        _upsert_movie_collection(winner, raw)
         recompute_completeness(winner)
         _attach_tmdb_crosswalk(media_id, raw, "movie")
         finish_catalog_seed(
@@ -530,6 +541,7 @@ def seed_movie_from_tmdb(raw: dict[str, Any]) -> int:
     _upsert_genres(media, _genre_names(raw))
     _attach_tmdb_crosswalk(media_id, raw, "movie")
     _hydrate_relations(media, raw)
+    _upsert_movie_collection(media, raw)
     finish_catalog_seed(media, raw, provider="tmdb", external_id=str(tmdb_id), hash_matched=False)
     return media_id
 

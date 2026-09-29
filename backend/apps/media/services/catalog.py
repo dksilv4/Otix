@@ -245,6 +245,17 @@ def enrich_summaries(items: list[MediaItem], user: _User, context: str = "genera
     """Attach image urls, external ids and per-user interaction state to items."""
     if items:
         prefetch_related_objects(items, "assets")
+        coll_media_items: list[MediaItem] = []
+        for item in items:
+            movie = getattr(item, "movie", None)
+            collection = getattr(movie, "collection", None) if movie else None
+            if collection:
+                for cm in collection.movies.all():
+                    if getattr(cm, "media_item", None):
+                        coll_media_items.append(cm.media_item)
+        if coll_media_items:
+            prefetch_related_objects(coll_media_items, "assets")
+            attach_media_urls(coll_media_items, context)
     attach_media_urls(items, context)
     ext_map = external_ids_for(items)
     for item in items:
@@ -490,6 +501,7 @@ def media_detail_queryset(media_id: int) -> MediaItem | None:
             "watch_providers__watch_provider",
             "show__seasons__episodes",
             "movie__collection__movies__media_item",
+            "movie__collection__movies__media_item__assets",
         )
         .filter(pk=media_id)
         .first()

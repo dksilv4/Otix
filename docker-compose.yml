@@ -71,8 +71,8 @@ services:
       REDIS_URL: redis://redis:6379/1
       ENABLE_RELOAD: "true"
       # Loopback node URLs entered in the UI (127.0.0.1:8090) are rewritten
-      # to this compose hostname so the API container can reach the otix node.
-      OTIX_SERVER_DOCKER_HOST: node
+      # to this hostname so the API container can reach the host-local otix node.
+      OTIX_SERVER_DOCKER_HOST: host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: bash entrypoints/start-api.sh
@@ -182,27 +182,6 @@ services:
     depends_on:
       - api
 
-  # ── Otix Node (lightweight user-facing storage / game daemon) ───────────
-  node:
-    build:
-      context: ./node
-      dockerfile: Dockerfile.dev
-    ports:
-      - "8090:8090"
-    volumes:
-      - ./node:/app
-      # Host folders visible in the node file browser.
-      # D:\Games → /games
-      # \\SERVER\Games → /server/Games
-      # \\SERVER\Downloads → /server/Downloads
-      - ${OTIX_NODE_GAMES:-D:/Games}:/games
-      - node_games:/server/Games
-      - node_downloads:/server/Downloads
-    environment:
-      ENABLE_RELOAD: "true"
-      CONFIG_PATH: /app/config.yaml
-    restart: unless-stopped
-
   frontend:
     build:
       context: ./frontend
@@ -225,15 +204,3 @@ volumes:
   redis_data:
   bot_logs:
   frontend_node_modules:
-  node_games:
-    driver: local
-    driver_opts:
-      type: cifs
-      device: "//SERVER/Games"
-      o: "guest,noperm,vers=3.0,iocharset=utf8"
-  node_downloads:
-    driver: local
-    driver_opts:
-      type: cifs
-      device: "//SERVER/Downloads"
-      o: "guest,noperm,vers=3.0,iocharset=utf8"

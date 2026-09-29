@@ -27,13 +27,26 @@ export const serverKeys = nodeKeys
 export const CACHED_SERVERS_KEY = 'otix:cached-servers'
 export const CACHED_NODES_KEY = CACHED_SERVERS_KEY
 
+import { LOCAL_DESKTOP_NODE_ID } from '@/features/settings/local-desktop-node'
+
 export function getCachedNodes(): OtixNode[] {
   if (typeof window === 'undefined') return []
   try {
     const raw = localStorage.getItem(CACHED_NODES_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
+    if (!Array.isArray(parsed)) return []
+    // Filter out obsolete legacy synthetic nodes (e.g. retired backend node with id = -2)
+    const valid = parsed.filter(
+      (node): node is OtixNode =>
+        Boolean(node) &&
+        typeof (node as { id?: unknown }).id === 'number' &&
+        ((node as { id: number }).id > 0 || (node as { id: number }).id === LOCAL_DESKTOP_NODE_ID),
+    )
+    if (valid.length !== parsed.length) {
+      saveCachedNodes(valid)
+    }
+    return valid
   } catch {
     return []
   }
@@ -306,7 +319,19 @@ export function useDeleteNode() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (nodeId: number) => {
-      await apiClient.delete(`/library/servers/${nodeId}`)
+      if (nodeId <= 0) {
+        return
+      }
+      try {
+        await apiClient.delete(`/library/servers/${nodeId}`)
+      } catch (err: unknown) {
+        // If the node was already removed on the backend, treat 404 as successful disconnect
+        const status = (err as { response?: { status?: number } })?.response?.status
+        if (status === 404) {
+          return
+        }
+        throw err
+      }
     },
     onSuccess: (_, nodeId) => {
       removeCachedNode(nodeId)

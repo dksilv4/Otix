@@ -4,6 +4,10 @@ Plain callables over the models (see ``list.py``); views stay thin and
 serializers declarative.
 """
 
+from apps.lists.services.collection import (
+    normalize_franchise_name,
+    upsert_collection_from_tmdb,
+)
 from apps.lists.services.list import (
     accept_collaboration,
     add_collaborator,
@@ -31,6 +35,8 @@ from apps.lists.services.list import (
 )
 
 __all__ = [
+    "normalize_franchise_name",
+    "upsert_collection_from_tmdb",
     "accept_collaboration",
     "add_collaborator",
     "add_item",

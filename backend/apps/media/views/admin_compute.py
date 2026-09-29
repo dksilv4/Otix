@@ -15,7 +15,11 @@ from typing import Any
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils import timezone
-from PIL import Image
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 from rest_framework import status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser

@@ -637,8 +637,11 @@ class AdminComputeWorker:
             )
             if resp.status_code != 200:
                 print(
-                    f"{Colors.RED}Authentication failed (HTTP {resp.status_code}): {resp.text}{Colors.RESET}"
+                    f"{Colors.RED}Authentication failed (HTTP {resp.status_code}): {resp.text[:300]}{Colors.RESET}"
                 )
+                if silent:
+                    time.sleep(5)
+                    return self.authenticate(silent=True)
                 sys.exit(1)
 
             data = resp.json()

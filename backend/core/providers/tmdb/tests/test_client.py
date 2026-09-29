@@ -94,6 +94,22 @@ class TMDBClientTests(SimpleTestCase):
 
         _run(run())
 
+    def test_get_collection(self) -> None:
+        async def run() -> None:
+            mapping = {("GET", "/3/collection/10"): (200, {"id": 10, "name": "Star Wars Collection"})}
+            provider, _, calls = self._make_provider(mapping)
+            async with provider.http:
+                data = await provider.get_collection(10, language="en-US")
+                self.assertEqual(data["id"], 10)
+                self.assertEqual(data["name"], "Star Wars Collection")
+                self.assertEqual(len(calls), 1)
+                req = calls[0]
+                self.assertEqual(req.method, "GET")
+                self.assertEqual(req.url.path, "/3/collection/10")
+                self.assertEqual(req.url.params.get("language"), "en-US")
+
+        _run(run())
+
     def test_get_show(self) -> None:
         async def run() -> None:
             mapping = {("GET", "/3/tv/1399"): (200, {"id": 1399, "name": "Game of Thrones"})}
@@ -150,17 +166,6 @@ class TMDBClientTests(SimpleTestCase):
                 data = await provider.get_network(49)
                 self.assertEqual(data["name"], "HBO")
                 self.assertEqual(calls[0].url.path, "/3/network/49")
-
-        _run(run())
-
-    def test_get_collection(self) -> None:
-        async def run() -> None:
-            mapping = {("GET", "/3/collection/10"): (200, {"id": 10, "name": "Star Wars"})}
-            provider, _, calls = self._make_provider(mapping)
-            async with provider.http:
-                data = await provider.get_collection(10)
-                self.assertEqual(data["id"], 10)
-                self.assertEqual(calls[0].url.path, "/3/collection/10")
 
         _run(run())
 

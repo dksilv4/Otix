@@ -683,6 +683,18 @@ async def fetch_and_seed_movie(
     if skipped is not None:
         return skipped
     media_id = await sync_to_async(seed_movie_from_tmdb)(raw)
+    coll_info = raw.get("belongs_to_collection")
+    if coll_info and isinstance(coll_info, dict) and coll_info.get("id"):
+        cid = coll_info["id"]
+        try:
+            full_col = await provider.get_collection(int(cid))
+            if full_col and isinstance(full_col, dict):
+                from apps.lists.services.collection import upsert_collection_from_tmdb
+
+                media_obj = await sync_to_async(MediaItem.objects.filter(pk=media_id).first)()
+                await sync_to_async(upsert_collection_from_tmdb)(full_col, media_obj)
+        except Exception:
+            logger.debug("Failed to fetch full TMDB collection %s", cid, exc_info=True)
     await _omdb_enrich_after_seed(media_id)
     await _fanart_enrich_after_seed(media_id)
     await _wikidata_distributor_enrich_after_seed(media_id)
