@@ -594,8 +594,10 @@ class MediaItemDetailSerializer(serializers.Serializer):
 
     def get_screenshots(self, obj):
         shots = [a for a in obj.assets.all() if (a.asset_type or "").lower() == "screenshot"]
+        if not shots and getattr(obj, "media_type", None) in ("movie", "show"):
+            shots = [a for a in obj.assets.all() if (a.asset_type or "").lower() == "backdrop"]
         shots.sort(key=lambda a: a.score or 0, reverse=True)
-        return MediaAssetOutSerializer(shots, many=True).data
+        return MediaAssetOutSerializer(shots[:20], many=True).data
 
     def get_videos(self, obj):
         return MediaVideoOutSerializer(obj.videos.all(), many=True).data

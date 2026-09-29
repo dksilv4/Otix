@@ -28,6 +28,7 @@ User = get_user_model()
 LIST_OUT_KEYS = {
     "id",
     "user_id",
+    "user",
     "name",
     "description",
     "is_public",

@@ -189,7 +189,16 @@ export interface MediaVideoLike {
   providerId?: string | null
 }
 
-const TRAILER_PRIORITY = ['Trailer', 'Teaser']
+const TRAILER_PRIORITY = ['Trailer', 'Teaser', 'game_video']
+const VIDEO_PRIORITY = [
+  'Trailer',
+  'Teaser',
+  'game_video',
+  'Clip',
+  'Featurette',
+  'Behind the Scenes',
+  'Bloopers',
+]
 
 export function youtubeIdFromUrl(url: string): string | null {
   try {
@@ -205,21 +214,48 @@ export function youtubeIdFromUrl(url: string): string | null {
   return null
 }
 
-export function trailerVideos(detail: { videos?: MediaVideoLike[] }) {
+export function extractYoutubeId(video: MediaVideoLike): string | null {
+  const fromUrl = youtubeIdFromUrl(video.url)
+  if (fromUrl) return fromUrl
+  if (video.providerId && /^[a-zA-Z0-9_-]{11}$/.test(video.providerId)) {
+    return video.providerId
+  }
+  return null
+}
+
+export function formatVideoTypeLabel(videoType?: string | null): string {
+  if (!videoType) return 'Video'
+  const lower = videoType.toLowerCase().replace(/[_-]/g, ' ')
+  if (lower === 'game video' || lower === 'gameplay') return 'Gameplay'
+  if (lower === 'trailer') return 'Trailer'
+  if (lower === 'teaser') return 'Teaser'
+  if (lower === 'featurette') return 'Featurette'
+  if (lower === 'behind the scenes') return 'Behind the Scenes'
+  if (lower === 'clip') return 'Clip'
+  return videoType.charAt(0).toUpperCase() + videoType.slice(1)
+}
+
+export function allMediaVideos(detail: { videos?: MediaVideoLike[] }) {
   return (detail.videos || [])
-    .map((v) => ({ ...v, youtubeId: youtubeIdFromUrl(v.url) }))
-    .filter((v): v is MediaVideoLike & { youtubeId: string } =>
-      v.youtubeId != null && TRAILER_PRIORITY.includes(v.videoType || ''),
-    )
+    .map((v) => ({ ...v, youtubeId: extractYoutubeId(v) }))
+    .filter((v): v is MediaVideoLike & { youtubeId: string } => v.youtubeId != null)
     .sort((a, b) => {
-      const ra = TRAILER_PRIORITY.indexOf(a.videoType || '')
-      const rb = TRAILER_PRIORITY.indexOf(b.videoType || '')
-      return ra - rb
+      const ra = VIDEO_PRIORITY.indexOf(a.videoType || '')
+      const rb = VIDEO_PRIORITY.indexOf(b.videoType || '')
+      const pa = ra === -1 ? 99 : ra
+      const pb = rb === -1 ? 99 : rb
+      return pa - pb
     })
 }
 
+export function trailerVideos(detail: { videos?: MediaVideoLike[] }) {
+  return allMediaVideos(detail).filter((v) =>
+    TRAILER_PRIORITY.includes(v.videoType || '') || !v.videoType,
+  )
+}
+
 export function primaryTrailer(detail: { videos?: MediaVideoLike[] }) {
-  return trailerVideos(detail)[0] ?? null
+  return trailerVideos(detail)[0] ?? allMediaVideos(detail)[0] ?? null
 }
 
 export function scoreToColor(score: number, maxScore: number = 10): string {

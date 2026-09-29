@@ -97,6 +97,7 @@ class UserListOutSerializer(serializers.ModelSerializer):
     sets the real like state.
     """
 
+    user = UserRefSerializer(read_only=True)
     like_count = serializers.IntegerField(read_only=True)
     is_liked = serializers.BooleanField(read_only=True)
     item_count = serializers.IntegerField(read_only=True, default=0)
@@ -106,6 +107,7 @@ class UserListOutSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "user_id",
+            "user",
             "name",
             "description",
             "is_public",
@@ -118,6 +120,7 @@ class UserListOutSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "user_id",
+            "user",
             "name",
             "description",
             "is_public",

@@ -15,6 +15,11 @@ import { listKeys } from "./list-keys"
 export interface UserListOut {
   id: string
   userId: string
+  user?: {
+    id: string
+    username: string
+    avatarUrl: string | null
+  } | null
   name: string
   description: string | null
   isPublic: boolean

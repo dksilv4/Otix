@@ -160,7 +160,8 @@ export function ListDetailPage() {
         {list.description && <meta name="description" content={list.description.slice(0, 200)} />}
         <meta property="og:title" content={`${list.name} - List - Otix`} />
         {list.description && <meta property="og:description" content={list.description.slice(0, 200)} />}
-        <meta name="twitter:card" content="summary" />
+        {listItems[0]?.posterUrl && <meta property="og:image" content={listItems[0].posterUrl} />}
+        <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
       {/* Header Card */}
@@ -180,14 +181,40 @@ export function ListDetailPage() {
         <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-white truncate">{list.name}</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground truncate">{list.name}</h1>
               {list.isPublic ? (
-                <ShareIcon className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <ShareIcon className="h-3 w-3 shrink-0" />
+                  Public
+                </span>
               ) : (
-                <LockIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <LockIcon className="h-3 w-3 shrink-0" />
+                  Private
+                </span>
               )}
               <ListLikeButton list={list} />
             </div>
+
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-muted-foreground">
+              {list.user?.username && (
+                <div className="flex items-center gap-1.5">
+                  {list.user.avatarUrl ? (
+                    <img
+                      src={list.user.avatarUrl}
+                      alt={list.user.username}
+                      className="h-4 w-4 rounded-full object-cover border border-white/10"
+                    />
+                  ) : null}
+                  <span>
+                    Curated by <span className="font-medium text-foreground">@{list.user.username}</span>
+                  </span>
+                </div>
+              )}
+              {list.user?.username && <span>•</span>}
+              <span>{listItems.length} {listItems.length === 1 ? 'item' : 'items'}</span>
+            </div>
+
             {list.description && (
               <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground/80 max-w-2xl">
                 {list.description}

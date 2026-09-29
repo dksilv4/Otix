@@ -14,6 +14,7 @@ import { WhereToWatch } from '../components/organisms/media-where-to-watch'
 import { MediaSpecsCard } from '../components/organisms/media-specs-card'
 import { CastCrew } from '../components/organisms/media-cast-crew'
 import { GameCharacters } from '../game/components/organisms/game-characters'
+import { MediaGallery } from '../components/organisms/media-gallery'
 import { SignInCTA } from '../components/organisms/media-signin-cta'
 
 import type { ParsedBlueprint } from '@media/game/components/organisms/media-game-blueprint-vault'
@@ -243,6 +244,13 @@ export function MediaDetailPage() {
                 <SignInCTA />
               </div>
             )}
+
+            {/* Media Gallery (Trailers, Videos & Screenshots) */}
+            <MediaGallery
+              videos={detail.videos}
+              screenshots={detail.screenshots}
+              title={detail.title}
+            />
 
             {/* Games: Blueprints, Vault & Community */}
             {isGame(detail) && (

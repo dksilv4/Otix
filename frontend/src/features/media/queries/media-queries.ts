@@ -52,6 +52,18 @@ export interface MediaWatchProvider {
   displayPriority: number
 }
 
+export interface MediaAssetOut {
+  id: number
+  assetType: string
+  url: string
+  width?: number | null
+  height?: number | null
+  lang?: string | null
+  style?: string | null
+  score?: number | null
+  provider?: string | null
+}
+
 export interface MediaItemDetail {
   id: string
   mediaType: string
@@ -90,6 +102,7 @@ export interface MediaItemDetail {
   steamRtimeLastPlayed?: number | null
   youtubeVideoId?: string | null
   videos: Array<{ videoType?: string | null; url: string; provider?: string | null; providerId?: string | null }>
+  screenshots?: MediaAssetOut[]
   createdAt: string
   updatedAt: string
   genres: Array<{ id: string; name: string; slug: string }>
