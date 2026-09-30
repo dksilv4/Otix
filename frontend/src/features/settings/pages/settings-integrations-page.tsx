@@ -325,11 +325,11 @@ function NodeConnectionsGroup({
     {
       id: 'sabnzbd',
       name: 'SABnzbd',
-      keywords: 'sabnzbd usenet nzb download downloader queue client',
+      keywords: 'sabnzbd usenet nzb download downloader provider queue client',
       isConnected: isSabnzbdConfigured,
       description: isSabnzbdConfigured
-        ? `Configured on ${server.name}`
-        : 'Connect SABnzbd to automate Usenet downloads on this node.',
+        ? `Configured on ${server.name} (Downloader Provider)`
+        : 'Connect SABnzbd as your downloader provider to automate Usenet downloads on this node.',
       brandColor: BRAND_COLORS.sabnzbd,
       brandBg: BRAND_BG.sabnzbd,
       icon: DownloadCloud,

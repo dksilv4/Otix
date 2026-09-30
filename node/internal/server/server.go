@@ -1100,7 +1100,7 @@ func (s *Server) setupRoutes() {
 					Configured:    sabConfigured,
 					HasAPIKey:     sab.APIKey != "",
 					HasApiKey:     sab.APIKey != "",
-					ProviderType:   "downloader",
+					ProviderType:   "downloader-provider",
 				},
 				Prowlarr: enrichedProwlarr{
 					ProwlarrConfig: prow,

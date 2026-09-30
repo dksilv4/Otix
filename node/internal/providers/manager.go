@@ -61,7 +61,7 @@ func (pm *ProviderManager) ListProviders() map[string]interface{} {
 			Name:         "sabnzbd",
 			DisplayName:  "SABnzbd",
 			Type:         "downloader",
-			ProviderType: "downloader",
+			ProviderType: "downloader-provider",
 			Protocol:     "usenet",
 			Configured:   sabConfigured,
 			Connected:    sabConnected,

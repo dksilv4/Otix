@@ -268,7 +268,7 @@ export function NodeSabnzbdSettingsModal({
       isExiting={isExiting}
       onClose={onClose}
       title="SABnzbd"
-      description={targetNodeId ? `On ${targetNodeName}` : undefined}
+      description={targetNodeId ? `Downloader Provider on ${targetNodeName}` : 'Downloader Provider'}
       icon={DownloadCloud}
       brandBgClass="text-amber-400"
       isLoading={isLoading}

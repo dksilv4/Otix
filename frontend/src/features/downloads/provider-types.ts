@@ -2,6 +2,8 @@
 
 export type ProviderType =
   | 'downloader'
+  | 'downloader-provider'
+  | 'downloader_provider'
   | 'search-provider'
   | 'search_provider'
   | 'indexer'
