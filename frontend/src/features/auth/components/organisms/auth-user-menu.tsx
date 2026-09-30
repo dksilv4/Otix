@@ -1,14 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
-import { LogOut, User, Shield } from 'lucide-react'
+import { LogOut, User, Shield, Gamepad2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@auth/hooks/use-auth'
 import { DkAvatar } from '@ui/atoms/avatar'
 import { usePanelContext } from '@activity/providers/panel-context'
+import { useRunningGame } from '@/features/launcher'
+import { formatDuration } from '@/lib/utils'
 
 /** User avatar trigger with dropdown containing profile link and sign out. */
 export const UserMenu = ({ bare }: { bare?: boolean }) => {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
+  const { runningGame, elapsedMs } = useRunningGame()
   const { setUserMenuOpen } = usePanelContext()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -92,8 +95,19 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
               ' cursor-pointer rounded-full transition-all hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]'
         }
         style={pillStyle}
+        title={runningGame ? `Playing ${runningGame.game.title}` : undefined}
       >
-        <DkAvatar src={avatarUrl} name={user?.username || ''} size="sm" />
+        <div className="relative flex items-center justify-center">
+          <DkAvatar src={avatarUrl} name={user?.username || ''} size="sm" />
+          {runningGame && (
+            <span
+              className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-black"
+              title={`Playing ${runningGame.game.title}`}
+            >
+              <Gamepad2 className="h-2 w-2 text-black" />
+            </span>
+          )}
+        </div>
       </button>
 
       <AnimatePresence>
@@ -112,7 +126,17 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
             >
-              <DkAvatar src={avatarUrl} name={user?.username || ''} size="md" />
+              <div className="relative flex items-center justify-center">
+                <DkAvatar src={avatarUrl} name={user?.username || ''} size="md" />
+                {runningGame && (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-black"
+                    title={`Playing ${runningGame.game.title}`}
+                  >
+                    <Gamepad2 className="h-2.5 w-2.5 text-black" />
+                  </span>
+                )}
+              </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">
                   {user?.username}
@@ -123,6 +147,33 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
                 <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
               </div>
             </Link>
+
+            {runningGame && (
+              <div className="mx-1 my-1.5 flex items-center gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs">
+                <div className="relative flex h-2.5 w-2.5 items-center justify-center shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-extrabold uppercase tracking-wider text-[10px] text-emerald-400">
+                      Playing
+                    </span>
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                      {runningGame.fpsSnapshot && runningGame.fpsSnapshot.currentFps > 0 && (
+                        <span className="font-bold text-emerald-400">
+                          {Math.round(runningGame.fpsSnapshot.currentFps)} FPS
+                        </span>
+                      )}
+                      <span className="text-emerald-300/80">
+                        {formatDuration(elapsedMs)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="truncate font-semibold text-white/95">{runningGame.game.title}</p>
+                </div>
+              </div>
+            )}
 
             <div className="my-1 border-t" style={{ borderColor: 'var(--dk-separator)' }} />
 

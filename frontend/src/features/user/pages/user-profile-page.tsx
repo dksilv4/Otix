@@ -10,6 +10,7 @@ import {
   Clock,
   Shield,
   Sparkles,
+  Gamepad2,
 } from 'lucide-react'
 
 import { DkAvatar } from '@ui/atoms/avatar'
@@ -20,6 +21,8 @@ import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
 
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
+import { useRunningGame } from '@/features/launcher'
+import { formatDuration } from '@/lib/utils'
 import { userQueries, computeReviewStats } from '../user-queries'
 import { UserRatingSection } from '../components/molecules/user-rating-section'
 import { FollowButton } from '../components/molecules/follow-button'
@@ -35,6 +38,7 @@ import { UserProfileSkeleton } from '@user/components/organisms/user-profile-ske
 export function UserProfilePage() {
   const { username } = useParams({ from: '/u/$username' })
   const { user: currentUser } = useAuth()
+  const { runningGame, elapsedMs } = useRunningGame()
   const queryClient = useQueryClient()
 
   const profileQuery = useQuery(userQueries.profile(username))
@@ -204,6 +208,22 @@ export function UserProfilePage() {
                   <UserRatingSection username={username} />
                 </span>
               </h1>
+
+              {currentUser?.username === profile.username && runningGame && (
+                <div
+                  className="mb-2.5 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300 backdrop-blur-md shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                  style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '120ms' }}
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                  <Gamepad2 className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="font-semibold text-white/95">Playing {runningGame.game.title}</span>
+                  <span className="text-white/30">·</span>
+                  <span className="font-mono text-emerald-300">{formatDuration(elapsedMs)}</span>
+                </div>
+              )}
 
               <div
                 className="flex flex-wrap items-center gap-x-2 text-sm text-white/60"

@@ -25,6 +25,42 @@ game_libraries:
         - .cue
         - .wbfs
         - .gcm
+    - name: Games
+      path: D:\Games
+      kind: game
+      allowed_extensions:
+        - .iso
+        - .img
+        - .exe
+        - .msi
+        - .dmg
+        - .pkg
+        - .app
+        - .zip
+        - .7z
+        - .rar
+        - .chd
+        - .rvz
+        - .nsp
+        - .xci
+    - name: common
+      path: D:\SteamLibrary\steamapps\common
+      kind: game
+      allowed_extensions:
+        - .iso
+        - .img
+        - .exe
+        - .msi
+        - .dmg
+        - .pkg
+        - .app
+        - .zip
+        - .7z
+        - .rar
+        - .chd
+        - .rvz
+        - .nsp
+        - .xci
 saves:
     storage_path: ./storage/saves
     max_snapshots_per_game: 10
@@ -108,7 +144,7 @@ desktop:
     always_on_top: false
     start_minimized: false
     games_download_path: ""
-    games_install_path: ""
+    games_install_path: D:\Games
     scan_on_launch: false
 organize:
     post_process_enabled: true

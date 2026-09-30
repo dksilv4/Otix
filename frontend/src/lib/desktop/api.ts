@@ -69,6 +69,8 @@ export interface RunningGameData {
   startTime: number
   launchedByOtix: boolean
   pid?: number
+  fpsSnapshot?: LiveFpsSnapshot | null
+  fpsAvailable?: boolean
 }
 
 export interface CloudSettings {

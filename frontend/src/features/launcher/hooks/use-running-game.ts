@@ -77,6 +77,13 @@ export function useRunningGame() {
             startTime,
             launchedByOtix: false,
             pid: data.game.pid,
+            fpsAvailable: data.game.fps_available,
+            fpsSnapshot: data.game.fps_snapshot ? {
+              currentFps: data.game.fps_snapshot.fps,
+              frameCount: data.game.fps_snapshot.frame_count || 0,
+              captureDurationMs: 0,
+              gameId: data.game.id,
+            } : null,
           })
           startTimer(startTime)
         } else {

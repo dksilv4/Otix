@@ -38,6 +38,14 @@ export function ActivityModuleGame() {
               <Clock size={10} />
               {formatDuration(elapsedMs)}
             </span>
+            {runningGame.fpsSnapshot && runningGame.fpsSnapshot.currentFps > 0 && (
+              <>
+                <span className="opacity-30">·</span>
+                <span className="font-bold text-emerald-400 font-mono">
+                  {Math.round(runningGame.fpsSnapshot.currentFps)} FPS
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>
