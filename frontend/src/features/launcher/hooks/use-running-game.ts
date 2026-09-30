@@ -25,32 +25,80 @@ export function useRunningGame() {
 
   // Subscribe to game detection events
   useEffect(() => {
-    if (!window.desktopAPI) return
+    if (typeof window !== 'undefined' && window.desktopAPI) {
+      // Check if a game is already running
+      window.desktopAPI.getRunningGame().then((game: RunningGameData | null) => {
+        if (game) {
+          setRunningGame(game)
+          startTimer(game.startTime)
+        }
+      }).catch(() => {})
 
-    // Check if a game is already running
-    window.desktopAPI.getRunningGame().then((game: RunningGameData | null) => {
-      if (game) {
-        setRunningGame(game)
-        startTimer(game.startTime)
+      // Listen for game started
+      const unsubStart = window.desktopAPI.onGameStarted((data: RunningGameData) => {
+        setRunningGame(data)
+        startTimer(data.startTime)
+      })
+
+      // Listen for game ended
+      const unsubEnd = window.desktopAPI.onGameEnded(() => {
+        setRunningGame(null)
+        clearTimer()
+        setElapsedMs(0)
+      })
+
+      return () => {
+        unsubStart()
+        unsubEnd()
+        clearTimer()
       }
-    }).catch(() => {})
+    }
 
-    // Listen for game started
-    const unsubStart = window.desktopAPI.onGameStarted((data: RunningGameData) => {
-      setRunningGame(data)
-      startTimer(data.startTime)
-    })
+    // Fallback: Poll Otix Node (Go daemon) directly when running in browser or standalone node
+    let active = true
+    const checkNode = async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:8090/api/v1/games/running')
+        if (!res.ok) return
+        const data = await res.json()
+        if (!active) return
 
-    // Listen for game ended
-    const unsubEnd = window.desktopAPI.onGameEnded(() => {
-      setRunningGame(null)
-      clearTimer()
-      setElapsedMs(0)
-    })
+        if (data?.running && data?.game) {
+          const rawStart = new Date(data.game.start_time).getTime()
+          const elapsedFallback = Date.now() - (data.game.current_duration_seconds * 1000)
+          const startTime = rawStart || elapsedFallback
+          setRunningGame({
+            game: {
+              id: data.game.id,
+              title: data.game.title,
+              platform: 'pc',
+              exePath: data.game.exe_path,
+            },
+            startTime,
+            launchedByOtix: false,
+            pid: data.game.pid,
+          })
+          startTimer(startTime)
+        } else {
+          setRunningGame((prev) => {
+            if (prev) {
+              clearTimer()
+              setElapsedMs(0)
+            }
+            return null
+          })
+        }
+      } catch {
+        // Node offline or unreachable
+      }
+    }
+
+    checkNode()
+    const pollId = setInterval(checkNode, 3000)
 
     return () => {
-      unsubStart()
-      unsubEnd()
+      active = false
+      clearInterval(pollId)
       clearTimer()
     }
   }, [startTimer, clearTimer])

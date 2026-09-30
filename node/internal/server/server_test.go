@@ -637,3 +637,77 @@ func TestPluginsAndProvidersEndpoints(t *testing.T) {
 		t.Fatalf("get sonarr config failed: %d", wSonarr.Code)
 	}
 }
+
+func TestGamesAndOverlayEndpoints(t *testing.T) {
+	srv, _, _ := setupTestServer()
+
+	// 1. GET /api/v1/games/running
+	reqRunning := httptest.NewRequest("GET", "/api/v1/games/running", nil)
+	wRunning := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wRunning, reqRunning)
+	if wRunning.Code != http.StatusOK {
+		t.Fatalf("expected 200 from running, got %d", wRunning.Code)
+	}
+
+	var runningRes map[string]interface{}
+	if err := json.Unmarshal(wRunning.Body.Bytes(), &runningRes); err != nil {
+		t.Fatal(err)
+	}
+	if runningRes["running"] != false {
+		t.Fatalf("expected running=false initially, got %v", runningRes["running"])
+	}
+
+	// 2. GET /api/v1/games/sessions
+	reqSess := httptest.NewRequest("GET", "/api/v1/games/sessions", nil)
+	wSess := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wSess, reqSess)
+	if wSess.Code != http.StatusOK {
+		t.Fatalf("expected 200 from sessions, got %d", wSess.Code)
+	}
+
+	// 3. POST & GET /api/v1/games/mappings
+	mapBody := bytes.NewBufferString(`{"process_name":"witcher3.exe","game_id":"w3","game_title":"The Witcher 3"}`)
+	reqMap := httptest.NewRequest("POST", "/api/v1/games/mappings", mapBody)
+	reqMap.Header.Set("Content-Type", "application/json")
+	wMap := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wMap, reqMap)
+	if wMap.Code != http.StatusOK {
+		t.Fatalf("expected 200 from post mappings, got %d", wMap.Code)
+	}
+
+	reqGetMap := httptest.NewRequest("GET", "/api/v1/games/mappings", nil)
+	wGetMap := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wGetMap, reqGetMap)
+	if wGetMap.Code != http.StatusOK {
+		t.Fatalf("expected 200 from get mappings, got %d", wGetMap.Code)
+	}
+
+	// 4. GET /api/v1/games/overlay (Web HUD)
+	reqOverlay := httptest.NewRequest("GET", "/api/v1/games/overlay", nil)
+	wOverlay := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wOverlay, reqOverlay)
+	if wOverlay.Code != http.StatusOK {
+		t.Fatalf("expected 200 from overlay, got %d", wOverlay.Code)
+	}
+	if !bytes.Contains(wOverlay.Body.Bytes(), []byte("Otix In-Game Overlay")) {
+		t.Fatalf("expected overlay HTML to contain 'Otix In-Game Overlay'")
+	}
+
+	// 5. GET & POST /api/v1/games/overlay/settings
+	reqGetSettings := httptest.NewRequest("GET", "/api/v1/games/overlay/settings", nil)
+	wGetSettings := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wGetSettings, reqGetSettings)
+	if wGetSettings.Code != http.StatusOK {
+		t.Fatalf("expected 200 from overlay settings, got %d", wGetSettings.Code)
+	}
+
+	setBody := bytes.NewBufferString(`{"enabled":true,"corner":"top-right","show_fps":true}`)
+	reqPostSettings := httptest.NewRequest("POST", "/api/v1/games/overlay/settings", setBody)
+	reqPostSettings.Header.Set("Content-Type", "application/json")
+	wPostSettings := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wPostSettings, reqPostSettings)
+	if wPostSettings.Code != http.StatusOK {
+		t.Fatalf("expected 200 from post overlay settings, got %d", wPostSettings.Code)
+	}
+}
+

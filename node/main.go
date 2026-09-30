@@ -69,10 +69,12 @@ func main() {
 
 	claimMgr := claim.NewClaimManager(cfg)
 	hbRunner := heartbeat.NewHeartbeatRunner(cfg, claimMgr)
+	srv := server.NewServer(cfg, claimMgr)
+	hbRunner.SetRunningGameProvider(func() interface{} {
+		return srv.GamesTracker().GetRunningGame()
+	})
 	hbRunner.Start()
 	defer hbRunner.Stop()
-
-	srv := server.NewServer(cfg, claimMgr)
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	httpServer := &http.Server{

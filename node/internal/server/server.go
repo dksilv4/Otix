@@ -22,6 +22,7 @@ import (
 	"github.com/dksilv4/otix/node/internal/desktop"
 	"github.com/dksilv4/otix/node/internal/epic"
 	"github.com/dksilv4/otix/node/internal/explorer"
+	"github.com/dksilv4/otix/node/internal/games"
 	"github.com/dksilv4/otix/node/internal/heartbeat"
 	"github.com/dksilv4/otix/node/internal/indexer"
 	"github.com/dksilv4/otix/node/internal/otixmeta"
@@ -40,6 +41,10 @@ type Server struct {
 	epicClient   *epic.EpicClient
 	providersMgr *providers.ProviderManager
 	dealsMonitor *plugins.DealsMonitor
+	gamesStore   *games.SessionStore
+	gamesTracker *games.GameTracker
+	fpsCollector games.FpsCollector
+	overlayMgr   *games.OverlayManager
 	startTime    time.Time
 	router       *chi.Mux
 }
@@ -58,6 +63,16 @@ func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
 	provMgr := providers.NewProviderManager(cfg)
 	dealsMon := plugins.NewDealsMonitor()
 
+	gamesStore, err := games.NewSessionStore(storageDir)
+	if err != nil {
+		fmt.Printf("[Server] Warning: failed to init games store: %v\n", err)
+	}
+	fpsCollector := games.NewPresentMonCollector(storageDir)
+	gamesTracker := games.NewGameTracker(gamesStore, fpsCollector, idx)
+	gamesTracker.Start()
+	overlayMgr := games.NewOverlayManager(gamesStore, gamesTracker, fpsCollector)
+	overlayMgr.Start()
+
 	s := &Server{
 		cfg:          cfg,
 		claimMgr:     claimMgr,
@@ -66,12 +81,32 @@ func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
 		epicClient:   epicClient,
 		providersMgr: provMgr,
 		dealsMonitor: dealsMon,
+		gamesStore:   gamesStore,
+		gamesTracker: gamesTracker,
+		fpsCollector: fpsCollector,
+		overlayMgr:   overlayMgr,
 		startTime:    time.Now(),
 		router:       chi.NewRouter(),
 	}
 
 	s.setupRoutes()
 	return s
+}
+
+func (s *Server) GamesTracker() *games.GameTracker {
+	return s.gamesTracker
+}
+
+func (s *Server) GamesStore() *games.SessionStore {
+	return s.gamesStore
+}
+
+func (s *Server) FpsCollector() games.FpsCollector {
+	return s.fpsCollector
+}
+
+func (s *Server) OverlayManager() *games.OverlayManager {
+	return s.overlayMgr
 }
 
 func (s *Server) Router() http.Handler {
@@ -244,6 +279,186 @@ func (s *Server) setupRoutes() {
 			resp["disk_total_bytes"] = totalBytes
 		}
 		jsonResponse(w, http.StatusOK, resp)
+	})
+
+	// ── Game Detection, FPS Tracking & Overlay APIs ──────────────────────────────
+	// Web Overlay HTML
+	r.Get("/api/v1/games/overlay", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(games.WebOverlayHTML))
+	})
+
+	// Live FPS SSE stream
+	r.Get("/api/v1/games/fps/live", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+
+		// Send initial snapshot if available
+		snap := s.fpsCollector.GetSnapshot()
+		if snap != nil {
+			data, _ := json.Marshal(snap)
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
+		}
+
+		ch := s.fpsCollector.Subscribe()
+		defer s.fpsCollector.Unsubscribe(ch)
+
+		ctx := r.Context()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case snapshot, ok := <-ch:
+				if !ok {
+					return
+				}
+				data, err := json.Marshal(snapshot)
+				if err == nil {
+					_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
+					flusher.Flush()
+				}
+			}
+		}
+	})
+
+	// Currently running game
+	r.Get("/api/v1/games/running", func(w http.ResponseWriter, r *http.Request) {
+		running := s.gamesTracker.GetRunningGame()
+		jsonResponse(w, http.StatusOK, map[string]interface{}{
+			"running": running != nil,
+			"game":    running,
+		})
+	})
+
+	// Recent play sessions
+	r.Get("/api/v1/games/sessions", func(w http.ResponseWriter, r *http.Request) {
+		limit := 20
+		if l := r.URL.Query().Get("limit"); l != "" {
+			if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+				limit = parsed
+			}
+		}
+		jsonResponse(w, http.StatusOK, s.gamesStore.GetRecentSessions(limit))
+	})
+
+	// Playtime summary for a specific game
+	r.Get("/api/v1/games/playtime/{game_id}", func(w http.ResponseWriter, r *http.Request) {
+		gameID := chi.URLParam(r, "game_id")
+		jsonResponse(w, http.StatusOK, s.gamesStore.GetPlaytimeForGame(gameID))
+	})
+
+	// Running processes list
+	r.Get("/api/v1/games/processes", func(w http.ResponseWriter, r *http.Request) {
+		procs, err := games.ListProcesses()
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		jsonResponse(w, http.StatusOK, procs)
+	})
+
+	// Custom process mappings
+	r.Get("/api/v1/games/mappings", func(w http.ResponseWriter, r *http.Request) {
+		jsonResponse(w, http.StatusOK, s.gamesStore.GetMappings())
+	})
+
+	r.Post("/api/v1/games/mappings", func(w http.ResponseWriter, r *http.Request) {
+		var mapping games.GameMapping
+		if err := json.NewDecoder(r.Body).Decode(&mapping); err != nil {
+			http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := s.gamesStore.AddMapping(mapping); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusBadRequest)
+			return
+		}
+		jsonResponse(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	r.Delete("/api/v1/games/mappings/{process_name}", func(w http.ResponseWriter, r *http.Request) {
+		procName := chi.URLParam(r, "process_name")
+		if err := s.gamesStore.RemoveMapping(procName); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		jsonResponse(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	// Launch game executable
+	r.Post("/api/v1/games/launch", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ExePath string   `json:"exe_path"`
+			Args    []string `json:"args"`
+			GameID  string   `json:"game_id"`
+			Title   string   `json:"title"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+			return
+		}
+		if req.ExePath == "" {
+			http.Error(w, `{"error":"exe_path is required"}`, http.StatusBadRequest)
+			return
+		}
+		running, err := s.gamesTracker.Launch(req.ExePath, req.Args, req.GameID, req.Title)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		jsonResponse(w, http.StatusOK, map[string]interface{}{
+			"status": "launched",
+			"game":   running,
+		})
+	})
+
+	// Stop tracking active game
+	r.Post("/api/v1/games/stop", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			GameID string `json:"game_id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		s.gamesTracker.StopTracking(req.GameID)
+		jsonResponse(w, http.StatusOK, map[string]string{"status": "stopped"})
+	})
+
+	// Overlay Settings & controls
+	r.Get("/api/v1/games/overlay/settings", func(w http.ResponseWriter, r *http.Request) {
+		jsonResponse(w, http.StatusOK, s.gamesStore.GetOverlaySettings())
+	})
+
+	r.Post("/api/v1/games/overlay/settings", func(w http.ResponseWriter, r *http.Request) {
+		var settings games.OverlaySettings
+		if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
+			http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+			return
+		}
+		if err := s.gamesStore.SaveOverlaySettings(settings); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if settings.Corner != "" {
+			s.overlayMgr.SetCorner(settings.Corner)
+		}
+		if settings.Enabled {
+			s.overlayMgr.Show()
+		} else {
+			s.overlayMgr.Hide()
+		}
+		jsonResponse(w, http.StatusOK, settings)
+	})
+
+	r.Post("/api/v1/games/overlay/toggle", func(w http.ResponseWriter, r *http.Request) {
+		s.overlayMgr.Toggle()
+		jsonResponse(w, http.StatusOK, map[string]string{"status": "toggled"})
 	})
 
 	// Authenticated routes

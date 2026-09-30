@@ -59,19 +59,21 @@ func ResolveRegistryURL(cfg *config.AppConfig) string {
 }
 
 type HeartbeatPayload struct {
-	ServerName     string   `json:"server_name"`
-	LocalEndpoints []string `json:"local_endpoints"`
-	Port           int      `json:"port"`
-	AuthToken      string   `json:"auth_token"`
-	ClaimCode      string   `json:"claim_code,omitempty"`
-	Claimed        bool     `json:"claimed"`
+	ServerName     string      `json:"server_name"`
+	LocalEndpoints []string    `json:"local_endpoints"`
+	Port           int         `json:"port"`
+	AuthToken      string      `json:"auth_token"`
+	ClaimCode      string      `json:"claim_code,omitempty"`
+	Claimed        bool        `json:"claimed"`
+	RunningGame    interface{} `json:"running_game,omitempty"`
 }
 
 type HeartbeatRunner struct {
-	cfg      *config.AppConfig
-	claimMgr *claim.ClaimManager
-	client   *http.Client
-	stopChan chan struct{}
+	cfg                 *config.AppConfig
+	claimMgr            *claim.ClaimManager
+	client              *http.Client
+	stopChan            chan struct{}
+	runningGameProvider func() interface{}
 }
 
 func NewHeartbeatRunner(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *HeartbeatRunner {
@@ -81,6 +83,11 @@ func NewHeartbeatRunner(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *He
 		client:   &http.Client{Timeout: 10 * time.Second},
 		stopChan: make(chan struct{}),
 	}
+}
+
+// SetRunningGameProvider registers a callback that provides the currently active game.
+func (h *HeartbeatRunner) SetRunningGameProvider(provider func() interface{}) {
+	h.runningGameProvider = provider
 }
 
 func (h *HeartbeatRunner) Start() {
@@ -114,6 +121,9 @@ func (h *HeartbeatRunner) SendOnce() (time.Duration, error) {
 		AuthToken: h.cfg.Server.AuthToken,
 		ClaimCode: h.claimMgr.CurrentCode(),
 		Claimed:   h.claimMgr.IsClaimed(),
+	}
+	if h.runningGameProvider != nil {
+		payload.RunningGame = h.runningGameProvider()
 	}
 
 	data, err := json.Marshal(payload)

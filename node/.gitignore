@@ -25,4 +25,6 @@ internal/**/config.yaml
 otix-node
 otix-node*
 dist/
+bin/
+*.exe
 
