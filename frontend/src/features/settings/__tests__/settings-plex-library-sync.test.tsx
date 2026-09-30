@@ -102,6 +102,11 @@ vi.mock('@/features/downloads/use-server-usenet', () => ({
   useTestProwlarr: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
+vi.mock('@/features/downloads/use-server-providers', () => ({
+  useServerProviders: () => ({ data: null, isLoading: false }),
+  useNodeProviders: () => ({ data: null, isLoading: false }),
+}))
+
 describe('Plex Library Sync and Error Isolation', () => {
   beforeEach(() => {
     vi.clearAllMocks()

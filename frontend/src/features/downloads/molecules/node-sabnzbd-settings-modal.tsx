@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DownloadCloud } from 'lucide-react';
 import { useToast } from '@ui/molecules/toast';
 import { DkInput } from '@ui/atoms/input';
@@ -21,6 +21,7 @@ import { useIntegrationTargetNode } from './use-integration-target-node';
 import { IntegrationConnectionFields } from './integration-connection-fields';
 import { IntegrationModalForm } from './integration-modal-form';
 import { IntegrationPathMappings, type PathMappingRow } from './integration-path-mappings';
+import { isSabnzbdConfigured } from '../usenet-utils';
 
 export interface NodeSabnzbdSettingsModalProps {
   nodeId?: number;
@@ -53,10 +54,7 @@ function SabnzbdForm({
   const testSabMutation = useTestSabnzbd(targetNodeId);
 
   const initialSab = config?.sabnzbd;
-  const isConfigured = Boolean(
-    initialSab?.host &&
-    Boolean(initialSab?.apiKey || initialSab?.api_key || initialSab?.configured)
-  );
+  const isConfigured = isSabnzbdConfigured(initialSab);
   const [sabHost, setSabHost] = useState(initialSab?.host || '127.0.0.1');
   const [sabPort, setSabPort] = useState(initialSab?.port || 8080);
   const [sabApiKey, setSabApiKey] = useState(initialSab?.apiKey || initialSab?.api_key || '');
@@ -92,6 +90,18 @@ function SabnzbdForm({
     initialSab?.folderError && !initialSab.folderLinked ? initialSab.folderError : undefined
   );
 
+  useEffect(() => {
+    if (initialSab) {
+      if (initialSab.host) setSabHost(initialSab.host);
+      if (initialSab.port) setSabPort(initialSab.port);
+      const key = initialSab.api_key || initialSab.apiKey;
+      if (key) setSabApiKey(key);
+      setSabSsl(Boolean(initialSab.use_ssl ?? initialSab.useSsl));
+      setSabUrlBase(initialSab.url_base || initialSab.urlBase || '');
+      if (initialSab.category) setSabCategory(initialSab.category);
+    }
+  }, [initialSab]);
+
   useResetConnectionTest(
     { host: sabHost, port: Number(sabPort), apiKey: sabApiKey, useSsl: sabSsl, urlBase: sabUrlBase },
     () => setSabTestResult(null),
@@ -100,16 +110,23 @@ function SabnzbdForm({
   const handleTestSabnzbd = async () => {
     setSabTestResult(null);
     try {
+      const trimmedKey = sabApiKey.trim();
+      const existingKey = initialSab?.api_key || initialSab?.apiKey || '';
+      const effectiveKey = trimmedKey || (isConfigured ? existingKey : '');
       const res = await testSabMutation.mutateAsync({
         host: sabHost.trim(),
         port: Number(sabPort),
-        api_key: sabApiKey.trim() || undefined,
+        api_key: effectiveKey || undefined,
         use_ssl: sabSsl,
         url_base: sabUrlBase.trim() || undefined,
       });
       setSabTestResult(res);
       if (res.ok) {
-        toast({ title: 'Connected', description: res.message, variant: 'success' });
+        toast({
+          title: 'Connected',
+          description: `${res.message} — click Save to apply.`,
+          variant: 'success',
+        });
       } else {
         toast({ title: 'Connection failed', description: res.message, variant: 'error' });
       }
@@ -123,10 +140,13 @@ function SabnzbdForm({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const trimmedKey = sabApiKey.trim();
+      const existingKey = initialSab?.api_key || initialSab?.apiKey || '';
+      const effectiveKey = trimmedKey || (isConfigured ? existingKey : '');
       const result = await saveMutation.mutateAsync({
         host: sabHost.trim(),
         port: Number(sabPort),
-        api_key: sabApiKey.trim(),
+        api_key: effectiveKey,
         use_ssl: sabSsl,
         url_base: sabUrlBase.trim(),
         category: sabCategory.trim() || 'games',
@@ -262,7 +282,7 @@ export function NodeSabnzbdSettingsModal({
     >
       {targetNodeId ? (
         <SabnzbdForm
-          key={targetNodeId}
+          key={`${targetNodeId}-${config ? 'ready' : 'loading'}`}
           config={config}
           targetNodeId={targetNodeId}
           targetNodeName={targetNodeName}

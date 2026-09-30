@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@ui/molecules/toast';
@@ -28,7 +28,7 @@ import { useResetConnectionTest } from './use-reset-connection-test';
 import { useIntegrationTargetNode } from './use-integration-target-node';
 import { IntegrationConnectionFields } from './integration-connection-fields';
 import { IntegrationModalForm } from './integration-modal-form';
-import { normalizeProwlarrIndexers } from '../usenet-utils';
+import { normalizeProwlarrIndexers, isProwlarrConfigured } from '../usenet-utils';
 import { ProwlarrIndexersPanel } from './prowlarr-indexers-panel';
 
 export interface NodeProwlarrSettingsModalProps {
@@ -63,21 +63,32 @@ function ProwlarrForm({
   const syncMutation = useSyncProwlarrIndexers(targetNodeId);
 
   const initialProw = config?.prowlarr;
-  const isConfigured = Boolean(
-    initialProw?.host &&
-    Boolean(initialProw?.api_key || initialProw?.configured)
-  );
+  const isConfigured = isProwlarrConfigured(initialProw);
   const [prowlarrHost, setProwlarrHost] = useState(initialProw?.host || '127.0.0.1');
   const [prowlarrPort, setProwlarrPort] = useState(initialProw?.port || 9696);
-  const [prowlarrApiKey, setProwlarrApiKey] = useState(initialProw?.api_key || '');
-  const [prowlarrSsl, setProwlarrSsl] = useState(Boolean(initialProw?.use_ssl));
-  const [prowlarrUrlBase, setProwlarrUrlBase] = useState(initialProw?.url_base || '');
+  const [prowlarrApiKey, setProwlarrApiKey] = useState(initialProw?.api_key || (initialProw as any)?.apiKey || '');
+  const [prowlarrSsl, setProwlarrSsl] = useState(Boolean(initialProw?.use_ssl ?? (initialProw as any)?.useSsl));
+  const [prowlarrUrlBase, setProwlarrUrlBase] = useState(initialProw?.url_base || (initialProw as any)?.urlBase || '');
   const [selectedCategories, setSelectedCategories] = useState<number[]>(() =>
     categoriesFromConfig(initialProw?.categories)
   );
   const [prowlarrTestResult, setProwlarrTestResult] = useState<ConnectionTestResult | null>(null);
   const [syncProtocol, setSyncProtocol] = useState<'all' | 'torrent' | 'usenet'>('all');
   const [syncedIndexers, setSyncedIndexers] = useState<ProwlarrIndexerItem[]>([]);
+
+  useEffect(() => {
+    if (initialProw) {
+      if (initialProw.host) setProwlarrHost(initialProw.host);
+      if (initialProw.port) setProwlarrPort(initialProw.port);
+      const key = initialProw.api_key || (initialProw as any)?.apiKey;
+      if (key) setProwlarrApiKey(key);
+      setProwlarrSsl(Boolean(initialProw.use_ssl ?? (initialProw as any)?.useSsl));
+      setProwlarrUrlBase(initialProw.url_base || (initialProw as any)?.urlBase || '');
+      if (initialProw.categories) {
+        setSelectedCategories(categoriesFromConfig(initialProw.categories));
+      }
+    }
+  }, [initialProw]);
 
   useResetConnectionTest(
     {
@@ -98,16 +109,23 @@ function ProwlarrForm({
   const handleTestProwlarr = async () => {
     setProwlarrTestResult(null);
     try {
+      const trimmedKey = prowlarrApiKey.trim();
+      const existingKey = initialProw?.api_key || (initialProw as any)?.apiKey || '';
+      const effectiveKey = trimmedKey || (isConfigured ? existingKey : '');
       const res = await testProwlarrMutation.mutateAsync({
         host: prowlarrHost.trim(),
         port: Number(prowlarrPort),
-        api_key: prowlarrApiKey.trim() || undefined,
+        api_key: effectiveKey || undefined,
         use_ssl: prowlarrSsl,
         url_base: prowlarrUrlBase.trim() || undefined,
       });
       setProwlarrTestResult(res);
       if (res.ok) {
-        toast({ title: 'Connected', description: res.message, variant: 'success' });
+        toast({
+          title: 'Connected',
+          description: `${res.message} — click Save to apply.`,
+          variant: 'success',
+        });
       } else {
         toast({ title: 'Connection failed', description: res.message, variant: 'error' });
       }
@@ -126,7 +144,7 @@ function ProwlarrForm({
       await refetchIndexers();
       toast({
         title: 'Indexers synced',
-        description: res.message,
+        description: (res as any)?.message || 'Indexers synced successfully',
         variant: 'success',
       });
     } catch (err: unknown) {
@@ -142,10 +160,13 @@ function ProwlarrForm({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const trimmedKey = prowlarrApiKey.trim();
+      const existingKey = initialProw?.api_key || (initialProw as any)?.apiKey || '';
+      const effectiveKey = trimmedKey || (isConfigured ? existingKey : '');
       await saveMutation.mutateAsync({
         host: prowlarrHost.trim(),
         port: Number(prowlarrPort),
-        api_key: prowlarrApiKey.trim(),
+        api_key: effectiveKey,
         use_ssl: prowlarrSsl,
         url_base: prowlarrUrlBase.trim(),
         categories: selectedCategories.length > 0 ? selectedCategories : [...DEFAULT_PROWLARR_CATEGORIES],
@@ -261,7 +282,7 @@ export function NodeProwlarrSettingsModal({
       isExiting={isExiting}
       onClose={onClose}
       title="Prowlarr"
-      description={targetNodeId ? `On ${targetNodeName}` : undefined}
+      description={targetNodeId ? `Indexer Provider on ${targetNodeName}` : 'Indexer Provider'}
       icon={Search}
       brandBgClass="text-rose-400"
       isLoading={isLoading}
@@ -275,7 +296,7 @@ export function NodeProwlarrSettingsModal({
     >
       {targetNodeId ? (
         <ProwlarrForm
-          key={targetNodeId}
+          key={`${targetNodeId}-${config ? 'ready' : 'loading'}`}
           config={config}
           targetNodeId={targetNodeId}
           targetNodeName={targetNodeName}

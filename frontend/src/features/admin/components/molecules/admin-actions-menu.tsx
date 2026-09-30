@@ -67,8 +67,9 @@ export function AdminActionsMenu({ mediaId, media, variant = 'default' }: Props)
       return
     }
     setDownloadingImages(true)
+    const effectiveId = media.id ? String(media.id) : mediaId
     try {
-      const { data } = await apiClient.post<DownloadAssetsResult>(`/media/admin/media-items/${mediaId}/download-assets`)
+      const { data } = await apiClient.post<DownloadAssetsResult>(`/media/admin/media-items/${effectiveId}/download-assets`)
       if (data.downloaded > 0) {
         toast({
           title: 'Images downloaded',
@@ -139,7 +140,7 @@ export function AdminActionsMenu({ mediaId, media, variant = 'default' }: Props)
                 const close = openModal(
                   <MediaManageModal
                     mediaType={media.mediaType}
-                    mediaId={mediaId}
+                    mediaId={media.id ? String(media.id) : mediaId}
                     onClose={() => close()}
                   />
                 )

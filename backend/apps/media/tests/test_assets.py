@@ -350,6 +350,50 @@ class AdminAssetEndpointTests(AssetTestCase):
         self.assertEqual(response.data["downloaded_bytes"], 0)
         self.assertTrue(response.data["disk"]["free"] > 0)
 
+    def test_download_endpoint_with_slug(self) -> None:
+        self.add_asset(url="http://img.example/poster.png")
+        url = f"/api/v1/media/admin/media-items/{self.item.slug}/download-assets"
+        with _patch_http(_FakeResponse(PNG)):
+            response = self.staff_client.post(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["downloaded"], 1)
+
+    def test_artwork_select_endpoint_with_pk_and_slug(self) -> None:
+        asset = self.add_asset(asset_type="poster", url="http://img.example/poster1.png")
+        slug_url = f"/api/v1/media/admin/media-items/{self.item.slug}/assets/{asset.pk}/select"
+        with _patch_http(_FakeResponse(PNG)):
+            res = self.staff_client.put(slug_url, {"context": "general"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["selected_context"], "general")
+        asset.refresh_from_db()
+        self.assertEqual(asset.selected_context, "general")
+
+        pk_url = f"/api/v1/media/admin/media-items/{self.item.pk}/assets/{asset.pk}/select"
+        res_del = self.staff_client.delete(pk_url)
+        self.assertEqual(res_del.status_code, 200)
+        asset.refresh_from_db()
+        self.assertIsNone(asset.selected_context)
+
+    def test_artwork_textless_and_mirror_endpoints_with_slug(self) -> None:
+        asset = self.add_asset(asset_type="poster", url="http://img.example/textless.png")
+        textless_url = f"/api/v1/media/admin/media-items/{self.item.slug}/assets/{asset.pk}/textless"
+        with _patch_http(_FakeResponse(PNG)):
+            res = self.staff_client.put(textless_url)
+        self.assertEqual(res.status_code, 200)
+
+        mirror_url = f"/api/v1/media/admin/media-items/{self.item.slug}/assets/{asset.pk}/mirror"
+        with _patch_http(_FakeResponse(PNG)):
+            res_mirror = self.staff_client.put(mirror_url)
+        self.assertEqual(res_mirror.status_code, 200)
+        self.assertTrue(res_mirror.data["kept"])
+
+    def test_media_assets_view_with_slug(self) -> None:
+        self.add_asset(asset_type="poster", url="http://img.example/poster.png")
+        url = f"/api/v1/media/movie/{self.item.slug}/assets"
+        res = self.staff_client.get(url)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data["items"]), 1)
+
 
 class MirroringToggleTests(AssetTestCase):
     def _mirror(self) -> str:

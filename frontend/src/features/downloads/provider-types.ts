@@ -1,8 +1,14 @@
 /** Unified Modular Provider Framework types for Otix (Downloaders & Search Providers). */
 
-export type ProviderType = 'downloader' | 'search-provider';
+export type ProviderType =
+  | 'downloader'
+  | 'search-provider'
+  | 'search_provider'
+  | 'indexer'
+  | 'indexer-provider'
+  | 'indexer_provider';
 
-export type ProviderProtocol = 'usenet' | 'torrent' | 'direct' | string;
+export type ProviderProtocol = 'usenet' | 'torrent' | 'direct' | 'multi' | string;
 
 export interface ProviderInfo {
   name: string;
@@ -17,8 +23,11 @@ export interface ProviderInfo {
 export interface ServerProvidersResponse {
   active_downloader: string;
   active_search_provider: string;
+  active_indexer?: string;
   downloaders: ProviderInfo[];
   search_providers: ProviderInfo[];
+  indexers?: ProviderInfo[];
+  indexer_providers?: ProviderInfo[];
 }
 
 export interface UnifiedReleaseItem {

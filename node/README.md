@@ -28,6 +28,13 @@ The node automatically opens your default browser at `http://127.0.0.1:8090/` wi
 ./otix-node -headless -config /path/to/config.yaml
 ```
 
+### 3. Reconnecting an Already Claimed Node
+If the node is already claimed, the claim PIN is no longer displayed. To reconnect to it:
+- **Log in to Otix:** The user must log in to the Otix account that claimed the node in the Otix Desktop App or at `https://app.otix.io`.
+- **Automatic Reconnection:** Your Otix client will automatically rediscover and link to the node on your network.
+- **Manual / Remote Linking:** Use the node's local address and access token found on the node dashboard (`http://127.0.0.1:8090/`).
+- **Unclaim / Transfer:** Click **Unclaim Node** on the dashboard to reset ownership and generate a fresh claim PIN.
+
 ---
 
 ## Docker & Unraid Deployment

@@ -164,6 +164,10 @@ func renderClaimWizard(cfg *config.AppConfig, status claim.ClaimStatus) string {
         <li>Enter PIN <strong>%s</strong> to link this server instantly.</li>
       </ol>
     </div>
+
+    <div style="margin-top: 1.25rem; font-size: 0.8rem; color: #a1a1aa; line-height: 1.4; text-align: left; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.15); border-radius: 8px; padding: 0.75rem 1rem;">
+      <strong style="color: #38bdf8;">Already claimed this node before?</strong> If this node is already claimed, the user must log in to their Otix account at <a href="https://app.otix.io" target="_blank" style="color: #38bdf8; text-decoration: underline;">app.otix.io</a> or in the Otix Desktop App to automatically reconnect.
+    </div>
   </div>
   <script>
     // Poll every 3 seconds to auto-refresh if claimed
@@ -188,8 +192,10 @@ func renderDashboard(cfg *config.AppConfig, idx *indexer.StorageIndexer, uptimeS
 	minutes := (uptimeSeconds % 3600) / 60
 
 	claimedText := "Claimed &amp; Linked"
-	if username != "" {
+	claimedAccount := "your Otix account"
+	if strings.TrimSpace(username) != "" {
 		claimedText = fmt.Sprintf("Claimed by <strong>%s</strong>", html.EscapeString(username))
+		claimedAccount = fmt.Sprintf("account: <strong>%s</strong>", html.EscapeString(username))
 	}
 
 	rows := ""
@@ -244,6 +250,63 @@ func renderDashboard(cfg *config.AppConfig, idx *indexer.StorageIndexer, uptimeS
     </div>
   </div>
 
+  <!-- Reconnect & Account Linking Section -->
+  <div class="card" style="border-left: 4px solid #38bdf8;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 0.5rem;">
+          Already Claimed &bull; Account Linked
+        </div>
+        <h2 style="font-size: 1.25rem; font-weight: 800; margin: 0 0 6px 0;">How to Reconnect to this Node</h2>
+        <p style="color: #a1a1aa; margin: 0; font-size: 0.9rem; line-height: 1.5;">
+          This node is already claimed. If disconnected or switching devices, <strong>the user must log in</strong> to their Otix account to automatically reconnect to it.
+        </p>
+      </div>
+      <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+        <a href="https://app.otix.io/settings/nodes" target="_blank" style="background: #0284c7; color: #fff; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+          Open Otix Web &rarr;
+        </a>
+        <button type="button" id="btn-unclaim-node" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">
+          Unclaim Node
+        </button>
+      </div>
+    </div>
+
+    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid #27272a; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem;">
+      <h3 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: #71717a; margin: 0 0 0.75rem 0; font-weight: 700;">Reconnection Instructions</h3>
+      <ol style="padding-left: 1.25rem; margin: 0; color: #d4d4d8; font-size: 0.9rem; line-height: 1.7;">
+        <li>
+          <strong>Log In to Your Otix Account:</strong> The node is permanently registered to %s. If your session expired or you are on another device, <strong>the user must log in</strong> with this account at <a href="https://app.otix.io" target="_blank" style="color: #38bdf8; text-decoration: underline;">app.otix.io</a> or inside the Otix Desktop App.
+        </li>
+        <li>
+          <strong>Automatic Discovery:</strong> Once logged in, your Otix client automatically rediscovers and connects to this node. No new claim PIN is needed.
+        </li>
+        <li>
+          <strong>Verify Node in Settings:</strong> Navigate to <strong>Settings &rarr; Nodes</strong> in your Otix client to confirm this node is connected and online.
+        </li>
+      </ol>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; font-size: 0.85rem;">
+      <div style="background: #09090b; border: 1px solid #27272a; border-radius: 8px; padding: 0.875rem;">
+        <div style="color: #71717a; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">Node Address</div>
+        <div style="font-family: monospace; color: #38bdf8; font-weight: 600;">http://127.0.0.1:%d</div>
+        <div style="color: #71717a; font-size: 0.75rem; margin-top: 4px;">Local daemon endpoint for downloads and streaming</div>
+      </div>
+      <div style="background: #09090b; border: 1px solid #27272a; border-radius: 8px; padding: 0.875rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="color: #71717a; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">Manual Access Token</span>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" id="btn-toggle-token" style="background: none; border: none; color: #a1a1aa; font-size: 11px; cursor: pointer; padding: 0; text-decoration: underline;">Show</button>
+            <button type="button" id="btn-copy-token" style="background: none; border: none; color: #38bdf8; font-size: 11px; cursor: pointer; padding: 0; font-weight: 600;">Copy Token</button>
+          </div>
+        </div>
+        <div id="token-display" data-shown="0" style="font-family: monospace; color: #a1a1aa; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">••••••••••••••••••••••••</div>
+        <div style="color: #71717a; font-size: 0.75rem; margin-top: 4px;">Use if adding manually under Settings &rarr; Nodes &rarr; Manual</div>
+      </div>
+    </div>
+  </div>
+
 	<div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap;">
       <h2 style="font-size: 1.1rem; font-weight: 700; margin: 0;">Hosted Game Installers &amp; ISOs</h2>
@@ -288,9 +351,42 @@ func renderDashboard(cfg *config.AppConfig, idx *indexer.StorageIndexer, uptimeS
         setTimeout(() => window.location.reload(), 1500);
       } catch (e) { alert('Scan failed: ' + e.message); }
     });
+    document.getElementById('btn-unclaim-node')?.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to unclaim this node? It will disconnect from your account and generate a new claim PIN.')) return;
+      try {
+        await authed('/api/v1/claim/unclaim', 'POST');
+        window.location.reload();
+      } catch (e) { alert('Unclaim failed: ' + e.message); }
+    });
+    document.getElementById('btn-toggle-token')?.addEventListener('click', () => {
+      const el = document.getElementById('token-display');
+      const btn = document.getElementById('btn-toggle-token');
+      if (!el || !btn) return;
+      if (el.dataset.shown === '1') {
+        el.textContent = '••••••••••••••••••••••••';
+        el.dataset.shown = '0';
+        btn.textContent = 'Show';
+      } else {
+        el.textContent = TOKEN;
+        el.dataset.shown = '1';
+        btn.textContent = 'Hide';
+      }
+    });
+    document.getElementById('btn-copy-token')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(TOKEN).then(() => {
+        const btn = document.getElementById('btn-copy-token');
+        if (btn) {
+          const oldText = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = oldText; }, 2000);
+        }
+      }).catch(() => {
+        prompt('Copy your node access token:', TOKEN);
+      });
+    });
   </script>
 </body>
-</html>`, serverName, serverName, claimedText, len(files), hours, minutes, cfg.Server.Port, rows, cfg.Server.AuthToken)
+</html>`, serverName, serverName, claimedText, len(files), hours, minutes, cfg.Server.Port, claimedAccount, cfg.Server.Port, rows, cfg.Server.AuthToken)
 }
 
 func CleanPath(path string) string {

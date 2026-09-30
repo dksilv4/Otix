@@ -24,6 +24,7 @@ from rest_framework.views import APIView
 
 from apps.media.models import MediaAsset, MediaItem
 from apps.media.services import assets as assets_service
+from apps.media.views.catalog import resolve_media_pk
 from apps.proposals.views.proposals import IsAdminUser
 
 
@@ -55,10 +56,13 @@ class DownloadAssetsView(APIView):
 
     permission_classes = (IsAuthenticated, IsAdminUser)
 
-    def post(self, request, media_id: int) -> Response:
+    def post(self, request, media_id: str | int) -> Response:
         if not assets_service.mirroring_enabled():
             raise PermissionDenied("Local image mirroring is disabled")
-        item = MediaItem.objects.filter(pk=media_id).prefetch_related("assets").first()
+        pk = resolve_media_pk(None, media_id)
+        if pk is None:
+            raise NotFound("Media item not found")
+        item = MediaItem.objects.filter(pk=pk).prefetch_related("assets").first()
         if item is None:
             raise NotFound("Media item not found")
         result = assets_service.download_primary_assets(item)
@@ -79,19 +83,22 @@ class ArtworkSelectionView(APIView):
 
     permission_classes = (IsAuthenticated, IsAdminUser)
 
-    def _resolve(self, media_id: int, asset_id: int) -> MediaAsset:
+    def _resolve(self, media_id: str | int, asset_id: int) -> MediaAsset:
         asset = (
             MediaAsset.objects.select_related("media_item")
-            .filter(pk=asset_id, media_item_id=media_id)
+            .filter(pk=asset_id)
             .first()
         )
         if asset is None:
+            raise NotFound("Asset not found for this media item")
+        resolved_pk = resolve_media_pk(asset.media_item.media_type, media_id)
+        if resolved_pk != asset.media_item_id:
             raise NotFound("Asset not found for this media item")
         if asset.asset_type.lower() not in _PINNABLE_ASSET_TYPES:
             raise ValidationError({"asset_id": f"asset_type '{asset.asset_type}' cannot be pinned"})
         return asset
 
-    def put(self, request, media_id: int, asset_id: int) -> Response:
+    def put(self, request, media_id: str | int, asset_id: int) -> Response:
         asset = self._resolve(media_id, asset_id)
         data = request.data if isinstance(request.data, dict) else {}
         context = data.get("context") or "general"
@@ -112,7 +119,7 @@ class ArtworkSelectionView(APIView):
             }
         )
 
-    def delete(self, request, media_id: int, asset_id: int) -> Response:
+    def delete(self, request, media_id: str | int, asset_id: int) -> Response:
         asset = self._resolve(media_id, asset_id)
         assets_service.clear_asset_selection(asset)
         return Response({"asset_id": asset.id, "selected_context": None})
@@ -130,13 +137,16 @@ class TextlessPickView(APIView):
 
     permission_classes = (IsAuthenticated, IsAdminUser)
 
-    def _resolve(self, media_id: int, asset_id: int) -> MediaAsset:
+    def _resolve(self, media_id: str | int, asset_id: int) -> MediaAsset:
         asset = (
             MediaAsset.objects.select_related("media_item")
-            .filter(pk=asset_id, media_item_id=media_id)
+            .filter(pk=asset_id)
             .first()
         )
         if asset is None:
+            raise NotFound("Asset not found for this media item")
+        resolved_pk = resolve_media_pk(asset.media_item.media_type, media_id)
+        if resolved_pk != asset.media_item_id:
             raise NotFound("Asset not found for this media item")
         if (asset.asset_type or "").lower() not in assets_service.FAMILY_TEXTLESS_TYPE:
             raise ValidationError(
@@ -144,13 +154,13 @@ class TextlessPickView(APIView):
             )
         return asset
 
-    def put(self, request, media_id: int, asset_id: int) -> Response:
+    def put(self, request, media_id: str | int, asset_id: int) -> Response:
         asset = self._resolve(media_id, asset_id)
         if not asset.url:
             raise ValidationError({"asset_id": "asset has no url to mirror"})
         return Response(assets_service.set_textless_pick(asset.media_item, asset, True))
 
-    def delete(self, request, media_id: int, asset_id: int) -> Response:
+    def delete(self, request, media_id: str | int, asset_id: int) -> Response:
         asset = self._resolve(media_id, asset_id)
         return Response(assets_service.set_textless_pick(asset.media_item, asset, False))
 
@@ -166,21 +176,24 @@ class AssetMirrorView(APIView):
 
     permission_classes = (IsAuthenticated, IsAdminUser)
 
-    def _resolve(self, media_id: int, asset_id: int) -> MediaAsset:
+    def _resolve(self, media_id: str | int, asset_id: int) -> MediaAsset:
         asset = (
             MediaAsset.objects.select_related("media_item")
-            .filter(pk=asset_id, media_item_id=media_id)
+            .filter(pk=asset_id)
             .first()
         )
         if asset is None:
             raise NotFound("Asset not found for this media item")
+        resolved_pk = resolve_media_pk(asset.media_item.media_type, media_id)
+        if resolved_pk != asset.media_item_id:
+            raise NotFound("Asset not found for this media item")
         return asset
 
-    def put(self, request, media_id: int, asset_id: int) -> Response:
+    def put(self, request, media_id: str | int, asset_id: int) -> Response:
         asset = self._resolve(media_id, asset_id)
         return Response(assets_service.keep_asset(asset.media_item, asset, True))
 
-    def delete(self, request, media_id: int, asset_id: int) -> Response:
+    def delete(self, request, media_id: str | int, asset_id: int) -> Response:
         asset = self._resolve(media_id, asset_id)
         return Response(assets_service.keep_asset(asset.media_item, asset, False))
 

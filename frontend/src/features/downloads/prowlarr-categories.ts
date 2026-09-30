@@ -11,9 +11,23 @@ export const PROWLARR_CATEGORY_GROUPS = [
 
 export const DEFAULT_PROWLARR_CATEGORIES = [1000, 4000]
 
-export function categoriesFromConfig(categories?: number[]): number[] {
+export function categoriesFromConfig(categories?: number[] | string[] | string): number[] {
+  if (typeof categories === 'string') {
+    const parsed = categories
+      .split(',')
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !isNaN(n))
+    if (parsed.length > 0) {
+      return [...new Set(parsed)].sort((a, b) => a - b)
+    }
+  }
   if (Array.isArray(categories) && categories.length > 0) {
-    return [...new Set(categories)].sort((a, b) => a - b)
+    const nums = categories
+      .map((item) => (typeof item === 'string' ? parseInt(item.trim(), 10) : Number(item)))
+      .filter((n) => !isNaN(n))
+    if (nums.length > 0) {
+      return [...new Set(nums)].sort((a, b) => a - b)
+    }
   }
   return [...DEFAULT_PROWLARR_CATEGORIES]
 }

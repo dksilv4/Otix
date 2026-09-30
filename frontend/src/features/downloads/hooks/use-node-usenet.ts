@@ -109,20 +109,73 @@ export function useTestProwlarr(nodeId?: number) {
   });
 }
 
+const NUMERAL_PAIRS: [RegExp, string][] = [
+  [/\b3\b/g, 'III'],
+  [/\biii\b/gi, '3'],
+  [/\b2\b/g, 'II'],
+  [/\bii\b/gi, '2'],
+  [/\b4\b/g, 'IV'],
+  [/\biv\b/gi, '4'],
+  [/\b5\b/g, 'V'],
+  [/\bv\b/gi, '5'],
+  [/\b6\b/g, 'VI'],
+  [/\bvi\b/gi, '6'],
+  [/\b7\b/g, 'VII'],
+  [/\bvii\b/gi, '7'],
+  [/\b8\b/g, 'VIII'],
+  [/\bviii\b/gi, '8'],
+  [/\b9\b/g, 'IX'],
+  [/\bix\b/gi, '9'],
+  [/\b10\b/g, 'X'],
+  [/\bx\b/gi, '10'],
+];
+
+export function getAlternateNumeralQuery(query: string): string | null {
+  for (const [pattern, replacement] of NUMERAL_PAIRS) {
+    if (pattern.test(query)) {
+      return query.replace(pattern, replacement);
+    }
+  }
+  return null;
+}
+
 /** Hook to search indexers via Prowlarr on the node. */
 export function useNodeUsenetSearch(nodeId?: number, query?: string) {
   return useQuery<ServerProwlarrRelease[]>({
     queryKey: usenetKeys.search(nodeId, query),
     queryFn: async () => {
-      if (!nodeId || !query?.trim()) return [];
-      const { data } = await apiClient.get<unknown>(
-        `/library/servers/${nodeId}/usenet/search`,
-        { params: { query: query.trim() } }
+      const q = query?.trim();
+      if (!nodeId || !q) return [];
+      const queries = [q];
+      const alt = getAlternateNumeralQuery(q);
+      if (alt && alt.toLowerCase() !== q.toLowerCase()) {
+        queries.push(alt);
+      }
+
+      const results = await Promise.all(
+        queries.map(async (searchQuery) => {
+          try {
+            const { data } = await apiClient.get<unknown>(
+              `/library/servers/${nodeId}/usenet/search`,
+              { params: { query: searchQuery } }
+            );
+            return Array.isArray(data) ? data : [];
+          } catch {
+            return [];
+          }
+        }),
       );
-      const rows = Array.isArray(data) ? data : [];
-      return rows
-        .map((row) => normalizeProwlarrRelease(row))
-        .filter((row): row is ServerProwlarrRelease => row != null);
+
+      const seen = new Set<string>();
+      const combined: ServerProwlarrRelease[] = [];
+      for (const row of results.flat()) {
+        const item = normalizeProwlarrRelease(row);
+        if (item && !seen.has(item.guid)) {
+          seen.add(item.guid);
+          combined.push(item);
+        }
+      }
+      return combined;
     },
     enabled: !!nodeId && !!query?.trim(),
     staleTime: 60_000,
@@ -185,9 +238,15 @@ export function useNodeUsenetQueue(nodeId?: number, pollingIntervalMs: number = 
       return data;
     },
     enabled: !!nodeId,
-    refetchInterval: pollingIntervalMs,
+    refetchInterval: (query) => {
+      const items = query.state.data?.items;
+      if (items && items.length > 0) {
+        return Math.min(pollingIntervalMs, 1500);
+      }
+      return pollingIntervalMs;
+    },
     refetchIntervalInBackground: true,
-    staleTime: 2000,
+    staleTime: 1000,
     meta: { suppressToast: true },
   });
 }
@@ -228,6 +287,8 @@ export function useSaveNodeSabnzbdConfig(nodeId?: number) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: usenetKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['server-providers'] });
+      queryClient.invalidateQueries({ queryKey: ['game-servers'] });
     },
   });
 }
@@ -248,6 +309,8 @@ export function useSaveNodeProwlarrConfig(nodeId?: number) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: usenetKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['server-providers'] });
+      queryClient.invalidateQueries({ queryKey: ['game-servers'] });
     },
   });
 }

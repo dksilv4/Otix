@@ -111,8 +111,15 @@ export function hasConfiguredDownloader(
   const wanted = (protocol || '').toLowerCase().trim()
   if (!wanted) return false
   return (downloaders ?? []).some((provider) => {
-    if ((provider.provider_type || (provider as { type?: string }).type) === 'search-provider') {
-      return false
+    const pType = (provider.provider_type || (provider as { type?: string }).type || '').toLowerCase();
+    if (
+      pType === 'search-provider' ||
+      pType === 'search_provider' ||
+      pType === 'indexer' ||
+      pType === 'indexer-provider' ||
+      pType === 'indexer_provider'
+    ) {
+      return false;
     }
     if (!providerFlag(provider, 'configured')) return false
     const proto = (provider.protocol || '').toLowerCase()

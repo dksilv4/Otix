@@ -411,11 +411,20 @@ export function isVersionLineage(child: string | null, parent: string | null): b
   return parentParts.every((part, index) => childParts[index] === part)
 }
 
-function familyKeyForUpdate(updateVersion: string | null, installerVersions: string[]): string {
+function familyKeyForUpdate(
+  updateVersion: string | null,
+  installerVersions: string[],
+  hasUnversionedInstaller = false,
+): string {
   if (!updateVersion) return ''
   const matches = installerVersions.filter((version) => isVersionLineage(updateVersion, version))
-  if (matches.length === 0) return updateVersion
-  return [...matches].sort((a, b) => versionParts(b).length - versionParts(a).length)[0]
+  if (matches.length > 0) {
+    return [...matches].sort((a, b) => versionParts(b).length - versionParts(a).length)[0]
+  }
+  if (hasUnversionedInstaller) {
+    return ''
+  }
+  return updateVersion
 }
 
 export interface VersionFamily {
@@ -462,6 +471,9 @@ export function groupReleasesByRepackerAndVersion(
       const installerVersions = items
         .filter((item) => item.parsed.kind !== 'update' && item.parsed.version)
         .map((item) => item.parsed.version as string)
+      const hasUnversionedInstaller = items.some(
+        (item) => item.parsed.kind !== 'update' && !item.parsed.version,
+      )
       const families = new Map<string, VersionFamily>()
 
       const family = (version: string | null) => {
@@ -475,10 +487,11 @@ export function groupReleasesByRepackerAndVersion(
 
       for (const item of items) {
         if (item.parsed.kind === 'update') {
-          const target =
-            installerVersions.length > 0
-              ? familyKeyForUpdate(item.parsed.version, installerVersions)
-              : item.parsed.version || ''
+          const target = familyKeyForUpdate(
+            item.parsed.version,
+            installerVersions,
+            hasUnversionedInstaller,
+          )
           family(target || null).updates.push(item)
           continue
         }
@@ -581,6 +594,9 @@ function packsForItems(items: ClassifiedRelease[]): GamePack[] {
   const installerVersions = items
     .filter((item) => item.parsed.kind !== 'update' && item.parsed.version)
     .map((item) => item.parsed.version as string)
+  const hasUnversionedInstaller = items.some(
+    (item) => item.parsed.kind !== 'update' && !item.parsed.version,
+  )
   const families = new Map<string, VersionFamily>()
   const family = (version: string | null) => {
     const familyKey = canonicalVersion(version)
@@ -593,10 +609,11 @@ function packsForItems(items: ClassifiedRelease[]): GamePack[] {
 
   for (const item of items) {
     if (item.parsed.kind === 'update') {
-      const target =
-        installerVersions.length > 0
-          ? familyKeyForUpdate(item.parsed.version, installerVersions)
-          : item.parsed.version || ''
+      const target = familyKeyForUpdate(
+        item.parsed.version,
+        installerVersions,
+        hasUnversionedInstaller,
+      )
       family(target || null).updates.push(item)
       continue
     }
@@ -608,7 +625,7 @@ function packsForItems(items: ClassifiedRelease[]): GamePack[] {
       const version = entry.version
       return {
         key: version || 'none',
-        title: version ? `v${version}` : 'No version',
+        title: version ? `v${version}` : 'Initial Release',
         version,
         releases: sortClassified(entry.releases, 'game'),
         updates: sortClassified(entry.updates, 'update'),

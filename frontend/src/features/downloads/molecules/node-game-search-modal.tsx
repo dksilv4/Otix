@@ -1,5 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Search, DownloadCloud, Loader2, CheckCircle2, AlertCircle, Clock, Sparkles, ExternalLink, ChevronDown, ArrowUpCircle } from 'lucide-react'
+import {
+  Search,
+  DownloadCloud,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Sparkles,
+  ExternalLink,
+  ChevronDown,
+  ArrowUpCircle,
+  Pause,
+  X,
+} from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { cn, formatBytes } from '@/lib/utils'
 import { useToast } from '@ui/molecules/toast'
@@ -7,6 +20,9 @@ import {
   useNodeUsenetConfig,
   useNodeUsenetSearch,
   useStartNodeDownload,
+  useNodeUsenetQueue,
+  useNodeUsenetHistory,
+  useCancelNodeQueueDownload,
 } from '../use-node-usenet'
 import { useNodeProviders } from '../use-node-providers'
 import {
@@ -14,6 +30,7 @@ import {
   extractReleaseBadges,
   formatAgeDays,
   releaseDownloadUrl,
+  isSabnzbdConfigured,
 } from '../usenet-utils'
 import {
   collectEditionPackVersions,
@@ -28,7 +45,11 @@ import {
   inferReleaseProtocol,
   releaseQueueBlockReason,
 } from '../provider-utils'
-import type { ServerProwlarrRelease } from '../usenet-types'
+import type {
+  ServerProwlarrRelease,
+  ServerSabnzbdQueueItem,
+  ServerDownloadHistoryItem,
+} from '../usenet-types'
 
 type ProtocolFilter = 'all' | 'usenet' | 'torrent'
 
@@ -66,6 +87,7 @@ export function NodeGameSearchModal({
   const [versionFilter, setVersionFilter] = useState('all')
   const [pendingGuid, setPendingGuid] = useState<string | null>(null)
   const [queuedGuids, setQueuedGuids] = useState<Set<string>>(() => new Set())
+  const [trackedNzoMap, setTrackedNzoMap] = useState<Map<string, string>>(() => new Map())
 
   const {
     data: releases = [],
@@ -75,12 +97,18 @@ export function NodeGameSearchModal({
   } = useNodeUsenetSearch(effectiveId, activeQuery)
 
   const startDownloadMutation = useStartNodeDownload(effectiveId)
+  const cancelQueueMutation = useCancelNodeQueueDownload(effectiveId)
+  const { data: queueData, refetch: refetchQueue } = useNodeUsenetQueue(
+    effectiveId,
+    queuedGuids.size > 0 ? 1500 : 3000,
+  )
+  const { data: historyItems = [], refetch: refetchHistory } = useNodeUsenetHistory(effectiveId)
   const { data: providers } = useNodeProviders(effectiveId)
   const { data: usenetConfig } = useNodeUsenetConfig(effectiveId)
   const torrentConfigured = hasConfiguredDownloader(providers?.downloaders, 'torrent')
   const usenetConfigured =
     hasConfiguredDownloader(providers?.downloaders, 'usenet') ||
-    Boolean(usenetConfig?.sabnzbd?.configured)
+    isSabnzbdConfigured(usenetConfig?.sabnzbd)
   const searching = isLoading || isRefetching
 
   const handleSearch = (e: React.FormEvent) => {
@@ -99,6 +127,8 @@ export function NodeGameSearchModal({
   const queueableCompanions = (updates: ServerProwlarrRelease[]) =>
     updates.filter((update) => {
       if (queuedGuids.has(update.guid)) return false
+      const qItem = findReleaseQueueItem(update, queueData?.items ?? [], trackedNzoMap.get(update.guid))
+      if (qItem) return false
       const downloadUrl = releaseDownloadUrl(update)
       return !releaseQueueBlockReason(
         { protocol: inferReleaseProtocol(update), download_url: downloadUrl },
@@ -114,15 +144,54 @@ export function NodeGameSearchModal({
     )
     if (blocked) throw new Error(blocked)
     setPendingGuid(release.guid)
-    await startDownloadMutation.mutateAsync({
-      title: release.title,
-      download_url: downloadUrl,
-      category: 'games',
-      protocol: inferReleaseProtocol(release),
-      media_item_id: mediaItemId || null,
-      size: release.size || null,
-    })
-    setQueuedGuids((prev) => new Set(prev).add(release.guid))
+    try {
+      const res = await startDownloadMutation.mutateAsync({
+        title: release.title,
+        download_url: downloadUrl,
+        category: 'games',
+        protocol: inferReleaseProtocol(release),
+        media_item_id: mediaItemId || null,
+        size: release.size || null,
+      })
+      const nzoId = (res as { nzo_id?: string } | undefined)?.nzo_id
+      if (nzoId) {
+        setTrackedNzoMap((prev) => new Map(prev).set(release.guid, nzoId))
+      }
+      setQueuedGuids((prev) => new Set(prev).add(release.guid))
+      void refetchQueue()
+      void refetchHistory()
+    } finally {
+      setPendingGuid(null)
+    }
+  }
+
+  const handleCancelQueue = async (nzoId: string, guid: string) => {
+    try {
+      await cancelQueueMutation.mutateAsync(nzoId)
+      setQueuedGuids((prev) => {
+        const next = new Set(prev)
+        next.delete(guid)
+        return next
+      })
+      setTrackedNzoMap((prev) => {
+        const next = new Map(prev)
+        next.delete(guid)
+        return next
+      })
+      void refetchQueue()
+      toast({
+        title: 'Download cancelled',
+        description: 'Download removed from downloader queue.',
+        variant: 'neutral',
+      })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to cancel download'
+      toast({
+        title: 'Cancel failed',
+        description: message,
+        variant: 'error',
+      })
+    }
   }
 
   const handleQueueRelease = async (
@@ -255,6 +324,30 @@ export function NodeGameSearchModal({
         </button>
       </form>
 
+      {queueData && queueData.items && queueData.items.length > 0 && (
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-blue-500/25 bg-blue-500/10 px-3.5 py-2 text-xs text-blue-200">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-400 shrink-0" />
+            <span>
+              Downloader: <strong>{queueData.items.length}</strong> {queueData.items.length === 1 ? 'item' : 'items'} in queue
+            </span>
+            {queueData.speed && queueData.speed !== '0 B/s' && (
+              <span className="rounded-md bg-blue-500/20 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-blue-300">
+                {queueData.speed}
+              </span>
+            )}
+            {queueData.time_left && (
+              <span className="text-white/60 tabular-nums">
+                ETA: {queueData.time_left}
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] text-white/50 capitalize font-medium">
+            {queueData.status || 'Downloading'}
+          </span>
+        </div>
+      )}
+
       <div className="mt-4 flex min-h-0 flex-1 flex-col">
         {!activeQuery ? (
           <EmptyState
@@ -349,7 +442,11 @@ export function NodeGameSearchModal({
                     queueDisabled={startDownloadMutation.isPending}
                     torrentConfigured={torrentConfigured}
                     usenetConfigured={usenetConfigured}
+                    queueItems={queueData?.items ?? []}
+                    historyItems={historyItems}
+                    trackedNzoMap={trackedNzoMap}
                     onQueue={handleQueueRelease}
+                    onCancelQueue={handleCancelQueue}
                   />
                 ))}
               </div>
@@ -398,6 +495,52 @@ export function NodeGameSearchModal({
 
 export const ServerGameSearchModal = NodeGameSearchModal
 
+export function normalizeReleaseKey(str: string): string {
+  return str.toLowerCase().replace(/[\s._-]+/g, ' ').trim()
+}
+
+export function findReleaseQueueItem(
+  release: ServerProwlarrRelease,
+  queueItems: ServerSabnzbdQueueItem[],
+  trackedNzoId?: string,
+): ServerSabnzbdQueueItem | null {
+  if (trackedNzoId) {
+    const direct = queueItems.find((item) => item.nzo_id === trackedNzoId)
+    if (direct) return direct
+  }
+  const cleanTitle = normalizeReleaseKey(release.title)
+  if (!cleanTitle) return null
+  return (
+    queueItems.find((item) => {
+      if (item.nzo_id === release.guid) return true
+      const itemTitle = normalizeReleaseKey(item.filename)
+      if (!itemTitle) return false
+      return itemTitle === cleanTitle || itemTitle.includes(cleanTitle) || cleanTitle.includes(itemTitle)
+    }) || null
+  )
+}
+
+export function findReleaseHistoryItem(
+  release: ServerProwlarrRelease,
+  historyItems: ServerDownloadHistoryItem[],
+  trackedNzoId?: string,
+): ServerDownloadHistoryItem | null {
+  if (trackedNzoId) {
+    const direct = historyItems.find((item) => item.nzo_id === trackedNzoId)
+    if (direct) return direct
+  }
+  const cleanTitle = normalizeReleaseKey(release.title)
+  if (!cleanTitle) return null
+  return (
+    historyItems.find((item) => {
+      if (item.nzo_id === release.guid) return true
+      const itemTitle = normalizeReleaseKey(item.title)
+      if (!itemTitle) return false
+      return itemTitle === cleanTitle || itemTitle.includes(cleanTitle) || cleanTitle.includes(itemTitle)
+    }) || null
+  )
+}
+
 function EditionBlock({
   group,
   queuedGuids,
@@ -405,7 +548,11 @@ function EditionBlock({
   queueDisabled,
   torrentConfigured,
   usenetConfigured,
+  queueItems,
+  historyItems,
+  trackedNzoMap,
   onQueue,
+  onCancelQueue,
 }: {
   group: EditionResultGroup
   queuedGuids: Set<string>
@@ -413,7 +560,11 @@ function EditionBlock({
   queueDisabled: boolean
   torrentConfigured: boolean
   usenetConfigured: boolean
+  queueItems: ServerSabnzbdQueueItem[]
+  historyItems: ServerDownloadHistoryItem[]
+  trackedNzoMap: Map<string, string>
   onQueue: (release: ServerProwlarrRelease, companionUpdates?: ServerProwlarrRelease[]) => void
+  onCancelQueue: (nzoId: string, guid: string) => void
 }) {
   return (
     <section>
@@ -431,7 +582,11 @@ function EditionBlock({
           queueDisabled={queueDisabled}
           torrentConfigured={torrentConfigured}
           usenetConfigured={usenetConfigured}
+          queueItems={queueItems}
+          historyItems={historyItems}
+          trackedNzoMap={trackedNzoMap}
           onQueue={onQueue}
+          onCancelQueue={onCancelQueue}
         />
       ))}
     </section>
@@ -445,7 +600,11 @@ function PackBlock({
   queueDisabled,
   torrentConfigured,
   usenetConfigured,
+  queueItems,
+  historyItems,
+  trackedNzoMap,
   onQueue,
+  onCancelQueue,
 }: {
   pack: GamePack
   queuedGuids: Set<string>
@@ -453,7 +612,11 @@ function PackBlock({
   queueDisabled: boolean
   torrentConfigured: boolean
   usenetConfigured: boolean
+  queueItems: ServerSabnzbdQueueItem[]
+  historyItems: ServerDownloadHistoryItem[]
+  trackedNzoMap: Map<string, string>
   onQueue: (release: ServerProwlarrRelease, companionUpdates?: ServerProwlarrRelease[]) => void
+  onCancelQueue: (nzoId: string, guid: string) => void
 }) {
   const [updatesOpen, setUpdatesOpen] = useState(pack.updates.length > 0)
   const releaseCount = pack.releases.length
@@ -468,19 +631,28 @@ function PackBlock({
           {updateCount > 0 ? ` · ${updateCount} update${updateCount === 1 ? '' : 's'}` : ''}
         </p>
       </div>
-      {pack.releases.map((item) => (
-        <ReleaseRow
-          key={item.release.guid}
-          release={item.release}
-          version={item.parsed.version}
-          isQueued={queuedGuids.has(item.release.guid)}
-          isPending={pendingGuid === item.release.guid}
-          disabled={queueDisabled}
-          torrentConfigured={torrentConfigured}
-          usenetConfigured={usenetConfigured}
-          onQueue={() => onQueue(item.release, pack.updates.map((update) => update.release))}
-        />
-      ))}
+      {pack.releases.map((item) => {
+        const trackedNzo = trackedNzoMap.get(item.release.guid)
+        const qItem = findReleaseQueueItem(item.release, queueItems, trackedNzo)
+        const hItem = findReleaseHistoryItem(item.release, historyItems, trackedNzo)
+        const isHistoryCompleted = hItem?.status === 'completed'
+        return (
+          <ReleaseRow
+            key={item.release.guid}
+            release={item.release}
+            version={item.parsed.version}
+            isQueued={queuedGuids.has(item.release.guid)}
+            isPending={pendingGuid === item.release.guid}
+            disabled={queueDisabled}
+            torrentConfigured={torrentConfigured}
+            usenetConfigured={usenetConfigured}
+            queueItem={qItem}
+            isHistoryCompleted={isHistoryCompleted}
+            onQueue={() => onQueue(item.release, pack.updates.map((update) => update.release))}
+            onCancelQueue={qItem ? () => onCancelQueue(qItem.nzo_id, item.release.guid) : undefined}
+          />
+        )
+      })}
       {pack.updates.length > 0 && (
         <div>
           <button
@@ -494,21 +666,30 @@ function PackBlock({
             <ChevronDown className={cn('ml-auto h-3.5 w-3.5 transition-transform', updatesOpen && 'rotate-180')} />
           </button>
           {updatesOpen &&
-            pack.updates.map((item) => (
-              <ReleaseRow
-                key={item.release.guid}
-                release={item.release}
-                kind="update"
-                version={item.parsed.version}
-                indented
-                isQueued={queuedGuids.has(item.release.guid)}
-                isPending={pendingGuid === item.release.guid}
-                disabled={queueDisabled}
-                torrentConfigured={torrentConfigured}
-                usenetConfigured={usenetConfigured}
-                onQueue={() => onQueue(item.release)}
-              />
-            ))}
+            pack.updates.map((item) => {
+              const trackedNzo = trackedNzoMap.get(item.release.guid)
+              const qItem = findReleaseQueueItem(item.release, queueItems, trackedNzo)
+              const hItem = findReleaseHistoryItem(item.release, historyItems, trackedNzo)
+              const isHistoryCompleted = hItem?.status === 'completed'
+              return (
+                <ReleaseRow
+                  key={item.release.guid}
+                  release={item.release}
+                  kind="update"
+                  version={item.parsed.version}
+                  indented
+                  isQueued={queuedGuids.has(item.release.guid)}
+                  isPending={pendingGuid === item.release.guid}
+                  disabled={queueDisabled}
+                  torrentConfigured={torrentConfigured}
+                  usenetConfigured={usenetConfigured}
+                  queueItem={qItem}
+                  isHistoryCompleted={isHistoryCompleted}
+                  onQueue={() => onQueue(item.release)}
+                  onCancelQueue={qItem ? () => onCancelQueue(qItem.nzo_id, item.release.guid) : undefined}
+                />
+              )
+            })}
         </div>
       )}
     </div>
@@ -547,7 +728,10 @@ function ReleaseRow({
   disabled,
   torrentConfigured,
   usenetConfigured,
+  queueItem,
+  isHistoryCompleted,
   onQueue,
+  onCancelQueue,
 }: {
   release: ServerProwlarrRelease
   kind?: 'game' | 'update' | 'dlc' | 'other'
@@ -558,7 +742,10 @@ function ReleaseRow({
   disabled: boolean
   torrentConfigured: boolean
   usenetConfigured: boolean
+  queueItem?: ServerSabnzbdQueueItem | null
+  isHistoryCompleted?: boolean
   onQueue: () => void
+  onCancelQueue?: () => void
 }) {
   const badges = extractReleaseBadges(release.title)
   const protocolBadge = getProtocolBadgeInfo(release.protocol)
@@ -571,6 +758,14 @@ function ReleaseRow({
   const canQueue = !blockReason
   const protocol = (release.protocol || '').toLowerCase()
   const kindBadge = kindLabel(kind, version)
+
+  const pct = Math.min(100, Math.max(0, queueItem?.percentage ?? 0))
+  const queueStatus = (queueItem?.status || 'Downloading').toLowerCase()
+  const isPaused = queueStatus.includes('pause')
+  const isExtracting =
+    queueStatus.includes('unpack') ||
+    queueStatus.includes('extract') ||
+    queueStatus.includes('verif')
 
   return (
     <div
@@ -626,7 +821,7 @@ function ReleaseRow({
           <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-white/70">
             {release.indexer}
           </span>
-          {release.seeders != null && (
+          {release.protocol === 'torrent' && release.seeders != null && (
             <>
               <span className="text-white/20">·</span>
               <span className={cn('tabular-nums', seederClass(release.seeders))}>
@@ -661,11 +856,64 @@ function ReleaseRow({
       </div>
 
       <div className="shrink-0 self-end sm:self-center">
-        {isQueued ? (
+        {queueItem ? (
+          <div className="flex items-center gap-2">
+            <div
+              className="relative inline-flex min-w-[150px] max-w-[220px] items-center justify-between overflow-hidden rounded-xl border border-blue-500/30 bg-blue-950/40 px-3 py-1.5 text-xs text-white shadow-sm"
+              title={`${queueItem.status} — ${pct.toFixed(1)}%${queueItem.speed ? ` at ${queueItem.speed}` : ''}${queueItem.time_left ? ` (${queueItem.time_left} left)` : ''}`}
+            >
+              {/* Animated Progress Fill */}
+              <span
+                className={cn(
+                  'absolute inset-y-0 left-0 transition-[width] duration-500 ease-out',
+                  isPaused ? 'bg-amber-500/35' : isExtracting ? 'bg-purple-500/35' : 'bg-blue-500/40',
+                )}
+                style={{ width: `${Math.max(4, pct)}%` }}
+              />
+              <span className="relative z-10 flex items-center gap-1.5">
+                {isPaused ? (
+                  <Pause className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                ) : (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400 shrink-0" />
+                )}
+                <span className="tabular-nums font-mono font-semibold text-[11px]">
+                  {pct.toFixed(0)}%
+                </span>
+                {queueItem.speed && queueItem.speed !== '0 B/s' && (
+                  <span className="text-[10px] text-white/70 font-mono hidden sm:inline">
+                    {queueItem.speed}
+                  </span>
+                )}
+              </span>
+              {queueItem.time_left && (
+                <span className="relative z-10 text-[10px] text-white/50 hidden md:inline ml-2 tabular-nums">
+                  {queueItem.time_left}
+                </span>
+              )}
+            </div>
+            {onCancelQueue && (
+              <button
+                type="button"
+                onClick={onCancelQueue}
+                title="Cancel download in SABnzbd"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-500/25 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        ) : isHistoryCompleted ? (
           <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-400">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            Queued
+            Completed
           </span>
+        ) : isQueued ? (
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/15 px-3 py-1.5 text-xs font-bold text-blue-400">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
+              Queued…
+            </span>
+          </div>
         ) : (
           <button
             type="button"

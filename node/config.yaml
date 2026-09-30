@@ -30,7 +30,7 @@ saves:
     max_snapshots_per_game: 10
     auto_backup_on_exit: true
 usenet:
-    enabled: false
+    enabled: true
     sabnzbd:
         host: server.diogodasilva.com
         port: 443
@@ -38,16 +38,12 @@ usenet:
         api_key: 24b204f4b0634ffca64e4c6f5b920acc
         use_ssl: true
         category: games
-        complete_dir: /Downloads/Complete
+        complete_dir: ""
         local_complete_dir: ""
-        remote_path: /Downloads
-        host_path: /server/Downloads
-        linked_library_path: /server/Downloads
-        path_mappings:
-            - remote_path: /Downloads
-              host_path: /server/Downloads
-            - remote_path: /Games
-              host_path: /server/Games
+        remote_path: ""
+        host_path: ""
+        linked_library_path: ""
+        path_mappings: []
     prowlarr:
         host: server.diogodasilva.com
         port: 443

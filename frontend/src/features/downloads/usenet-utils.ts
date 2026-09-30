@@ -1,6 +1,11 @@
 /** Dedicated utility functions for Usenet (Prowlarr & SABnzbd) releases and metrics. */
 
-import type { ProwlarrIndexerItem, ServerProwlarrRelease } from './usenet-types';
+import type {
+  ProwlarrIndexerItem,
+  ServerProwlarrConfig,
+  ServerProwlarrRelease,
+  ServerSabnzbdConfig,
+} from './usenet-types';
 
 export interface ReleaseBadge {
   label: string;
@@ -236,5 +241,29 @@ export function calculateIndexerStats(
   const torrent = indexers.filter((i) => (i.protocol || '').toLowerCase() === 'torrent').length;
   const enabled = indexers.filter((i) => i.enable !== false).length;
   return { total, usenet, torrent, enabled };
+}
+
+/** Check if Prowlarr has host and credentials/flags configured. */
+export function isProwlarrConfigured(
+  prowlarr?: Partial<ServerProwlarrConfig> | null
+): boolean {
+  if (!prowlarr) return false;
+  const host = prowlarr.host?.trim();
+  if (!host) return false;
+  const key = prowlarr.apiKey || prowlarr.api_key;
+  const flag = prowlarr.configured || prowlarr.hasApiKey || prowlarr.has_api_key;
+  return Boolean(key || flag);
+}
+
+/** Check if SABnzbd has host and credentials/flags configured. */
+export function isSabnzbdConfigured(
+  sabnzbd?: Partial<ServerSabnzbdConfig> | null
+): boolean {
+  if (!sabnzbd) return false;
+  const host = sabnzbd.host?.trim();
+  if (!host) return false;
+  const key = sabnzbd.apiKey || sabnzbd.api_key;
+  const flag = sabnzbd.configured || sabnzbd.hasApiKey || sabnzbd.has_api_key;
+  return Boolean(key || flag);
 }
 

@@ -91,63 +91,63 @@ func (h *HeartbeatRunner) Stop() {
 	close(h.stopChan)
 }
 
+func (h *HeartbeatRunner) SendOnce() (time.Duration, error) {
+	if !h.cfg.Server.EnableHeartbeat {
+		return 30 * time.Second, nil
+	}
+
+	registryURL := ResolveRegistryURL(h.cfg)
+	if registryURL == "" {
+		return 30 * time.Second, nil
+	}
+
+	localIP := GetLocalIP()
+	port := h.cfg.Server.Port
+
+	payload := HeartbeatPayload{
+		ServerName: h.cfg.Server.Name,
+		LocalEndpoints: []string{
+			fmt.Sprintf("http://%s:%d", localIP, port),
+			fmt.Sprintf("http://127.0.0.1:%d", port),
+		},
+		Port:      port,
+		AuthToken: h.cfg.Server.AuthToken,
+		ClaimCode: h.claimMgr.CurrentCode(),
+		Claimed:   h.claimMgr.IsClaimed(),
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return 15 * time.Second, err
+	}
+
+	targetURL := fmt.Sprintf("%s/v1/servers/heartbeat", registryURL)
+	resp, err := h.client.Post(targetURL, "application/json", bytes.NewReader(data))
+	if err != nil {
+		fmt.Printf("[Heartbeat] Failed to reach %s: %v\n", targetURL, err)
+		return 15 * time.Second, err
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		fmt.Printf("[Heartbeat] Server heartbeat announced to %s (claimed=%t)\n", targetURL, payload.Claimed)
+		return 5 * time.Minute, nil
+	}
+	fmt.Printf("[Heartbeat] %s returned HTTP %d\n", targetURL, resp.StatusCode)
+	return 15 * time.Second, fmt.Errorf("HTTP %d", resp.StatusCode)
+}
+
 func (h *HeartbeatRunner) loop() {
 	delay := 5 * time.Second
 
 	for {
 		select {
 		case <-time.After(delay):
-			if !h.cfg.Server.EnableHeartbeat {
-				delay = 30 * time.Second
-				continue
-			}
-
-			registryURL := ResolveRegistryURL(h.cfg)
-			if registryURL == "" {
-				delay = 30 * time.Second
-				continue
-			}
-
-			localIP := GetLocalIP()
-			port := h.cfg.Server.Port
-
-			payload := HeartbeatPayload{
-				ServerName: h.cfg.Server.Name,
-				LocalEndpoints: []string{
-					fmt.Sprintf("http://%s:%d", localIP, port),
-					fmt.Sprintf("http://127.0.0.1:%d", port),
-				},
-				Port:      port,
-				AuthToken: h.cfg.Server.AuthToken,
-				ClaimCode: h.claimMgr.CurrentCode(),
-				Claimed:   h.claimMgr.IsClaimed(),
-			}
-
-			data, err := json.Marshal(payload)
-			if err != nil {
-				delay = 15 * time.Second
-				continue
-			}
-
-			targetURL := fmt.Sprintf("%s/v1/servers/heartbeat", registryURL)
-			resp, err := h.client.Post(targetURL, "application/json", bytes.NewReader(data))
-			if err != nil {
-				fmt.Printf("[Heartbeat] Failed to reach %s: %v\n", targetURL, err)
-				delay = 15 * time.Second
-				continue
-			}
-			resp.Body.Close()
-
-			if resp.StatusCode == http.StatusOK {
-				fmt.Printf("[Heartbeat] Server heartbeat announced to %s (claimed=%t)\n", targetURL, payload.Claimed)
-				delay = 5 * time.Minute
-			} else {
-				fmt.Printf("[Heartbeat] %s returned HTTP %d\n", targetURL, resp.StatusCode)
-				delay = 15 * time.Second
-			}
-
+			nextDelay, _ := h.SendOnce()
+			delay = nextDelay
 		case <-h.stopChan:
 			return
 		}
 	}
 }
+

@@ -10,12 +10,15 @@ import (
 )
 
 type ProviderInfo struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Protocol    string `json:"protocol"`
-	Configured  bool   `json:"configured"`
-	Connected   bool   `json:"connected"`
-	StatusText  string `json:"status_text"`
+	Name         string `json:"name"`
+	DisplayName  string `json:"display_name"`
+	Type         string `json:"type"`
+	ProviderType string `json:"provider_type"`
+	Protocol     string `json:"protocol"`
+	Configured   bool   `json:"configured"`
+	Connected    bool   `json:"connected"`
+	IsActive     bool   `json:"is_active"`
+	StatusText   string `json:"status_text"`
 }
 
 type ProviderManager struct {
@@ -55,31 +58,40 @@ func (pm *ProviderManager) ListProviders() map[string]interface{} {
 
 	downloaders := []ProviderInfo{
 		{
-			Name:       "sabnzbd",
-			Type:       "downloader",
-			Protocol:   "usenet",
-			Configured: sabConfigured,
-			Connected:  sabConnected,
-			StatusText: sabMsg,
+			Name:         "sabnzbd",
+			DisplayName:  "SABnzbd",
+			Type:         "downloader",
+			ProviderType: "downloader",
+			Protocol:     "usenet",
+			Configured:   sabConfigured,
+			Connected:    sabConnected,
+			IsActive:     true,
+			StatusText:   sabMsg,
 		},
 	}
 
 	searchProviders := []ProviderInfo{
 		{
-			Name:       "prowlarr",
-			Type:       "search_provider",
-			Protocol:   "multi",
-			Configured: prowConfigured,
-			Connected:  prowConnected,
-			StatusText: prowMsg,
+			Name:         "prowlarr",
+			DisplayName:  "Prowlarr",
+			Type:         "indexer",
+			ProviderType: "indexer-provider",
+			Protocol:     "multi",
+			Configured:   prowConfigured,
+			Connected:    prowConnected,
+			IsActive:     true,
+			StatusText:   prowMsg,
 		},
 	}
 
 	return map[string]interface{}{
 		"downloaders":            downloaders,
 		"search_providers":       searchProviders,
+		"indexers":               searchProviders,
+		"indexer_providers":      searchProviders,
 		"active_downloader":      "sabnzbd",
 		"active_search_provider": "prowlarr",
+		"active_indexer":         "prowlarr",
 	}
 }
 
@@ -99,13 +111,14 @@ func (pm *ProviderManager) TestProvider(providerType, name string) (map[string]i
 		return nil, fmt.Errorf("downloader '%s' not supported", name)
 	}
 
-	if ptype == "search_provider" || ptype == "search" || ptype == "indexer" || ptype == "indexers" {
+	if ptype == "search_provider" || ptype == "search-provider" || ptype == "search" ||
+		ptype == "indexer" || ptype == "indexers" || ptype == "indexer_provider" || ptype == "indexer-provider" {
 		if pname == "prowlarr" {
 			client := usenet.NewProwlarrClient(pm.cfg.Usenet.Prowlarr)
 			ok, msg := client.TestConnection()
 			return map[string]interface{}{"ok": ok, "message": msg}, nil
 		}
-		return nil, fmt.Errorf("search provider '%s' not supported", name)
+		return nil, fmt.Errorf("indexer provider '%s' not supported", name)
 	}
 
 	return nil, fmt.Errorf("unknown provider type '%s'", providerType)

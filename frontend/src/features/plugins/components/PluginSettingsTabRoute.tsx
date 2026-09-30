@@ -13,6 +13,7 @@ import { ServerRadarrSettingsModal } from '@/features/downloads/molecules/server
 import { ServerSonarrSettingsModal } from '@/features/downloads/molecules/server-sonarr-settings-modal'
 import { useServerRadarrConfig, useServerSonarrConfig } from '@/features/downloads/use-server-arr'
 import { pickConnectionNode } from '@/features/downloads/molecules/use-integration-target-server'
+import { useServerProviders } from '@/features/downloads/use-server-providers'
 import { PluginSettingsPage } from './PluginSettingsPage'
 import { useModal } from '@/lib/modals'
 
@@ -25,6 +26,14 @@ const LEGACY_SETTINGS_TABS: Record<string, { to: string; hash?: string }> = {
   proposals: { to: '/settings/library', hash: 'proposals' },
 }
 
+function openBoundModal(
+  openFn: (element: React.ReactNode) => () => void,
+  renderModal: (onClose: () => void) => React.ReactNode
+) {
+  let close = () => {}
+  close = openFn(renderModal(() => close()))
+}
+
 export function PluginSettingsTabRoute() {
   const { tabId } = useParams({ from: '/settings/$tabId' })
   const { tabs, isLoading } = usePluginTabs()
@@ -33,16 +42,33 @@ export function PluginSettingsTabRoute() {
   const { data: servers = [] } = useGameServers()
   const activeServer = pickConnectionNode(servers) || servers[0]
   const { data: usenetConfig } = useServerUsenetConfig(activeServer?.id)
+  const { data: providers } = useServerProviders(activeServer?.id)
   const { data: radarrConfig } = useServerRadarrConfig(activeServer?.id)
   const { data: sonarrConfig } = useServerSonarrConfig(activeServer?.id)
-  const isSabnzbdConfigured = Boolean(
-    usenetConfig?.sabnzbd?.host &&
-    Boolean(usenetConfig?.sabnzbd?.api_key || usenetConfig?.sabnzbd?.configured)
-  )
-  const isProwlarrConfigured = Boolean(
-    usenetConfig?.prowlarr?.host &&
-    Boolean(usenetConfig?.prowlarr?.api_key || usenetConfig?.prowlarr?.configured)
-  )
+
+  const isSabnzbdConfiguredState =
+    Boolean(
+      providers?.downloaders?.some(
+        (p) => p.name?.toLowerCase() === 'sabnzbd' && (p.connected || p.configured)
+      )
+    ) || isSabnzbdConfigured(usenetConfig?.sabnzbd)
+
+  const isProwlarrConfiguredState =
+    Boolean(
+      providers?.indexers?.some(
+        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+      ) ||
+      providers?.indexer_providers?.some(
+        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+      ) ||
+      providers?.search_providers?.some(
+        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+      )
+    ) || isProwlarrConfigured(usenetConfig?.prowlarr)
+
+  const isSabnzbdConfigured = isSabnzbdConfiguredState
+  const isProwlarrConfigured = isProwlarrConfiguredState
+
   const isRadarrConfigured = Boolean(
     radarrConfig?.host &&
     Boolean(radarrConfig?.apiKey || radarrConfig?.api_key || radarrConfig?.configured)
@@ -91,13 +117,13 @@ export function PluginSettingsTabRoute() {
                 <button
                   type="button"
                   onClick={() => {
-                    const close = openModal(
+                    openBoundModal(openModal, (onClose) => (
                       <ServerSabnzbdSettingsModal
                         serverId={activeServer?.id}
                         serverName={activeServer?.name}
-                        onClose={() => close()}
+                        onClose={onClose}
                       />
-                    )
+                    ))
                   }}
                   className={cn(
                     'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
@@ -119,13 +145,13 @@ export function PluginSettingsTabRoute() {
                 <button
                   type="button"
                   onClick={() => {
-                    const close = openModal(
+                    openBoundModal(openModal, (onClose) => (
                       <ServerProwlarrSettingsModal
                         serverId={activeServer?.id}
                         serverName={activeServer?.name}
-                        onClose={() => close()}
+                        onClose={onClose}
                       />
-                    )
+                    ))
                   }}
                   className={cn(
                     'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
@@ -147,13 +173,13 @@ export function PluginSettingsTabRoute() {
                 <button
                   type="button"
                   onClick={() => {
-                    const close = openModal(
+                    openBoundModal(openModal, (onClose) => (
                       <ServerRadarrSettingsModal
                         serverId={activeServer?.id}
                         serverName={activeServer?.name}
-                        onClose={() => close()}
+                        onClose={onClose}
                       />
-                    )
+                    ))
                   }}
                   className={cn(
                     'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
@@ -175,13 +201,13 @@ export function PluginSettingsTabRoute() {
                 <button
                   type="button"
                   onClick={() => {
-                    const close = openModal(
+                    openBoundModal(openModal, (onClose) => (
                       <ServerSonarrSettingsModal
                         serverId={activeServer?.id}
                         serverName={activeServer?.name}
-                        onClose={() => close()}
+                        onClose={onClose}
                       />
-                    )
+                    ))
                   }}
                   className={cn(
                     'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',

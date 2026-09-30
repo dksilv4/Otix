@@ -58,4 +58,69 @@ describe('indexer search wiring', () => {
     expect(parsed?.info_url).toBe('https://indexer.example/details/1')
     expect(parsed?.age_days).toBe(2)
   })
+
+  it('matches downloader active queue items and completed history to releases', async () => {
+    const { findReleaseQueueItem, findReleaseHistoryItem } = await import(
+      '../molecules/node-game-search-modal'
+    )
+
+    const release: ServerProwlarrRelease = {
+      guid: 'release-transport-fever-2',
+      title: 'Transport.Fever.2.MULTi10-ElAmigos',
+      size: 15_000_000_000,
+      download_url: 'https://nzbplanet.net/getnzb/123',
+      indexer: 'NzbPlanet',
+      protocol: 'usenet',
+    }
+
+    const queueItems = [
+      {
+        nzo_id: 'SABnzbd_nzo_abc123',
+        filename: 'Transport Fever 2 MULTi10 ElAmigos',
+        percentage: 42.5,
+        size_mb: 15000,
+        size_left_mb: 8625,
+        speed: '18.4 MB/s',
+        time_left: '7m 45s',
+        status: 'Downloading',
+      },
+    ]
+
+    // Match by cleaned title
+    const matchedByTitle = findReleaseQueueItem(release, queueItems)
+    expect(matchedByTitle).not.toBeNull()
+    expect(matchedByTitle?.nzo_id).toBe('SABnzbd_nzo_abc123')
+    expect(matchedByTitle?.percentage).toBe(42.5)
+    expect(matchedByTitle?.speed).toBe('18.4 MB/s')
+
+    // Match by direct tracked nzo_id
+    const matchedByNzo = findReleaseQueueItem(release, queueItems, 'SABnzbd_nzo_abc123')
+    expect(matchedByNzo?.nzo_id).toBe('SABnzbd_nzo_abc123')
+
+    // History match
+    const historyItems = [
+      {
+        id: 1,
+        nzo_id: 'SABnzbd_nzo_completed',
+        title: 'Transport.Fever.2.MULTi10-ElAmigos',
+        protocol: 'usenet',
+        status: 'completed',
+        percentage: 100,
+        size_bytes: 15_000_000_000,
+      },
+    ]
+    const matchedHistory = findReleaseHistoryItem(release, historyItems)
+    expect(matchedHistory).not.toBeNull()
+    expect(matchedHistory?.status).toBe('completed')
+  })
+
+  it('generates alternate numeral queries between Arabic and Roman numerals', async () => {
+    const { getAlternateNumeralQuery } = await import('../hooks/use-node-usenet')
+
+    expect(getAlternateNumeralQuery('Little Nightmares 3')).toBe('Little Nightmares III')
+    expect(getAlternateNumeralQuery('Little Nightmares III')).toBe('Little Nightmares 3')
+    expect(getAlternateNumeralQuery('Hades 2')).toBe('Hades II')
+    expect(getAlternateNumeralQuery('Grand Theft Auto IV')).toBe('Grand Theft Auto 4')
+    expect(getAlternateNumeralQuery('No Numbers Here')).toBeNull()
+  })
 })

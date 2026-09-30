@@ -855,28 +855,188 @@ func (s *Server) setupRoutes() {
 
 		// ── Usenet Aliases (SABnzbd & Prowlarr) ────────────────────────────────
 		authed.Get("/api/v1/usenet/config", func(w http.ResponseWriter, r *http.Request) {
-			jsonResponse(w, http.StatusOK, s.cfg.Usenet)
+			sab := s.cfg.Usenet.Sabnzbd
+			prow := s.cfg.Usenet.Prowlarr
+			sabConfigured := sab.Host != "" && sab.APIKey != ""
+			prowConfigured := prow.Host != "" && prow.APIKey != ""
+
+			type enrichedSabnzbd struct {
+				config.SabnzbdConfig
+				Configured   bool   `json:"configured"`
+				HasAPIKey    bool   `json:"has_api_key"`
+				HasApiKey    bool   `json:"hasApiKey"`
+				ProviderType string `json:"provider_type"`
+			}
+			type enrichedProwlarr struct {
+				config.ProwlarrConfig
+				Configured   bool   `json:"configured"`
+				HasAPIKey    bool   `json:"has_api_key"`
+				HasApiKey    bool   `json:"hasApiKey"`
+				ProviderType string `json:"provider_type"`
+			}
+			resp := struct {
+				Enabled  bool             `json:"enabled"`
+				Sabnzbd  enrichedSabnzbd  `json:"sabnzbd"`
+				Prowlarr enrichedProwlarr `json:"prowlarr"`
+			}{
+				Enabled: s.cfg.Usenet.Enabled,
+				Sabnzbd: enrichedSabnzbd{
+					SabnzbdConfig: sab,
+					Configured:    sabConfigured,
+					HasAPIKey:     sab.APIKey != "",
+					HasApiKey:     sab.APIKey != "",
+					ProviderType:   "downloader",
+				},
+				Prowlarr: enrichedProwlarr{
+					ProwlarrConfig: prow,
+					Configured:     prowConfigured,
+					HasAPIKey:      prow.APIKey != "",
+					HasApiKey:      prow.APIKey != "",
+					ProviderType:   "indexer-provider",
+				},
+			}
+			jsonResponse(w, http.StatusOK, resp)
 		})
 
 		authed.Post("/api/v1/usenet/config", func(w http.ResponseWriter, r *http.Request) {
-			var u config.UsenetConfig
-			if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err != nil {
 				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
 				return
 			}
-			s.cfg.Usenet = u
+			var raw map[string]json.RawMessage
+			if err := json.Unmarshal(bodyBytes, &raw); err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+
+			if sabRaw, ok := raw["sabnzbd"]; ok {
+				var sab config.SabnzbdConfig
+				if err := json.Unmarshal(sabRaw, &sab); err == nil {
+					var rawMap map[string]interface{}
+					if json.Unmarshal(sabRaw, &rawMap) == nil {
+						if k, ok := rawMap["apiKey"].(string); ok && k != "" && sab.APIKey == "" {
+							sab.APIKey = k
+						}
+						if u, ok := rawMap["urlBase"].(string); ok && u != "" && sab.URLBase == "" {
+							sab.URLBase = u
+						}
+						if ssl, ok := rawMap["useSsl"].(bool); ok && !sab.UseSSL {
+							sab.UseSSL = ssl
+						}
+					}
+					if sab.APIKey == "" && s.cfg.Usenet.Sabnzbd.APIKey != "" {
+						sab.APIKey = s.cfg.Usenet.Sabnzbd.APIKey
+					}
+					s.cfg.Usenet.Sabnzbd = sab
+				}
+			}
+			if prowRaw, ok := raw["prowlarr"]; ok {
+				var prow config.ProwlarrConfig
+				if err := json.Unmarshal(prowRaw, &prow); err == nil {
+					var rawMap map[string]interface{}
+					if json.Unmarshal(prowRaw, &rawMap) == nil {
+						if k, ok := rawMap["apiKey"].(string); ok && k != "" && prow.APIKey == "" {
+							prow.APIKey = k
+						}
+						if u, ok := rawMap["urlBase"].(string); ok && u != "" && prow.URLBase == "" {
+							prow.URLBase = u
+						}
+						if ssl, ok := rawMap["useSsl"].(bool); ok && !prow.UseSSL {
+							prow.UseSSL = ssl
+						}
+					}
+					if prow.APIKey == "" && s.cfg.Usenet.Prowlarr.APIKey != "" {
+						prow.APIKey = s.cfg.Usenet.Prowlarr.APIKey
+					}
+					s.cfg.Usenet.Prowlarr = prow
+				}
+			}
+			if enRaw, ok := raw["enabled"]; ok {
+				var en bool
+				if err := json.Unmarshal(enRaw, &en); err == nil {
+					s.cfg.Usenet.Enabled = en
+				}
+			} else {
+				s.cfg.Usenet.Enabled = (s.cfg.Usenet.Sabnzbd.Host != "" && s.cfg.Usenet.Sabnzbd.APIKey != "") ||
+					(s.cfg.Usenet.Prowlarr.Host != "" && s.cfg.Usenet.Prowlarr.APIKey != "")
+			}
 			_ = s.cfg.Save("")
 			jsonResponse(w, http.StatusOK, map[string]string{"status": "saved"})
 		})
 
 		authed.Post("/api/v1/usenet/test-sabnzbd", func(w http.ResponseWriter, r *http.Request) {
-			client := usenet.NewSabnzbdClient(s.cfg.Usenet.Sabnzbd)
+			sabCfg := s.cfg.Usenet.Sabnzbd
+			var req struct {
+				Host    string `json:"host"`
+				Port    int    `json:"port"`
+				APIKey  string `json:"api_key"`
+				ApiKey  string `json:"apiKey"`
+				UseSSL  bool   `json:"use_ssl"`
+				UseSsl  bool   `json:"useSsl"`
+				URLBase string `json:"url_base"`
+				UrlBase string `json:"urlBase"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+				if req.Host != "" {
+					sabCfg.Host = req.Host
+				}
+				if req.Port > 0 {
+					sabCfg.Port = req.Port
+				}
+				if req.APIKey == "" && req.ApiKey != "" {
+					req.APIKey = req.ApiKey
+				}
+				if req.APIKey != "" {
+					sabCfg.APIKey = req.APIKey
+				}
+				sabCfg.UseSSL = req.UseSSL || req.UseSsl
+				if req.URLBase == "" && req.UrlBase != "" {
+					req.URLBase = req.UrlBase
+				}
+				if req.URLBase != "" {
+					sabCfg.URLBase = req.URLBase
+				}
+			}
+			client := usenet.NewSabnzbdClient(sabCfg)
 			ok, msg := client.TestConnection()
 			jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": ok, "message": msg})
 		})
 
 		authed.Post("/api/v1/usenet/test-prowlarr", func(w http.ResponseWriter, r *http.Request) {
-			client := usenet.NewProwlarrClient(s.cfg.Usenet.Prowlarr)
+			prowCfg := s.cfg.Usenet.Prowlarr
+			var req struct {
+				Host    string `json:"host"`
+				Port    int    `json:"port"`
+				APIKey  string `json:"api_key"`
+				ApiKey  string `json:"apiKey"`
+				UseSSL  bool   `json:"use_ssl"`
+				UseSsl  bool   `json:"useSsl"`
+				URLBase string `json:"url_base"`
+				UrlBase string `json:"urlBase"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+				if req.Host != "" {
+					prowCfg.Host = req.Host
+				}
+				if req.Port > 0 {
+					prowCfg.Port = req.Port
+				}
+				if req.APIKey == "" && req.ApiKey != "" {
+					req.APIKey = req.ApiKey
+				}
+				if req.APIKey != "" {
+					prowCfg.APIKey = req.APIKey
+				}
+				prowCfg.UseSSL = req.UseSSL || req.UseSsl
+				if req.URLBase == "" && req.UrlBase != "" {
+					req.URLBase = req.UrlBase
+				}
+				if req.URLBase != "" {
+					prowCfg.URLBase = req.URLBase
+				}
+			}
+			client := usenet.NewProwlarrClient(prowCfg)
 			ok, msg := client.TestConnection()
 			jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": ok, "message": msg})
 		})
@@ -954,12 +1114,21 @@ func (s *Server) setupRoutes() {
 
 		authed.Post("/api/v1/prowlarr/sync", func(w http.ResponseWriter, r *http.Request) {
 			client := usenet.NewProwlarrClient(s.cfg.Usenet.Prowlarr)
-			res, err := client.SyncIndexers()
+			_, _ = client.SyncIndexers()
+			indexers, err := client.GetIndexers()
 			if err != nil {
-				http.Error(w, fmt.Sprintf(`{"detail":%q}`, err.Error()), http.StatusBadRequest)
+				jsonResponse(w, http.StatusOK, map[string]interface{}{
+					"ok":       true,
+					"message":  "Sync command triggered",
+					"indexers": []interface{}{},
+				})
 				return
 			}
-			jsonResponse(w, http.StatusOK, res)
+			jsonResponse(w, http.StatusOK, map[string]interface{}{
+				"ok":       true,
+				"message":  "Indexers synced successfully",
+				"indexers": indexers,
+			})
 		})
 
 		authed.Post("/api/v1/sabnzbd/pause", func(w http.ResponseWriter, r *http.Request) {

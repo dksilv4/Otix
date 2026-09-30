@@ -138,7 +138,7 @@ func ResolveServiceURL(host string, port int, useSSL bool, urlBase string) (root
 
 func newHTTPClient() *http.Client {
 	return &http.Client{
-		Timeout: 20 * time.Second,
+		Timeout: 60 * time.Second,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
@@ -436,9 +436,14 @@ func (c *ProwlarrClient) Search(query string, categories []int) ([]ProwlarrRelea
 	if len(cats) == 0 {
 		cats = c.cfg.Categories
 	}
+	if len(cats) == 0 {
+		cats = []int{1000, 4000}
+	}
 
 	params := url.Values{}
 	params.Set("query", query)
+	params.Set("limit", "100")
+	params.Set("type", "search")
 	for _, cat := range cats {
 		params.Add("categories", strconv.Itoa(cat))
 	}
@@ -449,6 +454,7 @@ func (c *ProwlarrClient) Search(query string, categories []int) ([]ProwlarrRelea
 		return nil, err
 	}
 	req.Header.Set("X-Api-Key", c.cfg.APIKey)
+	req.Header.Set("User-Agent", "Otix/1.0 (Node)")
 
 	resp, err := c.client.Do(req)
 	if err != nil {

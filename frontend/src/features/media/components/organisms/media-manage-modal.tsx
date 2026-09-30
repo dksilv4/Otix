@@ -155,11 +155,12 @@ export function MediaManageModal({ open, isExiting, onClose, mediaType, mediaId 
   const { toast } = useToast()
   const mirroring = useMirroring(Boolean(user?.isAdmin))
   const setMirroring = useSetMirroring()
-  const { data: assetData, isLoading } = useMediaAssets(mediaType, mediaId)
-  const selection = useSetArtworkSelection(mediaType, mediaId)
-  const mirrorKeep = useSetAssetMirrorKeep(mediaType, mediaId)
-  const textlessPick = useSetTextlessPick(mediaType, mediaId)
   const { data: detail } = useQuery(mediaQueries.detail(mediaType, mediaId))
+  const effectiveMediaId = detail?.id ? String(detail.id) : mediaId
+  const { data: assetData, isLoading } = useMediaAssets(mediaType, effectiveMediaId)
+  const selection = useSetArtworkSelection(mediaType, effectiveMediaId)
+  const mirrorKeep = useSetAssetMirrorKeep(mediaType, effectiveMediaId)
+  const textlessPick = useSetTextlessPick(mediaType, effectiveMediaId)
 
   const [animateIn, setAnimateIn] = useState(false)
   const [type, setType] = useState('poster')
@@ -235,8 +236,13 @@ export function MediaManageModal({ open, isExiting, onClose, mediaType, mediaId 
           : 'Choices are saved but images are no longer downloaded.',
         variant: 'success',
       })
-    } catch {
-      toast({ title: 'Failed to update the downloader', variant: 'error' })
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.message
+      toast({
+        title: 'Failed to update the downloader',
+        description: typeof msg === 'string' ? msg : undefined,
+        variant: 'error',
+      })
     }
   }
 
@@ -252,8 +258,13 @@ export function MediaManageModal({ open, isExiting, onClose, mediaType, mediaId 
           : `This image is now the ${CONTEXT_META[context].label.toLowerCase()} ${labelFor(activeAsset.assetType).toLowerCase()}.`,
         variant: 'success',
       })
-    } catch {
-      toast({ title: 'Failed to update artwork', variant: 'error' })
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.message
+      toast({
+        title: 'Failed to update artwork',
+        description: typeof msg === 'string' ? msg : undefined,
+        variant: 'error',
+      })
     }
   }
 
@@ -269,8 +280,13 @@ export function MediaManageModal({ open, isExiting, onClose, mediaType, mediaId 
           : 'Using the automatic best textless image again.',
         variant: 'success',
       })
-    } catch {
-      toast({ title: 'Failed to update the textless pick', variant: 'error' })
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.message
+      toast({
+        title: 'Failed to update the textless pick',
+        description: typeof msg === 'string' ? msg : undefined,
+        variant: 'error',
+      })
     }
   }
 
@@ -286,8 +302,13 @@ export function MediaManageModal({ open, isExiting, onClose, mediaType, mediaId 
           : 'Its local copy will be freed if it is not a chosen image.',
         variant: 'success',
       })
-    } catch {
-      toast({ title: 'Failed to update the mirror set', variant: 'error' })
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.message
+      toast({
+        title: 'Failed to update the mirror set',
+        description: typeof msg === 'string' ? msg : undefined,
+        variant: 'error',
+      })
     }
   }
 

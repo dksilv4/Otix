@@ -686,7 +686,7 @@ def usenet_test_prowlarr(server: UserGameServer, payload: dict) -> tuple[int, di
 
 def usenet_search(server: UserGameServer, query: str) -> tuple[int, dict | list]:
     return usenet_proxy_request(
-        server, "GET", "/api/v1/usenet/search", params={"query": query}, timeout=30.0
+        server, "GET", "/api/v1/usenet/search", params={"query": query}, timeout=60.0
     )
 
 
@@ -735,7 +735,7 @@ def downloads_search(
     if provider:
         params["provider"] = provider
     return usenet_proxy_request(
-        server, "GET", "/api/v1/downloads/search", params=params, timeout=30.0
+        server, "GET", "/api/v1/downloads/search", params=params, timeout=60.0
     )
 
 

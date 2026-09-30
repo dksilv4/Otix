@@ -10,6 +10,7 @@ import { CatalogStreamProvider } from "@/features/media/providers/catalog-stream
 import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permissions"
 import { useModal, ModalRoot } from "@/lib/modals"
 import { DecideWatchHost } from "@/features/discover/components/organisms/decide-watch-host"
+import { IndexerSearchHost } from "@/features/downloads/molecules/indexer-search-host"
 
 const ActivityModule = lazy(() =>
   import("@activity/components/organisms/activity-panel").then((m) => ({ default: m.ActivityModule })),
@@ -99,6 +100,7 @@ export function RootLayout() {
       </PanelProvider>
       <CommandPaletteMount />
       <DecideWatchHost />
+      <IndexerSearchHost />
       <ModalRoot />
     </div>
   )

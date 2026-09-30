@@ -8,7 +8,8 @@
   "min_app_version": "0.1.0",
   "permissions": ["network:external", "ui:settings"],
   "services": [
-    { "type": "search-provider", "protocol": "usenet" }
+    { "type": "indexer-provider", "protocol": "multi" },
+    { "type": "search-provider", "protocol": "multi" }
   ],
   "config": {
     "host": { "type": "string", "label": "Host", "default": "localhost" },

@@ -74,7 +74,12 @@ import {
   useProwlarrIndexers,
   useSyncProwlarrIndexers,
 } from '@/features/downloads/use-server-usenet'
-import { normalizeProwlarrIndexers } from '@/features/downloads/usenet-utils'
+import {
+  normalizeProwlarrIndexers,
+  isProwlarrConfigured as checkProwlarrConfigured,
+  isSabnzbdConfigured as checkSabnzbdConfigured,
+} from '@/features/downloads/usenet-utils'
+import { useServerProviders } from '@/features/downloads/use-server-providers'
 import type { ProwlarrIndexerItem } from '@/features/downloads/usenet-types'
 import { cn } from '@/lib/utils'
 
@@ -223,6 +228,7 @@ function NodeConnectionsGroup({
   const sonarrLiveId = expandedId === 'sonarr' ? server.id : undefined
 
   const { data: usenetConfig } = useServerUsenetConfig(server.id)
+  const { data: providers } = useServerProviders(server.id)
   const { data: radarrConfig } = useServerRadarrConfig(server.id)
   const { data: sonarrConfig } = useServerSonarrConfig(server.id)
   const { data: radarrMovies = [] } = useServerRadarrMovies(radarrLiveId)
@@ -237,14 +243,25 @@ function NodeConnectionsGroup({
   const syncProwlarrMutation = useSyncProwlarrIndexers(server.id)
   const prowlarrIndexers = fetchedProwlarrIndexers.length > 0 ? fetchedProwlarrIndexers : syncedProwlarrIndexers
 
-  const isSabnzbdConfigured = Boolean(
-    usenetConfig?.sabnzbd?.host &&
-    Boolean(usenetConfig?.sabnzbd?.api_key || usenetConfig?.sabnzbd?.configured)
-  )
-  const isProwlarrConfigured = Boolean(
-    usenetConfig?.prowlarr?.host &&
-    Boolean(usenetConfig?.prowlarr?.api_key || usenetConfig?.prowlarr?.configured)
-  )
+  const isSabnzbdConfigured =
+    Boolean(
+      providers?.downloaders?.some(
+        (p) => p.name?.toLowerCase() === 'sabnzbd' && (p.connected || p.configured)
+      )
+    ) || checkSabnzbdConfigured(usenetConfig?.sabnzbd)
+
+  const isProwlarrConfigured =
+    Boolean(
+      providers?.indexers?.some(
+        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+      ) ||
+      providers?.indexer_providers?.some(
+        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+      ) ||
+      providers?.search_providers?.some(
+        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+      )
+    ) || checkProwlarrConfigured(usenetConfig?.prowlarr)
   const isRadarrConfigured = Boolean(
     radarrConfig?.host &&
     Boolean(radarrConfig?.apiKey || radarrConfig?.api_key || radarrConfig?.configured)
@@ -321,11 +338,11 @@ function NodeConnectionsGroup({
     {
       id: 'prowlarr',
       name: 'Prowlarr',
-      keywords: 'prowlarr indexer search usenet torrent sync tracker',
+      keywords: 'prowlarr indexer provider search usenet torrent sync tracker',
       isConnected: isProwlarrConfigured,
       description: isProwlarrConfigured
-        ? `Configured on ${server.name}`
-        : 'Connect Prowlarr to index game releases across Usenet and Torrent trackers.',
+        ? `Configured on ${server.name} (Indexer Provider)`
+        : 'Connect Prowlarr as your indexer provider for Usenet and Torrent game releases.',
       brandColor: BRAND_COLORS.prowlarr,
       brandBg: BRAND_BG.prowlarr,
       icon: Search,

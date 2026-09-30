@@ -11,6 +11,7 @@ import { useModal } from '@/lib/modals'
 import { cn } from '@/lib/utils'
 import type { GameServer } from '../types'
 import { useServerUsenetConfig, useTestSabnzbd } from '../use-server-usenet'
+import { isSabnzbdConfigured } from '../usenet-utils'
 import { ServerSabnzbdSettingsModal } from './server-sabnzbd-settings-modal'
 
 export function NodeDownloaderCard({ server }: { server: GameServer }) {
@@ -21,9 +22,7 @@ export function NodeDownloaderCard({ server }: { server: GameServer }) {
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   const sab = usenetConfig?.sabnzbd
-  const isConfigured = Boolean(
-    sab?.host && Boolean(sab?.apiKey || sab?.api_key || sab?.has_api_key || sab?.configured),
-  )
+  const isConfigured = isSabnzbdConfigured(sab)
   const sabHost = sab?.host || '127.0.0.1'
   const sabPort = sab?.port || 8080
   const sabCategory = sab?.category || 'games'

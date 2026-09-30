@@ -101,22 +101,22 @@ urlpatterns = [
         name="match-proposal-reject",
     ),
     path(
-        "admin/media-items/<int:media_id>/download-assets",
+        "admin/media-items/<str:media_id>/download-assets",
         DownloadAssetsView.as_view(),
         name="admin-download-assets",
     ),
     path(
-        "admin/media-items/<int:media_id>/assets/<int:asset_id>/select",
+        "admin/media-items/<str:media_id>/assets/<int:asset_id>/select",
         ArtworkSelectionView.as_view(),
         name="admin-artwork-select",
     ),
     path(
-        "admin/media-items/<int:media_id>/assets/<int:asset_id>/textless",
+        "admin/media-items/<str:media_id>/assets/<int:asset_id>/textless",
         TextlessPickView.as_view(),
         name="admin-artwork-textless",
     ),
     path(
-        "admin/media-items/<int:media_id>/assets/<int:asset_id>/mirror",
+        "admin/media-items/<str:media_id>/assets/<int:asset_id>/mirror",
         AssetMirrorView.as_view(),
         name="admin-artwork-mirror",
     ),
@@ -214,7 +214,7 @@ urlpatterns = [
         name="media-detail",
     ),
     path(
-        "<str:media_type>/<int:media_id>/assets",
+        "<str:media_type>/<str:media_id>/assets",
         MediaAssetsView.as_view(),
         name="media-assets",
     ),

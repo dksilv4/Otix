@@ -37,6 +37,9 @@ export interface ServerSabnzbdConfig {
   configured?: boolean;
   has_api_key?: boolean;
   hasApiKey?: boolean;
+  connected?: boolean;
+  provider_type?: string;
+  providerType?: string;
 }
 
 export interface SabnzbdLibraryStatus {
@@ -60,11 +63,18 @@ export interface ServerProwlarrConfig {
   host: string;
   port: number;
   api_key: string;
+  apiKey?: string;
   use_ssl: boolean;
+  useSsl?: boolean;
   url_base?: string;
+  urlBase?: string;
   categories: number[];
   configured?: boolean;
   has_api_key?: boolean;
+  hasApiKey?: boolean;
+  connected?: boolean;
+  provider_type?: string;
+  providerType?: string;
 }
 
 export interface ServerUsenetConfig {

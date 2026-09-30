@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 MEDIA_ITEM_NOT_FOUND = "Media item not found"
 
 
-def resolve_media_pk(media_type: str, media_id: str | int) -> int | None:
+def resolve_media_pk(media_type: str | None, media_id: str | int) -> int | None:
     from apps.media.services.identity import CANONICAL_PROVIDER, find_media_id
 
     raw = str(media_id).strip()
@@ -43,9 +43,12 @@ def resolve_media_pk(media_type: str, media_id: str | int) -> int | None:
     # if absent, check if it's a canonical provider external ID
     if raw.isdigit():
         val = int(raw)
-        if MediaItem.objects.filter(pk=val, media_type=media_type).exists():
+        qs = MediaItem.objects.filter(pk=val)
+        if media_type:
+            qs = qs.filter(media_type=media_type)
+        if qs.exists():
             return val
-        canonical = CANONICAL_PROVIDER.get(media_type)
+        canonical = CANONICAL_PROVIDER.get(media_type) if media_type else None
         if canonical:
             found = find_media_id(canonical, raw, media_type)
             if found is not None:
@@ -72,11 +75,10 @@ def resolve_media_pk(media_type: str, media_id: str | int) -> int | None:
             return val
 
     # 2. Check slug match
-    slug_match = (
-        MediaItem.objects.filter(media_type=media_type, slug=raw)
-        .values_list("pk", flat=True)
-        .first()
-    )
+    slug_qs = MediaItem.objects.filter(slug=raw)
+    if media_type:
+        slug_qs = slug_qs.filter(media_type=media_type)
+    slug_match = slug_qs.values_list("pk", flat=True).first()
     if slug_match is not None:
         return slug_match
 
@@ -413,10 +415,13 @@ class DecideWatchView(APIView):
 class MediaAssetsView(APIView):
     """``GET /media/{media_type}/{media_id}/assets`` (admin-only)."""
 
-    def get(self, request, media_type: str, media_id: int) -> Response:
+    def get(self, request, media_type: str, media_id: str | int) -> Response:
         if not getattr(request.user, "is_staff", False):
             raise PermissionDenied("Admin privileges required")
-        item = MediaItem.objects.filter(pk=media_id).prefetch_related("assets").first()
+        pk = resolve_media_pk(media_type, media_id)
+        if pk is None:
+            raise NotFound(MEDIA_ITEM_NOT_FOUND)
+        item = MediaItem.objects.filter(pk=pk).prefetch_related("assets").first()
         if item is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
         # Materialized textless twins exist only to back a textless pick; the

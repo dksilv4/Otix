@@ -91,6 +91,12 @@ vi.mock('@/features/downloads/use-server-usenet', () => ({
   useTestProwlarr: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
+let mockProviders: Record<string, unknown> | null = null
+vi.mock('@/features/downloads/use-server-providers', () => ({
+  useServerProviders: () => ({ data: mockProviders, isLoading: false }),
+  useNodeProviders: () => ({ data: mockProviders, isLoading: false }),
+}))
+
 describe('Settings Integrations Modals Regression Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -444,5 +450,76 @@ describe('Settings Integrations Modals Regression Tests', () => {
       expect(within(epicCard).getByRole('button', { name: /resolve with steamgrid/i })).toBeInTheDocument()
     })
   })
+
+  it('renders Prowlarr and SABnzbd as Connected when configured with camelCase apiKey and configured flag', async () => {
+    mockGameServers = [
+      { id: 8, name: 'Node ID:1', primaryUrl: 'http://127.0.0.1:8090', isOnline: true },
+    ]
+    mockUsenetConfig = {
+      prowlarr: {
+        host: 'server.diogodasilva.com',
+        port: 443,
+        urlBase: '/prowlarr',
+        apiKey: '4e03935ffed34d0a887df2f938dd724e',
+        useSsl: true,
+        configured: true,
+      },
+      sabnzbd: {
+        host: 'server.diogodasilva.com',
+        port: 8080,
+        urlBase: '/sabnzbd',
+        apiKey: 'some-sabnzbd-key',
+        useSsl: false,
+        configured: true,
+      },
+    }
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Node ID:1')).toBeInTheDocument()
+    })
+
+    const serverSection = screen.getByText('Node ID:1').closest('.overflow-hidden') as HTMLElement
+    const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
+    const sabnzbdCard = within(serverSection).getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
+
+    expect(within(prowlarrCard).getByText('Connected')).toBeInTheDocument()
+    expect(within(prowlarrCard).getByText(/Configured on Node ID:1 \(Indexer Provider\)/i)).toBeInTheDocument()
+    expect(within(prowlarrCard).queryByRole('button', { name: /^connect$/i })).not.toBeInTheDocument()
+
+    expect(within(sabnzbdCard).getByText('Connected')).toBeInTheDocument()
+    expect(within(sabnzbdCard).getByText(/Configured on Node ID:1/i)).toBeInTheDocument()
+    expect(within(sabnzbdCard).queryByRole('button', { name: /^connect$/i })).not.toBeInTheDocument()
+  })
+
+  it('renders Prowlarr and SABnzbd as Connected when reported as connected by node providers', async () => {
+    mockGameServers = [
+      { id: 8, name: 'Node ID:1', primaryUrl: 'http://127.0.0.1:8090', isOnline: true },
+    ]
+    mockUsenetConfig = null
+    mockProviders = {
+      downloaders: [
+        { name: 'sabnzbd', display_name: 'SABnzbd', type: 'downloader', configured: true, connected: true },
+      ],
+      indexers: [
+        { name: 'prowlarr', display_name: 'Prowlarr', type: 'indexer', configured: true, connected: true },
+      ],
+    }
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Node ID:1')).toBeInTheDocument()
+    })
+
+    const serverSection = screen.getByText('Node ID:1').closest('.overflow-hidden') as HTMLElement
+    const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
+    const sabnzbdCard = within(serverSection).getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
+
+    expect(within(prowlarrCard).getByText('Connected')).toBeInTheDocument()
+    expect(within(sabnzbdCard).getByText('Connected')).toBeInTheDocument()
+  })
 })
+
 

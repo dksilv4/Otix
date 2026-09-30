@@ -2,6 +2,7 @@ import type { CommandProvider } from '../types'
 import { createNavigationProvider } from './navigation-provider'
 import { createMediaProvider } from './media-provider'
 import { createLauncherProvider } from './launcher-provider'
+import { createIndexerProvider } from './indexer-provider'
 import { createPluginsCommandProvider } from '@/features/plugins/providers/command-provider'
 
 /**
@@ -16,6 +17,7 @@ export function getDefaultHubProviders(): CommandProvider[] {
     createNavigationProvider(),
     createMediaProvider(),
     createLauncherProvider(),
+    createIndexerProvider(),
     createPluginsCommandProvider(),
   ]
 }
@@ -23,3 +25,4 @@ export function getDefaultHubProviders(): CommandProvider[] {
 export { createNavigationProvider } from './navigation-provider'
 export { createMediaProvider } from './media-provider'
 export { createLauncherProvider } from './launcher-provider'
+export { createIndexerProvider } from './indexer-provider'

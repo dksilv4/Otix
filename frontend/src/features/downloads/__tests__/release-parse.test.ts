@@ -250,7 +250,7 @@ describe('groupResultsByEditionAndPack', () => {
     )
 
     expect(groups).toHaveLength(1)
-    expect(groups[0].packs.map((pack) => pack.title)).toEqual(['v1.5', 'v1.4', 'No version'])
+    expect(groups[0].packs.map((pack) => pack.title)).toEqual(['v1.5', 'v1.4', 'Initial Release'])
     expect(groups[0].packs[0].releases.map((item) => item.release.guid)).toEqual(['royal'])
     expect(groups[0].packs[0].updates.map((item) => item.parsed.version)).toEqual(['1.5.3', '1.5.2'])
     expect(groups[0].packs[2].releases.map((item) => item.release.guid)).toEqual(['rune'])
@@ -271,5 +271,24 @@ describe('groupResultsByEditionAndPack', () => {
     expect(groups[0].packs[0].title).toBe('v1.5')
     expect(groups[0].packs[0].releases.map((item) => item.release.guid).sort()).toEqual(['ela', 'rune'])
     expect(groups[0].packs[0].updates.map((item) => item.release.guid)).toEqual(['u2'])
+  })
+
+  it('attaches updates to unversioned initial release for games like Little Nightmares 3', () => {
+    const groups = groupResultsByEditionAndPack(
+      [
+        release('Little.Nightmares.III-RUNE', { guid: 'ln3-initial', size: 15_000_000_000 }),
+        release('Little.Nightmares.III.Update.v1.0.1-RUNE', { guid: 'ln3-u1' }),
+        release('Little.Nightmares.III.Update.v1.0.2-RUNE', { guid: 'ln3-u2' }),
+      ],
+      'Little Nightmares 3',
+    )
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0].packs).toHaveLength(1)
+    const pack = groups[0].packs[0]
+    expect(pack.title).toBe('Initial Release')
+    expect(pack.version).toBeNull()
+    expect(pack.releases.map((r) => r.release.guid)).toEqual(['ln3-initial'])
+    expect(pack.updates.map((u) => u.release.guid)).toEqual(['ln3-u2', 'ln3-u1'])
   })
 })
