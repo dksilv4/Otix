@@ -5,8 +5,6 @@ import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useToast } from '@ui/molecules/toast'
 import { DkTabs, DkTabList, DkTab, DkTabPanel } from '@ui/molecules/tabs'
-import { NodeDownloaderCard } from '@/features/downloads/molecules/node-downloader-card'
-import { ImportNodeInstancesButton } from '@/features/downloads/molecules/import-node-instances-modal'
 import { useDeleteGameServer } from '@/features/downloads/use-server-downloads'
 import { isLocalDesktopNode, isLocalDesktopNodeId, getLocalDesktopNodeFallback } from '../local-desktop-node'
 import { useSettingsNode } from '../context/settings-node-context'
@@ -202,16 +200,6 @@ export function SettingsNodeDetailPage() {
             <QueryErrorBoundary label={`${tab.label.toLowerCase()} settings`}>
               {tab.id === 'paths' && <SettingsPathsSection nodeId={server.id} />}
               {tab.id === 'organize' && <SettingsOrganizeSection nodeId={server.id} />}
-              {tab.id === 'downloaders' && (
-                <div className="space-y-4">
-                  <SectionHeader
-                    title="Instances"
-                    description="SABnzbd on this node. Import also copies Prowlarr, Radarr, and Sonarr from another node."
-                    action={<ImportNodeInstancesButton dest={server} />}
-                  />
-                  <NodeDownloaderCard server={server} />
-                </div>
-              )}
               {tab.id === 'sharing' && <SettingsNodeSharingSection server={server} />}
               {tab.id === 'machine' && <NodeMachineSettings server={server} />}
             </QueryErrorBoundary>

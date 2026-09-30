@@ -113,7 +113,7 @@ describe('SettingsNodeDetailPage', () => {
     expect(screen.getByRole('heading', { name: 'Living Room PC' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Paths' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Organize' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Downloaders' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Sharing' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Machine' })).toBeInTheDocument()
     expect(screen.getByText('Paths for 1')).toBeInTheDocument()
   })

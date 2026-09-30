@@ -19,7 +19,7 @@ describe('node settings routes', () => {
   it('resolves tab hashes, defaulting to paths', () => {
     expect(resolveNodeSettingsTab('')).toBe('paths')
     expect(resolveNodeSettingsTab('#organize')).toBe('organize')
-    expect(resolveNodeSettingsTab('downloaders')).toBe('downloaders')
+    expect(resolveNodeSettingsTab('sharing')).toBe('sharing')
     expect(resolveNodeSettingsTab('#machine')).toBe('machine')
     expect(resolveNodeSettingsTab('#nope')).toBe('paths')
   })
@@ -32,10 +32,10 @@ describe('node settings routes', () => {
       to: '/settings/nodes/$nodeId',
       params: { nodeId: '1' },
     })
-    expect(nodeSettingsNavigateOptions(-1, 'downloaders')).toEqual({
+    expect(nodeSettingsNavigateOptions(-1, 'sharing')).toEqual({
       to: '/settings/nodes/$nodeId',
       params: { nodeId: '-1' },
-      hash: 'downloaders',
+      hash: 'sharing',
     })
   })
 })
