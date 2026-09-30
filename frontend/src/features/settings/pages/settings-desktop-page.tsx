@@ -17,7 +17,7 @@ import {
   Star,
   Trash2,
 } from 'lucide-react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useToast } from '@ui/molecules/toast'
@@ -40,6 +40,7 @@ import { NodeFileExplorerModal } from '@/features/downloads/molecules/node-file-
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { NodesFeatureTags } from '../components/nodes-feature-tags'
+import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
 import { useSettingsNode } from '../context/settings-node-context'
 import { isLocalDesktopNode } from '../local-desktop-node'
 import { nodeSettingsNavigateOptions } from '../node-settings'
@@ -49,7 +50,6 @@ export function SettingsNodesPage() {
   useSettingsHashScroll()
   const { toast } = useToast()
   const { openModal } = useModal()
-  const navigate = useNavigate()
 
   const { servers: gameServers, isLoading } = useSettingsNode()
   const deleteServerMutation = useDeleteGameServer()
@@ -63,6 +63,7 @@ export function SettingsNodesPage() {
   const [connectModalOpen, setConnectModalOpen] = useState(false)
   const [connectInitialUrl, setConnectInitialUrl] = useState('')
   const [nodeToDelete, setNodeToDelete] = useState<GameServer | null>(null)
+  const [selectedNodeForModal, setSelectedNodeForModal] = useState<GameServer | null>(null)
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [probeResults, setProbeResults] = useState<Record<number, ServerProbeResult>>({})
   const [probingServerId, setProbingServerId] = useState<number | null>(null)
@@ -559,7 +560,9 @@ export function SettingsNodesPage() {
                       <span>{formatBytes(server.storageFreeBytes)} free</span>
                     )}
 
-                    {(probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable) && (
+                    {(probeResults[server.id]?.remote_accessible ||
+                      probeResults[server.id]?.remoteAccessible ||
+                      probeResults[server.id]?.reachable) && (
                       <span className="inline-flex items-center gap-1 text-emerald-400 text-[11px]">
                         <Globe size={11} />
                         Remote OK ({probeResults[server.id].latency_ms ?? probeResults[server.id].latencyMs}ms)
@@ -598,10 +601,8 @@ export function SettingsNodesPage() {
                     type="button"
                     variant="primary"
                     size="sm"
-                    onClick={() =>
-                      navigate(nodeSettingsNavigateOptions(server.id))
-                    }
-                    className="gap-1.5 h-8 px-3 text-xs"
+                    onClick={() => setSelectedNodeForModal(server)}
+                    className="gap-1.5 h-8 px-3 text-xs cursor-pointer"
                   >
                     <span>Open</span>
                     <ChevronRight size={12} />
@@ -666,6 +667,14 @@ export function SettingsNodesPage() {
           initialNodeUrl={connectInitialUrl}
         />
       )}
+
+      <NodeSettingsModal
+        server={selectedNodeForModal}
+        open={Boolean(selectedNodeForModal)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedNodeForModal(null)
+        }}
+      />
     </div>
   )
 }

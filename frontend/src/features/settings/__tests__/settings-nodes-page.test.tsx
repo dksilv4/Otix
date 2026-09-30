@@ -84,7 +84,7 @@ describe('SettingsNodesPage', () => {
     expect(screen.getByText('Home Server')).toBeInTheDocument()
   })
 
-  it('opens node settings via Open button', async () => {
+  it('opens node settings modal via Open button', async () => {
     const user = userEvent.setup()
     render(
       <SettingsSaveProvider>
@@ -96,10 +96,8 @@ describe('SettingsNodesPage', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /^open$/i }))
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/settings/nodes/$nodeId',
-      params: { nodeId: '1' },
-    })
+    expect(screen.getByRole('tab', { name: 'Paths' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Machine' })).toBeInTheDocument()
   })
 
   it('renders claim with PIN tab when opening Connect node modal', async () => {
