@@ -1,5 +1,5 @@
-import { useId, type KeyboardEvent } from 'react'
-import { FolderOpen, X } from 'lucide-react'
+import { useId, useState, type KeyboardEvent } from 'react'
+import { FolderOpen, X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePickFolder } from './use-pick-folder'
 import type { FolderPickTarget } from './strategy'
@@ -19,10 +19,12 @@ export function PathInput({
   inputClassName,
   commitOnBlur = true,
   allowClear = true,
+  showConfirmButton = true,
+  confirmLabel,
 }: {
   value: string
   onChange: (value: string) => void
-  /** Called when the user browses to a folder, clears, or presses Enter to confirm a typed path. */
+  /** Called when the user browses to a folder, clears, presses Enter, or clicks Confirm. */
   onCommit?: (value: string) => void
   label?: string
   placeholder?: string
@@ -35,17 +37,33 @@ export function PathInput({
   inputClassName?: string
   commitOnBlur?: boolean
   allowClear?: boolean
+  showConfirmButton?: boolean
+  confirmLabel?: string
 }) {
   const autoId = useId()
   const inputId = id || autoId
   const { pick, canBrowse } = usePickFolder({ target, serverId })
   const browseTitle = canBrowse ? 'Browse folder' : 'Connect a game server to browse folders'
+  const [justConfirmed, setJustConfirmed] = useState(false)
+
+  const triggerFeedback = () => {
+    setJustConfirmed(true)
+    setTimeout(() => setJustConfirmed(false), 2200)
+  }
+
+  const handleConfirm = () => {
+    const next = value.trim()
+    if (!next) return
+    onCommit?.(next)
+    triggerFeedback()
+  }
 
   const handleBrowse = async () => {
     const dir = await pick()
     if (!dir) return
     onChange(dir)
     onCommit?.(dir)
+    triggerFeedback()
   }
 
   const handleClear = () => {
@@ -59,6 +77,7 @@ export function PathInput({
     const next = event.currentTarget.value.trim()
     onChange(next)
     onCommit?.(next)
+    triggerFeedback()
   }
 
   const handleBlur = () => {
@@ -85,7 +104,8 @@ export function PathInput({
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             className={cn(
-              'h-9 w-full rounded-xl bg-white/5 pl-3 pr-8 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10',
+              'h-9 w-full rounded-xl bg-white/5 pl-3 pr-8 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10 transition-all duration-200',
+              justConfirmed && 'ring-1 ring-emerald-500/60 bg-emerald-500/10 text-emerald-200',
               inputClassName,
             )}
           />
@@ -113,6 +133,27 @@ export function PathInput({
         >
           <FolderOpen className="h-4 w-4" />
         </button>
+        {showConfirmButton && Boolean(onCommit) && (
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!value.trim()}
+            title={justConfirmed ? 'Path confirmed!' : (confirmLabel || 'Confirm path')}
+            aria-label={confirmLabel || 'Confirm path'}
+            className={cn(
+              'inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
+              confirmLabel ? 'px-3' : 'w-9',
+              justConfirmed
+                ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300 shadow-sm shadow-emerald-500/20'
+                : 'border-white/10 bg-white/5 text-white/80 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300 active:scale-95',
+            )}
+          >
+            <Check className={cn('h-3.5 w-3.5', justConfirmed ? 'text-emerald-400' : 'text-current')} />
+            {confirmLabel && (
+              <span>{justConfirmed ? 'Confirmed!' : confirmLabel}</span>
+            )}
+          </button>
+        )}
       </div>
       {hint && <p className="text-[11px] text-white/50">{hint}</p>}
     </div>

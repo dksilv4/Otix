@@ -191,4 +191,37 @@ describe('PathInput', () => {
 
     expect(onCommit).toHaveBeenCalledWith('/enter/folder')
   })
+
+  it('commits and shows feedback when clicking the confirm button', async () => {
+    const user = userEvent.setup()
+    const onCommit = vi.fn()
+
+    function ConfirmHarness() {
+      const [value, setValue] = useState('')
+      return (
+        <PathInput
+          label="Confirmed folder"
+          value={value}
+          onChange={setValue}
+          onCommit={onCommit}
+          showConfirmButton
+          confirmLabel="Confirm"
+        />
+      )
+    }
+
+    render(<ConfirmHarness />)
+    const input = screen.getByLabelText('Confirmed folder')
+    const confirmBtn = screen.getByRole('button', { name: /Confirm/i })
+
+    // Disabled when empty
+    expect(confirmBtn).toBeDisabled()
+
+    await user.type(input, '/my/saved/games')
+    expect(confirmBtn).not.toBeDisabled()
+
+    await user.click(confirmBtn)
+    expect(onCommit).toHaveBeenCalledWith('/my/saved/games')
+    expect(screen.getByText('Confirmed!')).toBeInTheDocument()
+  })
 })

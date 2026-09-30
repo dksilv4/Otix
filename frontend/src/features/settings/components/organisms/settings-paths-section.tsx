@@ -6,6 +6,7 @@ import {
   Gamepad2,
   Disc,
   HardDrive,
+  Check,
 } from 'lucide-react'
 import { PathInput } from '@/components/path-picker'
 import { DkButton } from '@ui/atoms/button'
@@ -115,6 +116,7 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
   const [downloadOtixImages, setDownloadOtixImages] = useState(false)
   const [draftScanPath, setDraftScanPath] = useState('')
   const [draftScanType, setDraftScanType] = useState<'game' | 'iso'>('game')
+  const [justAddedPath, setJustAddedPath] = useState<string | null>(null)
 
   // Synchronize state from storage when remoteNodeId changes
   useEffect(() => {
@@ -686,6 +688,8 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       const updated = [...scanPaths, { path: p, type: typeToAdd }]
       await persistScanPaths(updated)
       setDraftScanPath('')
+      setJustAddedPath(p)
+      setTimeout(() => setJustAddedPath(null), 3000)
       toast({
         title: 'Scan Path Added',
         description: `Added ${p} to monitored scan paths.`,
@@ -856,6 +860,8 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
               value={gamesInstallPath}
               onChange={setGamesInstallPath}
               onCommit={handleSaveGamesInstallPath}
+              showConfirmButton
+              confirmLabel="Confirm"
               placeholder={desktop && !remoteNodeId ? 'e.g. C:\\Games or /Games' : 'e.g. /media/installed-games'}
               target={folderTarget}
               serverId={remoteNodeId ?? undefined}
@@ -876,6 +882,8 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
               value={gamesDownloadPath}
               onChange={setGamesDownloadPath}
               onCommit={handleSaveGamesPath}
+              showConfirmButton
+              confirmLabel="Confirm"
               placeholder={desktop && !remoteNodeId ? 'e.g. D:\\Downloads\\Games or ~/Downloads/Games' : 'e.g. /media/downloads/games'}
               target={folderTarget}
               serverId={remoteNodeId ?? undefined}
@@ -896,6 +904,8 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
               value={serverDownloadPath}
               onChange={setServerDownloadPath}
               onCommit={handleSaveServerIsoPath}
+              showConfirmButton
+              confirmLabel="Confirm"
               placeholder={desktop && !remoteNodeId ? 'e.g. D:\\ISOs or /Volumes/Storage/ISOs' : 'e.g. /app/storage/installers'}
               target={folderTarget}
               serverId={remoteNodeId ?? undefined}
@@ -996,10 +1006,16 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
             const isLinkedDestination =
               (item.type === 'game' && (item.path === gamesDownloadPath || item.path === gamesInstallPath)) ||
               (item.type === 'iso' && item.path === serverDownloadPath)
+            const isJustAdded = item.path === justAddedPath
             return (
               <div
                 key={`${item.path}-${item.type}-${idx}`}
-                className="px-3.5 py-2 rounded-xl bg-white/[0.03] text-xs font-mono text-white/80 flex items-center justify-between gap-3 border border-white/5"
+                className={cn(
+                  'px-3.5 py-2 rounded-xl text-xs font-mono flex items-center justify-between gap-3 border transition-all duration-300',
+                  isJustAdded
+                    ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200 shadow-md shadow-emerald-500/10'
+                    : 'border-white/5 bg-white/[0.03] text-white/80',
+                )}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <div
@@ -1018,7 +1034,12 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
                       Destination
                     </span>
                   )}
-                  <FolderOpen size={14} className="text-primary shrink-0" />
+                  {isJustAdded && (
+                    <span className="flex items-center gap-1 text-[10px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shrink-0 animate-in fade-in zoom-in-90 duration-200">
+                      <Check size={10} /> Confirmed
+                    </span>
+                  )}
+                  <FolderOpen size={14} className={cn('shrink-0', isJustAdded ? 'text-emerald-400' : 'text-primary')} />
                   <span className="truncate">{item.path}</span>
                 </div>
                 <button
@@ -1074,24 +1095,45 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
                 {scanPaths.length === 0 ? 'Add a folder to scan' : 'Add another folder'}
               </span>
             </div>
-            <PathInput
-              compact
-              commitOnBlur={false}
-              value={draftScanPath}
-              onChange={setDraftScanPath}
-              onCommit={handleCommitDraftScanPath}
-              placeholder={
-                desktop && !remoteNodeId
-                  ? draftScanType === 'iso'
-                    ? 'e.g. D:\\ISOs or /Volumes/Storage/ROMs'
-                    : 'e.g. D:\\Games\\Steam or ~/Games'
-                  : draftScanType === 'iso'
-                    ? 'e.g. /media/isos'
-                    : 'e.g. /media/games'
-              }
-              target={folderTarget}
-              serverId={remoteNodeId ?? undefined}
-            />
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <PathInput
+                  compact
+                  commitOnBlur={false}
+                  showConfirmButton={false}
+                  value={draftScanPath}
+                  onChange={setDraftScanPath}
+                  onCommit={handleCommitDraftScanPath}
+                  placeholder={
+                    desktop && !remoteNodeId
+                      ? draftScanType === 'iso'
+                        ? 'e.g. D:\\ISOs or /Volumes/Storage/ROMs'
+                        : 'e.g. D:\\Games\\Steam or ~/Games'
+                      : draftScanType === 'iso'
+                        ? 'e.g. /media/isos'
+                        : 'e.g. /media/games'
+                  }
+                  target={folderTarget}
+                  serverId={remoteNodeId ?? undefined}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCommitDraftScanPath(draftScanPath)}
+                disabled={!draftScanPath.trim()}
+                title="Confirm and add this folder to scan paths"
+                aria-label="Confirm & Add"
+                className={cn(
+                  'inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
+                  draftScanPath.trim()
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-md shadow-emerald-500/25 active:scale-95'
+                    : 'bg-white/5 text-white/40 border border-white/10',
+                )}
+              >
+                <Check className="h-3.5 w-3.5" />
+                <span>Confirm &amp; Add</span>
+              </button>
+            </div>
           </div>
         </div>
       </SettingsCard>
