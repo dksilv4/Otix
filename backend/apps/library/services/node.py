@@ -1071,6 +1071,14 @@ def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict
     return usenet_proxy_request(server, "POST", "/api/v1/organize", json=payload, timeout=10.0)
 
 
+def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "POST", "/api/v1/organize/preview", json=payload, timeout=15.0)
+
+
+def node_execute_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "POST", "/api/v1/organize/execute", json=payload, timeout=30.0)
+
+
 def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server, "POST", "/api/v1/desktop/settings", json=payload, timeout=10.0

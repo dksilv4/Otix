@@ -1,35 +1,31 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Search, Sparkles } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef, useContext } from 'react'
+import {
+  Play,
+  Search,
+  Sparkles,
+} from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkSwitch } from '@ui/atoms/switch'
-import { useAuth } from '@/lib/providers/auth'
+import { AuthContext } from '@/features/auth/hooks/use-auth'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
+import { PathInput } from '@/components/path-picker'
 import { useSettingsNode } from '../../context/settings-node-context'
 import { isLocalDesktopNodeId } from '../../local-desktop-node'
 import { SectionHeader } from '../molecules/settings-section-header'
 import { SettingsCard } from '../molecules/settings-card'
 import { SettingsRow } from '../molecules/settings-row'
 import { useSettingsSaveBar } from '../../context/settings-save-context'
-
-const NAMING_PRESETS = [
-  { id: 'standard', label: 'Standard', template: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}' },
-  { id: 'simple', label: 'Simple', template: '{Title}/{OriginalName}.{ext}' },
-]
-
-const TOKEN_DOCS = [
-  '{Title}        — Clean game title (e.g. "Stellar Blade")',
-  '{CleanTitle}   — cleanGameTitle() fallback',
-  '{Year}        — Release year (e.g. "2024")',
-  '{Edition}     — Edition tag (e.g. "GOTY Edition")',
-  '{Platform}    — Platform hint (e.g. "PC", "Multi")',
-  '{ReleaseGroup}— Scene release group (e.g. "ElAmigos")',
-  '{Version}     — Version number (e.g. "1.03")',
-  '{OriginalName}— Raw download folder name',
-  '{MediaType}   — "ISO", "PC", or "Update"',
-  '{ext}         — File extension (auto-filled)',
-]
+import { TokenizedTemplateDisplay } from '../molecules/tokenized-template-display'
+import { OrganizeTestRunModal } from './organize-test-run-modal'
+import {
+  ISO_FOLDER_PRESETS,
+  TOKEN_COLOR_MAP,
+  SAMPLE_RELEASES,
+  formatTemplateSample,
+} from '../../utils/naming-template'
+import { cn } from '@/lib/utils'
 
 const SCAN_ON_LAUNCH_KEY = 'otix:scan-on-launch'
 
@@ -42,12 +38,8 @@ function readScanOnLaunch(): boolean {
 }
 
 export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: number | null } = {}) {
-  let user: { id: string } | null = null
-  try {
-    user = useAuth().user as { id: string } | null
-  } catch {
-    // Outside AuthProvider
-  }
+  const auth = useContext(AuthContext)
+  const user = auth?.user as { id: string } | null
 
   const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
   const { selectedNode } = useSettingsNode()
@@ -59,12 +51,16 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
   const [allowHypervisor, setAllowHypervisor] = useState(false)
   const [autoOrganizeEnabled, setAutoOrganizeEnabled] = useState(false)
   const [postProcessEnabled, setPostProcessEnabled] = useState(true)
-  const [namingTemplate, setNamingTemplate] = useState(NAMING_PRESETS[0].template)
+  const [namingTemplate, setNamingTemplate] = useState(ISO_FOLDER_PRESETS[0].template)
+  const [isoDownloadPath, setIsoDownloadPath] = useState('')
   const [presetId, setPresetId] = useState('standard')
   const [preferredRepackers, setPreferredRepackers] = useState('')
   const [scanOnLaunch, setScanOnLaunch] = useState(readScanOnLaunch)
   const [nodeLoaded, setNodeLoaded] = useState(false)
   const [loadedSnap, setLoadedSnap] = useState('')
+  const [testRunOpen, setTestRunOpen] = useState(false)
+
+  const templateInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!remoteNodeId) {
@@ -73,7 +69,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
     }
     let cancelled = false
     apiClient
-      .get<any>(`/library/servers/${remoteNodeId}/organize`)
+      .get<Record<string, unknown>>(`/library/servers/${remoteNodeId}/organize`)
       .then((res) => {
         const data = res?.data
         if (cancelled || !data) return
@@ -81,11 +77,14 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
         setIntervalHours(Number(data.wishlistIntervalHours ?? data.wishlist_interval_hours ?? 12) || 12)
         setAllowHypervisor(Boolean(data.allowHypervisor ?? data.allow_hypervisor))
         setAutoOrganizeEnabled(Boolean(data.autoOrganizeEnabled ?? data.auto_organize_enabled))
-        setPostProcessEnabled(data.postProcessEnabled ?? data.post_process_enabled ?? true)
-        setNamingTemplate(data.namingTemplate ?? data.naming_template ?? NAMING_PRESETS[0].template)
-        setPreferredRepackers(data.preferredRepackers ?? data.preferred_repackers ?? '')
-        const template = data.namingTemplate ?? data.naming_template ?? NAMING_PRESETS[0].template
-        const match = NAMING_PRESETS.find((p) => p.template === template)
+        setPostProcessEnabled(
+          (data.postProcessEnabled ?? data.post_process_enabled ?? true) as boolean,
+        )
+        const template = (data.namingTemplate ?? data.naming_template ?? ISO_FOLDER_PRESETS[0].template) as string
+        setNamingTemplate(template)
+        setIsoDownloadPath((data.isoDownloadPath ?? data.iso_download_path ?? '') as string)
+        setPreferredRepackers((data.preferredRepackers ?? data.preferred_repackers ?? '') as string)
+        const match = ISO_FOLDER_PRESETS.find((p) => p.template === template)
         setPresetId(match?.id ?? 'custom')
         if (typeof (data.scanOnLaunch ?? data.scan_on_launch) === 'boolean') {
           setScanOnLaunch(Boolean(data.scanOnLaunch ?? data.scan_on_launch))
@@ -98,7 +97,8 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
             allowHypervisor: Boolean(data.allowHypervisor ?? data.allow_hypervisor),
             autoOrganizeEnabled: Boolean(data.autoOrganizeEnabled ?? data.auto_organize_enabled),
             postProcessEnabled: data.postProcessEnabled ?? data.post_process_enabled ?? true,
-            namingTemplate: data.namingTemplate ?? data.naming_template ?? NAMING_PRESETS[0].template,
+            namingTemplate: template,
+            isoDownloadPath: data.isoDownloadPath ?? data.iso_download_path ?? '',
             preferredRepackers: data.preferredRepackers ?? data.preferred_repackers ?? '',
             scanOnLaunch: Boolean(data.scanOnLaunch ?? data.scan_on_launch),
           }),
@@ -119,9 +119,10 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
     setAllowHypervisor(dlConfig.allowHypervisor ?? false)
     setAutoOrganizeEnabled(dlConfig.autoOrganizeEnabled ?? false)
     setPostProcessEnabled(dlConfig.postProcessEnabled ?? true)
-    setNamingTemplate(dlConfig.namingTemplate ?? NAMING_PRESETS[0].template)
+    const template = dlConfig.namingTemplate ?? ISO_FOLDER_PRESETS[0].template
+    setNamingTemplate(template)
     setPreferredRepackers(dlConfig.preferredRepackers ?? '')
-    const match = NAMING_PRESETS.find((p) => p.template === (dlConfig.namingTemplate ?? NAMING_PRESETS[0].template))
+    const match = ISO_FOLDER_PRESETS.find((p) => p.template === template)
     setPresetId(match?.id ?? 'custom')
   }, [dlConfig, remoteNodeId])
 
@@ -129,15 +130,22 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
     if (remoteNodeId) return
     const api = getDesktopAPI()
     if (!api?.getDesktopSettings) return
-    api.getDesktopSettings().then((ds: any) => {
+    api.getDesktopSettings().then((ds: Record<string, unknown>) => {
       if (typeof ds?.scanOnLaunch === 'boolean') {
         setScanOnLaunch(ds.scanOnLaunch)
         try {
           localStorage.setItem(SCAN_ON_LAUNCH_KEY, String(ds.scanOnLaunch))
-        } catch {}
+        } catch {
+          // ignore localStorage error
+        }
       }
-    }).catch(() => {})
-  }, [])
+      if (typeof ds?.isoDownloadPath === 'string') {
+        setIsoDownloadPath(ds.isoDownloadPath)
+      }
+    }).catch(() => {
+      // ignore
+    })
+  }, [remoteNodeId])
 
   const handleSave = useCallback(async () => {
     if (remoteNodeId) {
@@ -148,6 +156,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
         allowHypervisor,
         autoOrganizeEnabled,
         namingTemplate: namingTemplate || '',
+        isoDownloadPath: isoDownloadPath.trim(),
         preferredRepackers: preferredRepackers.trim(),
         scanOnLaunch,
       })
@@ -159,6 +168,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
           autoOrganizeEnabled,
           postProcessEnabled,
           namingTemplate,
+          isoDownloadPath: isoDownloadPath.trim(),
           preferredRepackers,
           scanOnLaunch,
         }),
@@ -182,13 +192,25 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
 
     try {
       localStorage.setItem(SCAN_ON_LAUNCH_KEY, String(scanOnLaunch))
-    } catch {}
+    } catch {
+      // ignore
+    }
     const api = getDesktopAPI()
     if (api?.setDesktopSettings) {
-      await api.setDesktopSettings({ scanOnLaunch }).catch(() => {})
-    } else if ((api as any)?.saveDesktopSettings) {
+      await api.setDesktopSettings({ scanOnLaunch, isoDownloadPath: isoDownloadPath.trim() }).catch(() => {
+        // ignore
+      })
+    } else if (api && 'saveDesktopSettings' in api) {
       const current = (await api.getDesktopSettings?.().catch(() => ({}))) || {}
-      await (api as any).saveDesktopSettings({ ...current, scanOnLaunch }).catch(() => {})
+      const saveSettingsFn = (api as unknown as { saveDesktopSettings: (v: unknown) => Promise<unknown> })
+        .saveDesktopSettings
+      await saveSettingsFn({
+        ...current,
+        scanOnLaunch,
+        isoDownloadPath: isoDownloadPath.trim(),
+      }).catch(() => {
+        // ignore
+      })
     }
   }, [
     user,
@@ -200,6 +222,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
     allowHypervisor,
     autoOrganizeEnabled,
     namingTemplate,
+    isoDownloadPath,
     preferredRepackers,
     scanOnLaunch,
     remoteNodeId,
@@ -215,6 +238,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
           autoOrganizeEnabled: boolean
           postProcessEnabled: boolean
           namingTemplate: string
+          isoDownloadPath: string
           preferredRepackers: string
           scanOnLaunch: boolean
         }
@@ -224,9 +248,10 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
         setAutoOrganizeEnabled(snap.autoOrganizeEnabled)
         setPostProcessEnabled(snap.postProcessEnabled)
         setNamingTemplate(snap.namingTemplate)
+        setIsoDownloadPath(snap.isoDownloadPath || '')
         setPreferredRepackers(snap.preferredRepackers)
         setScanOnLaunch(snap.scanOnLaunch)
-        const match = NAMING_PRESETS.find((p) => p.template === snap.namingTemplate)
+        const match = ISO_FOLDER_PRESETS.find((p) => p.template === snap.namingTemplate)
         setPresetId(match?.id ?? 'custom')
       } catch {
         // ignore invalid snapshot
@@ -239,9 +264,10 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
       setAllowHypervisor(dlConfig.allowHypervisor ?? false)
       setAutoOrganizeEnabled(dlConfig.autoOrganizeEnabled ?? false)
       setPostProcessEnabled(dlConfig.postProcessEnabled ?? true)
-      setNamingTemplate(dlConfig.namingTemplate ?? NAMING_PRESETS[0].template)
+      const fallbackTmpl = dlConfig.namingTemplate ?? ISO_FOLDER_PRESETS[0].template
+      setNamingTemplate(fallbackTmpl)
       setPreferredRepackers(dlConfig.preferredRepackers ?? '')
-      const match = NAMING_PRESETS.find((p) => p.template === (dlConfig.namingTemplate ?? NAMING_PRESETS[0].template))
+      const match = ISO_FOLDER_PRESETS.find((p) => p.template === fallbackTmpl)
       setPresetId(match?.id ?? 'custom')
     }
     setScanOnLaunch(readScanOnLaunch())
@@ -256,6 +282,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
         autoOrganizeEnabled,
         postProcessEnabled,
         namingTemplate,
+        isoDownloadPath: isoDownloadPath.trim(),
         preferredRepackers,
         scanOnLaunch,
       }) !== loadedSnap
@@ -266,7 +293,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
             allowHypervisor !== (dlConfig.allowHypervisor ?? false) ||
             autoOrganizeEnabled !== (dlConfig.autoOrganizeEnabled ?? false) ||
             postProcessEnabled !== (dlConfig.postProcessEnabled ?? true) ||
-            namingTemplate !== (dlConfig.namingTemplate ?? NAMING_PRESETS[0].template) ||
+            namingTemplate !== (dlConfig.namingTemplate ?? ISO_FOLDER_PRESETS[0].template) ||
             preferredRepackers !== (dlConfig.preferredRepackers ?? '') ||
             scanOnLaunch !== readScanOnLaunch()),
       )
@@ -278,8 +305,201 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
     label: 'Save library settings',
   })
 
+  const handleInsertToken = (token: string) => {
+    const input = templateInputRef.current
+    if (!input) {
+      setNamingTemplate((prev) => `${prev}${token}`)
+      setPresetId('custom')
+      return
+    }
+    const start = input.selectionStart ?? input.value.length
+    const end = input.selectionEnd ?? input.value.length
+    const next = input.value.slice(0, start) + token + input.value.slice(end)
+    setNamingTemplate(next)
+    setPresetId('custom')
+    setTimeout(() => {
+      input.focus()
+      input.setSelectionRange(start + token.length, start + token.length)
+    }, 0)
+  }
+
   return (
     <div id="organize" className="space-y-6 scroll-mt-28">
+      {/* ISO Directory & Folder Structure Card */}
+      <SettingsCard className="space-y-5">
+        <SectionHeader
+          title="Folder Structure & ISO Library"
+          description="Configure how your ISO game directory is structured, renamed, and organized."
+          action={
+            <DkButton
+              size="sm"
+              variant="primary"
+              onClick={() => setTestRunOpen(true)}
+              className="gap-1.5 font-bold cursor-pointer"
+            >
+              <Play size={12} className="fill-current" />
+              <span>Test Run</span>
+            </DkButton>
+          }
+        />
+
+        {/* ISO Directory Picker */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-white/80 block">
+            ISO File Directory
+          </label>
+          <p className="text-xs text-white/50">
+            The target library folder on this node where your organized ISO games are sorted and stored.
+          </p>
+          <div className="pt-1">
+            <PathInput
+              value={isoDownloadPath}
+              onChange={setIsoDownloadPath}
+              placeholder="e.g. D:\Games\ISOs or /media/games/iso"
+              nodeId={nodeId}
+              confirmLabel="Set Directory"
+            />
+          </div>
+        </div>
+
+        {/* Folder Structure Presets */}
+        <div className="space-y-2.5 pt-2 border-t border-white/[0.06]">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-white/80 block">
+              Folder Structure Presets
+            </label>
+            <span className="text-[11px] text-white/40">Select a layout or build a custom template below</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {ISO_FOLDER_PRESETS.map((preset) => {
+              const isSelected = presetId === preset.id
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => {
+                    setPresetId(preset.id)
+                    setNamingTemplate(preset.template)
+                  }}
+                  className={cn(
+                    'p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5',
+                    isSelected
+                      ? 'bg-primary/10 border-primary/40 shadow-sm shadow-primary/10'
+                      : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/[0.06]',
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <span className="text-xs font-bold text-white tracking-tight">{preset.label}</span>
+                    <span
+                      className={cn(
+                        'text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider',
+                        isSelected ? 'bg-primary text-black' : 'bg-white/10 text-white/60',
+                      )}
+                    >
+                      {preset.badge}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-white/50 leading-relaxed">{preset.description}</p>
+
+                  <div className="pt-1 overflow-x-auto w-full">
+                    <TokenizedTemplateDisplay template={preset.template} size="xs" />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Template Input with Color-Coded Token Chips */}
+        <div className="space-y-3 pt-2 border-t border-white/[0.06]">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-white/80 block">
+              Active Naming Template
+            </label>
+            <span className="text-[11px] text-white/40 font-mono">
+              Use <code className="text-primary font-bold">/</code> for subfolders
+            </span>
+          </div>
+
+          <input
+            ref={templateInputRef}
+            type="text"
+            value={namingTemplate}
+            onChange={(e) => {
+              setNamingTemplate(e.target.value)
+              setPresetId('custom')
+            }}
+            placeholder="{Title} ({Year})/{Title}.{ext}"
+            className="w-full text-sm font-mono text-white outline-none h-10 rounded-xl bg-white/5 px-3.5 shadow-[0_0_0_1px_rgba(255,255,255,0.1)] focus:shadow-[0_0_0_1px_rgba(255,255,255,0.3)] placeholder:text-white/30"
+          />
+
+          {/* Color-Coded Token Chips for Cursor Insertion */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-medium text-white/50">
+              Click tokens to insert at cursor:
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {Object.entries(TOKEN_COLOR_MAP).map(([key, def]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleInsertToken(def.token)}
+                  title={`${def.description} (e.g. "${def.example}")`}
+                  className={cn(
+                    'inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-mono font-semibold border transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95',
+                    def.colorClass,
+                    def.bgClass,
+                    def.borderClass,
+                  )}
+                >
+                  <span>{def.token}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Live Interactive Preview Box */}
+          <div className="p-3.5 rounded-2xl bg-white/[0.025] border border-white/[0.06] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles size={12} className="text-primary" />
+                <span>Live Sample Previews</span>
+              </span>
+              <span className="text-[11px] text-white/40">Real-time template transformation</span>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              {SAMPLE_RELEASES.slice(0, 2).map((sample, sIdx) => {
+                const formatted = formatTemplateSample(namingTemplate, sample)
+                return (
+                  <div key={sIdx} className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1">
+                    <p className="text-[10px] text-white/40 font-mono truncate">
+                      Release: {sample.originalName}.{sample.ext}
+                    </p>
+                    <p className="text-xs font-mono font-semibold text-emerald-400 break-all">
+                      &rarr; {formatted}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Auto-Organize Switch */}
+        <div className="pt-2 border-t border-white/[0.06]">
+          <SettingsRow
+            icon={<Sparkles className="h-5 w-5" />}
+            label="Auto-organize"
+            description="Automatically rename and sort downloaded games into organized folders according to the template above."
+            action={<DkSwitch checked={autoOrganizeEnabled} onCheckedChange={setAutoOrganizeEnabled} />}
+          />
+        </div>
+      </SettingsCard>
+
+      {/* Automation Card */}
       <SettingsCard className="space-y-3">
         <SectionHeader
           title="Automation"
@@ -317,65 +537,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
         />
       </SettingsCard>
 
-      <SettingsCard className="space-y-4">
-        <SectionHeader
-          title="Organization"
-          description="How completed downloads are renamed and sorted into folders."
-        />
-        <SettingsRow
-          icon={<Sparkles className="h-5 w-5" />}
-          label="Auto-organize"
-          description="Automatically rename and sort downloaded games into organized folders."
-          action={<DkSwitch checked={autoOrganizeEnabled} onCheckedChange={setAutoOrganizeEnabled} />}
-        />
-        <div>
-          <label className="text-xs font-medium text-white/60 mb-2 block">Naming template</label>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {NAMING_PRESETS.map((p) => (
-              <DkButton
-                key={p.id}
-                size="sm"
-                variant={presetId === p.id ? 'primary' : 'ghost'}
-                onClick={() => {
-                  setPresetId(p.id)
-                  setNamingTemplate(p.template)
-                }}
-              >
-                {p.label}
-              </DkButton>
-            ))}
-            <DkButton
-              size="sm"
-              variant={presetId === 'custom' ? 'primary' : 'ghost'}
-              onClick={() => setPresetId('custom')}
-            >
-              Custom
-            </DkButton>
-          </div>
-          <input
-            type="text"
-            value={namingTemplate}
-            onChange={(e) => {
-              setNamingTemplate(e.target.value)
-              setPresetId('custom')
-            }}
-            className="w-full text-sm text-white outline-none h-9 rounded-xl bg-white/5 px-3 shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-150 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.3)] placeholder:text-white/30"
-          />
-          <details className="mt-3 group">
-            <summary className="cursor-pointer text-[11px] font-medium text-white/40 hover:text-white/60 transition-colors">
-              Available tokens
-            </summary>
-            <div className="mt-2 space-y-1">
-              {TOKEN_DOCS.map((doc) => (
-                <p key={doc} className="text-[11px] font-mono text-white/30">
-                  {doc}
-                </p>
-              ))}
-            </div>
-          </details>
-        </div>
-      </SettingsCard>
-
+      {/* Release Preferences Card */}
       <SettingsCard className="space-y-3">
         <SectionHeader
           title="Release preferences"
@@ -405,6 +567,17 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
           </div>
         </details>
       </SettingsCard>
+
+      {/* Test Run Dry-Run Modal */}
+      {testRunOpen && (
+        <OrganizeTestRunModal
+          open={testRunOpen}
+          onOpenChange={setTestRunOpen}
+          nodeId={remoteNodeId}
+          template={namingTemplate}
+          isoDirectory={isoDownloadPath}
+        />
+      )}
     </div>
   )
 }

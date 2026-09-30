@@ -25,6 +25,7 @@ import (
 	"github.com/dksilv4/otix/node/internal/games"
 	"github.com/dksilv4/otix/node/internal/heartbeat"
 	"github.com/dksilv4/otix/node/internal/indexer"
+	"github.com/dksilv4/otix/node/internal/organize"
 	"github.com/dksilv4/otix/node/internal/otixmeta"
 	"github.com/dksilv4/otix/node/internal/plugins"
 	"github.com/dksilv4/otix/node/internal/providers"
@@ -1657,6 +1658,48 @@ func (s *Server) setupRoutes() {
 				return
 			}
 			jsonResponse(w, http.StatusOK, desktop.ApplyOrganizeSettings(s.cfg, payload))
+		})
+
+		authed.Post("/api/v1/organize/preview", func(w http.ResponseWriter, r *http.Request) {
+			var req struct {
+				Directory string `json:"directory"`
+				Template  string `json:"template"`
+				Sample    bool   `json:"sample"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			dir := req.Directory
+			if dir == "" {
+				dir = s.cfg.Organize.ISODownloadPath
+			}
+			tmpl := req.Template
+			if tmpl == "" {
+				tmpl = s.cfg.Organize.NamingTemplate
+			}
+			items, err := organize.PreviewOrganization(dir, tmpl, req.Sample)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+				return
+			}
+			jsonResponse(w, http.StatusOK, items)
+		})
+
+		authed.Post("/api/v1/organize/execute", func(w http.ResponseWriter, r *http.Request) {
+			var req struct {
+				Items []organize.ExecuteItem `json:"items"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+			results, err := organize.ExecuteOrganization(req.Items)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+				return
+			}
+			jsonResponse(w, http.StatusOK, map[string]interface{}{
+				"success": true,
+				"results": results,
+			})
 		})
 
 		// ── Headless Node Plugins (Deals) ─────────────────────────────────────

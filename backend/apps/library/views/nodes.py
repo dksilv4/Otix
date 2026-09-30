@@ -55,8 +55,10 @@ from apps.library.services.node import (
     explorer_set_download_path,
     link_or_create_game_server,
     list_pending_nodes_for,
+    node_execute_organize,
     node_get_organize,
     node_list_libraries,
+    node_preview_organize,
     node_replace_libraries,
     node_save_organize,
     probe_node_reachability,
@@ -1471,6 +1473,28 @@ class GameServerOrganizeView(APIView):
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
         status_code, data = node_save_organize(server, request.data)
+        return Response(data, status=status_code)
+
+
+class GameServerOrganizePreviewView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/organize/preview`` — dry-run organization preview."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = node_preview_organize(server, request.data)
+        return Response(data, status=status_code)
+
+
+class GameServerOrganizeExecuteView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/organize/execute`` — execute organization movements."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = node_execute_organize(server, request.data)
         return Response(data, status=status_code)
 
 
