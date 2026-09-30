@@ -20,7 +20,6 @@ import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsPathsSection } from '../components/organisms/settings-paths-section'
 import { SettingsOrganizeSection } from '../components/organisms/settings-organize-section'
 import { SettingsNodeSharingSection } from '../components/organisms/settings-node-sharing-section'
-import { SettingsNodeEpicSection } from '../components/organisms/settings-node-epic-section'
 import { NodeMachineSettings } from '../components/organisms/node-machine-settings'
 import { QueryErrorBoundary } from '@/components/query-error-boundary'
 
@@ -214,7 +213,6 @@ export function SettingsNodeDetailPage() {
                 </div>
               )}
               {tab.id === 'sharing' && <SettingsNodeSharingSection server={server} />}
-              {tab.id === 'epic' && <SettingsNodeEpicSection server={server} />}
               {tab.id === 'machine' && <NodeMachineSettings server={server} />}
             </QueryErrorBoundary>
           </DkTabPanel>

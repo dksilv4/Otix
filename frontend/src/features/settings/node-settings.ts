@@ -1,11 +1,10 @@
-export type NodeSettingsTab = 'paths' | 'organize' | 'downloaders' | 'sharing' | 'epic' | 'machine'
+export type NodeSettingsTab = 'paths' | 'organize' | 'downloaders' | 'sharing' | 'machine'
 
 export const NODE_SETTINGS_TABS: { id: NodeSettingsTab; label: string }[] = [
   { id: 'paths', label: 'Paths' },
   { id: 'organize', label: 'Organize' },
   { id: 'downloaders', label: 'Downloaders' },
   { id: 'sharing', label: 'Sharing' },
-  { id: 'epic', label: 'Epic Games' },
   { id: 'machine', label: 'Machine' },
 ]
 
@@ -21,7 +20,6 @@ export function resolveNodeSettingsTab(hash: string | undefined | null): NodeSet
     h === 'organize' ||
     h === 'downloaders' ||
     h === 'sharing' ||
-    h === 'epic' ||
     h === 'machine' ||
     h === 'paths'
   )
