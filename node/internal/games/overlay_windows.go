@@ -67,6 +67,9 @@ const (
 	wmHotKey  = 0x0312
 	wmUser    = 0x0400
 	wmUpdate  = wmUser + 1
+	wmShow    = wmUser + 2
+	wmHide    = wmUser + 3
+	wmCycle   = wmUser + 4
 
 	dtLeft     = 0x00000000
 	dtCenter   = 0x00000001
@@ -144,6 +147,22 @@ func wndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	case wmHotKey:
 		if globalOverlayManager != nil {
 			globalOverlayManager.CyclePosition()
+		}
+		return 0
+
+	case wmShow:
+		procShowWindow.Call(hwnd, swShowNoActivate)
+		procUpdateWindow.Call(hwnd)
+		procInvalidateRect.Call(hwnd, 0, 1)
+		return 0
+
+	case wmHide:
+		procShowWindow.Call(hwnd, swHide)
+		return 0
+
+	case wmCycle:
+		if globalOverlayManager != nil {
+			globalOverlayManager.doCyclePosition(hwnd)
 		}
 		return 0
 
@@ -459,21 +478,24 @@ func (om *OverlayManager) paint(hwnd uintptr) {
 // Show makes the overlay visible above fullscreen/borderless games.
 func (om *OverlayManager) Show() {
 	om.mu.Lock()
-	defer om.mu.Unlock()
 	om.visible = true
-	if om.hwnd != 0 {
-		procShowWindow.Call(om.hwnd, swShowNoActivate)
-		procUpdateWindow.Call(om.hwnd)
+	hwnd := om.hwnd
+	om.mu.Unlock()
+
+	if hwnd != 0 {
+		procPostMessageW.Call(hwnd, wmShow, 0, 0)
 	}
 }
 
 // Hide hides the overlay window.
 func (om *OverlayManager) Hide() {
 	om.mu.Lock()
-	defer om.mu.Unlock()
 	om.visible = false
-	if om.hwnd != 0 {
-		procShowWindow.Call(om.hwnd, swHide)
+	hwnd := om.hwnd
+	om.mu.Unlock()
+
+	if hwnd != 0 {
+		procPostMessageW.Call(hwnd, wmHide, 0, 0)
 	}
 }
 
@@ -492,9 +514,17 @@ func (om *OverlayManager) Toggle() {
 
 // CyclePosition cycles the HUD through the 4 corners or hides it.
 func (om *OverlayManager) CyclePosition() {
-	om.mu.Lock()
-	defer om.mu.Unlock()
+	om.mu.RLock()
+	hwnd := om.hwnd
+	om.mu.RUnlock()
 
+	if hwnd != 0 {
+		procPostMessageW.Call(hwnd, wmCycle, 0, 0)
+	}
+}
+
+func (om *OverlayManager) doCyclePosition(hwnd uintptr) {
+	om.mu.Lock()
 	switch om.corner {
 	case "top-left":
 		om.corner = "top-right"
@@ -510,25 +540,24 @@ func (om *OverlayManager) CyclePosition() {
 
 	if om.corner == "hidden" {
 		om.visible = false
-		if om.hwnd != 0 {
-			procShowWindow.Call(om.hwnd, swHide)
-		}
+		om.mu.Unlock()
+		procShowWindow.Call(hwnd, swHide)
 		return
 	}
 
 	x, y := om.calculatePosition(om.corner)
-	if om.hwnd != 0 {
-		procSetWindowPos.Call(
-			om.hwnd,
-			0, // HWND_TOP = 0
-			uintptr(x), uintptr(y),
-			overlayWidth, overlayHeight,
-			0x0010|0x0004, // SWP_NOACTIVATE | SWP_NOZORDER
-		)
-		om.visible = true
-		procShowWindow.Call(om.hwnd, swShowNoActivate)
-		procInvalidateRect.Call(om.hwnd, 0, 1)
-	}
+	om.visible = true
+	om.mu.Unlock()
+
+	procSetWindowPos.Call(
+		hwnd,
+		0, // HWND_TOP = 0
+		uintptr(x), uintptr(y),
+		overlayWidth, overlayHeight,
+		0x0010|0x0004, // SWP_NOACTIVATE | SWP_NOZORDER
+	)
+	procShowWindow.Call(hwnd, swShowNoActivate)
+	procInvalidateRect.Call(hwnd, 0, 1)
 }
 
 // SetCorner positions the overlay explicitly.
