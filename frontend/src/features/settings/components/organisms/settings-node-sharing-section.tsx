@@ -147,7 +147,7 @@ export function SettingsNodeSharingSection({ server }: SettingsNodeSharingSectio
           <select
             value={selectedFriendId ?? ''}
             onChange={(e) => setSelectedFriendId(e.target.value ? Number(e.target.value) : null)}
-            className="flex-1 h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-primary cursor-pointer"
+            className="flex-1 h-10 px-3 rounded-xl bg-white/5 text-sm text-white focus:outline-none focus:bg-white/10 cursor-pointer"
             disabled={isLoadingFriends || unsharedFriends.length === 0}
           >
             <option value="" className="bg-neutral-900">
@@ -177,7 +177,7 @@ export function SettingsNodeSharingSection({ server }: SettingsNodeSharingSectio
         </div>
 
         {/* List of current friend shares */}
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] divide-y divide-white/[0.06] overflow-hidden">
+        <div className="rounded-2xl bg-white/[0.03] overflow-hidden">
           <div className="px-3.5 py-2 text-[11px] font-semibold text-white/50 uppercase tracking-wider">
             Shared with Friends ({shares.filter((s) => s.sharedWith != null).length})
           </div>
@@ -227,7 +227,7 @@ export function SettingsNodeSharingSection({ server }: SettingsNodeSharingSectio
       </div>
 
       {/* Anyone with the Link */}
-      <div className="pt-4 border-t border-white/10 space-y-3">
+      <div className="pt-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-semibold text-white">
             <LinkIcon size={16} className="text-primary" />
@@ -249,7 +249,7 @@ export function SettingsNodeSharingSection({ server }: SettingsNodeSharingSectio
         </p>
 
         {publicLinkShare && shareableUrl && (
-          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/10">
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5">
             <input
               type="text"
               readOnly

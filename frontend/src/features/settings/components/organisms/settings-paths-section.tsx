@@ -948,7 +948,7 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
         />
 
         {remoteNodeId ? (
-          <div className="space-y-3 pb-2 border-b border-white/5">
+          <div className="space-y-3 pb-2">
             <SettingsRow
               label="Write .otix after scan"
               description="Match and hydrate games, then save an invisible .otix sidecar next to each folder."
@@ -1011,10 +1011,10 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
               <div
                 key={`${item.path}-${item.type}-${idx}`}
                 className={cn(
-                  'px-3.5 py-2 rounded-xl text-xs font-mono flex items-center justify-between gap-3 border transition-all duration-300',
+                  'px-3.5 py-2 rounded-xl text-xs font-mono flex items-center justify-between gap-3 transition-all duration-300',
                   isJustAdded
-                    ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200 shadow-md shadow-emerald-500/10'
-                    : 'border-white/5 bg-white/[0.03] text-white/80',
+                    ? 'bg-emerald-500/15 text-emerald-200 shadow-md shadow-emerald-500/10'
+                    : 'bg-white/[0.03] text-white/80',
                 )}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -1022,8 +1022,8 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
                     className={cn(
                       'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold uppercase tracking-wider shrink-0',
                       item.type === 'iso'
-                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
-                        : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20',
+                        ? 'bg-amber-500/15 text-amber-300'
+                        : 'bg-cyan-500/15 text-cyan-300',
                     )}
                   >
                     {item.type === 'iso' ? <Disc size={11} /> : <Gamepad2 size={11} />}
@@ -1035,7 +1035,7 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
                     </span>
                   )}
                   {isJustAdded && (
-                    <span className="flex items-center gap-1 text-[10px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shrink-0 animate-in fade-in zoom-in-90 duration-200">
+                    <span className="flex items-center gap-1 text-[10px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-300 shrink-0 animate-in fade-in zoom-in-90 duration-200">
                       <Check size={10} /> Confirmed
                     </span>
                   )}
@@ -1055,7 +1055,7 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
             )
           })}
 
-          <div className="px-3.5 py-2.5 rounded-xl bg-white/[0.03] border border-dashed border-white/10 space-y-2.5">
+          <div className="px-3.5 py-2.5 rounded-xl bg-white/[0.03] space-y-2.5">
             <div className="flex items-center gap-2">
               <div
                 className="inline-flex rounded-lg bg-white/5 p-0.5 shrink-0"
@@ -1127,7 +1127,7 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
                   'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
                   draftScanPath.trim()
                     ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-md shadow-emerald-500/25 active:scale-95'
-                    : 'bg-white/5 text-white/40 border border-white/10',
+                    : 'bg-white/5 text-white/40',
                 )}
               >
                 <Check className="h-4 w-4" />

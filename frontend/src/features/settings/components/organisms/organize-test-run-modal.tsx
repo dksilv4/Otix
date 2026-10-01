@@ -158,7 +158,7 @@ export function OrganizeTestRunModal({
     >
       <div className="flex flex-col flex-1 min-h-0 space-y-4">
         {/* Header & Template Review Bar */}
-        <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] space-y-2.5">
+        <div className="p-3.5 rounded-2xl bg-white/[0.03] space-y-2.5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">
               Active Folder Structure
@@ -192,15 +192,15 @@ export function OrganizeTestRunModal({
 
         {/* Metrics Overview Pill Bar */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
+          <div className="p-3 rounded-xl bg-white/[0.02] text-center">
             <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Files Scanned</p>
             <p className="text-lg font-bold text-white mt-0.5">{metrics.total}</p>
           </div>
-          <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-center">
+          <div className="p-3 rounded-xl bg-emerald-500/10 text-center">
             <p className="text-[10px] font-semibold text-emerald-400/70 uppercase tracking-wider">Matches</p>
             <p className="text-lg font-bold text-emerald-400 mt-0.5">{metrics.matched}</p>
           </div>
-          <div className="p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20 text-center">
+          <div className="p-3 rounded-xl bg-cyan-500/10 text-center">
             <p className="text-[10px] font-semibold text-cyan-400/70 uppercase tracking-wider">New Folders</p>
             <p className="text-lg font-bold text-cyan-400 mt-0.5">+{metrics.foldersCount}</p>
           </div>
@@ -214,7 +214,7 @@ export function OrganizeTestRunModal({
               <span className="text-xs">Scanning directory and computing target paths...</span>
             </div>
           ) : activeList.length === 0 ? (
-            <div className="p-8 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+            <div className="p-8 text-center rounded-2xl bg-white/[0.02] space-y-2">
               <Info size={24} className="mx-auto text-white/30" />
               <p className="text-sm font-semibold text-white/70">No matching files found in this folder</p>
               <p className="text-xs text-white/40 max-w-sm mx-auto">
@@ -232,7 +232,7 @@ export function OrganizeTestRunModal({
             activeList.map((item, idx) => (
               <div
                 key={`${item.sourceFilename}-${idx}`}
-                className="p-4 rounded-2xl bg-white/[0.025] hover:bg-white/[0.04] border border-white/[0.06] transition-all space-y-3"
+                className="p-4 rounded-2xl bg-white/[0.025] hover:bg-white/[0.04] transition-all space-y-3"
               >
                 {/* Source -> Target Comparison */}
                 <div className="space-y-2">
@@ -263,11 +263,11 @@ export function OrganizeTestRunModal({
                 </div>
 
                 {/* Extracted Tokens & Folders to Create */}
-                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.05]">
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                   {item.foldersToCreate?.map((folder, fIdx) => (
                     <span
                       key={`f-${fIdx}`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-300"
                     >
                       <FolderPlus size={11} />
                       <span>+ {folder}</span>
@@ -301,7 +301,7 @@ export function OrganizeTestRunModal({
         </div>
 
         {/* Safe Read-Only Notice Footer */}
-        <div className="pt-2 border-t border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 text-white/50">
             <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
             <span>Read-only dry run. No files or folders on disk have been altered.</span>

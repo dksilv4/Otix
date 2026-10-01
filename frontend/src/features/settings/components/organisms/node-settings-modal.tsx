@@ -137,7 +137,7 @@ export function NodeSettingsModal({
           onValueChange={(next) => handleTabChange(next as NodeSettingsTab)}
           className="flex flex-col flex-1 min-h-0 space-y-4"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-white/[0.06]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
             <DkTabList className="w-full sm:w-auto flex flex-wrap">
               {NODE_SETTINGS_TABS.map((tab) => (
                 <DkTab key={tab.id} value={tab.id} className="flex-1 sm:flex-none">

@@ -35,7 +35,6 @@ export function TokenizedTemplateDisplay({
           const def = span.def ?? TOKEN_COLOR_MAP[span.tokenKey || '']
           const colorClass = def?.colorClass ?? 'text-primary'
           const bgClass = def?.bgClass ?? 'bg-primary/10'
-          const borderClass = def?.borderClass ?? 'border-primary/20'
 
           return (
             <span
@@ -43,10 +42,9 @@ export function TokenizedTemplateDisplay({
               title={def ? `${def.label}: ${def.description} (e.g. ${def.example})` : span.text}
               onClick={interactive && span.tokenKey ? () => onTokenClick?.(span.tokenKey!) : undefined}
               className={cn(
-                'inline-flex items-center rounded-lg border font-semibold tracking-tight shadow-sm transition-transform',
+                'inline-flex items-center rounded-lg font-semibold tracking-tight shadow-sm transition-transform',
                 colorClass,
                 bgClass,
-                borderClass,
                 badgePadding,
                 interactive && 'cursor-pointer hover:scale-105 active:scale-95',
               )}

@@ -105,7 +105,7 @@ export function PathInput({
             onBlur={handleBlur}
             className={cn(
               'h-9 w-full rounded-xl bg-white/5 pl-3 pr-8 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10 transition-all duration-200',
-              justConfirmed && 'ring-1 ring-emerald-500/60 bg-emerald-500/10 text-emerald-200',
+              justConfirmed && 'bg-emerald-500/15 text-emerald-200',
               inputClassName,
             )}
           />
@@ -128,7 +128,7 @@ export function PathInput({
           title={browseTitle}
           aria-label="Browse"
           className={cn(
-            'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer',
+            'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer',
           )}
         >
           <FolderOpen className="h-4 w-4" />
@@ -141,10 +141,10 @@ export function PathInput({
             title={justConfirmed ? 'Path confirmed!' : (confirmLabel || 'Confirm path')}
             aria-label={confirmLabel || 'Confirm path'}
             className={cn(
-              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
+              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
               justConfirmed
-                ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300 shadow-sm shadow-emerald-500/20'
-                : 'border-white/10 bg-white/5 text-white/80 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300 active:scale-95',
+                ? 'bg-emerald-500/25 text-emerald-300 shadow-sm shadow-emerald-500/20'
+                : 'bg-white/5 text-white/80 hover:bg-emerald-500/15 hover:text-emerald-300 active:scale-95',
             )}
           >
             <Check className={cn('h-4 w-4 transition-transform duration-200', justConfirmed ? 'text-emerald-400 scale-110' : 'text-current')} />

@@ -363,7 +363,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
         </div>
 
         {/* Folder Structure Presets */}
-        <div className="space-y-2.5 pt-2 border-t border-white/[0.06]">
+        <div className="space-y-2.5 pt-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-white/80 block">
               Folder Structure Presets
@@ -383,10 +383,10 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
                     setNamingTemplate(preset.template)
                   }}
                   className={cn(
-                    'p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5',
+                    'p-3 rounded-2xl text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5',
                     isSelected
-                      ? 'bg-primary/10 border-primary/40 shadow-sm shadow-primary/10'
-                      : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/[0.06]',
+                      ? 'bg-primary/15 text-white shadow-sm shadow-primary/10'
+                      : 'bg-white/[0.02] hover:bg-white/[0.04]',
                   )}
                 >
                   <div className="flex items-center justify-between gap-2 w-full">
@@ -413,7 +413,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
         </div>
 
         {/* Template Input with Color-Coded Token Chips */}
-        <div className="space-y-3 pt-2 border-t border-white/[0.06]">
+        <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-white/80 block">
               Active Naming Template
@@ -432,7 +432,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
               setPresetId('custom')
             }}
             placeholder="{Title} ({Year})/{Title}.{ext}"
-            className="w-full text-sm font-mono text-white outline-none h-10 rounded-xl bg-white/5 px-3.5 shadow-[0_0_0_1px_rgba(255,255,255,0.1)] focus:shadow-[0_0_0_1px_rgba(255,255,255,0.3)] placeholder:text-white/30"
+            className="w-full text-sm font-mono text-white outline-none h-10 rounded-xl bg-white/5 px-3.5 focus:bg-white/10 placeholder:text-white/30"
           />
 
           {/* Color-Coded Token Chips for Cursor Insertion */}
@@ -448,10 +448,9 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
                   onClick={() => handleInsertToken(def.token)}
                   title={`${def.description} (e.g. "${def.example}")`}
                   className={cn(
-                    'inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-mono font-semibold border transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95',
+                    'inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95',
                     def.colorClass,
                     def.bgClass,
-                    def.borderClass,
                   )}
                 >
                   <span>{def.token}</span>
@@ -461,7 +460,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
           </div>
 
           {/* Live Interactive Preview Box */}
-          <div className="p-3.5 rounded-2xl bg-white/[0.025] border border-white/[0.06] space-y-2">
+          <div className="p-3.5 rounded-2xl bg-white/[0.025] space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles size={12} className="text-primary" />
@@ -474,7 +473,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
               {SAMPLE_RELEASES.slice(0, 2).map((sample, sIdx) => {
                 const formatted = formatTemplateSample(namingTemplate, sample)
                 return (
-                  <div key={sIdx} className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1">
+                  <div key={sIdx} className="p-2 rounded-xl bg-white/[0.02] space-y-1">
                     <p className="text-[10px] text-white/40 font-mono truncate">
                       Release: {sample.originalName}.{sample.ext}
                     </p>
@@ -489,7 +488,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
         </div>
 
         {/* Auto-Organize Switch */}
-        <div className="pt-2 border-t border-white/[0.06]">
+        <div className="pt-2">
           <SettingsRow
             icon={<Sparkles className="h-5 w-5" />}
             label="Auto-organize"
@@ -550,7 +549,7 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
             value={preferredRepackers}
             onChange={(e) => setPreferredRepackers(e.target.value)}
             placeholder="e.g. FitGirl, DODI, ElAmigos"
-            className="w-full text-sm text-white outline-none h-9 rounded-xl bg-white/5 px-3 shadow-[0_0_0_1px_rgba(255,255,255,0.1)] focus:shadow-[0_0_0_1px_rgba(255,255,255,0.3)] placeholder:text-white/30"
+            className="w-full text-sm text-white outline-none h-9 rounded-xl bg-white/5 px-3 focus:bg-white/10 placeholder:text-white/30"
           />
           <p className="mt-1.5 text-[11px] text-white/40">Comma-separated. Used when auto-picking search results.</p>
         </div>

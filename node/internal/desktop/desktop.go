@@ -1,23 +1,37 @@
 package desktop
 
 import (
+	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/dksilv4/otix/node/internal/config"
 )
 
+var NodeStartTime = time.Now()
+
 type DesktopSettingsResponse struct {
-	Platform          string `json:"platform"`
-	Supported         bool   `json:"supported"`
-	LaunchOnStartup   bool   `json:"launchOnStartup"`
-	MinimizeToTray    bool   `json:"minimizeToTray"`
-	CloseToTray       bool   `json:"closeToTray"`
-	AlwaysOnTop       bool   `json:"alwaysOnTop"`
-	StartMinimized    bool   `json:"startMinimized"`
-	GamesDownloadPath string `json:"gamesDownloadPath"`
-	GamesInstallPath  string `json:"gamesInstallPath"`
-	ScanOnLaunch      bool   `json:"scanOnLaunch"`
+	Platform          string          `json:"platform"`
+	Supported         bool            `json:"supported"`
+	Hostname          string          `json:"hostname"`
+	Arch              string          `json:"arch"`
+	NumCPU            int             `json:"numCpu"`
+	GoVersion         string          `json:"goVersion"`
+	UptimeSeconds     int             `json:"uptimeSeconds"`
+	Capabilities      map[string]bool `json:"capabilities"`
+	LaunchOnStartup   bool            `json:"launchOnStartup"`
+	MinimizeToTray    bool            `json:"minimizeToTray"`
+	CloseToTray       bool            `json:"closeToTray"`
+	AlwaysOnTop       bool            `json:"alwaysOnTop"`
+	StartMinimized    bool            `json:"startMinimized"`
+	GamesDownloadPath string          `json:"gamesDownloadPath"`
+	GamesInstallPath  string          `json:"gamesInstallPath"`
+	ScanOnLaunch      bool            `json:"scanOnLaunch"`
+	GameTracking      bool            `json:"gameTracking"`
+	OverlayEnabled    bool            `json:"overlayEnabled"`
+	OverlayCorner     string          `json:"overlayCorner"`
+	AutoBackupOnExit  bool            `json:"autoBackupOnExit"`
 }
 
 type OrganizeSettingsResponse struct {
@@ -57,9 +71,31 @@ func GetDesktopSettings(cfg *config.AppConfig) DesktopSettingsResponse {
 	if dlPath == "" {
 		dlPath = cfg.Server.DownloadsPath
 	}
+	hostname, _ := os.Hostname()
+	if hostname == "" {
+		hostname = "otix-node"
+	}
+
+	p := GetPlatform()
+	caps := map[string]bool{
+		"game_tracking":       p == "windows" || p == "linux",
+		"in_game_overlay":     p == "windows",
+		"web_overlay":         true,
+		"silent_install":      p == "windows",
+		"saves_backup":        true,
+		"downloader_provider": cfg.Usenet.Enabled || cfg.Usenet.Sabnzbd.Host != "",
+		"hypervisor":          cfg.Organize.AllowHypervisor,
+	}
+
 	return DesktopSettingsResponse{
-		Platform:          GetPlatform(),
+		Platform:          p,
 		Supported:         IsSupported(),
+		Hostname:          hostname,
+		Arch:              runtime.GOARCH,
+		NumCPU:            runtime.NumCPU(),
+		GoVersion:         runtime.Version(),
+		UptimeSeconds:     int(time.Since(NodeStartTime).Seconds()),
+		Capabilities:      caps,
 		LaunchOnStartup:   cfg.Desktop.LaunchOnStartup,
 		MinimizeToTray:    cfg.Desktop.MinimizeToTray,
 		CloseToTray:       cfg.Desktop.CloseToTray,
@@ -68,6 +104,10 @@ func GetDesktopSettings(cfg *config.AppConfig) DesktopSettingsResponse {
 		GamesDownloadPath: dlPath,
 		GamesInstallPath:  cfg.Desktop.GamesInstallPath,
 		ScanOnLaunch:      cfg.Desktop.ScanOnLaunch,
+		GameTracking:      true,
+		OverlayEnabled:    true,
+		OverlayCorner:     "top-left",
+		AutoBackupOnExit:  cfg.Saves.AutoBackupOnExit,
 	}
 }
 
@@ -151,6 +191,16 @@ func ApplyDesktopSettings(cfg *config.AppConfig, payload map[string]interface{})
 	} else if v, ok := payload["scan_on_launch"]; ok {
 		if b, okB := v.(bool); okB {
 			cfg.Desktop.ScanOnLaunch = b
+		}
+	}
+
+	if v, ok := payload["autoBackupOnExit"]; ok {
+		if b, okB := v.(bool); okB {
+			cfg.Saves.AutoBackupOnExit = b
+		}
+	} else if v, ok := payload["auto_backup_on_exit"]; ok {
+		if b, okB := v.(bool); okB {
+			cfg.Saves.AutoBackupOnExit = b
 		}
 	}
 
