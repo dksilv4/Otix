@@ -173,14 +173,44 @@ export function useMediaDetailPluginActions(
         }
       } catch (err) {
         console.warn('Failed to query server arr media status:', err)
-      } finally {
-        setLoading(false)
       }
-      return
     }
 
-    setLoading(false)
-  }, [requestId, mediaType, activeServer])
+    // Check backend Plex connect-info when desktop plugin API is unavailable
+    try {
+      const { data: plexInfo } = await apiClient.get<{
+        base_url: string
+        token: string
+        rating_key: string
+      }>(`/integrations/plex/connect-info/${mediaId}`)
+      if (plexInfo?.rating_key && plexInfo?.base_url && plexInfo?.token) {
+        setPlayWidgets([
+          {
+            pluginId: 'backend-plex',
+            label: 'Plex',
+            props: {
+              label: 'Plex',
+              mediaType: mediaType as 'movie' | 'show',
+              mediaId,
+              instances: [
+                {
+                  id: `plex|${plexInfo.rating_key}`,
+                  serverId: 'default',
+                  name: 'Plex',
+                  ratingKey: plexInfo.rating_key,
+                  title: 'Stream on Plex',
+                },
+              ],
+            },
+          },
+        ])
+      }
+    } catch {
+      // Not on Plex or unlinked
+    } finally {
+      setLoading(false)
+    }
+  }, [requestId, mediaType, mediaId, activeServer])
 
   useEffect(() => {
     if (!enabled) return
@@ -252,6 +282,104 @@ export function useMediaDetailPluginActions(
   }
 
   const handlePlay = async (pluginId: string, instance: PlayInstance) => {
+    if (pluginId === 'backend-plex') {
+      try {
+        const { data: plexInfo } = await apiClient.get<{
+          base_url: string
+          token: string
+          rating_key: string
+        }>(`/integrations/plex/connect-info/${mediaId}`)
+
+        const res = await fetch(`${plexInfo.base_url}/library/metadata/${instance.ratingKey}`, {
+          headers: {
+            'X-Plex-Token': plexInfo.token,
+            Accept: 'application/json',
+          },
+        })
+        const data = await res.json()
+        const meta = data?.MediaContainer?.Metadata?.[0]
+        const media = meta?.Media?.[0]
+        const part = media?.Part?.[0]
+        const streams = (part?.Stream || []) as Array<{
+          id: number
+          streamType: number
+          codec: string
+          index: number
+          language?: string
+          languageCode?: string
+          displayTitle?: string
+          title?: string
+          channels?: number
+          key?: string
+        }>
+
+        const audioTracks = streams
+          .filter((s) => s.streamType === 2)
+          .map((s) => ({
+            id: String(s.id),
+            index: Number(s.index),
+            label: s.displayTitle || s.title || s.language || 'Audio',
+            language: s.languageCode || s.language || 'und',
+            codec: s.codec,
+            channels: Number(s.channels) || 2,
+          }))
+
+        const subtitles = streams
+          .filter((s) => s.streamType === 3)
+          .map((s) => ({
+            id: String(s.id),
+            index: Number(s.index),
+            label: s.displayTitle || s.title || s.language || 'Subtitles',
+            language: s.languageCode || s.language || 'und',
+            url: s.key
+              ? `${plexInfo.base_url}${s.key}?X-Plex-Token=${encodeURIComponent(plexInfo.token)}`
+              : undefined,
+            format: (s.codec === 'pgs' ? 'pgs' : s.codec === 'ass' ? 'ass' : s.codec === 'srt' ? 'srt' : 'vtt') as
+              | 'pgs'
+              | 'ass'
+              | 'srt'
+              | 'vtt',
+            isExternal: Boolean(s.key),
+            requiresBurnIn: s.codec === 'pgs' || s.codec === 'ass',
+          }))
+
+        const playSessionId = 'otix-plex-' + Date.now().toString(36)
+        const hlsUrl = `${plexInfo.base_url}/video/:/transcode/universal/start.m3u8?path=${encodeURIComponent(
+          '/library/metadata/' + instance.ratingKey,
+        )}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&session=${encodeURIComponent(
+          playSessionId,
+        )}&X-Plex-Client-Identifier=otix-web&X-Plex-Product=Otix&X-Plex-Platform=Web&X-Plex-Token=${encodeURIComponent(
+          plexInfo.token,
+        )}`
+        const directUrl = part?.key
+          ? `${plexInfo.base_url}${part.key}?X-Plex-Token=${encodeURIComponent(plexInfo.token)}`
+          : undefined
+
+        streamPlayer.openStream({
+          source: 'plex',
+          serverUrl: plexInfo.base_url,
+          token: plexInfo.token,
+          itemId: instance.ratingKey,
+          title: meta?.title || instance.title || 'Movie',
+          subtitle: meta?.year ? String(meta.year) : undefined,
+          playSessionId,
+          directUrl,
+          hlsUrl,
+          audioTracks,
+          subtitles,
+          startPositionMs: Number(meta?.viewOffset) || 0,
+          durationMs: Number(meta?.duration) || 0,
+          container: media?.container || 'mp4',
+          videoCodec: media?.videoCodec || 'h264',
+          audioCodec: media?.audioCodec || 'aac',
+        })
+        return
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to start stream')
+        return
+      }
+    }
+
     const api = getPluginApi()
     try {
       // 1. Attempt in-app media streaming first
