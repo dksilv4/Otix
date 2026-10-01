@@ -4,7 +4,7 @@ import { useDownloads } from '@/features/downloads/use-downloads'
 import { usePlayer } from '@/lib/player/use-player'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { useAuth } from '@/lib/providers/auth'
-import { useRunningGame } from '@/features/launcher'
+import { useMatchedRunningGame } from '@/features/launcher'
 import { notificationQueries } from '@/features/notifications/queries'
 import { usePlexSessions } from '../../hooks/use-plex-sessions'
 
@@ -47,7 +47,7 @@ export function ActivityModuleButton({
   bare?: boolean
 }) {
   const { source, isPlaying, currentTrack } = usePlayer()
-  const { runningGame } = useRunningGame()
+  const { runningGame, matchedGame } = useMatchedRunningGame()
 
   const { user: currentUser } = useAuth()
 
@@ -76,6 +76,8 @@ export function ActivityModuleButton({
     }
   }
 
+  const runningGamePoster = matchedGame?.posterUrl || runningGame?.game.posterUrl || runningGame?.game.iconUrl
+
   return (
     <>
       <button
@@ -95,10 +97,10 @@ export function ActivityModuleButton({
       >
         {runningGame ? (
           <div className="flex items-center justify-center">
-            {runningGame.game.iconUrl || runningGame.game.posterUrl ? (
+            {runningGamePoster ? (
               <img
-                src={runningGame.game.iconUrl || runningGame.game.posterUrl || undefined}
-                alt=""
+                src={runningGamePoster}
+                alt={matchedGame?.title || runningGame.game.title}
                 className="h-6 w-6 rounded-full object-cover"
               />
             ) : (

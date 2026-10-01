@@ -61,6 +61,7 @@ from apps.library.views.nodes import (
     GameServerScanClearView,
     GameServerScanCompleteView,
     GameServerScanView,
+    GameServerSessionsView,
     GameServerSonarrConfigView,
     GameServerSonarrHistoryView,
     GameServerSonarrLookupView,
@@ -84,8 +85,10 @@ from apps.library.views.nodes import (
     NodePendingView,
     NodePingView,
     NodeProbeView,
+    NodeSessionsView,
     NodeShareDeleteView,
     NodeShareListCreateView,
+    UserGameSessionsView,
 )
 
 __all__ = [
@@ -172,4 +175,7 @@ __all__ = [
     "SteamUnmatchedView",
     "SteamWishlistView",
     "YoutubeLibraryView",
+    "GameServerSessionsView",
+    "NodeSessionsView",
+    "UserGameSessionsView",
 ]

@@ -57,6 +57,7 @@ from apps.library.services.node import (
     list_pending_nodes_for,
     node_execute_organize,
     node_get_organize,
+    node_get_sessions,
     node_list_libraries,
     node_preview_organize,
     node_replace_libraries,
@@ -1603,6 +1604,52 @@ class GameServerInstancesImportView(APIView):
         return Response(result)
 
 
+class GameServerSessionsView(APIView):
+    """GET /library/servers/{server_id}/sessions — proxy play sessions from a specific node."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        limit = int(request.query_params.get("limit", 100))
+        code, body = node_get_sessions(server, limit=limit)
+        return Response(body, status=code)
+
+
+class UserGameSessionsView(APIView):
+    """GET /library/game-sessions — aggregate play sessions across user's active node(s)."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request: Request) -> Response:
+        user = request.user
+        servers = list(UserGameServer.objects.filter(user=user, is_online=True))
+        if not servers:
+            servers = list(UserGameServer.objects.filter(user=user)[:3])
+
+        limit = int(request.query_params.get("limit", 100))
+        all_sessions: list[dict] = []
+        seen_ids = set()
+
+        for server in servers:
+            try:
+                code, body = node_get_sessions(server, limit=limit)
+                if code == 200 and isinstance(body, list):
+                    for sess in body:
+                        sess_id = sess.get("id") or f"{sess.get('game_id')}-{sess.get('start_time')}"
+                        if sess_id not in seen_ids:
+                            seen_ids.add(sess_id)
+                            all_sessions.append(sess)
+            except Exception as exc:
+                logger.debug("Failed to fetch sessions from server %s: %s", server.id, exc)
+
+        def sort_key(s):
+            return s.get("end_time") or s.get("start_time") or ""
+
+        all_sessions.sort(key=sort_key, reverse=True)
+        return Response(all_sessions[:limit])
+
+
 # Modern Node view aliases
 NodeListCreateView = GameServerListCreateView
 NodeDetailView = GameServerDetailView
@@ -1626,3 +1673,4 @@ NodeLibrariesView = GameServerLibrariesView
 NodeOrganizeView = GameServerOrganizeView
 NodeScanView = GameServerScanView
 NodeScanClearView = GameServerScanClearView
+NodeSessionsView = GameServerSessionsView

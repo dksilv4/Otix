@@ -821,6 +821,14 @@ def clear_scanned_game_libraries(server: UserGameServer) -> tuple[int, dict | li
     return usenet_proxy_request(server, "POST", "/api/v1/scan/clear", timeout=15.0)
 
 
+def node_get_sessions(
+    server: UserGameServer, limit: int = 100
+) -> tuple[int, dict | list]:
+    """Fetch recorded gameplay sessions and performance metrics from the node."""
+    params = {"limit": limit}
+    return usenet_proxy_request(server, "GET", "/api/v1/games/sessions", params=params, timeout=6.0)
+
+
 # ── Radarr Operations ───────────────────────────────────────────────────
 
 

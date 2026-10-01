@@ -56,6 +56,7 @@ from apps.library.views import (
     GameServerSabnzbdQueueControlView,
     GameServerScanClearView,
     GameServerScanView,
+    GameServerSessionsView,
     GameServerSonarrConfigView,
     GameServerSonarrHistoryView,
     GameServerSonarrLookupView,
@@ -84,6 +85,7 @@ from apps.library.views import (
     SteamStatusView,
     SteamUnmatchedView,
     SteamWishlistView,
+    UserGameSessionsView,
     YoutubeLibraryView,
 )
 
@@ -99,6 +101,7 @@ urlpatterns = [
         NodeConnectionsSyncView.as_view(),
         name="library-node-connections-sync",
     ),
+    path("game-sessions", UserGameSessionsView.as_view(), name="library-user-game-sessions"),
     path("nodes", GameServerListCreateView.as_view(), name="library-nodes"),
     path("nodes/claim", GameServerClaimView.as_view(), name="library-nodes-claim"),
     path("nodes/pending", GameServerPendingView.as_view(), name="library-nodes-pending"),
@@ -115,6 +118,11 @@ urlpatterns = [
     ),
     path("nodes/<sint:server_id>/ping", GameServerPingView.as_view(), name="library-node-ping"),
     path("nodes/<sint:server_id>/probe", GameServerProbeView.as_view(), name="library-node-probe"),
+    path(
+        "nodes/<sint:server_id>/sessions",
+        GameServerSessionsView.as_view(),
+        name="library-node-sessions",
+    ),
     path("servers", GameServerListCreateView.as_view(), name="library-servers"),
     path(
         "servers/<sint:server_id>/shares",
@@ -140,6 +148,11 @@ urlpatterns = [
     path("servers/<sint:server_id>/ping", GameServerPingView.as_view(), name="library-server-ping"),
     path(
         "servers/<sint:server_id>/probe", GameServerProbeView.as_view(), name="library-server-probe"
+    ),
+    path(
+        "servers/<sint:server_id>/sessions",
+        GameServerSessionsView.as_view(),
+        name="library-server-sessions",
     ),
     path(
         "servers/<sint:server_id>/connections/sync",
