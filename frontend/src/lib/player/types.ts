@@ -1,6 +1,7 @@
 import type { PlexTrackInfo } from './plex-audio-provider'
+import type { JellyfinTrackInfo } from './jellyfin-audio-provider'
 
-export type PlayerSource = 'plex' | 'none'
+export type PlayerSource = 'plex' | 'jellyfin' | 'none'
 
 export interface PlayerTrackInfo {
   id: string
@@ -39,7 +40,14 @@ export interface PlayerContextValue {
   playPlexAlbum: (tracks: PlexTrackInfo[], startIndex?: number) => Promise<void>
   skipPlexToIndex: (index: number) => void
 
+  playJellyfinTrack: (track: JellyfinTrackInfo) => Promise<void>
+  playJellyfinAlbum: (tracks: JellyfinTrackInfo[], startIndex?: number) => Promise<void>
+  skipJellyfinToIndex: (index: number) => void
+
   // Provider-specific state exposed for specialized UI
   plexQueue: PlexTrackInfo[]
   plexPreviousTracks: PlexTrackInfo[]
+
+  jellyfinQueue: JellyfinTrackInfo[]
+  jellyfinPreviousTracks: JellyfinTrackInfo[]
 }

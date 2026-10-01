@@ -1,0 +1,140 @@
+{
+  "name": "Jellyfin",
+  "icon": "play",
+  "stage": "alpha",
+  "version": "1.0.0",
+  "description": "Connect to your personal Jellyfin media server to sync your movie and TV libraries into Otix, and stream media directly inside the app with full scrobbling support.",
+  "author": "Otix",
+  "repository": "",
+  "system": false,
+  "min_app_version": "0.1.0",
+  "timeout": 600000,
+  "permissions": [
+    "network:external",
+    "events:subscribe",
+    "storage:local",
+    "notifications",
+    "ui:settings",
+    "api:proxy"
+  ],
+  "slots": [
+    { "location": "media/detail/actions", "label": "Jellyfin" },
+    { "location": "media/card/badges", "label": "Jellyfin" }
+  ],
+  "db": {
+    "tables": {
+      "jellyfin_library": {
+        "columns": {
+          "tmdb_id": "TEXT NOT NULL",
+          "media_type": "TEXT NOT NULL",
+          "item_id": "TEXT NOT NULL",
+          "server_id": "TEXT NOT NULL",
+          "server_name": "TEXT",
+          "title": "TEXT",
+          "year": "INTEGER",
+          "added_at": "INTEGER NOT NULL"
+        },
+        "indexes": [
+          "CREATE UNIQUE INDEX IF NOT EXISTS idx_jellyfin_library_item_server ON jellyfin_library (item_id, server_id)",
+          "CREATE INDEX IF NOT EXISTS idx_jellyfin_library_tmdb_media ON jellyfin_library (tmdb_id, media_type)",
+          "CREATE INDEX IF NOT EXISTS idx_jellyfin_library_server ON jellyfin_library (server_id)"
+        ]
+      },
+      "jellyfin_servers": {
+        "columns": {
+          "server_id": "TEXT PRIMARY KEY",
+          "name": "TEXT",
+          "url": "TEXT NOT NULL",
+          "auth_mode": "TEXT NOT NULL",
+          "token": "TEXT NOT NULL",
+          "user_id": "TEXT NOT NULL",
+          "last_seen": "INTEGER"
+        }
+      },
+      "jellyfin_sync_log": {
+        "columns": {
+          "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+          "started_at": "INTEGER NOT NULL",
+          "finished_at": "INTEGER",
+          "success": "INTEGER NOT NULL DEFAULT 0",
+          "sections": "INTEGER NOT NULL DEFAULT 0",
+          "found": "INTEGER NOT NULL DEFAULT 0",
+          "matched": "INTEGER NOT NULL DEFAULT 0",
+          "failed": "INTEGER NOT NULL DEFAULT 0",
+          "errors": "TEXT",
+          "message": "TEXT"
+        },
+        "indexes": [
+          "CREATE INDEX IF NOT EXISTS idx_jellyfin_sync_log_started ON jellyfin_sync_log (started_at)"
+        ]
+      }
+    }
+  },
+  "config": {
+    "serverUrl": {
+      "type": "string",
+      "label": "Jellyfin Server URL",
+      "description": "Base URL of your Jellyfin server, e.g. http://192.168.1.100:8096",
+      "default": ""
+    },
+    "authMode": {
+      "type": "string",
+      "label": "Authentication Mode",
+      "description": "Choose between User Credentials or an API Key.",
+      "default": "credentials"
+    },
+    "username": {
+      "type": "string",
+      "label": "Username",
+      "description": "Your Jellyfin username.",
+      "default": ""
+    },
+    "password": {
+      "type": "password",
+      "label": "Password",
+      "description": "Your Jellyfin user password.",
+      "default": ""
+    },
+    "apiKey": {
+      "type": "password",
+      "label": "API Key",
+      "description": "Server API key generated from Jellyfin Dashboard -> Advanced -> API Keys.",
+      "default": ""
+    },
+    "syncMovieLibraries": {
+      "type": "boolean",
+      "label": "Sync movie libraries",
+      "description": "Import movies from your Jellyfin movie libraries into the local catalog.",
+      "default": true
+    },
+    "syncShowLibraries": {
+      "type": "boolean",
+      "label": "Sync TV show libraries",
+      "description": "Import TV shows from your Jellyfin show libraries into the local catalog.",
+      "default": true
+    },
+    "pollIntervalMinutes": {
+      "type": "number",
+      "label": "Auto-sync interval (minutes)",
+      "description": "How often to re-sync your Jellyfin libraries. 0 disables automatic syncing.",
+      "default": 0
+    }
+  },
+  "settings": {
+    "tabs": [
+      {
+        "id": "jellyfin",
+        "label": "Jellyfin",
+        "icon": "play",
+        "path": "/settings/jellyfin",
+        "sections": [
+          { "id": "config", "label": "Settings", "config": true },
+          { "id": "sync", "label": "Sync to Otix", "sync": true },
+          { "id": "library", "label": "Library", "movies": true },
+          { "id": "syncHistory", "label": "Sync history", "syncHistory": true }
+        ]
+      }
+    ]
+  },
+  "entry": { "main": "main.js" }
+}

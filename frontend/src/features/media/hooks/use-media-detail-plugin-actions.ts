@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { apiClient } from '@/lib/api/client'
 import { useHasSession } from '@/lib/providers/auth'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
+import { useMediaStreamPlayer } from './use-media-stream-player'
+import type { StreamPlaybackSession } from '../types/stream-player'
 import type {
   RequestInstance,
   RequestWidget,
@@ -35,6 +37,7 @@ export function useMediaDetailPluginActions(
   const { data: servers = [] } = useGameServers({ enabled: enabled && hasSession })
   const activeServer = servers.find((s) => s.isOnline || s.isActive) || servers[0]
 
+  const streamPlayer = useMediaStreamPlayer()
   const [widgets, setWidgets] = useState<RequestWidget[]>([])
   const [playWidgets, setPlayWidgets] = useState<PlayWidget[]>([])
   const [loading, setLoading] = useState(true)
@@ -251,13 +254,34 @@ export function useMediaDetailPluginActions(
   const handlePlay = async (pluginId: string, instance: PlayInstance) => {
     const api = getPluginApi()
     try {
-      const res = await api?.callData(pluginId, 'play.open', { serverId: instance.serverId, ratingKey: instance.ratingKey }) as {
+      // 1. Attempt in-app media streaming first
+      const streamRes = (await api?.callData(pluginId, 'play.stream', {
+        serverId: instance.serverId,
+        ratingKey: instance.ratingKey,
+        itemId: instance.itemId || instance.ratingKey,
+      })) as {
+        success?: boolean
+        session?: StreamPlaybackSession
+        error?: string
+      } | null
+
+      if (streamRes?.success && streamRes.session) {
+        streamPlayer.openStream(streamRes.session)
+        return
+      }
+
+      // 2. Fallback to external player if streaming is unsupported or fails
+      const res = (await api?.callData(pluginId, 'play.open', {
+        serverId: instance.serverId,
+        ratingKey: instance.ratingKey,
+        itemId: instance.itemId || instance.ratingKey,
+      })) as {
         success?: boolean
         url?: string
         error?: string
       } | null
       if (!res?.success || !res?.url) {
-        alert(res?.error || 'Failed to open Plex')
+        alert(res?.error || streamRes?.error || 'Failed to open media player')
         return
       }
       const desktopAPI = (
@@ -269,7 +293,7 @@ export function useMediaDetailPluginActions(
         window.open(res.url, '_blank', 'noopener,noreferrer')
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to open Plex')
+      alert(err instanceof Error ? err.message : 'Failed to open media')
     }
   }
 

@@ -495,6 +495,135 @@ async function dataPlayOpen(ctx, opts) {
   return { success: true, url };
 }
 
+async function dataPlayStream(ctx, opts) {
+  const serverId = opts && opts.serverId;
+  const ratingKey = opts && (opts.ratingKey || opts.itemId);
+  if (!serverId || !ratingKey) return { success: false, error: 'Missing play target.' };
+
+  const server = await ctx.db.get('SELECT * FROM plex_servers WHERE machine_id = ?', [String(serverId)]);
+  if (!server) return { success: false, error: 'Plex server not found. Re-sync your libraries.' };
+
+  const clientId = await getClientId(ctx);
+  const resolved = await resolveServer(ctx, server, clientId);
+  if (!resolved || !resolved.base) {
+    return { success: false, error: 'Could not connect to Plex server.' };
+  }
+
+  const token = server.token;
+  const baseUrl = resolved.base;
+  const headers = plexHeaders(clientId, token);
+
+  const metaRes = await httpJson(ctx, `${baseUrl}/library/metadata/${ratingKey}`, { headers });
+  if (metaRes.status !== 200 || !metaRes.data) {
+    return { success: false, error: 'Failed to fetch item metadata from Plex.' };
+  }
+
+  const item = metaRes.data.MediaContainer?.Metadata?.[0];
+  if (!item) return { success: false, error: 'Item not found on Plex server.' };
+
+  const media = item.Media?.[0];
+  const part = media?.Part?.[0];
+  if (!part) return { success: false, error: 'No playable media parts found on Plex.' };
+
+  const playSessionId = (opts && opts.playSessionId) || 'otix-plex-' + Date.now();
+  const directUrl = `${baseUrl}${part.key}?X-Plex-Token=${encodeURIComponent(token)}`;
+
+  const streams = part.Stream || [];
+  const audioTracks = streams
+    .filter((s) => s.streamType === 2)
+    .map((s) => ({
+      id: String(s.id),
+      index: Number(s.index),
+      label: s.displayTitle || s.title || `${s.language || 'Audio'} (${s.codec || 'stereo'})`,
+      language: s.languageCode || s.language || 'und',
+      codec: s.codec || 'aac',
+      channels: Number(s.channels) || 2,
+    }));
+
+  const subtitles = streams
+    .filter((s) => s.streamType === 3)
+    .map((s) => ({
+      id: String(s.id),
+      index: Number(s.index),
+      label: s.displayTitle || s.title || s.language || 'Subtitles',
+      language: s.languageCode || s.language || 'und',
+      url: s.key ? `${baseUrl}${s.key}?X-Plex-Token=${encodeURIComponent(token)}` : undefined,
+      format: s.codec === 'pgs' ? 'pgs' : s.codec === 'ass' ? 'ass' : s.codec === 'srt' ? 'srt' : 'vtt',
+      isExternal: Boolean(s.key),
+      requiresBurnIn: s.codec === 'pgs' || s.codec === 'ass',
+    }));
+
+  const audioStreamParam = opts && opts.audioIndex != null ? `&audioStreamID=${opts.audioIndex}` : '';
+  const subStreamParam = opts && opts.subtitleIndex != null ? `&subtitleStreamID=${opts.subtitleIndex}` : '';
+
+  const hlsUrl = `${baseUrl}/video/:/transcode/universal/start.m3u8?path=${encodeURIComponent(
+    '/library/metadata/' + ratingKey
+  )}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&session=${encodeURIComponent(
+    playSessionId
+  )}&X-Plex-Client-Identifier=${encodeURIComponent(clientId)}&X-Plex-Product=Otix&X-Plex-Platform=Desktop&X-Plex-Token=${encodeURIComponent(
+    token
+  )}${audioStreamParam}${subStreamParam}`;
+
+  return {
+    success: true,
+    session: {
+      source: 'plex',
+      serverUrl: baseUrl,
+      token,
+      itemId: String(ratingKey),
+      title: item.title || item.originalTitle || '',
+      subtitle: item.year ? String(item.year) : item.parentTitle ? `${item.parentTitle} - ${item.title}` : undefined,
+      playSessionId,
+      directUrl,
+      hlsUrl,
+      audioTracks,
+      subtitles,
+      startPositionMs: Number(item.viewOffset) || 0,
+      durationMs: Number(item.duration) || 0,
+      container: media?.container || 'mp4',
+      videoCodec: media?.videoCodec || 'h264',
+      audioCodec: media?.audioCodec || 'aac',
+    },
+  };
+}
+
+async function dataSessionProgress(ctx, opts) {
+  const server = await ctx.db.get('SELECT * FROM plex_servers ORDER BY last_seen DESC LIMIT 1');
+  if (!server || !opts?.itemId) return { success: false };
+
+  const clientId = await getClientId(ctx);
+  const resolved = await resolveServer(ctx, server, clientId);
+  if (!resolved || !resolved.base) return { success: false };
+
+  const state = opts.isPaused ? 'paused' : 'playing';
+  const url = `${resolved.base}/:/timeline?ratingKey=${encodeURIComponent(opts.itemId)}&key=${encodeURIComponent(
+    '/library/metadata/' + opts.itemId
+  )}&state=${state}&time=${opts.positionMs || 0}&duration=${opts.durationMs || 0}&X-Plex-Client-Identifier=${encodeURIComponent(
+    clientId
+  )}&X-Plex-Session-Identifier=${encodeURIComponent(opts.playSessionId || '')}&X-Plex-Token=${encodeURIComponent(server.token)}`;
+
+  await ctx.fetch(url, { method: 'GET', headers: plexHeaders(clientId, server.token) });
+  return { success: true };
+}
+
+async function dataSessionStop(ctx, opts) {
+  const server = await ctx.db.get('SELECT * FROM plex_servers ORDER BY last_seen DESC LIMIT 1');
+  if (!server || !opts?.itemId) return { success: false };
+
+  const clientId = await getClientId(ctx);
+  const resolved = await resolveServer(ctx, server, clientId);
+  if (!resolved || !resolved.base) return { success: false };
+
+  const url = `${resolved.base}/:/timeline?ratingKey=${encodeURIComponent(opts.itemId)}&key=${encodeURIComponent(
+    '/library/metadata/' + opts.itemId
+  )}&state=stopped&time=${opts.positionMs || 0}&X-Plex-Client-Identifier=${encodeURIComponent(
+    clientId
+  )}&X-Plex-Session-Identifier=${encodeURIComponent(opts.playSessionId || '')}&X-Plex-Token=${encodeURIComponent(server.token)}`;
+
+  await ctx.fetch(url, { method: 'GET', headers: plexHeaders(clientId, server.token) });
+  return { success: true };
+}
+
 // ── Slots ─────────────────────────────────────────────────────────────────
 //
 // media/detail/actions — "Play on Plex" button on the detail page.
@@ -570,6 +699,9 @@ const data = {
   'sync.history': dataSyncHistory,
   'movies.list': dataMoviesList,
   'play.open': dataPlayOpen,
+  'play.stream': dataPlayStream,
+  'session.progress': dataSessionProgress,
+  'session.stop': dataSessionStop,
 };
 
 module.exports = {

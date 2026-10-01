@@ -33,6 +33,7 @@ export interface PlayInstance {
   serverId: string
   name: string
   ratingKey: string
+  itemId?: string
   title?: string
 }
 
@@ -362,7 +363,7 @@ function PlayOnPlexButton({
         )}
       >
         <Play className="h-4 w-4 fill-current" />
-        <span>Play on Plex</span>
+        <span>Stream from {widget.label || 'Server'}</span>
         <ChevronDown className="h-3.5 w-3.5 opacity-60" />
       </button>
       {coords &&
@@ -373,7 +374,7 @@ function PlayOnPlexButton({
               style={{ top: coords.top, left: coords.left, width: Math.max(coords.width, 200) }}
             >
               <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">
-                Plex Servers
+                {widget.label || 'Media'} Servers
               </div>
               {instances.map((inst) => (
                 <button

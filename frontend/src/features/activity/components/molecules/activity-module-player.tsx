@@ -8,6 +8,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlayer } from '@/lib/player/use-player'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
+import JellyfinIcon from '@/assets/provider-logos/jellyfin.svg?react'
 import { apiClient } from '@/lib/api/client'
 import { usePalette, rgbCss, rgbaCss } from '../../hooks/use-palette'
 import { formatTime } from '@/lib/utils'
@@ -25,7 +26,14 @@ interface QueueTrackView {
   artist?: string
 }
 
-function normalizeTrack(t: { id?: string; uri?: string; albumArt?: string | null; name?: string; title?: string; artist?: string }): QueueTrackView {
+function normalizeTrack(t: {
+  id?: string
+  uri?: string
+  albumArt?: string | null
+  name?: string
+  title?: string
+  artist?: string
+}): QueueTrackView {
   const { albumArt, ...rest } = t
   return { ...rest, albumArt: albumArt ?? undefined }
 }
@@ -37,6 +45,7 @@ export function ActivityModulePlayer() {
     source, isPlaying, currentTrack, position, duration, volume,
     togglePlay, skipNext, skipPrevious, seek, setVolume,
     plexQueue, plexPreviousTracks, skipPlexToIndex,
+    jellyfinQueue, jellyfinPreviousTracks, skipJellyfinToIndex,
   } = usePlayer()
 
   const [isCompact, setIsCompact] = useState(() => {
@@ -72,9 +81,12 @@ export function ActivityModulePlayer() {
 
   const hasScrolledRef = useRef(false)
 
-  const queueItems = plexQueue.slice(1).map(normalizeTrack)
+  const activeQueue = source === 'jellyfin' ? jellyfinQueue : plexQueue
+  const activePrev = source === 'jellyfin' ? jellyfinPreviousTracks : plexPreviousTracks
 
-  const prevItems = plexPreviousTracks
+  const queueItems = activeQueue.slice(1).map(normalizeTrack)
+
+  const prevItems = activePrev
     .filter(item => {
       if (!currentTrack) return true
       const itemUri = 'uri' in item ? (item as { uri?: string }).uri : undefined
@@ -128,12 +140,16 @@ export function ActivityModulePlayer() {
   const handleQueueItemClick = async (_item: { uri?: string; id?: string }, displayIndex: number) => {
     if (source === 'plex') {
       skipPlexToIndex(displayIndex + 1)
+    } else if (source === 'jellyfin') {
+      skipJellyfinToIndex(displayIndex + 1)
     }
   }
 
   const handlePrevItemClick = async (_item: { uri?: string; id?: string }, index: number) => {
     if (source === 'plex') {
       skipPlexToIndex(index)
+    } else if (source === 'jellyfin') {
+      skipJellyfinToIndex(index)
     }
   }
 
@@ -192,9 +208,15 @@ export function ActivityModulePlayer() {
               </div>
             )}
             <div className="absolute top-1 right-1">
-              <span className="inline-flex items-center justify-center rounded-full p-0.5 bg-amber-400/20 text-amber-400">
-                <PlexIcon className="h-2 w-2" />
-              </span>
+              {source === 'jellyfin' ? (
+                <span className="inline-flex items-center justify-center rounded-full p-0.5 bg-sky-500/20 text-sky-400" title="Jellyfin">
+                  <JellyfinIcon className="h-2 w-2" />
+                </span>
+              ) : (
+                <span className="inline-flex items-center justify-center rounded-full p-0.5 bg-amber-400/20 text-amber-400" title="Plex">
+                  <PlexIcon className="h-2 w-2" />
+                </span>
+              )}
             </div>
           </div>
 
@@ -299,9 +321,15 @@ export function ActivityModulePlayer() {
                     >
                       <Minimize2 className="h-3.5 w-3.5" />
                     </button>
-                    <span className="inline-flex items-center justify-center rounded-full p-1.5 bg-amber-400/20 text-amber-400">
-                      <PlexIcon className="h-3.5 w-3.5" />
-                    </span>
+                    {source === 'jellyfin' ? (
+                      <span className="inline-flex items-center justify-center rounded-full p-1.5 bg-sky-500/20 text-sky-400" title="Jellyfin">
+                        <JellyfinIcon className="h-3.5 w-3.5" />
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center justify-center rounded-full p-1.5 bg-amber-400/20 text-amber-400" title="Plex">
+                        <PlexIcon className="h-3.5 w-3.5" />
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
