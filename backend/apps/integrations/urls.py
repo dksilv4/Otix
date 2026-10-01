@@ -51,7 +51,7 @@ urlpatterns = [
     path("plex/libraries", PlexLibrariesView.as_view(), name="plex-libraries"),
     path("plex/stream/<str:rating_key>", PlexStreamView.as_view(), name="plex-stream"),
     path(
-        "plex/connect-info/<int:media_item_id>",
+        "plex/connect-info/<str:media_identifier>",
         PlexConnectInfoView.as_view(),
         name="plex-connect-info",
     ),

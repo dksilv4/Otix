@@ -312,11 +312,9 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
 
             {/* ── Action Command Row with Icon-Based Action Cluster ── */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2">
-              {isAuthenticated && (
-                <Suspense fallback={null}>
-                  <MediaHeroLibraryActions />
-                </Suspense>
-              )}
+              <Suspense fallback={null}>
+                <MediaHeroLibraryActions />
+              </Suspense>
 
               {/* TRAILER BUTTON (Icon-based) */}
               {trailer && (

@@ -10,9 +10,10 @@ import { useRequestMedia } from '@/features/media/hooks/use-request-media'
 export function MediaHeroLibraryActions() {
   const { mediaType, mediaId } = useMediaParams()
   const { data: detail } = useQuery(mediaQueries.detail(mediaType, mediaId))
+  const effectiveMediaId = detail?.id ? String(detail.id) : mediaId
   const pluginActions = useMediaDetailPluginActions(
     mediaType,
-    mediaId,
+    effectiveMediaId,
     detail?.tmdbId,
     Boolean(detail),
   )

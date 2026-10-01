@@ -339,7 +339,7 @@ function PlayOnPlexButton({
         )}
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}
-        <span>Play on {single.name}</span>
+        <span>{single.title || `Stream on ${single.name}`}</span>
       </button>
     )
   }
@@ -425,7 +425,13 @@ export function MediaDetailPluginButtons({
         <PlayOnPlexButton key={widget.pluginId} widget={widget} onPlay={onPlay} variant={variant} />
       ))}
       {widgets.map((widget) => (
-        <RequestButton key={widget.pluginId} widget={widget} requesting={requesting} onRequest={onRequest} variant={variant} />
+        <RequestButton
+          key={widget.pluginId}
+          widget={widget}
+          requesting={requesting}
+          onRequest={onRequest}
+          variant={variant}
+        />
       ))}
     </>
   )

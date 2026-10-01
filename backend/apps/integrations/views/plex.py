@@ -51,11 +51,11 @@ class PlexLibrariesView(APIView):
 
 
 class PlexConnectInfoView(APIView):
-    """GET /integrations/plex/connect-info/{media_item_id}"""
+    """GET /integrations/plex/connect-info/{media_identifier}"""
 
-    def get(self, request, media_item_id: int):
+    def get(self, request, media_identifier: str):
         try:
-            data = integrations_services.get_plex_connect_info(request.user, media_item_id)
+            data = integrations_services.get_plex_connect_info(request.user, media_identifier)
         except integrations_services.PlexConnectInfoNotFound as exc:
             raise NotFound(exc.detail) from None
         return Response(data)

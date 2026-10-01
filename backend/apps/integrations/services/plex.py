@@ -135,7 +135,7 @@ def _request(
         return exc.code, exc.read().decode("utf-8", "replace")
 
 
-def get_plex_connect_info(user, media_item_id: int) -> dict:
+def get_plex_connect_info(user, media_identifier: str | int) -> dict:
     """Return Plex connect details for the user's copy of a catalog media item.
 
     Mirrors the legacy response: ``{base_url, base_urls, token, rating_key,
@@ -143,11 +143,42 @@ def get_plex_connect_info(user, media_item_id: int) -> dict:
     alt URLs discovered on plex.tv, and ``album_thumb_url`` is only produced
     when a base URL, a token and a rating key are all present.
     """
-    plex_item = (
-        UserPlexItem.objects.filter(user=user, media_item_id=media_item_id)
-        .select_related("server")
-        .first()
-    )
+    ident = str(media_identifier)
+    plex_item = None
+    if ident.isdigit():
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, media_item_id=int(ident))
+            .select_related("server")
+            .first()
+        )
+    if plex_item is None:
+        from apps.media.models import MediaItem
+
+        item = MediaItem.objects.filter(slug=ident).first()
+        if item:
+            plex_item = (
+                UserPlexItem.objects.filter(user=user, media_item_id=item.id)
+                .select_related("server")
+                .first()
+            )
+    if plex_item is None:
+        from apps.media.models import ExternalId
+
+        ext = ExternalId.objects.filter(
+            external_id=ident, source__in=("tmdb", "plex")
+        ).first()
+        if ext and ext.media_item_id:
+            plex_item = (
+                UserPlexItem.objects.filter(user=user, media_item_id=ext.media_item_id)
+                .select_related("server")
+                .first()
+            )
+    if plex_item is None:
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, rating_key=ident)
+            .select_related("server")
+            .first()
+        )
     if plex_item is None:
         raise PlexConnectInfoNotFound(CONNECT_INFO_ITEM_NOT_FOUND)
     server = plex_item.server
