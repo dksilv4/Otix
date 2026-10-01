@@ -45,9 +45,12 @@ export function useMediaDetailPluginActions(
 
   const loadSlots = useCallback(async () => {
     const api = getPluginApi()
+    const requestWidgets: RequestWidget[] = []
+    const playList: PlayWidget[] = []
+
     if (api?.getSlotData) {
       try {
-        const data = await api.getSlotData('media/detail/actions', { mediaId: requestId, mediaType }) as Array<{
+        const data = (await api.getSlotData('media/detail/actions', { mediaId: requestId, mediaType })) as Array<{
           pluginId: string
           label: string
           data?: {
@@ -62,8 +65,6 @@ export function useMediaDetailPluginActions(
             }>
           }
         }>
-        const requestWidgets: RequestWidget[] = []
-        const playList: PlayWidget[] = []
         if (data) {
           for (const entry of data) {
             for (const widget of entry.data?.widgets || []) {
@@ -83,18 +84,13 @@ export function useMediaDetailPluginActions(
             }
           }
         }
-        setWidgets(requestWidgets)
-        setPlayWidgets(playList)
       } catch (err) {
         console.error('Failed to load plugin slots:', err)
-      } finally {
-        setLoading(false)
       }
-      return
     }
 
-    // Fallback: If no desktop plugin API, check connected Otix game server for Radarr/Sonarr
-    if (activeServer) {
+    // Check connected Otix game server for Radarr/Sonarr if no request widgets
+    if (requestWidgets.length === 0 && activeServer) {
       try {
         const numId = Number(requestId)
         if (mediaType === 'movie') {
@@ -113,103 +109,95 @@ export function useMediaDetailPluginActions(
             ? (existing.has_file || existing.hasFile ? 'downloaded' : 'requested')
             : 'not_exists'
 
-          setWidgets([
-            {
-              pluginId: 'server-radarr',
-              label: `${activeServer.name} (Radarr)`,
-              props: {
-                label: 'Radarr',
-                mediaType: 'movie',
-                mediaId: requestId,
-                instances: [
-                  {
-                    id: String(activeServer.id),
-                    name: `${activeServer.name} Radarr`,
-                    status,
-                  },
-                ],
-              },
+          requestWidgets.push({
+            pluginId: 'server-radarr',
+            label: `${activeServer.name} (Radarr)`,
+            props: {
+              label: 'Radarr',
+              mediaType: 'movie',
+              mediaId: requestId,
+              instances: [
+                {
+                  id: String(activeServer.id),
+                  name: `${activeServer.name} Radarr`,
+                  status,
+                },
+              ],
             },
-          ])
-        } else if (mediaType === 'show') {
-          const { data } = await apiClient.get<Array<{
-            id: number
-            title: string
-            tvdb_id?: number
-            tvdbId?: number
-            tmdb_id?: number
-            tmdbId?: number
-            episode_file_count?: number
-            episodeFileCount?: number
-            monitored?: boolean
-          }>>(`/library/servers/${activeServer.id}/sonarr/series`)
-          const series = data || []
-          const existing = series.find(s =>
-            (s.tmdb_id || s.tmdbId) === numId || (s.tvdb_id || s.tvdbId) === numId
-          )
-          const fileCount = existing ? (existing.episode_file_count ?? existing.episodeFileCount ?? 0) : 0
-          const status: RequestInstance['status'] = existing
-            ? (fileCount > 0 ? 'downloaded' : 'requested')
-            : 'not_exists'
-
-          setWidgets([
-            {
-              pluginId: 'server-sonarr',
-              label: `${activeServer.name} (Sonarr)`,
-              props: {
-                label: 'Sonarr',
-                mediaType: 'show',
-                mediaId: requestId,
-                instances: [
-                  {
-                    id: String(activeServer.id),
-                    name: `${activeServer.name} Sonarr`,
-                    status,
-                  },
-                ],
-              },
-            },
-          ])
+          })
         }
       } catch (err) {
         console.warn('Failed to query server arr media status:', err)
       }
     }
 
-    // Check backend Plex connect-info when desktop plugin API is unavailable
-    try {
-      const { data: plexInfo } = await apiClient.get<{
-        base_url: string
-        token: string
-        rating_key: string
-      }>(`/integrations/plex/connect-info/${mediaId}`)
-      if (plexInfo?.rating_key && plexInfo?.base_url && plexInfo?.token) {
-        setPlayWidgets([
-          {
-            pluginId: 'backend-plex',
-            label: 'Plex',
-            props: {
-              label: 'Plex',
-              mediaType: mediaType as 'movie' | 'show',
-              mediaId,
-              instances: [
-                {
-                  id: `plex|${plexInfo.rating_key}`,
-                  serverId: 'default',
-                  name: 'Plex',
-                  ratingKey: plexInfo.rating_key,
-                  title: 'Stream on Plex',
-                },
-              ],
-            },
-          },
-        ])
+    // Check backend Plex connect-info if no play widgets found yet
+    if (playList.length === 0) {
+      const candidates = [mediaId, requestId].filter(Boolean)
+      for (const targetId of candidates) {
+        try {
+          const { data: plexInfo } = await apiClient.get<Record<string, unknown>>(
+            `/integrations/plex/connect-info/${targetId}`,
+          )
+          const ratingKey = String(plexInfo?.ratingKey || plexInfo?.rating_key || '')
+          const baseUrl = String(plexInfo?.baseUrl || plexInfo?.base_url || '')
+          const token = String(plexInfo?.token || '')
+          const provider = String(plexInfo?.provider || 'plex')
+          const providerLabel = String(plexInfo?.providerLabel || plexInfo?.provider_label || 'Plex')
+          const serverName = String(plexInfo?.serverName || plexInfo?.server_name || 'Plex')
+          const title = String(plexInfo?.title || '')
+          const mediaTypeVal = (plexInfo?.mediaType || plexInfo?.media_type || mediaType) as 'movie' | 'show' | 'episode'
+          const seasonNumber = plexInfo?.seasonNumber != null ? Number(plexInfo.seasonNumber) : (plexInfo?.season_number != null ? Number(plexInfo.season_number) : undefined)
+          const episodeNumber = plexInfo?.episodeNumber != null ? Number(plexInfo.episodeNumber) : (plexInfo?.episode_number != null ? Number(plexInfo.episode_number) : undefined)
+          const episodeTitle = plexInfo?.episodeTitle ? String(plexInfo.episodeTitle) : (plexInfo?.episode_title ? String(plexInfo.episode_title) : undefined)
+          const viewOffset = Number(plexInfo?.viewOffset ?? plexInfo?.view_offset ?? 0)
+          const duration = Number(plexInfo?.duration ?? 0)
+          const progressPercent = Number(plexInfo?.progressPercent ?? plexInfo?.progress_percent ?? 0)
+          const viewed = Boolean(plexInfo?.viewed)
+
+          if (ratingKey && baseUrl && token) {
+            playList.push({
+              pluginId: 'backend-plex',
+              label: providerLabel,
+              props: {
+                label: providerLabel,
+                mediaType: mediaType as 'movie' | 'show',
+                mediaId,
+                instances: [
+                  {
+                    id: `${provider}|${ratingKey}`,
+                    serverId: String(plexInfo?.serverId || plexInfo?.server_id || 'default'),
+                    name: serverName,
+                    ratingKey,
+                    baseUrl,
+                    token,
+                    provider,
+                    providerLabel,
+                    serverName,
+                    mediaType: mediaTypeVal,
+                    seasonNumber,
+                    episodeNumber,
+                    episodeTitle,
+                    viewOffset,
+                    duration,
+                    progressPercent,
+                    viewed,
+                    title: title || 'Stream',
+                  },
+                ],
+              },
+            })
+            break
+          }
+        } catch {
+          // Continue to next candidate
+        }
       }
-    } catch {
-      // Not on Plex or unlinked
-    } finally {
-      setLoading(false)
     }
+
+    setWidgets(requestWidgets)
+    setPlayWidgets(playList)
+    setLoading(false)
   }, [requestId, mediaType, mediaId, activeServer])
 
   useEffect(() => {
@@ -284,82 +272,130 @@ export function useMediaDetailPluginActions(
   const handlePlay = async (pluginId: string, instance: PlayInstance) => {
     if (pluginId === 'backend-plex') {
       try {
-        const { data: plexInfo } = await apiClient.get<{
-          base_url: string
-          token: string
-          rating_key: string
-        }>(`/integrations/plex/connect-info/${mediaId}`)
+        let baseUrl = instance.baseUrl || ''
+        let token = instance.token || ''
+        let ratingKey = instance.ratingKey || ''
 
-        const res = await fetch(`${plexInfo.base_url}/library/metadata/${instance.ratingKey}`, {
-          headers: {
-            'X-Plex-Token': plexInfo.token,
-            Accept: 'application/json',
-          },
-        })
-        const data = await res.json()
-        const meta = data?.MediaContainer?.Metadata?.[0]
-        const media = meta?.Media?.[0]
-        const part = media?.Part?.[0]
-        const streams = (part?.Stream || []) as Array<{
-          id: number
-          streamType: number
-          codec: string
+        if (!baseUrl || !token || !ratingKey) {
+          const candidates = [mediaId, requestId].filter(Boolean)
+          for (const targetId of candidates) {
+            try {
+              const { data: plexInfo } = await apiClient.get<Record<string, unknown>>(
+                `/integrations/plex/connect-info/${targetId}`,
+              )
+              baseUrl = String(plexInfo?.baseUrl || plexInfo?.base_url || '')
+              token = String(plexInfo?.token || '')
+              ratingKey = String(plexInfo?.ratingKey || plexInfo?.rating_key || '')
+              if (baseUrl && token && ratingKey) break
+            } catch {
+              // Try next candidate
+            }
+          }
+        }
+
+        if (!baseUrl || !token || !ratingKey) {
+          alert('Could not find Plex streaming connection details.')
+          return
+        }
+
+        let meta: Record<string, any> | undefined
+        let media: Record<string, any> | undefined
+        let part: Record<string, any> | undefined
+        let audioTracks: Array<{
+          id: string
           index: number
-          language?: string
-          languageCode?: string
-          displayTitle?: string
-          title?: string
-          channels?: number
-          key?: string
-        }>
+          label: string
+          language: string
+          codec: string
+          channels: number
+        }> = []
+        let subtitles: Array<{
+          id: string
+          index: number
+          label: string
+          language: string
+          url?: string
+          format: 'pgs' | 'ass' | 'srt' | 'vtt'
+          isExternal: boolean
+          requiresBurnIn: boolean
+        }> = []
 
-        const audioTracks = streams
-          .filter((s) => s.streamType === 2)
-          .map((s) => ({
-            id: String(s.id),
-            index: Number(s.index),
-            label: s.displayTitle || s.title || s.language || 'Audio',
-            language: s.languageCode || s.language || 'und',
-            codec: s.codec,
-            channels: Number(s.channels) || 2,
-          }))
+        try {
+          const res = await fetch(`${baseUrl}/library/metadata/${ratingKey}`, {
+            headers: {
+              'X-Plex-Token': token,
+              Accept: 'application/json',
+            },
+          })
+          if (res.ok) {
+            const data = await res.json().catch(() => null)
+            meta = data?.MediaContainer?.Metadata?.[0]
+            media = meta?.Media?.[0]
+            part = media?.Part?.[0]
+            const streams = (part?.Stream || []) as Array<{
+              id: number
+              streamType: number
+              codec: string
+              index: number
+              language?: string
+              languageCode?: string
+              displayTitle?: string
+              title?: string
+              channels?: number
+              key?: string
+            }>
 
-        const subtitles = streams
-          .filter((s) => s.streamType === 3)
-          .map((s) => ({
-            id: String(s.id),
-            index: Number(s.index),
-            label: s.displayTitle || s.title || s.language || 'Subtitles',
-            language: s.languageCode || s.language || 'und',
-            url: s.key
-              ? `${plexInfo.base_url}${s.key}?X-Plex-Token=${encodeURIComponent(plexInfo.token)}`
-              : undefined,
-            format: (s.codec === 'pgs' ? 'pgs' : s.codec === 'ass' ? 'ass' : s.codec === 'srt' ? 'srt' : 'vtt') as
-              | 'pgs'
-              | 'ass'
-              | 'srt'
-              | 'vtt',
-            isExternal: Boolean(s.key),
-            requiresBurnIn: s.codec === 'pgs' || s.codec === 'ass',
-          }))
+            audioTracks = streams
+              .filter((s) => s.streamType === 2)
+              .map((s) => ({
+                id: String(s.id),
+                index: Number(s.index),
+                label: s.displayTitle || s.title || s.language || 'Audio',
+                language: s.languageCode || s.language || 'und',
+                codec: s.codec,
+                channels: Number(s.channels) || 2,
+              }))
+
+            subtitles = streams
+              .filter((s) => s.streamType === 3)
+              .map((s) => ({
+                id: String(s.id),
+                index: Number(s.index),
+                label: s.displayTitle || s.title || s.language || 'Subtitles',
+                language: s.languageCode || s.language || 'und',
+                url: s.key
+                  ? `${baseUrl}${s.key}?X-Plex-Token=${encodeURIComponent(token)}`
+                  : undefined,
+                format: (s.codec === 'pgs' ? 'pgs' : s.codec === 'ass' ? 'ass' : s.codec === 'srt' ? 'srt' : 'vtt') as
+                  | 'pgs'
+                  | 'ass'
+                  | 'srt'
+                  | 'vtt',
+                isExternal: Boolean(s.key),
+                requiresBurnIn: s.codec === 'pgs' || s.codec === 'ass',
+              }))
+          }
+        } catch (fetchErr) {
+          console.warn('[Plex] Direct metadata query skipped; proceeding with stream URLs:', fetchErr)
+        }
 
         const playSessionId = 'otix-plex-' + Date.now().toString(36)
-        const hlsUrl = `${plexInfo.base_url}/video/:/transcode/universal/start.m3u8?path=${encodeURIComponent(
-          '/library/metadata/' + instance.ratingKey,
+        const hlsUrl = `${baseUrl}/video/:/transcode/universal/start.m3u8?path=${encodeURIComponent(
+          '/library/metadata/' + ratingKey,
         )}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&session=${encodeURIComponent(
           playSessionId,
         )}&X-Plex-Client-Identifier=otix-web&X-Plex-Product=Otix&X-Plex-Platform=Web&X-Plex-Token=${encodeURIComponent(
-          plexInfo.token,
+          token,
         )}`
         const directUrl = part?.key
-          ? `${plexInfo.base_url}${part.key}?X-Plex-Token=${encodeURIComponent(plexInfo.token)}`
+          ? `${baseUrl}${part.key}?X-Plex-Token=${encodeURIComponent(token)}`
           : undefined
 
         streamPlayer.openStream({
           source: 'plex',
-          serverUrl: plexInfo.base_url,
-          token: plexInfo.token,
-          itemId: instance.ratingKey,
+          serverUrl: baseUrl,
+          token,
+          itemId: ratingKey,
           title: meta?.title || instance.title || 'Movie',
           subtitle: meta?.year ? String(meta.year) : undefined,
           playSessionId,
@@ -367,11 +403,19 @@ export function useMediaDetailPluginActions(
           hlsUrl,
           audioTracks,
           subtitles,
-          startPositionMs: Number(meta?.viewOffset) || 0,
-          durationMs: Number(meta?.duration) || 0,
+          startPositionMs: Number(meta?.viewOffset) || instance.viewOffset || 0,
+          durationMs: Number(meta?.duration) || instance.duration || 0,
           container: media?.container || 'mp4',
           videoCodec: media?.videoCodec || 'h264',
           audioCodec: media?.audioCodec || 'aac',
+          episodeContext:
+            instance.seasonNumber != null && instance.episodeNumber != null
+              ? {
+                  seasonNumber: instance.seasonNumber,
+                  episodeNumber: instance.episodeNumber,
+                  episodeTitle: instance.episodeTitle || instance.title || 'Episode',
+                }
+              : undefined,
         })
         return
       } catch (err) {

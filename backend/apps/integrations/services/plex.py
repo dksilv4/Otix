@@ -135,47 +135,98 @@ def _request(
         return exc.code, exc.read().decode("utf-8", "replace")
 
 
-def get_plex_connect_info(user, media_identifier: str | int) -> dict:
+def get_plex_connect_info(
+    user,
+    media_identifier: str | int,
+    season: str | int | None = None,
+    episode: str | int | None = None,
+) -> dict:
     """Return Plex connect details for the user's copy of a catalog media item.
 
-    Mirrors the legacy response: ``{base_url, base_urls, token, rating_key,
-    album_thumb_url}`` where ``base_urls`` is the stored server URL plus any
-    alt URLs discovered on plex.tv, and ``album_thumb_url`` is only produced
-    when a base URL, a token and a rating key are all present.
+    Mirrors the legacy response with expanded provider-agnostic playback metadata
+    including progress percentage, resume offset, episode context, and provider attributes.
     """
     ident = str(media_identifier)
     plex_item = None
+    target_media_item = None
+
     if ident.isdigit():
         plex_item = (
             UserPlexItem.objects.filter(user=user, media_item_id=int(ident))
             .select_related("server")
             .first()
         )
-    if plex_item is None:
+        if plex_item is None:
+            from apps.media.models import MediaItem
+            target_media_item = MediaItem.objects.filter(id=int(ident)).first()
+
+    if plex_item is None and target_media_item is None:
         from apps.media.models import MediaItem
+        target_media_item = MediaItem.objects.filter(slug=ident).first()
 
-        item = MediaItem.objects.filter(slug=ident).first()
-        if item:
+    if target_media_item is not None:
+        if plex_item is None:
             plex_item = (
-                UserPlexItem.objects.filter(user=user, media_item_id=item.id)
+                UserPlexItem.objects.filter(user=user, media_item_id=target_media_item.id)
                 .select_related("server")
                 .first()
             )
+        if plex_item is None:
+            from django.contrib.contenttypes.models import ContentType
+
+            from apps.media.models import ExternalID
+
+            ct = ContentType.objects.get_for_model(target_media_item.__class__)
+            exts = {
+                e.provider: e.external_id
+                for e in ExternalID.objects.filter(content_type=ct, object_id=target_media_item.id)
+            }
+            tmdb_id = exts.get("tmdb")
+            imdb_id = exts.get("imdb")
+
+            if tmdb_id:
+                plex_item = (
+                    UserPlexItem.objects.filter(user=user, guids__tmdb=str(tmdb_id))
+                    .select_related("server")
+                    .first()
+                )
+            if plex_item is None and imdb_id:
+                plex_item = (
+                    UserPlexItem.objects.filter(user=user, guids__imdb=str(imdb_id))
+                    .select_related("server")
+                    .first()
+                )
+            if plex_item is None:
+                plex_item = (
+                    UserPlexItem.objects.filter(user=user, title__iexact=target_media_item.title)
+                    .select_related("server")
+                    .first()
+                )
+            if plex_item is not None and plex_item.media_item_id != target_media_item.id:
+                plex_item.media_item = target_media_item
+                plex_item.save(update_fields=["media_item"])
+
     if plex_item is None:
-        from apps.media.models import ExternalId
-
-        ext = ExternalId.objects.filter(
-            external_id=ident, source__in=("tmdb", "plex")
-        ).first()
-        if ext and ext.media_item_id:
-            plex_item = (
-                UserPlexItem.objects.filter(user=user, media_item_id=ext.media_item_id)
-                .select_related("server")
-                .first()
-            )
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, guids__tmdb=ident)
+            .select_related("server")
+            .first()
+        )
+    if plex_item is None:
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, guids__imdb=ident)
+            .select_related("server")
+            .first()
+        )
     if plex_item is None:
         plex_item = (
             UserPlexItem.objects.filter(user=user, rating_key=ident)
+            .select_related("server")
+            .first()
+        )
+    if plex_item is None:
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, title__iexact=ident)
             .select_related("server")
             .first()
         )
@@ -197,12 +248,108 @@ def get_plex_connect_info(user, media_identifier: str | int) -> dict:
         album_thumb_url = (
             f"{base_urls[0]}/library/metadata/{plex_item.rating_key}/thumb?X-Plex-Token={token}"
         )
+
+    # Resolve active playback item (supports shows -> episodes with resume & specific S/E)
+    active_rating_key = plex_item.rating_key
+    active_title = plex_item.title
+    active_media_type = plex_item.media_type
+    active_season_num: int | None = None
+    active_episode_num: int | None = None
+    active_ep_title: str | None = None
+    active_offset = int(plex_item.view_offset or 0)
+    active_duration = int(plex_item.duration or 0)
+    active_viewed = bool(plex_item.viewed)
+
+    if plex_item.media_type == "show" or season is not None or episode is not None:
+        try:
+            leaves_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/allLeaves")
+            if leaves_res:
+                leaves = leaves_res[0].get("MediaContainer", {}).get("Metadata", [])
+                selected_leaf = None
+
+                if season is not None and episode is not None:
+                    for leaf in leaves:
+                        if str(leaf.get("parentIndex")) == str(season) and str(leaf.get("index")) == str(episode):
+                            selected_leaf = leaf
+                            break
+                elif season is not None:
+                    for leaf in leaves:
+                        if str(leaf.get("parentIndex")) == str(season):
+                            selected_leaf = leaf
+                            break
+                else:
+                    # In-progress episode takes precedence for quick resume
+                    for leaf in leaves:
+                        offset = int(leaf.get("viewOffset") or 0)
+                        viewed = int(leaf.get("viewCount") or 0) > 0
+                        if offset > 5000 and not viewed:
+                            selected_leaf = leaf
+                            break
+                    # Otherwise find the next unwatched episode
+                    if selected_leaf is None:
+                        for leaf in leaves:
+                            if int(leaf.get("viewCount") or 0) == 0:
+                                selected_leaf = leaf
+                                break
+                    # Fallback to the first episode if all watched
+                    if selected_leaf is None and leaves:
+                        selected_leaf = leaves[0]
+
+                if selected_leaf:
+                    active_rating_key = str(selected_leaf.get("ratingKey"))
+                    active_ep_title = selected_leaf.get("title")
+                    active_title = active_ep_title or active_title
+                    active_media_type = "episode"
+                    if selected_leaf.get("parentIndex") is not None:
+                        active_season_num = int(selected_leaf.get("parentIndex"))
+                    if selected_leaf.get("index") is not None:
+                        active_episode_num = int(selected_leaf.get("index"))
+                    active_offset = int(selected_leaf.get("viewOffset") or 0)
+                    active_duration = int(selected_leaf.get("duration") or 0)
+                    active_viewed = int(selected_leaf.get("viewCount") or 0) > 0
+        except Exception as e:
+            logger.warning("Failed to resolve episode leaves for show %s: %s", plex_item.rating_key, e)
+    else:
+        try:
+            live_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}")
+            if live_res:
+                meta = live_res[0].get("MediaContainer", {}).get("Metadata", [{}])[0]
+                if meta.get("viewOffset") is not None:
+                    active_offset = int(meta.get("viewOffset"))
+                if meta.get("duration") is not None:
+                    active_duration = int(meta.get("duration"))
+                if meta.get("viewCount") is not None:
+                    active_viewed = int(meta.get("viewCount")) > 0
+        except Exception as e:
+            logger.debug("Failed to query live movie metadata for %s: %s", plex_item.rating_key, e)
+
+    progress_percent = (
+        round((active_offset / active_duration) * 100, 1)
+        if active_duration and active_offset
+        else 0.0
+    )
+
     return {
         "base_url": base_urls[0] if base_urls else None,
         "base_urls": base_urls,
         "token": token,
-        "rating_key": plex_item.rating_key,
+        "rating_key": active_rating_key,
         "album_thumb_url": album_thumb_url,
+        "provider": "plex",
+        "provider_label": "Plex",
+        "server_name": server.name,
+        "server_id": server.machine_identifier or str(server.id),
+        "media_type": active_media_type,
+        "title": active_title,
+        "year": plex_item.year,
+        "season_number": active_season_num,
+        "episode_number": active_episode_num,
+        "episode_title": active_ep_title,
+        "view_offset": active_offset,
+        "duration": active_duration,
+        "progress_percent": progress_percent,
+        "viewed": active_viewed,
+        "view_count": int(plex_item.view_count or 0),
     }
 
 
@@ -292,6 +439,71 @@ def _to_int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def report_plex_timeline(
+    server_url: str,
+    token: str,
+    rating_key: str,
+    state: str = "playing",
+    time_ms: int = 0,
+    duration_ms: int = 0,
+    client_id: str = "otix-web-player",
+) -> bool:
+    """Report playback progress to Plex Media Server timeline.
+
+    Registers active playback in Plex dashboard, Tautulli, and Plex Dash under 'Now Playing',
+    and keeps viewOffset / progress up to date.
+    """
+    clean_url = server_url.rstrip("/")
+    params = {
+        "ratingKey": str(rating_key),
+        "key": f"/library/metadata/{rating_key}",
+        "state": state,
+        "time": str(int(time_ms)),
+        "duration": str(int(duration_ms)),
+        "hasMDE": "1",
+        "X-Plex-Client-Identifier": client_id,
+        "X-Plex-Product": "Otix",
+        "X-Plex-Platform": "Web",
+        "X-Plex-Platform-Version": "1.0",
+        "X-Plex-Device": "Otix Web",
+        "X-Plex-Device-Name": "Otix Player",
+        "X-Plex-Version": "1.0.0",
+    }
+    if token:
+        params["X-Plex-Token"] = token
+
+    timeline_url = f"{clean_url}/:/timeline?{urllib.parse.urlencode(params)}"
+    progress_url = f"{clean_url}/:/progress?key={rating_key}&time={int(time_ms)}&identifier=com.plexapp.plugins.library"
+    if token:
+        progress_url += f"&X-Plex-Token={token}"
+
+    # Also scrobble if stopped and >= 90% watched
+    scrobble_url = None
+    if state == "stopped" and duration_ms > 0 and time_ms >= duration_ms * 0.9:
+        scrobble_url = f"{clean_url}/:/scrobble?key={rating_key}&identifier=com.plexapp.plugins.library"
+        if token:
+            scrobble_url += f"&X-Plex-Token={token}"
+
+    # Update local UserPlexItem if matching row exists
+    try:
+        UserPlexItem.objects.filter(rating_key=str(rating_key)).update(
+            view_offset=int(time_ms),
+            viewed=bool(scrobble_url is not None),
+        )
+    except Exception:
+        pass
+
+    try:
+        status, _ = _request(timeline_url, headers=_plex_headers(), timeout=5.0)
+        _request(progress_url, headers=_plex_headers(), timeout=5.0)
+        if scrobble_url:
+            _request(scrobble_url, headers=_plex_headers(), timeout=5.0)
+        return status in (200, 201, 204)
+    except Exception as exc:
+        logger.debug("Failed to report Plex timeline to %s: %s", clean_url, exc)
+        return False
 
 
 def get_plex_sessions(user) -> list[dict]:

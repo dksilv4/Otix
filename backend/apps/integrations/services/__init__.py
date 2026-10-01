@@ -17,6 +17,7 @@ from apps.integrations.services.plex import (
     get_plex_stream_url,
     is_plex_admin,
     list_plex_libraries,
+    report_plex_timeline,
     resolve_stream_url_for_server_with_base,
 )
 from apps.integrations.services.plex_watchlist import sync_plex_watchlist
@@ -49,6 +50,7 @@ __all__ = [
     "get_plex_stream_url",
     "is_plex_admin",
     "list_plex_libraries",
+    "report_plex_timeline",
     "resolve_stream_url_for_server_with_base",
     "import_tmdb_watchlist",
     "register_sync_engine",

@@ -1,10 +1,11 @@
 import { useState, useRef, useLayoutEffect } from "react"
-import { X } from "lucide-react"
+import { Play, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Image } from "@ui/atoms/image"
 import type { EpisodeOut } from "@media/queries/media-queries"
 import { formatDate, formatRuntime } from '@media'
 import { FLIP_TRANSITION } from '@media'
+import { useStreamEpisode } from "@/features/media/hooks/use-stream-episode"
 
 interface EpisodeModalProps {
   episode: EpisodeOut
@@ -12,9 +13,22 @@ interface EpisodeModalProps {
   sourceRect: DOMRect | null
   onClose: () => void
   isExiting?: boolean
+  showId?: string
+  showTitle?: string
+  seasonNumber?: number
 }
 
-export function EpisodeModal({ episode, seasonPoster, sourceRect, onClose, isExiting }: EpisodeModalProps) {
+export function EpisodeModal({
+  episode,
+  seasonPoster,
+  sourceRect,
+  onClose,
+  isExiting,
+  showId,
+  showTitle,
+  seasonNumber,
+}: EpisodeModalProps) {
+  const { streamEpisode } = useStreamEpisode()
   const thumbRef = useRef<HTMLDivElement>(null)
   const [targetRect, setTargetRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null)
   const [animDone, setAnimDone] = useState(false)
@@ -152,6 +166,28 @@ export function EpisodeModal({ episode, seasonPoster, sourceRect, onClose, isExi
                   <p className="text-sm leading-relaxed text-muted-foreground/80">
                     {episode.overview}
                   </p>
+                )}
+
+                {showId && seasonNumber != null && (
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        void streamEpisode({
+                          showId,
+                          showTitle,
+                          seasonNumber,
+                          episodeNumber: episode.episodeNumber,
+                          episodeTitle: episode.name || undefined,
+                        })
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/50 hover:bg-amber-500/30 hover:ring-amber-400/70 font-semibold text-xs sm:text-sm transition-all shadow-lg active:scale-98"
+                    >
+                      <Play className="h-4 w-4 fill-current text-current" />
+                      <span>Stream Episode {episode.episodeNumber}</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </motion.div>

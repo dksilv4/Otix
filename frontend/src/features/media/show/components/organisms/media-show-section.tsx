@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle } from "lucide-react"
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Play, Loader2 } from "lucide-react"
 import { Image } from "@ui/atoms/image"
 import { DkDialog } from "@ui/molecules/dialog"
 import { SeasonProgressBar } from "./media-show-season-progress-bar"
@@ -10,6 +10,7 @@ import { useAuth } from '@auth/hooks/use-auth'
 import { mediaQueries, formatDate, formatRuntime, getPreferredSeason, useMediaParams, type SeasonOut } from "@media"
 import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched } from "@/features/interaction/episode-interaction-queries"
 import { useModal } from "@/lib/modals"
+import { useStreamEpisode } from "@/features/media/hooks/use-stream-episode"
 
 interface ShowSectionProps {
   className?: string
@@ -22,6 +23,7 @@ export function ShowSection({
   const { mediaType, mediaId } = useMediaParams()
   const { isAuthenticated } = useAuth()
   const { openModal } = useModal()
+  const { streamEpisode, loadingKey } = useStreamEpisode()
   // ?season=N deep link (discover season rails) — parsed by the route's
   // validateSearch, so it survives hard refresh/share.
   const seasonSearch = useSearch({ strict: false }) as { season?: number }
@@ -142,6 +144,11 @@ export function ShowSection({
   const seasonPoster = currentSeason?.posterUrl
   const seasonProgress = currentSeason ? getSeasonProgress(currentSeason) : { watched: 0, total: 0 }
   const currentUnwatched = seasonProgress.total - seasonProgress.watched
+
+  const firstPlayableEpisode =
+    hasEpisodes
+      ? currentEpisodes.find((ep) => !episodeInteractions?.[ep.id]?.watched) || currentEpisodes[0]
+      : null
 
   const handleMarkSeasonWatchedConfirm = () => {
     if (!currentSeason) return
@@ -264,6 +271,28 @@ export function ShowSection({
  )}
 
  <div className="flex flex-wrap gap-3 items-center mt-2">
+ {hasEpisodes && firstPlayableEpisode && (
+ <button
+ onClick={() =>
+   streamEpisode({
+     showId: data?.id ? String(data.id) : mediaId,
+     showTitle: data?.title,
+     seasonNumber: currentSeason.seasonNumber,
+     episodeNumber: firstPlayableEpisode.episodeNumber,
+     episodeTitle: firstPlayableEpisode.name,
+   })
+ }
+ disabled={loadingKey === `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${firstPlayableEpisode.episodeNumber}`}
+ className="text-xs font-semibold transition-all text-white flex items-center gap-1.5 bg-brand-primary/90 hover:bg-brand-primary active:scale-95 px-3.5 py-1.5 rounded-full shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50"
+ >
+ {loadingKey === `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${firstPlayableEpisode.episodeNumber}` ? (
+   <Loader2 className="w-3.5 h-3.5 animate-spin" />
+ ) : (
+   <Play className="w-3.5 h-3.5 fill-current" />
+ )}
+ <span>Play Season {currentSeason.seasonNumber}</span>
+ </button>
+ )}
  {/* Mark season as watched */}
  {hasEpisodes && currentUnwatched > 0 && currentSeason.seasonNumber !== 0 && (
  <button
@@ -314,13 +343,15 @@ export function ShowSection({
             const thumb = episode.stillUrl || seasonPoster
             const runtime = formatRuntime(episode.runtime)
             const isWatched = episodeInteractions?.[episode.id]?.watched ?? false
+            const epLoadingKey = `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${episode.episodeNumber}`
+            const isEpLoading = loadingKey === epLoadingKey
 
             return (
               <button
                 key={episode.id}
                 onClick={(e) => {
-                  // Don't open modal if clicking the watch toggle
-                  if ((e.target as HTMLElement).closest("[data-watch-toggle]")) return
+                  // Don't open modal if clicking the watch toggle or stream button
+                  if ((e.target as HTMLElement).closest("[data-watch-toggle]") || (e.target as HTMLElement).closest("[data-stream-btn]")) return
                   const thumbEl = e.currentTarget.querySelector("[data-thumb]")
                   flipSourceRef.current = thumbEl?.getBoundingClientRect() ?? null
                   const close = openModal(
@@ -328,6 +359,9 @@ export function ShowSection({
                       episode={episode}
                       seasonPoster={seasonPoster}
                       sourceRect={flipSourceRef.current}
+                      showId={data?.id ? String(data.id) : mediaId}
+                      showTitle={data?.title}
+                      seasonNumber={currentSeason.seasonNumber}
                       onClose={() => close()}
                     />
                   )
@@ -346,6 +380,31 @@ export function ShowSection({
  }
  />
  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+ <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+ <span
+ data-stream-btn
+ role="button"
+ tabIndex={0}
+ aria-label={`Play ${episode.name || `Episode ${episode.episodeNumber}`}`}
+ onClick={(e) => {
+ e.stopPropagation()
+ streamEpisode({
+   showId: data?.id ? String(data.id) : mediaId,
+   showTitle: data?.title,
+   seasonNumber: currentSeason.seasonNumber,
+   episodeNumber: episode.episodeNumber,
+   episodeTitle: episode.name,
+ })
+ }}
+ className="pointer-events-auto w-9 h-9 rounded-full bg-white/95 text-black flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+ >
+ {isEpLoading ? (
+   <Loader2 className="w-4 h-4 animate-spin text-brand-primary" />
+ ) : (
+   <Play className="w-4 h-4 fill-current ml-0.5" />
+ )}
+ </span>
+ </div>
  <span className="glass-badge absolute bottom-1.5 left-1.5 rounded-md px-1.5 py-0.5 font-semibold text-[10px] tabular-nums text-foreground/90 z-10">
  E{episode.episodeNumber}
  </span>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bookmark, CheckCircle2, Heart, Play, Star } from 'lucide-react'
+import { Bookmark, CheckCircle2, Film, Heart, Star } from 'lucide-react'
 import { useAuth } from '@auth/hooks/use-auth'
 import { useModal } from '@/lib/modals'
 import { TrailerVideoModal } from '@/features/discover/components/molecules/trailer-video-modal'
@@ -204,14 +204,15 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
           </div>
         )}
 
-        {/* Primary Action: Trailer (Plex play lives on the hero for signed-in users) */}
+        {/* Secondary Action: Trailer */}
         {trailer ? (
           <button
             type="button"
             onClick={openTrailer}
-            className="inline-flex items-center gap-1 rounded-full bg-red-600/90 hover:bg-red-600 active:scale-95 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold text-white shadow transition-all shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 hover:border-white/20 active:scale-95 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold text-white/90 shadow-sm transition-all shrink-0 group/trailer"
+            title="Watch Trailer"
           >
-            <Play className="h-3 w-3 fill-current" />
+            <Film className="h-3 w-3 text-rose-400 group-hover/trailer:scale-110 transition-transform shrink-0" />
             <span>Trailer</span>
           </button>
         ) : null}

@@ -90,7 +90,7 @@ class PlexConnectInfoTests(_ApiTestBase):
             title="Interstellar",
         )
         self.url = reverse(
-            "integrations:plex-connect-info", kwargs={"media_item_id": self.media.pk}
+            "integrations:plex-connect-info", kwargs={"media_identifier": self.media.pk}
         )
 
     def test_unauthenticated_401(self):
@@ -101,7 +101,7 @@ class PlexConnectInfoTests(_ApiTestBase):
     def test_no_plex_item_404(self):
         other_media = _make_media("Dune")
         resp = self.client.get(
-            reverse("integrations:plex-connect-info", kwargs={"media_item_id": other_media.pk})
+            reverse("integrations:plex-connect-info", kwargs={"media_identifier": other_media.pk})
         )
         self.assertEqual(resp.status_code, 404)
         self.assertEqual(resp.json()["detail"], "Media item not found in your Plex library")
@@ -110,8 +110,8 @@ class PlexConnectInfoTests(_ApiTestBase):
         resp = self.client.get(self.url)
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
-        self.assertEqual(
-            set(body), {"base_url", "base_urls", "token", "rating_key", "album_thumb_url"}
+        self.assertTrue(
+            {"base_url", "base_urls", "token", "rating_key", "album_thumb_url", "provider", "provider_label"}.issubset(set(body))
         )
         self.assertEqual(body["base_url"], self.server.base_url)
         self.assertEqual(body["base_urls"], [self.server.base_url])
@@ -135,7 +135,7 @@ class PlexConnectInfoTests(_ApiTestBase):
             title="Arrival",
         )
         resp = self.client.get(
-            reverse("integrations:plex-connect-info", kwargs={"media_item_id": bob_media.pk})
+            reverse("integrations:plex-connect-info", kwargs={"media_identifier": bob_media.pk})
         )
         self.assertEqual(resp.status_code, 404)
 

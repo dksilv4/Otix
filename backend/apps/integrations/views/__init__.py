@@ -16,6 +16,7 @@ from apps.integrations.views.plex import (
     PlexServersView,
     PlexSessionsView,
     PlexStreamView,
+    PlexTimelineView,
     PlexWatchlistSyncView,
 )
 from apps.integrations.views.plex_storage import (
@@ -52,6 +53,7 @@ __all__ = [
     "PlexStorageServersView",
     "PlexStorageSummaryView",
     "PlexStreamView",
+    "PlexTimelineView",
     "PlexSyncStreamView",
     "PlexSyncView",
     "PlexWatchlistSyncView",

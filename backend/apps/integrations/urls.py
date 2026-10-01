@@ -22,6 +22,7 @@ from apps.integrations.views import (
     PlexStreamView,
     PlexSyncStreamView,
     PlexSyncView,
+    PlexTimelineView,
     PlexWatchlistSyncView,
     PlexWebhookView,
     SteamLibraryScanView,
@@ -56,6 +57,7 @@ urlpatterns = [
         name="plex-connect-info",
     ),
     path("plex/sessions", PlexSessionsView.as_view(), name="plex-sessions"),
+    path("plex/timeline", PlexTimelineView.as_view(), name="plex-timeline"),
     path(
         "plex/watchlist/sync",
         PlexWatchlistSyncView.as_view(),

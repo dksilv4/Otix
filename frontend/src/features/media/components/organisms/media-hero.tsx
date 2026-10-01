@@ -11,7 +11,6 @@ import {
   Music,
   Sparkles,
   Heart,
-  Play,
   Bookmark,
   CheckCircle2,
 } from 'lucide-react'
@@ -316,21 +315,22 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
                 <MediaHeroLibraryActions />
               </Suspense>
 
-              {/* TRAILER BUTTON (Icon-based) */}
+              {/* TRAILER BUTTON (Secondary Action) */}
               {trailer && (
                 <button
                   type="button"
                   onClick={openTrailer}
                   className={cn(
-                    'group relative inline-flex h-9 w-9 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95 shadow-lg',
+                    'group relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all hover:scale-105 active:scale-95 shadow-lg backdrop-blur-xl',
                     trailerIsPrimary
-                      ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/30 ring-1 ring-red-400/40'
-                      : 'bg-white/[0.12] hover:bg-white/[0.18] text-white backdrop-blur-xl',
+                      ? 'bg-rose-600/90 hover:bg-rose-600 text-white shadow-rose-600/30 ring-1 ring-rose-400/40'
+                      : 'bg-white/[0.10] hover:bg-white/[0.16] text-white/90 hover:text-white border border-white/10 hover:border-white/20',
                   )}
                   title="Watch Trailer"
                   aria-label="Watch Trailer"
                 >
-                  <Play className="h-4 w-4 fill-current translate-x-[0.5px]" />
+                  <Film className="h-4 w-4 text-rose-400 group-hover:scale-110 transition-transform shrink-0" />
+                  <span>Trailer</span>
                 </button>
               )}
 

@@ -50,6 +50,18 @@ export function RegisterPage() {
             Sign in
           </a>
         </p>
+
+        <p className="mt-4 text-[11px] text-muted-foreground/80 text-center leading-normal">
+          By signing up, you agree to Otix&apos;s{' '}
+          <a
+            href="/terms"
+            onClick={(e) => { e.preventDefault(); navigate({ to: '/terms' }) }}
+            className="text-white/80 underline underline-offset-2 hover:text-white"
+          >
+            Terms of Service
+          </a>
+          .
+        </p>
       </AuthCard>
     </div>
   )

@@ -18,6 +18,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
+  const [agreeConsent, setAgreeConsent] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [authError, setAuthError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -32,6 +33,9 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     e.preventDefault()
     setAuthError('')
     const errors = validateRegisterFields({ email, username, password, confirmPassword, dateOfBirth })
+    if (!agreeConsent) {
+      errors.consent = 'You must confirm your age and agree to the Terms and Privacy Policy.'
+    }
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0) return
 
@@ -187,7 +191,56 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
         error={fieldErrors.confirmPassword}
       />
 
-      <div className="flex justify-center pt-1">
+      <div className="pt-2">
+        <label className="flex items-start gap-2.5 text-xs text-muted-foreground cursor-pointer select-none">
+          <input
+            id="reg-consent"
+            name="consent"
+            type="checkbox"
+            checked={agreeConsent}
+            onChange={(e) => {
+              setAgreeConsent(e.target.checked)
+              if (fieldErrors.consent) {
+                setFieldErrors((prev) => {
+                  const copy = { ...prev }
+                  delete copy.consent
+                  return copy
+                })
+              }
+            }}
+            required
+            className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/5 text-primary accent-primary focus:ring-primary focus:ring-offset-0 cursor-pointer shrink-0"
+          />
+          <span className="leading-relaxed">
+            I confirm that I am at least 13 years of age and agree to Otix&apos;s{' '}
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white underline underline-offset-2 hover:text-primary"
+            >
+              Terms of Service
+            </a>{' '}
+            and{' '}
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white underline underline-offset-2 hover:text-primary"
+            >
+              Privacy Policy
+            </a>
+            .
+          </span>
+        </label>
+        {fieldErrors.consent && (
+          <p id="reg-consent-error" role="alert" className="mt-1 text-xs text-destructive">
+            {fieldErrors.consent}
+          </p>
+        )}
+      </div>
+
+      <div className="flex justify-center pt-2">
         <button
           type="submit"
           id="register-submit"

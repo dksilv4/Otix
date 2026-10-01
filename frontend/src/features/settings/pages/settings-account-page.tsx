@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
+import { Link } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { DkButton } from '@ui/atoms/button'
 import { DkInput } from '@ui/atoms/input'
 import { DkSwitch } from '@ui/atoms/switch'
 import { cn } from '@/lib/utils'
-import { Check, Shield, ShieldAlert, Loader2, Monitor } from 'lucide-react'
+import { Check, Shield, ShieldAlert, Loader2, Monitor, Trash2 } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { useSettingsSaveBar } from '../context/settings-save-context'
-import { FeatureStatusTags } from '@ui/atoms/feature-status-tag'
 
 interface SessionInfo {
   sessionKey: string
@@ -685,13 +685,33 @@ export function SettingsAccountPage() {
 
       <SettingsCard>
         <SectionHeader
-          title="Danger Zone"
-          description="Account lifecycle operations."
-          badges={<FeatureStatusTags kinds={['wip']} />}
+          title="Data Deletion &amp; Account Closure"
+          description="Exercise your GDPR Article 17 and CCPA Right to Erasure."
         />
-        <p className="text-sm text-white/60">
-          Account deactivation and deletion are not yet available. Coming soon.
-        </p>
+        <div className="space-y-3 pt-2">
+          <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
+            You can request the permanent deletion of your Otix account, login credentials, and all synchronized media preferences. Requests are processed within 30 days.
+          </p>
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <a
+              href={`mailto:privacy@otix.app?subject=${encodeURIComponent(
+                `Account Deletion Request - ${user?.email || user?.username || 'User'}`
+              )}&body=${encodeURIComponent(
+                `Hello Otix Privacy Team,\n\nPlease permanently delete my account and all associated personal data associated with username "${user?.username || ''}" and email "${user?.email || ''}".\n\nThank you.`
+              )}`}
+              className="inline-flex items-center gap-2 rounded-xl bg-destructive/15 hover:bg-destructive/25 border border-destructive/30 px-3.5 py-2 text-xs font-semibold text-destructive transition-all active:scale-95"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Request Account &amp; Data Deletion</span>
+            </a>
+            <Link
+              to="/privacy"
+              className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors underline underline-offset-2"
+            >
+              <span>Learn more about your data rights</span>
+            </Link>
+          </div>
+        </div>
       </SettingsCard>
     </div>
   )

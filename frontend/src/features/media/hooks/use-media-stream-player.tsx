@@ -7,6 +7,7 @@ import type {
 } from '../types/stream-player'
 import { determinePlaybackMethod } from '../utils/stream-compatibility'
 import { loadPlayerSettings, savePlayerSettings } from '@/features/discover/components/molecules/trailer-video-modal'
+import { apiClient } from '@/lib/api/client'
 
 interface PluginApi {
   callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>
@@ -17,6 +18,21 @@ function getPluginApi(): PluginApi | undefined {
   return (window as Window & { desktopAPI?: { plugin?: PluginApi } }).desktopAPI?.plugin
 }
 
+function getPlexClientId(): string {
+  if (typeof window === 'undefined') return 'otix-web-player'
+  try {
+    const key = 'otix_plex_client_id'
+    let id = localStorage.getItem(key)
+    if (!id) {
+      id = 'otix-web-' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36)
+      localStorage.setItem(key, id)
+    }
+    return id
+  } catch {
+    return 'otix-web-player'
+  }
+}
+
 export interface MediaStreamPlayerContextValue {
   session: StreamPlaybackSession | null
   isOpen: boolean
@@ -24,7 +40,9 @@ export interface MediaStreamPlayerContextValue {
   isBuffering: boolean
   currentTime: number
   duration: number
+  bufferedTime: number
   volume: number
+  playbackSpeed: number
   isMuted: boolean
   isTheater: boolean
   isZoomedOut: boolean
@@ -43,6 +61,7 @@ export interface MediaStreamPlayerContextValue {
   pause: () => void
   seek: (seconds: number) => void
   setVolume: (volume: number) => void
+  setPlaybackSpeed: (speed: number) => void
   toggleMute: () => void
   setTheater: (isTheater: boolean) => void
   setZoomedOut: (isZoomed: boolean) => void
@@ -51,6 +70,7 @@ export interface MediaStreamPlayerContextValue {
 
   // Internal bindings for the video element
   onTimeUpdate: (time: number, duration: number) => void
+  onBufferedUpdate: (buffered: number) => void
   onBuffering: (buffering: boolean) => void
   onError: (err: string | null) => void
   fallbackToHls: () => void
@@ -66,6 +86,8 @@ export function MediaStreamPlayerProvider({ children }: { children: React.ReactN
   const [isBuffering, setIsBuffering] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [bufferedTime, setBufferedTime] = useState(0)
+  const [playbackSpeed, setPlaybackSpeedState] = useState(1)
   const [volume, setVolumeState] = useState(initialSettings.volume)
   const [isMuted, setIsMutedState] = useState(initialSettings.isMuted)
   const [isTheater, setIsTheaterState] = useState(initialSettings.isTheater)
@@ -85,33 +107,110 @@ export function MediaStreamPlayerProvider({ children }: { children: React.ReactN
     isPlayingRef.current = isPlaying
   }, [session, currentTime, isPlaying])
 
-  // Send playback heartbeat to the media server
-  const sendProgressHeartbeat = useCallback((isStopped = false) => {
-    const active = sessionRef.current
-    if (!active) return
+  // Send playback heartbeat to the media server (Plex Timeline & desktop plugin)
+  const sendProgressHeartbeat = useCallback(
+    async (isStopped = false) => {
+      const active = sessionRef.current
+      if (!active) return
 
-    const api = getPluginApi()
-    if (!api?.callData) return
+      const positionMs = Math.round(currentTimeRef.current * 1000)
+      const durationMs = Math.round(active.durationMs || 0)
+      const state = isStopped ? 'stopped' : isPlayingRef.current ? 'playing' : 'paused'
 
-    const positionMs = Math.round(currentTimeRef.current * 1000)
-    const durationMs = Math.round((active.durationMs || 0))
+      // 1. Report to Plex Media Server timeline
+      if (active.source === 'plex' && active.serverUrl && active.itemId) {
+        const clientId = getPlexClientId()
+        const params = new URLSearchParams({
+          ratingKey: String(active.itemId),
+          key: `/library/metadata/${active.itemId}`,
+          state,
+          time: String(positionMs),
+          duration: String(durationMs),
+          hasMDE: '1',
+          'X-Plex-Client-Identifier': clientId,
+          'X-Plex-Product': 'Otix',
+          'X-Plex-Platform': 'Web',
+          'X-Plex-Platform-Version': '1.0',
+          'X-Plex-Device': 'Otix Web',
+          'X-Plex-Device-Name': 'Otix Player',
+          'X-Plex-Version': '1.0.0',
+        })
+        if (active.token) {
+          params.set('X-Plex-Token', active.token)
+        }
 
-    if (isStopped) {
-      api.callData(active.source, 'session.stop', {
-        playSessionId: active.playSessionId,
-        itemId: active.itemId,
-        positionMs,
-      }).catch((err) => console.warn('[StreamPlayer] Stop beacon failed:', err))
-    } else {
-      api.callData(active.source, 'session.progress', {
-        playSessionId: active.playSessionId,
-        itemId: active.itemId,
-        positionMs,
-        durationMs,
-        isPaused: !isPlayingRef.current,
-      }).catch((err) => console.warn('[StreamPlayer] Progress heartbeat failed:', err))
+        const directTimelineUrl = `${active.serverUrl.replace(/\/$/, '')}/:/timeline?${params.toString()}`
+        const progressParams = new URLSearchParams({
+          key: String(active.itemId),
+          time: String(positionMs),
+          identifier: 'com.plexapp.plugins.library',
+        })
+        if (active.token) progressParams.set('X-Plex-Token', active.token)
+        const directProgressUrl = `${active.serverUrl.replace(/\/$/, '')}/:/progress?${progressParams.toString()}`
+
+        try {
+          if (isStopped && typeof navigator !== 'undefined' && navigator.sendBeacon) {
+            navigator.sendBeacon(directTimelineUrl)
+            navigator.sendBeacon(directProgressUrl)
+          } else {
+            await Promise.all([
+              fetch(directTimelineUrl, { method: 'GET', mode: 'no-cors', keepalive: isStopped }),
+              fetch(directProgressUrl, { method: 'GET', mode: 'no-cors', keepalive: isStopped }),
+            ])
+          }
+        } catch {
+          // Direct fetch failed
+        }
+
+        // Keep Otix backend UserPlexItem view_offset and server in sync
+        if (isStopped || state === 'paused' || Math.random() < 0.25) {
+          apiClient
+            .post('/integrations/plex/timeline', {
+              server_url: active.serverUrl,
+              token: active.token,
+              rating_key: active.itemId,
+              state,
+              time_ms: positionMs,
+              duration_ms: durationMs,
+              client_id: clientId,
+            })
+            .catch(() => {})
+        }
+      }
+
+      // 2. Also notify desktop plugin if running in Electron environment
+      const api = getPluginApi()
+      if (api?.callData) {
+        if (isStopped) {
+          api.callData(active.source, 'session.stop', {
+            playSessionId: active.playSessionId,
+            itemId: active.itemId,
+            positionMs,
+          }).catch(() => {})
+        } else {
+          api.callData(active.source, 'session.progress', {
+            playSessionId: active.playSessionId,
+            itemId: active.itemId,
+            positionMs,
+            durationMs,
+            isPaused: !isPlayingRef.current,
+          }).catch(() => {})
+        }
+      }
+    },
+    [],
+  )
+
+  // Clean stop on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (sessionRef.current) {
+        sendProgressHeartbeat(true)
+      }
     }
-  }, [])
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [sendProgressHeartbeat])
 
   // Heartbeat timer (fires every 10 seconds during active playback)
   useEffect(() => {
@@ -141,6 +240,8 @@ export function MediaStreamPlayerProvider({ children }: { children: React.ReactN
     setPlaybackMethod(method)
     setCurrentTime((newSession.startPositionMs || 0) / 1000)
     setDuration((newSession.durationMs || 0) / 1000)
+    setBufferedTime(0)
+    setPlaybackSpeedState(1)
     setActiveAudioIndex(newSession.selectedAudioIndex ?? newSession.audioTracks[0]?.index ?? null)
     setActiveSubtitleId(
       newSession.selectedSubtitleIndex != null
@@ -152,14 +253,9 @@ export function MediaStreamPlayerProvider({ children }: { children: React.ReactN
     setIsOpen(true)
 
     // Notify server of session start
-    const api = getPluginApi()
-    if (api?.callData) {
-      api.callData(newSession.source, 'session.start', {
-        playSessionId: newSession.playSessionId,
-        itemId: newSession.itemId,
-        positionMs: newSession.startPositionMs || 0,
-      }).catch((err) => console.warn('[StreamPlayer] Start beacon failed:', err))
-    }
+    setTimeout(() => {
+      sendProgressHeartbeat(false)
+    }, 150)
   }, [sendProgressHeartbeat])
 
   // Close stream session & clean up
@@ -173,19 +269,38 @@ export function MediaStreamPlayerProvider({ children }: { children: React.ReactN
 
   // Transport actions
   const togglePlay = useCallback(() => {
-    setIsPlaying((prev) => !prev)
-  }, [])
+    setIsPlaying((prev) => {
+      const next = !prev
+      isPlayingRef.current = next
+      setTimeout(() => sendProgressHeartbeat(false), 50)
+      return next
+    })
+  }, [sendProgressHeartbeat])
 
   const play = useCallback(() => {
     setIsPlaying(true)
-  }, [])
+    isPlayingRef.current = true
+    setTimeout(() => sendProgressHeartbeat(false), 50)
+  }, [sendProgressHeartbeat])
 
   const pause = useCallback(() => {
     setIsPlaying(false)
-  }, [])
+    isPlayingRef.current = false
+    setTimeout(() => sendProgressHeartbeat(false), 50)
+  }, [sendProgressHeartbeat])
 
   const seek = useCallback((seconds: number) => {
     setCurrentTime(seconds)
+    currentTimeRef.current = seconds
+    setTimeout(() => sendProgressHeartbeat(false), 50)
+  }, [sendProgressHeartbeat])
+
+  const setPlaybackSpeed = useCallback((speed: number) => {
+    setPlaybackSpeedState(speed)
+  }, [])
+
+  const onBufferedUpdate = useCallback((buffered: number) => {
+    setBufferedTime(buffered)
   }, [])
 
   const setVolume = useCallback((val: number) => {
@@ -263,7 +378,9 @@ export function MediaStreamPlayerProvider({ children }: { children: React.ReactN
     isBuffering,
     currentTime,
     duration,
+    bufferedTime,
     volume,
+    playbackSpeed,
     isMuted,
     isTheater,
     isZoomedOut,
@@ -279,12 +396,14 @@ export function MediaStreamPlayerProvider({ children }: { children: React.ReactN
     pause,
     seek,
     setVolume,
+    setPlaybackSpeed,
     toggleMute,
     setTheater,
     setZoomedOut,
     setActiveSubtitle,
     setActiveAudio,
     onTimeUpdate,
+    onBufferedUpdate,
     onBuffering,
     onError,
     fallbackToHls,
@@ -297,11 +416,46 @@ export function MediaStreamPlayerProvider({ children }: { children: React.ReactN
   )
 }
 
+const noop = () => {}
+const defaultPlayerContextValue: MediaStreamPlayerContextValue = {
+  session: null,
+  isOpen: false,
+  isPlaying: false,
+  currentTime: 0,
+  duration: 0,
+  bufferedTime: 0,
+  volume: 1,
+  playbackSpeed: 1,
+  isMuted: false,
+  isBuffering: false,
+  isTheater: false,
+  isZoomedOut: false,
+  activeSubtitle: null,
+  activeAudio: null,
+  playbackMethod: 'direct-play',
+  error: null,
+  openStream: noop,
+  closeStream: noop,
+  togglePlay: noop,
+  play: noop,
+  pause: noop,
+  seek: noop,
+  setVolume: noop,
+  setPlaybackSpeed: noop,
+  toggleMute: noop,
+  setTheater: noop,
+  setZoomedOut: noop,
+  setActiveSubtitle: noop,
+  setActiveAudio: noop,
+  onTimeUpdate: noop,
+  onBufferedUpdate: noop,
+  onBuffering: noop,
+  onError: noop,
+  fallbackToHls: noop,
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function useMediaStreamPlayer(): MediaStreamPlayerContextValue {
   const ctx = useContext(MediaStreamPlayerContext)
-  if (!ctx) {
-    throw new Error('useMediaStreamPlayer must be used within MediaStreamPlayerProvider')
-  }
-  return ctx
+  return ctx || defaultPlayerContextValue
 }

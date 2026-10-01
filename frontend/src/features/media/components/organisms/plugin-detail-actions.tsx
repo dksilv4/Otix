@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, ArrowDownToLine, Check, ChevronDown, Clock, Loader2, Play } from 'lucide-react'
+import { AlertTriangle, ArrowDownToLine, Check, ChevronDown, Clock, Loader2, Play, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMediaDetailPluginActions } from '@/features/media/hooks/use-media-detail-plugin-actions'
 
@@ -33,6 +33,19 @@ export interface PlayInstance {
   serverId: string
   name: string
   ratingKey: string
+  baseUrl?: string
+  token?: string
+  provider?: string
+  providerLabel?: string
+  serverName?: string
+  mediaType?: 'movie' | 'show' | 'episode'
+  seasonNumber?: number
+  episodeNumber?: number
+  episodeTitle?: string
+  viewOffset?: number
+  duration?: number
+  progressPercent?: number
+  viewed?: boolean
   itemId?: string
   title?: string
 }
@@ -298,7 +311,56 @@ function RequestButton({
   )
 }
 
-function PlayOnPlexButton({
+function formatRemaining(offsetMs: number, durationMs: number): string {
+  const leftMs = Math.max(0, durationMs - offsetMs)
+  const totalMins = Math.round(leftMs / 60000)
+  if (totalMins < 60) return `${totalMins}m left`
+  const hours = Math.floor(totalMins / 60)
+  const mins = totalMins % 60
+  return `${hours}h ${mins > 0 ? `${mins}m ` : ''}left`
+}
+
+function getStreamPresentation(inst: PlayInstance) {
+  const offset = inst.viewOffset || 0
+  const duration = inst.duration || 0
+  const isResume = Boolean(offset > 5000 && (!duration || offset < duration - 15000) && !inst.viewed)
+  const isWatched = Boolean(inst.viewed) && !isResume
+  const hasEpisode = inst.seasonNumber != null && inst.episodeNumber != null
+
+  let primaryText: string
+  let subText: string | null = null
+
+  if (hasEpisode) {
+    const epTag = `S${inst.seasonNumber}:E${inst.episodeNumber}`
+    if (isResume) {
+      primaryText = `Resume ${epTag}`
+      subText = inst.episodeTitle || null
+    } else if (isWatched) {
+      primaryText = `Rewatch ${epTag}`
+      subText = inst.episodeTitle || null
+    } else {
+      primaryText = `Play ${epTag}`
+      subText = inst.episodeTitle || null
+    }
+  } else {
+    if (isResume) {
+      primaryText = 'Resume'
+      subText = duration > 0 ? formatRemaining(offset, duration) : null
+    } else if (isWatched) {
+      primaryText = 'Watch Again'
+    } else {
+      primaryText = inst.title || 'Stream'
+    }
+  }
+
+  const progressPercent =
+    inst.progressPercent ??
+    (duration > 0 && offset > 0 ? Math.min(100, Math.round((offset / duration) * 100)) : 0)
+
+  return { isResume, isWatched, primaryText, subText, progressPercent }
+}
+
+function StreamMediaButton({
   widget,
   onPlay,
   variant = 'default',
@@ -323,27 +385,71 @@ function PlayOnPlexButton({
 
   if (instances.length === 1) {
     const single = instances[0]
+    const { isResume, isWatched, primaryText, subText, progressPercent } = getStreamPresentation(single)
+
     return (
       <button
         type="button"
         onClick={() => run(single)}
         disabled={busy != null}
         className={cn(
+          'relative overflow-hidden group/stream-btn transition-all duration-200',
           variant === 'pill'
-            ? 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4'
+            ? cn(
+                'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4',
+                isResume
+                  ? 'bg-amber-500/25 text-amber-200 ring-1 ring-amber-400/50 hover:bg-amber-500/35 hover:ring-amber-400/70 shadow-amber-500/10'
+                  : 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30 hover:ring-emerald-400/60 shadow-emerald-500/10',
+              )
             : cn(
                 'dk-interaction__btn glass-inset',
                 'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold',
                 'text-white hover:text-white/90 transition-all cursor-pointer disabled:opacity-50',
               ),
         )}
+        title={subText ? `${primaryText} (${subText})` : primaryText}
       >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 fill-current" />}
-        <span>{single.title || `Stream on ${single.name}`}</span>
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
+        ) : isWatched ? (
+          <RotateCcw className="h-4 w-4 text-current shrink-0" />
+        ) : (
+          <Play className="h-4 w-4 fill-current text-current shrink-0" />
+        )}
+        <span className="font-semibold">{primaryText}</span>
+        {subText && (
+          <span className="text-[11px] opacity-75 font-normal truncate max-w-[140px] hidden sm:inline">
+            · {subText}
+          </span>
+        )}
+        {single.providerLabel && (
+          <span className="inline-flex items-center gap-1 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-white/80 hidden md:inline-flex ml-0.5">
+            <span
+              className={cn(
+                'w-1.5 h-1.5 rounded-full animate-pulse',
+                isResume ? 'bg-amber-400' : 'bg-emerald-400',
+              )}
+            />
+            {single.providerLabel}
+          </span>
+        )}
+
+        {/* Illuminated Progress Bar Accent */}
+        {isResume && progressPercent > 0 && (
+          <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-white/20 rounded-full overflow-hidden">
+            <span
+              className="block h-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)] transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </span>
+        )}
       </button>
     )
   }
 
+  // Multi-server / Multi-provider dropdown
+  const first = instances[0]
+  const { isResume, primaryText, subText, progressPercent } = getStreamPresentation(first)
   return (
     <>
       <button
@@ -353,8 +459,14 @@ function PlayOnPlexButton({
           setCoords({ top: rect.bottom + 6, left: rect.left, width: rect.width })
         }}
         className={cn(
+          'relative overflow-hidden group/stream-btn transition-all duration-200',
           variant === 'pill'
-            ? 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] [&_svg]:h-4 [&_svg]:w-4'
+            ? cn(
+                'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] [&_svg]:h-4 [&_svg]:w-4',
+                isResume
+                  ? 'bg-amber-500/25 text-amber-200 ring-1 ring-amber-400/50 hover:bg-amber-500/35 hover:ring-amber-400/70 shadow-amber-500/10'
+                  : 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30 hover:ring-emerald-400/60 shadow-emerald-500/10',
+              )
             : cn(
                 'dk-interaction__btn glass-inset',
                 'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold',
@@ -362,36 +474,79 @@ function PlayOnPlexButton({
               ),
         )}
       >
-        <Play className="h-4 w-4 fill-current" />
-        <span>Stream from {widget.label || 'Server'}</span>
-        <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+        <Play className="h-4 w-4 fill-current shrink-0" />
+        <span className="font-semibold">{primaryText}</span>
+        {subText && (
+          <span className="text-[11px] opacity-75 font-normal truncate max-w-[120px] hidden sm:inline">
+            · {subText}
+          </span>
+        )}
+        {first.providerLabel && (
+          <span className="inline-flex items-center gap-1 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-white/80 hidden md:inline-flex ml-0.5">
+            <span
+              className={cn(
+                'w-1.5 h-1.5 rounded-full animate-pulse',
+                isResume ? 'bg-amber-400' : 'bg-emerald-400',
+              )}
+            />
+            {first.providerLabel}
+          </span>
+        )}
+        <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
+
+        {isResume && progressPercent > 0 && (
+          <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-white/20 rounded-full overflow-hidden">
+            <span
+              className="block h-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </span>
+        )}
       </button>
+
       {coords &&
         createPortal(
           <div className="fixed inset-0 z-[120]" onMouseDown={() => setCoords(null)}>
             <div
-              className="absolute overflow-hidden rounded-xl border border-white/10 bg-[#16181d] shadow-2xl shadow-black/60"
-              style={{ top: coords.top, left: coords.left, width: Math.max(coords.width, 200) }}
+              className="absolute overflow-hidden rounded-2xl border border-white/10 bg-[#14161b]/95 backdrop-blur-2xl p-1.5 shadow-2xl shadow-black/80 space-y-1"
+              style={{ top: coords.top, left: coords.left, width: Math.max(coords.width, 240) }}
             >
-              <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">
-                {widget.label || 'Media'} Servers
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40 border-b border-white/5">
+                Available Stream Sources
               </div>
-              {instances.map((inst) => (
-                <button
-                  key={inst.id}
-                  type="button"
-                  disabled={busy != null}
-                  onClick={() => run(inst)}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-white/80 hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {busy === inst.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                  ) : (
-                    <Play className="h-3.5 w-3.5 text-primary fill-current" />
-                  )}
-                  <span className="truncate">{inst.name}</span>
-                </button>
-              ))}
+              {instances.map((inst) => {
+                const pres = getStreamPresentation(inst)
+                return (
+                  <button
+                    key={inst.id}
+                    type="button"
+                    disabled={busy != null}
+                    onClick={() => run(inst)}
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-left text-xs text-white/90 hover:bg-white/[0.08] transition-all cursor-pointer disabled:opacity-50 group"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {busy === inst.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                      ) : pres.isWatched ? (
+                        <RotateCcw className="h-4 w-4 text-emerald-400 shrink-0" />
+                      ) : (
+                        <Play className="h-4 w-4 text-primary fill-current shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-semibold truncate text-white">{inst.name}</div>
+                        <div className="text-[10px] text-white/50 truncate">
+                          {pres.primaryText} {pres.subText ? `· ${pres.subText}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                    {inst.providerLabel && (
+                      <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-white/10 text-white/60 shrink-0">
+                        {inst.providerLabel}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>,
           document.body,
@@ -422,7 +577,7 @@ export function MediaDetailPluginButtons({
   return (
     <>
       {playWidgets.map((widget) => (
-        <PlayOnPlexButton key={widget.pluginId} widget={widget} onPlay={onPlay} variant={variant} />
+        <StreamMediaButton key={widget.pluginId} widget={widget} onPlay={onPlay} variant={variant} />
       ))}
       {widgets.map((widget) => (
         <RequestButton

@@ -32,6 +32,7 @@ import {
   Server,
   ChevronDown,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react'
 import { EpicCodeModal } from '../components/organisms/epic-code-modal'
 import { PlexStorageOptimizerModal } from '@/features/integrations/plex-storage'
@@ -2060,6 +2061,21 @@ export function SettingsIntegrationsPage() {
           )}
         </>
       )}
+
+      {/* Privacy & Legal Compliance Disclosure */}
+      <div className="mt-8 rounded-2xl border border-white/5 bg-white/[0.02] p-4 sm:p-5 flex items-start gap-3.5 text-xs text-white/50">
+        <ShieldCheck className="h-5 w-5 text-emerald-400/80 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="font-semibold text-white/80">Personal Media &amp; Streaming Privacy</p>
+          <p className="leading-relaxed">
+            Otix is a personal media management client. Otix does not host, store, or distribute copyrighted video or audio. Media streaming connections are established directly between your browser and your linked personal servers (Plex, Jellyfin) for private domestic viewing. Read our full{' '}
+            <Link to="/terms" className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2">
+              Terms of Service
+            </Link>
+            .
+          </p>
+        </div>
+      </div>
 
       {plexStorageModalOpen && (
         <PlexStorageOptimizerModal

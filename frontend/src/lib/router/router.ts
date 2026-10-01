@@ -7,6 +7,12 @@ import { RootLayout } from "@/features/_config/components/layout/root-layout"
 const LogoLoadingTestPage = lazy(() =>
   import("@/pages/logo-loading-test-page").then((m) => ({ default: m.LogoLoadingTestPage })),
 )
+const TermsPage = lazy(() =>
+  import("@/pages/terms-page").then((m) => ({ default: m.TermsPage })),
+)
+const PrivacyPage = lazy(() =>
+  import("@/pages/privacy-page").then((m) => ({ default: m.PrivacyPage })),
+)
 
 import { createAuthRoutes } from '@auth/router'
 import { createDiscoverRoutes } from '@discover/router'
@@ -36,8 +42,22 @@ const logoLoadingTestRoute = createRoute({
   component: LogoLoadingTestPage,
 })
 
+const termsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/terms",
+  component: TermsPage,
+})
+
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/privacy",
+  component: PrivacyPage,
+})
+
 const routeTree = rootRoute.addChildren([
   logoLoadingTestRoute,
+  termsRoute,
+  privacyRoute,
   ...createAuthRoutes(rootRoute),
   ...createCalendarRoutes(rootRoute),
   ...createDiscoverRoutes(rootRoute),

@@ -54,8 +54,12 @@ class PlexConnectInfoView(APIView):
     """GET /integrations/plex/connect-info/{media_identifier}"""
 
     def get(self, request, media_identifier: str):
+        season = request.query_params.get("season")
+        episode = request.query_params.get("episode")
         try:
-            data = integrations_services.get_plex_connect_info(request.user, media_identifier)
+            data = integrations_services.get_plex_connect_info(
+                request.user, media_identifier, season=season, episode=episode
+            )
         except integrations_services.PlexConnectInfoNotFound as exc:
             raise NotFound(exc.detail) from None
         return Response(data)
@@ -73,6 +77,33 @@ class PlexSessionsView(APIView):
                 "is_admin": integrations_services.is_plex_admin(request.user),
             }
         )
+
+
+class PlexTimelineView(APIView):
+    """POST /integrations/plex/timeline — report playback progress to Plex."""
+
+    def post(self, request):
+        server_url = request.data.get("server_url")
+        token = request.data.get("token") or request.user.plex_auth_token
+        rating_key = request.data.get("rating_key")
+        state = request.data.get("state", "playing")
+        time_ms = int(request.data.get("time_ms", 0))
+        duration_ms = int(request.data.get("duration_ms", 0))
+        client_id = request.data.get("client_id") or "otix-web-player"
+
+        if not server_url or not rating_key:
+            return Response({"detail": "server_url and rating_key are required"}, status=400)
+
+        success = integrations_services.report_plex_timeline(
+            server_url=server_url,
+            token=token,
+            rating_key=rating_key,
+            state=state,
+            time_ms=time_ms,
+            duration_ms=duration_ms,
+            client_id=client_id,
+        )
+        return Response({"success": success})
 
 
 class PlexWatchlistSyncView(APIView):

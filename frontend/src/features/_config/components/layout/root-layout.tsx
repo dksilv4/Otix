@@ -11,6 +11,8 @@ import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permis
 import { useModal, ModalRoot } from "@/lib/modals"
 import { DecideWatchHost } from "@/features/discover/components/organisms/decide-watch-host"
 import { IndexerSearchHost } from "@/features/downloads/molecules/indexer-search-host"
+import { CookieBanner } from "@/components/cookie-banner"
+import { AppMicroFooter } from "@/components/app-micro-footer"
 
 const ActivityModule = lazy(() =>
   import("@activity/components/organisms/activity-panel").then((m) => ({ default: m.ActivityModule })),
@@ -86,8 +88,13 @@ export function RootLayout() {
         <NotificationsProvider>
           <CatalogStreamProvider>
           <NavShell isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={handleToggleSidebar}>
-            <main className={isFullScreenPage ? "" : "pt-16 md:pt-20"}>
-              <Outlet />
+            <main className={isFullScreenPage ? "" : "pt-16 md:pt-20 flex flex-col min-h-screen"}>
+              <div className="flex-1">
+                <Outlet />
+              </div>
+              {!isFullScreenPage &&
+                !location.pathname.startsWith('/terms') &&
+                !location.pathname.startsWith('/privacy') && <AppMicroFooter />}
             </main>
           </NavShell>
 
@@ -102,6 +109,7 @@ export function RootLayout() {
       <DecideWatchHost />
       <IndexerSearchHost />
       <ModalRoot />
+      <CookieBanner />
     </div>
   )
 }
