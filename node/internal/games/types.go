@@ -28,17 +28,23 @@ type LiveFpsSnapshot struct {
 	FrameCount   int64   `json:"frame_count"`
 	SampleCount  int     `json:"sample_count"`
 	Timestamp    int64   `json:"timestamp"` // Unix timestamp in ms
+	IsLoading    bool    `json:"is_loading,omitempty"`
+	IsBackground bool    `json:"is_background,omitempty"`
 }
 
 // FpsStatsData aggregates overall performance metrics at the end of a session.
 type FpsStatsData struct {
-	AvgFPS          float64 `json:"avg_fps"`
-	MinFPS          float64 `json:"min_fps"`
-	MaxFPS          float64 `json:"max_fps"`
-	Low1Percent     float64 `json:"low_1_percent"`
-	Low01Percent    float64 `json:"low_01_percent"`
-	TotalFrames     int64   `json:"total_frames"`
-	DurationSeconds int     `json:"duration_seconds"`
+	AvgFPS            float64 `json:"avg_fps"`
+	MinFPS            float64 `json:"min_fps"`
+	MaxFPS            float64 `json:"max_fps"`
+	Low1Percent       float64 `json:"low_1_percent"`
+	Low01Percent      float64 `json:"low_01_percent"`
+	TotalFrames       int64   `json:"total_frames"`
+	GameplayFrames    int64   `json:"gameplay_frames,omitempty"`
+	DurationSeconds   int     `json:"duration_seconds"`
+	GameplaySeconds   int     `json:"gameplay_seconds,omitempty"`
+	LoadingSeconds    int     `json:"loading_seconds,omitempty"`
+	BackgroundSeconds int     `json:"background_seconds,omitempty"`
 }
 
 // PlaySession records a completed gaming session.

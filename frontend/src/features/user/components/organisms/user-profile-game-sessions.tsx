@@ -204,6 +204,26 @@ export function UserProfileGameSessions({ username: _username }: UserProfileGame
                     </div>
                   )}
 
+                  {sess.loadingSeconds && sess.loadingSeconds > 0 && (
+                    <div
+                      className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] font-mono text-amber-300/80 hidden xl:inline-flex items-center gap-1"
+                      title={`${sess.loadingSeconds}s of asset loading screens filtered from gameplay benchmark`}
+                    >
+                      <span className="text-[10px] text-amber-400/50 font-sans">LOAD</span>
+                      {sess.loadingSeconds}s
+                    </div>
+                  )}
+
+                  {sess.backgroundSeconds && sess.backgroundSeconds > 0 && (
+                    <div
+                      className="px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] font-mono text-blue-300/80 hidden xl:inline-flex items-center gap-1"
+                      title={`${sess.backgroundSeconds}s in background / Alt-Tab excluded from gameplay benchmark`}
+                    >
+                      <span className="text-[10px] text-blue-400/50 font-sans">IDLE</span>
+                      {sess.backgroundSeconds}s
+                    </div>
+                  )}
+
                   {sess.totalFrames && sess.totalFrames > 0 && (
                     <div className="text-[11px] font-mono text-white/30 hidden xl:inline-block">
                       {sess.totalFrames >= 1000 ? `${(sess.totalFrames / 1000).toFixed(0)}k frames` : `${sess.totalFrames} frames`}

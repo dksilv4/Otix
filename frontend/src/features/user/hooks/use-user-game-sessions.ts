@@ -16,6 +16,10 @@ export interface NormalizedPlaySession {
   minFps: number | null
   maxFps: number | null
   totalFrames: number | null
+  gameplayFrames?: number | null
+  loadingSeconds?: number | null
+  backgroundSeconds?: number | null
+  gameplaySeconds?: number | null
 }
 
 export interface UserGameSessionsSummary {
@@ -43,6 +47,14 @@ export function normalizeSession(raw: Record<string, unknown>): NormalizedPlaySe
   const min = typeof fps.min_fps === 'number' ? fps.min_fps : typeof fps.minFps === 'number' ? fps.minFps : null
   const max = typeof fps.max_fps === 'number' ? fps.max_fps : typeof fps.maxFps === 'number' ? fps.maxFps : null
   const frames = typeof fps.total_frames === 'number' ? fps.total_frames : typeof fps.totalFrames === 'number' ? fps.totalFrames : null
+  const gameplayFrames = typeof fps.gameplay_frames === 'number' ? fps.gameplay_frames : typeof fps.gameplayFrames === 'number' ? fps.gameplayFrames : null
+  const loadingSeconds = typeof fps.loading_seconds === 'number'
+    ? fps.loading_seconds
+    : typeof fps.loadingDurationMs === 'number'
+      ? Math.round(fps.loadingDurationMs / 1000)
+      : null
+  const backgroundSeconds = typeof fps.background_seconds === 'number' ? fps.background_seconds : null
+  const gameplaySeconds = typeof fps.gameplay_seconds === 'number' ? fps.gameplay_seconds : null
 
   const startTime = parseTimestamp((raw.start_time || raw.startTime) as string | number)
   const endTime = parseTimestamp((raw.end_time || raw.endTime) as string | number)
@@ -66,6 +78,10 @@ export function normalizeSession(raw: Record<string, unknown>): NormalizedPlaySe
     minFps: min && min > 0 ? min : null,
     maxFps: max && max > 0 ? max : null,
     totalFrames: frames && frames > 0 ? frames : null,
+    gameplayFrames: gameplayFrames && gameplayFrames > 0 ? gameplayFrames : null,
+    loadingSeconds: loadingSeconds && loadingSeconds > 0 ? loadingSeconds : null,
+    backgroundSeconds: backgroundSeconds && backgroundSeconds > 0 ? backgroundSeconds : null,
+    gameplaySeconds: gameplaySeconds && gameplaySeconds > 0 ? gameplaySeconds : null,
   }
 }
 

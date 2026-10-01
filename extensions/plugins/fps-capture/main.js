@@ -118,26 +118,92 @@ function parseFrameTime(line, colIndex, targetPid) {
   if (msIdx === undefined) return null;
 
   const val = parseFloat(cols[msIdx]);
-  return Number.isFinite(val) && val > 0 && val <= 500 ? val : null;
+  return Number.isFinite(val) && val > 0 && val <= 5000 ? val : null;
 }
 
 // ── Stats computation ──────────────────────────────────────────────
 
 function computeStats(frameTimesMs) {
-  if (frameTimesMs.length === 0) {
-    return { avgFps: 0, onePercentLow: 0, zeroPointOnePercentLow: 0, maxFps: 0, minFps: 0, totalFrames: 0, captureDurationMs: 0 };
+  if (!frameTimesMs || frameTimesMs.length === 0) {
+    return {
+      avgFps: 0,
+      onePercentLow: 0,
+      zeroPointOnePercentLow: 0,
+      maxFps: 0,
+      minFps: 0,
+      totalFrames: 0,
+      gameplayFrames: 0,
+      loadingDurationMs: 0,
+      captureDurationMs: 0,
+    };
   }
 
-  const fpsValues = frameTimesMs.map(ms => 1000 / ms).sort((a, b) => a - b);
-  const n = fpsValues.length;
-  const avgFps = fpsValues.reduce((s, v) => s + v, 0) / n;
-  const totalMs = frameTimesMs.reduce((s, v) => s + v, 0);
+  const n = frameTimesMs.length;
+  const isStall = new Uint8Array(n); // 1 = loading stall, 2 = sustained loading block
 
-  const onePctCount = Math.max(1, Math.floor(n * 0.01));
+  // 1. Detect hard asset loading stalls (>= 200ms, <= 5 FPS)
+  for (let i = 0; i < n; i++) {
+    if (frameTimesMs[i] >= 200.0) {
+      isStall[i] = 1;
+    }
+  }
+
+  // 2. Detect sustained low-FPS loading blocks (contiguous < 25 FPS spanning >= 1.0s with avg < 15 FPS)
+  let blockStart = -1;
+  let blockDuration = 0;
+  for (let i = 0; i < n; i++) {
+    const fps = 1000 / frameTimesMs[i];
+    if (fps < 25.0) {
+      if (blockStart === -1) {
+        blockStart = i;
+        blockDuration = 0;
+      }
+      blockDuration += frameTimesMs[i];
+    } else {
+      if (blockStart !== -1) {
+        const count = i - blockStart;
+        if (blockDuration >= 1000 && (count / blockDuration) * 1000 < 15.0) {
+          for (let k = blockStart; k < i; k++) isStall[k] = 2;
+        }
+        blockStart = -1;
+        blockDuration = 0;
+      }
+    }
+  }
+  if (blockStart !== -1) {
+    const count = n - blockStart;
+    if (blockDuration >= 1000 && (count / blockDuration) * 1000 < 15.0) {
+      for (let k = blockStart; k < n; k++) isStall[k] = 2;
+    }
+  }
+
+  // 3. Separate gameplay frames and loading duration
+  let totalMs = 0;
+  let loadingDurationMs = 0;
+  const gameplayFrames = [];
+
+  for (let i = 0; i < n; i++) {
+    const ms = frameTimesMs[i];
+    totalMs += ms;
+    if (isStall[i] !== 0) {
+      loadingDurationMs += ms;
+    } else {
+      gameplayFrames.push(ms);
+    }
+  }
+
+  // Fallback to all frames if no gameplay frames survived
+  const activeFrames = gameplayFrames.length > 0 ? gameplayFrames : frameTimesMs;
+  const fpsValues = activeFrames.map(ms => 1000 / ms).sort((a, b) => a - b);
+  const gn = fpsValues.length;
+
+  const avgFps = fpsValues.reduce((s, v) => s + v, 0) / gn;
+
+  const onePctCount = Math.max(1, Math.floor(gn * 0.01));
   const onePctSlice = fpsValues.slice(0, onePctCount);
   const onePercentLow = onePctSlice.reduce((s, v) => s + v, 0) / onePctSlice.length;
 
-  const dotOnePctCount = Math.max(1, Math.floor(n * 0.001));
+  const dotOnePctCount = Math.max(1, Math.floor(gn * 0.001));
   const dotOnePctSlice = fpsValues.slice(0, dotOnePctCount);
   const zeroPointOnePercentLow = dotOnePctSlice.reduce((s, v) => s + v, 0) / dotOnePctSlice.length;
 
@@ -145,9 +211,11 @@ function computeStats(frameTimesMs) {
     avgFps: Math.round(avgFps * 10) / 10,
     onePercentLow: Math.round(onePercentLow * 10) / 10,
     zeroPointOnePercentLow: Math.round(zeroPointOnePercentLow * 10) / 10,
-    maxFps: Math.round(fpsValues[n - 1] * 10) / 10,
+    maxFps: Math.round(fpsValues[gn - 1] * 10) / 10,
     minFps: Math.round(fpsValues[0] * 10) / 10,
     totalFrames: n,
+    gameplayFrames: gameplayFrames.length,
+    loadingDurationMs: Math.round(loadingDurationMs),
     captureDurationMs: Math.round(totalMs),
   };
 }
@@ -175,9 +243,12 @@ function getLiveFps() {
   if (windowCount === 0) return null;
 
   const fps = windowSum > 0 ? Math.round((windowCount / windowSum) * 10000) / 10 : 0;
+  const lastMs = frameTimesMs[frameTimesMs.length - 1];
+  const isLoading = (lastMs >= 200) || (windowSum >= 800 && fps < 15);
 
   return {
     currentFps: fps,
+    isLoading,
     frameCount: frameTimesMs.length,
     captureDurationMs: elapsed,
     gameId,
@@ -500,6 +571,17 @@ entry.test = async function (_ctx) {
 
   // Test 7: isCapturing returns false when no capture active
   if (isCapturing()) failures.push('isCapturing should be false before any capture starts');
+
+  // Test 8: Loading screen stalls are filtered and do not corrupt 1% low
+  const framesWithStall = [];
+  for (let i = 0; i < 98; i++) framesWithStall.push(16.67); // 60fps
+  framesWithStall.push(500.0); // 2fps loading stall
+  framesWithStall.push(500.0); // 2fps loading stall
+  const stallStats = computeStats(framesWithStall);
+  if (stallStats.totalFrames !== 100) failures.push(`totalFrames expected 100, got ${stallStats.totalFrames}`);
+  if (stallStats.gameplayFrames !== 98) failures.push(`gameplayFrames expected 98, got ${stallStats.gameplayFrames}`);
+  if (stallStats.onePercentLow < 55) failures.push(`onePercentLow corrupted by stall: expected ~60, got ${stallStats.onePercentLow}`);
+  if (stallStats.loadingDurationMs < 1000) failures.push(`loadingDurationMs expected >= 1000, got ${stallStats.loadingDurationMs}`);
 
   return { passed: failures.length === 0, failures };
 };
