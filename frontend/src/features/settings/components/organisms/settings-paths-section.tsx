@@ -1124,14 +1124,14 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
                 title="Confirm and add this folder to scan paths"
                 aria-label="Confirm & Add"
                 className={cn(
-                  'inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
+                  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
                   draftScanPath.trim()
                     ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-md shadow-emerald-500/25 active:scale-95'
                     : 'bg-white/5 text-white/40 border border-white/10',
                 )}
               >
-                <Check className="h-3.5 w-3.5" />
-                <span>Confirm &amp; Add</span>
+                <Check className="h-4 w-4" />
+                <span className="sr-only">Confirm &amp; Add</span>
               </button>
             </div>
           </div>

@@ -141,17 +141,14 @@ export function PathInput({
             title={justConfirmed ? 'Path confirmed!' : (confirmLabel || 'Confirm path')}
             aria-label={confirmLabel || 'Confirm path'}
             className={cn(
-              'inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
-              confirmLabel ? 'px-3' : 'w-9',
+              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
               justConfirmed
                 ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300 shadow-sm shadow-emerald-500/20'
                 : 'border-white/10 bg-white/5 text-white/80 hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-300 active:scale-95',
             )}
           >
-            <Check className={cn('h-3.5 w-3.5', justConfirmed ? 'text-emerald-400' : 'text-current')} />
-            {confirmLabel && (
-              <span>{justConfirmed ? 'Confirmed!' : confirmLabel}</span>
-            )}
+            <Check className={cn('h-4 w-4 transition-transform duration-200', justConfirmed ? 'text-emerald-400 scale-110' : 'text-current')} />
+            <span className="sr-only">{justConfirmed ? 'Confirmed!' : (confirmLabel || 'Confirm path')}</span>
           </button>
         )}
       </div>
