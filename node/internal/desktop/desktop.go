@@ -15,6 +15,7 @@ type DesktopSettingsResponse struct {
 	Platform          string          `json:"platform"`
 	Supported         bool            `json:"supported"`
 	Hostname          string          `json:"hostname"`
+	ServerName        string          `json:"serverName"`
 	Arch              string          `json:"arch"`
 	NumCPU            int             `json:"numCpu"`
 	GoVersion         string          `json:"goVersion"`
@@ -91,6 +92,7 @@ func GetDesktopSettings(cfg *config.AppConfig) DesktopSettingsResponse {
 		Platform:          p,
 		Supported:         IsSupported(),
 		Hostname:          hostname,
+		ServerName:        cfg.Server.Name,
 		Arch:              runtime.GOARCH,
 		NumCPU:            runtime.NumCPU(),
 		GoVersion:         runtime.Version(),
@@ -201,6 +203,16 @@ func ApplyDesktopSettings(cfg *config.AppConfig, payload map[string]interface{})
 	} else if v, ok := payload["auto_backup_on_exit"]; ok {
 		if b, okB := v.(bool); okB {
 			cfg.Saves.AutoBackupOnExit = b
+		}
+	}
+
+	if v, ok := payload["server_name"]; ok {
+		if s, okS := v.(string); okS && strings.TrimSpace(s) != "" {
+			cfg.Server.Name = strings.TrimSpace(s)
+		}
+	} else if v, ok := payload["name"]; ok {
+		if s, okS := v.(string); okS && strings.TrimSpace(s) != "" {
+			cfg.Server.Name = strings.TrimSpace(s)
 		}
 	}
 

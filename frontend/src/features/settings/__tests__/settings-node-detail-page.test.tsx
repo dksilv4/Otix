@@ -25,6 +25,8 @@ vi.mock('@/lib/desktop/platform', async (importOriginal) => {
   }
 })
 
+const mockUpdateGameServer = vi.fn().mockResolvedValue({ id: 1, name: 'Renamed PC' })
+
 vi.mock('@/features/downloads/use-server-downloads', () => ({
   useGameServers: () => ({
     data: [
@@ -33,6 +35,7 @@ vi.mock('@/features/downloads/use-server-downloads', () => ({
     isLoading: false,
   }),
   useDeleteGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateGameServer: () => ({ mutateAsync: mockUpdateGameServer, isPending: false }),
 }))
 
 const mockNavigate = vi.fn()
@@ -247,6 +250,27 @@ describe('SettingsNodeDetailPage', () => {
 
     await waitFor(() => {
       expect(mockSet).toHaveBeenCalledWith({ launchOnStartup: false })
+    })
+  })
+
+  it('allows the user to rename the node', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: /^rename$/i }))
+
+    expect(screen.getByRole('heading', { name: 'Rename Node' })).toBeInTheDocument()
+    const input = screen.getByLabelText(/node name/i)
+    expect(input).toHaveValue('Living Room PC')
+
+    await user.clear(input)
+    await user.type(input, 'Super Gaming PC')
+
+    await user.click(screen.getByRole('button', { name: /save name/i }))
+
+    expect(mockUpdateGameServer).toHaveBeenCalledWith({
+      id: 1,
+      name: 'Super Gaming PC',
     })
   })
 

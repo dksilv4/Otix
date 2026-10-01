@@ -9,6 +9,7 @@ import {
   Globe,
   HardDrive,
   KeyRound,
+  Pencil,
   Plus,
   Radio,
   Search,
@@ -63,6 +64,9 @@ export function SettingsNodesPage() {
   const [connectModalOpen, setConnectModalOpen] = useState(false)
   const [connectInitialUrl, setConnectInitialUrl] = useState('')
   const [nodeToDelete, setNodeToDelete] = useState<GameServer | null>(null)
+  const [nodeToRename, setNodeToRename] = useState<GameServer | null>(null)
+  const [renameInput, setRenameInput] = useState('')
+  const [isSavingRename, setIsSavingRename] = useState(false)
   const [selectedNodeForModal, setSelectedNodeForModal] = useState<GameServer | null>(null)
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [probeResults, setProbeResults] = useState<Record<number, ServerProbeResult>>({})
@@ -137,6 +141,37 @@ export function SettingsNodesPage() {
         description: (err as { message?: string }).message || 'Could not disconnect node.',
         variant: 'error',
       })
+    }
+  }
+
+  const handleRenameConfirm = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nodeToRename) return
+    const trimmed = renameInput.trim()
+    if (!trimmed || trimmed === nodeToRename.name) {
+      setNodeToRename(null)
+      return
+    }
+    setIsSavingRename(true)
+    try {
+      await updateServerMutation.mutateAsync({
+        id: nodeToRename.id,
+        name: trimmed,
+      })
+      toast({
+        title: 'Node renamed',
+        description: `Renamed to “${trimmed}”.`,
+        variant: 'success',
+      })
+      setNodeToRename(null)
+    } catch (err: unknown) {
+      toast({
+        title: 'Error renaming node',
+        description: (err as { message?: string })?.message || 'Could not rename node.',
+        variant: 'error',
+      })
+    } finally {
+      setIsSavingRename(false)
     }
   }
 
@@ -436,9 +471,26 @@ export function SettingsNodesPage() {
                         title={isOnline ? 'Online' : 'Offline'}
                       />
                       <div className="min-w-0">
-                        <h4 className="text-sm font-bold text-foreground truncate" title={server.name}>
-                          {server.name}
-                        </h4>
+                        <div className="flex items-center gap-1.5 group/rename">
+                          <h4 className="text-sm font-bold text-foreground truncate" title={server.name}>
+                            {server.name}
+                          </h4>
+                          {!reserved && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setNodeToRename(server)
+                                setRenameInput(server.name)
+                              }}
+                              title="Rename node"
+                              aria-label={`Rename ${server.name}`}
+                              className="opacity-0 group-hover/rename:opacity-100 p-0.5 rounded text-muted-foreground hover:text-foreground transition-opacity cursor-pointer"
+                            >
+                              <Pencil size={11} />
+                            </button>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           {local && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-semibold uppercase tracking-wider">
@@ -515,6 +567,19 @@ export function SettingsNodesPage() {
                             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
                           >
                             <HardDrive size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setNodeToRename(server)
+                              setRenameInput(server.name)
+                            }}
+                            title="Rename node"
+                            aria-label={`Rename ${server.name}`}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
+                          >
+                            <Pencil size={13} />
                           </button>
                           <button
                             type="button"
@@ -653,6 +718,57 @@ export function SettingsNodesPage() {
               </DkButton>
             </div>
           </div>
+        </DkDialog>
+      )}
+
+      {nodeToRename && (
+        <DkDialog
+          open={!!nodeToRename}
+          onOpenChange={(openRename) => {
+            if (!openRename) setNodeToRename(null)
+          }}
+          title="Rename Node"
+          description={`Change the display name for ${nodeToRename.name}.`}
+          className="max-w-md"
+        >
+          <form onSubmit={handleRenameConfirm} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label htmlFor="rename-node-input" className="text-xs font-semibold text-white/70">
+                Node Name
+              </label>
+              <input
+                id="rename-node-input"
+                type="text"
+                value={renameInput}
+                onChange={(e) => setRenameInput(e.target.value)}
+                placeholder="Enter node name..."
+                autoFocus
+                className="w-full h-10 px-3 rounded-xl bg-white/5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                disabled={isSavingRename}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <DkButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={isSavingRename}
+                onClick={() => setNodeToRename(null)}
+              >
+                Cancel
+              </DkButton>
+              <DkButton
+                type="submit"
+                variant="primary"
+                size="sm"
+                loading={isSavingRename}
+                disabled={isSavingRename || !renameInput.trim() || renameInput.trim() === nodeToRename.name}
+              >
+                Save Name
+              </DkButton>
+            </div>
+          </form>
         </DkDialog>
       )}
 

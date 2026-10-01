@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Loader2, Trash2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useToast } from '@ui/molecules/toast'
 import { DkTabs, DkTabList, DkTab, DkTabPanel } from '@ui/molecules/tabs'
-import { useDeleteGameServer } from '@/features/downloads/use-server-downloads'
+import { useDeleteGameServer, useUpdateGameServer } from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/types'
 import { isLocalDesktopNode } from '../../local-desktop-node'
 import { useSettingsNode } from '../../context/settings-node-context'
@@ -58,7 +58,38 @@ export function NodeSettingsModal({
 
   const { toast } = useToast()
   const deleteServerMutation = useDeleteGameServer()
+  const updateServerMutation = useUpdateGameServer()
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  const [renameInput, setRenameInput] = useState('')
+  const [isSavingRename, setIsSavingRename] = useState(false)
+
+  const handleSaveRename = async () => {
+    if (!server) return
+    const trimmed = renameInput.trim()
+    if (!trimmed || trimmed === server.name) {
+      setRenameDialogOpen(false)
+      return
+    }
+    setIsSavingRename(true)
+    try {
+      await updateServerMutation.mutateAsync({ id: server.id, name: trimmed })
+      toast({
+        title: 'Node renamed',
+        description: `Renamed to “${trimmed}”.`,
+        variant: 'success',
+      })
+      setRenameDialogOpen(false)
+    } catch (err: unknown) {
+      toast({
+        title: 'Error renaming node',
+        description: (err as { message?: string })?.message || 'Failed to rename node',
+        variant: 'error',
+      })
+    } finally {
+      setIsSavingRename(false)
+    }
+  }
 
   const handleDisconnectNode = async () => {
     if (!server) return
@@ -147,6 +178,18 @@ export function NodeSettingsModal({
             </DkTabList>
 
             <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <DkButton
+                size="sm"
+                variant="ghost"
+                className="text-xs text-white/70 hover:text-white cursor-pointer"
+                onClick={() => {
+                  setRenameInput(server.name)
+                  setRenameDialogOpen(true)
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1" />
+                Rename
+              </DkButton>
               {!local && (
                 <DkButton
                   size="sm"
@@ -221,6 +264,63 @@ export function NodeSettingsModal({
               </DkButton>
             </div>
           </div>
+        </DkDialog>
+      )}
+
+      {renameDialogOpen && (
+        <DkDialog
+          open={renameDialogOpen}
+          onOpenChange={(openRename) => {
+            if (!openRename) setRenameDialogOpen(false)
+          }}
+          title="Rename Node"
+          description={`Change the display name for ${server.name}.`}
+          className="max-w-md"
+        >
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              await handleSaveRename()
+            }}
+            className="space-y-4 pt-2"
+          >
+            <div className="space-y-1.5">
+              <label htmlFor="modal-rename-node-input" className="text-xs font-semibold text-white/70">
+                Node Name
+              </label>
+              <input
+                id="modal-rename-node-input"
+                type="text"
+                value={renameInput}
+                onChange={(e) => setRenameInput(e.target.value)}
+                placeholder="Enter node name..."
+                autoFocus
+                className="w-full h-10 px-3 rounded-xl bg-white/5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                disabled={isSavingRename}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <DkButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isSavingRename}
+                onClick={() => setRenameDialogOpen(false)}
+              >
+                Cancel
+              </DkButton>
+              <DkButton
+                type="submit"
+                variant="primary"
+                size="sm"
+                loading={isSavingRename}
+                disabled={isSavingRename || !renameInput.trim() || renameInput.trim() === server.name}
+              >
+                Save Name
+              </DkButton>
+            </div>
+          </form>
         </DkDialog>
       )}
     </>

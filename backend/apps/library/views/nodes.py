@@ -434,9 +434,15 @@ class GameServerDetailView(APIView):
 
     def patch(self, request: Request, server_id: int) -> Response:
         server = self._get_server(request, server_id)
+        new_name = request.data.get("name") if isinstance(request.data, dict) else None
         serializer = UserGameServerCreateSerializer(server, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         server = serializer.save()
+        if new_name and isinstance(new_name, str) and new_name.strip() and server.is_online:
+            try:
+                desktop_save_settings(server, {"server_name": new_name.strip()})
+            except Exception:
+                pass
         ping_server_sync(server)
         server.refresh_from_db()
         return Response(UserGameServerSerializer(server).data)

@@ -47,12 +47,14 @@ let mockGameServers: any[] = [
 ]
 let mockPendingNodes: any[] = []
 
+const mockUpdateGameServer = vi.fn().mockResolvedValue({ id: 1, name: 'Renamed Home Server' })
+
 vi.mock('@/features/downloads/use-server-downloads', () => ({
   useGameServers: () => ({ data: mockGameServers, isLoading: false }),
   useCreateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePingGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useUpdateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateGameServer: () => ({ mutateAsync: mockUpdateGameServer, isPending: false }),
   useClaimGameServer: () => ({ mutateAsync: mockClaimMutateAsync, isPending: false }),
   useProbeGameServer: () => ({ mutateAsync: mockProbeMutateAsync, isPending: false }),
   usePendingGameServers: () => ({ data: mockPendingNodes, isLoading: false }),
@@ -172,5 +174,34 @@ describe('SettingsNodesPage', () => {
     expect(screen.getByText('Windows')).toBeInTheDocument()
     expect(screen.getByText('Otix-Node.dmg')).toBeInTheDocument()
     expect(screen.getByText('Otix-Node-Windows-x64.zip')).toBeInTheDocument()
+  })
+
+  it('allows renaming a node directly from the node card', async () => {
+    const user = userEvent.setup()
+    render(
+      <SettingsSaveProvider>
+        <ModalProvider>
+          <SettingsNodesPage />
+          <ModalRoot />
+        </ModalProvider>
+      </SettingsSaveProvider>,
+    )
+
+    const renameButtons = screen.getAllByRole('button', { name: /rename home server/i })
+    await user.click(renameButtons[0])
+
+    expect(screen.getByRole('heading', { name: 'Rename Node' })).toBeInTheDocument()
+    const input = screen.getByLabelText(/node name/i)
+    expect(input).toHaveValue('Home Server')
+
+    await user.clear(input)
+    await user.type(input, 'Home Server Pro')
+
+    await user.click(screen.getByRole('button', { name: /save name/i }))
+
+    expect(mockUpdateGameServer).toHaveBeenCalledWith({
+      id: 1,
+      name: 'Home Server Pro',
+    })
   })
 })

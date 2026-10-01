@@ -6,8 +6,8 @@ import { cn } from '@/lib/utils'
 interface DkDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  title?: string
-  description?: string
+  title?: ReactNode
+  description?: ReactNode
   children: ReactNode
   className?: string
   /** @deprecated Ambient orbs have been removed from modals. */
@@ -49,7 +49,7 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={typeof title === 'string' ? title : undefined}
         className={cn(
           'relative w-full max-w-lg rounded-3xl p-6 sm:p-7 backdrop-blur-3xl text-white transition-all overflow-hidden bg-[#18181b]/95',
           className,
