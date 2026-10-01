@@ -15,6 +15,7 @@ from apps.integrations.services.plex import (
     get_plex_connect_info,
     get_plex_sessions,
     get_plex_stream_url,
+    is_plex_admin,
     list_plex_libraries,
     resolve_stream_url_for_server_with_base,
 )
@@ -46,6 +47,7 @@ __all__ = [
     "get_plex_connect_info",
     "get_plex_sessions",
     "get_plex_stream_url",
+    "is_plex_admin",
     "list_plex_libraries",
     "resolve_stream_url_for_server_with_base",
     "import_tmdb_watchlist",

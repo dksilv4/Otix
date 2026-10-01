@@ -16,6 +16,11 @@ export interface PlexSession {
   player_platform: string | null
   server_name: string
   server_id: string
+  server_owned?: boolean
+  rating_key?: string | null
+  grandparent_rating_key?: string | null
+  parent_rating_key?: string | null
+  media_item_id?: number | string | null
   library_section: string | null
   year: number | null
   content_rating: string | null
@@ -29,8 +34,41 @@ export interface PlexSession {
   audio_decision: string | null
   transcode_reason: string | null
   throttled: boolean
+
+  // camelCase aliases for apiClient converted responses
+  sessionId?: string
+  mediaType?: string
+  grandparentTitle?: string | null
+  parentTitle?: string | null
+  viewOffset?: number | null
+  userName?: string
+  userThumb?: string | null
+  playerTitle?: string | null
+  playerDevice?: string | null
+  playerPlatform?: string | null
+  serverName?: string
+  serverId?: string
+  serverOwned?: boolean
+  ratingKey?: string | null
+  grandparentRatingKey?: string | null
+  parentRatingKey?: string | null
+  mediaItemId?: number | string | null
+  librarySection?: string | null
+  contentRating?: string | null
+  videoResolution?: string | null
+  videoCodec?: string | null
+  audioCodec?: string | null
+  audioChannels?: number | null
+  videoDecision?: string | null
+  audioDecision?: string | null
+  transcodeReason?: string | null
 }
 
 export interface PlexSessionsResponse {
   sessions: PlexSession[]
+  is_admin?: boolean
+  isAdmin?: boolean
 }
+
+export type ActivityCategory = 'all' | 'media' | 'transfers' | 'plex' | 'notifications'
+

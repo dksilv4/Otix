@@ -11,6 +11,7 @@ sync + SSE surfaces are deferred to the platform wave (task #6).
 from __future__ import annotations
 
 import json
+import logging
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -28,6 +29,8 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 
 from apps.integrations.models import UserPlexItem, UserPlexLibrary, UserPlexServer
+
+logger = logging.getLogger(__name__)
 
 CONNECT_INFO_ITEM_NOT_FOUND = "Media item not found in your Plex library"
 CONNECT_INFO_SERVER_NOT_FOUND = "Plex server not found"
@@ -271,7 +274,7 @@ def get_plex_sessions(user) -> list[dict]:
     if not user.plex_auth_token:
         return []
 
-    servers = UserPlexServer.objects.filter(user=user, selected=True)
+    servers = UserPlexServer.objects.filter(user=user, selected=True, owned=True)
     all_sessions: list[dict] = []
     for server in servers:
         if not server.base_url or not server.access_token:
@@ -300,6 +303,16 @@ def get_plex_sessions(user) -> list[dict]:
             media_parts = _as_list(item.get("Media", []))
             media_info = media_parts[0] if media_parts else {}
             transcode = item.get("TranscodeSession") or {}
+
+            rating_key = str(item["ratingKey"]) if item.get("ratingKey") is not None else None
+            grandparent_rating_key = (
+                str(item["grandparentRatingKey"])
+                if item.get("grandparentRatingKey") is not None
+                else None
+            )
+            parent_rating_key = (
+                str(item["parentRatingKey"]) if item.get("parentRatingKey") is not None else None
+            )
 
             # Bind per-iteration values as defaults (avoids late-binding the
             # loop variable, mirroring the legacy closure).
@@ -332,6 +345,11 @@ def get_plex_sessions(user) -> list[dict]:
                     "player_platform": player_info.get("platform") or None,
                     "server_name": server.name,
                     "server_id": server.machine_identifier,
+                    "server_owned": server.owned,
+                    "rating_key": rating_key,
+                    "grandparent_rating_key": grandparent_rating_key,
+                    "parent_rating_key": parent_rating_key,
+                    "media_item_id": None,
                     "library_section": item.get("librarySectionTitle"),
                     "year": _to_int(item.get("year")),
                     "content_rating": item.get("contentRating"),
@@ -347,7 +365,142 @@ def get_plex_sessions(user) -> list[dict]:
                     "throttled": transcode.get("throttled") == "1" if transcode else False,
                 }
             )
+
+    # 1. Bulk-match catalog media_item_ids from synced UserPlexItem rows
+    rating_keys = {
+        s["rating_key"] for s in all_sessions if s.get("rating_key")
+    } | {
+        s["grandparent_rating_key"] for s in all_sessions if s.get("grandparent_rating_key")
+    }
+    if rating_keys:
+        plex_item_map = {
+            row["rating_key"]: row["media_item_id"]
+            for row in UserPlexItem.objects.filter(
+                user=user, rating_key__in=rating_keys, media_item__isnull=False
+            ).values("rating_key", "media_item_id")
+        }
+        for s in all_sessions:
+            if s.get("rating_key") in plex_item_map:
+                s["media_item_id"] = plex_item_map[s["rating_key"]]
+            elif s.get("grandparent_rating_key") in plex_item_map:
+                s["media_item_id"] = plex_item_map[s["grandparent_rating_key"]]
+
+    server_map = {s.machine_identifier: s for s in servers}
+
+    # 2. Match remaining unmatched sessions against existing catalog MediaItem by title + type
+    for s in all_sessions:
+        if s.get("media_item_id"):
+            continue
+        m_type = "show" if s.get("media_type") == "episode" else s.get("media_type")
+        m_title = s.get("grandparent_title") if s.get("media_type") == "episode" else s.get("title")
+        if not m_title:
+            continue
+        try:
+            from apps.media.models import MediaItem
+
+            qs = MediaItem.objects.filter(media_type=m_type, title__iexact=m_title)
+            matched_item = None
+            if s.get("year"):
+                matched_item = qs.filter(release_date__year=s["year"]).first() or qs.first()
+            else:
+                matched_item = qs.first()
+
+            if matched_item:
+                s["media_item_id"] = matched_item.id
+                server_obj = server_map.get(s.get("server_id"))
+                if server_obj and s.get("rating_key"):
+                    UserPlexItem.objects.update_or_create(
+                        server=server_obj,
+                        rating_key=s["rating_key"],
+                        defaults={
+                            "user": user,
+                            "media_item": matched_item,
+                            "title": s.get("title") or m_title,
+                            "media_type": s.get("media_type") or m_type,
+                            "year": s.get("year"),
+                        },
+                    )
+        except Exception:
+            logger.debug("Failed catalog title match for %s", m_title, exc_info=True)
+
+    # 3. If still unmatched, inspect Plex item metadata for TMDB/IMDb Guids and auto-resolve/seed
+    for s in all_sessions:
+        if s.get("media_item_id"):
+            continue
+        target_key = s.get("grandparent_rating_key") or s.get("rating_key")
+        server_obj = server_map.get(s.get("server_id"))
+        if not target_key or not server_obj or not server_obj.base_url or not server_obj.access_token:
+            continue
+        try:
+            m_status, m_raw = _request(
+                _with_token(
+                    f"{server_obj.base_url}/library/metadata/{target_key}", server_obj.access_token
+                ),
+                headers=_plex_headers(),
+                timeout=5.0,
+            )
+            if m_status == 200:
+                m_data = json.loads(m_raw)
+                m_meta = m_data.get("MediaContainer", {}).get("Metadata", [])
+                if m_meta:
+                    meta_item = m_meta[0]
+                    guids_list = meta_item.get("Guid", []) or []
+                    tmdb_id = None
+                    for g in guids_list:
+                        gid = g.get("id", "") if isinstance(g, dict) else str(g)
+                        if gid.startswith("tmdb://"):
+                            tmdb_id = gid.replace("tmdb://", "").strip()
+                            break
+                    if tmdb_id and tmdb_id.isdigit():
+                        from django.contrib.contenttypes.models import ContentType
+
+                        from apps.media.models import ExternalID, MediaItem
+
+                        ext = ExternalID.objects.filter(
+                            provider="tmdb",
+                            external_id=tmdb_id,
+                            content_type=ContentType.objects.get_for_model(MediaItem),
+                        ).first()
+                        resolved_id = ext.object_id if ext else None
+                        if not resolved_id:
+                            from asgiref.sync import async_to_sync
+
+                            from apps.media.services.tmdb_ingest import (
+                                fetch_and_seed_movie,
+                                fetch_and_seed_show,
+                            )
+
+                            m_type = "show" if s.get("media_type") == "episode" else s.get("media_type")
+                            if m_type == "show":
+                                resolved_id = async_to_sync(fetch_and_seed_show)(int(tmdb_id))
+                            else:
+                                resolved_id = async_to_sync(fetch_and_seed_movie)(int(tmdb_id))
+                        if resolved_id:
+                            s["media_item_id"] = resolved_id
+                            UserPlexItem.objects.update_or_create(
+                                server=server_obj,
+                                rating_key=s["rating_key"],
+                                defaults={
+                                    "user": user,
+                                    "media_item_id": resolved_id,
+                                    "title": s.get("title") or meta_item.get("title", ""),
+                                    "media_type": s.get("media_type") or m_type,
+                                    "year": s.get("year"),
+                                },
+                            )
+        except Exception:
+            logger.debug(
+                "Failed auto-matching plex session %s metadata", s.get("session_id"), exc_info=True
+            )
+
     return all_sessions
+
+
+def is_plex_admin(user) -> bool:
+    """Return whether the user owns at least one connected Plex server."""
+    if not user.plex_auth_token:
+        return False
+    return UserPlexServer.objects.filter(user=user, selected=True, owned=True).exists()
 
 
 # ── Discovery (GET /integrations/plex/servers) ───────────────────────────

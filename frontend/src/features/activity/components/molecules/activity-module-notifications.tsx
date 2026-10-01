@@ -1,168 +1,211 @@
-import { BellRing } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { BellRing, CheckCheck, ExternalLink } from 'lucide-react'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import type { AxiosError } from 'axios'
 import { useAuth, useHasSession } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
-import { DkAvatar } from '@ui/atoms/avatar'
+import { showToast, showErrorToast } from '@ui/molecules/toast'
 import { notificationQueries } from '@/features/notifications/queries'
+import { useNotifications } from '@/features/notifications/hooks/use-notifications'
 import { useMarkRead } from '@/features/notifications/hooks/use-mark-read'
 import { useMarkAllRead } from '@/features/notifications/hooks/use-mark-all-read'
- 
-import type { Notification } from '@/features/notifications/types'
+import { getTypeConfig } from '@/features/notifications/registry'
+import { NotificationIcon } from '@/features/notifications/components/atoms/notification-icon'
+import { NotificationTime } from '@/features/notifications/components/atoms/notification-time'
+import { NotificationActions } from '@/features/notifications/components/molecules/notification-actions'
+import type { ActionCallbacks, Notification } from '@/features/notifications/types'
 import { ActivityModuleSection } from './activity-module-section'
-import { formatTimeAgo } from '@/lib/utils'
 
-/** Notifications panel section showing friend requests, list invitations, and unread alerts. */
-export function ActivityModuleNotifications({ onClose }: { onClose: () => void }) {
-  const { user: currentUser, isAuthenticated } = useAuth()
+function actionErrorMessage(error: unknown, fallback: string): string {
+  const detail = (error as AxiosError<{ detail?: string }>)?.response?.data?.detail
+  return typeof detail === 'string' && detail.length > 0 ? detail : fallback
+}
+
+export interface ActivityModuleNotificationsProps {
+  onClose: () => void
+}
+
+/** Notifications panel section synchronized in real time with the notification page and SSE stream. */
+export function ActivityModuleNotifications({ onClose }: ActivityModuleNotificationsProps) {
+  const { isAuthenticated } = useAuth()
   const hasSession = useHasSession()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const markRead = useMarkRead()
   const markAllRead = useMarkAllRead()
+
+  // Use the shared infinite query that receives live SSE events from NotificationsProvider
+  const { allItems: notifications } = useNotifications()
 
   const { data: unreadData } = useQuery({
     ...notificationQueries.unreadCount(),
     enabled: hasSession,
-    refetchInterval: 30000,
   })
-
-  const { data: listData } = useQuery({
-    ...notificationQueries.list(),
-    enabled: hasSession,
-    refetchInterval: 30000,
-  })
-
-  const notifications: Notification[] = Array.isArray(listData?.items) ? listData.items.filter((n) => n && n.id) : []
   const unreadCount = unreadData?.count ?? 0
 
-  const handleNotifAction = async (notification: Notification, action: 'accept' | 'reject') => {
-    const meta = notification.metadataJson as Record<string, unknown>
-    const requestId = meta.requestId as string | undefined
-    if (!requestId) return
-    try {
-      await apiClient.post(`/friends/requests/${requestId}/${action}`)
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
-      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] })
-      queryClient.invalidateQueries({ queryKey: ['friends'] })
-      if (action === 'accept' && currentUser?.username) {
-        queryClient.invalidateQueries({ queryKey: ['user', currentUser.username] })
+  const actionCallbacks: ActionCallbacks = {
+    acceptFriendRequest: async (requestId) => {
+      try {
+        await apiClient.post(`/friends/requests/${requestId}/accept`)
+        showToast({ title: 'Friend request accepted', variant: 'success' })
+        await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+        await queryClient.invalidateQueries({ queryKey: ['friends'] })
+      } catch (error) {
+        showErrorToast(actionErrorMessage(error, 'Could not accept friend request'))
+        throw error
       }
-    } catch { /* ignore */ }
-  }
-
-  const handleListAction = async (notification: Notification, action: 'accept' | 'decline') => {
-    const listId = notification.metadataJson?.listId as string | undefined
-    if (!listId) return
-    try {
-      await apiClient.post(`/list/${listId}/collaborators/${action}`)
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
-      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] })
-      queryClient.invalidateQueries({ queryKey: ['list'] })
-    } catch { /* ignored */ }
+    },
+    rejectFriendRequest: async (requestId) => {
+      try {
+        await apiClient.post(`/friends/requests/${requestId}/reject`)
+        showToast({ title: 'Friend request declined', variant: 'success' })
+        await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      } catch (error) {
+        showErrorToast(actionErrorMessage(error, 'Could not decline friend request'))
+        throw error
+      }
+    },
+    acceptListInvitation: async (listId) => {
+      try {
+        await apiClient.post(`/list/${listId}/collaborators/accept`)
+        showToast({ title: 'Invitation accepted', variant: 'success' })
+        await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+        await queryClient.invalidateQueries({ queryKey: ['list'] })
+      } catch (error) {
+        showErrorToast(actionErrorMessage(error, 'Could not accept invitation'))
+        throw error
+      }
+    },
+    declineListInvitation: async (listId) => {
+      try {
+        await apiClient.post(`/list/${listId}/collaborators/decline`)
+        showToast({ title: 'Invitation declined', variant: 'success' })
+        await queryClient.invalidateQueries({ queryKey: ['notifications'] })
+        await queryClient.invalidateQueries({ queryKey: ['list'] })
+      } catch (error) {
+        showErrorToast(actionErrorMessage(error, 'Could not decline invitation'))
+        throw error
+      }
+    },
   }
 
   if (!isAuthenticated || notifications.length === 0) return null
 
+  const handleCardClick = (notification: Notification, link: string | null | undefined) => {
+    if (link) {
+      onClose()
+      navigate({ to: link })
+    }
+  }
+
   return (
-    <ActivityModuleSection className="flex flex-col gap-1">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <BellRing className="h-4 w-4 text-white/50" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-white/50">Notifications</span>
-            {unreadCount > 0 && (
-              <span className="text-[10px] font-bold tabular-nums text-primary/70">({unreadCount})</span>
-            )}
-          </div>
+    <ActivityModuleSection className="flex flex-col gap-2">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-1 border-b border-white/[0.04]">
+        <div className="flex items-center gap-2">
+          <BellRing className="h-4 w-4 text-primary" />
+          <span className="text-xs font-bold uppercase tracking-wider text-white/80">
+            Notifications
+          </span>
           {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={() => markAllRead.mutate()}
-              disabled={markAllRead.isPending}
-              className="text-[11px] font-medium text-primary hover:underline cursor-pointer"
-            >
-              Mark all read
-            </button>
+            <span className="rounded-full bg-primary/20 px-1.5 py-0.2 text-[10px] font-bold text-primary tabular-nums">
+              {unreadCount}
+            </span>
           )}
         </div>
-
-        {notifications.slice(0, 10).map((n) => (
-          <div
-            key={n.id}
-            className={"flex items-start gap-2.5 px-2 py-2 rounded-xl transition-colors" + (!n.isRead ? " bg-white/[0.03]" : "")}
+        {unreadCount > 0 && (
+          <button
+            type="button"
+            onClick={() => markAllRead.mutate()}
+            disabled={markAllRead.isPending}
+            className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline cursor-pointer disabled:opacity-50"
           >
-            <DkAvatar
-              name={
-                n.type === 'friend_request' ? '?' :
-                n.type === 'friend_rejected' ? '✕' :
-                n.type === 'friend_removed' ? '−' :
-                n.type === 'list_invitation' ? '👥' : ''
+            <CheckCheck className="h-3 w-3" />
+            Mark all read
+          </button>
+        )}
+      </div>
+
+      {/* Notifications feed preview (up to 8 items) */}
+      <div className="flex flex-col gap-1.5">
+        {notifications.slice(0, 8).map((n) => {
+          const config = getTypeConfig(n.type)
+          const link = config?.getLink?.(n)
+          const actions = config?.getActions?.(n, actionCallbacks)
+
+          return (
+            <div
+              key={n.id}
+              role={link ? 'button' : undefined}
+              tabIndex={link ? 0 : undefined}
+              onClick={() => handleCardClick(n, link)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && link) handleCardClick(n, link)
+              }}
+              className={
+                'group relative flex items-start gap-2.5 p-2.5 rounded-xl transition-all duration-150 ' +
+                (!n.isRead
+                  ? 'bg-white/[0.04] border border-white/[0.06]'
+                  : 'bg-white/[0.015] hover:bg-white/[0.04] border border-transparent') +
+                (link ? ' cursor-pointer hover:border-white/10' : '')
               }
-              size="sm"
-              className="shrink-0 mt-0.5"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-white/80">{n.title}</p>
-              {n.body && <p className="text-xs text-white/40 mt-0.5 line-clamp-2">{n.body}</p>}
-              <p className="text-[10px] mt-1 text-white/30">{formatTimeAgo(n.createdAt)}</p>
+            >
+              <div className="shrink-0 mt-0.5">
+                <NotificationIcon type={n.type} />
+              </div>
 
-              {n.type === 'friend_request' && (
-                <div className="flex gap-2 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleNotifAction(n, 'accept')}
-                    className="rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleNotifAction(n, 'reject')}
-                    className="rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-white/10 text-white/60 hover:bg-white/[0.08] transition-colors cursor-pointer"
-                  >
-                    Decline
-                  </button>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-1.5">
+                  <p className="text-xs font-semibold text-white/90 leading-tight">
+                    {n.title}
+                  </p>
+                  <NotificationTime createdAt={n.createdAt} />
                 </div>
-              )}
 
-              {n.type === 'list_invitation' && (
-                <div className="flex gap-2 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleListAction(n, 'accept')}
-                    className="rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
+                {n.body && (
+                  <p className="text-[11px] text-white/50 mt-0.5 line-clamp-2 leading-relaxed">
+                    {n.body}
+                  </p>
+                )}
+
+                {actions && actions.length > 0 && (
+                  <div
+                    className="mt-2"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleListAction(n, 'decline')}
-                    className="rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-white/10 text-white/60 hover:bg-white/[0.08] transition-colors cursor-pointer"
-                  >
-                    Decline
-                  </button>
-                </div>
+                    <NotificationActions actions={actions} />
+                  </div>
+                )}
+              </div>
+
+              {/* Unread indicator / mark read button */}
+              {!n.isRead && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    markRead.mutate(n.id)
+                  }}
+                  className="shrink-0 mt-1 p-1 -mr-1 rounded-full text-white/20 hover:text-primary transition-colors cursor-pointer"
+                  title="Mark as read"
+                  aria-label="Mark as read"
+                >
+                  <span className="block h-2 w-2 rounded-full bg-primary" />
+                </button>
               )}
             </div>
+          )
+        })}
+      </div>
 
-            {!n.isRead && (
-              <button
-                type="button"
-                onClick={() => markRead.mutate(n.id)}
-                className="shrink-0 mt-1 cursor-pointer"
-              >
-                <span className="block h-2 w-2 rounded-full bg-primary" />
-              </button>
-            )}
-          </div>
-        ))}
-
-        <Link
-          to="/notifications"
-          onClick={onClose}
-          className="block w-full py-2 text-center text-[11px] font-medium text-white/40 hover:text-white/80 transition-colors rounded-xl bg-white/[0.03] hover:bg-white/[0.06]"
-        >
-          View all
-        </Link>
+      <Link
+        to="/notifications"
+        onClick={onClose}
+        className="flex items-center justify-center gap-1.5 w-full py-2 text-center text-xs font-medium text-white/50 hover:text-white transition-colors rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.04]"
+      >
+        <span>View all notifications</span>
+        <ExternalLink className="h-3 w-3 opacity-60" />
+      </Link>
     </ActivityModuleSection>
   )
 }

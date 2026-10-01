@@ -78,8 +78,8 @@ const (
 	dtSingle   = 0x00000020
 	dtNoClip   = 0x00000100
 
-	overlayWidth  = 230
-	overlayHeight = 90
+	overlayWidth  = 210
+	overlayHeight = 60
 )
 
 type wndClassExW struct {
@@ -382,8 +382,8 @@ func (om *OverlayManager) paint(hwnd uintptr) {
 	playtime := om.playtimeSec
 	om.mu.RUnlock()
 
-	// 1. Draw Background: Dark slate (#0f172a / RGB: 15, 23, 42)
-	bgBrush, _, _ := procCreateSolidBrush.Call(uintptr(0x002A170F))
+	// 1. Draw Background: Deep Obsidian Glass (#101115 / RGB: 16, 17, 21)
+	bgBrush, _, _ := procCreateSolidBrush.Call(uintptr(0x00151110))
 	r := rect{0, 0, overlayWidth, overlayHeight}
 	procFillRect.Call(hdc, uintptr(unsafe.Pointer(&r)), bgBrush)
 	procDeleteObject.Call(bgBrush)
@@ -406,29 +406,15 @@ func (om *OverlayManager) paint(hwnd uintptr) {
 		uintptr(unsafe.Pointer(fontSegoeBig)),
 	)
 
-	// 2. Draw Header: "OTIX • <Game Title>"
-	procSelectObject.Call(hdc, hFontTiny)
-	procSetTextColor.Call(hdc, uintptr(0x00F8BD38)) // Otix Cyan (RGB: 56, 189, 248) -> BGR 0x00F8BD38
-	headerText := "OTIX"
-	if title != "" {
-		headerText = fmt.Sprintf("OTIX  |  %s", title)
-		if len(headerText) > 28 {
-			headerText = headerText[:25] + "..."
-		}
-	}
-	u16Header, _ := syscall.UTF16FromString(headerText)
-	rHeader := rect{12, 8, overlayWidth - 12, 22}
-	procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Header[0])), uintptr(len(u16Header)-1), uintptr(unsafe.Pointer(&rHeader)), dtLeft|dtSingle)
-
-	// 3. Draw Large FPS: Color code based on rate
+	// 2. Draw Large FPS: Clean white by default, warm amber on drops
 	procSelectObject.Call(hdc, hFontBig)
 	var fpsColor uintptr
 	if fps >= 60 {
-		fpsColor = 0x0080DE4A // Green (RGB: 74, 222, 128)
-	} else if fps >= 30 {
-		fpsColor = 0x0015CCFA // Yellow (RGB: 250, 204, 21)
+		fpsColor = 0x00F5F5F5 // Crisp white
+	} else if fps >= 35 {
+		fpsColor = 0x0047E0FD // Warm amber (RGB: 253, 224, 71)
 	} else {
-		fpsColor = 0x007171F8 // Red (RGB: 248, 113, 113)
+		fpsColor = 0x007171F8 // Soft coral red (RGB: 248, 113, 113)
 	}
 	procSetTextColor.Call(hdc, fpsColor)
 
@@ -437,36 +423,36 @@ func (om *OverlayManager) paint(hwnd uintptr) {
 		fpsStr = "--"
 	}
 	u16Fps, _ := syscall.UTF16FromString(fpsStr)
-	rFps := rect{12, 24, 85, 60}
+	rFps := rect{12, 10, 85, 48}
 	procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Fps[0])), uintptr(len(u16Fps)-1), uintptr(unsafe.Pointer(&rFps)), dtLeft|dtSingle)
 
 	// Label "FPS" next to large number
 	procSelectObject.Call(hdc, hFontTiny)
-	procSetTextColor.Call(hdc, uintptr(0x0094A3B8)) // Slate grey
+	procSetTextColor.Call(hdc, uintptr(0x00666666)) // Muted label
 	u16FpsLbl, _ := syscall.UTF16FromString("FPS")
-	rFpsLbl := rect{75, 38, 110, 56}
+	rFpsLbl := rect{74, 24, 108, 44}
 	procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16FpsLbl[0])), uintptr(len(u16FpsLbl)-1), uintptr(unsafe.Pointer(&rFpsLbl)), dtLeft|dtSingle)
 
-	// 4. Draw 1% Low & Avg FPS
+	// 3. Draw 1% Low & Avg FPS
 	procSelectObject.Call(hdc, hFontSmall)
-	procSetTextColor.Call(hdc, uintptr(0x00E2E8F0)) // Off-white
+	procSetTextColor.Call(hdc, uintptr(0x00D0D0D0)) // Neutral light grey
 	statsStr := fmt.Sprintf("1%%: %d   Avg: %d", int(math.Round(low1)), int(math.Round(avg)))
 	if low1 == 0 && avg == 0 {
 		statsStr = "1%: --   Avg: --"
 	}
 	u16Stats, _ := syscall.UTF16FromString(statsStr)
-	rStats := rect{120, 28, overlayWidth - 12, 45}
+	rStats := rect{112, 12, overlayWidth - 10, 30}
 	procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Stats[0])), uintptr(len(u16Stats)-1), uintptr(unsafe.Pointer(&rStats)), dtLeft|dtSingle)
 
-	// 5. Draw Session Playtime: "00:15:32"
+	// 4. Draw Session Playtime: "00:15:32"
 	h := playtime / 3600
 	m := (playtime % 3600) / 60
 	s := playtime % 60
 	playtimeStr := fmt.Sprintf("Time: %02d:%02d:%02d", h, m, s)
 	u16Time, _ := syscall.UTF16FromString(playtimeStr)
-	rTime := rect{120, 48, overlayWidth - 12, 65}
+	rTime := rect{112, 34, overlayWidth - 10, 52}
 	procSelectObject.Call(hdc, hFontTiny)
-	procSetTextColor.Call(hdc, uintptr(0x00CBD5E1))
+	procSetTextColor.Call(hdc, uintptr(0x008E8E8E))
 	procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Time[0])), uintptr(len(u16Time)-1), uintptr(unsafe.Pointer(&rTime)), dtLeft|dtSingle)
 
 	// Clean up GDI fonts

@@ -58,16 +58,15 @@ export function ActivityModuleButton({
   })
   const unreadCount = unreadNotifs?.count ?? 0
 
-  const { data: plexSessions = [] } = usePlexSessions()
-
+  const { sessions: plexSessions = [], isAdmin: isPlexAdmin } = usePlexSessions()
 
   const { downloads } = useDownloads(currentUser?.id)
   const activeDownloads = downloads.filter(d => d.status === 'queued' || d.status === 'downloading' || d.status === 'processing')
   const hasDownloads = activeDownloads.length > 0
 
   const hasLocalPlayback = source !== 'none' && currentTrack !== null
-  const plexCount = plexSessions.length
-  const hasPlex = plexCount > 0
+  const plexCount = isPlexAdmin ? plexSessions.length : 0
+  const hasPlex = isPlexAdmin && plexCount > 0
 
   const handleClick = () => {
     if (isPinned) return

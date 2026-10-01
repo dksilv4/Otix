@@ -67,7 +67,12 @@ class PlexSessionsView(APIView):
     def get(self, request):
         if not request.user.plex_auth_token:
             return Response({"detail": "No Plex account linked"}, status=400)
-        return Response({"sessions": integrations_services.get_plex_sessions(request.user)})
+        return Response(
+            {
+                "sessions": integrations_services.get_plex_sessions(request.user),
+                "is_admin": integrations_services.is_plex_admin(request.user),
+            }
+        )
 
 
 class PlexWatchlistSyncView(APIView):

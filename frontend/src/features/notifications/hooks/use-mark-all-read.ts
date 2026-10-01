@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import type { NotificationListResponse, UnreadCount } from '../types'
 
@@ -17,15 +17,29 @@ export function useMarkAllRead() {
 
       const snapshots = listKeys.map((key) => ({
         key,
-        data: qc.getQueryData<NotificationListResponse>(key),
+        data: qc.getQueryData<any>(key),
       }))
 
       for (const { key, data } of snapshots) {
         if (!data) continue
-        qc.setQueryData<NotificationListResponse>(key, {
-          ...data,
-          items: (Array.isArray(data.items) ? data.items : []).map((n) => ({ ...n, isRead: true })),
-        })
+        if ('pages' in data && Array.isArray(data.pages)) {
+          const inf = data as InfiniteData<NotificationListResponse>
+          qc.setQueryData(key, {
+            ...inf,
+            pages: inf.pages.map((page) => ({
+              ...page,
+              items: (Array.isArray(page.items) ? page.items : []).map((n) => ({
+                ...n,
+                isRead: true,
+              })),
+            })),
+          })
+        } else if ('items' in data) {
+          qc.setQueryData<NotificationListResponse>(key, {
+            ...data,
+            items: (Array.isArray(data.items) ? data.items : []).map((n) => ({ ...n, isRead: true })),
+          })
+        }
       }
 
       const countKey = ['notifications', 'unread-count']

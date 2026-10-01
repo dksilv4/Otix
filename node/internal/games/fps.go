@@ -129,6 +129,7 @@ func (c *PresentMonCollector) Start(pid int, processName string, gameID string) 
 
 	args := []string{
 		"--output_stdout",
+		"--session_name", "OtixPresentMon",
 		"--stop_existing_session",
 		"--no_console_stats",
 		"--process_id", strconv.Itoa(pid),

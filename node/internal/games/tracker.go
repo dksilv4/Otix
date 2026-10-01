@@ -424,10 +424,11 @@ func listProcessesUnix() ([]ProcessInfo, error) {
 		if err != nil || pid <= 0 {
 			continue
 		}
-		name := fields[1]
+		name := filepath.Base(fields[1])
 		result = append(result, ProcessInfo{
 			PID:  pid,
 			Name: name,
+			Path: fields[1],
 		})
 	}
 

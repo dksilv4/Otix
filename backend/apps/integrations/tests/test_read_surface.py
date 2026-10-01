@@ -437,8 +437,16 @@ class PlexSessionsTests(_ApiTestBase):
                 "audio_decision",
                 "transcode_reason",
                 "throttled",
+                "rating_key",
+                "grandparent_rating_key",
+                "parent_rating_key",
+                "server_owned",
+                "media_item_id",
             },
         )
+        self.assertTrue(resp.json()["is_admin"])
+        self.assertTrue(movie["server_owned"])
+        self.assertEqual(movie["rating_key"], "100")
         self.assertEqual(movie["session_id"], "abcd1234")
         self.assertEqual(movie["media_type"], "movie")
         self.assertEqual(movie["title"], "Inception")
@@ -485,12 +493,12 @@ class PlexSessionsTests(_ApiTestBase):
         with self._stub_sessions({"MediaContainer": {"Metadata": []}}):
             resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json(), {"sessions": []})
+        self.assertEqual(resp.json(), {"sessions": [], "is_admin": True})
 
     def test_erroring_and_tokenless_servers_are_skipped(self):
         _make_server(self.user, name="Bad", base_url="http://bad.example:32400", machine="srv-bad")
         UserPlexServer.objects.create(
-            user=self.user, machine_identifier="srv-nourl", name="NoUrl", selected=True
+            user=self.user, machine_identifier="srv-nourl", name="NoUrl", selected=True, owned=True
         )
 
         def _fake(url, *args, **kwargs):
@@ -508,6 +516,15 @@ class PlexSessionsTests(_ApiTestBase):
         self.assertEqual(len(sessions), 1)
         self.assertEqual(sessions[0]["server_name"], self.server.name)
 
+    def test_non_admin_server_is_skipped(self):
+        self.server.owned = False
+        self.server.save(update_fields=("owned",))
+        payload = {"MediaContainer": {"Metadata": [SESSION_MOVIE_ITEM]}}
+        with self._stub_sessions(payload):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"sessions": [], "is_admin": False})
+
     def test_raises_are_skipped(self):
         def _fake(url, *args, **kwargs):
             raise OSError("server unreachable")
@@ -515,7 +532,7 @@ class PlexSessionsTests(_ApiTestBase):
         with mock.patch.object(integrations_services.plex, "_request", side_effect=_fake):
             resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json(), {"sessions": []})
+        self.assertEqual(resp.json(), {"sessions": [], "is_admin": True})
 
 
 class PlexWebhookTests(TestCase):

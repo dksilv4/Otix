@@ -1,11 +1,15 @@
-import { Gamepad2, Clock, Star } from 'lucide-react'
+import { Gamepad2, Clock, Star, ExternalLink, Activity } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { useMatchedRunningGame } from '@/features/launcher'
 import { formatDuration } from '@/lib/utils'
 import { ActivityModuleSection } from './activity-module-section'
 
-/** Molecule displaying the currently running game with matched Otix catalog info and elapsed time. */
-export function ActivityModuleGame() {
+interface ActivityModuleGameProps {
+  onClose?: () => void
+}
+
+/** Molecule displaying the currently running game with matched Otix catalog info, live FPS, and elapsed time. */
+export function ActivityModuleGame({ onClose }: ActivityModuleGameProps = {}) {
   const { runningGame, elapsedMs, matchedGame } = useMatchedRunningGame()
 
   if (!runningGame) return null
@@ -15,11 +19,28 @@ export function ActivityModuleGame() {
   const releaseYear = matchedGame?.releaseDate ? new Date(matchedGame.releaseDate).getFullYear() : null
   const genresStr = matchedGame?.genres?.slice(0, 2).join(' · ')
   const devOrGenre = matchedGame?.developer || genresStr
+  const currentFps = runningGame.fpsSnapshot?.currentFps ?? 0
+  const fpsRounded = Math.round(currentFps)
+
+  const fpsColorClass =
+    fpsRounded >= 60
+      ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/25'
+      : fpsRounded >= 30
+        ? 'text-amber-400 bg-amber-500/15 border-amber-500/25'
+        : 'text-rose-400 bg-rose-500/15 border-rose-500/25'
 
   return (
-    <ActivityModuleSection>
-      <div className="flex items-start gap-3">
-        <div className="relative w-14 h-18 rounded-xl overflow-hidden shrink-0 bg-white/[0.04] shadow-md border border-white/10">
+    <ActivityModuleSection className="relative overflow-hidden group">
+      {/* Subtle ambient backdrop glow */}
+      {posterUrl && (
+        <div
+          className="absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-20 blur-2xl pointer-events-none transition-opacity duration-500 group-hover:opacity-30"
+          style={{ backgroundImage: `url(${posterUrl})`, backgroundSize: 'cover' }}
+        />
+      )}
+
+      <div className="relative flex items-start gap-3">
+        <div className="relative w-14 h-20 rounded-xl overflow-hidden shrink-0 bg-white/[0.04] shadow-md border border-white/10 group-hover:border-emerald-500/40 transition-colors">
           {posterUrl ? (
             <img
               src={posterUrl}
@@ -37,10 +58,11 @@ export function ActivityModuleGame() {
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-1 mb-0.5">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
+          <div className="flex items-center justify-between gap-1 mb-1">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
               Now Playing
-            </p>
+            </span>
             {matchedGame?.rating != null && (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400">
                 <Star size={10} className="fill-amber-400 text-amber-400" />
@@ -53,9 +75,11 @@ export function ActivityModuleGame() {
             <Link
               to="/launcher/$gameId"
               params={{ gameId: matchedGame.id }}
-              className="block text-[15px] font-bold text-white/95 hover:text-primary transition-colors truncate leading-tight"
+              onClick={onClose}
+              className="group/link flex items-center gap-1 text-[15px] font-bold text-white/95 hover:text-primary transition-colors truncate leading-tight"
             >
-              {displayTitle}
+              <span className="truncate">{displayTitle}</span>
+              <ExternalLink className="h-3 w-3 opacity-0 group-hover/link:opacity-80 transition-opacity shrink-0" />
             </Link>
           ) : (
             <h3 className="text-[15px] font-bold text-white/95 truncate leading-tight">
@@ -64,26 +88,25 @@ export function ActivityModuleGame() {
           )}
 
           {devOrGenre && (
-            <p className="text-[11px] text-white/50 truncate mt-0.5">
+            <p className="text-[11px] text-white/50 truncate mt-0.5 font-medium">
               {devOrGenre}
               {releaseYear ? ` (${releaseYear})` : ''}
             </p>
           )}
 
-          <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-white/65">
-            <span className="font-bold tracking-wider">{runningGame.game.platform.toUpperCase()}</span>
-            <span className="opacity-30">·</span>
+          <div className="flex items-center gap-1.5 mt-2 text-[11px] text-white/70 flex-wrap">
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-white/[0.06] text-white/70 font-mono">
+              {runningGame.game.platform.toUpperCase()}
+            </span>
             <span className="inline-flex items-center gap-1 tabular-nums font-mono text-emerald-300">
               <Clock size={10} />
               {formatDuration(elapsedMs)}
             </span>
-            {runningGame.fpsSnapshot && runningGame.fpsSnapshot.currentFps > 0 && (
-              <>
-                <span className="opacity-30">·</span>
-                <span className="font-bold text-emerald-400 font-mono">
-                  {Math.round(runningGame.fpsSnapshot.currentFps)} FPS
-                </span>
-              </>
+            {fpsRounded > 0 && (
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold border ${fpsColorClass}`}>
+                <Activity size={10} />
+                {fpsRounded} FPS
+              </span>
             )}
           </div>
         </div>

@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import {
   ListMusic, Pause, Play, SkipBack, SkipForward,
   Volume1, Volume2, VolumeX, ChevronLeft, Clock,
+  Minimize2, Maximize2,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlayer } from '@/lib/player/use-player'
@@ -37,6 +38,23 @@ export function ActivityModulePlayer() {
     togglePlay, skipNext, skipPrevious, seek, setVolume,
     plexQueue, plexPreviousTracks, skipPlexToIndex,
   } = usePlayer()
+
+  const [isCompact, setIsCompact] = useState(() => {
+    try {
+      return localStorage.getItem('otix_player_compact') === 'true'
+    } catch {
+      return false
+    }
+  })
+
+  const toggleCompact = (val: boolean) => {
+    setIsCompact(val)
+    try {
+      localStorage.setItem('otix_player_compact', String(val))
+    } catch {
+      // ignore
+    }
+  }
 
   const [showQueue, setShowQueue] = useState(false)
   const [isDraggingProgress, setIsDraggingProgress] = useState(false)
@@ -156,6 +174,89 @@ export function ActivityModulePlayer() {
 
   if (!currentTrack) return null
 
+  if (isCompact) {
+    return (
+      <div
+        className="rounded-2xl p-3 flex flex-col gap-2 shrink-0 backdrop-blur-md relative overflow-hidden group shadow-md"
+        style={{
+          background: `linear-gradient(135deg, ${backgroundColor} 0%, ${surfaceColor} 100%)`,
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-white/[0.04] shadow-md border border-white/10">
+            {currentTrack.albumArt ? (
+              <img src={currentTrack.albumArt} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <ListMusic className="h-5 w-5 text-white/40" />
+              </div>
+            )}
+            <div className="absolute top-1 right-1">
+              <span className="inline-flex items-center justify-center rounded-full p-0.5 bg-amber-400/20 text-amber-400">
+                <PlexIcon className="h-2 w-2" />
+              </span>
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h4 className="text-xs font-bold text-white/95 truncate leading-tight">{currentTrack.title}</h4>
+            <p className="text-[11px] text-white/50 truncate mt-0.5">
+              {artists.map((a) => a.name).join(', ') || currentTrack.artist}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={skipPrevious}
+              className="h-7 w-7 inline-flex items-center justify-center rounded-full text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"
+              title="Previous"
+            >
+              <SkipBack className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="h-8 w-8 inline-flex items-center justify-center rounded-full active:scale-95 transition-transform"
+              style={{ backgroundColor: accentColor, color: palette.accentText }}
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+            </button>
+            <button
+              type="button"
+              onClick={skipNext}
+              className="h-7 w-7 inline-flex items-center justify-center rounded-full text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors"
+              title="Next"
+            >
+              <SkipForward className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleCompact(false)}
+              className="h-7 w-7 inline-flex items-center justify-center rounded-full text-white/30 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+              title="Expand player"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Mini progress bar */}
+        <div
+          ref={progressBarRef}
+          className="relative h-1 w-full bg-white/[0.08] rounded-full overflow-hidden cursor-pointer"
+          onClick={updateProgressFromEvent}
+        >
+          <div
+            className="h-full rounded-full transition-all"
+            style={{ width: `${progress * 100}%`, backgroundColor: accentColor }}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className="rounded-2xl overflow-hidden flex flex-col shrink-0 backdrop-blur-md"
@@ -189,7 +290,15 @@ export function ActivityModulePlayer() {
                       <ListMusic className="h-12 w-12 text-muted-foreground/30" />
                     </div>
                   )}
-                  <div className="absolute top-2.5 right-2.5">
+                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleCompact(true)}
+                      className="inline-flex items-center justify-center rounded-full p-1.5 bg-black/40 text-white/70 hover:text-white hover:bg-black/60 transition-colors"
+                      title="Minimize player"
+                    >
+                      <Minimize2 className="h-3.5 w-3.5" />
+                    </button>
                     <span className="inline-flex items-center justify-center rounded-full p-1.5 bg-amber-400/20 text-amber-400">
                       <PlexIcon className="h-3.5 w-3.5" />
                     </span>
