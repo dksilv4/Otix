@@ -4,30 +4,22 @@ import {
   Search,
   Play,
   Clock,
-  CloudCheck,
   Trophy,
   Users,
-  Settings,
   FolderOpen,
   Sliders,
-  Sparkles,
   ChevronDown,
-  ChevronRight,
   Gamepad2,
   Check,
-  HardDrive,
   Info,
-  Maximize2,
-  Minus,
   X,
   ArrowLeft,
   ArrowRight,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
-import { usePopularGames } from "@/features/launcher/data/queries"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
-import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
+import { getDesktopAPI } from "@/lib/desktop/api"
 import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import { isApplicationGame } from "@/features/launcher/utils"
@@ -38,10 +30,8 @@ import type { LocalGame } from "@/features/launcher/types"
 export function SteamLauncherView() {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const isDesktop = hasDesktopAPI()
   const { data: localGames = [] } = useLauncherVisibleGames()
-  const { data: popularGames = [] } = usePopularGames()
-  const { runningGame, elapsedMs } = useRunningGame()
+  const { runningGame } = useRunningGame()
   const { toast } = useToast()
 
   const [searchQuery, setSearchQuery] = useState("")

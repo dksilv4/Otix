@@ -1,19 +1,12 @@
 import { useState, useMemo } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import {
   LayoutGrid,
   StretchHorizontal,
   List,
-  Filter,
   ArrowUpDown,
-  Search,
-  FolderPlus,
-  Play,
-  Clock,
-  HardDrive,
   Gamepad2,
   CheckCircle2,
-  ExternalLink,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { LauncherActionButtons } from "../common/launcher-action-buttons"
@@ -21,24 +14,24 @@ import { LauncherMediaCard } from "@/features/launcher/components/molecules/laun
 import { LauncherFoundGames } from "@/features/launcher/components/organisms/launcher-found-games"
 import { PLATFORM_LABELS } from "@/constants/games"
 import { isApplicationGame } from "@/features/launcher/utils"
-import type { LocalGame, DisplayGame, LauncherPlatform } from "@/features/launcher/types"
+import type { LocalGame, DisplayGame } from "@/features/launcher/types"
 
 type ViewMode = "grid" | "banner" | "list"
 type SortField = "recent" | "title" | "platform" | "playtime"
 
 interface ModernLibraryProps {
   localGames: LocalGame[]
-  popularGames: any[]
+  popularGames?: any[]
   searchQuery: string
-  setSearchQuery: (q: string) => void
+  setSearchQuery?: (q: string) => void
   onOpenDetails: (game: LocalGame | DisplayGame) => void
 }
 
 export function ModernLibrary({
   localGames,
-  popularGames,
+  popularGames: _popularGames,
   searchQuery,
-  setSearchQuery,
+  setSearchQuery: _setSearchQuery,
   onOpenDetails,
 }: ModernLibraryProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("grid")

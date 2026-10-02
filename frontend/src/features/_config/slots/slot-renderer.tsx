@@ -2,7 +2,7 @@
 // casts bridge the plugin-provided prop bag into React component props — Zod
 // schemas guarantee correctness; TypeScript cannot verify cross-boundary unions.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
+import { createElement, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -81,8 +81,7 @@ function IconComp(name?: string): ComponentType<{ className?: string }> {
 }
 
 function Icon({ name, className }: { name?: string; className?: string }) {
-  const C = IconComp(name)
-  return <C className={className} />
+  return createElement(IconComp(name), { className })
 }
 
 // ── Variant / tone maps ───────────────────────────────────────────────────────

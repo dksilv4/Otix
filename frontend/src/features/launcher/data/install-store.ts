@@ -3,7 +3,7 @@
 // Survives modal close, page navigation, and component unmounts.
 // Persists to localStorage and rehydrates from backend on refresh.
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import type { InstallProgress, InstallResult, InstallPhase, InstallStoreEntry } from '../types'
 import type { InstallProgressEvent } from '@/lib/desktop'
 import { hasDesktopAPI } from './storage'
@@ -227,7 +227,9 @@ export function cancelInstallByIsoPath(isoPath: string): void {
   if (!entry) return
   try {
     if (window.desktopAPI?.cancelInstall) window.desktopAPI.cancelInstall(isoPath)
-  } catch {}
+  } catch {
+    // ignore IPC error if electron API is unavailable
+  }
   removeInstall(isoPath)
 }
 
@@ -238,7 +240,11 @@ export function resetAllInstalls(): void {
   _ipcUnsub?.()
   _ipcUnsub = null
   _installs.clear()
-  try { localStorage.removeItem(LS_KEY) } catch {}
+  try {
+    localStorage.removeItem(LS_KEY)
+  } catch {
+    // ignore localStorage access error
+  }
   emit()
 }
 
@@ -265,10 +271,10 @@ export function useInstallProgress(): {
   return {
     installs: allInstalls,
     activeInstalls: active,
-    startInstall: useCallback(startInstall, []),
-    completeInstall: useCallback(completeInstall, []),
-    failInstall: useCallback(failInstall, []),
-    dismissInstall: useCallback(dismissInstall, []),
-    cancelInstall: useCallback(cancelInstallByIsoPath, []),
+    startInstall,
+    completeInstall,
+    failInstall,
+    dismissInstall,
+    cancelInstall: cancelInstallByIsoPath,
   }
 }

@@ -1,4 +1,4 @@
-import { Building2, Globe, DollarSign, Calendar, Layers, ShieldAlert } from 'lucide-react'
+import { Building2 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import type { MediaItemDetail } from '@media'
 import { formatCurrency, formatDate, languageName } from '@media'

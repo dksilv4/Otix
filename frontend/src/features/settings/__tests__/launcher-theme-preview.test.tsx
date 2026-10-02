@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { LauncherThemePreview } from '../components/molecules/launcher-theme-preview'
-import { LAUNCHER_THEMES, type LauncherThemeId } from '@/features/launcher/themes/theme-context'
+import { LAUNCHER_THEMES } from '@/features/launcher/themes/theme-context'
 
 describe('LauncherThemePreview', () => {
   it('renders realistic miniature previews for all 10 launcher themes', () => {

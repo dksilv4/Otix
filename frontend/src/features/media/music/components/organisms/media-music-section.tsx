@@ -64,17 +64,15 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
 
 	const { data } = useQuery(mediaQueries.detail('music', mediaId))
 	const album = data?.album as AlbumDetail | undefined
-	if (!album) return null
-
 	const mediaItemId = mediaId
 	const { title, posterUrl } = data ?? {}
 	// Artist name from first music-relevant credit, or fallback to empty
 	const artistName = data?.credits?.find(c => ['artist', 'musician', 'composer', 'main'].includes(c.role))?.person?.name ?? null
 
-	const tracks = Array.isArray(album.tracks) ? album.tracks : EMPTY_TRACKS
+	const tracks = Array.isArray(album?.tracks) ? album.tracks : EMPTY_TRACKS
 	const { playPlexAlbum, error } = usePlayer()
 	const { data: plexData } = usePlexAlbumTracks(mediaItemId)
-	const plexTracks = Array.isArray(plexData?.tracks) ? plexData.tracks : []
+	const plexTracks = useMemo(() => Array.isArray(plexData?.tracks) ? plexData.tracks : [], [plexData?.tracks])
 
  // Merge Plex-only tracks into the display list so the player queue doesn't
  // include tracks the user can't see. Without this, "Play on Plex" queues all
@@ -106,6 +104,8 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  const multiDisc = allTracks.some((t) => t.discNumber > 1)
 
  const hasPlex = !!(plexTracks && plexTracks.length > 0 && plexData)
+
+ if (!album) return null
 
  // Plex credentials for client-side stream URL resolution
  const plexBaseUrl = plexData?.baseUrl

@@ -1,5 +1,4 @@
 import type { ReactNode } from "react"
-import { useLocation } from "@tanstack/react-router"
 import { NavigationProvider } from "@navigation/providers/navigation-provider"
 import { NavPillLeft } from "../molecules/navigation-pill-left"
 import { NavPillRight } from "../molecules/navigation-pill-right"

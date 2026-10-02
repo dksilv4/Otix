@@ -567,7 +567,7 @@ function SyncCard({ pluginId }: { pluginId: string }) {
 
       {!paused && last && (
         <p className="mt-3 text-[11px] text-white/40">
-          Last sync {new Date(last.at ?? last.lastSyncAt ?? Date.now()).toLocaleString()}
+          Last sync {last.at || last.lastSyncAt ? new Date(last.at ?? last.lastSyncAt!).toLocaleString() : 'just now'}
           {lastChips.length ? ` · ${lastChips.join(', ')}` : ''}
         </p>
       )}

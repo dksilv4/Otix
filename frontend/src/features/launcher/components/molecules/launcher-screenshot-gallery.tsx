@@ -120,8 +120,6 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, auto
     )
   })
 
-  if (validScreenshots.length === 0) return null
-
   // Auto-cycle screenshots
   useEffect(() => {
     if (validScreenshots.length <= 1 || !autoPlay) return
@@ -157,6 +155,8 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, auto
       child.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
     }
   }, [activeIdx])
+
+  if (validScreenshots.length === 0) return null
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
