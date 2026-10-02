@@ -93,8 +93,7 @@ export function RootLayout() {
                 <Outlet />
               </div>
               {!isFullScreenPage &&
-                !location.pathname.startsWith('/terms') &&
-                !location.pathname.startsWith('/privacy') && <AppMicroFooter />}
+                !location.pathname.startsWith('/terms') && <AppMicroFooter />}
             </main>
           </NavShell>
 

@@ -92,6 +92,11 @@ describe('AssetEditor image upload component', () => {
       expect(mockPost).toHaveBeenCalledWith('/upload', expect.any(FormData))
       expect(onSubmit).toHaveBeenCalledWith('http://localhost:8000/uploads/test-image-123.png')
     })
+
+    const formData = mockPost.mock.calls[0][1] as FormData
+    const sentFile = formData.get('file') as File
+    expect(sentFile.name).not.toBe('avatar.png')
+    expect(sentFile.name).toMatch(/^upload_\d+_[a-z0-9]+\.png$/)
   })
 
   it('displays error message when /upload fails', async () => {

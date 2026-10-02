@@ -140,8 +140,13 @@ export function AssetEditor({
     setUploading(true)
     setError(null)
     try {
+      // Security & Privacy: Rename file on client to strip original local filenames and paths
+      const ext = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() || 'png' : 'png'
+      const clientSafeName = `upload_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+      const renamedFile = new File([file], clientSafeName, { type: file.type })
+
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', renamedFile)
       const { data } = await apiClient.post('/upload', formData)
       const finalUrl = normalizeUploadedUrl(data.url)
       onSubmit(finalUrl)
@@ -156,9 +161,28 @@ export function AssetEditor({
     }
   }
 
+  const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+  const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 // 5MB
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setError(null)
+
+    // Security check: validate size
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setError('File too large. Maximum size is 5MB.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    // Security check: validate MIME type
+    if (file.type && !ALLOWED_MIME_TYPES.includes(file.type.toLowerCase())) {
+      setError('Unsupported file type. Please upload a PNG, JPEG, WebP, or GIF image.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
     if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl)
     // Reset input value so same file can be re-selected
     e.target.value = ''
@@ -191,7 +215,22 @@ export function AssetEditor({
     if (mode === 'file' && selectedFile) {
       await uploadAndSubmit(selectedFile)
     } else if (mode === 'url') {
-      onSubmit(urlDraft.trim())
+      const trimmed = urlDraft.trim()
+      const lower = trimmed.toLowerCase()
+      if (
+        lower.startsWith('javascript:') ||
+        lower.startsWith('data:') ||
+        lower.startsWith('vbscript:') ||
+        lower.startsWith('file:')
+      ) {
+        setError('Dangerous or disallowed URL scheme.')
+        return
+      }
+      if (trimmed && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('/')) {
+        setError('Please enter a valid URL starting with http:// or https://')
+        return
+      }
+      onSubmit(trimmed)
     }
   }
 

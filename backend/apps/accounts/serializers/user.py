@@ -101,6 +101,32 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "discover_emphases",
         )
 
+    def validate_avatar_url(self, value: str | None) -> str | None:
+        return self._validate_safe_profile_url(value, "avatar_url")
+
+    def validate_background_url(self, value: str | None) -> str | None:
+        return self._validate_safe_profile_url(value, "background_url")
+
+    def _validate_safe_profile_url(self, value: str | None, field_name: str) -> str | None:
+        if not value:
+            return value
+        val = value.strip()
+        if val.startswith("/uploads/") or val.startswith("/api/v1/uploads/"):
+            return val
+        lower = val.lower()
+        if (
+            lower.startswith("javascript:")
+            or lower.startswith("data:")
+            or lower.startswith("vbscript:")
+            or lower.startswith("file:")
+        ):
+            raise serializers.ValidationError(f"Disallowed URL scheme in {field_name}.")
+        if not (lower.startswith("http://") or lower.startswith("https://")):
+            raise serializers.ValidationError(
+                f"{field_name} must be an absolute http(s) URL or local /uploads/ path."
+            )
+        return val
+
 
 class UserPreferencesSerializer(serializers.ModelSerializer):
     """Read-only preference blob behind ``GET /auth/me/preferences``."""
