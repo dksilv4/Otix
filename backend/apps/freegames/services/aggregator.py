@@ -15,6 +15,7 @@ from django.core.cache import cache
 
 from apps.freegames.services.base import BaseFreeGamesProvider, FreeGameItem
 from apps.freegames.services.providers.epic import EpicFreeGamesProvider
+from apps.freegames.services.providers.gog import GOGFreeGamesProvider
 from apps.freegames.services.providers.steam import SteamFreeGamesProvider
 from apps.media.models import ExternalID, MediaItem
 from apps.media.serializers import MediaItemSummarySerializer
@@ -33,7 +34,7 @@ class FreeGamesAggregator:
         self._providers = (
             providers
             if providers is not None
-            else [EpicFreeGamesProvider(), SteamFreeGamesProvider()]
+            else [EpicFreeGamesProvider(), SteamFreeGamesProvider(), GOGFreeGamesProvider()]
         )
 
     def register_provider(self, provider: BaseFreeGamesProvider) -> None:
@@ -362,6 +363,13 @@ class FreeGamesAggregator:
                     "Free game Steam cross-reference failed for app_id %s",
                     item.external_id,
                 )
+        elif item.store == "gog" and item.external_id:
+            try:
+                # IGDB external_game_source = 2 for GOG
+                gog_id_map = provider.lookup_external_game_ids(2, [str(item.external_id)])
+                igdb_id = gog_id_map.get(str(item.external_id))
+            except Exception:
+                logger.debug("Free game GOG cross-reference failed for id %s", item.external_id)
 
         if igdb_id is None and item.title:
             for variant in self._title_search_variants(item.title):

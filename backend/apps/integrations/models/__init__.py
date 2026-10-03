@@ -11,6 +11,7 @@ One module per provider concern:
 
 from apps.integrations.models.client import ClientDevice
 from apps.integrations.models.epic import UserEpicGame
+from apps.integrations.models.gog import UserGOGGame
 from apps.integrations.models.plex import (
     UserPlexItem,
     UserPlexLibrary,
@@ -28,6 +29,7 @@ __all__ = [
     "UserPlexLibrary",
     "UserPlexServer",
     "UserEpicGame",
+    "UserGOGGame",
     "UserSteamGame",
     "UserSteamWishlist",
     "UserYoutubeLikedVideo",

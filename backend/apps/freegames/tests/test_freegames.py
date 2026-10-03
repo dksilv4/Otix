@@ -497,3 +497,84 @@ class FreeGamesApiTests(TestCase):
 
         res2 = self.client.get("/api/v1/free-games")
         self.assertEqual(res2.status_code, status.HTTP_200_OK)
+
+
+class GOGFreeGamesProviderTests(TestCase):
+    @patch("apps.freegames.services.providers.gog.httpx.Client")
+    def test_fetch_free_games_parses_gamerpower_and_catalog(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client_cls.return_value.__enter__.return_value = mock_client
+
+        # 1. Gamerpower response
+        gamerpower_resp = MagicMock()
+        gamerpower_resp.status_code = 200
+        gamerpower_resp.json.return_value = [
+            {
+                "id": 3801,
+                "title": "Bounty Train (GOG) Giveaway",
+                "worth": "$9.99",
+                "thumbnail": "https://img.gamerpower.com/thumb.jpg",
+                "image": "https://img.gamerpower.com/image.jpg",
+                "description": "Rail simulation game.",
+                "open_giveaway_url": "https://www.gamerpower.com/open/bounty-train",
+                "published_date": "2026-10-02 09:30:56",
+                "end_date": "2026-10-05 23:59:00",
+            }
+        ]
+
+        # 2. GOG Catalog query lookup response for Bounty Train
+        lookup_resp = MagicMock()
+        lookup_resp.status_code = 200
+        lookup_resp.json.return_value = {
+            "products": [
+                {
+                    "id": 1455194922,
+                    "title": "Bounty Train",
+                    "slug": "bounty_train",
+                    "coverVertical": "https://images.gog.com/cover_v.jpg",
+                    "coverHorizontal": "https://images.gog.com/cover_h.jpg",
+                }
+            ]
+        }
+
+        # 3. GOG Catalog discounted query response
+        catalog_resp = MagicMock()
+        catalog_resp.status_code = 200
+        catalog_resp.json.return_value = {
+            "products": [
+                {
+                    "id": 1944143058,
+                    "title": "Second Free Game",
+                    "slug": "second_free_game",
+                    "coverVertical": "https://images.gog.com/second_v.jpg",
+                    "price": {"base": "$14.99"},
+                }
+            ]
+        }
+
+        def mock_get(url, **kwargs):
+            if "gamerpower" in url:
+                return gamerpower_resp
+            elif "query=like:" in url:
+                return lookup_resp
+            else:
+                return catalog_resp
+
+        mock_client.get.side_effect = mock_get
+
+        from apps.freegames.services.providers.gog import GOGFreeGamesProvider
+
+        provider = GOGFreeGamesProvider()
+        items = provider.fetch_free_games()
+
+        self.assertEqual(len(items), 2)
+        bounty = next(i for i in items if i.title == "Bounty Train")
+        self.assertEqual(bounty.store, "gog")
+        self.assertEqual(bounty.external_id, "1455194922")
+        self.assertEqual(bounty.claim_url, "https://www.gog.com/en/game/bounty_train")
+        self.assertEqual(bounty.original_price, "$9.99")
+
+        second = next(i for i in items if i.title == "Second Free Game")
+        self.assertEqual(second.external_id, "1944143058")
+        self.assertEqual(second.claim_url, "https://www.gog.com/en/game/second_free_game")
+        self.assertEqual(second.original_price, "$14.99")

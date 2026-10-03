@@ -8,6 +8,7 @@ import { DkDropdown } from '@ui/atoms/dropdown'
 import { DkSwitch } from '@ui/atoms/switch'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
 import EpicIcon from '@/assets/provider-logos/epic.svg?react'
+import GOGIcon from '@/assets/provider-logos/gog.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import GoogleIcon from '@/assets/provider-logos/google.svg?react'
 import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
@@ -35,6 +36,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { EpicCodeModal } from '../components/organisms/epic-code-modal'
+import { GOGCodeModal } from '../components/organisms/gog-code-modal'
 import { PlexStorageOptimizerModal } from '@/features/integrations/plex-storage'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
@@ -185,6 +187,7 @@ function formatDaysAgo(unixTimestamp: number): string {
 const BRAND_COLORS: Record<string, string> = {
   steam: '#1a6bcc',
   epic: '#ffffff',
+  gog: '#a855f7',
   plex: '#e5a00d',
   tmdb: '#01b4e4',
   google: '#4285F4',
@@ -197,6 +200,7 @@ const BRAND_COLORS: Record<string, string> = {
 const BRAND_BG: Record<string, string> = {
   steam: 'bg-[#1a6bcc]/10',
   epic: 'bg-white/10',
+  gog: 'bg-[#a855f7]/10',
   plex: 'bg-[#e5a00d]/10',
   tmdb: 'bg-[#01b4e4]/10',
   google: 'bg-[#4285F4]/10',
@@ -595,7 +599,7 @@ function NodeConnectionsGroup({
 let activeIntegrationAbortController: AbortController | null = null
 
 export function SettingsIntegrationsPage() {
-
+  const { openModal } = useModal()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   useSettingsHashScroll()
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -631,6 +635,16 @@ export function SettingsIntegrationsPage() {
     }
   }, [user?.epicAccountId, user?.epicDisplayName])
 
+  useEffect(() => {
+    if (user?.gogAccountId !== undefined) {
+      setGOGConnected(Boolean(user.gogAccountId))
+      setGOGAccountId(user.gogAccountId ?? null)
+    }
+    if (user?.gogDisplayName !== undefined) {
+      setGOGDisplayName(user.gogDisplayName ?? null)
+    }
+  }, [user?.gogAccountId, user?.gogDisplayName])
+
   const [epicConnected, setEpicConnected] = useState(Boolean(user?.epicAccountId))
   const [epicDisplayName, setEpicDisplayName] = useState<string | null>(user?.epicDisplayName ?? null)
   const [epicAccountId, setEpicAccountId] = useState<string | null>(user?.epicAccountId ?? null)
@@ -652,6 +666,28 @@ export function SettingsIntegrationsPage() {
   const [epicMessage, setEpicMessage] = useState('')
   const [epicError, setEpicError] = useState('')
   const isEpicConnected = epicConnected
+
+  const [gogConnected, setGOGConnected] = useState(Boolean(user?.gogAccountId))
+  const [gogDisplayName, setGOGDisplayName] = useState<string | null>(user?.gogDisplayName ?? null)
+  const [gogAccountId, setGOGAccountId] = useState<string | null>(user?.gogAccountId ?? null)
+  const [gogConnecting, setGOGConnecting] = useState(false)
+  const [gogDisconnecting, setGOGDisconnecting] = useState(false)
+  const [gogScanning, setGOGScanning] = useState(false)
+  const [gogScanResult, setGOGScanResult] = useState<{
+    totalInGOG: number
+    matchedInOtix: number
+    failed: number
+    source?: string
+  } | null>(null)
+  const [gogResolvingSteamGrid, setGOGResolvingSteamGrid] = useState(false)
+  const [gogSteamGridResult, setGOGSteamGridResult] = useState<{
+    total: number
+    matched: number
+    failed: number
+  } | null>(null)
+  const [gogMessage, setGOGMessage] = useState('')
+  const [gogError, setGOGError] = useState('')
+  const isGOGConnected = gogConnected
 
   const [steamMessage, setSteamMessage] = useState('')
   const [steamError, setSteamError] = useState('')
@@ -794,6 +830,19 @@ export function SettingsIntegrationsPage() {
       } else {
         await fetchEpicStatus()
       }
+      const gogProvider = (data.providers as Array<{
+        name: string
+        connected: boolean
+        gogAccountId?: string | null
+        gogDisplayName?: string | null
+      }>).find((p) => p.name === 'gog')
+      if (gogProvider) {
+        setGOGConnected(gogProvider.connected)
+        setGOGAccountId(gogProvider.gogAccountId ?? null)
+        setGOGDisplayName(gogProvider.gogDisplayName ?? null)
+      } else {
+        await fetchGOGStatus()
+      }
     } catch (err) {
       setSteamError(extractIntegrationMessage(err))
     } finally {
@@ -813,6 +862,21 @@ export function SettingsIntegrationsPage() {
       setEpicAccountId(data.accountId ?? null)
     } catch {
       setEpicConnected(false)
+    }
+  }
+
+  const fetchGOGStatus = async () => {
+    try {
+      const { data } = await apiClient.get<{
+        connected?: boolean
+        displayName?: string | null
+        accountId?: string | null
+      }>('/integrations/gog/status')
+      setGOGConnected(Boolean(data.connected))
+      setGOGDisplayName(data.displayName ?? null)
+      setGOGAccountId(data.accountId ?? null)
+    } catch {
+      setGOGConnected(false)
     }
   }
 
@@ -880,7 +944,6 @@ export function SettingsIntegrationsPage() {
         await fetchEpicStatus()
         return
       }
-      openExternal(authUrl, { newTab: true })
       openBoundModal(openModal, (onClose) => (
         <EpicCodeModal
           authUrl={authUrl}
@@ -955,6 +1018,128 @@ export function SettingsIntegrationsPage() {
       setEpicError(extractIntegrationMessage(err))
     } finally {
       setEpicResolvingSteamGrid(false)
+    }
+  }
+
+  const handleGOGConnect = async () => {
+    setGOGConnecting(true)
+    setGOGError('')
+    try {
+      const { data } = await apiClient.post('/auth/oauth/gog')
+      const authUrl = data.authUrl || data.auth_url
+      const state = data.state
+      const openOAuthWindow = window.desktopAPI?.plugin?.openOAuthWindow
+      if (isDesktop() && openOAuthWindow) {
+        const win = await openOAuthWindow(authUrl, 'on_login_success') as {
+          success?: boolean
+          code?: string
+          error?: string
+        }
+        if (!win?.success || !win.code) {
+          setGOGError((win?.error as string | undefined) || 'Login cancelled')
+          return
+        }
+        await apiClient.post('/auth/oauth/gog/callback', { code: win.code, state })
+        await fetchGOGStatus()
+        return
+      }
+      openBoundModal(openModal, (onClose) => (
+        <GOGCodeModal
+          authUrl={authUrl}
+          state={state}
+          onClose={onClose}
+          onLinked={() => { void fetchGOGStatus() }}
+        />
+      ))
+    } catch (err) {
+      setGOGError(extractIntegrationMessage(err))
+    } finally {
+      setGOGConnecting(false)
+    }
+  }
+
+  const handleGOGDisconnect = async () => {
+    setGOGDisconnecting(true)
+    setGOGError('')
+    setGOGMessage('')
+    try {
+      await apiClient.delete('/auth/oauth/gog/disconnect')
+      setGOGConnected(false)
+      setGOGDisplayName(null)
+      setGOGAccountId(null)
+      setGOGMessage('GOG account unlinked.')
+    } catch (err) {
+      setGOGError(extractIntegrationMessage(err))
+    } finally {
+      setGOGDisconnecting(false)
+    }
+  }
+
+  const handleGOGScan = async () => {
+    setGOGScanning(true)
+    setGOGError('')
+    setGOGScanResult(null)
+    try {
+      const { data } = await apiClient.post<{
+        totalInGOG?: number
+        total_in_gog?: number
+        matchedInOtix?: number
+        matched_in_otix?: number
+        failed?: number
+        source?: string
+      }>('/integrations/gog/scan')
+      const rawData = data as Record<string, any>
+      const total =
+        rawData.totalInGog ??
+        rawData.totalInGOG ??
+        rawData.total_in_gog ??
+        0
+      const matched =
+        rawData.matchedInOtix ??
+        rawData.matched_in_otix ??
+        0
+      const failed = rawData.failed ?? 0
+      setGOGScanResult({
+        totalInGOG: total,
+        matchedInOtix: matched,
+        failed,
+        source: rawData.source,
+      })
+      let msg = `Found ${matched} matches out of ${total} GOG games.`
+      if (data.source) {
+        msg += data.source === 'node' ? ' (via node scan)' : ' (via web scan)'
+      }
+      if (failed > 0) {
+        msg += ` Resolving ${failed} unmatched games with SteamGridDB...`
+        setGOGMessage(msg)
+        await handleGOGResolveSteamGrid()
+      } else {
+        setGOGMessage(msg)
+      }
+    } catch (err) {
+      setGOGError(extractIntegrationMessage(err))
+    } finally {
+      setGOGScanning(false)
+    }
+  }
+
+  const handleGOGResolveSteamGrid = async () => {
+    setGOGResolvingSteamGrid(true)
+    setGOGError('')
+    try {
+      const { data } = await apiClient.post<{
+        total: number
+        matched: number
+        failed: number
+      }>('/integrations/gog/resolve-steamgrid')
+      setGOGSteamGridResult(data)
+      let msg = `Matched ${data.matched} out of ${data.total} GOG games with SteamGridDB.`
+      if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
+      setGOGMessage(msg)
+    } catch (err) {
+      setGOGError(extractIntegrationMessage(err))
+    } finally {
+      setGOGResolvingSteamGrid(false)
     }
   }
 
@@ -1535,6 +1720,23 @@ export function SettingsIntegrationsPage() {
       error: epicError,
     },
     {
+      id: 'gog',
+      name: 'GOG',
+      keywords: 'gog galaxy games store cd projekt cdpr drm free library launcher',
+      description: isGOGConnected && gogDisplayName
+        ? `Linked as ${gogDisplayName}`
+        : 'Sign in with GOG to sync your game library.',
+      isConnected: isGOGConnected,
+      brandColor: BRAND_COLORS.gog,
+      brandBg: BRAND_BG.gog,
+      icon: GOGIcon,
+      onConnect: handleGOGConnect,
+      connecting: gogConnecting,
+      onDisconnect: handleGOGDisconnect,
+      disconnecting: gogDisconnecting,
+      error: gogError,
+    },
+    {
       id: 'plex',
       name: 'Plex',
       keywords: 'plex media server watchlist library sync',
@@ -1754,6 +1956,55 @@ export function SettingsIntegrationsPage() {
                         />
                         {epicMessage && <p className="px-5 py-2 text-xs text-green-400">{epicMessage}</p>}
                         {epicError && <p className="px-5 py-2 text-xs text-red-400">{epicError}</p>}
+                      </>
+                    )}
+
+                    {/* GOG content */}
+                    {i.id === 'gog' && (
+                      <>
+                        <IntegrationProfile
+                          avatarAlt={gogDisplayName ?? 'GOG avatar'}
+                          name={gogDisplayName ?? 'GOG User'}
+                          detail={gogAccountId ? `Account ID: ${gogAccountId}` : 'GOG account linked'}
+                          brandBg={BRAND_BG.gog}
+                          icon={GOGIcon}
+                          brandColor={BRAND_COLORS.gog}
+                        />
+                        <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 text-xs text-white/70">
+                            <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
+                            <span>
+                              Game scanning and matching are also managed under
+                              {' '}<strong>Library Settings</strong> as a Provider.
+                            </span>
+                          </div>
+                          <Link
+                            to="/settings/library"
+                            className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+                          >
+                            Go to Library Settings &rarr;
+                          </Link>
+                        </div>
+                        <IntegrationAction
+                          label="Library Scan"
+                          description="Scan your GOG library"
+                          result={gogScanResult ? `${gogScanResult.matchedInOtix} matches out of ${gogScanResult.totalInGOG} GOG games` : null}
+                          buttonLabel={gogScanning ? 'Scanning...' : gogScanResult ? 'Re-scan' : 'Scan Library'}
+                          buttonIcon={RefreshCw}
+                          onPress={handleGOGScan}
+                          loading={gogScanning}
+                        />
+                        <IntegrationAction
+                          label="SteamGridDB Matching"
+                          description="Match artwork and metadata from SteamGridDB for unmatched GOG games"
+                          result={gogSteamGridResult ? `${gogSteamGridResult.matched} matched out of ${gogSteamGridResult.total} games` : null}
+                          buttonLabel={gogResolvingSteamGrid ? 'Matching...' : 'Resolve with SteamGrid'}
+                          buttonIcon={Sparkles}
+                          onPress={handleGOGResolveSteamGrid}
+                          loading={gogResolvingSteamGrid}
+                        />
+                        {gogMessage && <p className="px-5 py-2 text-xs text-green-400">{gogMessage}</p>}
+                        {gogError && <p className="px-5 py-2 text-xs text-red-400">{gogError}</p>}
                       </>
                     )}
 

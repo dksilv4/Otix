@@ -40,6 +40,8 @@ from apps.library.services.game_server import (
     pick_online_game_server,
     proxy_epic_auth,
     proxy_epic_disconnect,
+    proxy_gog_auth,
+    proxy_gog_disconnect,
 )
 
 
@@ -643,6 +645,126 @@ class EpicDisconnectView(GenericAPIView):
 
         return Response(
             {"message": "Epic account unlinked successfully"}, status=status.HTTP_200_OK
+        )
+
+
+class GOGLinkInitiateView(GenericAPIView):
+    """POST /oauth/gog — start the GOG link flow."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        auth_url, state = oauth_service.build_gog_link_url(user_id=request.user.pk)
+        return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
+
+
+class GOGLinkCallbackView(GenericAPIView):
+    """POST /oauth/gog/callback — exchange authorization code and store credentials on user."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = OAuthCallbackSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.validated_data["code"]
+        state = serializer.validated_data["state"]
+
+        payload = oauth_service.consume_gog_link_state(state, user_id=request.user.pk)
+        if payload is None:
+            return Response(
+                {"detail": "GOG linking session expired. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.integrations.services import gog_client
+
+        try:
+            tokens = gog_client.exchange_authorization_code(code)
+        except gog_client.GOGAuthError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        user.gog_account_id = tokens["account_id"]
+        user.gog_display_name = tokens["display_name"]
+        user.gog_access_token = tokens["access_token"]
+        user.gog_refresh_token = tokens["refresh_token"]
+        user.gog_token_expires_at = tokens["expires_at"]
+        user.save(
+            update_fields=[
+                "gog_account_id",
+                "gog_display_name",
+                "gog_access_token",
+                "gog_refresh_token",
+                "gog_token_expires_at",
+            ]
+        )
+
+        # Sync with worker node if online
+        node_id = request.data.get("node_id") or request.data.get("server_id")
+        server = None
+        if node_id:
+            server = UserGameServer.objects.filter(user=user, id=node_id).first()
+        if server is None:
+            server = pick_online_game_server(user)
+        if server:
+            try:
+                proxy_gog_auth(server, code)
+            except Exception:
+                pass
+
+        oauth_service.delete_gog_link_states(user_id=request.user.pk)
+        return Response(
+            {
+                "connected": True,
+                "account_id": user.gog_account_id,
+                "display_name": user.gog_display_name,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class GOGDisconnectView(GenericAPIView):
+    """DELETE /oauth/gog/disconnect — unlink GOG from the user's account."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def delete(self, request, *args, **kwargs):
+        user = request.user
+        user.gog_account_id = None
+        user.gog_display_name = None
+        user.gog_access_token = None
+        user.gog_refresh_token = None
+        user.gog_token_expires_at = None
+        user.save(
+            update_fields=[
+                "gog_account_id",
+                "gog_display_name",
+                "gog_access_token",
+                "gog_refresh_token",
+                "gog_token_expires_at",
+            ]
+        )
+
+        node_id = (
+            request.data.get("node_id")
+            or request.data.get("server_id")
+            or request.query_params.get("node_id")
+            or request.query_params.get("server_id")
+        )
+        server = None
+        if node_id:
+            server = UserGameServer.objects.filter(user=user, id=node_id).first()
+        if server is None:
+            server = pick_online_game_server(user)
+        if server:
+            try:
+                proxy_gog_disconnect(server)
+            except Exception:
+                pass
+
+        return Response(
+            {"message": "GOG account unlinked successfully"}, status=status.HTTP_200_OK
         )
 
 

@@ -59,11 +59,9 @@ export function EpicCodeModal({
   const [state, setState] = useState(initialState)
   const [paste, setPaste] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [opening, setOpening] = useState(false)
   const [error, setError] = useState('')
 
   const handleOpenLogin = async () => {
-    setOpening(true)
     setError('')
     try {
       const { data } = nodeId
@@ -73,11 +71,11 @@ export function EpicCodeModal({
       const newState = data.state || state
       setAuthUrl(newAuthUrl)
       setState(newState)
-      openExternal(newAuthUrl, { newTab: true })
+      if (window.desktopAPI) {
+        openExternal(newAuthUrl, { newTab: true })
+      }
     } catch {
-      openExternal(authUrl, { newTab: true })
-    } finally {
-      setOpening(false)
+      // fallback
     }
   }
 
@@ -138,17 +136,20 @@ export function EpicCodeModal({
       description="Sign in with Epic Games in the new tab, then paste the authorization code or JSON containing authorizationCode below. Otix never stores the refresh token in the browser."
     >
       <div className="space-y-4">
-        <DkButton
-          type="button"
-          variant="ghost"
-          leftIcon={EpicIcon}
-          className="w-full bg-white/10 text-white shadow-none hover:bg-white/15"
-          onClick={() => void handleOpenLogin()}
-          loading={opening}
-          loadingText="Opening Epic Games…"
+        <a
+          href={authUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          role="button"
+          className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 rounded-xl text-sm font-medium bg-white/10 text-white shadow-none hover:bg-white/15 transition-colors"
+          onClick={() => {
+            openExternal(authUrl, { newTab: true })
+            void handleOpenLogin()
+          }}
         >
-          Open Epic Games login (new tab)
-        </DkButton>
+          <EpicIcon className="h-4 w-4 shrink-0" />
+          <span>Open Epic Games login (new tab)</span>
+        </a>
         <div className="space-y-1">
           <label htmlFor="epic-auth-code" className="block pl-1 text-sm font-medium">
             Authorization code

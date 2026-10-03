@@ -1396,6 +1396,8 @@ def oauth_providers_payload(user: User) -> list[dict]:
             "google_avatar_url": None,
             "epic_account_id": None,
             "epic_display_name": None,
+            "gog_account_id": None,
+            "gog_display_name": None,
         }
         fields.update(overrides)
         return fields
@@ -1452,6 +1454,14 @@ def oauth_providers_payload(user: User) -> list[dict]:
                 "epic_display_name": user.epic_display_name,
             }
         ),
+        row(
+            {
+                "name": "gog",
+                "connected": user.gog_refresh_token is not None,
+                "gog_account_id": user.gog_account_id,
+                "gog_display_name": user.gog_display_name,
+            }
+        ),
     ]
 
 
@@ -1496,5 +1506,45 @@ def consume_epic_link_state(state: str, *, user_id: int) -> dict | None:
 def delete_epic_link_states(*, user_id: int) -> None:
     """Clean up any remaining epic-link OAuthState rows for the given user."""
     for row in OAuthState.objects.filter(payload__flow=EPIC_OAUTH_FLOW):
+        if row.payload.get("user_id") == user_id:
+            row.delete()
+
+
+# ── GOG link (login URL only; token exchange lives on the Otix Server / client) ──
+
+GOG_CLIENT_ID = "46899977096215655"
+GOG_OAUTH_FLOW = "gog-link"
+GOG_REDIRECT_URI = "https://embed.gog.com/on_login_success?origin=client"
+
+
+def build_gog_link_url(*, user_id: int) -> tuple[str, str]:
+    """GOG link initiate -> ``(auth_url, state)``."""
+    state = secrets.token_urlsafe(32)
+    OAuthState.objects.create(
+        key=state, payload={"v": "1", "flow": GOG_OAUTH_FLOW, "user_id": user_id}
+    )
+    auth_url = (
+        f"https://auth.gog.com/auth?client_id={GOG_CLIENT_ID}"
+        f"&redirect_uri={urllib.parse.quote(GOG_REDIRECT_URI, safe='')}"
+        f"&response_type=code&layout=client2"
+    )
+    return auth_url, state
+
+
+def consume_gog_link_state(state: str, *, user_id: int) -> dict | None:
+    """Read+delete a gog-link state; ``None`` when absent, expired, or mismatched."""
+    payload = _consume_state(state)
+    if payload is None:
+        return None
+    if payload.get("flow") != GOG_OAUTH_FLOW:
+        return None
+    if payload.get("user_id") != user_id:
+        return None
+    return payload
+
+
+def delete_gog_link_states(*, user_id: int) -> None:
+    """Clean up any remaining gog-link OAuthState rows for the given user."""
+    for row in OAuthState.objects.filter(payload__flow=GOG_OAUTH_FLOW):
         if row.payload.get("user_id") == user_id:
             row.delete()

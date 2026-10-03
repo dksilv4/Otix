@@ -1,5 +1,6 @@
 import EpicLogo from '@/assets/provider-logos/epic.svg?react'
 import SteamLogo from '@/assets/provider-logos/steam.svg?react'
+import GOGLogo from '@/assets/provider-logos/gog.svg?react'
 
 interface ProviderLogoProps {
   platform: string
@@ -19,12 +20,7 @@ export function ProviderLogo({ platform, className = 'h-4 w-4', showTextFallback
   }
 
   if (p === 'gog' || p === 'gog galaxy') {
-    return (
-      <svg className={className + ' text-purple-400 shrink-0'} viewBox="0 0 24 24" fill="currentColor">
-        <title>GOG Galaxy</title>
-        <path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8zm4-9h-3v2h3v1a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h4a1 1 0 0 1 0 2h-4v4h2v-1h1v-2z" />
-      </svg>
-    )
+    return <GOGLogo className={className + ' shrink-0'} />
   }
 
   if (p === 'xbox' || p === 'microsoft' || p === 'game pass') {

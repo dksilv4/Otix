@@ -2,6 +2,7 @@
 
 from apps.library.serializers.library import (
     EpicUnmatchedGameSerializer,
+    GOGUnmatchedGameSerializer,
     InstalledGameSerializer,
     MediaItemSummarySerializer,
     SteamUnmatchedGameSerializer,
@@ -16,6 +17,7 @@ from apps.library.serializers.library import (
 
 __all__ = [
     "EpicUnmatchedGameSerializer",
+    "GOGUnmatchedGameSerializer",
     "InstalledGameSerializer",
     "MediaItemSummarySerializer",
     "SteamUnmatchedGameSerializer",

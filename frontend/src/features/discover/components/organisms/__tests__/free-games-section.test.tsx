@@ -208,4 +208,34 @@ describe('FreeGamesSection', () => {
     expect(screen.queryByRole('button', { name: /coming soon/i })).not.toBeInTheDocument()
     expect(screen.getByText('SOON')).toBeInTheDocument()
   })
+
+  it('renders GOG free game with GOG store label and claim link', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        current: [
+          {
+            id: 'gog_1455194922',
+            store: 'gog',
+            storeName: 'GOG',
+            title: 'Bounty Train',
+            originalPrice: '$9.99',
+            isFreeNow: true,
+            claimUrl: 'https://www.gog.com/en/game/bounty_train',
+            posterUrl: 'https://images.gog.com/bounty.jpg',
+            matched: false,
+            mediaItem: null,
+          },
+        ],
+        upcoming: [],
+        total: 1,
+      },
+    })
+
+    renderWithClient(<FreeGamesSection />)
+
+    expect(await screen.findByText('Bounty Train')).toBeInTheDocument()
+    expect(screen.getAllByText('GOG').length).toBeGreaterThan(0)
+    const claimLink = screen.getByRole('link', { name: /claim on gog/i })
+    expect(claimLink).toHaveAttribute('href', 'https://www.gog.com/en/game/bounty_train')
+  })
 })

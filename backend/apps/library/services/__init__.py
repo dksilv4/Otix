@@ -5,6 +5,11 @@ from apps.library.services.epic import (
     get_epic_status,
     get_unmatched_epic_games,
 )
+from apps.library.services.gog import (
+    get_gog_library,
+    get_gog_status,
+    get_unmatched_gog_games,
+)
 from apps.library.services.installed import get_installed_games
 from apps.library.services.plex import (
     PlexThumbError,
@@ -33,9 +38,12 @@ __all__ = [
     "enrich_media_items",
     "get_epic_library",
     "get_epic_status",
+    "get_gog_library",
+    "get_gog_status",
+    "get_unmatched_epic_games",
+    "get_unmatched_gog_games",
     "get_installed_games",
     "get_library_tab",
-    "get_unmatched_epic_games",
     "get_plex_library",
     "get_plex_status",
     "get_plex_thumb_url",

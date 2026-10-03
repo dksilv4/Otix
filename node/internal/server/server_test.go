@@ -622,6 +622,21 @@ func TestPluginsAndProvidersEndpoints(t *testing.T) {
 		t.Fatalf("delete epic auth failed: %d", wEpicDel.Code)
 	}
 
+	// 4b. GET /api/v1/gog/status & DELETE /api/v1/gog/auth
+	reqGOG := httptest.NewRequest("GET", "/api/v1/gog/status?token=token123", nil)
+	wGOG := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wGOG, reqGOG)
+	if wGOG.Code != http.StatusOK {
+		t.Fatalf("get gog status failed: %d", wGOG.Code)
+	}
+
+	reqGOGDel := httptest.NewRequest("DELETE", "/api/v1/gog/auth?token=token123", nil)
+	wGOGDel := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wGOGDel, reqGOGDel)
+	if wGOGDel.Code != http.StatusOK {
+		t.Fatalf("delete gog auth failed: %d", wGOGDel.Code)
+	}
+
 	// 5. GET & POST Radarr / Sonarr configs
 	reqRadarr := httptest.NewRequest("GET", "/api/v1/radarr/config?token=token123", nil)
 	wRadarr := httptest.NewRecorder()

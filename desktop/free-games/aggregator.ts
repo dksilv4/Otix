@@ -122,9 +122,9 @@ export class FreeGamesAggregator {
             title: game.title || null,
             original_price: game.originalPrice || null,
             free_end_date: game.freeEndDate || null,
-            claim_url: game.storeUrl || game.claimUrl || game.urlSlug
-              ? (store === 'steam' ? `https://store.steampowered.com/app/${game.appId || game.id}` : null)
-              : null,
+            claim_url: game.claimUrl || game.storeUrl || (game.urlSlug
+              ? (store === 'steam' ? `https://store.steampowered.com/app/${game.appId || game.id}` : store === 'gog' ? `https://www.gog.com/en/game/${game.urlSlug}` : null)
+              : null),
             poster_url: game.posterUrl || null,
             store_label: inferStoreLabel(store, game),
           })

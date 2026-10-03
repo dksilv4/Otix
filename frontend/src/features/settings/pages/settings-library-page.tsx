@@ -149,6 +149,43 @@ function mapEpicUnmatched(item: any): any {
   }
 }
 
+// Map a matched GOG MediaItemSummary to the page's local-game shape.
+function mapGOGMatched(item: any): any {
+  return {
+    id: `gog-${item.id}`,
+    title: item.title,
+    posterUrl: item.posterUrl || item.textlessPosterUrl || item.iconUrl || null,
+    localIconUrl: item.iconUrl || null,
+    iconUrl: item.iconUrl || null,
+    otixMediaId: item.id,
+    platform: 'gog',
+    providerName: 'gog',
+    gameType: 'main_game',
+    mediaType: item.mediaType || 'game',
+    developer: null,
+    isGOG: true,
+  }
+}
+
+// Map an unmatched GOG game to the page's local-game shape.
+function mapGOGUnmatched(item: any): any {
+  return {
+    id: `gog-unmatched-${item.id}`,
+    title: item.title,
+    posterUrl: item.image || null,
+    localIconUrl: item.image || null,
+    iconUrl: item.image || null,
+    otixMediaId: undefined,
+    platform: 'gog',
+    providerName: 'gog',
+    gameType: 'main_game',
+    mediaType: 'game',
+    developer: null,
+    gogGameId: item.gameId || item.game_id,
+    isGOG: true,
+  }
+}
+
 // Clean title for fuzzy deduplication across editions, regional titles, playtests, betas, and servers.
 function cleanTitleForDeduplication(title: string): string {
   if (!title) return ''
@@ -299,18 +336,20 @@ export function SettingsLibraryPage() {
     return () => clearTimeout(t)
   }, [])
 
-  // Disk scan (this app or synced installs) + Steam & Epic library (matched + unmatched).
+  // Disk scan (this app or synced installs) + Steam, Epic & GOG library (matched + unmatched).
   const fetchGames = useCallback(async () => {
     setGamesLoading(true)
-    const [local, installed, steamMatched, steamUnmatched, epicMatched, epicUnmatched] = await Promise.all([
+    const [local, installed, steamMatched, steamUnmatched, epicMatched, epicUnmatched, gogMatched, gogUnmatched] = await Promise.all([
       api?.getLocalGames?.().then((data: any[]) => data || []).catch(() => []),
       fetchInstalledGames().catch(() => []),
       fetchAllLibraryPages('/library/steam').then((items) => items.map(mapSteamMatched)).catch(() => []),
       fetchAllLibraryPages('/library/steam/unmatched').then((items) => items.map(mapSteamUnmatched)).catch(() => []),
       fetchAllLibraryPages('/library/epic').then((items) => items.map(mapEpicMatched)).catch(() => []),
       fetchAllLibraryPages('/library/epic/unmatched').then((items) => items.map(mapEpicUnmatched)).catch(() => []),
+      fetchAllLibraryPages('/library/gog').then((items) => items.map(mapGOGMatched)).catch(() => []),
+      fetchAllLibraryPages('/library/gog/unmatched').then((items) => items.map(mapGOGUnmatched)).catch(() => []),
     ])
-    setGames(deduplicateGames([...(local ?? []), ...installed, ...steamMatched, ...steamUnmatched, ...epicMatched, ...epicUnmatched]))
+    setGames(deduplicateGames([...(local ?? []), ...installed, ...steamMatched, ...steamUnmatched, ...epicMatched, ...epicUnmatched, ...gogMatched, ...gogUnmatched]))
     setGamesLoading(false)
   }, [api])
 
@@ -534,7 +573,7 @@ export function SettingsLibraryPage() {
                     <SectionHeader
                       icon={Gamepad2}
                       title="Catalog"
-                      description="Local, Steam, and Epic titles Otix has found — match them, review suggestions, or leave unmatched."
+                      description="Local, Steam, Epic, and GOG titles Otix has found — match them, review suggestions, or leave unmatched."
                       action={
                         <div className="flex items-center gap-2">
                           <Link

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import EpicIcon from '@/assets/provider-logos/epic.svg?react'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
+import GOGIcon from '@/assets/provider-logos/gog.svg?react'
 import { Carousel } from '@ui/molecules/carousel'
 import { MediaCard } from '@ui/molecules/media-card'
 import { MediaLogo } from '@/lib/media/media-logo'
@@ -28,6 +29,8 @@ function StoreIcon({ store, className }: { store: string; className?: string }) 
       return <EpicIcon className={className} />
     case 'steam':
       return <SteamIcon className={className} />
+    case 'gog':
+      return <GOGIcon className={className} />
     default:
       return <Gamepad2 className={className} />
   }
@@ -36,6 +39,7 @@ function StoreIcon({ store, className }: { store: string; className?: string }) 
 const STORE_LABELS: Record<string, string> = {
   epic: 'Epic Games',
   steam: 'Steam',
+  gog: 'GOG',
 }
 
 function storeLabel(store: string, storeName?: string | null): string {

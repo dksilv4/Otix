@@ -1054,6 +1054,7 @@ def sonarr_get_history(
 # ── Epic (node-proxied OAuth + library scan) ────────────────────────────
 
 NO_EPIC_NODE = "Connect an Otix Server to link Epic."
+NO_GOG_NODE = "Connect an Otix Server to link GOG."
 
 
 # ── Desktop Operations ──────────────────────────────────────────────────
@@ -1120,6 +1121,24 @@ def proxy_epic_scan(server: UserGameServer) -> tuple[int, dict]:
 
 def proxy_epic_disconnect(server: UserGameServer) -> tuple[int, dict]:
     return server_proxy_request(server, "DELETE", "/api/v1/epic/auth")
+
+
+def proxy_gog_auth(server: UserGameServer, code: str) -> tuple[int, dict]:
+    return server_proxy_request(
+        server, "POST", "/api/v1/gog/auth", json={"code": code}, timeout=20.0
+    )
+
+
+def proxy_gog_status(server: UserGameServer) -> tuple[int, dict]:
+    return server_proxy_request(server, "GET", "/api/v1/gog/status")
+
+
+def proxy_gog_scan(server: UserGameServer) -> tuple[int, dict]:
+    return server_proxy_request(server, "POST", "/api/v1/gog/scan", timeout=60.0)
+
+
+def proxy_gog_disconnect(server: UserGameServer) -> tuple[int, dict]:
+    return server_proxy_request(server, "DELETE", "/api/v1/gog/auth")
 
 
 link_or_create_game_server = link_or_create_node

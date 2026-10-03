@@ -11,6 +11,8 @@ export interface SettingsUser {
   steamId?: string | null
   epicAccountId?: string | null
   epicDisplayName?: string | null
+  gogAccountId?: string | null
+  gogDisplayName?: string | null
   plexId?: string | null
   tmdbUsername?: string | null
   country?: string | null

@@ -10,6 +10,11 @@ from apps.integrations.views.fetch import (
     FetchRequestStreamView,
     FetchResultView,
 )
+from apps.integrations.views.gog import (
+    GOGLibraryScanView,
+    GOGResolveSteamGridView,
+    GOGStatusView,
+)
 from apps.integrations.views.plex import (
     PlexConnectInfoView,
     PlexLibrariesView,
@@ -61,6 +66,9 @@ __all__ = [
     "EpicLibraryScanView",
     "EpicResolveSteamGridView",
     "EpicStatusView",
+    "GOGLibraryScanView",
+    "GOGResolveSteamGridView",
+    "GOGStatusView",
     "SteamLibraryScanView",
     "SteamOwnedAppIdsView",
     "SteamResolveUnmatchedView",

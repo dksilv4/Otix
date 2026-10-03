@@ -11,7 +11,12 @@ from datetime import date, datetime
 
 from rest_framework import serializers
 
-from apps.integrations.models import UserEpicGame, UserSteamGame, UserYoutubeLikedVideo
+from apps.integrations.models import (
+    UserEpicGame,
+    UserGOGGame,
+    UserSteamGame,
+    UserYoutubeLikedVideo,
+)
 from apps.library.models import UserGameServer, UserLocalGame, UserNodeShare
 from apps.library.services.summaries import build_media_item_summary
 from apps.media.models import MediaItem
@@ -67,6 +72,19 @@ class EpicUnmatchedGameSerializer(serializers.Serializer):
             "namespace": game.namespace,
             "catalog_item_id": game.catalog_item_id,
             "offer_id": game.offer_id,
+        }
+
+
+class GOGUnmatchedGameSerializer(serializers.Serializer):
+    """One unmatched GOG row."""
+
+    def to_representation(self, game: UserGOGGame) -> dict:
+        return {
+            "id": game.id,
+            "game_id": game.game_id,
+            "title": game.title,
+            "slug": game.slug,
+            "image": game.image,
         }
 
 

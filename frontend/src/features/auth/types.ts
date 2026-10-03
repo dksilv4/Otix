@@ -9,6 +9,8 @@ export interface User {
   steamId?: string | null
   epicAccountId?: string | null
   epicDisplayName?: string | null
+  gogAccountId?: string | null
+  gogDisplayName?: string | null
   plexId?: string | null
   tmdbAccountId?: number | null
   tmdbUsername?: string | null

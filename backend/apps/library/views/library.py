@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 from apps.library import services
 from apps.library.serializers import (
     EpicUnmatchedGameSerializer,
+    GOGUnmatchedGameSerializer,
     InstalledGameSerializer,
     MediaItemSummarySerializer,
     SteamUnmatchedGameSerializer,
@@ -179,6 +180,42 @@ class EpicUnmatchedView(APIView):
         return Response(
             {
                 "items": EpicUnmatchedGameSerializer(rows, many=True).data,
+                "next_cursor": next_cursor,
+                "has_more": has_more,
+                "total": None,
+            }
+        )
+
+
+class GOGLibraryView(APIView):
+    """``GET /api/v1/library/gog`` — matched GOG games grid."""
+
+    def get(self, request: Request) -> Response:
+        limit = _int_param(request, "limit", default=48, low=1, high=100)
+        items, has_more, next_cursor = services.get_gog_library(
+            request.user, cursor=request.query_params.get("cursor"), limit=limit
+        )
+        return Response(_media_list_payload(items, has_more, next_cursor))
+
+
+class GOGStatusView(APIView):
+    """``GET /api/v1/library/gog/status`` — GOG game count + last scanned."""
+
+    def get(self, request: Request) -> Response:
+        return Response(services.get_gog_status(request.user))
+
+
+class GOGUnmatchedView(APIView):
+    """``GET /api/v1/library/gog/unmatched`` — GOG rows with no Otix match."""
+
+    def get(self, request: Request) -> Response:
+        limit = _int_param(request, "limit", default=48, low=1, high=100)
+        rows, has_more, next_cursor = services.get_unmatched_gog_games(
+            request.user, cursor=request.query_params.get("cursor"), limit=limit
+        )
+        return Response(
+            {
+                "items": GOGUnmatchedGameSerializer(rows, many=True).data,
                 "next_cursor": next_cursor,
                 "has_more": has_more,
                 "total": None,

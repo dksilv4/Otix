@@ -12,6 +12,9 @@ from apps.accounts.views import (
     EpicLinkCallbackView,
     EpicLinkInitiateView,
     ForgotPasswordView,
+    GOGDisconnectView,
+    GOGLinkCallbackView,
+    GOGLinkInitiateView,
     GoogleDisconnectView,
     GoogleDriveDisconnectView,
     GoogleDriveLinkCallbackView,
@@ -127,6 +130,14 @@ urlpatterns = [
         "oauth/epic/disconnect",
         EpicDisconnectView.as_view(),
         name="oauth-epic-disconnect",
+    ),
+    # GOG link surface.
+    path("oauth/gog", GOGLinkInitiateView.as_view(), name="oauth-gog"),
+    path("oauth/gog/callback", GOGLinkCallbackView.as_view(), name="oauth-gog-callback"),
+    path(
+        "oauth/gog/disconnect",
+        GOGDisconnectView.as_view(),
+        name="oauth-gog-disconnect",
     ),
     # TMDb link surface (connect).
     path("oauth/tmdb", TMDbLinkInitiateView.as_view(), name="oauth-tmdb"),

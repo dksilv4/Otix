@@ -11,6 +11,9 @@ from apps.integrations.views import (
     EpicLibraryScanView,
     EpicResolveSteamGridView,
     EpicStatusView,
+    GOGLibraryScanView,
+    GOGResolveSteamGridView,
+    GOGStatusView,
     PlexConnectInfoView,
     PlexLibrariesView,
     PlexServersView,
@@ -98,6 +101,14 @@ urlpatterns = [
         "epic/resolve-steamgrid",
         EpicResolveSteamGridView.as_view(),
         name="epic-resolve-steamgrid",
+    ),
+    # GOG status + scan (token lives on the Otix Server node or direct cloud).
+    path("gog/status", GOGStatusView.as_view(), name="gog-status"),
+    path("gog/scan", GOGLibraryScanView.as_view(), name="gog-scan"),
+    path(
+        "gog/resolve-steamgrid",
+        GOGResolveSteamGridView.as_view(),
+        name="gog-resolve-steamgrid",
     ),
     # TMDb account sync (ratings both ways + watchlist import).
     path(

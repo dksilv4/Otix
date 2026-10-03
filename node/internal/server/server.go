@@ -23,6 +23,7 @@ import (
 	"github.com/dksilv4/otix/node/internal/epic"
 	"github.com/dksilv4/otix/node/internal/explorer"
 	"github.com/dksilv4/otix/node/internal/games"
+	"github.com/dksilv4/otix/node/internal/gog"
 	"github.com/dksilv4/otix/node/internal/hardware"
 	"github.com/dksilv4/otix/node/internal/heartbeat"
 	"github.com/dksilv4/otix/node/internal/indexer"
@@ -41,6 +42,7 @@ type Server struct {
 	indexer      *indexer.StorageIndexer
 	savesMgr     *saves.SaveCloudManager
 	epicClient   *epic.EpicClient
+	gogClient    *gog.GOGClient
 	providersMgr *providers.ProviderManager
 	dealsMonitor *plugins.DealsMonitor
 	gamesStore   *games.SessionStore
@@ -62,6 +64,7 @@ func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
 
 	savesMgr := saves.NewSaveCloudManager(cfg.Saves.StoragePath, cfg.Saves.MaxSnapshotsPerGame)
 	epicClient := epic.NewEpicClient(storageDir)
+	gogClient := gog.NewGOGClient(storageDir)
 	provMgr := providers.NewProviderManager(cfg)
 	dealsMon := plugins.NewDealsMonitor()
 
@@ -82,6 +85,7 @@ func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
 		indexer:      idx,
 		savesMgr:     savesMgr,
 		epicClient:   epicClient,
+		gogClient:    gogClient,
 		providersMgr: provMgr,
 		dealsMonitor: dealsMon,
 		gamesStore:   gamesStore,
@@ -995,6 +999,53 @@ func (s *Server) setupRoutes() {
 
 		authed.Post("/api/v1/epic/scan", func(w http.ResponseWriter, r *http.Request) {
 			games, err := s.epicClient.CompleteScan()
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"detail":%q}`, err.Error()), http.StatusBadRequest)
+				return
+			}
+			jsonResponse(w, http.StatusOK, games)
+		})
+
+		// ── GOG Vault & Scanner ───────────────────────────────────────────────
+		authed.Get("/api/v1/gog/status", func(w http.ResponseWriter, r *http.Request) {
+			jsonResponse(w, http.StatusOK, s.gogClient.Status())
+		})
+
+		authed.Post("/api/v1/gog/auth", func(w http.ResponseWriter, r *http.Request) {
+			var req struct {
+				Code string `json:"code"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, `{"detail":"Invalid request body"}`, http.StatusBadRequest)
+				return
+			}
+
+			code, err := gog.ParseAuthorizationCode(req.Code)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"detail":%q}`, err.Error()), http.StatusBadRequest)
+				return
+			}
+
+			secrets, err := s.gogClient.ExchangeCode(code)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"detail":%q}`, err.Error()), http.StatusBadRequest)
+				return
+			}
+
+			jsonResponse(w, http.StatusOK, map[string]interface{}{
+				"status":       "authenticated",
+				"account_id":   secrets.AccountID,
+				"display_name": secrets.DisplayName,
+			})
+		})
+
+		authed.Delete("/api/v1/gog/auth", func(w http.ResponseWriter, r *http.Request) {
+			_ = s.gogClient.DeleteSecrets()
+			jsonResponse(w, http.StatusOK, map[string]string{"status": "disconnected"})
+		})
+
+		authed.Post("/api/v1/gog/scan", func(w http.ResponseWriter, r *http.Request) {
+			games, err := s.gogClient.CompleteScan()
 			if err != nil {
 				http.Error(w, fmt.Sprintf(`{"detail":%q}`, err.Error()), http.StatusBadRequest)
 				return

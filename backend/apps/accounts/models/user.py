@@ -141,6 +141,15 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     epic_refresh_token = models.TextField(null=True, blank=True)
     epic_token_expires_at = models.DateTimeField(null=True, blank=True)
 
+    # --- GOG integration profile ---
+    gog_account_id = models.CharField(
+        max_length=64, null=True, blank=True, unique=True, db_index=True
+    )
+    gog_display_name = models.CharField(max_length=150, null=True, blank=True)
+    gog_access_token = models.TextField(null=True, blank=True)
+    gog_refresh_token = models.TextField(null=True, blank=True)
+    gog_token_expires_at = models.DateTimeField(null=True, blank=True)
+
     # --- Security ---
     two_factor_enabled = models.BooleanField(default=False)
     # base32 TOTP secret. Populated by /auth/2fa/setup *before* enable; kept

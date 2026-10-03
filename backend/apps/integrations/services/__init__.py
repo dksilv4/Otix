@@ -1,6 +1,9 @@
 """Integrations domain services, re-exported for convenient imports."""
 
 from apps.integrations.services.epic import scan_epic_library
+from apps.integrations.services.epic_steamgrid import resolve_unmatched_epic_with_steamgrid
+from apps.integrations.services.gog import scan_gog_library
+from apps.integrations.services.gog_steamgrid import resolve_unmatched_gog_with_steamgrid
 from apps.integrations.services.plex import (
     DISCOVER_UNEXPECTED,
     PlexConnectInfoNotFound,
@@ -54,8 +57,11 @@ __all__ = [
     "resolve_stream_url_for_server_with_base",
     "import_tmdb_watchlist",
     "register_sync_engine",
+    "resolve_unmatched_epic_with_steamgrid",
+    "resolve_unmatched_gog_with_steamgrid",
     "resolve_unmatched_steam_games",
     "scan_epic_library",
+    "scan_gog_library",
     "scan_steam_library",
     "scan_steam_wishlist",
     "sync_plex_watchlist",
