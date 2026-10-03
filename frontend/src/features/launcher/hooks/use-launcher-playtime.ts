@@ -42,13 +42,31 @@ export function useGamePlaytime(gameId: string | null | undefined): PlaytimeInfo
 
   useEffect(() => {
     const api = getDesktopAPI()
-    if (!api?.onGameEnded) return
-    const unsub = api.onGameEnded((data) => {
-      if (data?.gameId === gameId || data?.gameTitle) {
+    if (!api) return
+
+    const unsubEnded = api.onGameEnded?.((data) => {
+      if (!gameId || data?.gameId === gameId || data?.gameTitle) {
         fetchPlaytime()
       }
     })
-    return unsub
+
+    const unsubFpsStats = api.onFpsStats?.((data) => {
+      if (!gameId || data?.gameId === gameId) {
+        fetchPlaytime()
+      }
+    })
+
+    const unsubUpdated = api.onSessionsUpdated?.((data) => {
+      if (!gameId || data?.gameId === gameId || !data) {
+        fetchPlaytime()
+      }
+    })
+
+    return () => {
+      unsubEnded?.()
+      unsubFpsStats?.()
+      unsubUpdated?.()
+    }
   }, [gameId, fetchPlaytime])
 
   return playtime

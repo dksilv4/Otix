@@ -71,11 +71,30 @@ export interface ProcessMapping {
   gameTitle: string;
 }
 
+export interface SessionNodeInfo {
+  id?: string | number | null;
+  name?: string | null;
+  url?: string | null;
+  installed?: boolean;
+  running?: boolean;
+}
+
+export interface SessionHardwareInfo {
+  cpu?: string;
+  gpu?: string;
+  ramBytes?: number;
+  os?: string;
+  discreteGpu?: boolean;
+}
+
 export interface RunningGame {
   game: LocalGame;
   startTime: number;
   launchedByOtix: boolean;
   pid?: number;
+  node?: SessionNodeInfo | null;
+  hardware?: SessionHardwareInfo | null;
+  shareEligible?: boolean;
 }
 
 export interface FpsStats {
@@ -92,6 +111,9 @@ export interface LiveFpsSnapshot {
   currentFps: number;
   frameCount: number;
   captureDurationMs: number;
+  node?: SessionNodeInfo | null;
+  hardware?: SessionHardwareInfo | null;
+  shareEligible?: boolean;
 }
 
 export interface PlaySession {
@@ -101,6 +123,9 @@ export interface PlaySession {
   endTime: number;
   launchedByOtix: boolean;
   fpsStats?: FpsStats | null;
+  node?: SessionNodeInfo | null;
+  hardware?: SessionHardwareInfo | null;
+  shareEligible?: boolean;
 }
 
 export interface LauncherScanResult {
@@ -452,6 +477,8 @@ export interface IDesktopAPI {
   onGameStarted: (callback: (data: RunningGame) => void) => () => void;
   onGameEnded: (callback: (data: PlaySession) => void) => () => void;
   onFpsUpdate: (callback: (data: LiveFpsSnapshot) => void) => () => void;
+  onFpsStats: (callback: (data: { gameId: string; fpsStats: FpsStats | null }) => void) => () => void;
+  onSessionsUpdated: (callback: (data?: any) => void) => () => void;
 
   // Downloads
   downloadsGetConfig: (userId: string) => Promise<DownloadConfig | null>;

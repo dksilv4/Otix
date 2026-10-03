@@ -476,11 +476,15 @@ app.on('ready', async () => {
       gameTitle: runningGame.game.title,
       pid: runningGame.pid ?? 0,
       launchedByOtix: runningGame.launchedByOtix,
+      node: runningGame.node ?? null,
+      hardware: runningGame.hardware ?? null,
+      shareEligible: runningGame.shareEligible ?? false,
     });
   });
   gameDetector.on('game:ended', (session) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:ended', session);
+      mainWindow.webContents.send('game:sessions-updated', session);
     }
     eventBus.emit('game:ended', {
       gameId: session.gameId,
@@ -488,6 +492,9 @@ app.on('ready', async () => {
       startTime: session.startTime,
       endTime: session.endTime,
       launchedByOtix: session.launchedByOtix,
+      node: session.node ?? null,
+      hardware: session.hardware ?? null,
+      shareEligible: session.shareEligible ?? false,
     });
   });
 
@@ -495,6 +502,12 @@ app.on('ready', async () => {
   eventBus.on('fps:live', (payload) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:fps', payload);
+    }
+  }, 'main');
+  eventBus.on('fps:stats', (payload) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('game:fps-stats', payload);
+      mainWindow.webContents.send('game:sessions-updated', payload);
     }
   }, 'main');
   eventBus.on('fps:permission-needed', (payload) => {

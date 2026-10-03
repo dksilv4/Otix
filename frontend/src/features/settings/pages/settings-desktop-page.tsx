@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react'
 import {
+  Activity,
   AlertTriangle,
   ChevronRight,
   Copy,
   Check,
+  Cpu,
   DownloadCloud,
   ExternalLink,
   Globe,
   HardDrive,
   KeyRound,
+  Monitor,
   Pencil,
   Plus,
   Radio,
@@ -23,7 +26,8 @@ import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useToast } from '@ui/molecules/toast'
 import { useModal } from '@/lib/modals'
-import { cn, formatBytes } from '@/lib/utils'
+import { cn, formatBytes, formatRAM } from '@/lib/utils'
+import { readStoredSettings } from '../components/organisms/node-machine-settings'
 import {
   useClaimGameServer,
   useDeleteGameServer,
@@ -452,6 +456,14 @@ export function SettingsNodesPage() {
             const isOnline = server.isOnline
             const isCopied = copiedId === server.id
             const address = local ? null : server.primaryUrl || server.localUrl
+            const cachedNode = readStoredSettings(server.id)
+            const cpuSummary = cachedNode.hardware?.cpu?.modelName
+            const gpuSummary =
+              cachedNode.hardware?.gpus?.find((g) => g.isDiscrete)?.name ||
+              cachedNode.hardware?.gpus?.[0]?.name
+            const ramSummary = cachedNode.hardware?.memory?.totalBytes
+              ? formatRAM(cachedNode.hardware.memory.totalBytes)
+              : null
 
             return (
               <SettingsCard
@@ -623,6 +635,47 @@ export function SettingsNodesPage() {
 
                     {server.storageFreeBytes > 0 && (
                       <span>{formatBytes(server.storageFreeBytes)} free</span>
+                    )}
+
+                    {cpuSummary && (
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] text-cyan-300/90 bg-cyan-500/10 px-2 py-0.5 rounded-md font-medium"
+                        title={`CPU: ${cpuSummary}`}
+                      >
+                        <Cpu size={11} className="text-cyan-400 shrink-0" />
+                        <span className="truncate max-w-[130px]">
+                          {cpuSummary
+                            .replace(
+                              /(Processor|8-Core|16-Core|12-Core|6-Core|32-Core|24-Core|\(R\)|\(TM\))/gi,
+                              '',
+                            )
+                            .trim()}
+                        </span>
+                      </span>
+                    )}
+
+                    {gpuSummary && (
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] text-purple-300/90 bg-purple-500/10 px-2 py-0.5 rounded-md font-medium"
+                        title={`GPU: ${gpuSummary}`}
+                      >
+                        <Monitor size={11} className="text-purple-400 shrink-0" />
+                        <span className="truncate max-w-[130px]">
+                          {gpuSummary
+                            .replace(/(NVIDIA|AMD|Radeon|GeForce|\(R\)|\(TM\))/gi, '')
+                            .trim()}
+                        </span>
+                      </span>
+                    )}
+
+                    {ramSummary && (
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] text-emerald-300/90 bg-emerald-500/10 px-2 py-0.5 rounded-md font-medium"
+                        title={`RAM: ${ramSummary}`}
+                      >
+                        <Activity size={11} className="text-emerald-400 shrink-0" />
+                        <span>{ramSummary}</span>
+                      </span>
                     )}
 
                     {(probeResults[server.id]?.remote_accessible ||

@@ -23,6 +23,7 @@ import (
 	"github.com/dksilv4/otix/node/internal/epic"
 	"github.com/dksilv4/otix/node/internal/explorer"
 	"github.com/dksilv4/otix/node/internal/games"
+	"github.com/dksilv4/otix/node/internal/hardware"
 	"github.com/dksilv4/otix/node/internal/heartbeat"
 	"github.com/dksilv4/otix/node/internal/indexer"
 	"github.com/dksilv4/otix/node/internal/organize"
@@ -70,6 +71,7 @@ func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
 	}
 	fpsCollector := games.NewPresentMonCollector(storageDir)
 	gamesTracker := games.NewGameTracker(gamesStore, fpsCollector, idx)
+	gamesTracker.SetNodeInfo(cfg.Server.Name, cfg.Server.Port)
 	gamesTracker.Start()
 	overlayMgr := games.NewOverlayManager(gamesStore, gamesTracker, fpsCollector)
 	overlayMgr.Start()
@@ -242,6 +244,16 @@ func (s *Server) setupRoutes() {
 			"status":  "claimed",
 			"message": "Node successfully claimed and assigned to account",
 		})
+	})
+
+	// Hardware inspection (host hardware specs)
+	r.Get("/api/v1/hardware", func(w http.ResponseWriter, r *http.Request) {
+		refresh := r.URL.Query().Get("refresh") == "true"
+		jsonResponse(w, http.StatusOK, hardware.GetMachineHardware(refresh))
+	})
+	r.Get("/api/v1/desktop/hardware", func(w http.ResponseWriter, r *http.Request) {
+		refresh := r.URL.Query().Get("refresh") == "true"
+		jsonResponse(w, http.StatusOK, hardware.GetMachineHardware(refresh))
 	})
 
 	// Status (Rich server metrics)
@@ -1635,7 +1647,13 @@ func (s *Server) setupRoutes() {
 
 		// ── Desktop & Organize ────────────────────────────────────────────────
 		authed.Get("/api/v1/desktop/settings", func(w http.ResponseWriter, r *http.Request) {
-			jsonResponse(w, http.StatusOK, desktop.GetDesktopSettings(s.cfg))
+			refresh := r.URL.Query().Get("refresh") == "true"
+			jsonResponse(w, http.StatusOK, desktop.GetDesktopSettings(s.cfg, refresh))
+		})
+
+		authed.Get("/api/v1/desktop/hardware", func(w http.ResponseWriter, r *http.Request) {
+			refresh := r.URL.Query().Get("refresh") == "true"
+			jsonResponse(w, http.StatusOK, hardware.GetMachineHardware(refresh))
 		})
 
 		authed.Post("/api/v1/desktop/settings", func(w http.ResponseWriter, r *http.Request) {

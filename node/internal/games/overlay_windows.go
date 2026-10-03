@@ -378,7 +378,6 @@ func (om *OverlayManager) paint(hwnd uintptr) {
 	fps := om.currentFps
 	low1 := om.low1Fps
 	avg := om.avgFps
-	title := om.gameTitle
 	playtime := om.playtimeSec
 	om.mu.RUnlock()
 

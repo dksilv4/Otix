@@ -1059,8 +1059,10 @@ NO_EPIC_NODE = "Connect an Otix Server to link Epic."
 # ── Desktop Operations ──────────────────────────────────────────────────
 
 
-def desktop_get_settings(server: UserGameServer) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "GET", "/api/v1/desktop/settings", timeout=6.0)
+def desktop_get_settings(
+    server: UserGameServer, params: dict | None = None
+) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "GET", "/api/v1/desktop/settings", params=params, timeout=10.0)
 
 
 def node_list_libraries(server: UserGameServer) -> tuple[int, dict | list]:

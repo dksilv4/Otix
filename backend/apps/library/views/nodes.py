@@ -1437,7 +1437,10 @@ class GameServerDesktopView(APIView):
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = desktop_get_settings(server)
+        params = {}
+        if request.query_params.get("refresh"):
+            params["refresh"] = request.query_params.get("refresh")
+        status_code, data = desktop_get_settings(server, params=params)
         return Response(data, status=status_code)
 
     def post(self, request: Request, server_id: int) -> Response:

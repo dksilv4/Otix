@@ -358,7 +358,24 @@ function saveSession(session, maxSessions) {
     let sessions = [];
     try { sessions = JSON.parse(fs.readFileSync(sessionsPath, 'utf-8')); } catch {}
 
-    sessions.push(session);
+    const existingIdx = sessions.findIndex((s) => (
+      s.gameId === session.gameId &&
+      Math.abs((s.startTime || 0) - (session.startTime || 0)) <= 5000
+    ));
+
+    if (existingIdx >= 0) {
+      sessions[existingIdx] = {
+        ...sessions[existingIdx],
+        ...session,
+        node: session.node || sessions[existingIdx].node || null,
+        hardware: session.hardware || sessions[existingIdx].hardware || null,
+        fpsStats: session.fpsStats || sessions[existingIdx].fpsStats || null,
+        shareEligible: session.shareEligible ?? sessions[existingIdx].shareEligible ?? false,
+      };
+    } else {
+      sessions.push(session);
+    }
+
     if (sessions.length > (maxSessions || MAX_SESSIONS)) {
       sessions = sessions.slice(-(maxSessions || MAX_SESSIONS));
     }
@@ -475,11 +492,21 @@ const entry = function (ctx) {
     if (!e || !e.pid) return;
     ctx.logger.info(`[fps-capture] game:started — pid ${e.pid}, game ${e.gameId}`);
     if (startCapture(e.pid, e.gameId, e.gameTitle, ctx.host.emit.bind(ctx.host))) {
+      if (activeSession) {
+        activeSession.node = e.node || null;
+        activeSession.hardware = e.hardware || null;
+        activeSession.shareEligible = e.shareEligible ?? Boolean(e.node?.installed || e.hardware?.gpu);
+      }
       // Start polling timer
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = setInterval(() => {
         const snapshot = getLiveFps();
         if (snapshot) {
+          if (activeSession) {
+            snapshot.node = activeSession.node || null;
+            snapshot.hardware = activeSession.hardware || null;
+            snapshot.shareEligible = activeSession.shareEligible ?? false;
+          }
           try { ctx.host.emit('fps:live', snapshot); } catch {}
         }
         if (!isCapturing() && pollTimer) {
@@ -499,6 +526,10 @@ const entry = function (ctx) {
 
     const fpsStats = stopCapture(ctx.host.emit.bind(ctx.host));
 
+    const nodeInfo = e.node || (activeSession ? activeSession.node : null);
+    const hardwareInfo = e.hardware || (activeSession ? activeSession.hardware : null);
+    const shareEligible = e.shareEligible ?? (activeSession ? activeSession.shareEligible : Boolean(nodeInfo?.installed || hardwareInfo?.gpu));
+
     const session = {
       gameId: e.gameId,
       gameTitle: e.gameTitle || '',
@@ -506,11 +537,22 @@ const entry = function (ctx) {
       endTime: e.endTime || Date.now(),
       launchedByOtix: e.launchedByOtix || false,
       fpsStats: fpsStats || null,
+      node: nodeInfo || null,
+      hardware: hardwareInfo || null,
+      shareEligible: Boolean(shareEligible),
     };
 
     saveSession(session, maxSessions);
 
-    try { ctx.host.emit('fps:stats', { gameId: e.gameId, fpsStats: fpsStats || null }); } catch {}
+    try {
+      ctx.host.emit('fps:stats', {
+        gameId: e.gameId,
+        fpsStats: fpsStats || null,
+        node: nodeInfo || null,
+        hardware: hardwareInfo || null,
+        shareEligible: Boolean(shareEligible),
+      });
+    } catch {}
   });
 
   // ── Cleanup on destroy ───────────────────────────────────────────

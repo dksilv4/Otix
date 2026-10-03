@@ -47,9 +47,21 @@ export function useRunningGame() {
         setElapsedMs(0)
       })
 
+      // Listen for live FPS updates
+      const unsubFps = window.desktopAPI.onFpsUpdate?.((data) => {
+        setRunningGame((prev) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            fpsSnapshot: data,
+          }
+        })
+      })
+
       return () => {
         unsubStart()
         unsubEnd()
+        unsubFps?.()
         clearTimer()
       }
     }

@@ -25,9 +25,29 @@ export interface DiskInfo {
   free: number
 }
 
+export interface SessionNodeInfo {
+  id?: string | number | null
+  name?: string | null
+  url?: string | null
+  installed?: boolean
+  running?: boolean
+}
+
+export interface SessionHardwareInfo {
+  cpu?: string
+  gpu?: string
+  ramBytes?: number
+  os?: string
+  discreteGpu?: boolean
+}
+
 export interface RecentSession {
   gameId: string
   endTime: number
+  startTime?: number
+  node?: SessionNodeInfo | null
+  hardware?: SessionHardwareInfo | null
+  shareEligible?: boolean
 }
 
 export interface LiveFpsSnapshot {
@@ -35,6 +55,9 @@ export interface LiveFpsSnapshot {
   frameCount: number
   captureDurationMs: number
   gameId: string
+  node?: SessionNodeInfo | null
+  hardware?: SessionHardwareInfo | null
+  shareEligible?: boolean
 }
 
 export interface FpsStatsData {
@@ -71,6 +94,9 @@ export interface RunningGameData {
   pid?: number
   fpsSnapshot?: LiveFpsSnapshot | null
   fpsAvailable?: boolean
+  node?: SessionNodeInfo | null
+  hardware?: SessionHardwareInfo | null
+  shareEligible?: boolean
 }
 
 export interface CloudSettings {
@@ -201,6 +227,8 @@ export interface DesktopAPI {
   onGameStarted(cb: (data: RunningGameData) => void): () => void
   onGameEnded(cb: (data: { gameId?: string; gameTitle?: string }) => void): () => void
   onFpsUpdate(cb: (data: LiveFpsSnapshot) => void): () => void
+  onFpsStats?: (cb: (data: { gameId: string; fpsStats: FpsStatsData | null }) => void) => () => void
+  onSessionsUpdated?: (cb: (data?: any) => void) => () => void
   fixFpsPermissions: () => Promise<{ success: boolean; needRestart?: boolean; error?: string }>
   onFpsPermissionNeeded: (cb: () => void) => () => void
   onCleanQuit: (cb: () => void) => () => void

@@ -137,6 +137,16 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.on('game:fps', handler);
     return () => ipcRenderer.removeListener('game:fps', handler);
   },
+  onFpsStats: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('game:fps-stats', handler);
+    return () => ipcRenderer.removeListener('game:fps-stats', handler);
+  },
+  onSessionsUpdated: (callback: (data?: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('game:sessions-updated', handler);
+    return () => ipcRenderer.removeListener('game:sessions-updated', handler);
+  },
   fixFpsPermissions: () => ipcRenderer.invoke('fps:fix-permissions'),
   onFpsPermissionNeeded: (callback: () => void) => {
     const handler = () => callback();

@@ -7,21 +7,23 @@ import (
 	"time"
 
 	"github.com/dksilv4/otix/node/internal/config"
+	"github.com/dksilv4/otix/node/internal/hardware"
 )
 
 var NodeStartTime = time.Now()
 
 type DesktopSettingsResponse struct {
-	Platform          string          `json:"platform"`
-	Supported         bool            `json:"supported"`
-	Hostname          string          `json:"hostname"`
-	ServerName        string          `json:"serverName"`
-	Arch              string          `json:"arch"`
-	NumCPU            int             `json:"numCpu"`
-	GoVersion         string          `json:"goVersion"`
-	UptimeSeconds     int             `json:"uptimeSeconds"`
-	Capabilities      map[string]bool `json:"capabilities"`
-	LaunchOnStartup   bool            `json:"launchOnStartup"`
+	Platform          string                    `json:"platform"`
+	Supported         bool                      `json:"supported"`
+	Hostname          string                    `json:"hostname"`
+	ServerName        string                    `json:"serverName"`
+	Arch              string                    `json:"arch"`
+	NumCPU            int                       `json:"numCpu"`
+	GoVersion         string                    `json:"goVersion"`
+	UptimeSeconds     int                       `json:"uptimeSeconds"`
+	Capabilities      map[string]bool           `json:"capabilities"`
+	Hardware          *hardware.MachineHardware `json:"hardware,omitempty"`
+	LaunchOnStartup   bool                      `json:"launchOnStartup"`
 	MinimizeToTray    bool            `json:"minimizeToTray"`
 	CloseToTray       bool            `json:"closeToTray"`
 	AlwaysOnTop       bool            `json:"alwaysOnTop"`
@@ -67,7 +69,8 @@ func IsSupported() bool {
 	return p == "windows" || p == "linux"
 }
 
-func GetDesktopSettings(cfg *config.AppConfig) DesktopSettingsResponse {
+func GetDesktopSettings(cfg *config.AppConfig, refresh ...bool) DesktopSettingsResponse {
+	doRefresh := len(refresh) > 0 && refresh[0]
 	dlPath := cfg.Desktop.GamesDownloadPath
 	if dlPath == "" {
 		dlPath = cfg.Server.DownloadsPath
@@ -98,6 +101,7 @@ func GetDesktopSettings(cfg *config.AppConfig) DesktopSettingsResponse {
 		GoVersion:         runtime.Version(),
 		UptimeSeconds:     int(time.Since(NodeStartTime).Seconds()),
 		Capabilities:      caps,
+		Hardware:          hardware.GetMachineHardware(doRefresh),
 		LaunchOnStartup:   cfg.Desktop.LaunchOnStartup,
 		MinimizeToTray:    cfg.Desktop.MinimizeToTray,
 		CloseToTray:       cfg.Desktop.CloseToTray,

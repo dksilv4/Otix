@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -12,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dksilv4/otix/node/internal/hardware"
 	"github.com/dksilv4/otix/node/internal/indexer"
 )
 
@@ -106,6 +108,8 @@ type GameTracker struct {
 	indexer      *indexer.StorageIndexer
 	running      *RunningGame
 	stopChan     chan struct{}
+	nodeName     string
+	nodePort     int
 
 	onGameStarted func(game *RunningGame)
 	onGameStopped func(session *PlaySession)
@@ -119,6 +123,14 @@ func NewGameTracker(store *SessionStore, fpsCollector FpsCollector, idx *indexer
 		indexer:      idx,
 		stopChan:     make(chan struct{}),
 	}
+}
+
+// SetNodeInfo configures the identifying node details for game sessions.
+func (gt *GameTracker) SetNodeInfo(name string, port int) {
+	gt.mu.Lock()
+	defer gt.mu.Unlock()
+	gt.nodeName = name
+	gt.nodePort = port
 }
 
 // SetCallbacks registers lifecycle hooks (used by OverlayManager).
@@ -278,6 +290,38 @@ func (gt *GameTracker) stopActiveSessionLocked() {
 		stats = gt.fpsCollector.Stop()
 	}
 
+	hw := hardware.GetMachineHardware(false)
+	var hwSummary *SessionHardwareSummary
+	if hw != nil {
+		gpuName := ""
+		isDiscrete := false
+		for _, g := range hw.GPUs {
+			if g.IsDiscrete || (gpuName == "" && g.Name != "") {
+				gpuName = g.Name
+				isDiscrete = g.IsDiscrete
+				if g.IsDiscrete {
+					break
+				}
+			}
+		}
+		hwSummary = &SessionHardwareSummary{
+			CPU:         hw.CPU.ModelName,
+			GPU:         gpuName,
+			RAMBytes:    hw.Memory.TotalBytes,
+			OS:          hw.OS.Name,
+			DiscreteGPU: isDiscrete,
+		}
+	}
+
+	nodeName := gt.nodeName
+	if nodeName == "" {
+		nodeName, _ = os.Hostname()
+	}
+	port := gt.nodePort
+	if port <= 0 {
+		port = 8090
+	}
+
 	session := &PlaySession{
 		GameID:          game.ID,
 		GameTitle:       game.Title,
@@ -286,6 +330,14 @@ func (gt *GameTracker) stopActiveSessionLocked() {
 		EndTime:         time.Now().Format(time.RFC3339),
 		DurationSeconds: int(time.Since(game.StartTime).Seconds()),
 		FpsStats:        stats,
+		Node: &SessionNodeSummary{
+			Name:      nodeName,
+			URL:       fmt.Sprintf("http://127.0.0.1:%d", port),
+			Installed: true,
+			Running:   true,
+		},
+		Hardware:      hwSummary,
+		ShareEligible: true,
 	}
 
 	_ = gt.store.RecordSession(*session)

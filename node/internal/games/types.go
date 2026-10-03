@@ -47,16 +47,37 @@ type FpsStatsData struct {
 	BackgroundSeconds int     `json:"background_seconds,omitempty"`
 }
 
+// SessionHardwareSummary records matched host hardware for anonymous benchmark sharing.
+type SessionHardwareSummary struct {
+	CPU         string `json:"cpu,omitempty"`
+	GPU         string `json:"gpu,omitempty"`
+	RAMBytes    uint64 `json:"ram_bytes,omitempty"`
+	OS          string `json:"os,omitempty"`
+	DiscreteGPU bool   `json:"discrete_gpu,omitempty"`
+}
+
+// SessionNodeSummary records the host node info where the game was played.
+type SessionNodeSummary struct {
+	ID        string `json:"id,omitempty"`
+	Name      string `json:"name,omitempty"`
+	URL       string `json:"url,omitempty"`
+	Installed bool   `json:"installed"`
+	Running   bool   `json:"running"`
+}
+
 // PlaySession records a completed gaming session.
 type PlaySession struct {
-	ID              string        `json:"id"`
-	GameID          string        `json:"game_id"`
-	GameTitle       string        `json:"game_title"`
-	ProcessName     string        `json:"process_name"`
-	StartTime       string        `json:"start_time"`
-	EndTime         string        `json:"end_time"`
-	DurationSeconds int           `json:"duration_seconds"`
-	FpsStats        *FpsStatsData `json:"fps_stats,omitempty"`
+	ID              string                  `json:"id"`
+	GameID          string                  `json:"game_id"`
+	GameTitle       string                  `json:"game_title"`
+	ProcessName     string                  `json:"process_name"`
+	StartTime       string                  `json:"start_time"`
+	EndTime         string                  `json:"end_time"`
+	DurationSeconds int                     `json:"duration_seconds"`
+	FpsStats        *FpsStatsData           `json:"fps_stats,omitempty"`
+	Node            *SessionNodeSummary     `json:"node,omitempty"`
+	Hardware        *SessionHardwareSummary `json:"hardware,omitempty"`
+	ShareEligible   bool                    `json:"share_eligible,omitempty"`
 }
 
 // GamePlaytimeSummary summarizes lifetime stats for a single game.

@@ -3,14 +3,21 @@ import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import psList from 'ps-list';
-import type { LocalGame, FpsStats } from '../preload-api';
+import type { LocalGame, FpsStats, SessionNodeInfo, SessionHardwareInfo } from '../preload-api';
 import { updateLastPlayedAt } from './storage';
+import {
+  getHostNodeAndHardware,
+  getCachedHostNodeAndHardware,
+} from './node-hardware';
 
 export interface RunningGame {
   game: LocalGame;
   startTime: number;
   launchedByOtix: boolean;
   pid?: number;
+  node?: SessionNodeInfo | null;
+  hardware?: SessionHardwareInfo | null;
+  shareEligible?: boolean;
 }
 
 export interface PlaySession {
@@ -20,6 +27,9 @@ export interface PlaySession {
   endTime: number;
   launchedByOtix: boolean;
   fpsStats?: FpsStats | null;
+  node?: SessionNodeInfo | null;
+  hardware?: SessionHardwareInfo | null;
+  shareEligible?: boolean;
 }
 
 export interface DetectedProcess {
@@ -131,13 +141,27 @@ export class GameDetector extends EventEmitter {
   }
 
   startTracking(game: LocalGame, pid?: number) {
+    const hostMatch = getCachedHostNodeAndHardware();
     const entry: RunningGame = {
       game,
       startTime: Date.now(),
       launchedByOtix: pid != null,
       pid,
+      node: hostMatch.node,
+      hardware: hostMatch.hardware,
+      shareEligible: hostMatch.shareEligible,
     };
     this.runningGames.set(game.id, entry);
+
+    // Refresh node & hardware in background
+    void getHostNodeAndHardware().then((fresh) => {
+      const current = this.runningGames.get(game.id);
+      if (current) {
+        current.node = fresh.node;
+        current.hardware = fresh.hardware;
+        current.shareEligible = fresh.shareEligible;
+      }
+    });
 
     // Mark as just played so it sorts to top immediately
     updateLastPlayedAt(game.id, new Date().toISOString());
@@ -269,13 +293,25 @@ export class GameDetector extends EventEmitter {
           const existing = this.runningGames.get(game.id);
           if (!existing) {
             // New game detected — start tracking
+            const hostMatch = getCachedHostNodeAndHardware();
             const entry: RunningGame = {
               game,
               startTime: Date.now(),
               launchedByOtix: false,
               pid: detectedPid,
+              node: hostMatch.node,
+              hardware: hostMatch.hardware,
+              shareEligible: hostMatch.shareEligible,
             };
             this.runningGames.set(game.id, entry);
+            void getHostNodeAndHardware().then((fresh) => {
+              const current = this.runningGames.get(game.id);
+              if (current) {
+                current.node = fresh.node;
+                current.hardware = fresh.hardware;
+                current.shareEligible = fresh.shareEligible;
+              }
+            });
             this.trackedPids.add(detectedPid);
             this.startProcessCheck(); this.startDeadCheck();
             this.emit('game:started', entry);
@@ -460,13 +496,25 @@ export class GameDetector extends EventEmitter {
       if (!this.runningGames.has(mapping.gameId)) {
         const game = this.library.find((g) => g.id === mapping.gameId);
         if (game) {
+          const hostMatch = getCachedHostNodeAndHardware();
           const entry: RunningGame = {
             game,
             startTime: Date.now(),
             launchedByOtix: false,
             pid: proc.pid,
+            node: hostMatch.node,
+            hardware: hostMatch.hardware,
+            shareEligible: hostMatch.shareEligible,
           };
           this.runningGames.set(mapping.gameId, entry);
+          void getHostNodeAndHardware().then((fresh) => {
+            const current = this.runningGames.get(mapping.gameId);
+            if (current) {
+              current.node = fresh.node;
+              current.hardware = fresh.hardware;
+              current.shareEligible = fresh.shareEligible;
+            }
+          });
           this.trackedPids.add(proc.pid);
           this.startProcessCheck(); this.startDeadCheck();
           // FPS capture handled by fps-capture plugin via eventBus
@@ -652,6 +700,7 @@ export class GameDetector extends EventEmitter {
   private endSession(entry: RunningGame) {
     // FPS stats are captured by the fps-capture plugin via eventBus.
     // The plugin saves the enriched session to play-sessions.json.
+    const hostMatch = getCachedHostNodeAndHardware();
 
     const session: PlaySession = {
       gameId: entry.game.id,
@@ -659,6 +708,9 @@ export class GameDetector extends EventEmitter {
       startTime: entry.startTime,
       endTime: Date.now(),
       launchedByOtix: entry.launchedByOtix,
+      node: entry.node ?? hostMatch.node ?? null,
+      hardware: entry.hardware ?? hostMatch.hardware ?? null,
+      shareEligible: entry.shareEligible ?? Boolean(entry.node?.installed || entry.hardware?.gpu || hostMatch.shareEligible),
     };
 
     this.saveSession(session);
@@ -681,7 +733,24 @@ export class GameDetector extends EventEmitter {
         // File doesn't exist or corrupted — start fresh
       }
 
-      sessions.push(session);
+      const existingIdx = sessions.findIndex((s) => (
+        s.gameId === session.gameId &&
+        Math.abs((s.startTime || 0) - (session.startTime || 0)) <= 5000
+      ));
+
+      if (existingIdx >= 0) {
+        sessions[existingIdx] = {
+          ...sessions[existingIdx],
+          ...session,
+          node: session.node || sessions[existingIdx].node || null,
+          hardware: session.hardware || sessions[existingIdx].hardware || null,
+          fpsStats: session.fpsStats || sessions[existingIdx].fpsStats || null,
+          shareEligible: session.shareEligible ?? sessions[existingIdx].shareEligible ?? false,
+        };
+      } else {
+        sessions.push(session);
+      }
+
       if (sessions.length > MAX_SESSIONS) {
         sessions = sessions.slice(-MAX_SESSIONS);
       }

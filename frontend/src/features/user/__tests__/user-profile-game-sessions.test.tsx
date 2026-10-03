@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { UserProfileGameSessions } from '../components/organisms/user-profile-game-sessions'
 import { normalizeSession } from '../hooks/use-user-game-sessions'
 import * as sessionsHooks from '../hooks/use-user-game-sessions'
@@ -85,12 +85,12 @@ describe('UserProfileGameSessions component', () => {
 
     render(<UserProfileGameSessions username="dan" />)
 
-    expect(screen.getByText('Gaming Performance & Sessions')).toBeInTheDocument()
-    expect(screen.getByText('Private to you')).toBeInTheDocument()
-    expect(screen.getByText('No gaming sessions recorded yet')).toBeInTheDocument()
+    expect(screen.getByText('Game Sessions')).toBeInTheDocument()
+    expect(screen.getByText('Private')).toBeInTheDocument()
+    expect(screen.getByText('No sessions yet')).toBeInTheDocument()
   })
 
-  it('renders sessions KPI metrics and session history breakdown', () => {
+  it('renders minimalistic session list with game title, FPS, and no process name', () => {
     vi.mocked(sessionsHooks.useUserGameSessions).mockReturnValue({
       data: {
         sessions: [
@@ -120,17 +120,228 @@ describe('UserProfileGameSessions component', () => {
 
     render(<UserProfileGameSessions username="dan" />)
 
-    expect(screen.getByText('Gaming Performance & Sessions')).toBeInTheDocument()
-    expect(screen.getByText('Private to you')).toBeInTheDocument()
+    expect(screen.getByText('Game Sessions')).toBeInTheDocument()
+    expect(screen.getByText('1 session · 2h played · 82 avg FPS')).toBeInTheDocument()
 
-    // KPI Metrics
-    expect(screen.getByText('2h 0m')).toBeInTheDocument()
-    expect(screen.getByText('82')).toBeInTheDocument()
-    expect(screen.getByText('61 FPS')).toBeInTheDocument()
-
-    // Session list item
+    // Session list item shows game title and FPS
     expect(screen.getByText("Baldur's Gate 3")).toBeInTheDocument()
-    expect(screen.getByText('(bg3.exe)')).toBeInTheDocument()
-    expect(screen.getByText('82 FPS')).toBeInTheDocument()
+    expect(screen.getByText('82')).toBeInTheDocument()
+
+    // Process name is NOT shown in the main list
+    expect(screen.queryByText('(bg3.exe)')).not.toBeInTheDocument()
+    expect(screen.queryByText('bg3.exe')).not.toBeInTheDocument()
+
+    // Technical data is NOT shown in the main list
+    expect(screen.queryByText('61 FPS')).not.toBeInTheDocument() // 1% low hidden
+    expect(screen.queryByText('593k frames')).not.toBeInTheDocument()
+  })
+
+  it('renders active session banner with live FPS and no process name', () => {
+    vi.mocked(sessionsHooks.useUserGameSessions).mockReturnValue({
+      data: {
+        sessions: [
+          {
+            id: 'sess-1',
+            gameId: 'bg3',
+            gameTitle: "Baldur's Gate 3",
+            startTime: Date.now() - 7200000,
+            endTime: Date.now(),
+            durationSeconds: 7200,
+            avgFps: 80,
+            low1Percent: 60,
+          },
+        ],
+        totalSessions: 1,
+        totalDurationSeconds: 8400,
+        overallAvgFps: 80,
+        overallAvgLow1: 60,
+        activeSession: {
+          id: 'active-cp2077',
+          gameId: 'cp2077',
+          gameTitle: 'Cyberpunk 2077',
+          processName: 'Cyberpunk2077.exe',
+          startTime: Date.now() - 1200000,
+          endTime: null,
+          durationSeconds: 1200,
+          avgFps: 95.4,
+          totalFrames: 114000,
+        },
+      },
+      isLoading: false,
+    } as any)
+
+    render(<UserProfileGameSessions username="dan" />)
+
+    // Active session card
+    expect(screen.getByTestId('user-profile-active-session')).toBeInTheDocument()
+    expect(screen.getByText('Live')).toBeInTheDocument()
+    expect(screen.getByText('Cyberpunk 2077')).toBeInTheDocument()
+    expect(screen.getByText('95')).toBeInTheDocument()
+
+    // Process name NOT visible in main view
+    expect(screen.queryByText('(Cyberpunk2077.exe)')).not.toBeInTheDocument()
+
+    // Past session still in list
+    expect(screen.getByText("Baldur's Gate 3")).toBeInTheDocument()
+  })
+
+  it('renders active session even when no prior completed sessions exist', () => {
+    vi.mocked(sessionsHooks.useUserGameSessions).mockReturnValue({
+      data: {
+        sessions: [],
+        totalSessions: 0,
+        totalDurationSeconds: 300,
+        overallAvgFps: null,
+        overallAvgLow1: null,
+        activeSession: {
+          id: 'active-hades',
+          gameId: 'hades',
+          gameTitle: 'Hades',
+          processName: 'Hades.exe',
+          startTime: Date.now() - 300000,
+          endTime: null,
+          durationSeconds: 300,
+          avgFps: 144,
+          totalFrames: 43200,
+        },
+      },
+      isLoading: false,
+    } as any)
+
+    render(<UserProfileGameSessions username="dan" />)
+
+    expect(screen.getByTestId('user-profile-active-session')).toBeInTheDocument()
+    expect(screen.getByText('Live')).toBeInTheDocument()
+    expect(screen.getByText('Hades')).toBeInTheDocument()
+    expect(screen.getByText('144')).toBeInTheDocument()
+    expect(screen.queryByText('No sessions yet')).not.toBeInTheDocument()
+  })
+
+  it('opens session detail modal with performance summary when clicking a session row', () => {
+    vi.mocked(sessionsHooks.useUserGameSessions).mockReturnValue({
+      data: {
+        sessions: [
+          {
+            id: 'sess-1',
+            gameId: 'bg3',
+            gameTitle: "Baldur's Gate 3",
+            processName: 'bg3.exe',
+            startTime: 1727722800000,
+            endTime: 1727730000000,
+            durationSeconds: 7200,
+            avgFps: 82,
+            low1Percent: 61,
+            low01Percent: 50,
+            minFps: 42,
+            maxFps: 110,
+            totalFrames: 593280,
+            hardwareSummary: 'RTX 5080 · Ryzen 7 9800X3D',
+            node: { name: 'Main-Rig', installed: true },
+            shareEligible: true,
+          },
+        ],
+        totalSessions: 1,
+        totalDurationSeconds: 7200,
+        overallAvgFps: 82,
+        overallAvgLow1: 61,
+      },
+      isLoading: false,
+    } as any)
+
+    render(<UserProfileGameSessions username="dan" />)
+
+    // Click the session row to open modal
+    fireEvent.click(screen.getByText("Baldur's Gate 3"))
+
+    // Modal shows performance summary
+    expect(screen.getByText('Avg FPS')).toBeInTheDocument()
+    expect(screen.getByText('1% Low')).toBeInTheDocument()
+    expect(screen.getByText('Time')).toBeInTheDocument()
+
+    // Hardware summary shown in modal
+    expect(screen.getByText('RTX 5080 · Ryzen 7 9800X3D')).toBeInTheDocument()
+
+    // Node shown in modal
+    expect(screen.getByText('Main-Rig')).toBeInTheDocument()
+  })
+
+  it('reveals technical data behind "Analytics for Nerds" toggle in the modal', () => {
+    vi.mocked(sessionsHooks.useUserGameSessions).mockReturnValue({
+      data: {
+        sessions: [
+          {
+            id: 'sess-1',
+            gameId: 'bg3',
+            gameTitle: "Baldur's Gate 3",
+            processName: 'bg3.exe',
+            startTime: 1727722800000,
+            endTime: 1727730000000,
+            durationSeconds: 7200,
+            avgFps: 82,
+            low1Percent: 61,
+            low01Percent: 50,
+            minFps: 42,
+            maxFps: 110,
+            totalFrames: 593280,
+            loadingSeconds: 45,
+            backgroundSeconds: 120,
+          },
+        ],
+        totalSessions: 1,
+        totalDurationSeconds: 7200,
+        overallAvgFps: 82,
+        overallAvgLow1: 61,
+      },
+      isLoading: false,
+    } as any)
+
+    render(<UserProfileGameSessions username="dan" />)
+
+    // Open the session modal
+    fireEvent.click(screen.getByText("Baldur's Gate 3"))
+
+    // Nerd stats NOT visible initially
+    expect(screen.queryByTestId('nerd-stats-panel')).not.toBeInTheDocument()
+    expect(screen.queryByText('bg3.exe')).not.toBeInTheDocument()
+
+    // Click "Analytics for Nerds" toggle
+    fireEvent.click(screen.getByTestId('analytics-for-nerds-toggle'))
+
+    // Nerd stats now visible
+    expect(screen.getByTestId('nerd-stats-panel')).toBeInTheDocument()
+    expect(screen.getByText('bg3.exe')).toBeInTheDocument()
+    expect(screen.getByText('42 – 110')).toBeInTheDocument()
+    expect(screen.getByText('50 FPS')).toBeInTheDocument() // 0.1% low
+    expect(screen.getByText('45s')).toBeInTheDocument() // Loading time
+    expect(screen.getByText('120s')).toBeInTheDocument() // Background time
+  })
+
+  it('displays poster thumbnail when session has posterUrl', () => {
+    vi.mocked(sessionsHooks.useUserGameSessions).mockReturnValue({
+      data: {
+        sessions: [
+          {
+            id: 'sess-1',
+            gameId: 'bg3',
+            gameTitle: "Baldur's Gate 3",
+            startTime: Date.now() - 3600000,
+            durationSeconds: 3600,
+            avgFps: 80,
+            posterUrl: 'https://otix.example/posters/bg3.jpg',
+          },
+        ],
+        totalSessions: 1,
+        totalDurationSeconds: 3600,
+        overallAvgFps: 80,
+        overallAvgLow1: null,
+      },
+      isLoading: false,
+    } as any)
+
+    render(<UserProfileGameSessions username="dan" />)
+
+    const poster = screen.getByAltText("Baldur's Gate 3")
+    expect(poster).toBeInTheDocument()
+    expect(poster).toHaveAttribute('src', 'https://otix.example/posters/bg3.jpg')
   })
 })

@@ -96,25 +96,17 @@ export function LauncherFpsStats() {
   // Live FPS while game is running, average from last session when closed
   let displayValue: { value: string; label: string; live: boolean } | null = null
 
-  if (isLive && (!lastStats || lastStats.totalFrames === 0)) {
-    // Game running and no previous data — show live
+  if (isLive) {
     displayValue = {
       value: `${Math.round(liveFps.currentFps)}`,
       label: 'FPS',
       live: true,
     }
-  } else if (lastStats && lastStats.totalFrames > 0) {
-    // Prefer last session average over stale live data
+  } else if (lastStats && lastStats.totalFrames > 0 && lastStats.avgFps > 0) {
     displayValue = {
       value: `${Math.round(lastStats.avgFps)}`,
-      label: isLive ? 'AVG' : 'AVG FPS',
+      label: 'AVG FPS',
       live: false,
-    }
-  } else if (isLive) {
-    displayValue = {
-      value: `${Math.round(liveFps.currentFps)}`,
-      label: 'FPS',
-      live: true,
     }
   }
 
