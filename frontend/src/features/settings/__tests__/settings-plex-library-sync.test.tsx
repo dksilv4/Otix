@@ -225,8 +225,8 @@ describe('Plex Library Sync and Error Isolation', () => {
     })
 
     // The error should appear inside the movies card and NOT in the global bottom section
-    const fullPlexCard = screen.getByText('Plex').closest('.rounded-2xl') as HTMLElement
-    const matchingErrors = within(fullPlexCard).getAllByText('Connection to server timed out')
+    const dialog = screen.getByRole('dialog')
+    const matchingErrors = within(dialog).getAllByText('Connection to server timed out')
     expect(matchingErrors).toHaveLength(1)
     expect(within(moviesCard).getByText('Connection to server timed out')).toBe(matchingErrors[0])
   })

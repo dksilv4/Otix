@@ -44,6 +44,11 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
+GOOGLE_LOGIN_SCOPES = [
+    "openid",
+    "email",
+    "profile",
+]
 YOUTUBE_SCOPES = [
     "openid",
     "email",
@@ -57,8 +62,8 @@ DRIVE_SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
 ]
 
-GOOGLE_OAUTH_FLOW = "youtube"  # google link scopes are the youtube+identity set
-GOOGLE_LOGIN_FLOW = "login"  # google login carries the same youtube+identity set
+GOOGLE_OAUTH_FLOW = "youtube"  # youtube link scopes are the youtube+identity set
+GOOGLE_LOGIN_FLOW = "login"  # google login carries only the identity set
 DRIVE_OAUTH_FLOW = "drive"
 
 PLEX_STATE_TTL_SECONDS = 900  # legacy TTL["AUTH"]["PLEX_PIN"] = 900
@@ -206,7 +211,12 @@ def _authorization_url(
 ) -> tuple[str, str]:
     client_id, _ = _google_credentials()
     state, verifier = _store_state(flow, user_id=user_id)
-    scopes = YOUTUBE_SCOPES if flow in (GOOGLE_OAUTH_FLOW, GOOGLE_LOGIN_FLOW) else DRIVE_SCOPES
+    if flow == GOOGLE_LOGIN_FLOW:
+        scopes = GOOGLE_LOGIN_SCOPES
+    elif flow == GOOGLE_OAUTH_FLOW:
+        scopes = YOUTUBE_SCOPES
+    else:
+        scopes = DRIVE_SCOPES
     params = {
         "client_id": client_id,
         "response_type": "code",

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { Check, ChevronDown, Plus, Unlink } from 'lucide-react'
+import { Check, Plus, Settings, Unlink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DkButton } from '@ui/atoms/button'
+import { DkDialog } from '@ui/molecules/dialog'
 
 export function IntegrationCard({
   name,
@@ -19,6 +20,8 @@ export function IntegrationCard({
   disconnecting,
   error,
   children,
+  className,
+  style,
 }: {
   name: string
   description: string
@@ -35,85 +38,123 @@ export function IntegrationCard({
   disconnecting?: boolean
   error?: string
   children?: ReactNode
+  className?: string
+  style?: React.CSSProperties
 }) {
   return (
-    <div
-      className="rounded-2xl overflow-hidden shadow-lg shadow-black/20 backdrop-blur-xl"
-      style={{ backgroundColor: 'var(--dk-surface-base)' }}
-    >
+    <>
       <div
-        role={isConnected ? 'button' : undefined}
-        tabIndex={isConnected ? 0 : undefined}
-        onClick={isConnected ? onToggle : undefined}
-        onKeyDown={
-          isConnected
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onToggle()
-                }
-              }
-            : undefined
-        }
         className={cn(
-          'flex w-full items-center gap-4 px-5 py-4 text-left transition-colors duration-150',
-          isConnected && 'cursor-pointer hover:bg-white/[0.03] active:bg-white/[0.03]',
+          'rounded-2xl overflow-hidden shadow-lg shadow-black/20 backdrop-blur-xl transition-all duration-200',
+          className,
         )}
+        style={{
+          backgroundColor: 'var(--dk-surface-raised)',
+          boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 4px 20px -4px rgba(0, 0, 0, 0.3)',
+          ...style,
+        }}
       >
-        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', brandBg)} style={{ color: brandColor }}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold">{name}</p>
-            {isConnected && <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-green-500" />}
+        <div
+          role={isConnected ? 'button' : undefined}
+          tabIndex={isConnected ? 0 : undefined}
+          onClick={isConnected ? onToggle : undefined}
+          onKeyDown={
+            isConnected
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onToggle()
+                  }
+                }
+              : undefined
+          }
+          className={cn(
+            'flex w-full items-center gap-4 px-5 py-4 text-left transition-colors duration-150',
+            isConnected && 'cursor-pointer hover:bg-white/[0.03] active:bg-white/[0.03]',
+          )}
+        >
+          <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', brandBg)} style={{ color: brandColor }}>
+            <Icon className="h-5 w-5" />
           </div>
-          <p className="text-xs text-white/60 mt-0.5 truncate">{description}</p>
-        </div>
-        {isConnected ? (
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-400 shadow-sm">
-              <Check className="h-3.5 w-3.5" />
-              Connected
-            </span>
-            <ChevronDown className={cn('h-4 w-4 text-white/40 transition-transform duration-150', expanded && 'rotate-180')} />
-          </div>
-        ) : (
-          <DkButton
-            size="sm"
-            onClick={onConnect}
-            loading={connecting}
-            disabled={connectDisabled}
-            leftIcon={Plus}
-            className="shrink-0 w-[90px]"
-          >
-            Connect
-          </DkButton>
-        )}
-      </div>
-      {error && !isConnected && <p className="px-5 pb-3 text-xs text-red-400">{error}</p>}
-
-      {isConnected && expanded && (
-        <div className="pt-1">
-          {children}
-          {onDisconnect && (
-            <div className="px-5 py-3">
-              <DkButton
-                size="sm"
-                variant="ghost"
-                onClick={onDisconnect}
-                loading={disconnecting}
-                leftIcon={Unlink}
-                loadingText="Disconnecting…"
-                className="w-full bg-red-500/10 text-red-400 shadow-none hover:bg-red-500/15"
-              >
-                Disconnect {name}
-              </DkButton>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold">{name}</p>
+              {isConnected && <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-green-500" />}
             </div>
+            <p className="text-xs text-white/60 mt-0.5 truncate">{description}</p>
+          </div>
+          {isConnected ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 shadow-sm">
+                <Check className="h-3.5 w-3.5" />
+                Connected
+              </span>
+              <span
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-white/70 bg-white/5 hover:bg-white/10 hover:text-white transition-colors"
+                aria-label={`Configure ${name}`}
+              >
+                <Settings className="h-3.5 w-3.5 text-white/60" />
+                <span>Configure</span>
+              </span>
+            </div>
+          ) : (
+            <DkButton
+              size="sm"
+              onClick={onConnect}
+              loading={connecting}
+              disabled={connectDisabled}
+              leftIcon={Plus}
+              className="shrink-0 w-[90px]"
+            >
+              Connect
+            </DkButton>
           )}
         </div>
+        {error && !isConnected && <p className="px-5 pb-3 text-xs text-red-400">{error}</p>}
+      </div>
+
+      {isConnected && (
+        <DkDialog
+          open={expanded}
+          onOpenChange={(open) => {
+            if (!open) {
+              onToggle()
+            }
+          }}
+          title={
+            <div className="flex items-center gap-3">
+              <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', brandBg)} style={{ color: brandColor }}>
+                <Icon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-base font-semibold text-white">{name} Settings</span>
+              </div>
+            </div>
+          }
+          description={description}
+          className="max-w-2xl max-h-[85vh] overflow-y-auto"
+        >
+          <div className="space-y-4 pt-1">
+            {children}
+            {onDisconnect && (
+              <div className="pt-2">
+                <DkButton
+                  size="sm"
+                  variant="ghost"
+                  onClick={onDisconnect}
+                  loading={disconnecting}
+                  leftIcon={Unlink}
+                  loadingText="Disconnecting…"
+                  className="w-full bg-red-500/10 text-red-400 shadow-none hover:bg-red-500/15"
+                >
+                  Disconnect {name}
+                </DkButton>
+              </div>
+            )}
+          </div>
+        </DkDialog>
       )}
-    </div>
+    </>
   )
 }
 

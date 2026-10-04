@@ -34,6 +34,7 @@ import {
   ChevronDown,
   Sparkles,
   ShieldCheck,
+  Settings,
 } from 'lucide-react'
 import { EpicCodeModal } from '../components/organisms/epic-code-modal'
 import { GOGCodeModal } from '../components/organisms/gog-code-modal'
@@ -191,6 +192,7 @@ const BRAND_COLORS: Record<string, string> = {
   plex: '#e5a00d',
   tmdb: '#01b4e4',
   google: '#4285F4',
+  youtube: '#FF0000',
   sabnzbd: '#f59e0b',
   prowlarr: '#e05338',
   radarr: '#ffc107',
@@ -204,6 +206,7 @@ const BRAND_BG: Record<string, string> = {
   plex: 'bg-[#e5a00d]/10',
   tmdb: 'bg-[#01b4e4]/10',
   google: 'bg-[#4285F4]/10',
+  youtube: 'bg-[#FF0000]/10',
   sabnzbd: 'bg-[#f59e0b]/10',
   prowlarr: 'bg-[#e05338]/10',
   radarr: 'bg-[#ffc107]/10',
@@ -221,7 +224,8 @@ function NodeConnectionsGroup({
   searchQuery: string
 }) {
   const { openModal } = useModal()
-  const [nodeOpen, setNodeOpen] = useState(true)
+  const hasQuery = Boolean(searchQuery && searchQuery.trim().length > 0)
+  const [nodeOpen, setNodeOpen] = useState(hasQuery)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [prowlarrSyncProtocol, setProwlarrSyncProtocol] = useState<'all' | 'torrent' | 'usenet'>('all')
   const [prowlarrSyncMessage, setProwlarrSyncMessage] = useState<string | null>(null)
@@ -381,7 +385,7 @@ function NodeConnectionsGroup({
     },
   ]
 
-  const filteredDefs = query
+  const filteredDefs = (query
     ? nodeDefs.filter(
         (i) =>
           i.name.toLowerCase().includes(query) ||
@@ -389,17 +393,23 @@ function NodeConnectionsGroup({
           server.name.toLowerCase().includes(query) ||
           NODE_KEYWORDS.includes(query)
       )
-    : nodeDefs
+    : nodeDefs).slice().sort((a, b) => (b.isConnected ? 1 : 0) - (a.isConnected ? 1 : 0))
 
   if (filteredDefs.length === 0) return null
 
   return (
-    <SettingsCard className="overflow-hidden !p-0">
+    <div
+      className="rounded-2xl sm:rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-200"
+      style={{
+        backgroundColor: 'var(--dk-surface-raised)',
+        boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 4px 20px -4px rgba(0, 0, 0, 0.3)',
+      }}
+    >
       {/* Collapsible node header */}
       <button
         type="button"
         onClick={() => setNodeOpen((o) => !o)}
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-white/[0.03] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        className="w-full flex items-center gap-3 px-5 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
       >
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <div className="flex shrink-0 items-center justify-center h-7 w-7 rounded-lg bg-primary/10 text-primary">
@@ -421,14 +431,15 @@ function NodeConnectionsGroup({
             {server.isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <Link
             to="/settings/nodes/$nodeId"
             params={{ nodeId: String(server.id) }}
-            className="text-xs text-white/40 hover:text-white/70 transition-colors"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-white/70 bg-white/5 hover:bg-white/10 hover:text-white transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
-            Node settings →
+            <Settings className="h-3.5 w-3.5 text-white/50" />
+            <span>Settings</span>
           </Link>
           <ChevronDown
             className={cn(
@@ -441,7 +452,7 @@ function NodeConnectionsGroup({
 
       {/* Per-node integration cards */}
       {nodeOpen && (
-        <div className="border-t border-white/[0.06] space-y-px">
+        <div className="px-5 pb-5 pt-1 space-y-3">
           {filteredDefs.map((i) => (
 
         <IntegrationCard
@@ -458,6 +469,10 @@ function NodeConnectionsGroup({
           connecting={false}
           onDisconnect={undefined}
           disconnecting={false}
+          style={{
+            backgroundColor: 'var(--dk-surface-overlay)',
+            boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 6px 24px -4px rgba(0, 0, 0, 0.35)',
+          }}
         >
           {/* SABnzbd content */}
           {i.id === 'sabnzbd' && (
@@ -592,7 +607,7 @@ function NodeConnectionsGroup({
         ))}
       </div>
       )}
-    </SettingsCard>
+    </div>
   )
 }
 
@@ -1686,10 +1701,31 @@ export function SettingsIntegrationsPage() {
 
   const query = searchQuery.toLowerCase().trim()
 
-  const integrationDefs = [
+  type IntegrationCategory = 'account' | 'service'
+
+  interface IntegrationDef {
+    id: string
+    name: string
+    category: IntegrationCategory
+    keywords: string
+    description: string
+    isConnected: boolean
+    brandColor: string
+    brandBg: string
+    icon: any
+    onConnect?: () => void
+    connecting?: boolean
+    connectDisabled?: boolean
+    onDisconnect?: () => void
+    disconnecting?: boolean
+    error?: string
+  }
+
+  const integrationDefs: IntegrationDef[] = [
     {
       id: 'steam',
       name: 'Steam',
+      category: 'account',
       keywords: 'steam game library wishlist sign in valve',
       description: isSteamConnected && steamProfile?.personaname ? `Linked as ${steamProfile.personaname}` : 'Sign in with Steam, sync your game library, and import your wishlist.',
       isConnected: isSteamConnected,
@@ -1705,6 +1741,7 @@ export function SettingsIntegrationsPage() {
     {
       id: 'epic',
       name: 'Epic Games',
+      category: 'account',
       keywords: 'epic games store egs library launcher',
       description: isEpicConnected && epicDisplayName
         ? `Linked as ${epicDisplayName}`
@@ -1722,6 +1759,7 @@ export function SettingsIntegrationsPage() {
     {
       id: 'gog',
       name: 'GOG',
+      category: 'account',
       keywords: 'gog galaxy games store cd projekt cdpr drm free library launcher',
       description: isGOGConnected && gogDisplayName
         ? `Linked as ${gogDisplayName}`
@@ -1739,6 +1777,7 @@ export function SettingsIntegrationsPage() {
     {
       id: 'plex',
       name: 'Plex',
+      category: 'account',
       keywords: 'plex media server watchlist library sync',
       description: isPlexConnected && plex?.plexUsername ? `Linked as ${plex.plexUsername}` : 'Link your Plex account to import and sync your media servers.',
       isConnected: isPlexConnected,
@@ -1754,8 +1793,9 @@ export function SettingsIntegrationsPage() {
     {
       id: 'google',
       name: 'Google',
-      keywords: 'google youtube music liked videos sync',
-      description: isGoogleConnected && googleEmail ? `Linked as ${googleEmail}` : 'Link your Google account for YouTube Music and more.',
+      category: 'account',
+      keywords: 'google account oauth login identity',
+      description: isGoogleConnected && googleEmail ? `Linked as ${googleEmail}` : 'Link your Google account for authentication and identity.',
       isConnected: isGoogleConnected,
       brandColor: BRAND_COLORS.google,
       brandBg: BRAND_BG.google,
@@ -1767,8 +1807,29 @@ export function SettingsIntegrationsPage() {
       error: googleError,
     },
     {
+      id: 'youtube',
+      name: 'YouTube',
+      category: 'service',
+      keywords: 'youtube music liked videos sync play',
+      description: isGoogleConnected && googleEmail ? `Syncing with ${googleEmail}` : 'Connect YouTube for YouTube Music and liked videos sync.',
+      isConnected: isGoogleConnected,
+      brandColor: BRAND_COLORS.youtube,
+      brandBg: BRAND_BG.youtube,
+      icon: (props: any) => (
+        <svg className={props?.className ?? "h-5 w-5"} viewBox="0 0 24 24" fill="#FF0000">
+          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+        </svg>
+      ),
+      onConnect: handleGoogleConnect,
+      connecting: googleConnecting,
+      onDisconnect: handleGoogleDisconnect,
+      disconnecting: googleDisconnecting,
+      error: googleError,
+    },
+    {
       id: 'google_drive',
       name: 'Google Drive',
+      category: 'service',
       keywords: 'google drive cloud backup saves game',
       description: driveConnected ? 'Linked for game save cloud backup' : 'Link Google Drive to back up your game saves to the cloud.',
       isConnected: driveConnected,
@@ -1784,6 +1845,7 @@ export function SettingsIntegrationsPage() {
     {
       id: 'tmdb',
       name: 'TMDb',
+      category: 'account',
       keywords: 'tmdb themoviedb ratings watchlist movies shows sync import',
       description: isTmdbConnected && tmdbUsername ? `Linked as ${tmdbUsername}` : 'Link your TMDb account to sync ratings and import your watchlist.',
       isConnected: isTmdbConnected,
@@ -1806,6 +1868,474 @@ export function SettingsIntegrationsPage() {
       )
     : integrationDefs)
 
+  const accountIntegrations = filteredIntegrations
+    .filter((i) => i.category === 'account')
+    .slice()
+    .sort((a, b) => (b.isConnected ? 1 : 0) - (a.isConnected ? 1 : 0))
+
+  const serviceIntegrations = filteredIntegrations
+    .filter((i) => i.category === 'service')
+    .slice()
+    .sort((a, b) => (b.isConnected ? 1 : 0) - (a.isConnected ? 1 : 0))
+
+  const renderIntegrationItem = (i: IntegrationDef) => (
+    <IntegrationCard
+      key={i.id}
+      name={i.name}
+      description={i.description}
+      brandColor={i.brandColor}
+      brandBg={i.brandBg}
+      icon={i.icon}
+      isConnected={i.isConnected}
+      expanded={expandedId === i.id}
+      onToggle={() => toggleExpand(i.id)}
+      onConnect={i.onConnect}
+      connecting={i.connecting}
+      connectDisabled={(i as any).connectDisabled}
+      onDisconnect={i.onDisconnect}
+      disconnecting={i.disconnecting}
+      error={i.error}
+    >
+      {/* Steam content */}
+      {i.id === 'steam' && (
+        <>
+          <IntegrationProfile
+            avatarUrl={steamProfile?.avatarfull}
+            avatarAlt={steamProfile?.personaname ?? 'Steam avatar'}
+            name={steamProfile?.personaname ?? 'Steam User'}
+            detail={steamProfile?.realname ?? (displayedSteamId ? `Steam ID: ${displayedSteamId}` : 'Steam account linked')}
+            brandBg={BRAND_BG.steam}
+            icon={SteamIcon}
+            brandColor={BRAND_COLORS.steam}
+            meta={steamProfile?.profileurl && (
+              <a href={steamProfile.profileurl} target="_blank" rel="noopener noreferrer" className="text-xs text-white/40 hover:text-primary transition-colors duration-150 shrink-0">
+                View Profile &rarr;
+              </a>
+            )}
+          />
+          {steamProfile && (
+            <IntegrationStats items={[
+              ...(steamProfile.timecreated ? [{ label: 'account age', value: formatAccountAge(steamProfile.timecreated) }] : []),
+              ...(steamProfile.loccountrycode ? [{ label: 'location', value: steamProfile.loccountrycode }] : []),
+              ...(steamProfile.personastate !== null && steamProfile.personastate !== undefined ? [{ label: 'status', value: personaStateLabel(steamProfile.personastate) }] : []),
+            ]} />
+          )}
+          <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 text-xs text-white/70">
+              <FolderOpen className="h-4 w-4 text-sky-400 shrink-0" />
+              <span>
+                Game scanning, wishlist syncing, and auto-matching are managed under
+                {' '}<strong>Library Settings</strong> as a Provider.
+              </span>
+            </div>
+            <Link
+              to="/settings/library"
+              className="px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+            >
+              Go to Library Settings &rarr;
+            </Link>
+          </div>
+          {steamMessage && <p className="px-5 py-2 text-xs text-green-400">{steamMessage}</p>}
+          {steamError && <p className="px-5 py-2 text-xs text-red-400">{steamError}</p>}
+        </>
+      )}
+
+      {/* Epic content */}
+      {i.id === 'epic' && (
+        <>
+          <IntegrationProfile
+            avatarAlt={epicDisplayName ?? 'Epic Games avatar'}
+            name={epicDisplayName ?? 'Epic Games User'}
+            detail={epicAccountId ? `Account ID: ${epicAccountId}` : 'Epic Games account linked'}
+            brandBg={BRAND_BG.epic}
+            icon={EpicIcon}
+            brandColor={BRAND_COLORS.epic}
+          />
+          <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 text-xs text-white/70">
+              <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
+              <span>
+                Game scanning and matching are also managed under
+                {' '}<strong>Library Settings</strong> as a Provider.
+              </span>
+            </div>
+            <Link
+              to="/settings/library"
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+            >
+              Go to Library Settings &rarr;
+            </Link>
+          </div>
+          {isEpicConnected && (
+            <IntegrationAction
+              label="Library Scanning"
+              description="Epic Games library"
+              result={epicScanResult ? `${epicScanResult.matchedInOtix} matched out of ${epicScanResult.totalInEpic} games${epicScanResult.failed ? ` (${epicScanResult.failed} failed)` : ''}` : null}
+              buttonLabel={epicScanning ? 'Scanning...' : epicScanResult ? 'Re-scan' : 'Scan Library'}
+              buttonIcon={RefreshCw}
+              onPress={handleEpicScan}
+              loading={epicScanning}
+              disabled={epicScanning || epicResolvingSteamGrid}
+              muted
+            />
+          )}
+          {isEpicConnected && (
+            <IntegrationAction
+              label="SteamGridDB Artwork"
+              description="Find covers, banners, icons, and hero artwork from SteamGridDB"
+              result={epicSteamGridResult ? `${epicSteamGridResult.matched} of ${epicSteamGridResult.total} games updated${epicSteamGridResult.failed ? ` (${epicSteamGridResult.failed} not found)` : ''}` : null}
+              buttonLabel={epicResolvingSteamGrid ? 'Resolving...' : epicSteamGridResult ? 'Re-resolve' : 'Resolve with SteamGrid'}
+              buttonIcon={Sparkles}
+              onPress={handleEpicResolveSteamGrid}
+              loading={epicResolvingSteamGrid}
+              disabled={epicResolvingSteamGrid || epicScanning}
+              muted
+            />
+          )}
+          {epicMessage && <p className="px-5 py-2 text-xs text-green-400">{epicMessage}</p>}
+          {epicError && <p className="px-5 py-2 text-xs text-red-400">{epicError}</p>}
+        </>
+      )}
+
+      {/* GOG content */}
+      {i.id === 'gog' && (
+        <>
+          <IntegrationProfile
+            avatarAlt={gogDisplayName ?? 'GOG avatar'}
+            name={gogDisplayName ?? 'GOG User'}
+            detail={gogAccountId ? `Account ID: ${gogAccountId}` : 'GOG account linked'}
+            brandBg={BRAND_BG.gog}
+            icon={GOGIcon}
+            brandColor={BRAND_COLORS.gog}
+          />
+          <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 text-xs text-white/70">
+              <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
+              <span>
+                Game scanning and matching are also managed under
+                {' '}<strong>Library Settings</strong> as a Provider.
+              </span>
+            </div>
+            <Link
+              to="/settings/library"
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+            >
+              Go to Library Settings &rarr;
+            </Link>
+          </div>
+          {isGOGConnected && (
+            <IntegrationAction
+              label="Library Scanning"
+              description="GOG library"
+              result={gogScanResult ? `${gogScanResult.matchedInOtix} matched out of ${gogScanResult.totalInGOG} games${gogScanResult.failed ? ` (${gogScanResult.failed} failed)` : ''}` : null}
+              buttonLabel={gogScanning ? 'Scanning...' : gogScanResult ? 'Re-scan' : 'Scan Library'}
+              buttonIcon={RefreshCw}
+              onPress={handleGOGScan}
+              loading={gogScanning}
+              disabled={gogScanning || gogResolvingSteamGrid}
+              muted
+            />
+          )}
+          {isGOGConnected && (
+            <IntegrationAction
+              label="SteamGridDB Artwork"
+              description="Find covers, banners, icons, and hero artwork from SteamGridDB"
+              result={gogSteamGridResult ? `${gogSteamGridResult.matched} of ${gogSteamGridResult.total} games updated${gogSteamGridResult.failed ? ` (${gogSteamGridResult.failed} not found)` : ''}` : null}
+              buttonLabel={gogResolvingSteamGrid ? 'Resolving...' : gogSteamGridResult ? 'Re-resolve' : 'Resolve with SteamGrid'}
+              buttonIcon={Sparkles}
+              onPress={handleGOGResolveSteamGrid}
+              loading={gogResolvingSteamGrid}
+              disabled={gogResolvingSteamGrid || gogScanning}
+              muted
+            />
+          )}
+          {gogMessage && <p className="px-5 py-2 text-xs text-green-400">{gogMessage}</p>}
+          {gogError && <p className="px-5 py-2 text-xs text-red-400">{gogError}</p>}
+        </>
+      )}
+
+      {/* Plex content */}
+      {i.id === 'plex' && (
+        <>
+          <IntegrationProfile
+            avatarUrl={plex?.plexThumb}
+            avatarAlt={plex?.plexUsername ?? 'Plex avatar'}
+            name={plex?.plexUsername ?? 'Plex User'}
+            detail={plex?.plexEmail ?? (plex?.plexId ?? user?.plexId ?? 'Plex account linked')}
+            brandBg={BRAND_BG.plex}
+            icon={PlexIcon}
+            brandColor={BRAND_COLORS.plex}
+          />
+
+          {/* Libraries list */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Plex Libraries</p>
+              <p className="mt-1 text-sm font-medium">
+                {plexLibrariesLoading
+                  ? 'Loading...'
+                  : plexLibraries && plexLibraries.length > 0
+                    ? `${plexLibraries.length} librar${plexLibraries.length === 1 ? 'y' : 'ies'} found`
+                    : 'Discover your Plex libraries to sync individually'}
+              </p>
+            </div>
+            <DkButton
+              size="sm"
+              variant="ghost"
+              onClick={handleDiscoverLibraries}
+              loading={discoveringPlex}
+              disabled={discoveringPlex || plexSyncing || syncingLibraryIds.size > 0}
+              leftIcon={RefreshCw}
+              className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
+            >
+              {plexLibraries && plexLibraries.length > 0 ? 'Refresh' : 'Discover'}
+            </DkButton>
+          </div>
+
+          {plexLibraries && plexLibraries.length > 0 && (
+            <div className="px-5 py-2 space-y-2">
+              {plexLibraries.map((lib) => {
+                const TypeIcon =
+                  lib.libraryType === 'movie' ? Film :
+                  lib.libraryType === 'show' ? Tv :
+                  lib.libraryType === 'artist' ? Music :
+                  FolderOpen
+                const typeLabel =
+                  lib.libraryType === 'artist' ? 'Music' :
+                  lib.libraryType === 'movie' ? 'Movies' :
+                  lib.libraryType === 'show' ? 'TV Shows' :
+                  lib.libraryType === 'photo' ? 'Photos' : lib.libraryType
+                const libIdStr = String(lib.id)
+                const libProgress = plexLibraryProgress[libIdStr]
+                const isSyncing = syncingLibraryIds.has(lib.id) || (plexSyncing && libProgress?.phase === 'syncing')
+                const isComplete = libProgress?.phase === 'complete'
+                const libError = plexLibraryErrors[libIdStr]
+
+                return (
+                  <div key={lib.id} className="flex flex-col gap-2 rounded-xl p-3 bg-white/[0.03]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium truncate">{lib.title}</span>
+                          <span className="inline-flex items-center gap-1 text-xs text-white/60 shrink-0 bg-white/5 rounded-md px-1.5 py-0.5">
+                            <TypeIcon className="h-3 w-3" />
+                            {typeLabel}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
+                          <span className="font-medium text-white/60">{lib.serverName}</span>
+                          <span className="text-white/20">·</span>
+                          <span>{lib.itemCount} items</span>
+                          {lib.lastSyncedAt && (
+                            <>
+                              <span className="text-white/20">·</span>
+                              <span>last synced {formatDaysAgo(Math.floor(new Date(lib.lastSyncedAt).getTime() / 1000))}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <DkButton
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleSyncLibrary(lib)}
+                        loading={isSyncing}
+                        disabled={isSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
+                        leftIcon={RefreshCw}
+                        loadingText="Syncing"
+                        className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
+                      >
+                        Sync
+                      </DkButton>
+                    </div>
+
+                    {/* Progress bar: visible when actively syncing this library */}
+                    {isSyncing && libProgress && (
+                      <div className="space-y-1">
+                        {libProgress.itemsTotal > 0 ? (
+                          <>
+                            <div className="overflow-hidden rounded-full h-1.5 w-full bg-white/10">
+                              <div
+                                className="rounded-full h-full bg-primary transition-all duration-150"
+                                style={{ width: `${Math.min(100, Math.round((libProgress.itemsProcessed / libProgress.itemsTotal) * 100))}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-[11px] text-white/40">
+                              <span>Syncing items...</span>
+                              <span>{libProgress.itemsProcessed} / {libProgress.itemsTotal}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex justify-between text-[11px] text-white/40">
+                            <span>Preparing sync...</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Success state */}
+                    {isComplete && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
+                        <Check className="h-3 w-3" />
+                        <span>Sync complete</span>
+                      </div>
+                    )}
+
+                    {/* Individual library scan error */}
+                    {libError && (
+                      <div className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400">
+                        {libError}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Sync All */}
+          <IntegrationAction
+            label="Sync All Libraries"
+            description="Sync all selected Plex libraries at once"
+            result={plexSyncResult ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded` : null}
+            buttonLabel={plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync All' : 'Sync All'}
+            buttonIcon={RefreshCw}
+            onPress={handlePlexSync}
+            loading={plexSyncing}
+            disabled={plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex || !plexLibraries || plexLibraries.length === 0}
+            progress={plexSyncing && Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length > 0 && <span className="text-xs text-primary">{Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length} libraries syncing</span>}
+            muted
+          />
+
+          <IntegrationAction
+            label="Watchlist Sync"
+            description="Plex Watchlist"
+            result={plexWatchlistSyncResult ? `${plexWatchlistSyncResult.matched} matches out of ${plexWatchlistSyncResult.total} watchlist items` : null}
+            buttonLabel={plexWatchlistSyncing ? 'Syncing...' : plexWatchlistSyncResult ? 'Re-sync' : 'Sync Watchlist'}
+            buttonIcon={RefreshCw}
+            onPress={handlePlexWatchlistSync}
+            loading={plexWatchlistSyncing}
+            disabled={plexWatchlistSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
+            muted
+          />
+
+          <IntegrationAction
+            label="Storage Optimizer"
+            description="Analyze server disk space and discover opportunities to save storage from duplicates, legacy codecs, and unwatched items"
+            buttonLabel="Open Optimizer"
+            buttonIcon={HardDrive}
+            onPress={() => setPlexStorageModalOpen(true)}
+          />
+          <div className="flex items-center justify-between gap-4 px-5 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Watch History Sync</p>
+              <p className="mt-0.5 text-xs text-white/60">
+                Sync episode-level watch history from Plex to your Otix library.
+              </p>
+            </div>
+            <DkSwitch
+              checked={plexWatchHistoryEnabled}
+              onCheckedChange={async (checked) => {
+                setPlexWatchHistoryEnabled(checked)
+                setPlexError('')
+                try {
+                  await apiClient.patch('/auth/me', { plex_watch_history_enabled: checked })
+                } catch (err) {
+                  setPlexWatchHistoryEnabled(!checked)
+                  setPlexError(extractIntegrationMessage(err))
+                }
+              }}
+            />
+          </div>
+          {plexMessage && <p className="px-5 py-2 text-xs text-green-400">{plexMessage}</p>}
+          {plexError && <p className="px-5 py-2 text-xs text-red-400">{plexError}</p>}
+        </>
+      )}
+
+      {/* Google Drive content */}
+      {i.id === 'google_drive' && (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 bg-white/[0.03] text-xs text-white/60">
+            <span>
+              {googleEmail ? (
+                <>Connected account: <span className="text-white/90 font-medium">{googleEmail}</span></>
+              ) : (
+                'Backs up your game saves to a dedicated folder in your Google Drive.'
+              )}
+            </span>
+          </div>
+          {driveMessage && <p className="px-5 py-2 text-xs text-green-400">{driveMessage}</p>}
+          {driveError && <p className="px-5 py-2 text-xs text-red-400">{driveError}</p>}
+        </>
+      )}
+
+      {/* Google content */}
+      {i.id === 'google' && (
+        <>
+          <IntegrationProfile
+            avatarUrl={googleAvatarUrl}
+            avatarAlt={googleName ?? 'Google avatar'}
+            name={googleName ?? 'Google User'}
+            detail={googleEmail ?? 'Google account linked'}
+            brandBg={BRAND_BG.google}
+            icon={GoogleIcon}
+            brandColor={BRAND_COLORS.google}
+          />
+          {googleMessage && <p className="px-5 py-2 text-xs text-green-400">{googleMessage}</p>}
+          {googleError && <p className="px-5 py-2 text-xs text-red-400">{googleError}</p>}
+        </>
+      )}
+
+      {/* YouTube content */}
+      {i.id === 'youtube' && (
+        <>
+          <IntegrationProfile
+            avatarUrl={googleAvatarUrl}
+            avatarAlt={googleName ?? 'YouTube avatar'}
+            name={googleName ?? 'YouTube User'}
+            detail={googleEmail ? `YouTube account (${googleEmail})` : 'Link YouTube account'}
+            brandBg={BRAND_BG.youtube}
+            icon={i.icon}
+            brandColor={BRAND_COLORS.youtube}
+          />
+          <IntegrationAction label="YouTube Sync" description="YouTube Liked Videos" result={youtubeSyncResult ? `${youtubeSyncResult.total} videos (${youtubeSyncResult.matched} matched, ${youtubeSyncResult.musicVideos} music)` : null} buttonLabel={youtubeSyncing ? 'Syncing...' : youtubeSyncResult ? 'Re-sync' : 'Sync Liked Videos'} buttonIcon={RefreshCw} onPress={handleYouTubeSync} loading={youtubeSyncing} disabled={youtubeSyncing} progress={youtubeProgress && <span className="text-xs text-primary">{youtubeProgress.phase}{youtubeProgress.detail ? ` (${youtubeProgress.detail})` : ''}</span>} />
+          {youtubeMessage && <p className="px-5 py-2 text-xs text-green-400">{youtubeMessage}</p>}
+          {youtubeError && <p className="px-5 py-2 text-xs text-red-400">{youtubeError}</p>}
+        </>
+      )}
+
+      {/* TMDb content */}
+      {i.id === 'tmdb' && (
+        <>
+          <IntegrationProfile
+            avatarUrl={tmdbAvatarUrl}
+            avatarAlt={tmdbUsername ?? 'TMDb avatar'}
+            name={tmdbUsername ?? 'TMDb User'}
+            detail="TMDb account linked"
+            brandBg={BRAND_BG.tmdb}
+            icon={TmdbIcon}
+            brandColor={BRAND_COLORS.tmdb}
+          />
+          {tmdbStats && (
+            <IntegrationStats items={[
+              { label: 'rated movies', value: tmdbStats.ratedMovies },
+              { label: 'rated shows', value: tmdbStats.ratedTv },
+              { label: 'watchlist movies', value: tmdbStats.watchlistMovies },
+              { label: 'watchlist shows', value: tmdbStats.watchlistTv },
+            ]} />
+          )}
+          <IntegrationAction label="Rating Sync" description="Sync ratings between Otix and TMDb" result={tmdbSyncResult ? `${tmdbSyncResult.imported > 0 ? `${tmdbSyncResult.imported} imported` : ''}${tmdbSyncResult.imported > 0 && tmdbSyncResult.exported > 0 ? ', ' : ''}${tmdbSyncResult.exported > 0 ? `${tmdbSyncResult.exported} exported` : ''}${tmdbSyncResult.skipped > 0 ? ` (${tmdbSyncResult.skipped} skipped)` : ''}` : null} buttonLabel={tmdbSyncing ? 'Syncing...' : 'Sync Ratings'} buttonIcon={RefreshCw} onPress={handleTmdbRatingSync} loading={tmdbSyncing} disabled={tmdbSyncDirection === 'disabled'}>
+            <div className="mt-2">
+              <DkDropdown options={tmdbSyncDirections} value={tmdbSyncDirection} onChange={setTmdbSyncDirection} placeholder="Direction" />
+            </div>
+          </IntegrationAction>
+          <IntegrationAction label="Watchlist Import" description="Import your TMDb watchlist into Otix" result={tmdbWatchlistResult ? `${tmdbWatchlistResult.imported} imported, ${tmdbWatchlistResult.skipped} skipped` : null} buttonLabel={tmdbWatchlistImporting ? 'Importing...' : tmdbWatchlistResult ? 'Re-import' : 'Import'} buttonIcon={Download} onPress={handleTmdbWatchlistImport} loading={tmdbWatchlistImporting} muted />
+          {tmdbMessage && <p className="px-5 py-2 text-xs text-green-400">{tmdbMessage}</p>}
+          {tmdbError && <p className="px-5 py-2 text-xs text-red-400">{tmdbError}</p>}
+        </>
+      )}
+    </IntegrationCard>
+  )
+
   const nodesVisible = !query ||
     NODE_KEYWORDS.includes(query) ||
     workerNodes.some((n) => n.name.toLowerCase().includes(query))
@@ -1816,17 +2346,16 @@ export function SettingsIntegrationsPage() {
         variant="page"
         icon={Link2}
         title="Connections"
-        description="Connect Steam, Plex, TMDb, YouTube, and download clients."
       />
       <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30 pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search integrations..."
-          className="w-full text-sm text-white outline-none h-9 rounded-xl bg-white/5 pl-9 pr-3 shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-150 placeholder:text-white/30 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.3)]"
+          className="w-full h-10 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] focus:bg-white/[0.07] backdrop-blur-xl pl-10 pr-4 text-sm text-white placeholder:text-white/30 outline-none border-none shadow-none focus:outline-none focus:ring-0 transition-colors"
         />
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       </div>
 
       {loading ? (
@@ -1840,7 +2369,7 @@ export function SettingsIntegrationsPage() {
         </div>
       ) : (
         <>
-          {filteredIntegrations.length > 0 && (
+          {accountIntegrations.length > 0 && (
             <div id="accounts" className="scroll-mt-28">
               <SettingsCard className="space-y-2">
                 <SectionHeader
@@ -1848,451 +2377,38 @@ export function SettingsIntegrationsPage() {
                   title="Accounts"
                   description="Sign in with Steam, Plex, TMDb, Google, and more."
                 />
-                {filteredIntegrations.map((i) => (
-                  <IntegrationCard
-                    key={i.id}
-                    name={i.name}
-                    description={i.description}
-                    brandColor={i.brandColor}
-                    brandBg={i.brandBg}
-                    icon={i.icon}
-                    isConnected={i.isConnected}
-                    expanded={expandedId === i.id}
-                    onToggle={() => toggleExpand(i.id)}
-                    onConnect={i.onConnect}
-                    connecting={i.connecting}
-                    connectDisabled={(i as any).connectDisabled}
-                    onDisconnect={i.onDisconnect}
-                    disconnecting={i.disconnecting}
-                    error={i.error}
-                  >
-                    {/* Steam content */}
-                    {i.id === 'steam' && (
-                      <>
-                        <IntegrationProfile
-                          avatarUrl={steamProfile?.avatarfull}
-                          avatarAlt={steamProfile?.personaname ?? 'Steam avatar'}
-                          name={steamProfile?.personaname ?? 'Steam User'}
-                          detail={steamProfile?.realname ?? (displayedSteamId ? `Steam ID: ${displayedSteamId}` : 'Steam account linked')}
-                          brandBg={BRAND_BG.steam}
-                          icon={SteamIcon}
-                          brandColor={BRAND_COLORS.steam}
-                          meta={steamProfile?.profileurl && (
-                            <a href={steamProfile.profileurl} target="_blank" rel="noopener noreferrer" className="text-xs text-white/40 hover:text-primary transition-colors duration-150 shrink-0">
-                              View Profile &rarr;
-                            </a>
-                          )}
-                        />
-                        {steamProfile && (
-                          <IntegrationStats items={[
-                            ...(steamProfile.timecreated ? [{ label: 'account age', value: formatAccountAge(steamProfile.timecreated) }] : []),
-                            ...(steamProfile.loccountrycode ? [{ label: 'location', value: steamProfile.loccountrycode }] : []),
-                            ...(steamProfile.personastate !== null && steamProfile.personastate !== undefined ? [{ label: 'status', value: personaStateLabel(steamProfile.personastate) }] : []),
-                          ]} />
-                        )}
-                        <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5 text-xs text-white/70">
-                            <FolderOpen className="h-4 w-4 text-sky-400 shrink-0" />
-                            <span>
-                              Game scanning, wishlist syncing, and auto-matching are managed under
-                              {' '}<strong>Library Settings</strong> as a Provider.
-                            </span>
-                          </div>
-                          <Link
-                            to="/settings/library"
-                            className="px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
-                          >
-                            Go to Library Settings &rarr;
-                          </Link>
-                        </div>
-                        {steamMessage && <p className="px-5 py-2 text-xs text-green-400">{steamMessage}</p>}
-                        {steamError && <p className="px-5 py-2 text-xs text-red-400">{steamError}</p>}
-                      </>
-                    )}
+                {accountIntegrations.map(renderIntegrationItem)}
+              </SettingsCard>
+            </div>
+          )}
 
-                    {/* Epic content */}
-                    {i.id === 'epic' && (
-                      <>
-                        <IntegrationProfile
-                          avatarAlt={epicDisplayName ?? 'Epic Games avatar'}
-                          name={epicDisplayName ?? 'Epic Games User'}
-                          detail={epicAccountId ? `Account ID: ${epicAccountId}` : 'Epic Games account linked'}
-                          brandBg={BRAND_BG.epic}
-                          icon={EpicIcon}
-                          brandColor={BRAND_COLORS.epic}
-                        />
-                        <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5 text-xs text-white/70">
-                            <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
-                            <span>
-                              Game scanning and matching are also managed under
-                              {' '}<strong>Library Settings</strong> as a Provider.
-                            </span>
-                          </div>
-                          <Link
-                            to="/settings/library"
-                            className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
-                          >
-                            Go to Library Settings &rarr;
-                          </Link>
-                        </div>
-                        <IntegrationAction
-                          label="Library Scan"
-                          description="Scan your Epic Games library"
-                          result={epicScanResult ? `${epicScanResult.matchedInOtix} matches out of ${epicScanResult.totalInEpic} Epic games` : null}
-                          buttonLabel={epicScanning ? 'Scanning...' : epicScanResult ? 'Re-scan' : 'Scan Library'}
-                          buttonIcon={RefreshCw}
-                          onPress={handleEpicScan}
-                          loading={epicScanning}
-                        />
-                        <IntegrationAction
-                          label="SteamGridDB Matching"
-                          description="Match artwork and metadata from SteamGridDB for unmatched Epic games"
-                          result={epicSteamGridResult ? `${epicSteamGridResult.matched} matched out of ${epicSteamGridResult.total} games` : null}
-                          buttonLabel={epicResolvingSteamGrid ? 'Matching...' : 'Resolve with SteamGrid'}
-                          buttonIcon={Sparkles}
-                          onPress={handleEpicResolveSteamGrid}
-                          loading={epicResolvingSteamGrid}
-                        />
-                        {epicMessage && <p className="px-5 py-2 text-xs text-green-400">{epicMessage}</p>}
-                        {epicError && <p className="px-5 py-2 text-xs text-red-400">{epicError}</p>}
-                      </>
-                    )}
-
-                    {/* GOG content */}
-                    {i.id === 'gog' && (
-                      <>
-                        <IntegrationProfile
-                          avatarAlt={gogDisplayName ?? 'GOG avatar'}
-                          name={gogDisplayName ?? 'GOG User'}
-                          detail={gogAccountId ? `Account ID: ${gogAccountId}` : 'GOG account linked'}
-                          brandBg={BRAND_BG.gog}
-                          icon={GOGIcon}
-                          brandColor={BRAND_COLORS.gog}
-                        />
-                        <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5 text-xs text-white/70">
-                            <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
-                            <span>
-                              Game scanning and matching are also managed under
-                              {' '}<strong>Library Settings</strong> as a Provider.
-                            </span>
-                          </div>
-                          <Link
-                            to="/settings/library"
-                            className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
-                          >
-                            Go to Library Settings &rarr;
-                          </Link>
-                        </div>
-                        <IntegrationAction
-                          label="Library Scan"
-                          description="Scan your GOG library"
-                          result={gogScanResult ? `${gogScanResult.matchedInOtix} matches out of ${gogScanResult.totalInGOG} GOG games` : null}
-                          buttonLabel={gogScanning ? 'Scanning...' : gogScanResult ? 'Re-scan' : 'Scan Library'}
-                          buttonIcon={RefreshCw}
-                          onPress={handleGOGScan}
-                          loading={gogScanning}
-                        />
-                        <IntegrationAction
-                          label="SteamGridDB Matching"
-                          description="Match artwork and metadata from SteamGridDB for unmatched GOG games"
-                          result={gogSteamGridResult ? `${gogSteamGridResult.matched} matched out of ${gogSteamGridResult.total} games` : null}
-                          buttonLabel={gogResolvingSteamGrid ? 'Matching...' : 'Resolve with SteamGrid'}
-                          buttonIcon={Sparkles}
-                          onPress={handleGOGResolveSteamGrid}
-                          loading={gogResolvingSteamGrid}
-                        />
-                        {gogMessage && <p className="px-5 py-2 text-xs text-green-400">{gogMessage}</p>}
-                        {gogError && <p className="px-5 py-2 text-xs text-red-400">{gogError}</p>}
-                      </>
-                    )}
-
-                    {/* Plex content */}
-                    {i.id === 'plex' && (
-                      <>
-                        <IntegrationProfile
-                          avatarUrl={plex?.plexThumb}
-                          avatarAlt={plex?.plexUsername ?? 'Plex avatar'}
-                          name={plex?.plexUsername ?? 'Plex User'}
-                          detail={plex?.plexEmail ?? (plex?.plexId ?? user?.plexId ?? 'Plex account linked')}
-                          brandBg={BRAND_BG.plex}
-                          icon={PlexIcon}
-                          brandColor={BRAND_COLORS.plex}
-                        />
-
-                        {/* Libraries list */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Plex Libraries</p>
-                            <p className="mt-1 text-sm font-medium">
-                              {plexLibrariesLoading
-                                ? 'Loading...'
-                                : plexLibraries && plexLibraries.length > 0
-                                  ? `${plexLibraries.length} librar${plexLibraries.length === 1 ? 'y' : 'ies'} found`
-                                  : 'Discover your Plex libraries to sync individually'}
-                            </p>
-                          </div>
-                          <DkButton
-                            size="sm"
-                            variant="ghost"
-                            onClick={handleDiscoverLibraries}
-                            loading={discoveringPlex}
-                            disabled={discoveringPlex || plexSyncing || syncingLibraryIds.size > 0}
-                            leftIcon={RefreshCw}
-                            className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
-                          >
-                            {plexLibraries && plexLibraries.length > 0 ? 'Refresh' : 'Discover'}
-                          </DkButton>
-                        </div>
-
-                        {plexLibraries && plexLibraries.length > 0 && (
-                          <div className="px-5 py-2 space-y-2">
-                            {plexLibraries.map((lib) => {
-                              const TypeIcon =
-                                lib.libraryType === 'movie' ? Film :
-                                lib.libraryType === 'show' ? Tv :
-                                lib.libraryType === 'artist' ? Music :
-                                FolderOpen
-                              const typeLabel =
-                                lib.libraryType === 'artist' ? 'Music' :
-                                lib.libraryType === 'movie' ? 'Movies' :
-                                lib.libraryType === 'show' ? 'TV Shows' :
-                                lib.libraryType === 'photo' ? 'Photos' : lib.libraryType
-                              const libIdStr = String(lib.id)
-                              const libProgress = plexLibraryProgress[libIdStr]
-                              const isSyncing = syncingLibraryIds.has(lib.id) || (plexSyncing && libProgress?.phase === 'syncing')
-                              const isComplete = libProgress?.phase === 'complete'
-                              const libError = plexLibraryErrors[libIdStr]
-
-                              return (
-                                <div key={lib.id} className="flex flex-col gap-2 rounded-xl p-3 bg-white/[0.03]">
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium truncate">{lib.title}</span>
-                                        <span className="inline-flex items-center gap-1 text-xs text-white/60 shrink-0 bg-white/5 rounded-md px-1.5 py-0.5">
-                                          <TypeIcon className="h-3 w-3" />
-                                          {typeLabel}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
-                                        <span className="font-medium text-white/60">{lib.serverName}</span>
-                                        <span className="text-white/20">·</span>
-                                        <span>{lib.itemCount} items</span>
-                                        {lib.lastSyncedAt && (
-                                          <>
-                                            <span className="text-white/20">·</span>
-                                            <span>last synced {formatDaysAgo(Math.floor(new Date(lib.lastSyncedAt).getTime() / 1000))}</span>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <DkButton
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleSyncLibrary(lib)}
-                                      loading={isSyncing}
-                                      disabled={isSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
-                                      leftIcon={RefreshCw}
-                                      loadingText="Syncing"
-                                      className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
-                                    >
-                                      Sync
-                                    </DkButton>
-                                  </div>
-
-                                  {/* Progress bar: visible when actively syncing this library */}
-                                  {isSyncing && libProgress && (
-                                    <div className="space-y-1">
-                                      {libProgress.itemsTotal > 0 ? (
-                                        <>
-                                          <div className="overflow-hidden rounded-full h-1.5 w-full bg-white/10">
-                                            <div
-                                              className="rounded-full h-full bg-primary transition-all duration-150"
-                                              style={{ width: `${Math.min(100, Math.round((libProgress.itemsProcessed / libProgress.itemsTotal) * 100))}%` }}
-                                            />
-                                          </div>
-                                          <div className="flex justify-between text-[11px] text-white/40">
-                                            <span>Syncing items...</span>
-                                            <span>{libProgress.itemsProcessed} / {libProgress.itemsTotal}</span>
-                                          </div>
-                                        </>
-                                      ) : (
-                                        <div className="flex justify-between text-[11px] text-white/40">
-                                          <span>Preparing sync...</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Success state */}
-                                  {isComplete && (
-                                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
-                                      <Check className="h-3 w-3" />
-                                      <span>Sync complete</span>
-                                    </div>
-                                  )}
-
-                                  {/* Individual library scan error */}
-                                  {libError && (
-                                    <div className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-400">
-                                      {libError}
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )}
-
-                        {/* Sync All */}
-                        <IntegrationAction
-                          label="Sync All Libraries"
-                          description="Sync all selected Plex libraries at once"
-                          result={plexSyncResult ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded` : null}
-                          buttonLabel={plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync All' : 'Sync All'}
-                          buttonIcon={RefreshCw}
-                          onPress={handlePlexSync}
-                          loading={plexSyncing}
-                          disabled={plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex || !plexLibraries || plexLibraries.length === 0}
-                          progress={plexSyncing && Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length > 0 && <span className="text-xs text-primary">{Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length} libraries syncing</span>}
-                          muted
-                        />
-
-                        <IntegrationAction
-                          label="Watchlist Sync"
-                          description="Plex Watchlist"
-                          result={plexWatchlistSyncResult ? `${plexWatchlistSyncResult.matched} matches out of ${plexWatchlistSyncResult.total} watchlist items` : null}
-                          buttonLabel={plexWatchlistSyncing ? 'Syncing...' : plexWatchlistSyncResult ? 'Re-sync' : 'Sync Watchlist'}
-                          buttonIcon={RefreshCw}
-                          onPress={handlePlexWatchlistSync}
-                          loading={plexWatchlistSyncing}
-                          disabled={plexWatchlistSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
-                          muted
-                        />
-
-                        <IntegrationAction
-                          label="Storage Optimizer"
-                          description="Analyze server disk space and discover opportunities to save storage from duplicates, legacy codecs, and unwatched items"
-                          buttonLabel="Open Optimizer"
-                          buttonIcon={HardDrive}
-                          onPress={() => setPlexStorageModalOpen(true)}
-                        />
-                        <div className="flex items-center justify-between gap-4 px-5 py-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">Watch History Sync</p>
-                            <p className="mt-0.5 text-xs text-white/60">
-                              Sync episode-level watch history from Plex to your Otix library.
-                            </p>
-                          </div>
-                          <DkSwitch
-                            checked={plexWatchHistoryEnabled}
-                            onCheckedChange={async (checked) => {
-                              setPlexWatchHistoryEnabled(checked)
-                              setPlexError('')
-                              try {
-                                await apiClient.patch('/auth/me', { plex_watch_history_enabled: checked })
-                              } catch (err) {
-                                setPlexWatchHistoryEnabled(!checked)
-                                setPlexError(extractIntegrationMessage(err))
-                              }
-                            }}
-                          />
-                        </div>
-                        {plexMessage && <p className="px-5 py-2 text-xs text-green-400">{plexMessage}</p>}
-                        {plexError && <p className="px-5 py-2 text-xs text-red-400">{plexError}</p>}
-                      </>
-                    )}
-
-                    {/* Google Drive content */}
-                    {i.id === 'google_drive' && (
-                      <>
-                        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 bg-white/[0.03] text-xs text-white/60">
-                          <span>
-                            {googleEmail ? (
-                              <>Connected account: <span className="text-white/90 font-medium">{googleEmail}</span></>
-                            ) : (
-                              'Backs up your game saves to a dedicated folder in your Google Drive.'
-                            )}
-                          </span>
-                        </div>
-                        {driveMessage && <p className="px-5 py-2 text-xs text-green-400">{driveMessage}</p>}
-                        {driveError && <p className="px-5 py-2 text-xs text-red-400">{driveError}</p>}
-                      </>
-                    )}
-
-                    {/* Google content */}
-                    {i.id === 'google' && (
-                      <>
-                        <IntegrationProfile
-                          avatarUrl={googleAvatarUrl}
-                          avatarAlt={googleName ?? 'Google avatar'}
-                          name={googleName ?? 'Google User'}
-                          detail={googleEmail ?? 'Google account linked'}
-                          brandBg={BRAND_BG.google}
-                          icon={GoogleIcon}
-                          brandColor={BRAND_COLORS.google}
-                        />
-                        <IntegrationAction label="YouTube Sync" description="YouTube Liked Videos" result={youtubeSyncResult ? `${youtubeSyncResult.total} videos (${youtubeSyncResult.matched} matched, ${youtubeSyncResult.musicVideos} music)` : null} buttonLabel={youtubeSyncing ? 'Syncing...' : youtubeSyncResult ? 'Re-sync' : 'Sync Liked Videos'} buttonIcon={RefreshCw} onPress={handleYouTubeSync} loading={youtubeSyncing} disabled={youtubeSyncing} progress={youtubeProgress && <span className="text-xs text-primary">{youtubeProgress.phase}{youtubeProgress.detail ? ` (${youtubeProgress.detail})` : ''}</span>} />
-                        {googleMessage && <p className="px-5 py-2 text-xs text-green-400">{googleMessage}</p>}
-                        {googleError && <p className="px-5 py-2 text-xs text-red-400">{googleError}</p>}
-                        {youtubeMessage && <p className="px-5 py-2 text-xs text-green-400">{youtubeMessage}</p>}
-                        {youtubeError && <p className="px-5 py-2 text-xs text-red-400">{youtubeError}</p>}
-                      </>
-                    )}
-
-                    {/* TMDb content */}
-                    {i.id === 'tmdb' && (
-                      <>
-                        <IntegrationProfile
-                          avatarUrl={tmdbAvatarUrl}
-                          avatarAlt={tmdbUsername ?? 'TMDb avatar'}
-                          name={tmdbUsername ?? 'TMDb User'}
-                          detail="TMDb account linked"
-                          brandBg={BRAND_BG.tmdb}
-                          icon={TmdbIcon}
-                          brandColor={BRAND_COLORS.tmdb}
-                        />
-                        {tmdbStats && (
-                          <IntegrationStats items={[
-                            { label: 'rated movies', value: tmdbStats.ratedMovies },
-                            { label: 'rated shows', value: tmdbStats.ratedTv },
-                            { label: 'watchlist movies', value: tmdbStats.watchlistMovies },
-                            { label: 'watchlist shows', value: tmdbStats.watchlistTv },
-                          ]} />
-                        )}
-                        <IntegrationAction label="Rating Sync" description="Sync ratings between Otix and TMDb" result={tmdbSyncResult ? `${tmdbSyncResult.imported > 0 ? `${tmdbSyncResult.imported} imported` : ''}${tmdbSyncResult.imported > 0 && tmdbSyncResult.exported > 0 ? ', ' : ''}${tmdbSyncResult.exported > 0 ? `${tmdbSyncResult.exported} exported` : ''}${tmdbSyncResult.skipped > 0 ? ` (${tmdbSyncResult.skipped} skipped)` : ''}` : null} buttonLabel={tmdbSyncing ? 'Syncing...' : 'Sync Ratings'} buttonIcon={RefreshCw} onPress={handleTmdbRatingSync} loading={tmdbSyncing} disabled={tmdbSyncDirection === 'disabled'}>
-                          <div className="mt-2">
-                            <DkDropdown options={tmdbSyncDirections} value={tmdbSyncDirection} onChange={setTmdbSyncDirection} placeholder="Direction" />
-                          </div>
-                        </IntegrationAction>
-                        <IntegrationAction label="Watchlist Import" description="Import your TMDb watchlist into Otix" result={tmdbWatchlistResult ? `${tmdbWatchlistResult.imported} imported, ${tmdbWatchlistResult.skipped} skipped` : null} buttonLabel={tmdbWatchlistImporting ? 'Importing...' : tmdbWatchlistResult ? 'Re-import' : 'Import'} buttonIcon={Download} onPress={handleTmdbWatchlistImport} loading={tmdbWatchlistImporting} muted />
-                        {tmdbMessage && <p className="px-5 py-2 text-xs text-green-400">{tmdbMessage}</p>}
-                        {tmdbError && <p className="px-5 py-2 text-xs text-red-400">{tmdbError}</p>}
-                      </>
-                    )}
-                  </IntegrationCard>
-                ))}
-
+          {serviceIntegrations.length > 0 && (
+            <div id="services" className="scroll-mt-28">
+              <SettingsCard className="space-y-2">
+                <SectionHeader
+                  icon={Sparkles}
+                  title="Services &amp; Storage"
+                  description="Manage media sync and cloud storage connections (YouTube, Google Drive)."
+                />
+                {serviceIntegrations.map(renderIntegrationItem)}
               </SettingsCard>
             </div>
           )}
 
           {nodesVisible && (
-            <div id="nodes" className="scroll-mt-28 space-y-3">
-              <SectionHeader
-                icon={Server}
-                title="Otix nodes"
-                description="Manage SABnzbd, Prowlarr, Radarr, and Sonarr instances per node."
-              />
-              {workerNodes.length > 0 ? (
-                workerNodes.map((node) => (
-                  <NodeConnectionsGroup key={node.id} server={node} searchQuery={searchQuery} />
-                ))
-              ) : (
-                <SettingsCard>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div id="nodes" className="scroll-mt-28">
+              <SettingsCard className="space-y-3">
+                <SectionHeader
+                  icon={Server}
+                  title="Nodes"
+                  description="Manage connected services and background instances per node."
+                />
+                {workerNodes.length > 0 ? (
+                  workerNodes.map((node) => (
+                    <NodeConnectionsGroup key={node.id} server={node} searchQuery={searchQuery} />
+                  ))
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-white/[0.03]">
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-white/80">No nodes connected</p>
                       <p className="text-xs text-white/50 mt-0.5">
@@ -2306,8 +2422,8 @@ export function SettingsIntegrationsPage() {
                       Go to Nodes →
                     </Link>
                   </div>
-                </SettingsCard>
-              )}
+                )}
+              </SettingsCard>
             </div>
           )}
         </>

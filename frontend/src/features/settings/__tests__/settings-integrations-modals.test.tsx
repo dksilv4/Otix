@@ -123,7 +123,13 @@ describe('Settings Integrations Modals Regression Tests', () => {
   }
 
   it('renders integration cards including SABnzbd, Prowlarr, Radarr, and Sonarr', async () => {
+    const user = userEvent.setup()
     renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Home Server')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Home Server'))
 
     await waitFor(() => {
       expect(screen.getByText('SABnzbd')).toBeInTheDocument()
@@ -144,16 +150,25 @@ describe('Settings Integrations Modals Regression Tests', () => {
   })
 
   it('puts Otix nodes in a separate section from accounts', async () => {
+    const user = userEvent.setup()
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Otix nodes' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Nodes' })).toBeInTheDocument()
     })
     expect(screen.getByRole('heading', { name: 'Accounts' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Services & Storage' })).toBeInTheDocument()
     expect(document.getElementById('accounts')).toBeTruthy()
+    expect(document.getElementById('services')).toBeTruthy()
     expect(document.getElementById('nodes')).toBeTruthy()
-    expect(document.getElementById('nodes')!.contains(screen.getByText('SABnzbd'))).toBe(true)
+    await user.click(screen.getByText('Home Server'))
+    await waitFor(() => {
+      expect(document.getElementById('nodes')!.contains(screen.getByText('SABnzbd'))).toBe(true)
+    })
     expect(document.getElementById('accounts')!.contains(screen.getByText('Steam'))).toBe(true)
+    expect(document.getElementById('accounts')!.contains(screen.getByText('Google'))).toBe(true)
+    expect(document.getElementById('services')!.contains(screen.getByText('YouTube'))).toBe(true)
+    expect(document.getElementById('services')!.contains(screen.getByText('Google Drive'))).toBe(true)
   })
 
   it('renders no nodes connected state when no worker nodes exist', async () => {
@@ -161,7 +176,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Otix nodes' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Nodes' })).toBeInTheDocument()
       expect(screen.getByText('No nodes connected')).toBeInTheDocument()
     })
   })
@@ -169,6 +184,11 @@ describe('Settings Integrations Modals Regression Tests', () => {
   it('opens SABnzbd modal via modal framework for connected node', async () => {
     const user = userEvent.setup()
     renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Home Server')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Home Server'))
 
     await waitFor(() => {
       expect(screen.getByText('SABnzbd')).toBeInTheDocument()
@@ -190,6 +210,11 @@ describe('Settings Integrations Modals Regression Tests', () => {
     renderPage()
 
     await waitFor(() => {
+      expect(screen.getByText('Home Server')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Home Server'))
+
+    await waitFor(() => {
       expect(screen.getByText('Prowlarr')).toBeInTheDocument()
     })
 
@@ -208,6 +233,11 @@ describe('Settings Integrations Modals Regression Tests', () => {
     renderPage()
 
     await waitFor(() => {
+      expect(screen.getByText('Home Server')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Home Server'))
+
+    await waitFor(() => {
       expect(screen.getByText('Radarr')).toBeInTheDocument()
     })
 
@@ -224,6 +254,11 @@ describe('Settings Integrations Modals Regression Tests', () => {
   it('opens Sonarr modal via modal framework for connected node', async () => {
     const user = userEvent.setup()
     renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Home Server')).toBeInTheDocument()
+    })
+    await user.click(screen.getByText('Home Server'))
 
     await waitFor(() => {
       expect(screen.getByText('Sonarr')).toBeInTheDocument()
@@ -249,6 +284,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Homelab Alpha')).toBeInTheDocument()
     })
+    await user.click(screen.getByText('Homelab Alpha'))
 
     const serverSection = screen.getByText('Homelab Alpha').closest('.overflow-hidden') as HTMLElement
     const card = within(serverSection).getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
@@ -281,20 +317,23 @@ describe('Settings Integrations Modals Regression Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Main Server')).toBeInTheDocument()
     })
+    await user.click(screen.getByText('Main Server'))
 
     const serverSection = screen.getByText('Main Server').closest('.overflow-hidden') as HTMLElement
     const sabnzbdCard = within(serverSection).getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
     const sabHeader = within(sabnzbdCard).getByRole('button')
     await user.click(sabHeader)
 
-    // In expanded view, click "Configure SABnzbd"
-    const configureSabBtn = await within(sabnzbdCard).findByRole('button', { name: /Configure SABnzbd/i })
+    // In detail modal, click "Configure SABnzbd"
+    const sabDialog = await screen.findByRole('dialog')
+    const configureSabBtn = await within(sabDialog).findByRole('button', { name: /Configure SABnzbd/i })
     await user.click(configureSabBtn)
 
     await waitFor(() => {
-      const dialog = screen.getByRole('dialog')
-      expect(within(dialog).getByRole('heading', { name: 'SABnzbd' })).toBeInTheDocument()
-      expect(within(dialog).getByText(/On Main Server/i)).toBeInTheDocument()
+      const dialogs = screen.getAllByRole('dialog')
+      const targetDialog = dialogs.find((d) => within(d).queryByRole('heading', { name: 'SABnzbd' }))
+      expect(targetDialog).toBeDefined()
+      expect(within(targetDialog!).getByText(/On Main Server/i)).toBeInTheDocument()
     })
   })
 
@@ -312,27 +351,30 @@ describe('Settings Integrations Modals Regression Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Main Server')).toBeInTheDocument()
     })
+    await user.click(screen.getByText('Main Server'))
 
     const serverSection = screen.getByText('Main Server').closest('.overflow-hidden') as HTMLElement
     const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
     await user.click(within(prowlarrCard).getByRole('button'))
 
-    const protocolGroup = await within(prowlarrCard).findByRole('group', { name: /Protocol/i }) as HTMLElement
+    const prowlarrDialog = await screen.findByRole('dialog')
+    const protocolGroup = await within(prowlarrDialog).findByRole('group', { name: /Protocol/i }) as HTMLElement
     expect(within(protocolGroup).queryByRole('button', { name: /^Sync$/i })).not.toBeInTheDocument()
-    const syncBtn = within(prowlarrCard).getByRole('button', { name: /^Sync$/i })
+    const syncBtn = within(prowlarrDialog).getByRole('button', { name: /^Sync$/i })
     expect(syncBtn.className).toMatch(/bg-rose-500/)
-    expect(within(prowlarrCard).getByText('No indexers yet')).toBeInTheDocument()
-    expect(within(prowlarrCard).getByText(/Press Sync to pull indexers from Prowlarr/i)).toBeInTheDocument()
-    expect(within(prowlarrCard).getByRole('list', { name: /Indexer list/i })).toBeInTheDocument()
-    expect(within(prowlarrCard).queryByRole('button', { name: /^Console$/i })).not.toBeInTheDocument()
+    expect(within(prowlarrDialog).getByText('No indexers yet')).toBeInTheDocument()
+    expect(within(prowlarrDialog).getByText(/Press Sync to pull indexers from Prowlarr/i)).toBeInTheDocument()
+    expect(within(prowlarrDialog).getByRole('list', { name: /Indexer list/i })).toBeInTheDocument()
+    expect(within(prowlarrDialog).queryByRole('button', { name: /^Console$/i })).not.toBeInTheDocument()
 
-    await user.click(within(prowlarrCard).getByRole('button', { name: /Configure Prowlarr/i }))
+    await user.click(within(prowlarrDialog).getByRole('button', { name: /Configure Prowlarr/i }))
     await waitFor(() => {
-      const dialog = screen.getByRole('dialog')
-      expect(within(dialog).getByRole('heading', { name: 'Prowlarr' })).toBeInTheDocument()
-      expect(within(dialog).getByRole('button', { name: /^Console$/i, pressed: true })).toBeInTheDocument()
-      expect(within(dialog).getByRole('button', { name: /^PC$/i, pressed: true })).toBeInTheDocument()
-      expect(within(dialog).getByRole('button', { name: /^Test connection$/i })).toBeInTheDocument()
+      const dialogs = screen.getAllByRole('dialog')
+      const targetDialog = dialogs.find((d) => within(d).queryByRole('heading', { name: 'Prowlarr' }))
+      expect(targetDialog).toBeDefined()
+      expect(within(targetDialog!).getByRole('button', { name: /^Console$/i, pressed: true })).toBeInTheDocument()
+      expect(within(targetDialog!).getByRole('button', { name: /^PC$/i, pressed: true })).toBeInTheDocument()
+      expect(within(targetDialog!).getByRole('button', { name: /^Test connection$/i })).toBeInTheDocument()
     })
   })
 
@@ -346,6 +388,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Otix Node One')).toBeInTheDocument()
     })
+    await user.click(screen.getByText('Otix Node One'))
 
     const serverSection = screen.getByText('Otix Node One').closest('.overflow-hidden') as HTMLElement
 
@@ -440,14 +483,14 @@ describe('Settings Integrations Modals Regression Tests', () => {
       expect(screen.getByText('Linked as EpicGamer123')).toBeInTheDocument()
     })
 
-    const epicCard = screen.getByText('Epic Games').closest('.rounded-2xl') as HTMLElement
     const user = userEvent.setup()
     await user.click(screen.getByText('Linked as EpicGamer123'))
 
+    const dialog = await screen.findByRole('dialog')
     await waitFor(() => {
-      expect(within(epicCard).getByText('Account ID: epic-acc-999')).toBeInTheDocument()
-      expect(within(epicCard).getByRole('button', { name: /scan library/i })).toBeInTheDocument()
-      expect(within(epicCard).getByRole('button', { name: /resolve with steamgrid/i })).toBeInTheDocument()
+      expect(within(dialog).getByText('Account ID: epic-acc-999')).toBeInTheDocument()
+      expect(within(dialog).getByRole('button', { name: /scan library/i })).toBeInTheDocument()
+      expect(within(dialog).getByRole('button', { name: /resolve with steamgrid/i })).toBeInTheDocument()
     })
   })
 
@@ -474,11 +517,13 @@ describe('Settings Integrations Modals Regression Tests', () => {
       },
     }
 
+    const user = userEvent.setup()
     renderPage()
 
     await waitFor(() => {
       expect(screen.getByText('Node ID:1')).toBeInTheDocument()
     })
+    await user.click(screen.getByText('Node ID:1'))
 
     const serverSection = screen.getByText('Node ID:1').closest('.overflow-hidden') as HTMLElement
     const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
@@ -507,11 +552,13 @@ describe('Settings Integrations Modals Regression Tests', () => {
       ],
     }
 
+    const user = userEvent.setup()
     renderPage()
 
     await waitFor(() => {
       expect(screen.getByText('Node ID:1')).toBeInTheDocument()
     })
+    await user.click(screen.getByText('Node ID:1'))
 
     const serverSection = screen.getByText('Node ID:1').closest('.overflow-hidden') as HTMLElement
     const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
