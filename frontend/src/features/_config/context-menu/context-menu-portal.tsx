@@ -9,7 +9,10 @@ export function ContextMenuPortal() {
   const { isOpen, position, items, close } = useMenuContext()
   const [ready, setReady] = useState(false)
 
-  const { refs, floatingStyles } = useFloating({
+  const {
+    refs: { setReference, setFloating },
+    floatingStyles,
+  } = useFloating({
     placement: 'bottom-start',
     strategy: 'fixed',
     middleware: [
@@ -47,9 +50,9 @@ export function ContextMenuPortal() {
       },
     }
 
-    refs.setReference(virtualEl)
+    setReference(virtualEl)
     requestAnimationFrame(() => setReady(true))
-  }, [isOpen, position, refs])
+  }, [isOpen, position, setReference])
 
   // Close on scroll
   useEffect(() => {
@@ -79,7 +82,7 @@ export function ContextMenuPortal() {
     <AnimatePresence>
       {isOpen && ready && (
         <div
-          ref={refs.setFloating}
+          ref={setFloating}
           style={floatingStyles}
           className="z-[99999]"
         >

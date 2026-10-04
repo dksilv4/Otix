@@ -82,8 +82,18 @@ async function getCountry(ctx) {
   return 'us';
 }
 
+function inferBaseGameTitle(title) {
+  for (const sep of [': ', ' - ', ' – ', ' — ']) {
+    if (title.includes(sep)) {
+      const base = title.split(sep)[0].trim();
+      if (base) return base;
+    }
+  }
+  return null;
+}
+
 /**
- * Scrape Steam search results for 100%-off games.
+ * Scrape Steam search results for 100%-off games, DLCs, and packs.
  * Sorts by price ascending, filters to specials only.
  * Checks up to maxPages (default 3) to catch all free-to-keep promotions.
  */
@@ -109,50 +119,110 @@ async function fetchFreeToKeepGames(country, ctx, maxPages) {
       break;
     }
 
-    // Parse game entries — each is an <a> tag with data-ds-appid
-    const sections = html.split(/<a[^>]*data-ds-appid/);
+    const rowRegex = /<a\s+[^>]*href="(https:\/\/store\.steampowered\.com\/(app|sub|bundle)\/(\d+)[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi;
+    let match;
     let foundOnPage = 0;
+    let totalRows = 0;
 
-    for (let i = 1; i < sections.length; i++) {
-      const s = sections[i];
+    while ((match = rowRegex.exec(html)) !== null) {
+      totalRows++;
+      const fullLink = match[0];
+      const kind = match[2];
+      const itemId = match[3];
+      const content = match[4];
 
-      // Only collect 100% off games
-      if (!s.includes('data-discount="100"') && !s.includes('-100%')) continue;
-
-      const appidMatch = s.match(/^="(\d+)"/);
-      const nameMatch = s.match(/<span class="title">([^<]+)<\/span>/);
-      const origMatch = s.match(/discount_original_price">([^<]+)<\/div>/);
-      const imgMatch = s.match(/<img[^>]*src="([^"]+)"/);
-
-      if (!appidMatch || !nameMatch) continue;
-
-      const appId = parseInt(appidMatch[1], 10);
-      const name = nameMatch[1].trim();
-      const originalPrice = origMatch ? origMatch[1].trim() : null;
-      // Convert capsule image URL to larger format
-      let posterUrl = imgMatch ? imgMatch[1] : null;
-      if (posterUrl && posterUrl.includes('capsule_184x69')) {
-        posterUrl = posterUrl.replace('capsule_184x69', 'capsule_616x353');
+      if (!fullLink.includes('data-discount="100"') && !fullLink.includes('-100%')) {
+        continue;
       }
 
+      const nameMatch = content.match(/<span class="title">([^<]+)<\/span>/);
+      const origMatch = content.match(/discount_original_price">([^<]+)<\/div>/);
+      const imgMatch = content.match(/<img[^>]*src="([^"]+)"/);
+
+      if (!nameMatch) continue;
+
+      const name = nameMatch[1].trim();
+      const originalPrice = origMatch ? origMatch[1].trim() : null;
+      let posterUrl = imgMatch ? imgMatch[1] : null;
+
+      const nameLower = name.toLowerCase();
+      const isPackName = nameLower.includes('pack') || nameLower.includes('bundle') || nameLower.includes('collection');
+      const isDlcName = [' dlc', 'dlc ', 'expansion', 'add-on', 'addon', 'season pass', 'content pack'].some(w => nameLower.includes(w));
+
+      let itemType = 'game';
+      let baseGameTitle = null;
+      let baseGameId = null;
+      let description = null;
+
+      if (kind === 'bundle') {
+        itemType = 'bundle';
+      } else if (kind === 'sub') {
+        itemType = 'pack';
+      } else if (isPackName) {
+        itemType = 'pack';
+      } else if (isDlcName) {
+        itemType = 'dlc';
+      }
+
+      // Try fetching app details to confirm DLC / parent game info
+      if (kind === 'app') {
+        try {
+          const detailRes = await fetchJson('https://store.steampowered.com/api/appdetails?appids=' + itemId, { timeout: 5000 });
+          const appData = detailRes?.data?.[itemId]?.data;
+          if (appData) {
+            if (appData.type === 'dlc') {
+              itemType = isPackName ? 'pack' : 'dlc';
+            }
+            if (appData.fullgame) {
+              baseGameTitle = appData.fullgame.name;
+              baseGameId = String(appData.fullgame.appid);
+            }
+            if (appData.header_image) {
+              posterUrl = appData.header_image;
+            }
+            if (appData.short_description) {
+              description = appData.short_description;
+            }
+          }
+        } catch {}
+      }
+
+      if (!baseGameTitle && (itemType === 'dlc' || itemType === 'pack' || itemType === 'bundle')) {
+        baseGameTitle = inferBaseGameTitle(name);
+      }
+
+      const claimUrl = kind === 'sub'
+        ? `https://store.steampowered.com/sub/${itemId}`
+        : kind === 'bundle'
+          ? `https://store.steampowered.com/bundle/${itemId}`
+          : `https://store.steampowered.com/app/${itemId}`;
+
+      const sellerText = baseGameTitle
+        ? (itemType === 'pack' ? `Pack for ${baseGameTitle}` : `DLC for ${baseGameTitle}`)
+        : null;
+
       allGames.push({
-        id: appId,
+        id: parseInt(itemId, 10) || itemId,
         title: name,
         posterUrl,
         originalPrice,
         freeEndDate: null,
-        urlSlug: String(appId),
-        description: null,
-        seller: null,
-        appId,
+        urlSlug: String(itemId),
+        description,
+        seller: sellerText,
+        appId: parseInt(itemId, 10) || itemId,
+        kind,
+        itemType,
+        baseGameTitle,
+        baseGameId,
+        claimUrl,
       });
       foundOnPage++;
     }
 
-    ctx.logger.info('Steam search page ' + page + ': ' + foundOnPage + ' free games found');
+    ctx.logger.info('Steam search page ' + page + ': ' + foundOnPage + ' free items found');
 
-    // Stop early if this page had fewer than 24 results (last page)
-    if (sections.length < 25) break;
+    if (totalRows < 25) break;
   }
 
   return allGames;

@@ -1,5 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react'
-import { useLocation } from '@tanstack/react-router'
+import { createContext, useContext } from 'react'
 import { ENV } from '@/lib/config/env'
 
 export interface NavPillsConfig {

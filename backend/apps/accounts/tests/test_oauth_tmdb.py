@@ -641,7 +641,7 @@ class OAuthProvidersViewTests(TestCase):
         providers = response.data["providers"]
         self.assertEqual(
             [p["name"] for p in providers],
-            ["steam", "plex", "tmdb", "google", "google_drive"],
+            ["steam", "plex", "tmdb", "google", "google_drive", "epic", "gog"],
         )
         all_keys = {
             "name",
@@ -659,6 +659,10 @@ class OAuthProvidersViewTests(TestCase):
             "google_email",
             "google_name",
             "google_avatar_url",
+            "epic_account_id",
+            "epic_display_name",
+            "gog_account_id",
+            "gog_display_name",
         }
         for provider in providers:
             self.assertEqual(set(provider.keys()), all_keys)
@@ -671,6 +675,8 @@ class OAuthProvidersViewTests(TestCase):
         self.assertFalse(by_name["tmdb"]["connected"])
         self.assertTrue(by_name["google"]["connected"])
         self.assertTrue(by_name["google_drive"]["connected"])
+        self.assertFalse(by_name["epic"]["connected"])
+        self.assertFalse(by_name["gog"]["connected"])
 
     @override_settings(FRONTEND_BASE_URL="http://localhost:5173")
     def test_unlinked_returns_all_disconnected(self) -> None:

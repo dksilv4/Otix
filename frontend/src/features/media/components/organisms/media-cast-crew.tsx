@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Users, ExternalLink } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { PeopleCard } from '@people/components/molecules/people-card'
 import { groupByRole } from '@media'
 import { DkDialog } from '@ui/molecules/dialog'
@@ -28,6 +27,26 @@ export function CastCrew({ credits = [], className = '' }: CastCrewProps) {
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<CreditCategory>('cast')
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 4)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+  }, [])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    checkScroll()
+    el.addEventListener('scroll', checkScroll, { passive: true })
+    window.addEventListener('resize', checkScroll)
+    return () => {
+      el.removeEventListener('scroll', checkScroll)
+      window.removeEventListener('resize', checkScroll)
+    }
+  }, [checkScroll, activeTab])
 
   const validCredits = (Array.isArray(credits) ? credits : []).filter((c) => Boolean(c && c.person && c.person.id))
   if (validCredits.length === 0) return null
@@ -49,27 +68,7 @@ export function CastCrew({ credits = [], className = '' }: CastCrewProps) {
 
   if (categories.length === 0) return null
 
-  const [activeTab, setActiveTab] = useState<CreditCategory>(categories[0].key)
   const activeCategory = categories.find((c) => c.key === activeTab) ?? categories[0]
-
-  const checkScroll = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    setCanScrollLeft(el.scrollLeft > 4)
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
-  }, [])
-
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    checkScroll()
-    el.addEventListener('scroll', checkScroll, { passive: true })
-    window.addEventListener('resize', checkScroll)
-    return () => {
-      el.removeEventListener('scroll', checkScroll)
-      window.removeEventListener('resize', checkScroll)
-    }
-  }, [checkScroll, activeTab])
 
   const scrollBy = (offset: number) => {
     if (!scrollRef.current) return

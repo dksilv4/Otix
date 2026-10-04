@@ -170,7 +170,9 @@ export function LauncherThemeProvider({ children }: { children: React.ReactNode 
         if (stored && LAUNCHER_THEMES.some((t) => t.id === stored)) {
           setCurrentThemeState(stored)
         }
-      } catch {}
+      } catch {
+        // LocalStorage access not available
+      }
     }
 
     window.addEventListener('storage', handleSync)

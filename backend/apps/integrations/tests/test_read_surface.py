@@ -181,6 +181,33 @@ class PlexConnectInfoTests(_ApiTestBase):
         # user token present -> thumb uses it and the first base url
         self.assertTrue(body["album_thumb_url"].startswith(self.server.base_url))
 
+    def test_game_media_item_never_returns_plex_connect_info(self):
+        game = _make_media("Palworld")
+        game.media_type = "game"
+        game.save(update_fields=["media_type"])
+
+        # Even if a Plex item happens to have rating_key equal to the game's ID or matching title
+        UserPlexItem.objects.create(
+            user=self.user,
+            server=self.server,
+            library=self.library,
+            rating_key=str(game.pk),
+            media_type="movie",
+            title="Barbie",
+        )
+
+        resp = self.client.get(
+            reverse("integrations:plex-connect-info", kwargs={"media_identifier": game.pk})
+        )
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json()["detail"], "Media item not found in your Plex library")
+
+        # Also via game slug
+        resp_slug = self.client.get(
+            reverse("integrations:plex-connect-info", kwargs={"media_identifier": game.slug})
+        )
+        self.assertEqual(resp_slug.status_code, 404)
+
 
 class PlexAltUrlParsingTests(TestCase):
     """Unit coverage of the best-effort plex.tv resources parsing."""

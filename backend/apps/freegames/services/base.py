@@ -28,6 +28,9 @@ class FreeGameItem:
     external_id: str | None = None
     media_item: dict[str, Any] | None = None
     raw_data: dict[str, Any] = field(default_factory=dict)
+    item_type: str = "game"  # "game", "dlc", "pack", "bundle"
+    base_game_title: str | None = None
+    base_game_id: str | None = None
 
 
 class BaseFreeGamesProvider(ABC):

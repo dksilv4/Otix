@@ -7,11 +7,6 @@ import {
   Sliders,
   Search,
   ArrowLeft,
-  Sparkles,
-  Layers,
-  Compass,
-  Volume2,
-  Clock,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
@@ -25,8 +20,8 @@ import type { LocalGame } from "@/features/launcher/types"
 
 export function GlassLauncherView() {
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
-  const isDesktop = hasDesktopAPI()
+  const { user, isAuthenticated: _isAuthenticated } = useAuth()
+  const _isDesktop = hasDesktopAPI()
   const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
   const { runningGame } = useRunningGame()

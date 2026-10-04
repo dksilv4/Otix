@@ -15,7 +15,7 @@ export function MediaHeroLibraryActions() {
     mediaType,
     effectiveMediaId,
     detail?.tmdbId,
-    Boolean(detail),
+    Boolean(detail) && mediaType !== 'game',
   )
   const requestMedia = useRequestMedia()
   const hasPlayWidgets = pluginActions.playWidgets.length > 0

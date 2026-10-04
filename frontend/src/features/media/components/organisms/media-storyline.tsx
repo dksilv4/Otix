@@ -72,7 +72,7 @@ export function MediaStoryline({ detail, mediaType, className = '' }: MediaStory
 
       {/* ── Key Creatives (Directors & Writers Only, avoiding duplication with Cast & Crew) ── */}
       {hasCreatives && (
-        <div className="grid gap-3 pt-4 border-t border-white/[0.06] text-xs sm:grid-cols-2">
+        <div className="grid gap-3 pt-2 text-xs sm:grid-cols-2">
           {/* Directors / Creators */}
           {topDirectors.length > 0 && (
             <div className="space-y-1">
@@ -121,9 +121,9 @@ export function MediaStoryline({ detail, mediaType, className = '' }: MediaStory
         </div>
       )}
 
-      {/* ── Genre Chips (with generous padding so pills never touch the border line) ── */}
+      {/* ── Genre Chips (borderless pills) ── */}
       {genres.length > 0 && (
-        <div className="flex flex-wrap gap-2.5 pt-5 mt-4 border-t border-white/[0.08]">
+        <div className="flex flex-wrap gap-2.5 pt-3">
           {genres.map((g) => (
             <Link
               key={g.id}

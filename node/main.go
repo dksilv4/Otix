@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	Version   = "0.0.1"
-	BuildTime = "2026-09-26"
+	Version   = "0.1.0"
+	BuildTime = "2026-10-04"
 )
 
 func openBrowser(targetURL string) {

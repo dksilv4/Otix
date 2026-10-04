@@ -52,6 +52,7 @@ var (
 		regexp.MustCompile(`(?i)\bdlc\b`),
 		regexp.MustCompile(`(?i)\bincl\b`),
 		regexp.MustCompile(`(?i)\bgog\b`),
+		regexp.MustCompile(`(?i)\bdelusion\b`),
 		regexp.MustCompile(`(?i)\bcrack\b`),
 	}
 
@@ -59,18 +60,22 @@ var (
 		"repack": true, "codex": true, "crack": true, "gog": true,
 		"elamigos": true, "dodi": true, "fitgirl": true, "skidrow": true,
 		"flt": true, "update": true, "patch": true, "dlc": true,
-		"iso": true, "setup": true, "rune": true, "tenoke": true,
+		"iso": true, "setup": true, "rune": true, "tenoke": true, "delusion": true,
 	}
 )
 
 func CleanGameTitle(filename string) string {
 	name := filename
-	// Strip file extensions
-	name = strings.TrimSuffix(name, filepath.Ext(name))
+	// Strip file extensions if recognized
+	ext := strings.ToLower(filepath.Ext(name))
+	switch ext {
+	case ".iso", ".bin", ".cue", ".img", ".zip", ".rar", ".7z", ".exe":
+		name = strings.TrimSuffix(name, filepath.Ext(name))
+	}
 
 	// Strip version patterns
-	vStrip := regexp.MustCompile(`(?i)(^|[^a-zA-Z0-9])v\d+(?:\.\d+)+(?:[a-zA-Z]\d*)?(?![a-zA-Z0-9])`)
-	name = vStrip.ReplaceAllString(name, "$1")
+	vStrip := regexp.MustCompile(`(?i)(?:^|[\s._-])v\d+(?:\.\d+)+(?:[a-zA-Z]\d*)?(?:[\s._-]|$)`)
+	name = vStrip.ReplaceAllString(name, " ")
 
 	// Convert dots, underscores, hyphens to spaces
 	name = strings.ReplaceAll(name, ".", " ")
@@ -118,6 +123,7 @@ func ExtractGroup(raw string) string {
 }
 
 func ParseReleaseName(rawName string) ParsedRelease {
+	baseName := strings.TrimSuffix(rawName, filepath.Ext(rawName))
 	clean := CleanGameTitle(rawName)
 	res := ParsedRelease{
 		CleanTitle: clean,
@@ -141,7 +147,7 @@ func ParseReleaseName(rawName string) ParsedRelease {
 	}
 
 	// Strategy 1: Scene format match
-	if m := sceneRegex.FindStringSubmatch(rawName); len(m) > 4 {
+	if m := sceneRegex.FindStringSubmatch(baseName); len(m) > 4 {
 		title := strings.ReplaceAll(m[1], ".", " ")
 		title = strings.ReplaceAll(title, "_", " ")
 		res.Title = CleanGameTitle(title)
@@ -157,7 +163,7 @@ func ParseReleaseName(rawName string) ParsedRelease {
 	}
 
 	// Strategy 2: Repack format match
-	if m := repackRegex.FindStringSubmatch(rawName); len(m) > 3 {
+	if m := repackRegex.FindStringSubmatch(baseName); len(m) > 3 {
 		res.Title = CleanGameTitle(m[1])
 		if res.Title == "" {
 			res.Title = clean
@@ -169,7 +175,7 @@ func ParseReleaseName(rawName string) ParsedRelease {
 
 	// Fallback generic
 	res.Title = clean
-	res.ReleaseGroup = ExtractGroup(rawName)
+	res.ReleaseGroup = ExtractGroup(baseName)
 	return res
 }
 

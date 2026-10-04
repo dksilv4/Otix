@@ -34,6 +34,8 @@ class FreeGameMatch:
     poster_url: str | None
     title: str | None
     external_id: str
+    item_type: str = "game"
+    base_game_title: str | None = None
 
 
 def _media_content_type() -> ContentType:
@@ -60,7 +62,19 @@ def _find_media(provider: str, external_id: str) -> MediaItem | None:
 def _match_one(matcher: GameMatcher, ref: dict) -> FreeGameMatch:
     store = ref.get("store") or ""
     external_id = ref.get("external_id") or ""
-    media = _find_media(store, external_id)
+    item_type = ref.get("item_type") or "game"
+    base_game_title = ref.get("base_game_title")
+    is_dlc_or_pack = item_type in ("dlc", "pack", "bundle")
+
+    media: MediaItem | None = None
+    if is_dlc_or_pack and base_game_title:
+        media = MediaItem.objects.filter(
+            media_type="game",
+            title__iexact=base_game_title.strip(),
+        ).first()
+
+    if media is None:
+        media = _find_media(store, external_id)
 
     # The aggregator sends "namespace:offerId" for Epic; earlier seeds store the
     # bare offerId.
@@ -70,7 +84,7 @@ def _match_one(matcher: GameMatcher, ref: dict) -> FreeGameMatch:
 
     # Unmatched Epic free game with a title → hydrate into the catalog from
     # IGDB so it lands in the user's library with artwork.
-    if media is None and store == "epic" and ref.get("title"):
+    if media is None and store == "epic" and ref.get("title") and not is_dlc_or_pack:
         try:
             media_id = matcher.hydrate_free_game(
                 title=ref["title"],
@@ -93,6 +107,8 @@ def _match_one(matcher: GameMatcher, ref: dict) -> FreeGameMatch:
         poster_url=ref.get("poster_url"),
         title=ref.get("title"),
         external_id=external_id,
+        item_type=item_type,
+        base_game_title=base_game_title,
     )
 
 

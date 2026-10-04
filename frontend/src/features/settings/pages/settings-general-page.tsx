@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { DkDropdown, type DkDropdownOption } from '@ui/atoms/dropdown'
 import { DkButton } from '@ui/atoms/button'
+import { DkSwitch } from '@ui/atoms/switch'
 import { DkDialog } from '@ui/molecules/dialog'
 import { Trash2, CheckCircle2, Sparkles, RotateCcw, Ban } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
+import { useSteamFreePacksSetting, STEAM_FREE_PACKS_STORAGE_KEY } from '../hooks/use-steam-free-packs-setting'
 import { isDesktop } from '@/lib/desktop/api'
 import { useAuth } from '@auth/hooks/use-auth'
 import { apiClient } from '@/lib/api/client'
@@ -44,6 +46,7 @@ function formatResetAt(value: string | null | undefined): string | null {
 
 export function SettingsGeneralPage() {
   const [defaultPage, setDefaultPage] = useState(readDefaultPage)
+  const [showSteamPacks, setShowSteamPacks] = useSteamFreePacksSetting()
   const [cleared, setCleared] = useState(false)
   const [confirmTasteReset, setConfirmTasteReset] = useState(false)
   const [tasteResetting, setTasteResetting] = useState(false)
@@ -75,6 +78,7 @@ export function SettingsGeneralPage() {
         'otix-accent-customs',
         'otix:default-landing-page',
         'otix:launcher-theme',
+        STEAM_FREE_PACKS_STORAGE_KEY,
       ])
       const keysToRemove: string[] = []
       for (let i = 0; i < localStorage.length; i++) {
@@ -129,6 +133,20 @@ export function SettingsGeneralPage() {
               value={defaultPage}
               onChange={(v) => setDefaultPage(v)}
               className="w-44"
+            />
+          }
+        />
+      </SettingsCard>
+
+      {/* Free Steam Packs & DLC */}
+      <SettingsCard>
+        <SectionHeader
+          title="Show Free Steam Packs & DLC"
+          description="Include promotional packs, DLCs, and bundles from Steam in Discover rails. Free packs for games you view will always appear on their game detail page."
+          action={
+            <DkSwitch
+              checked={showSteamPacks}
+              onCheckedChange={setShowSteamPacks}
             />
           }
         />

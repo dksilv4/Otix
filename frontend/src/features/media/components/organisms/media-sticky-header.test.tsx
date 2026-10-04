@@ -25,14 +25,6 @@ vi.mock('@/features/interaction/interaction-queries', () => ({
   useUserInteractions: () => ({ data: { liked: true, watchlisted: false, watched: true } }),
 }))
 
-vi.mock('@/features/media/hooks/use-media-detail-plugin-actions', () => ({
-  useMediaDetailPluginActions: () => ({
-    playWidgets: [],
-    requesting: false,
-    handleRequest: vi.fn(),
-    handlePlay: vi.fn(),
-  }),
-}))
 
 vi.mock('@/features/navigation', () => ({
   useNavPillsVisibility: () => ({ showLeft: true, showRight: true, setOverride: vi.fn() }),
@@ -40,6 +32,17 @@ vi.mock('@/features/navigation', () => ({
 
 vi.mock('@list', () => ({
   AddToListButton: () => <button aria-label="Add to list">List</button>,
+}))
+
+vi.mock('@/features/media/game/hooks/use-game-free-promotions', () => ({
+  useGameFreePromotions: () => ({
+    promotions: [],
+    activePromotion: null,
+    upcomingPromotion: null,
+    isFreeNow: false,
+    hasPromotion: false,
+    isLoading: false,
+  }),
 }))
 
 const mockDetail: MediaItemDetail = {

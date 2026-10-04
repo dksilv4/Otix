@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Calendar, Clock, Star, Gamepad2, Info, ChevronRight } from "lucide-react"
+import { Clock, Star } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { LauncherActionButtons } from "../common/launcher-action-buttons"
 import { PLATFORM_LABELS } from "@/constants/games"

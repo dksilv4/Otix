@@ -26,7 +26,7 @@ import type {
 function cleanTitle(raw: string): string {
   return raw
     .replace(/\.iso$/i, '')
-    .replace(/[._\-]/g, ' ')
+    .replace(/[._-]/g, ' ')
     .replace(/\b(repack|elamigos|fitgirl|dodi|codex|flt|plaza|skidrow|rune|tenoke|goldberg|razor1911|fairlight|hoodlum|hbg|multi\d*|voices\d*)\b/gi, '')
     .replace(/\[.*?\]/g, '')
     .replace(/\(.*?\)/g, '')
@@ -48,10 +48,12 @@ const PHASE_LABELS: Record<InstallPhase, string> = {
 
 /** Suggest a default install directory — prefer configured games installation folder, then first game library folder, fall back to ISO dir. */
 function suggestInstallDir(isoPath: string, gameTitle: string): string {
-  let base = '';
+  let base: string;
   try {
     base = localStorage.getItem('otix:games-install-dir') || '';
-  } catch {}
+  } catch {
+    base = '';
+  }
   if (!base) {
     const dirs = getScanPaths();
     base = dirs.length > 0 ? dirs[0] : isoPath.replace(/[/\\][^/\\]+$/, "");

@@ -24,7 +24,7 @@ import type { LocalGame } from "@/features/launcher/types"
 export function PlayStationLauncherView() {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const isDesktop = hasDesktopAPI()
+  const _isDesktop = hasDesktopAPI()
   const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
   const { runningGame } = useRunningGame()
@@ -92,7 +92,7 @@ export function PlayStationLauncherView() {
         description: `Launching ${game.title}...`,
         variant: "success",
       })
-    } catch (err) {
+    } catch {
       toast({
         title: "Launch Failed",
         description: "Could not launch game executable.",

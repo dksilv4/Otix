@@ -13,11 +13,13 @@ import {
   Heart,
   Bookmark,
   CheckCircle2,
+  Gift,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@auth/hooks/use-auth'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { useModal } from '@/lib/modals'
+import { useGameFreePromotions } from '@media/game/hooks/use-game-free-promotions'
 import { TrailerVideoModal } from '@/features/discover/components/molecules/trailer-video-modal'
 import {
   backdropSrc,
@@ -54,6 +56,7 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
   const closeTrailerRef = useRef<(() => void) | null>(null)
 
   const { data: detail } = useQuery(mediaQueries.detail(mediaType, mediaId))
+  const { activePromotion } = useGameFreePromotions(detail)
 
   const activeMediaId = detail?.id ? String(detail.id) : (detail?.slug || mediaId)
 
@@ -259,6 +262,16 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
                 </Badge>
               )}
 
+              {activePromotion && (
+                <Badge
+                  variant="secondary"
+                  className="bg-emerald-500/15 text-emerald-400 gap-1.5 font-medium border-0"
+                >
+                  <Gift className="h-3 w-3 text-emerald-400" />
+                  Free on {activePromotion.storeName}
+                </Badge>
+              )}
+
               {year && (
                 <Badge variant="secondary" className={`${GLASS_PILL} gap-1`}>
                   <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -321,10 +334,10 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
                   type="button"
                   onClick={openTrailer}
                   className={cn(
-                    'group relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all hover:scale-105 active:scale-95 shadow-lg backdrop-blur-xl',
+                    'group relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md backdrop-blur-xl',
                     trailerIsPrimary
-                      ? 'bg-rose-600/90 hover:bg-rose-600 text-white shadow-rose-600/30 ring-1 ring-rose-400/40'
-                      : 'bg-white/[0.10] hover:bg-white/[0.16] text-white/90 hover:text-white border border-white/10 hover:border-white/20',
+                      ? 'bg-rose-600/90 hover:bg-rose-600 text-white shadow-rose-600/30'
+                      : 'bg-white/[0.10] hover:bg-white/[0.16] text-white/90 hover:text-white',
                   )}
                   title="Watch Trailer"
                   aria-label="Watch Trailer"

@@ -8,9 +8,6 @@ import {
   HardDrive,
   Settings,
   Sparkles,
-  Square,
-  Play,
-  Check,
   ArrowLeft,
 } from "lucide-react"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
@@ -41,7 +38,7 @@ export function ModernHeader({
   setActiveTab,
   searchQuery,
   setSearchQuery,
-  onOpenScan,
+  onOpenScan: _onOpenScan,
 }: ModernHeaderProps) {
   const navigate = useNavigate()
   const isDesktop = hasDesktopAPI()

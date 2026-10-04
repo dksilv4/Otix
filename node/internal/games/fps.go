@@ -80,8 +80,9 @@ type PresentMonCollector struct {
 // NewPresentMonCollector creates a collector instance.
 func NewPresentMonCollector(customBinDir string) *PresentMonCollector {
 	return &PresentMonCollector{
-		customBinDir: customBinDir,
-		subscribers:  make(map[chan LiveFpsSnapshot]struct{}),
+		customBinDir:     customBinDir,
+		cachedForeground: true,
+		subscribers:      make(map[chan LiveFpsSnapshot]struct{}),
 	}
 }
 

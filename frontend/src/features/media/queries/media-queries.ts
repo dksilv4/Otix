@@ -64,12 +64,29 @@ export interface MediaAssetOut {
   provider?: string | null
 }
 
+export interface FreePromotionItem {
+  id: string
+  store: string
+  storeName: string
+  title?: string
+  description?: string | null
+  originalPrice?: string | null
+  discountPercentage?: number
+  isFreeNow: boolean
+  startDate?: string | null
+  endDate?: string | null
+  claimUrl?: string | null
+  itemType?: string | null
+  baseGameTitle?: string | null
+}
+
 export interface MediaItemDetail {
   id: string
   mediaType: string
   title: string
   slug: string
   overview: string | null
+  freePromotions?: FreePromotionItem[]
   posterUrl: string | null
   textlessPosterUrl: string | null
   backdropUrl: string | null

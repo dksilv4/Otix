@@ -155,6 +155,9 @@ export interface FreeGameItem {
   externalId?: string | null
   matched?: boolean
   mediaItem?: MediaItemSummary | null
+  itemType?: string | null
+  baseGameTitle?: string | null
+  baseGameId?: string | null
 }
 
 export interface FreeGamesResponse {

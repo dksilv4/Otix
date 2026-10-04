@@ -5,9 +5,7 @@ import {
   Play,
   Settings,
   Sliders,
-  Sparkles,
   ArrowLeft,
-  Volume2,
   Gamepad2,
   Power,
   Search,
@@ -24,7 +22,7 @@ import type { LocalGame } from "@/features/launcher/types"
 export function SwitchLauncherView() {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const isDesktop = hasDesktopAPI()
+  const _isDesktop = hasDesktopAPI()
   const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
   const { runningGame } = useRunningGame()

@@ -202,6 +202,74 @@ class SteamFreeGamesProviderTests(TestCase):
         self.assertNotIn("570", by_id)  # 50% off excluded
 
     @patch("apps.freegames.services.providers.steam.httpx.Client")
+    def test_fetch_free_games_parses_dlc_and_subs(self, mock_client_cls):
+        search_html = """
+        <html><body>
+        <a href="https://store.steampowered.com/app/2000000" data-ds-appid="2000000" data-discount="100">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/2000000/capsule_184x69.jpg">
+          <span class="title">Rotwood: Drakin Armoury Pack</span>
+          <div class="discount_original_price">$4.99</div>
+          <div class="discount_pct">-100%</div>
+        </a>
+        <a href="https://store.steampowered.com/sub/987654" data-ds-packageid="987654" data-discount="100">
+          <img src="https://cdn.akamai.steamstatic.com/steam/subs/987654/capsule_184x69.jpg">
+          <span class="title">Special Bonus Pack</span>
+          <div class="discount_original_price">$9.99</div>
+          <div class="discount_pct">-100%</div>
+        </a>
+        </body></html>
+        """
+        mock_client = MagicMock()
+        mock_search_resp = MagicMock()
+        mock_search_resp.text = search_html
+        mock_search_resp.status_code = 200
+        mock_search_resp.raise_for_status = MagicMock()
+
+        mock_appdetails_resp = MagicMock()
+        mock_appdetails_resp.status_code = 200
+        mock_appdetails_resp.json.return_value = {
+            "2000000": {
+                "success": True,
+                "data": {
+                    "type": "dlc",
+                    "fullgame": {
+                        "appid": 1801200,
+                        "name": "Rotwood",
+                    },
+                    "header_image": "https://cdn.akamai.steamstatic.com/steam/apps/2000000/header.jpg",
+                },
+            }
+        }
+
+        def fake_get(url, *args, **kwargs):
+            if "appdetails" in url:
+                return mock_appdetails_resp
+            return mock_search_resp
+
+        mock_client.get.side_effect = fake_get
+        mock_client.__enter__.return_value = mock_client
+        mock_client_cls.return_value = mock_client
+
+        provider = SteamFreeGamesProvider(max_pages=1)
+        items = provider.fetch_free_games()
+
+        self.assertEqual(len(items), 2)
+        by_id = {item.external_id: item for item in items}
+
+        dlc_item = by_id["2000000"]
+        self.assertEqual(dlc_item.title, "Rotwood: Drakin Armoury Pack")
+        self.assertEqual(dlc_item.item_type, "pack")
+        self.assertEqual(dlc_item.base_game_title, "Rotwood")
+        self.assertEqual(dlc_item.base_game_id, "1801200")
+        self.assertEqual(dlc_item.poster_url, "https://cdn.akamai.steamstatic.com/steam/apps/2000000/header.jpg")
+        self.assertEqual(dlc_item.claim_url, "https://store.steampowered.com/app/2000000")
+
+        sub_item = by_id["987654"]
+        self.assertEqual(sub_item.title, "Special Bonus Pack")
+        self.assertEqual(sub_item.item_type, "pack")
+        self.assertEqual(sub_item.claim_url, "https://store.steampowered.com/sub/987654")
+
+    @patch("apps.freegames.services.providers.steam.httpx.Client")
     def test_fetch_free_games_handles_network_failure(self, mock_client_cls):
         mock_client = MagicMock()
         mock_client.get.side_effect = Exception("Connection timed out")
@@ -466,11 +534,74 @@ class FreeGamesAggregatorTests(TestCase):
 
         aggregator = FreeGamesAggregator(providers=[UnknownProvider()])
         res = aggregator.get_free_games(use_cache=False)
-
         self.assertEqual(len(res["current"]), 1)
         item = res["current"][0]
         self.assertFalse(item["matched"])
         self.assertIsNone(item["media_item"])
+
+    @patch("apps.media.services.igdb.configured", return_value=True)
+    @patch("apps.media.services.igdb.IGDBProvider")
+    def test_aggregator_preserves_dlc_pack_title_and_links_base_game(
+        self, mock_igdb_provider_cls, _configured
+    ):
+        mock_provider = MagicMock()
+        mock_igdb_provider_cls.return_value = mock_provider
+        mock_provider.lookup_steam_app_ids.return_value = {2015270: 999}
+        mock_provider.get_game.return_value = {
+            "id": 999,
+            "name": "Rotwood",
+            "slug": "rotwood",
+            "summary": "Hack and slash through corrupted forests.",
+            "first_release_date": 1714000000,
+            "cover": {"image_id": "rotwood_cov"},
+        }
+
+        class SteamDLCProvider(BaseFreeGamesProvider):
+            @property
+            def store_id(self) -> str:
+                return "steam"
+
+            @property
+            def store_name(self) -> str:
+                return "Steam"
+
+            def fetch_free_games(self) -> list[FreeGameItem]:
+                return [
+                    FreeGameItem(
+                        id="steam:5067220",
+                        store="steam",
+                        store_name="Steam",
+                        title="Rotwood: Drakin Armoury Pack",
+                        is_free_now=True,
+                        external_id="5067220",
+                        original_price="$4.99",
+                        claim_url="https://store.steampowered.com/app/5067220",
+                        poster_url="https://shared.fastly.steamstatic.com/dlc_header.jpg",
+                        item_type="pack",
+                        base_game_title="Rotwood",
+                        base_game_id="2015270",
+                    )
+                ]
+
+        aggregator = FreeGamesAggregator(providers=[SteamDLCProvider()])
+        res = aggregator.get_free_games(use_cache=False)
+
+        self.assertEqual(len(res["current"]), 1)
+        item = res["current"][0]
+        # Title MUST NOT be replaced with the base game title!
+        self.assertEqual(item["title"], "Rotwood: Drakin Armoury Pack")
+        self.assertEqual(item["item_type"], "pack")
+        self.assertEqual(item["base_game_title"], "Rotwood")
+        self.assertEqual(item["poster_url"], "https://shared.fastly.steamstatic.com/dlc_header.jpg")
+        self.assertTrue(item["matched"])
+        self.assertEqual(item["media_item"]["title"], "Rotwood")
+
+        # Test promotions lookup on base game media item
+        rotwood_media = MediaItem.objects.get(pk=item["media_item"]["id"])
+        promos = aggregator.get_promotions_for_media_item(rotwood_media)
+        self.assertEqual(len(promos), 1)
+        self.assertEqual(promos[0]["title"], "Rotwood: Drakin Armoury Pack")
+        self.assertEqual(promos[0]["item_type"], "pack")
 
 
 class FreeGamesApiTests(TestCase):

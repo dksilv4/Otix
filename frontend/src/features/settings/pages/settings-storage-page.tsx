@@ -23,7 +23,6 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react'
-import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { DkButton } from '@ui/atoms/button'
 import {
   PlexStorageOptimizerModal,

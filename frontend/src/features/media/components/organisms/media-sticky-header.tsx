@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bookmark, CheckCircle2, Film, Heart, Star } from 'lucide-react'
+import { Bookmark, CheckCircle2, Film, Heart, Star, Gift, ExternalLink } from 'lucide-react'
 import { useAuth } from '@auth/hooks/use-auth'
 import { useModal } from '@/lib/modals'
+import { openSessionWindow } from '@/lib/utils/open-external'
+import { showToast } from '@ui/molecules/toast'
+import { useGameFreePromotions } from '@media/game/hooks/use-game-free-promotions'
 import { TrailerVideoModal } from '@/features/discover/components/molecules/trailer-video-modal'
 import { useToggleInteraction, useUserInteractions } from '@/features/interaction/interaction-queries'
 import { showXPToast } from '@ui/atoms/xp-toast'
@@ -37,6 +40,7 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
     enabled: isAuthenticated,
   })
   const toggleInteraction = useToggleInteraction(mediaType, detail.id)
+  const { activePromotion } = useGameFreePromotions(detail)
 
   // Scroll listener
   useEffect(() => {
@@ -198,10 +202,31 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
         {/* Otix Score badge */}
         {detail.overallRating != null && (
-          <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[11px] font-bold border border-primary/20 shrink-0">
+          <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[11px] font-bold shrink-0">
             <Star className="h-3 w-3 fill-current" />
             <span>{Math.round(detail.overallRating)}%</span>
           </div>
+        )}
+
+        {/* Free Giveaway Claim Action */}
+        {activePromotion && activePromotion.claimUrl && (
+          <button
+            type="button"
+            onClick={() => {
+              openSessionWindow(activePromotion.claimUrl!)
+              showToast({
+                title: 'Opening Store Page',
+                description: `Claiming free copy on ${activePromotion.storeName}.`,
+                variant: 'info',
+              })
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black active:scale-95 px-3 py-1 text-[11px] sm:text-xs font-semibold shadow-md shadow-emerald-500/20 transition-all shrink-0"
+            title={`Claim Free on ${activePromotion.storeName}`}
+          >
+            <Gift className="h-3.5 w-3.5 shrink-0" />
+            <span>Free on {activePromotion.storeName}</span>
+            <ExternalLink className="h-3 w-3 opacity-70 shrink-0" />
+          </button>
         )}
 
         {/* Secondary Action: Trailer */}
@@ -209,7 +234,7 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
           <button
             type="button"
             onClick={openTrailer}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 hover:border-white/20 active:scale-95 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold text-white/90 shadow-sm transition-all shrink-0 group/trailer"
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.14] active:scale-95 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold text-white/90 shadow-sm transition-all shrink-0 group/trailer"
             title="Watch Trailer"
           >
             <Film className="h-3 w-3 text-rose-400 group-hover/trailer:scale-110 transition-transform shrink-0" />
@@ -225,8 +250,8 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
             className={cn(
               'inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs font-medium transition-all shrink-0 active:scale-95',
               isWatchlisted
-                ? 'bg-sky-500/25 text-sky-300 ring-1 ring-sky-500/40'
-                : 'bg-white/[0.06] hover:bg-white/[0.12] text-foreground border border-white/[0.06]',
+                ? 'bg-sky-500/25 text-sky-300'
+                : 'bg-white/[0.06] hover:bg-white/[0.12] text-foreground',
             )}
             title={isWatchlisted ? `In ${watchlistLabel}` : `Add to ${watchlistLabel}`}
           >
@@ -245,8 +270,8 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
             className={cn(
               'inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs font-medium transition-all shrink-0 active:scale-95',
               isWatched
-                ? 'bg-emerald-500/25 text-emerald-300 ring-1 ring-emerald-500/40'
-                : 'bg-white/[0.06] hover:bg-white/[0.12] text-foreground border border-white/[0.06]',
+                ? 'bg-emerald-500/25 text-emerald-300'
+                : 'bg-white/[0.06] hover:bg-white/[0.12] text-foreground',
             )}
             title={isWatched ? `Marked as ${watchedLabel}` : `Mark ${watchedLabel}`}
           >
@@ -265,8 +290,8 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
             className={cn(
               'inline-flex items-center justify-center rounded-full p-1.5 text-xs transition-all shrink-0 active:scale-95',
               isLiked
-                ? 'bg-rose-500/25 text-rose-400 ring-1 ring-rose-500/40'
-                : 'bg-white/[0.06] hover:bg-white/[0.12] text-muted-foreground hover:text-foreground border border-white/[0.06]',
+                ? 'bg-rose-500/25 text-rose-400'
+                : 'bg-white/[0.06] hover:bg-white/[0.12] text-muted-foreground hover:text-foreground',
             )}
             title={isLiked ? 'Liked' : 'Like'}
           >

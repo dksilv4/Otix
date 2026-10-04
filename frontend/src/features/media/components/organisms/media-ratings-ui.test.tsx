@@ -45,10 +45,23 @@ describe('WhereToWatchV4 visibility', () => {
     expect(screen.getByText('Where to Watch')).toBeInTheDocument()
     expect(screen.getByText('Netflix')).toBeInTheDocument()
   })
+
+  it('returns null when mediaType is "game" even if providers exist', () => {
+    const validProviders = [
+      {
+        id: '1',
+        watchProvider: { id: 10, name: 'Plex', slug: 'plex', logoUrl: '/plex.png' },
+        offeringType: 'personal',
+      },
+    ] as unknown as any[]
+
+    const { container } = render(<WhereToWatchV4 watchProviders={validProviders} mediaType="game" />)
+    expect(container.firstChild).toBeNull()
+  })
 })
 
 describe('MediaStorylineV4 genre spacing & sparse data', () => {
-  it('renders genre chips with generous border spacing classes', () => {
+  it('renders genre chips with generous spacing without outline borders', () => {
     const detail = {
       id: 'movie-1',
       title: 'Test Movie',
@@ -60,11 +73,7 @@ describe('MediaStorylineV4 genre spacing & sparse data', () => {
       credits: null,
     } as unknown as MediaItemDetail
 
-    const { container } = render(<MediaStorylineV4 detail={detail} mediaType="movie" />)
-    const genreContainer = container.querySelector('.border-t.border-white\\/\\[0\\.08\\]')
-    expect(genreContainer).not.toBeNull()
-    expect(genreContainer?.className).toContain('pt-5')
-    expect(genreContainer?.className).toContain('mt-4')
+    render(<MediaStorylineV4 detail={detail} mediaType="movie" />)
     expect(screen.getByText('Action')).toBeInTheDocument()
     expect(screen.getByText('Sci-Fi')).toBeInTheDocument()
   })

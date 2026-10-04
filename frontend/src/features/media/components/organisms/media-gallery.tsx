@@ -112,7 +112,7 @@ export function MediaGallery({
         {/* Tab Pills & Scroll Arrows */}
         <div className="flex items-center gap-3">
           {showTabs && (
-            <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1 border border-white/[0.08]">
+            <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
               <button
                 type="button"
                 onClick={() => setActiveTab('all')}
@@ -159,7 +159,7 @@ export function MediaGallery({
               onClick={() => scrollBy(-320)}
               disabled={!canScrollLeft}
               className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
+                'flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
                 !canScrollLeft && 'opacity-30 pointer-events-none',
               )}
               aria-label="Scroll media left"
@@ -171,7 +171,7 @@ export function MediaGallery({
               onClick={() => scrollBy(320)}
               disabled={!canScrollRight}
               className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
+                'flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
                 !canScrollRight && 'opacity-30 pointer-events-none',
               )}
               aria-label="Scroll media right"
@@ -196,7 +196,7 @@ export function MediaGallery({
               <div
                 key={video.youtubeId}
                 onClick={() => handleOpenVideo(video.youtubeId, video.videoType)}
-                className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-white/25 hover:shadow-lg [scroll-snap-align:start]"
+                className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg [scroll-snap-align:start]"
               >
                 <img
                   src={thumbUrl}
@@ -208,14 +208,14 @@ export function MediaGallery({
 
                 {/* Center Play Button */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/50 text-foreground backdrop-blur-md transition-all duration-200 group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-foreground backdrop-blur-md transition-all duration-200 group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground">
                     <Play className="h-4 w-4 fill-current ml-0.5" />
                   </div>
                 </div>
 
                 {/* Bottom Badge */}
                 <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                  <span className="rounded-md border border-white/15 bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-foreground backdrop-blur-md shadow-sm">
+                  <span className="rounded-md bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-foreground backdrop-blur-md shadow-sm">
                     {label}
                   </span>
                 </div>
@@ -229,7 +229,7 @@ export function MediaGallery({
             <div
               key={shot.id || shot.url}
               onClick={() => handleOpenScreenshot(idx)}
-              className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-white/25 hover:shadow-lg [scroll-snap-align:start]"
+              className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg [scroll-snap-align:start]"
             >
               <img
                 src={shot.url}
@@ -241,7 +241,7 @@ export function MediaGallery({
 
               {/* Hover Zoom Icon */}
               <div className="absolute bottom-2.5 right-2.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/20 bg-black/60 text-foreground backdrop-blur-md shadow-sm">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-black/60 text-foreground backdrop-blur-md shadow-sm">
                   <Maximize2 className="h-3.5 w-3.5" />
                 </span>
               </div>

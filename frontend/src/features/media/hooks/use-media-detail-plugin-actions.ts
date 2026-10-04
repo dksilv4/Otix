@@ -44,6 +44,14 @@ export function useMediaDetailPluginActions(
   const [requesting, setRequesting] = useState<string | null>(null)
 
   const loadSlots = useCallback(async () => {
+    // Games must never query video media plugins or backend Plex servers
+    if (mediaType === 'game') {
+      setWidgets([])
+      setPlayWidgets([])
+      setLoading(false)
+      return
+    }
+
     const api = getPluginApi()
     const requestWidgets: RequestWidget[] = []
     const playList: PlayWidget[] = []

@@ -50,7 +50,7 @@ export function RatingsHub({
   overallRatingSource,
   avgRating,
   ratingCount,
-  tmdbId,
+  tmdbId: _tmdbId,
   imdbId,
   className = '',
 }: RatingsHubProps) {
@@ -116,9 +116,6 @@ export function RatingsHub({
     )
   }
 
-  const tmdbUrl = tmdbId
-    ? `https://www.themoviedb.org/${mediaType === 'show' ? 'tv' : 'movie'}/${tmdbId}`
-    : null
   const imdbUrl = imdbId ? `https://www.imdb.com/title/${imdbId}` : null
 
   const activeDisplayScore = hoverRating ?? userScore
@@ -140,7 +137,7 @@ export function RatingsHub({
                 href={imdbUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-2 py-0.5 rounded-md bg-[#f5c518]/15 text-[#f5c518] hover:bg-[#f5c518]/25 text-[10px] font-bold tracking-wider transition-colors inline-flex items-center gap-1 border border-[#f5c518]/20"
+                className="px-2 py-0.5 rounded-md bg-[#f5c518]/15 text-[#f5c518] hover:bg-[#f5c518]/25 text-[10px] font-bold tracking-wider transition-colors inline-flex items-center gap-1"
                 title="View on IMDb"
               >
                 IMDb
@@ -155,10 +152,9 @@ export function RatingsHub({
           <div className="flex items-center gap-3.5">
             <div
               className={cn(
-                'flex h-13 w-13 shrink-0 flex-col items-center justify-center rounded-xl font-black ring-1 transition-all',
+                'flex h-13 w-13 shrink-0 flex-col items-center justify-center rounded-xl font-black transition-all',
                 colors.bg,
                 colors.text,
-                colors.ring,
                 colors.glow,
               )}
             >
@@ -184,7 +180,7 @@ export function RatingsHub({
       </div>
 
       {/* ── 5-Star Rating Block with Half-Star Support ── */}
-      <div className="border-t border-white/[0.06] pt-3.5 space-y-2.5">
+      <div className="pt-2 space-y-2.5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Your Rating
@@ -264,7 +260,7 @@ export function RatingsHub({
             {/* Centered Rating Preview directly beneath the stars */}
             <div className="flex items-center justify-center min-h-[24px]">
               {activeDisplayScore != null && activeDisplayScore > 0 ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/25 text-xs font-semibold text-amber-400 animate-fade-in">
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/10 text-xs font-semibold text-amber-400 animate-fade-in">
                   <span>
                     {(activeDisplayScore / 2).toFixed(activeDisplayScore % 2 === 0 ? 0 : 1)} / 5 ★
                   </span>
@@ -295,7 +291,7 @@ export function RatingsHub({
 
       {/* ── Separate Dedicated Section to Write a Review ── */}
       {isAuthenticated && (
-        <div className="border-t border-white/[0.06] pt-3.5 space-y-2.5">
+        <div className="pt-2 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Review
@@ -314,7 +310,7 @@ export function RatingsHub({
           {review?.content ? (
             <div
               onClick={handleOpenComposer}
-              className="glass-inset p-4 rounded-2xl space-y-2 cursor-pointer border border-white/[0.06] hover:border-primary/40 hover:bg-white/[0.05] transition-all group"
+              className="glass-inset p-4 rounded-2xl space-y-2 cursor-pointer hover:bg-white/[0.05] transition-all group"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
@@ -336,11 +332,11 @@ export function RatingsHub({
             <button
               type="button"
               onClick={handleOpenComposer}
-              className="w-full text-left relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-transparent p-4 transition-all duration-200 hover:border-primary/50 hover:from-primary/[0.08] hover:to-transparent hover:shadow-lg hover:shadow-primary/5 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="w-full text-left relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-transparent p-4 transition-all duration-200 hover:from-primary/[0.08] hover:to-transparent hover:shadow-lg hover:shadow-primary/5 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 transition-all duration-300 group-hover:scale-105 group-hover:bg-primary/20">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-all duration-300 group-hover:scale-105 group-hover:bg-primary/20">
                     <Sparkles className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">

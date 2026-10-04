@@ -9,6 +9,10 @@ export function useAuth(): AuthState {
   return ctx
 }
 
+export function useOptionalAuth(): AuthState | null {
+  return useContext(AuthContext)
+}
+
 /** True while a session token is being verified or a user is already loaded. */
 export function useHasSession(): boolean {
   const { isAuthenticated, isLoading } = useAuth()

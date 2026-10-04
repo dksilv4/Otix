@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Tv, ExternalLink, Play, Sparkles } from 'lucide-react'
+import { Tv, ExternalLink, Play } from 'lucide-react'
 import type { MediaWatchProvider } from '@media'
 import { API_BASE_URL } from '@/lib/config'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 interface WhereToWatchProps {
   watchProviders?: MediaWatchProvider[]
   className?: string
+  mediaType?: string
 }
 
 export type WhereToWatchV4Props = WhereToWatchProps
@@ -19,19 +20,19 @@ const COMMERCIAL_MAP: Record<CommercialCategory, { label: string; types: string[
     label: 'Stream',
     types: ['flatrate', 'free', 'ads'],
     color: 'text-emerald-400',
-    badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+    badge: 'bg-emerald-500/15 text-emerald-400',
   },
   rent: {
     label: 'Rent',
     types: ['rent'],
     color: 'text-amber-400',
-    badge: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+    badge: 'bg-amber-500/15 text-amber-400',
   },
   buy: {
     label: 'Buy',
     types: ['buy'],
     color: 'text-sky-400',
-    badge: 'bg-sky-500/15 text-sky-400 border-sky-500/20',
+    badge: 'bg-sky-500/15 text-sky-400',
   },
 }
 
@@ -44,7 +45,14 @@ function resolveProviderUrl(url?: string | null): string | null {
   return url
 }
 
-export function WhereToWatch({ watchProviders = [], className = '' }: WhereToWatchProps) {
+export function WhereToWatch({ watchProviders = [], className = '', mediaType }: WhereToWatchProps) {
+  const [activeTab, setActiveTab] = useState<CommercialCategory>('stream')
+
+  // Games do not have "Where to Watch" or movie/show video streaming providers
+  if (mediaType === 'game') {
+    return null
+  }
+
   const validProviders = watchProviders.filter((p) => Boolean(p.watchProvider))
 
   // 1. Separate Personal Library providers (Plex / self-hosted)
@@ -69,15 +77,13 @@ export function WhereToWatch({ watchProviders = [], className = '' }: WhereToWat
     (c) => categorized[c] && categorized[c]!.length > 0,
   )
 
-  const [activeTab, setActiveTab] = useState<CommercialCategory>(
-    availableCategories[0] || 'stream',
-  )
+  const currentTab = availableCategories.includes(activeTab) ? activeTab : (availableCategories[0] || 'stream')
 
   if (validProviders.length === 0 || (availableCategories.length === 0 && personalProviders.length === 0)) {
     return null
   }
 
-  const currentProviders = categorized[activeTab] ?? []
+  const currentProviders = categorized[currentTab] ?? []
 
   return (
     <div className={`glass-card p-5 sm:p-6 space-y-4 ${className}`}>
@@ -95,7 +101,7 @@ export function WhereToWatch({ watchProviders = [], className = '' }: WhereToWat
           <div className="flex items-center gap-1 rounded-xl bg-white/[0.04] p-0.5">
             {availableCategories.map((cat) => {
               const count = categorized[cat]?.length ?? 0
-              const isActive = activeTab === cat
+              const isActive = currentTab === cat
               return (
                 <button
                   key={cat}
@@ -119,7 +125,7 @@ export function WhereToWatch({ watchProviders = [], className = '' }: WhereToWat
 
       {/* ── Spotlight: Personal Library Highlight Banner ── */}
       {personalProviders.length > 0 && (
-        <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-3.5 shadow-lg shadow-amber-500/5">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-3.5 shadow-lg shadow-amber-500/5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e5a00d] text-black shadow-md shrink-0">
@@ -165,7 +171,7 @@ export function WhereToWatch({ watchProviders = [], className = '' }: WhereToWat
                     <img
                       src={wp.logoUrl}
                       alt=""
-                      className="h-7 w-7 rounded-lg object-contain bg-black/30 shrink-0 ring-1 ring-white/10"
+                      className="h-7 w-7 rounded-lg object-contain bg-black/30 shrink-0"
                     />
                   ) : (
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.06] text-[10px] font-bold text-muted-foreground shrink-0">

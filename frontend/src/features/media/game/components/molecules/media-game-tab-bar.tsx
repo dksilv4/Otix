@@ -57,7 +57,7 @@ export function GameTabBar({ gameExternalId, activeTab, onTabChange, onTabsLoade
   if (loading || pluginTabs.length === 0) return null
 
   return (
-    <div className="flex items-center gap-1 border-b border-white/10 pb-1 mb-6">
+    <div className="flex items-center gap-1 pb-1 mb-6">
       <button
         onClick={() => onTabChange('info')}
         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${

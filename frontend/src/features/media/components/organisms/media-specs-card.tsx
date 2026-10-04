@@ -126,7 +126,7 @@ export function MediaSpecsCard({ detail, className = '' }: MediaSpecsCardProps) 
 
       {/* Production Companies */}
       {hasCompanies && (
-        <div className="border-t border-white/[0.06] pt-4 space-y-2.5">
+        <div className="pt-2 space-y-2.5">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Production
           </span>

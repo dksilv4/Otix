@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { motion } from "framer-motion"
 import {
   Play,
   Settings,
@@ -8,13 +7,7 @@ import {
   Search,
   ArrowLeft,
   Flame,
-  Clock,
-  Sparkles,
-  Gamepad2,
-  Bell,
-  Users,
   Layers,
-  ChevronRight,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
@@ -29,10 +22,10 @@ import type { LocalGame } from "@/features/launcher/types"
 export function ForgeLauncherView() {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const isDesktop = hasDesktopAPI()
+  const _isDesktop = hasDesktopAPI()
   const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
-  const { runningGame } = useRunningGame()
+  const { runningGame: _runningGame } = useRunningGame()
   const { toast } = useToast()
 
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)

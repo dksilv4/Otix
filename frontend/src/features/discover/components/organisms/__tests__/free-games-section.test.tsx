@@ -238,4 +238,93 @@ describe('FreeGamesSection', () => {
     const claimLink = screen.getByRole('link', { name: /claim on gog/i })
     expect(claimLink).toHaveAttribute('href', 'https://www.gog.com/en/game/bounty_train')
   })
+
+  it('hides Steam packs and DLC by default when setting is disabled', async () => {
+    localStorage.removeItem('otix:show-steam-free-packs')
+    mockGet.mockResolvedValueOnce({
+      data: {
+        current: [
+          {
+            id: 'steam:2000000',
+            store: 'steam',
+            storeName: 'Steam',
+            title: 'Rotwood: Drakin Armoury Pack',
+            itemType: 'pack',
+            baseGameTitle: 'Rotwood',
+            originalPrice: '$4.99',
+            isFreeNow: true,
+            claimUrl: 'https://store.steampowered.com/app/2000000',
+          },
+          {
+            id: 'epic:game1',
+            store: 'epic',
+            storeName: 'Epic Games Store',
+            title: 'Free Epic Game',
+            originalPrice: '$19.99',
+            isFreeNow: true,
+            claimUrl: 'https://store.epicgames.com/p/game1',
+          },
+        ],
+        upcoming: [],
+        total: 2,
+      },
+    })
+
+    renderWithClient(<FreeGamesSection />)
+
+    expect(await screen.findByText('Free Epic Game')).toBeInTheDocument()
+    expect(screen.queryByText('Rotwood: Drakin Armoury Pack')).not.toBeInTheDocument()
+  })
+
+  it('renders DLC and pack items when show-steam-free-packs setting is enabled', async () => {
+    localStorage.setItem('otix:show-steam-free-packs', 'true')
+    mockGet.mockResolvedValueOnce({
+      data: {
+        current: [
+          {
+            id: 'steam:2000000',
+            store: 'steam',
+            storeName: 'Steam',
+            title: 'Rotwood: Drakin Armoury Pack',
+            itemType: 'pack',
+            baseGameTitle: 'Rotwood',
+            originalPrice: '$4.99',
+            isFreeNow: true,
+            claimUrl: 'https://store.steampowered.com/app/2000000',
+            posterUrl: 'https://cdn.akamai.steamstatic.com/steam/apps/2000000/header.jpg',
+            matched: false,
+          },
+          {
+            id: 'steam:3000000',
+            store: 'steam',
+            storeName: 'Steam',
+            title: 'MXGP 26 - Scrubdesignz Liveries',
+            itemType: 'dlc',
+            baseGameTitle: 'MXGP 26',
+            originalPrice: '$2.99',
+            isFreeNow: true,
+            claimUrl: 'https://store.steampowered.com/app/3000000',
+            posterUrl: 'https://cdn.akamai.steamstatic.com/steam/apps/3000000/header.jpg',
+            matched: false,
+          },
+        ],
+        upcoming: [],
+        total: 2,
+      },
+    })
+
+    renderWithClient(<FreeGamesSection />)
+
+    expect(await screen.findByText('Rotwood: Drakin Armoury Pack')).toBeInTheDocument()
+    expect(screen.getByText('MXGP 26 - Scrubdesignz Liveries')).toBeInTheDocument()
+
+    // Spotlight card shows Pack for Rotwood context and 100% OFF · Pack badge
+    expect(screen.getByText('Pack for Rotwood')).toBeInTheDocument()
+    expect(screen.getByText('100% OFF · Pack')).toBeInTheDocument()
+
+    // Grid card (MXGP 26) shows FREE DLC badge and DLC · MXGP 26 subtitle
+    expect(screen.getByText('FREE DLC')).toBeInTheDocument()
+    expect(screen.getByText('DLC · MXGP 26')).toBeInTheDocument()
+    localStorage.removeItem('otix:show-steam-free-packs')
+  })
 })

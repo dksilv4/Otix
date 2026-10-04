@@ -164,6 +164,10 @@ def get_plex_connect_info(
         from apps.media.models import MediaItem
         target_media_item = MediaItem.objects.filter(slug=ident).first()
 
+    # Plex integration only supports movie/show/music/episode items, NEVER games
+    if target_media_item is not None and getattr(target_media_item, "media_type", None) == "game":
+        raise PlexConnectInfoNotFound(CONNECT_INFO_ITEM_NOT_FOUND)
+
     if target_media_item is not None:
         if plex_item is None:
             plex_item = (
@@ -206,25 +210,25 @@ def get_plex_connect_info(
                 plex_item.media_item = target_media_item
                 plex_item.save(update_fields=["media_item"])
 
-    if plex_item is None:
+    if plex_item is None and target_media_item is None:
         plex_item = (
             UserPlexItem.objects.filter(user=user, guids__tmdb=ident)
             .select_related("server")
             .first()
         )
-    if plex_item is None:
+    if plex_item is None and target_media_item is None:
         plex_item = (
             UserPlexItem.objects.filter(user=user, guids__imdb=ident)
             .select_related("server")
             .first()
         )
-    if plex_item is None:
+    if plex_item is None and target_media_item is None:
         plex_item = (
             UserPlexItem.objects.filter(user=user, rating_key=ident)
             .select_related("server")
             .first()
         )
-    if plex_item is None:
+    if plex_item is None and target_media_item is None:
         plex_item = (
             UserPlexItem.objects.filter(user=user, title__iexact=ident)
             .select_related("server")

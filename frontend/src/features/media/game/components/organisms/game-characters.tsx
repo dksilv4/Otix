@@ -174,7 +174,7 @@ export function GameCharacters({ characters = [], className = '' }: GameCharacte
           <div className="space-y-5 p-1 max-h-[70vh] overflow-y-auto pr-1">
             <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
               {/* Mugshot */}
-              <div className="relative w-32 h-40 rounded-xl overflow-hidden shadow-xl bg-zinc-900 border border-white/10 shrink-0">
+              <div className="relative w-32 h-40 rounded-xl overflow-hidden shadow-xl bg-zinc-900 shrink-0">
                 {selectedCharacter.mugShotUrl ? (
                   <Image
                     src={selectedCharacter.mugShotUrl}
@@ -192,12 +192,12 @@ export function GameCharacters({ characters = [], className = '' }: GameCharacte
               <div className="space-y-3 flex-1 text-center sm:text-left">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
                   {selectedCharacter.species && (
-                    <Badge variant="outline" className="text-xs capitalize border-white/15 bg-white/5">
+                    <Badge variant="secondary" className="text-xs capitalize bg-white/5 border-0">
                       {selectedCharacter.species}
                     </Badge>
                   )}
                   {selectedCharacter.gender && (
-                    <Badge variant="outline" className="text-xs capitalize border-white/15 bg-white/5">
+                    <Badge variant="secondary" className="text-xs capitalize bg-white/5 border-0">
                       {selectedCharacter.gender.replace('_', ' ')}
                     </Badge>
                   )}

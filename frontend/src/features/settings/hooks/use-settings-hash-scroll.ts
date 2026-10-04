@@ -3,12 +3,7 @@ import { useLocation } from '@tanstack/react-router'
 
 /** Scroll a settings subsection into view when the URL hash changes. */
 export function useSettingsHashScroll() {
-  let location: any = null
-  try {
-    location = useLocation()
-  } catch {
-    // Outside of RouterProvider
-  }
+  const location = useLocation()
 
   useEffect(() => {
     const hash = (location?.hash || (typeof window !== 'undefined' ? window.location.hash : '') || '').replace(/^#/, '')

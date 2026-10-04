@@ -7,3 +7,8 @@ export { SettingsIntegrationsPage } from './pages/settings-integrations-page'
 export { SettingsLibraryPage } from './pages/settings-library-page'
 export { SettingsPluginsPage } from '@/features/plugins'
 export { createSettingsRoutes } from './router'
+export {
+  useSteamFreePacksSetting,
+  STEAM_FREE_PACKS_STORAGE_KEY,
+  STEAM_FREE_PACKS_CHANGED_EVENT,
+} from './hooks'

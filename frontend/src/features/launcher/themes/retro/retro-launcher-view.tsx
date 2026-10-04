@@ -1,18 +1,14 @@
 import { useState, useMemo, useEffect } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { motion } from "framer-motion"
 import {
   Terminal,
   Play,
-  Settings,
   Sliders,
   Cpu,
   Activity,
-  HardDrive,
   Radio,
   Search,
   ArrowLeft,
-  Flame,
 } from "lucide-react"
 import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
 import { usePopularGames } from "@/features/launcher/data/queries"
@@ -25,11 +21,11 @@ import type { LocalGame } from "@/features/launcher/types"
 
 export function RetroLauncherView() {
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
-  const isDesktop = hasDesktopAPI()
+  const { user, isAuthenticated: _isAuthenticated } = useAuth()
+  const _isDesktop = hasDesktopAPI()
   const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
-  const { runningGame } = useRunningGame()
+  const { runningGame: _runningGame } = useRunningGame()
   const { toast } = useToast()
 
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)

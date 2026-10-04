@@ -80,6 +80,7 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     return saved ? parseFloat(saved) : 0.7
   })
   const [queue, setQueue] = useState<PlexTrackInfo[]>([])
+  const [currentIndex, setCurrentIndex] = useState(-1)
   const [error, setError] = useState<string | null>(null)
   const queueRef = useRef<PlexTrackInfo[]>([])
   const currentIndexRef = useRef(-1)
@@ -92,9 +93,19 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
 
   // Ref holders for state consumed by stable callbacks.
   const durationRef = useRef(duration)
-  durationRef.current = duration
   const isPlayingRef = useRef(isPlaying)
-  isPlayingRef.current = isPlaying
+
+  useEffect(() => {
+    durationRef.current = duration
+  }, [duration])
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying
+  }, [isPlaying])
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex
+  }, [currentIndex])
 
   // Resolve a Plex track's Part key (direct file URL) from its metadata.
   const resolvePartUrl = useCallback(async (track: PlexTrackInfo): Promise<string> => {
@@ -164,7 +175,10 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
       },
     }).catch(() => {})
   }, [])
-  reportTimelineRef.current = reportTimeline
+
+  useEffect(() => {
+    reportTimelineRef.current = reportTimeline
+  }, [reportTimeline])
 
   // Start periodic timeline reporting while playing.
   const startTimelineReporting = useCallback(() => {
@@ -175,7 +189,10 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
       reportTimelineRef.current("playing")
     }, 5000)
   }, [])
-  startTimelineReportingRef.current = startTimelineReporting
+
+  useEffect(() => {
+    startTimelineReportingRef.current = startTimelineReporting
+  }, [startTimelineReporting])
 
   const stopTimelineReporting = useCallback(() => {
     if (timelineIntervalRef.current) {
@@ -184,7 +201,10 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     }
     reportTimelineRef.current("stopped")
   }, [])
-  stopTimelineReportingRef.current = stopTimelineReporting
+
+  useEffect(() => {
+    stopTimelineReportingRef.current = stopTimelineReporting
+  }, [stopTimelineReporting])
 
   // Load and play a track by queue index. Streams directly from Plex — no blob download.
   // Set startNewSession=true when the user explicitly starts a new playback context
@@ -197,6 +217,7 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
 
     const track = q[index]
     currentIndexRef.current = index
+    setCurrentIndex(index)
     setCurrentTrack(track)
     setError(null)
 
@@ -218,7 +239,10 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
       setError(msg)
     }
   }, [resolvePartUrl])
-  loadAndPlayIndexRef.current = loadAndPlayIndex
+
+  useEffect(() => {
+    loadAndPlayIndexRef.current = loadAndPlayIndex
+  }, [loadAndPlayIndex])
 
   // Create audio element once on mount. All handlers read latest callbacks via refs.
   useEffect(() => {
@@ -374,9 +398,10 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     setQueue([])
     setError(null)
     currentIndexRef.current = -1
+    setCurrentIndex(-1)
   }, [])
 
-  const previousTracks = queue.slice(0, Math.max(0, currentIndexRef.current))
+  const previousTracks = queue.slice(0, Math.max(0, currentIndex))
 
   return (
     <PlexPlayerContext.Provider

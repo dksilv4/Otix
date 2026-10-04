@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Gamepad2, ExternalLink, Gift, AlertCircle } from 'lucide-react'
 import { Carousel } from '@ui/molecules/carousel'
+import { useSteamFreePacksSetting } from '@/features/settings/hooks/use-steam-free-packs-setting'
+import { cn } from '@/lib/utils'
 
 interface SteamFreeGame {
   id: number
@@ -13,6 +15,10 @@ interface SteamFreeGame {
   urlSlug: string | null
   description: string | null
   seller: string | null
+  kind?: string
+  itemType?: string
+  baseGameTitle?: string
+  claimUrl?: string
 }
 
 interface FreeCheckResult {
@@ -34,6 +40,7 @@ export function SteamFreeGamesSection() {
   const [result, setResult] = useState<FreeCheckResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showSteamPacks] = useSteamFreePacksSetting()
 
   const check = useCallback(async () => {
     const api = getPluginAPI()
@@ -102,7 +109,13 @@ export function SteamFreeGamesSection() {
   }
 
   // No free games
-  const freeGames = Array.isArray(result?.freeGames) ? result.freeGames.filter((g) => g && g.id) : []
+  const rawFreeGames = Array.isArray(result?.freeGames) ? result.freeGames.filter((g) => g && g.id) : []
+  const isPack = (g: SteamFreeGame) => {
+    const itemType = g.itemType?.toLowerCase()
+    const kind = g.kind?.toLowerCase()
+    return itemType === 'dlc' || itemType === 'pack' || itemType === 'bundle' || kind === 'sub' || kind === 'bundle'
+  }
+  const freeGames = showSteamPacks ? rawFreeGames : rawFreeGames.filter((g) => !isPack(g))
   if (freeGames.length === 0) return null
 
   const { isAuthenticated, alreadyOwned } = result!
@@ -139,6 +152,17 @@ export function SteamFreeGamesSection() {
 }
 
 function SteamFreeGameCard({ game, isClaimable }: { game: SteamFreeGame; isClaimable: boolean }) {
+  const isDlcOrPack = game.itemType === 'dlc' || game.itemType === 'pack' || game.itemType === 'bundle'
+  const typeLabel = game.itemType === 'bundle' ? 'Bundle' : game.itemType === 'pack' ? 'Pack' : 'DLC'
+
+  const claimUrl =
+    game.claimUrl ||
+    (game.kind === 'sub'
+      ? `https://store.steampowered.com/sub/${game.id}`
+      : game.kind === 'bundle'
+        ? `https://store.steampowered.com/bundle/${game.id}`
+        : `https://store.steampowered.com/app/${game.appId || game.id}`)
+
   return (
     <div className="group relative w-full select-none">
       {/* Poster */}
@@ -158,9 +182,14 @@ function SteamFreeGameCard({ game, isClaimable }: { game: SteamFreeGame; isClaim
 
         {/* FREE badge */}
         <div className="absolute top-2 left-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/90 text-white shadow-lg">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-lg',
+              isDlcOrPack ? 'bg-purple-500 text-white' : 'bg-emerald-500/90 text-white',
+            )}
+          >
             <Gift className="h-3 w-3" />
-            FREE
+            {isDlcOrPack ? `FREE ${typeLabel}` : 'FREE'}
           </span>
         </div>
       </div>
@@ -182,7 +211,7 @@ function SteamFreeGameCard({ game, isClaimable }: { game: SteamFreeGame; isClaim
       {/* Claim CTA overlay on hover */}
       {isClaimable && (
         <a
-          href={`https://store.steampowered.com/app/${game.appId}`}
+          href={claimUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center bg-black/40 backdrop-blur-[2px]"
@@ -190,7 +219,7 @@ function SteamFreeGameCard({ game, isClaimable }: { game: SteamFreeGame; isClaim
         >
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold shadow-lg">
             <ExternalLink className="h-3.5 w-3.5" />
-            Claim
+            {isDlcOrPack ? `Claim ${typeLabel}` : 'Claim'}
           </span>
         </a>
       )}

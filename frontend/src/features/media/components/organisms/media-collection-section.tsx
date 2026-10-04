@@ -94,7 +94,7 @@ export function CollectionSection({ className }: { className?: string } = {}) {
       <div className="relative z-10 px-6 sm:px-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3.5">
           {collection.posterUrl ? (
-            <div className="shrink-0 w-11 h-15 sm:w-13 sm:h-18 rounded-lg overflow-hidden ring-1 ring-white/15 shadow-lg shadow-black/40">
+            <div className="shrink-0 w-11 h-15 sm:w-13 sm:h-18 rounded-lg overflow-hidden shadow-lg shadow-black/40">
               <Image
                 src={collection.posterUrl}
                 alt={collection.name}
@@ -103,14 +103,14 @@ export function CollectionSection({ className }: { className?: string } = {}) {
               />
             </div>
           ) : (
-            <div className="shrink-0 w-11 h-15 sm:w-13 sm:h-18 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/50">
+            <div className="shrink-0 w-11 h-15 sm:w-13 sm:h-18 rounded-lg bg-white/5 flex items-center justify-center text-white/50">
               <Layers className="h-5 w-5" />
             </div>
           )}
 
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 border border-primary/25">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10">
                 <Sparkles className="h-2.5 w-2.5" />
                 Franchise
               </span>

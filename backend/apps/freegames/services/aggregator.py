@@ -20,6 +20,7 @@ from apps.freegames.services.providers.steam import SteamFreeGamesProvider
 from apps.media.models import ExternalID, MediaItem
 from apps.media.serializers import MediaItemSummarySerializer
 from apps.media.services import catalog as catalog_service
+from apps.media.services.game_matcher import _comparison_key
 
 logger = logging.getLogger(__name__)
 
@@ -97,17 +98,31 @@ class FreeGamesAggregator:
                 except Exception:
                     logger.exception("Failed to serialize matched media item %s", media.id)
 
-            poster_url = (media_data or {}).get("poster_url") or item.poster_url
-            backdrop_url = (media_data or {}).get("backdrop_url") or item.backdrop_url
-            logo_url = self._usable_logo_url(
-                (media_data or {}).get("logo_url")
-            ) or self._usable_logo_url(item.logo_url)
+            is_dlc_or_pack = item.item_type in ("dlc", "pack", "bundle")
+
+            # Prefer store promo images for DLCs/packs; prefer catalog art for games
+            if is_dlc_or_pack:
+                poster_url = item.poster_url or (media_data or {}).get("poster_url")
+                backdrop_url = item.backdrop_url or (media_data or {}).get("backdrop_url")
+                logo_url = self._usable_logo_url(item.logo_url)
+            else:
+                poster_url = (media_data or {}).get("poster_url") or item.poster_url
+                backdrop_url = (media_data or {}).get("backdrop_url") or item.backdrop_url
+                logo_url = self._usable_logo_url(
+                    (media_data or {}).get("logo_url")
+                ) or self._usable_logo_url(item.logo_url)
+
+            # DLCs and packs must preserve their own title, never overwritten by base game title!
+            title = item.title if is_dlc_or_pack else ((media_data or {}).get("title") or item.title)
+            base_game_title = item.base_game_title or (
+                (media_data or {}).get("title") if is_dlc_or_pack and media_data else None
+            )
 
             item_dict: dict[str, Any] = {
                 "id": item.id,
                 "store": item.store,
                 "store_name": item.store_name,
-                "title": (media_data or {}).get("title") or item.title,
+                "title": title,
                 "description": item.description or getattr(media, "overview", None),
                 "original_price": item.original_price,
                 "discount_percentage": item.discount_percentage,
@@ -121,6 +136,9 @@ class FreeGamesAggregator:
                 "external_id": item.external_id,
                 "matched": media_data is not None,
                 "media_item": media_data,
+                "item_type": item.item_type,
+                "base_game_title": base_game_title,
+                "base_game_id": item.base_game_id,
             }
             enriched_items.append(item_dict)
 
@@ -138,12 +156,99 @@ class FreeGamesAggregator:
 
         return result
 
+    def get_promotions_for_media_item(self, media_item) -> list[dict[str, Any]]:
+        """Return any active or upcoming promotional giveaway for the given media item."""
+        cached = cache.get(CACHE_KEY)
+        if cached is None:
+            cached = self.get_free_games(use_cache=True)
+        if not cached:
+            return []
+
+        promotions: list[dict[str, Any]] = []
+        media_id = getattr(media_item, "id", None)
+        media_slug = getattr(media_item, "slug", None)
+        title = getattr(media_item, "title", None)
+        steam_app_id = None
+        game = getattr(media_item, "game", None)
+        if game is not None:
+            steam_app_id = getattr(game, "steam_app_id", None)
+
+        comp_key = _comparison_key(title) if title else None
+
+        for bucket in ("current", "upcoming"):
+            items = cached.get(bucket) or []
+            for item in items:
+                matched_media = item.get("media_item")
+                matched_id = (matched_media or {}).get("id") if matched_media else None
+                matched_slug = (matched_media or {}).get("slug") if matched_media else None
+
+                is_match = False
+                if media_id is not None and matched_id == media_id:
+                    is_match = True
+                elif media_slug and matched_slug == media_slug:
+                    is_match = True
+                elif steam_app_id and item.get("external_id") and str(item.get("external_id")) == str(steam_app_id):
+                    is_match = True
+                elif steam_app_id and item.get("base_game_id") and str(item.get("base_game_id")) == str(steam_app_id):
+                    is_match = True
+                elif comp_key and item.get("base_game_title") and _comparison_key(item.get("base_game_title")) == comp_key:
+                    is_match = True
+                elif comp_key and item.get("title") and _comparison_key(item.get("title")) == comp_key:
+                    is_match = True
+
+                if is_match:
+                    promotions.append(
+                        {
+                            "id": item.get("id"),
+                            "store": item.get("store"),
+                            "store_name": item.get("store_name"),
+                            "title": item.get("title"),
+                            "description": item.get("description"),
+                            "original_price": item.get("original_price"),
+                            "discount_percentage": item.get("discount_percentage"),
+                            "is_free_now": item.get("is_free_now", bucket == "current"),
+                            "start_date": item.get("start_date"),
+                            "end_date": item.get("end_date"),
+                            "claim_url": item.get("claim_url"),
+                            "item_type": item.get("item_type", "game"),
+                            "base_game_title": item.get("base_game_title"),
+                        }
+                    )
+        return promotions
+
     def _match_catalog(
         self,
         item: FreeGameItem,
         media_content_type: ContentType,
     ) -> MediaItem | None:
         """Attempt to find a matching MediaItem in the local catalog."""
+        is_dlc_or_pack = item.item_type in ("dlc", "pack", "bundle")
+
+        # For DLCs and packs, attempt to match the base game
+        if is_dlc_or_pack:
+            if item.base_game_id:
+                ext_row = (
+                    ExternalID.objects.filter(
+                        content_type=media_content_type,
+                        provider=item.store,
+                        external_id=item.base_game_id,
+                    )
+                    .only("object_id")
+                    .first()
+                )
+                if ext_row and ext_row.object_id:
+                    media = MediaItem.objects.filter(pk=ext_row.object_id).first()
+                    if media:
+                        return media
+
+            if item.base_game_title:
+                media_by_title = MediaItem.objects.filter(
+                    media_type="game",
+                    title__iexact=item.base_game_title.strip(),
+                ).first()
+                if media_by_title:
+                    return media_by_title
+
         # 1. Exact external ID match (store + external_id)
         if item.external_id:
             ext_row = (
@@ -225,13 +330,17 @@ class FreeGamesAggregator:
                 media_id = seed_game_from_igdb(raw_game, igdb_id)
                 media = MediaItem.objects.filter(pk=media_id).first()
 
-            if media and item.external_id:
-                attach_external_id(media.pk, item.store, item.external_id, "game")
-                if item.store == "epic":
-                    if offer_id:
-                        attach_external_id(media.pk, "epic", offer_id, "game")
-                    if namespace:
-                        attach_external_id(media.pk, "epic_namespace", namespace, "game")
+            if media:
+                if item.item_type in ("dlc", "pack", "bundle"):
+                    if item.base_game_id:
+                        attach_external_id(media.pk, item.store, item.base_game_id, "game")
+                elif item.external_id:
+                    attach_external_id(media.pk, item.store, item.external_id, "game")
+                    if item.store == "epic":
+                        if offer_id:
+                            attach_external_id(media.pk, "epic", offer_id, "game")
+                        if namespace:
+                            attach_external_id(media.pk, "epic_namespace", namespace, "game")
 
             return media
         except Exception:
@@ -313,9 +422,14 @@ class FreeGamesAggregator:
 
     @staticmethod
     def _steam_app_id_for(media: MediaItem, item: FreeGameItem) -> int | None:
-        if item.store == "steam" and item.external_id:
+        target_id = (
+            item.base_game_id
+            if item.item_type in ("dlc", "pack", "bundle") and item.base_game_id
+            else item.external_id
+        )
+        if item.store == "steam" and target_id:
             try:
-                return int(item.external_id)
+                return int(target_id)
             except (TypeError, ValueError):
                 pass
         try:
@@ -344,6 +458,8 @@ class FreeGamesAggregator:
         namespace: str | None = None
         igdb_id: int | None = None
 
+        is_dlc_or_pack = item.item_type in ("dlc", "pack", "bundle")
+
         if item.store == "epic" and item.external_id:
             if ":" in item.external_id:
                 namespace, offer_id = item.external_id.split(":", 1)
@@ -352,17 +468,21 @@ class FreeGamesAggregator:
                     igdb_id = provider.lookup_epic_ids([offer_id]).get(offer_id)
                 except Exception:
                     logger.debug("Free game Epic cross-reference failed for offer_id %s", offer_id)
-        elif item.store == "steam" and item.external_id:
-            try:
-                steam_app_id = int(item.external_id)
-                igdb_id = provider.lookup_steam_app_ids([steam_app_id]).get(steam_app_id)
-            except (TypeError, ValueError):
-                logger.debug("Invalid Steam app id for free game: %s", item.external_id)
-            except Exception:
-                logger.debug(
-                    "Free game Steam cross-reference failed for app_id %s",
-                    item.external_id,
-                )
+        elif item.store == "steam":
+            target_app_id = (
+                item.base_game_id if is_dlc_or_pack and item.base_game_id else item.external_id
+            )
+            if target_app_id:
+                try:
+                    steam_app_id = int(target_app_id)
+                    igdb_id = provider.lookup_steam_app_ids([steam_app_id]).get(steam_app_id)
+                except (TypeError, ValueError):
+                    logger.debug("Invalid Steam app id for free game: %s", target_app_id)
+                except Exception:
+                    logger.debug(
+                        "Free game Steam cross-reference failed for app_id %s",
+                        target_app_id,
+                    )
         elif item.store == "gog" and item.external_id:
             try:
                 # IGDB external_game_source = 2 for GOG
@@ -371,8 +491,13 @@ class FreeGamesAggregator:
             except Exception:
                 logger.debug("Free game GOG cross-reference failed for id %s", item.external_id)
 
-        if igdb_id is None and item.title:
-            for variant in self._title_search_variants(item.title):
+        target_title = (
+            item.base_game_title
+            if is_dlc_or_pack and item.base_game_title
+            else item.title
+        )
+        if igdb_id is None and target_title:
+            for variant in self._title_search_variants(target_title):
                 clean = _igdb_search_query(variant)
                 candidates: list[dict] = []
                 try:

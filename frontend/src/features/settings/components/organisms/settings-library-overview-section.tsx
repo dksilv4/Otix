@@ -10,7 +10,7 @@ import {
   Wand2,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useAuth } from '@/lib/providers/auth'
+import { useOptionalAuth } from '@/lib/providers/auth'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
@@ -157,12 +157,8 @@ export function SettingsLibraryOverviewSection({
   onNavigate,
 }: SettingsLibraryOverviewSectionProps) {
   const desktop = isDesktop()
-  let user: { id?: string | number } | null = null
-  try {
-    user = useAuth()?.user ?? null
-  } catch {
-    // Tests without AuthProvider
-  }
+  const auth = useOptionalAuth()
+  const user = auth?.user ?? null
 
   const { config: dlConfig, isLoading: configLoading } = useDownloadConfig(user?.id)
   const { servers: gameServers = [], selectedNode, isLoading: serversLoading } = useSettingsNode()

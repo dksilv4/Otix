@@ -549,6 +549,7 @@ class MediaItemDetailSerializer(serializers.Serializer):
     game = serializers.SerializerMethodField()
     album = serializers.SerializerMethodField()
     collection = serializers.SerializerMethodField()
+    free_promotions = serializers.SerializerMethodField()
 
     def get_user_interactions(self, obj):
         return _user_interactions(getattr(obj, "user_interactions", None))
@@ -676,3 +677,13 @@ class MediaItemDetailSerializer(serializers.Serializer):
         if collection is None:
             return None
         return CollectionOutSerializer(collection).data
+
+    def get_free_promotions(self, obj):
+        if getattr(obj, "media_type", None) != "game":
+            return []
+        try:
+            from apps.freegames.services.aggregator import aggregator
+
+            return aggregator.get_promotions_for_media_item(obj)
+        except Exception:
+            return []

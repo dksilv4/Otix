@@ -24,40 +24,40 @@ export function LauncherThemePreview({ themeId, isSelected }: LauncherThemePrevi
           : 'border-white/10 group-hover:border-white/20'
       }`}
     >
-      {renderMiniTheme(themeId, isSelected)}
+      {renderMiniTheme(themeId)}
     </div>
   )
 }
 
-function renderMiniTheme(themeId: LauncherThemeId, isSelected?: boolean) {
+function renderMiniTheme(themeId: LauncherThemeId) {
   switch (themeId) {
     case 'classic':
-      return <ClassicMiniPreview isSelected={isSelected} />
+      return <ClassicMiniPreview />
     case 'modern':
-      return <ModernMiniPreview isSelected={isSelected} />
+      return <ModernMiniPreview />
     case 'steam':
-      return <SteamMiniPreview isSelected={isSelected} />
+      return <SteamMiniPreview />
     case 'playstation':
-      return <PlayStationMiniPreview isSelected={isSelected} />
+      return <PlayStationMiniPreview />
     case 'xbox':
-      return <XboxMiniPreview isSelected={isSelected} />
+      return <XboxMiniPreview />
     case 'switch':
-      return <SwitchMiniPreview isSelected={isSelected} />
+      return <SwitchMiniPreview />
     case 'retro':
-      return <RetroMiniPreview isSelected={isSelected} />
+      return <RetroMiniPreview />
     case 'minimal':
-      return <MinimalMiniPreview isSelected={isSelected} />
+      return <MinimalMiniPreview />
     case 'forge':
-      return <ForgeMiniPreview isSelected={isSelected} />
+      return <ForgeMiniPreview />
     case 'glass':
-      return <GlassMiniPreview isSelected={isSelected} />
+      return <GlassMiniPreview />
     default:
       return null
   }
 }
 
 // ── V1: Classic (Original Otix Rail) ───────────────────────────
-function ClassicMiniPreview({ isSelected }: { isSelected?: boolean }) {
+function ClassicMiniPreview() {
   return (
     <div className="w-full h-full bg-[#0a0c14] relative overflow-hidden flex">
       {/* Subtle blue backdrop glow */}
@@ -103,7 +103,7 @@ function ClassicMiniPreview({ isSelected }: { isSelected?: boolean }) {
 }
 
 // ── V2: Modern (Cinematic Deck) ────────────────────────────────
-function ModernMiniPreview({ isSelected }: { isSelected?: boolean }) {
+function ModernMiniPreview() {
   return (
     <div className="w-full h-full bg-neutral-950 text-white relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* Top Header */}
@@ -159,7 +159,7 @@ function ModernMiniPreview({ isSelected }: { isSelected?: boolean }) {
 }
 
 // ── V3: Steam (Console Layout / Steam Deck) ───────────────────
-function SteamMiniPreview({ isSelected }: { isSelected?: boolean }) {
+function SteamMiniPreview() {
   return (
     <div className="w-full h-full bg-[#171a21] text-white relative overflow-hidden flex flex-col">
       {/* Top Steam Header */}
@@ -220,7 +220,7 @@ function SteamMiniPreview({ isSelected }: { isSelected?: boolean }) {
 }
 
 // ── V4: PlayStation (CrossBar / Console Ribbon) ────────────────
-function PlayStationMiniPreview({ isSelected }: { isSelected?: boolean }) {
+function PlayStationMiniPreview() {
   return (
     <div className="w-full h-full bg-[#05070e] text-white relative overflow-hidden flex flex-col justify-between p-1.5">
       {/* Ambient Blue Backlight */}
@@ -262,7 +262,7 @@ function PlayStationMiniPreview({ isSelected }: { isSelected?: boolean }) {
 }
 
 // ── V5: Xbox (Blade / Metro Matrix) ───────────────────────────
-function XboxMiniPreview({ isSelected }: { isSelected?: boolean }) {
+function XboxMiniPreview() {
   return (
     <div className="w-full h-full bg-[#0b120c] text-white relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* Subtle green ambient bloom */}
@@ -335,7 +335,7 @@ function XboxMiniPreview({ isSelected }: { isSelected?: boolean }) {
 }
 
 // ── V6: Switch (Arcade / Handheld Carousel) ───────────────────
-function SwitchMiniPreview({ isSelected }: { isSelected?: boolean }) {
+function SwitchMiniPreview() {
   return (
     <div className="w-full h-full bg-[#1b1b1e] text-white relative overflow-hidden flex flex-col justify-between p-1.5">
       {/* Joy-Con Color Edges */}
@@ -383,7 +383,7 @@ function SwitchMiniPreview({ isSelected }: { isSelected?: boolean }) {
 }
 
 // ── V7: Retro (Cyberpunk / Terminal Netrunner) ─────────────────
-function RetroMiniPreview({ isSelected }: { isSelected?: boolean }) {
+function RetroMiniPreview() {
   return (
     <div className="w-full h-full bg-[#080a08] text-[#33ff33] font-mono relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* CRT Scanline Effect */}
@@ -439,7 +439,7 @@ function RetroMiniPreview({ isSelected }: { isSelected?: boolean }) {
 }
 
 // ── V8: Minimal (Gallery Zen) ─────────────────────────────────
-function MinimalMiniPreview({ isSelected }: { isSelected?: boolean }) {
+function MinimalMiniPreview() {
   return (
     <div className="w-full h-full bg-[#09090b] text-neutral-300 font-sans relative overflow-hidden flex p-1.5 gap-2">
       {/* Left Clean Index */}
@@ -473,7 +473,7 @@ function MinimalMiniPreview({ isSelected }: { isSelected?: boolean }) {
 }
 
 // ── V9: Forge (Storefront Client) ─────────────────────────────
-function ForgeMiniPreview({ isSelected }: { isSelected?: boolean }) {
+function ForgeMiniPreview() {
   return (
     <div className="w-full h-full bg-[#121212] text-white font-sans relative overflow-hidden flex">
       {/* Left Navigation Rail */}
@@ -521,7 +521,7 @@ function ForgeMiniPreview({ isSelected }: { isSelected?: boolean }) {
 }
 
 // ── V10: Spatial Glass (Aero Prism) ───────────────────────────
-function GlassMiniPreview({ isSelected }: { isSelected?: boolean }) {
+function GlassMiniPreview() {
   return (
     <div className="w-full h-full bg-[#07050d] text-white font-sans relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* Ambient Gradient Mesh Orbs */}

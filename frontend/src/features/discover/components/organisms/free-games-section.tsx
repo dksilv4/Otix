@@ -18,6 +18,7 @@ import { Carousel } from '@ui/molecules/carousel'
 import { MediaCard } from '@ui/molecules/media-card'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { discoverQueries, type FreeGameItem } from '@/features/discover/queries/discover-queries'
+import { useSteamFreePacksSetting } from '@/features/settings/hooks/use-steam-free-packs-setting'
 import { cn } from '@/lib/utils'
 import './free-games-section.scss'
 
@@ -101,6 +102,7 @@ function useCountdown(dateStr: string | null | undefined): string | null {
 
 export function FreeGamesSection() {
   const { data, isLoading, error } = useQuery(discoverQueries.freeGames())
+  const [showSteamPacks] = useSteamFreePacksSetting()
 
   // ── Loading ──
   if (isLoading) {
@@ -150,8 +152,16 @@ export function FreeGamesSection() {
     )
   }
 
-  const currentItems = data?.current || []
-  const upcomingItems = data?.upcoming || []
+  const isSteamPackItem = (item: FreeGameItem) => {
+    if (item.store?.toLowerCase() !== 'steam') return false
+    const type = item.itemType?.toLowerCase()
+    return type === 'dlc' || type === 'pack' || type === 'bundle'
+  }
+
+  const rawCurrent = data?.current || []
+  const rawUpcoming = data?.upcoming || []
+  const currentItems = showSteamPacks ? rawCurrent : rawCurrent.filter((i) => !isSteamPackItem(i))
+  const upcomingItems = showSteamPacks ? rawUpcoming : rawUpcoming.filter((i) => !isSteamPackItem(i))
   // Free now first, then coming soon — single rail, no tabs.
   const allItems = [...currentItems, ...upcomingItems]
 
@@ -229,12 +239,19 @@ function SpotlightCard({ item }: { item: FreeGameItem }) {
   const countdown = useCountdown(item.endDate)
   const ending = isEndingSoon(item.endDate)
   const media = item.mediaItem
+  const isDlcOrPack = item.itemType === 'dlc' || item.itemType === 'pack' || item.itemType === 'bundle'
+  const typeLabel = item.itemType === 'bundle' ? 'Bundle' : item.itemType === 'pack' ? 'Pack' : 'DLC'
+
   const imageUrl =
-    media?.backdropUrl || item.backdropUrl || media?.posterUrl || item.posterUrl
-  const logoUrl = media?.logoUrl || item.logoUrl
+    (isDlcOrPack ? (item.backdropUrl || item.posterUrl) : null) ||
+    media?.backdropUrl ||
+    item.backdropUrl ||
+    media?.posterUrl ||
+    item.posterUrl
+  const logoUrl = isDlcOrPack ? (item.logoUrl || null) : (media?.logoUrl || item.logoUrl)
   const logoColorGuess = media?.logoColorGuess ?? null
-  const title = media?.title || item.title
-  const description = item.description
+  const title = isDlcOrPack ? item.title : (media?.title || item.title)
+  const description = item.description || media?.overview
   const accentStyle = {
     '--free-accent': 'var(--primary)',
   } as CSSProperties
@@ -293,12 +310,17 @@ function SpotlightCard({ item }: { item: FreeGameItem }) {
             {isNow ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider uppercase bg-emerald-500 text-black shadow-lg shadow-emerald-500/30">
                 <Gift className="h-3 w-3" />
-                100% OFF
+                {isDlcOrPack ? `100% OFF · ${typeLabel}` : '100% OFF'}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider uppercase bg-sky-500/90 text-white shadow-lg shadow-sky-500/30">
                 <Clock className="h-3 w-3" />
                 Coming Soon
+              </span>
+            )}
+            {isDlcOrPack && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider uppercase bg-purple-500/90 text-white shadow-lg shadow-purple-500/30">
+                {typeLabel}
               </span>
             )}
             {ending && countdown && (
@@ -325,6 +347,15 @@ function SpotlightCard({ item }: { item: FreeGameItem }) {
             <StoreIcon store={item.store} className="h-3.5 w-3.5" />
             {storeLabel(item.store, item.storeName)}
           </div>
+
+          {/* Base game context for DLCs/packs */}
+          {isDlcOrPack && item.baseGameTitle && (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-400 mb-2">
+              <span className="px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/25">
+                {typeLabel} for {item.baseGameTitle}
+              </span>
+            </div>
+          )}
 
           {/* Title */}
           <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-tight line-clamp-2 mb-2">
@@ -365,39 +396,37 @@ function SpotlightCard({ item }: { item: FreeGameItem }) {
             )}
           </div>
 
-          {/* CTA buttons — Otix first when matched; claim is secondary */}
+          {/* CTA buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
-            {item.matched && media ? (
-              <Link
-                to="/media/$mediaType/$mediaId"
-                params={{ mediaType: 'game', mediaId: String(media.id) }}
-                className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground shadow-md transition-all active:scale-[0.97] hover:opacity-95"
-              >
-                <Gamepad2 className="h-3.5 w-3.5" />
-                Open in Otix
-                <ChevronRight className="h-3 w-3 -mr-0.5" />
-              </Link>
-            ) : null}
             {item.claimUrl && (
               <a
                 href={item.claimUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(
-                  'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-[0.97]',
-                  item.matched && media
-                    ? 'text-white/70 hover:text-white bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08]'
-                    : isNow
-                      ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-md shadow-emerald-500/20 font-bold'
-                      : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-500/20 font-bold',
+                  'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.97]',
+                  isNow
+                    ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-md shadow-emerald-500/20'
+                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-500/20',
                 )}
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 {isNow
-                  ? `Claim on ${storeLabel(item.store, item.storeName)}`
+                  ? `Claim ${isDlcOrPack ? typeLabel : ''} on ${storeLabel(item.store, item.storeName)}`.trim()
                   : `View on ${storeLabel(item.store, item.storeName)}`}
               </a>
             )}
+            {item.matched && media ? (
+              <Link
+                to="/media/$mediaType/$mediaId"
+                params={{ mediaType: 'game', mediaId: String(media.id) }}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-white/70 hover:text-white bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] transition-all active:scale-[0.97]"
+              >
+                <Gamepad2 className="h-3.5 w-3.5" />
+                {isDlcOrPack ? 'View Base Game' : 'Open in Otix'}
+                <ChevronRight className="h-3 w-3 -mr-0.5" />
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>
@@ -413,12 +442,24 @@ function FreeGameCard({ item }: { item: FreeGameItem }) {
   const ending = isEndingSoon(item.endDate)
   const media = item.mediaItem
   const hasMatch = Boolean(item.matched && media)
-  const subtitle = item.originalPrice ? `FREE · ${item.originalPrice}` : 'FREE'
-  const claimLabel = isNow ? 'Claim' : 'Preview'
-  const posterUrl = media?.posterUrl || item.posterUrl || null
+  const isDlcOrPack = item.itemType === 'dlc' || item.itemType === 'pack' || item.itemType === 'bundle'
+  const typeLabel = item.itemType === 'bundle' ? 'Bundle' : item.itemType === 'pack' ? 'Pack' : 'DLC'
+
+  const displayTitle = isDlcOrPack ? item.title : (media?.title || item.title)
+  const subtitle = isDlcOrPack && item.baseGameTitle
+    ? `${typeLabel} · ${item.baseGameTitle}`
+    : item.originalPrice
+      ? `FREE · ${item.originalPrice}`
+      : 'FREE'
+  const claimLabel = isNow ? (isDlcOrPack ? `Claim ${typeLabel}` : 'Claim') : 'Preview'
+
+  const posterUrl = (isDlcOrPack ? (item.posterUrl || item.backdropUrl) : null) ||
+    media?.posterUrl ||
+    item.posterUrl ||
+    null
   const textlessPosterUrl = media?.textlessPosterUrl || null
   const backdropUrl = media?.backdropUrl || item.backdropUrl || null
-  const logoUrl = media?.logoUrl || item.logoUrl || null
+  const logoUrl = isDlcOrPack ? (item.logoUrl || null) : (media?.logoUrl || item.logoUrl || null)
   // Logo mode only when we have a logo: prefer textless, else backdrop/poster.
   // Without a logo, leave cleanArt empty so MediaCard uses the portrait poster.
   const cleanArt = logoUrl
@@ -430,7 +471,7 @@ function FreeGameCard({ item }: { item: FreeGameItem }) {
       <MediaCard
         id={media?.id ?? item.id}
         mediaType="game"
-        title={media?.title || item.title}
+        title={displayTitle}
         posterUrl={posterUrl || backdropUrl}
         textlessPosterUrl={cleanArt}
         backdropUrl={undefined}
@@ -452,11 +493,15 @@ function FreeGameCard({ item }: { item: FreeGameItem }) {
         <span
           className={cn(
             'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-md',
-            isNow ? 'bg-emerald-500 text-black' : 'bg-sky-500/90 text-white',
+            isDlcOrPack
+              ? 'bg-purple-500 text-white'
+              : isNow
+                ? 'bg-emerald-500 text-black'
+                : 'bg-sky-500/90 text-white',
           )}
         >
           <Gift className="h-2.5 w-2.5" />
-          {isNow ? 'FREE' : 'SOON'}
+          {isDlcOrPack ? `${isNow ? 'FREE ' : 'SOON '}${typeLabel}` : (isNow ? 'FREE' : 'SOON')}
         </span>
       </div>
       <div className="absolute top-2 right-2 z-20 pointer-events-none">

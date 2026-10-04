@@ -37,6 +37,11 @@ const MediaDetailLibraryPanel = lazy(() =>
 const GameSection = lazy(() =>
   import('@media/game/components/organisms/media-game-section').then((m) => ({ default: m.GameSection })),
 )
+const FreeGamePromotionBanner = lazy(() =>
+  import('@media/game/components/organisms/free-game-promotion-banner').then((m) => ({
+    default: m.FreeGamePromotionBanner,
+  })),
+)
 const GameTabBar = lazy(() =>
   import('@media/game/components/molecules/media-game-tab-bar').then((m) => ({ default: m.GameTabBar })),
 )
@@ -213,6 +218,13 @@ export function MediaDetailPage() {
           Uniform max-w-7xl to avoid awkward width jumps
          ══════════════════════════════════════════════════════════════════════ */}
       <main className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-4 space-y-8">
+        {/* ── GAMES: ELEVATE FREE PROMOTION BANNER WHEN GAME IS FREE ── */}
+        {isGame(detail) && (
+          <Suspense fallback={null}>
+            <FreeGamePromotionBanner detail={detail} />
+          </Suspense>
+        )}
+
         {/* ── TV SHOWS: ELEVATE EPISODES & SEASONS BROWSER FRONT-AND-CENTER ── */}
         {isShow(detail) && (
           <section className="glass-card p-6 sm:p-7 space-y-5">
@@ -265,7 +277,7 @@ export function MediaDetailPage() {
                   {activeGameTab === 'info' && <GameSection />}
                   {activeGameTab !== 'info' && (
                     <>
-                      <div className="flex items-center gap-1 border-b border-white/[0.08] pb-1">
+                      <div className="flex items-center gap-1 pb-1">
                         <button
                           onClick={() => setBlueprintSubTab('vault')}
                           className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'vault'
@@ -350,14 +362,14 @@ export function MediaDetailPage() {
               imdbId={detail.movie?.imdbId}
             />
 
-            {/* Where to Watch V4 with Personal Library Spotlight */}
-            <WhereToWatch watchProviders={detail.watchProviders} />
+            {/* Where to Watch V4 with Personal Library Spotlight (movies/shows) */}
+            {displayType !== 'game' && <WhereToWatch watchProviders={detail.watchProviders} mediaType={displayType} />}
 
             {/* Technical Information & Specs */}
             <MediaSpecsCard detail={detail} />
 
-            {/* Library / Server Status (Plex / Radarr / Sonarr) */}
-            {isAuthenticated && (
+            {/* Library / Server Status (Plex / Radarr / Sonarr) - Movies & TV Shows only */}
+            {isAuthenticated && displayType !== 'game' && (
               <Suspense fallback={null}>
                 <MediaDetailLibraryPanel
                   mediaType={mediaType}

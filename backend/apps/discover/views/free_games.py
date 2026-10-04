@@ -26,6 +26,8 @@ class FreeGameRefSerializer(serializers.Serializer):
     claim_url = serializers.CharField(required=False, allow_null=True, default=None)
     poster_url = serializers.CharField(required=False, allow_null=True, default=None)
     store_label = serializers.CharField(required=False, allow_null=True, default=None)
+    item_type = serializers.CharField(required=False, allow_null=True, default="game")
+    base_game_title = serializers.CharField(required=False, allow_null=True, default=None)
 
 
 class FreeGamesMatchRequestSerializer(serializers.Serializer):
@@ -69,6 +71,8 @@ class FreeGamesMatchView(APIView):
                     "poster_url": match.poster_url,
                     "title": match.title,
                     "external_id": match.external_id,
+                    "item_type": match.item_type,
+                    "base_game_title": match.base_game_title,
                 }
             )
         return Response({"items": items})

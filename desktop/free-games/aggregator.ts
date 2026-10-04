@@ -17,6 +17,8 @@ export interface FreeGameRef {
   claim_url?: string | null
   poster_url?: string | null
   store_label?: string | null
+  item_type?: string | null
+  base_game_title?: string | null
 }
 
 export interface FreeGameResult {
@@ -30,6 +32,8 @@ export interface FreeGameResult {
   poster_url: string | null
   title: string | null
   external_id: string
+  item_type?: string | null
+  base_game_title?: string | null
 }
 
 export interface AggregatedResult {
@@ -127,6 +131,8 @@ export class FreeGamesAggregator {
               : null),
             poster_url: game.posterUrl || null,
             store_label: inferStoreLabel(store, game),
+            item_type: game.itemType || null,
+            base_game_title: game.baseGameTitle || null,
           })
         }
       } catch (err: any) {

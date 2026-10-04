@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
-import { LauncherThemeProvider, useLauncherTheme, LAUNCHER_THEMES } from "../theme-context"
+import { LauncherThemeProvider, useLauncherTheme } from "../theme-context"
 
 describe("LauncherThemeProvider & useLauncherTheme", () => {
   beforeEach(() => {

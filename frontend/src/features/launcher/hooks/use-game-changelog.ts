@@ -191,7 +191,10 @@ export function useGameChangelog(game: LocalGame | DisplayGame | null) {
                 }
               })
             }
-          } catch {}
+          } catch (err) {
+            // News parsing failed, continue
+            console.debug('Failed to parse Steam news items:', err)
+          }
         }
       }
 
