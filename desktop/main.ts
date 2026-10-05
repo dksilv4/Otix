@@ -504,7 +504,10 @@ app.on('ready', async () => {
       mainWindow.webContents.send('game:fps', payload);
     }
   }, 'main');
-  eventBus.on('fps:stats', (payload) => {
+  eventBus.on('fps:stats', (payload: any) => {
+    if (payload?.gameId && payload?.fpsStats && gameDetector) {
+      gameDetector.updateSessionFpsStats(payload.gameId, payload.fpsStats);
+    }
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:fps-stats', payload);
       mainWindow.webContents.send('game:sessions-updated', payload);

@@ -66,6 +66,7 @@ describe('arr detail helpers', () => {
   it('maps Sonarr lookup status from episode files', () => {
     expect(sonarrStatusFromLookup({ id: 4, statistics: { episodeFileCount: 0 } })).toBe('requested')
     expect(sonarrStatusFromLookup({ id: 4, statistics: { episodeFileCount: 8 } })).toBe('downloaded')
+    expect(sonarrStatusFromLookup({ id: 4, statistics: { episodeFileCount: 4, totalEpisodeCount: 10 } })).toBe('partially_available')
   })
 
   it('reads Radarr file details from movieFile', () => {

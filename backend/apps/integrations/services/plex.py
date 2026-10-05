@@ -187,10 +187,17 @@ def get_plex_connect_info(
             }
             tmdb_id = exts.get("tmdb")
             imdb_id = exts.get("imdb")
+            tvdb_id = exts.get("tvdb")
 
             if tmdb_id:
                 plex_item = (
                     UserPlexItem.objects.filter(user=user, guids__tmdb=str(tmdb_id))
+                    .select_related("server")
+                    .first()
+                )
+            if plex_item is None and tvdb_id:
+                plex_item = (
+                    UserPlexItem.objects.filter(user=user, guids__tvdb=str(tvdb_id))
                     .select_related("server")
                     .first()
                 )
@@ -210,30 +217,39 @@ def get_plex_connect_info(
                 plex_item.media_item = target_media_item
                 plex_item.save(update_fields=["media_item"])
 
-    if plex_item is None and target_media_item is None:
+    if plex_item is None:
         plex_item = (
             UserPlexItem.objects.filter(user=user, guids__tmdb=ident)
             .select_related("server")
             .first()
         )
-    if plex_item is None and target_media_item is None:
+    if plex_item is None:
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, guids__tvdb=ident)
+            .select_related("server")
+            .first()
+        )
+    if plex_item is None:
         plex_item = (
             UserPlexItem.objects.filter(user=user, guids__imdb=ident)
             .select_related("server")
             .first()
         )
-    if plex_item is None and target_media_item is None:
+    if plex_item is None:
         plex_item = (
             UserPlexItem.objects.filter(user=user, rating_key=ident)
             .select_related("server")
             .first()
         )
-    if plex_item is None and target_media_item is None:
+    if plex_item is None:
         plex_item = (
             UserPlexItem.objects.filter(user=user, title__iexact=ident)
             .select_related("server")
             .first()
         )
+    if plex_item is not None and target_media_item is not None and plex_item.media_item_id != target_media_item.id:
+        plex_item.media_item = target_media_item
+        plex_item.save(update_fields=["media_item"])
     if plex_item is None:
         raise PlexConnectInfoNotFound(CONNECT_INFO_ITEM_NOT_FOUND)
     server = plex_item.server

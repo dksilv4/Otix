@@ -48,6 +48,7 @@ export interface NormalizedPlaySession {
   bannerUrl?: string | null
   backdropUrl?: string | null
   slug?: string | null
+  otixMediaId?: string | number | null
 }
 
 export interface UserGameSessionsSummary {
@@ -168,6 +169,11 @@ export function normalizeSession(raw: Record<string, unknown>): NormalizedPlaySe
     hardware,
     hardwareSummary,
     shareEligible,
+    posterUrl: ((raw.poster_url ?? raw.posterUrl ?? raw.poster) as string) || null,
+    bannerUrl: ((raw.banner_url ?? raw.bannerUrl ?? raw.banner) as string) || null,
+    backdropUrl: ((raw.backdrop_url ?? raw.backdropUrl ?? raw.backdrop) as string) || null,
+    slug: (raw.slug as string) || null,
+    otixMediaId: ((raw.otix_media_id ?? raw.otixMediaId ?? raw.media_item_id ?? raw.mediaItemId) as string | number) || null,
   }
 }
 
@@ -191,7 +197,9 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
 
   function resolveGameArt(session: NormalizedPlaySession): NormalizedPlaySession {
     const match = gameMap
-      ? gameMap.byId.get(session.gameId) || gameMap.byTitle.get(session.gameTitle.toLowerCase())
+      ? (session.otixMediaId ? gameMap.byId.get(String(session.otixMediaId)) : null) ||
+        gameMap.byId.get(session.gameId) ||
+        gameMap.byTitle.get(session.gameTitle.toLowerCase())
       : null
 
     const resolved = resolveSessionArtwork(
@@ -204,11 +212,14 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
 
     return {
       ...session,
-      gameTitle: resolved.cleanedTitle || match?.otixMediaTitle || match?.title || session.gameTitle,
-      posterUrl: resolved.posterUrl,
-      bannerUrl: resolved.bannerUrl,
-      backdropUrl: resolved.backdropUrl,
-      slug: match?.data?.slug || match?.otixMediaSlug || session.slug || null,
+      gameTitle: session.gameTitle && session.gameTitle !== 'Unknown Game' && !session.gameTitle.toLowerCase().endsWith('.exe')
+        ? session.gameTitle
+        : (resolved.cleanedTitle || match?.otixMediaTitle || match?.title || session.gameTitle),
+      posterUrl: session.posterUrl || resolved.posterUrl,
+      bannerUrl: session.bannerUrl || resolved.bannerUrl,
+      backdropUrl: session.backdropUrl || resolved.backdropUrl,
+      slug: session.slug || match?.data?.slug || match?.otixMediaSlug || null,
+      otixMediaId: session.otixMediaId || (match?.otixMediaId ?? null),
     }
   }
 
@@ -221,12 +232,18 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
     })
     const unsubEnded = api.onGameEnded?.(() => {
       queryClient.invalidateQueries({ queryKey: ['user-game-sessions'] })
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['user-game-sessions'] })
+      }, 500)
     })
     const unsubStats = api.onFpsStats?.(() => {
       queryClient.invalidateQueries({ queryKey: ['user-game-sessions'] })
     })
     const unsubUpdated = api.onSessionsUpdated?.(() => {
       queryClient.invalidateQueries({ queryKey: ['user-game-sessions'] })
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['user-game-sessions'] })
+      }, 500)
     })
 
     return () => {
@@ -240,7 +257,7 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
   const query = useQuery<UserGameSessionsSummary>({
     queryKey: ['user-game-sessions'],
     queryFn: async () => {
-      const rawSessions: Record<string, unknown>[] = []
+      let rawSessions: Record<string, unknown>[] = []
 
       // 1. Electron Desktop API
       const api = getDesktopAPI()
@@ -280,6 +297,18 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
         } catch {
           // ignore
         }
+      } else {
+        // Hydrate and enrich local sessions with Otix catalog data
+        try {
+          const { data } = await apiClient.post<Record<string, unknown>[]>('/library/game-sessions', {
+            sessions: rawSessions,
+          })
+          if (Array.isArray(data) && data.length > 0) {
+            rawSessions = data
+          }
+        } catch {
+          // Fall back gracefully to local session data if offline or network error
+        }
       }
 
       // Deduplicate and normalize
@@ -288,8 +317,10 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
 
       for (const raw of rawSessions) {
         const item = normalizeSession(raw)
-        // Filter out instant background process checks (under 5s with no FPS)
-        if (item.durationSeconds < 5 && (!item.avgFps || item.avgFps === 0)) {
+        // Filter out instant background process checks (under 5s with no FPS),
+        // but preserve sessions launched directly by Otix or valid played sessions (>= 1s)
+        const isLaunchedByOtix = Boolean(raw.launched_by_otix ?? raw.launchedByOtix)
+        if (item.durationSeconds < 5 && (!item.avgFps || item.avgFps === 0) && !isLaunchedByOtix) {
           continue
         }
         rawNormalized.push(item)
@@ -384,9 +415,7 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
     if (!query.data) return undefined
 
     // Resolve game artwork for all sessions
-    const resolvedSessions = gameMap
-      ? query.data.sessions.map(resolveGameArt)
-      : query.data.sessions
+    const resolvedSessions = query.data.sessions.map(resolveGameArt)
     const resolvedActive = activeSession ? resolveGameArt(activeSession) : null
 
     return {

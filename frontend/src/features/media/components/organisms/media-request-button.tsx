@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { ArrowDownToLine, Check, ChevronDown, Clock, Loader2, Server, X } from 'lucide-react'
+import { ArrowDownToLine, Check, ChevronDown, Clock, Loader2, Play, Server, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRequestMedia, type RequestMediaState } from '../../hooks/use-request-media'
 import type { RequestInstance } from './plugin-detail-actions'
@@ -9,19 +9,55 @@ function requestableInstances(instances: RequestInstance[]) {
   return instances.filter((item) => item.status === 'not_exists' || item.status === 'error')
 }
 
-export function RequestMediaButton({ state }: { state?: RequestMediaState } = {}) {
+export interface RequestMediaButtonProps {
+  state?: RequestMediaState
+  onWatch?: () => void
+  hideIfAvailable?: boolean
+}
+
+export function RequestMediaButton({
+  state,
+  onWatch,
+  hideIfAvailable = false,
+}: RequestMediaButtonProps = {}) {
   if (state) {
-    return <RequestMediaButtonInner state={state} />
+    return (
+      <RequestMediaButtonInner
+        state={state}
+        onWatch={onWatch}
+        hideIfAvailable={hideIfAvailable}
+      />
+    )
   }
-  return <RequestMediaButtonWithHook />
+  return <RequestMediaButtonWithHook onWatch={onWatch} hideIfAvailable={hideIfAvailable} />
 }
 
-function RequestMediaButtonWithHook() {
+function RequestMediaButtonWithHook({
+  onWatch,
+  hideIfAvailable,
+}: {
+  onWatch?: () => void
+  hideIfAvailable?: boolean
+}) {
   const state = useRequestMedia()
-  return <RequestMediaButtonInner state={state} />
+  return (
+    <RequestMediaButtonInner
+      state={state}
+      onWatch={onWatch}
+      hideIfAvailable={hideIfAvailable}
+    />
+  )
 }
 
-function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
+function RequestMediaButtonInner({
+  state,
+  onWatch,
+  hideIfAvailable = false,
+}: {
+  state: RequestMediaState
+  onWatch?: () => void
+  hideIfAvailable?: boolean
+}) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -47,7 +83,7 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
     }
   }, [menuOpen])
 
-  if (state.hidden) return null
+  if (state.hidden || hideIfAvailable) return null
 
   const openConfirm = (instanceId?: string) => {
     setTargetInstanceId(instanceId)
@@ -60,7 +96,7 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
     const isPaused = status.includes('pause')
     return (
       <div className="group/dl flex flex-wrap items-center gap-2">
-        <div className="relative inline-flex items-center gap-2 overflow-hidden rounded-full px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/15">
+        <div className="relative inline-flex items-center gap-2 overflow-hidden rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/15">
           <span className="absolute inset-0 bg-white/[0.10]" />
           <span
             className={cn(
@@ -80,7 +116,7 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
         <button
           type="button"
           onClick={state.handleCancelQueue}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.08] text-red-400 hover:bg-red-500/15 hover:text-red-300 transition-all cursor-pointer opacity-0 group-hover/dl:opacity-100"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.08] text-red-400 hover:bg-red-500/15 hover:text-red-300 transition-all cursor-pointer opacity-0 group-hover/dl:opacity-100"
           title="Cancel download"
         >
           <X className="h-4 w-4" />
@@ -89,7 +125,7 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
     )
   }
 
-  const downloaded = state.instances.some((item) => item.status === 'downloaded')
+  const downloaded = state.instances.some((item) => item.status === 'downloaded' || item.status === 'partially_available')
   const requested = state.instances.some((item) => item.status === 'requested')
   const targets = requestableInstances(state.instances)
   const busy = state.requesting != null
@@ -101,7 +137,7 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
         type="button"
         disabled
         title={state.disabledReason || `Checking ${state.mediaType === 'movie' ? 'Radarr' : 'Sonarr'} library status…`}
-        className="inline-flex items-center gap-2 rounded-full bg-blue-500/80 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/15 opacity-80 cursor-not-allowed"
+        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold text-white bg-blue-500/80 shadow-lg shadow-blue-500/15 opacity-80 cursor-not-allowed"
       >
         <Loader2 className="h-4 w-4 animate-spin" />
         <span>{loadingText}</span>
@@ -111,12 +147,30 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
 
   if (downloaded && targets.length === 0) {
     const downloadedInstances = state.instances
-      .filter((item) => item.status === 'downloaded')
+      .filter((item) => item.status === 'downloaded' || item.status === 'partially_available')
       .map((item) => item.name)
       .join(', ')
+
+    if (onWatch) {
+      return (
+        <button
+          type="button"
+          onClick={onWatch}
+          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30 hover:ring-emerald-400/60 shadow-lg shadow-emerald-500/10 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          title={downloadedInstances ? `Available in library on: ${downloadedInstances}. Click to watch/stream.` : 'Available in library. Click to watch/stream.'}
+        >
+          <Play className="h-4 w-4 fill-current text-current" />
+          <span>Stream</span>
+          <span className="text-[11px] opacity-75 font-normal truncate max-w-[120px] hidden sm:inline">
+            · Available
+          </span>
+        </button>
+      )
+    }
+
     return (
       <div
-        className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-5 py-2.5 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-500/40 shadow-lg shadow-emerald-500/10"
+        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40 shadow-lg shadow-emerald-500/10"
         title={downloadedInstances ? `Available in library on: ${downloadedInstances}` : 'Available in library'}
       >
         <Check className="h-4 w-4" />
@@ -132,7 +186,7 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
       .join(', ')
     return (
       <div
-        className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 px-5 py-2.5 text-sm font-semibold text-amber-300 ring-1 ring-amber-500/40 shadow-lg shadow-amber-500/10"
+        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40 shadow-lg shadow-amber-500/10"
         title={requestedInstances ? `Requested on: ${requestedInstances}` : 'Already requested'}
       >
         <Clock className="h-4 w-4" />
@@ -162,7 +216,7 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
           type="button"
           onClick={() => openConfirm(target?.id)}
           disabled={busy || !target}
-          className="inline-flex items-center gap-2 rounded-full bg-blue-500 hover:bg-blue-400 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-blue-500 hover:bg-blue-400 text-white shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           title={buttonTitle}
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
@@ -188,7 +242,7 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
           type="button"
           onClick={() => openConfirm(targets[0]?.id)}
           disabled={busy}
-          className="inline-flex items-center gap-2 rounded-l-full bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-400 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-l-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-blue-500 text-white hover:bg-blue-400 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           title={busy ? 'Request is in progress…' : `Request on ${targets[0]?.name || state.activeServerName}`}
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
@@ -202,7 +256,7 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           aria-controls={menuId}
-          className="inline-flex items-center justify-center rounded-r-full border-l border-white/20 bg-blue-500 px-2.5 py-2.5 text-white hover:bg-blue-400 transition-all cursor-pointer"
+          className="inline-flex items-center justify-center rounded-r-full h-10 border-l border-white/20 bg-blue-500 px-3 text-white hover:bg-blue-400 transition-all cursor-pointer"
         >
           <ChevronDown className={cn('h-4 w-4 transition-transform', menuOpen && 'rotate-180')} />
         </button>
@@ -248,3 +302,5 @@ function RequestMediaButtonInner({ state }: { state: RequestMediaState }) {
     </>
   )
 }
+
+

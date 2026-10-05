@@ -34,6 +34,11 @@ const ReviewsListSection = lazy(() =>
 const MediaDetailLibraryPanel = lazy(() =>
   import('../components/organisms/media-detail-library-panel').then((m) => ({ default: m.MediaDetailLibraryPanel })),
 )
+const MediaGameUserStats = lazy(() =>
+  import('@media/game/components/organisms/media-game-user-stats').then((m) => ({
+    default: m.MediaGameUserStats,
+  })),
+)
 const GameSection = lazy(() =>
   import('@media/game/components/organisms/media-game-section').then((m) => ({ default: m.GameSection })),
 )
@@ -166,9 +171,9 @@ export function MediaDetailPage() {
     }
   }, [detail, mediaId, mediaType, navigate, queryClient, search])
 
-  if (!mediaId || isPending) return <DetailSkeleton />
+  if (!mediaId || isPending) return <DetailSkeleton mediaType={mediaType} />
   if (isError || !detail) {
-    if (isFetching) return <DetailSkeleton />
+    if (isFetching) return <DetailSkeleton mediaType={mediaType} />
     return <ErrorState mediaType={mediaType} />
   }
 
@@ -376,6 +381,13 @@ export function MediaDetailPage() {
                   mediaId={detail.id ? String(detail.id) : (detail.slug || mediaId)}
                   tmdbId={detail.tmdbId}
                 />
+              </Suspense>
+            )}
+
+            {/* Otix Node Game Telemetry, Benchmarks & Battlestation Stats - Games only */}
+            {isAuthenticated && isGame(detail) && (
+              <Suspense fallback={null}>
+                <MediaGameUserStats detail={detail} />
               </Suspense>
             )}
           </div>

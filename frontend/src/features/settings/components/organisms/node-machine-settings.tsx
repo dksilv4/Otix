@@ -10,6 +10,7 @@ import {
   Monitor,
   Gamepad2,
   Sparkles,
+  Layers,
   HardDrive,
   Download,
   FolderOpen,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react'
 import { DkSwitch } from '@ui/atoms/switch'
 import { DkButton } from '@ui/atoms/button'
+import { DkSelect } from '@ui/atoms/select'
 import { useToast } from '@ui/molecules/toast'
 import type { DesktopSettingsData } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
@@ -81,11 +83,29 @@ export interface MachineOS {
   architecture: string
 }
 
+export interface MachineDisplay {
+  index: number
+  deviceName: string
+  name: string
+  manufacturer?: string
+  model?: string
+  resolution: string
+  width: number
+  height: number
+  refreshRate?: number
+  isPrimary: boolean
+  positionX: number
+  positionY: number
+  orientation?: string
+  arrangement?: string
+}
+
 export interface MachineHardware {
   probedAt?: string
   cpu: MachineCPU
   memory: MachineMemory
   gpus: MachineGPU[]
+  displays?: MachineDisplay[]
   storage: MachineStorage[]
   system: MachineSystem
   os: MachineOS
@@ -112,6 +132,9 @@ export interface NodeMachineData extends DesktopSettingsData {
   gameTracking?: boolean
   overlayEnabled?: boolean
   overlayCorner?: string
+  overlayMonitor?: string
+  overlayMonitors?: Array<{ id: string; name: string; is_primary?: boolean; isPrimary?: boolean; width?: number; height?: number }>
+  overlayHotkey?: string
   autoBackupOnExit?: boolean
 }
 
@@ -125,7 +148,9 @@ export const DEFAULT_SETTINGS: NodeMachineData = {
   autoBackupOnExit: true,
   gameTracking: true,
   overlayEnabled: true,
-  overlayCorner: 'top-left',
+  overlayCorner: 'top-wide',
+  overlayMonitor: 'auto',
+  overlayHotkey: 'Ctrl+`',
   capabilities: {
     game_tracking: true,
     in_game_overlay: false,
@@ -165,7 +190,10 @@ export function mapNodeSettings(fetched: Record<string, unknown>, fallback?: Nod
     ),
     gameTracking: Boolean(fetched.gameTracking ?? fetched.game_tracking ?? fallback?.gameTracking ?? true),
     overlayEnabled: Boolean(fetched.overlayEnabled ?? fetched.overlay_enabled ?? fallback?.overlayEnabled ?? true),
-    overlayCorner: String(fetched.overlayCorner ?? fetched.overlay_corner ?? fallback?.overlayCorner ?? 'top-left'),
+    overlayCorner: String(fetched.overlayCorner ?? fetched.overlay_corner ?? fallback?.overlayCorner ?? 'top-wide'),
+    overlayMonitor: String(fetched.overlayMonitor ?? fetched.overlay_monitor ?? fallback?.overlayMonitor ?? 'auto'),
+    overlayMonitors: (fetched.overlayMonitors ?? fetched.overlay_monitors ?? fallback?.overlayMonitors) as NodeMachineData['overlayMonitors'],
+    overlayHotkey: String(fetched.overlayHotkey ?? fetched.overlay_hotkey ?? fallback?.overlayHotkey ?? 'Ctrl+`'),
     hostname: String(fetched.hostname || fallback?.hostname || ''),
     arch: String(fetched.arch || fallback?.arch || 'amd64'),
     numCpu: Number(fetched.numCpu ?? fetched.num_cpu ?? fallback?.numCpu ?? 0),
@@ -377,6 +405,58 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
       setSaving(null)
     }
   }, [api, managingLocal, platform, server.id, server.name, settings, storageKey, supported, toast])
+
+  const handleSelectChange = useCallback((key: keyof NodeMachineData) => async (value: string) => {
+    setSaving(key)
+    const next = { ...settings, [key]: value }
+    setSettings(next)
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(next))
+    } catch {
+      // ignore storage quota error
+    }
+
+    if (managingLocal) {
+      try {
+        if (api?.setDesktopSettings) {
+          const updated = await api.setDesktopSettings({ [key]: value })
+          setSettings((prev) => ({ ...prev, ...updated }))
+        }
+      } catch (err) {
+        toast({
+          title: 'Failed to update setting',
+          description: String(err),
+          variant: 'error',
+        })
+      } finally {
+        setSaving(null)
+      }
+      return
+    }
+
+    try {
+      const res = await apiClient.post<Record<string, unknown>>(`/library/servers/${server.id}/desktop`, {
+        [key]: value,
+      })
+      const updatedData = res?.data
+      if (updatedData) {
+        setSettings((prev) => mapNodeSettings(updatedData, prev))
+      }
+      toast({
+        title: 'Node updated',
+        description: `Applied on ${server.name}.`,
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Saved locally',
+        description: 'This node is unreachable. Setting saved in the browser until it comes back.',
+        variant: 'info',
+      })
+    } finally {
+      setSaving(null)
+    }
+  }, [api, managingLocal, server.id, server.name, settings, storageKey, toast])
 
   const caps = settings.capabilities || {}
   const hw = settings.hardware
@@ -709,6 +789,172 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
                     </div>
                   )
                 })()}
+
+                {/* 5. Connected Displays & Monitor Arrangement Card */}
+                {hw.displays && hw.displays.length > 0 && (
+                  <div className="md:col-span-2 p-4 rounded-2xl bg-white/[0.025] border border-white/[0.06] space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-sky-500/15 text-sky-400">
+                          <Monitor size={16} />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                            Connected Displays & Desktop Arrangement
+                          </span>
+                          <span className="text-[11px] text-white/50">
+                            Physical display layout, resolutions, refresh rates, and spatial orientation.
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                        {hw.displays.length} Attached Monitor{hw.displays.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+
+                    {/* Interactive Visual Multi-Monitor Layout Canvas */}
+                    {(() => {
+                      const displays = hw.displays
+                      const minX = Math.min(...displays.map((d) => d.positionX))
+                      const maxX = Math.max(...displays.map((d) => d.positionX + d.width))
+                      const minY = Math.min(...displays.map((d) => d.positionY))
+                      const maxY = Math.max(...displays.map((d) => d.positionY + d.height))
+                      const totalW = Math.max(1, maxX - minX)
+                      const totalH = Math.max(1, maxY - minY)
+
+                      return (
+                        <div className="space-y-3">
+                          <div className="relative w-full h-48 sm:h-56 rounded-xl bg-black/40 border border-white/[0.08] p-4 flex items-center justify-center overflow-hidden">
+                            {/* Desktop canvas grid background */}
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
+
+                            <div
+                              className="relative"
+                              style={{
+                                width: '100%',
+                                maxWidth: '100%',
+                                height: '100%',
+                                aspectRatio: `${totalW} / ${totalH}`,
+                              }}
+                            >
+                              {displays.map((d) => {
+                                const leftPct = ((d.positionX - minX) / totalW) * 100
+                                const topPct = ((d.positionY - minY) / totalH) * 100
+                                const widthPct = (d.width / totalW) * 100
+                                const heightPct = (d.height / totalH) * 100
+
+                                return (
+                                  <div
+                                    key={d.deviceName}
+                                    className={cn(
+                                      'absolute rounded-lg p-2 flex flex-col justify-between transition-all select-none border',
+                                      d.isPrimary
+                                        ? 'bg-cyan-500/15 border-cyan-400/80 shadow-[0_0_15px_rgba(6,182,212,0.25)]'
+                                        : 'bg-white/[0.04] border-white/20 hover:border-white/40',
+                                    )}
+                                    style={{
+                                      left: `${leftPct}%`,
+                                      top: `${topPct}%`,
+                                      width: `${widthPct}%`,
+                                      height: `${heightPct}%`,
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span
+                                        className={cn(
+                                          'text-[10px] font-bold px-1.5 py-0.5 rounded font-mono',
+                                          d.isPrimary
+                                            ? 'bg-cyan-400 text-black'
+                                            : 'bg-white/10 text-white/80',
+                                        )}
+                                      >
+                                        {d.index}
+                                      </span>
+                                      {d.isPrimary && (
+                                        <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 uppercase tracking-wider">
+                                          Primary
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="min-w-0 py-0.5">
+                                      <p className="text-[11px] font-semibold text-white truncate leading-tight">
+                                        {d.name || d.model || `Display ${d.index}`}
+                                      </p>
+                                      <p className="text-[10px] text-white/60 truncate font-mono">
+                                        {d.resolution}
+                                        {d.refreshRate ? ` @ ${d.refreshRate}Hz` : ''}
+                                      </p>
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-[9px] text-white/40 pt-0.5 border-t border-white/[0.05]">
+                                      <span className="truncate">{d.orientation || 'Landscape'}</span>
+                                      <span className="font-mono">{d.positionX},{d.positionY}</span>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Monitor Specification Cards */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                            {displays.map((d) => (
+                              <div
+                                key={d.deviceName}
+                                className={cn(
+                                  'p-3 rounded-xl border space-y-1.5',
+                                  d.isPrimary
+                                    ? 'bg-cyan-500/[0.04] border-cyan-500/30'
+                                    : 'bg-white/[0.02] border-white/[0.05]',
+                                )}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span
+                                      className={cn(
+                                        'text-[10px] font-bold px-1.5 py-0.2 rounded font-mono shrink-0',
+                                        d.isPrimary ? 'bg-cyan-400 text-black' : 'bg-white/10 text-white/70',
+                                      )}
+                                    >
+                                      {d.index}
+                                    </span>
+                                    <span className="text-xs font-semibold text-white truncate">
+                                      {d.name}
+                                    </span>
+                                  </div>
+                                  {d.isPrimary && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 uppercase tracking-wider shrink-0">
+                                      Primary
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/5 text-white/70 font-mono">
+                                    {d.resolution}{d.refreshRate ? ` @ ${d.refreshRate}Hz` : ''}
+                                  </span>
+                                  {d.orientation && (
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/5 text-white/50">
+                                      {d.orientation}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {d.arrangement && (
+                                  <div className="pt-1 border-t border-white/[0.04] flex items-center justify-between text-[10px]">
+                                    <span className="text-white/40">Arrangement</span>
+                                    <span className="font-medium text-sky-300">{d.arrangement}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
               </div>
             ) : null}
 
@@ -828,19 +1074,75 @@ export function NodeMachineSettings({ server }: { server: GameServer }) {
             />
 
             {isWindows && (
-              <SettingsRow
-                icon={<Sparkles className="h-5 w-5" />}
-                label="Native in-game FPS overlay"
-                description="Click-through Win32 transparent HUD showing live FPS, 1% lows, and playtime."
-                action={
-                  <DkSwitch
-                    checked={Boolean(settings.overlayEnabled)}
-                    onCheckedChange={handleToggle('overlayEnabled')}
-                    disabled={saving === 'overlayEnabled'}
-                    className="ml-3 shrink-0"
-                  />
-                }
-              />
+              <>
+                <SettingsRow
+                  icon={<Sparkles className="h-5 w-5" />}
+                  label="In-game performance overlay"
+                  description="Click-through Win32 transparent HUD showing live FPS, 1% lows, and playtime. Toggle on/off with Ctrl+`."
+                  action={
+                    <DkSwitch
+                      checked={Boolean(settings.overlayEnabled)}
+                      onCheckedChange={handleToggle('overlayEnabled')}
+                      disabled={saving === 'overlayEnabled'}
+                      className="ml-3 shrink-0"
+                    />
+                  }
+                />
+
+                {settings.overlayEnabled && (
+                  <>
+                    <SettingsRow
+                      icon={<Monitor className="h-5 w-5" />}
+                      label="Assigned monitor"
+                      description="Display the overlay on a specific screen or follow the active game."
+                      action={
+                        <DkSelect
+                          value={settings.overlayMonitor || 'auto'}
+                          onChange={(e) => handleSelectChange('overlayMonitor')(e.target.value)}
+                          disabled={saving === 'overlayMonitor'}
+                          className="h-9 text-xs py-0 w-48 sm:w-64"
+                        >
+                          <option value="auto" className="bg-[#18181b] text-white">Auto (Follow Active Game)</option>
+                          {settings.overlayMonitors && settings.overlayMonitors.length > 0 ? (
+                            settings.overlayMonitors.map((m) => (
+                              <option key={m.id} value={m.id} className="bg-[#18181b] text-white">
+                                {m.name}{m.width && m.height ? ` (${m.width}x${m.height})` : ''}{m.is_primary || m.isPrimary ? ' - Primary' : ''}
+                              </option>
+                            ))
+                          ) : (
+                            <>
+                              <option value="1" className="bg-[#18181b] text-white">Monitor 1 (Primary)</option>
+                              <option value="2" className="bg-[#18181b] text-white">Monitor 2</option>
+                              <option value="3" className="bg-[#18181b] text-white">Monitor 3</option>
+                            </>
+                          )}
+                        </DkSelect>
+                      }
+                    />
+
+                    <SettingsRow
+                      icon={<Layers className="h-5 w-5" />}
+                      label="Overlay layout style"
+                      description="Choose whether the overlay stretches monitor-wide or docks to a corner."
+                      action={
+                        <DkSelect
+                          value={settings.overlayCorner || 'top-wide'}
+                          onChange={(e) => handleSelectChange('overlayCorner')(e.target.value)}
+                          disabled={saving === 'overlayCorner'}
+                          className="h-9 text-xs py-0 w-48 sm:w-64"
+                        >
+                          <option value="top-wide" className="bg-[#18181b] text-white">Top Edge (Monitor-Wide Bar)</option>
+                          <option value="bottom-wide" className="bg-[#18181b] text-white">Bottom Edge (Monitor-Wide Bar)</option>
+                          <option value="top-right" className="bg-[#18181b] text-white">Top Right Pill</option>
+                          <option value="top-left" className="bg-[#18181b] text-white">Top Left Pill</option>
+                          <option value="bottom-right" className="bg-[#18181b] text-white">Bottom Right Pill</option>
+                          <option value="bottom-left" className="bg-[#18181b] text-white">Bottom Left Pill</option>
+                        </DkSelect>
+                      }
+                    />
+                  </>
+                )}
+              </>
             )}
           </div>
         </SettingsCard>

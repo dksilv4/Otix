@@ -8,11 +8,16 @@ describe('cleanGameTitle', () => {
     expect(cleanGameTitle('eldenring.exe')).toBe('Elden Ring')
     expect(cleanGameTitle('rdr2.exe')).toBe('Red Dead Redemption 2')
     expect(cleanGameTitle('c:/games/witcher3/witcher3.exe')).toBe('The Witcher 3: Wild Hunt')
+    expect(cleanGameTitle('BloonsTD6.exe')).toBe('Bloons TD 6')
+    expect(cleanGameTitle('bloonstd6.exe')).toBe('Bloons TD 6')
+    expect(cleanGameTitle('D:\\SteamLibrary\\steamapps\\common\\BloonsTD6\\BloonsTD6.exe')).toBe('Bloons TD 6')
   })
 
   it('cleans suffixes and format characters for unknown games', () => {
     expect(cleanGameTitle('hollow_knight_dx11.exe')).toBe('Hollow Knight')
     expect(cleanGameTitle('some_awesome_game-win64-shipping.exe')).toBe('some awesome game')
     expect(cleanGameTitle('Dead.Cells.v1.2.exe')).toBe('Dead Cells v1 2')
+    expect(cleanGameTitle('TransportFever3')).toBe('Transport Fever 3')
+    expect(cleanGameTitle('SupermarketTogether.exe')).toBe('Supermarket Together')
   })
 })

@@ -7,34 +7,38 @@ import (
 	"time"
 
 	"github.com/dksilv4/otix/node/internal/config"
+	"github.com/dksilv4/otix/node/internal/games"
 	"github.com/dksilv4/otix/node/internal/hardware"
 )
 
 var NodeStartTime = time.Now()
 
 type DesktopSettingsResponse struct {
-	Platform          string                    `json:"platform"`
-	Supported         bool                      `json:"supported"`
-	Hostname          string                    `json:"hostname"`
-	ServerName        string                    `json:"serverName"`
-	Arch              string                    `json:"arch"`
-	NumCPU            int                       `json:"numCpu"`
-	GoVersion         string                    `json:"goVersion"`
-	UptimeSeconds     int                       `json:"uptimeSeconds"`
-	Capabilities      map[string]bool           `json:"capabilities"`
-	Hardware          *hardware.MachineHardware `json:"hardware,omitempty"`
-	LaunchOnStartup   bool                      `json:"launchOnStartup"`
-	MinimizeToTray    bool            `json:"minimizeToTray"`
-	CloseToTray       bool            `json:"closeToTray"`
-	AlwaysOnTop       bool            `json:"alwaysOnTop"`
-	StartMinimized    bool            `json:"startMinimized"`
-	GamesDownloadPath string          `json:"gamesDownloadPath"`
-	GamesInstallPath  string          `json:"gamesInstallPath"`
-	ScanOnLaunch      bool            `json:"scanOnLaunch"`
-	GameTracking      bool            `json:"gameTracking"`
-	OverlayEnabled    bool            `json:"overlayEnabled"`
-	OverlayCorner     string          `json:"overlayCorner"`
-	AutoBackupOnExit  bool            `json:"autoBackupOnExit"`
+	Platform          string                     `json:"platform"`
+	Supported         bool                       `json:"supported"`
+	Hostname          string                     `json:"hostname"`
+	ServerName        string                     `json:"serverName"`
+	Arch              string                     `json:"arch"`
+	NumCPU            int                        `json:"numCpu"`
+	GoVersion         string                     `json:"goVersion"`
+	UptimeSeconds     int                        `json:"uptimeSeconds"`
+	Capabilities      map[string]bool            `json:"capabilities"`
+	Hardware          *hardware.MachineHardware  `json:"hardware,omitempty"`
+	LaunchOnStartup   bool                       `json:"launchOnStartup"`
+	MinimizeToTray    bool                       `json:"minimizeToTray"`
+	CloseToTray       bool                       `json:"closeToTray"`
+	AlwaysOnTop       bool                       `json:"alwaysOnTop"`
+	StartMinimized    bool                       `json:"startMinimized"`
+	GamesDownloadPath string                     `json:"gamesDownloadPath"`
+	GamesInstallPath  string                     `json:"gamesInstallPath"`
+	ScanOnLaunch      bool                       `json:"scanOnLaunch"`
+	GameTracking      bool                       `json:"gameTracking"`
+	OverlayEnabled    bool                       `json:"overlayEnabled"`
+	OverlayCorner     string                     `json:"overlayCorner"`
+	OverlayMonitor    string                     `json:"overlayMonitor"`
+	OverlayMonitors   []games.MonitorInfo        `json:"overlayMonitors,omitempty"`
+	OverlayHotkey     string                     `json:"overlayHotkey,omitempty"`
+	AutoBackupOnExit  bool                       `json:"autoBackupOnExit"`
 }
 
 type OrganizeSettingsResponse struct {
@@ -112,7 +116,9 @@ func GetDesktopSettings(cfg *config.AppConfig, refresh ...bool) DesktopSettingsR
 		ScanOnLaunch:      cfg.Desktop.ScanOnLaunch,
 		GameTracking:      true,
 		OverlayEnabled:    true,
-		OverlayCorner:     "top-left",
+		OverlayCorner:     "top-wide",
+		OverlayMonitor:    "auto",
+		OverlayHotkey:     "Ctrl+`",
 		AutoBackupOnExit:  cfg.Saves.AutoBackupOnExit,
 	}
 }

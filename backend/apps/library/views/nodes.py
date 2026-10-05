@@ -3,6 +3,7 @@
 import logging
 import mimetypes
 from pathlib import Path
+from typing import Any
 
 import httpx
 from django.conf import settings
@@ -1607,6 +1608,347 @@ class GameServerInstancesImportView(APIView):
         return Response(result)
 
 
+KNOWN_GAME_STEAM_APP_IDS = {
+    "valheim": "892970",
+    "bloons td 6": "960090",
+    "bloonstd6": "960090",
+    "counter-strike 2": "730",
+    "cs2": "730",
+    "brawlhalla": "291550",
+    "sid meier's civilization vii": "2358720",
+    "civilization vii": "2358720",
+    "transport fever 2": "1066780",
+    "transport fever 3": "1066780",
+    "baldur's gate 3": "1086940",
+    "baldurs gate 3": "1086940",
+    "cyberpunk 2077": "1091500",
+    "elden ring": "1245620",
+    "factorio": "427520",
+    "palworld": "1623730",
+    "hades": "1145360",
+    "hades ii": "1145350",
+    "hades 2": "1145350",
+    "helldivers 2": "553850",
+    "black myth: wukong": "2358720",
+    "black myth wukong": "2358720",
+    "grand theft auto v": "271590",
+    "gta v": "271590",
+    "gta 5": "271590",
+    "red dead redemption 2": "1174180",
+    "rdr2": "1174180",
+    "the witcher 3": "292030",
+    "the witcher 3: wild hunt": "292030",
+    "witcher 3": "292030",
+    "rust": "252490",
+    "terraria": "105600",
+    "stardew valley": "413150",
+    "hollow knight": "367520",
+    "dead cells": "588650",
+    "slay the spire": "646570",
+    "balatro": "2379780",
+    "god of war": "1593500",
+    "sekiro": "814380",
+    "sekiro: shadows die twice": "814380",
+    "dark souls 3": "374320",
+    "forza horizon 5": "1551360",
+    "hogwarts legacy": "990080",
+    "destiny 2": "1085660",
+    "fallout 4": "377160",
+    "skyrim": "489830",
+    "rocket league": "252950",
+    "dead by daylight": "381210",
+    "rimworld": "294100",
+    "subnautica": "264710",
+    "deep rock galactic": "548430",
+}
+
+
+def hydrate_game_to_otix(
+    title: str = "",
+    steam_app_id: int | str | None = None,
+    igdb_id: int | str | None = None,
+) -> Any | None:
+    """Resolve and fully hydrate a missing game into the Otix catalog via IGDB."""
+    from apps.media.models import MediaItem
+    from apps.media.services.catalog import attach_media_urls
+    from apps.media.services.identity import attach_external_id, find_media_id
+    from apps.media.services.igdb import IGDBProvider, configured
+    from core.providers.igdb.hydrators import seed_game_from_igdb
+    from core.providers.igdb.schemas import GAME_HYDRATION_FIELDS
+
+    if not configured():
+        return None
+
+    try:
+        provider = IGDBProvider()
+    except Exception as exc:
+        logger.debug("IGDB provider unavailable: %s", exc)
+        return None
+
+    resolved_igdb_id: int | None = None
+    if igdb_id:
+        try:
+            resolved_igdb_id = int(str(igdb_id).replace("igdb:", "").strip())
+        except (ValueError, TypeError):
+            pass
+
+    if resolved_igdb_id is None and steam_app_id:
+        try:
+            steam_int = int(str(steam_app_id).replace("steam_", "").strip())
+            steam_to_igdb = provider.lookup_steam_app_ids([steam_int])
+            resolved_igdb_id = steam_to_igdb.get(steam_int)
+        except Exception as exc:
+            logger.debug("Failed looking up steam_app_id %s on IGDB: %s", steam_app_id, exc)
+
+    if resolved_igdb_id is None and title:
+        try:
+            from apps.media.services.game_matcher import _comparison_key
+
+            target_key = _comparison_key(title)
+            candidates = provider.search_games_by_name(title, limit=10, fields="id,name,slug")
+            for c in candidates:
+                if _comparison_key(c.get("name") or "") == target_key:
+                    resolved_igdb_id = c.get("id")
+                    break
+            if resolved_igdb_id is None:
+                candidates = provider.search_games(title, limit=10, fields="id,name,slug")
+                for c in candidates:
+                    if _comparison_key(c.get("name") or "") == target_key:
+                        resolved_igdb_id = c.get("id")
+                        break
+        except Exception as exc:
+            logger.debug("Failed searching IGDB for title '%s': %s", title, exc)
+
+    if resolved_igdb_id is None:
+        return None
+
+    try:
+        existing_id = find_media_id("igdb", str(resolved_igdb_id), "game")
+        if existing_id:
+            media = MediaItem.objects.filter(pk=existing_id).prefetch_related("assets").first()
+            if media:
+                attach_media_urls([media])
+                if steam_app_id:
+                    attach_external_id(
+                        media.pk, "steam", str(steam_app_id).replace("steam_", "").strip(), "game"
+                    )
+                return media
+
+        raw_game = provider.get_game(resolved_igdb_id, fields=GAME_HYDRATION_FIELDS)
+        if not raw_game:
+            return None
+
+        media_id = seed_game_from_igdb(raw_game, resolved_igdb_id)
+        if steam_app_id:
+            attach_external_id(
+                media_id, "steam", str(steam_app_id).replace("steam_", "").strip(), "game"
+            )
+
+        media = MediaItem.objects.filter(pk=media_id).prefetch_related("assets").first()
+        if media:
+            attach_media_urls([media])
+        return media
+    except Exception as exc:
+        logger.warning(
+            "Failed fully hydrating game '%s' (igdb_id=%s): %s", title, resolved_igdb_id, exc
+        )
+        return None
+
+
+def enrich_sessions_with_media(sessions: list[dict]) -> list[dict]:
+    """Enrich play session dictionaries with full Otix catalog data, fully hydrating missing games."""
+    if not sessions:
+        return sessions
+
+    from django.contrib.contenttypes.models import ContentType
+
+    from apps.media.models import ExternalID, MediaItem
+    from apps.media.services.catalog import attach_media_urls
+    from apps.media.services.game_matcher import _comparison_key
+
+    media_ct = ContentType.objects.get_for_model(MediaItem)
+
+    numeric_ids: list[int] = []
+    titles: set[str] = set()
+    slugs: set[str] = set()
+    steam_candidates: set[str] = set()
+    igdb_candidates: set[str] = set()
+
+    for s in sessions:
+        gid = str(s.get("game_id") or s.get("gameId") or "").strip()
+        title = str(s.get("game_title") or s.get("gameTitle") or "").strip()
+        steam_app = str(s.get("steam_app_id") or s.get("steamAppId") or "").strip()
+        if steam_app and steam_app.isdigit():
+            steam_candidates.add(steam_app)
+        if gid:
+            if gid.startswith("igdb:"):
+                raw = gid.replace("igdb:", "").strip()
+                if raw.isdigit():
+                    numeric_ids.append(int(raw))
+                    igdb_candidates.add(raw)
+            elif gid.startswith("steam_") or gid.startswith("steam-"):
+                candidate = gid.replace("steam_", "").replace("steam-", "").strip()
+                if candidate.isdigit():
+                    steam_candidates.add(candidate)
+            elif gid.isdigit():
+                numeric_ids.append(int(gid))
+                steam_candidates.add(gid)
+            else:
+                slugs.add(gid.lower())
+        if title:
+            titles.add(title)
+            clean_title = title.lower()
+            norm_key = clean_title.replace(":", "").replace("-", " ").replace("  ", " ").strip()
+            known_app_id = KNOWN_GAME_STEAM_APP_IDS.get(clean_title) or KNOWN_GAME_STEAM_APP_IDS.get(norm_key)
+            if known_app_id:
+                steam_candidates.add(known_app_id)
+
+    q = Q()
+    if numeric_ids:
+        q |= Q(id__in=numeric_ids)
+    if slugs:
+        q |= Q(slug__in=list(slugs))
+    if titles:
+        q |= Q(title__in=list(titles)) | Q(title__in=[t.lower() for t in titles])
+
+    media_items: list[MediaItem] = []
+    if q:
+        try:
+            media_items = list(
+                MediaItem.objects.filter(media_type="game")
+                .filter(q)
+                .prefetch_related("assets")[:100]
+            )
+        except Exception as exc:
+            logger.debug("Failed querying MediaItems for sessions: %s", exc)
+
+    # Resolve ExternalID matches separately for Steam and IGDB to avoid collisions
+    ext_q = Q()
+    if steam_candidates:
+        ext_q |= Q(provider="steam", external_id__in=list(steam_candidates))
+    if igdb_candidates:
+        ext_q |= Q(provider="igdb", external_id__in=list(igdb_candidates))
+
+    if ext_q:
+        try:
+            ext_rows = list(
+                ExternalID.objects.filter(
+                    content_type=media_ct,
+                ).filter(ext_q)
+            )
+            extra_ids = [r.object_id for r in ext_rows if r.object_id]
+            if extra_ids:
+                existing_ids = {m.id for m in media_items}
+                new_ids = [x for x in extra_ids if x not in existing_ids]
+                if new_ids:
+                    extra_items = list(
+                        MediaItem.objects.filter(media_type="game", pk__in=new_ids).prefetch_related("assets")
+                    )
+                    media_items.extend(extra_items)
+        except Exception as exc:
+            logger.debug("Failed querying ExternalIDs for sessions: %s", exc)
+
+    if media_items:
+        attach_media_urls(media_items)
+
+    by_id = {str(m.id): m for m in media_items}
+    by_slug = {m.slug.lower(): m for m in media_items}
+    by_title = {m.title.lower().strip(): m for m in media_items}
+    by_key = {_comparison_key(m.title): m for m in media_items}
+
+    # Map external_id -> MediaItem PER PROVIDER
+    by_steam_ext: dict[str, MediaItem] = {}
+    by_igdb_ext: dict[str, MediaItem] = {}
+    if media_items:
+        try:
+            m_ids = [m.id for m in media_items]
+            for ext in ExternalID.objects.filter(content_type=media_ct, object_id__in=m_ids):
+                if str(ext.object_id) in by_id:
+                    if ext.provider == "steam":
+                        by_steam_ext[str(ext.external_id)] = by_id[str(ext.object_id)]
+                    elif ext.provider == "igdb":
+                        by_igdb_ext[str(ext.external_id)] = by_id[str(ext.object_id)]
+        except Exception:
+            pass
+
+    for s in sessions:
+        gid = str(s.get("game_id") or s.get("gameId") or "").strip()
+        raw_title = str(s.get("game_title") or s.get("gameTitle") or "").strip()
+        clean_title = raw_title.lower()
+        norm_key = clean_title.replace(":", "").replace("-", " ").replace("  ", " ").strip()
+
+        candidate_steam_id: str | None = None
+        if s.get("steam_app_id") or s.get("steamAppId"):
+            candidate_steam_id = str(s.get("steam_app_id") or s.get("steamAppId")).strip()
+        elif gid.startswith("steam_"):
+            raw_c = gid.replace("steam_", "").strip()
+            if raw_c.isdigit():
+                candidate_steam_id = raw_c
+        elif gid.startswith("steam-"):
+            raw_c = gid.replace("steam-", "").strip()
+            if raw_c.isdigit():
+                candidate_steam_id = raw_c
+        elif gid.isdigit() and int(gid) > 1000:
+            candidate_steam_id = gid
+        if not candidate_steam_id:
+            candidate_steam_id = KNOWN_GAME_STEAM_APP_IDS.get(clean_title) or KNOWN_GAME_STEAM_APP_IDS.get(norm_key)
+
+        igdb_id_cand: str | None = None
+        if gid.startswith("igdb:"):
+            igdb_id_cand = gid.replace("igdb:", "").strip()
+
+        matched = (
+            by_id.get(gid)
+            or (candidate_steam_id and by_steam_ext.get(candidate_steam_id))
+            or (igdb_id_cand and by_igdb_ext.get(igdb_id_cand))
+            or by_slug.get(gid.lower())
+            or by_title.get(clean_title)
+            or by_key.get(_comparison_key(raw_title))
+        )
+
+        # If game is not in Otix, fully hydrate it from IGDB!
+        if not matched and (raw_title or candidate_steam_id or igdb_id_cand):
+            hydrated = hydrate_game_to_otix(
+                title=raw_title,
+                steam_app_id=candidate_steam_id,
+                igdb_id=igdb_id_cand,
+            )
+            if hydrated:
+                matched = hydrated
+                try:
+                    attach_media_urls([hydrated])
+                except Exception:
+                    pass
+                by_id[str(hydrated.id)] = hydrated
+                by_slug[hydrated.slug.lower()] = hydrated
+                by_title[hydrated.title.lower().strip()] = hydrated
+                by_key[_comparison_key(hydrated.title)] = hydrated
+                if candidate_steam_id:
+                    by_steam_ext[candidate_steam_id] = hydrated
+                if igdb_id_cand:
+                    by_igdb_ext[igdb_id_cand] = hydrated
+
+        if matched:
+            s["poster_url"] = getattr(matched, "poster_url", None) or s.get("poster_url")
+            s["backdrop_url"] = getattr(matched, "backdrop_url", None) or s.get("backdrop_url")
+            s["banner_url"] = getattr(matched, "banner_url", None) or getattr(matched, "logo_url", None) or s.get("banner_url")
+            s["slug"] = getattr(matched, "slug", None) or s.get("slug")
+            s["game_title"] = getattr(matched, "title", None) or s.get("game_title")
+            s["gameTitle"] = getattr(matched, "title", None) or s.get("gameTitle")
+            s["otix_media_id"] = str(matched.id)
+            s["media_item_id"] = str(matched.id)
+
+        # Fallback to Steam CDN if poster still absent
+        if not s.get("poster_url"):
+            app_id = candidate_steam_id
+            if app_id:
+                s["poster_url"] = f"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{app_id}/library_600x900.jpg"
+                if not s.get("backdrop_url"):
+                    s["backdrop_url"] = f"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{app_id}/page_bg_generated_v6b.jpg"
+
+    return sessions
+
+
 class GameServerSessionsView(APIView):
     """GET /library/servers/{server_id}/sessions — proxy play sessions from a specific node."""
 
@@ -1616,11 +1958,15 @@ class GameServerSessionsView(APIView):
         server = _get_server_or_404(request, server_id)
         limit = int(request.query_params.get("limit", 100))
         code, body = node_get_sessions(server, limit=limit)
+        if code == 200 and isinstance(body, list):
+            body = enrich_sessions_with_media(body)
         return Response(body, status=code)
 
 
 class UserGameSessionsView(APIView):
-    """GET /library/game-sessions — aggregate play sessions across user's active node(s)."""
+    """GET /library/game-sessions — aggregate play sessions across user's active node(s).
+    POST /library/game-sessions — hydrate and enrich arbitrary play sessions with Otix catalog data.
+    """
 
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -1650,7 +1996,21 @@ class UserGameSessionsView(APIView):
             return s.get("end_time") or s.get("start_time") or ""
 
         all_sessions.sort(key=sort_key, reverse=True)
-        return Response(all_sessions[:limit])
+        enriched = enrich_sessions_with_media(all_sessions[:limit])
+        return Response(enriched)
+
+    def post(self, request: Request) -> Response:
+        """POST /library/game-sessions — hydrate and enrich input sessions with Otix catalog data."""
+        data = request.data
+        sessions: list[dict] = []
+        if isinstance(data, dict):
+            raw = data.get("sessions")
+            if isinstance(raw, list):
+                sessions = raw
+        elif isinstance(data, list):
+            sessions = data
+        enriched = enrich_sessions_with_media(sessions)
+        return Response(enriched)
 
 
 # Modern Node view aliases

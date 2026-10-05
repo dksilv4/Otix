@@ -214,4 +214,45 @@ describe('useUserGameSessions hook', () => {
     expect(active?.hardwareSummary).toContain('RTX 4080')
     expect(active?.shareEligible).toBe(true)
   })
+
+  it('preserves and resolves poster artwork for sessions even without local games', async () => {
+    vi.mocked(desktopApi.getDesktopAPI).mockReturnValue({
+      getRecentSessions: vi.fn().mockResolvedValue([
+        {
+          id: 'sess-valheim',
+          gameId: 'valheim',
+          gameTitle: 'Valheim',
+          startTime: 1727720000000,
+          endTime: 1727727200000,
+          durationSeconds: 7200,
+        },
+        {
+          id: 'sess-custom',
+          gameId: 'custom-game',
+          gameTitle: 'Custom Game',
+          startTime: 1727710000000,
+          endTime: 1727715000000,
+          durationSeconds: 5000,
+          poster_url: 'https://images.example.com/custom_poster.jpg',
+        },
+      ]),
+    } as any)
+
+    const { result } = renderHook(() => useUserGameSessions(), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const sessions = result.current.data?.sessions || []
+    expect(sessions).toHaveLength(2)
+
+    // Valheim should resolve via Steam CDN
+    const valheimSession = sessions.find((s) => s.gameTitle === 'Valheim')
+    expect(valheimSession?.posterUrl).toContain('892970')
+
+    // Custom game with existing poster_url should preserve it
+    const customSession = sessions.find((s) => s.id === 'sess-custom')
+    expect(customSession?.posterUrl).toBe('https://images.example.com/custom_poster.jpg')
+  })
 })

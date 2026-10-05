@@ -61,12 +61,31 @@ type OSInfo struct {
 	Architecture string `json:"architecture"`
 }
 
+// DisplayInfo represents an active physical monitor and its desktop spatial arrangement.
+type DisplayInfo struct {
+	Index        int    `json:"index"`
+	DeviceName   string `json:"deviceName"`             // e.g. "\\.\DISPLAY1"
+	Name         string `json:"name"`                   // Friendly model e.g. "Samsung Odyssey G93SC"
+	Manufacturer string `json:"manufacturer,omitempty"` // e.g. "Samsung"
+	Model        string `json:"model,omitempty"`        // e.g. "Odyssey G93SC"
+	Resolution   string `json:"resolution"`             // e.g. "5120x1440"
+	Width        int    `json:"width"`
+	Height       int    `json:"height"`
+	RefreshRate  int    `json:"refreshRate"`            // in Hz, e.g. 240
+	IsPrimary    bool   `json:"isPrimary"`
+	PositionX    int    `json:"positionX"`              // Desktop coordinate X
+	PositionY    int    `json:"positionY"`              // Desktop coordinate Y
+	Orientation  string `json:"orientation,omitempty"`  // "Landscape", "Portrait (90°)", etc.
+	Arrangement  string `json:"arrangement,omitempty"`  // e.g. "Primary Display (Center)", "Stacked Above Primary", "Left of Primary (Vertical Portrait)"
+}
+
 // MachineHardware aggregates all detected host machine hardware components.
 type MachineHardware struct {
 	ProbedAt time.Time        `json:"probedAt"`
 	CPU      CPUInfo          `json:"cpu"`
 	Memory   MemoryInfo       `json:"memory"`
 	GPUs     []GPUInfo        `json:"gpus"`
+	Displays []DisplayInfo    `json:"displays"`
 	Storage  []DiskVolumeInfo `json:"storage"`
 	System   SystemInfo       `json:"system"`
 	OS       OSInfo           `json:"os"`

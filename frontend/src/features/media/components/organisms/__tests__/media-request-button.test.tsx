@@ -114,4 +114,79 @@ describe('RequestMediaButton', () => {
     expect(btn).toHaveTextContent('Request Movie')
     expect(btn).toHaveAttribute('title', 'Request on 1080p Radarr')
   })
+
+  it('hides when hideIfAvailable is true and instance is downloaded', () => {
+    vi.spyOn(useRequestMediaModule, 'useRequestMedia').mockReturnValue({
+      ...baseMockState,
+      instances: [
+        { id: '1:radarr1', name: '4K Radarr', status: 'downloaded', file: null },
+      ],
+    })
+
+    const { container } = render(<RequestMediaButton hideIfAvailable />)
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('renders interactive Stream button when onWatch is provided and item is downloaded', async () => {
+    const onWatch = vi.fn()
+    vi.spyOn(useRequestMediaModule, 'useRequestMedia').mockReturnValue({
+      ...baseMockState,
+      instances: [
+        { id: '1:radarr1', name: '4K Radarr', status: 'downloaded', file: null },
+      ],
+    })
+
+    render(<RequestMediaButton onWatch={onWatch} />)
+
+    const btn = screen.getByRole('button', { name: /stream.*available/i })
+    expect(btn).toBeInTheDocument()
+    btn.click()
+    expect(onWatch).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides when hideIfAvailable is true even if item is requested (keeps single Play CTA on hero)', () => {
+    vi.spyOn(useRequestMediaModule, 'useRequestMedia').mockReturnValue({
+      ...baseMockState,
+      mediaType: 'show',
+      instances: [
+        { id: '1:sonarr1', name: 'Sonarr', status: 'requested', file: null },
+      ],
+    })
+
+    const { container } = render(<RequestMediaButton hideIfAvailable />)
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('hides when hideIfAvailable is true for partially available show', () => {
+    vi.spyOn(useRequestMediaModule, 'useRequestMedia').mockReturnValue({
+      ...baseMockState,
+      mediaType: 'show',
+      instances: [
+        { id: '1:sonarr1', name: 'Sonarr', status: 'partially_available', file: null },
+      ],
+    })
+
+    const { container } = render(<RequestMediaButton hideIfAvailable />)
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('renders single Stream button when onWatch is provided for partially available show without external play widget', () => {
+    const onWatch = vi.fn()
+    vi.spyOn(useRequestMediaModule, 'useRequestMedia').mockReturnValue({
+      ...baseMockState,
+      mediaType: 'show',
+      instances: [
+        { id: '1:sonarr1', name: 'Sonarr', status: 'partially_available', file: null },
+      ],
+    })
+
+    render(<RequestMediaButton onWatch={onWatch} />)
+    const streamBtn = screen.getByRole('button', { name: /stream.*available/i })
+    expect(streamBtn).toBeInTheDocument()
+    streamBtn.click()
+    expect(onWatch).toHaveBeenCalledTimes(1)
+  })
 })
+
+
+

@@ -126,6 +126,12 @@ export interface PlaySession {
   node?: SessionNodeInfo | null;
   hardware?: SessionHardwareInfo | null;
   shareEligible?: boolean;
+  posterUrl?: string | null;
+  backdropUrl?: string | null;
+  bannerUrl?: string | null;
+  slug?: string | null;
+  otixMediaId?: string | number | null;
+  processName?: string | null;
 }
 
 export interface LauncherScanResult {

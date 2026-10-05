@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -414,12 +415,29 @@ func ComputeHeadHash(filepath string) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
+var (
+	reCamel       = regexp.MustCompile(`([a-z])([A-Z])`)
+	reAcronym     = regexp.MustCompile(`([A-Z]+)([A-Z][a-z])`)
+	reLetterDigit = regexp.MustCompile(`([a-uw-zA-UW-Z])([0-9]+)`)
+	reDigitLetter = regexp.MustCompile(`([0-9]+)([a-zA-Z])`)
+	rePreTags     = regexp.MustCompile(`(?i)\bmac\s*os\b|\bmacos\b`)
+)
+
 func CleanTitleFromFilename(filename string) string {
 	base := filename
 	ext := filepath.Ext(filename)
 	if StripExtensions[strings.ToLower(ext)] {
 		base = strings.TrimSuffix(filename, ext)
 	}
+
+	// Remove macOS before CamelCase splitting turns it into mac OS
+	base = rePreTags.ReplaceAllString(base, " ")
+
+	// Split CamelCase, acronyms, and alphanumeric boundaries
+	base = reCamel.ReplaceAllString(base, "$1 $2")
+	base = reAcronym.ReplaceAllString(base, "$1 $2")
+	base = reLetterDigit.ReplaceAllString(base, "$1 $2")
+	base = reDigitLetter.ReplaceAllString(base, "$1 $2")
 
 	tags := []string{
 		"repack", "fitgirl", "dodi", "gog", "iso", "codex", "skidrow",

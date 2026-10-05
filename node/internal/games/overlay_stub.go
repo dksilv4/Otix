@@ -42,3 +42,14 @@ func (om *OverlayManager) CyclePosition() {}
 func (om *OverlayManager) SetCorner(corner string) {
 	om.corner = corner
 }
+
+func (om *OverlayManager) ApplySettings(settings OverlaySettings) {
+	om.corner = settings.Corner
+	om.visible = settings.Enabled
+}
+
+func (om *OverlayManager) GetAvailableMonitors() []MonitorInfo {
+	return []MonitorInfo{
+		{ID: "auto", Name: "Auto (Default Display)", IsPrimary: true},
+	}
+}

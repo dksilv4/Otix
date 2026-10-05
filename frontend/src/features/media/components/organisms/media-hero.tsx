@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { Badge } from '@ui/atoms/badge'
 import { MEDIA_TYPE_LABEL } from '@/constants/media'
 import {
@@ -54,6 +54,7 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
   const { user, isAuthenticated } = useAuth()
   const { openModal } = useModal()
   const closeTrailerRef = useRef<(() => void) | null>(null)
+  const [posterFailed, setPosterFailed] = useState(false)
 
   const { data: detail } = useQuery(mediaQueries.detail(mediaType, mediaId))
   const { activePromotion } = useGameFreePromotions(detail)
@@ -73,7 +74,6 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
     posterUrl,
     logoUrl,
     logoColorGuess,
-    textlessPosterUrl,
     releaseDate,
     originalLanguage,
     isAdult,
@@ -82,7 +82,7 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
   const isAnime = detail.movie?.isAnime || detail.show?.isAnime || false
   const isKdrama = mediaType === 'show' && originalLanguage === 'ko'
   const musicCreditsLine = isMusic(detail) ? formatMusicCreditsLine(detail.credits) : null
-  const tagline = detail.movie?.tagline || detail.game?.reviewSummary || musicCreditsLine
+  const tagline = detail.movie?.tagline || detail.show?.tagline || detail.game?.reviewSummary || musicCreditsLine
 
   const status = detail.show?.status || detail.game?.releaseStatus
   const runtime = detail.movie?.runtime
@@ -114,9 +114,11 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
   const episodesCount =
     showSeasons.reduce((acc, s) => acc + (s.episodeCount || (Array.isArray(s.episodes) ? s.episodes.length : 0)), 0)
 
-  const logo: string | undefined = logoUrl || textlessPosterUrl || undefined
+  const logo: string | undefined = logoUrl || undefined
   const hasLogo = Boolean(logo)
-  const heroBackdrop = backdropUrl || (mediaType === 'music' && posterUrl ? posterUrl : null)
+  const heroBackdrop = backdropUrl || posterUrl || null
+  const MediaIcon =
+    mediaType === 'show' ? Tv : mediaType === 'game' ? Gamepad2 : mediaType === 'music' ? Music : Film
 
   const trailer = primaryTrailer(detail)
   const openTrailer = () => {
@@ -161,48 +163,68 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
   return (
     <header id="media-hero" className={`relative min-h-[46vh] lg:min-h-[50vh] pb-6 ${className}`}>
       {/* ── Fixed Backdrop with cinematic depth ── */}
-      {heroBackdrop && (
-        <div className="fixed pointer-events-none inset-0 z-0 overflow-hidden">
+      <div className="fixed pointer-events-none inset-0 z-0 overflow-hidden">
+        {heroBackdrop ? (
           <img
             src={backdropSrc(heroBackdrop)}
             alt=""
             loading="eager"
             fetchPriority="high"
             decoding="async"
-            className="h-full w-full object-cover brightness-[0.40] contrast-[1.08] saturate-[1.1]"
+            className={cn(
+              'h-full w-full object-cover brightness-[0.40] contrast-[1.08] saturate-[1.1]',
+              !backdropUrl && 'blur-3xl scale-125 brightness-[0.25]',
+            )}
             style={{
               objectPosition: 'center 22%',
               animation: 'kenBurns 32s ease-out forwards',
             }}
           />
-          {/* Multi-stop smooth atmospheric veil */}
+        ) : (
           <div
-            className="fixed inset-0"
+            className="h-full w-full"
             style={{
               background:
-                'linear-gradient(to top, color-mix(in oklab, var(--background) 100%, transparent) 0%, color-mix(in oklab, var(--background) 88%, transparent) 25%, color-mix(in oklab, var(--background) 55%, transparent) 60%, color-mix(in oklab, var(--background) 25%, transparent) 100%)',
+                'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.22), rgba(0, 0, 0, 0))',
             }}
           />
-        </div>
-      )}
+        )}
+        {/* Multi-stop smooth atmospheric veil */}
+        <div
+          className="fixed inset-0"
+          style={{
+            background:
+              'linear-gradient(to top, color-mix(in oklab, var(--background) 100%, transparent) 0%, color-mix(in oklab, var(--background) 88%, transparent) 25%, color-mix(in oklab, var(--background) 55%, transparent) 60%, color-mix(in oklab, var(--background) 25%, transparent) 100%)',
+          }}
+        />
+      </div>
 
       {/* ── Hero Foreground Content ── */}
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 sm:pt-22 pb-2">
-        <div className="flex flex-col items-center sm:flex-row sm:items-end gap-6 sm:gap-8 lg:gap-10">
+        <div className="flex flex-col items-center sm:flex-row sm:items-center lg:items-end gap-6 sm:gap-8 lg:gap-10">
           {/* Poster with subtle ambient glow */}
           <div className="w-36 shrink-0 sm:w-44 lg:w-56 xl:w-60 group">
             <div className="overflow-hidden rounded-2xl shadow-2xl shadow-black/80 ring-1 ring-white/20 bg-black/50 transition-all duration-300 group-hover:scale-[1.02]">
-              <img
-                src={posterUrl || undefined}
-                alt={`${title} poster`}
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
-                className={`w-full object-cover ${mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]'}`}
-                onError={(e) => {
-                  ;(e.target as HTMLImageElement).style.display = 'none'
-                }}
-              />
+              {!posterUrl || posterFailed ? (
+                <div
+                  className={`w-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-b from-white/10 to-white/[0.02] ${
+                    mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]'
+                  }`}
+                >
+                  <MediaIcon className="h-10 w-10 text-white/30 mb-2" />
+                  <span className="text-xs font-semibold text-white/60 line-clamp-3">{title}</span>
+                </div>
+              ) : (
+                <img
+                  src={posterUrl}
+                  alt={`${title} poster`}
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                  className={`w-full object-cover ${mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]'}`}
+                  onError={() => setPosterFailed(true)}
+                />
+              )}
             </div>
           </div>
 
@@ -334,7 +356,7 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
                   type="button"
                   onClick={openTrailer}
                   className={cn(
-                    'group relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md backdrop-blur-xl',
+                    'group relative inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md backdrop-blur-xl',
                     trailerIsPrimary
                       ? 'bg-rose-600/90 hover:bg-rose-600 text-white shadow-rose-600/30'
                       : 'bg-white/[0.10] hover:bg-white/[0.16] text-white/90 hover:text-white',
@@ -348,7 +370,7 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
               )}
 
               {/* ── Secondary Icon-Based Interaction Cluster ── */}
-              <div className="flex items-center gap-1 rounded-full bg-black/45 p-1 backdrop-blur-xl shadow-lg">
+              <div className="flex items-center gap-1 rounded-full h-10 bg-black/45 px-1.5 backdrop-blur-xl shadow-lg ring-1 ring-white/10">
                 {/* Watchlist / Wishlist Button */}
                 {isAuthenticated && (
                   <button

@@ -1,8 +1,12 @@
 import { Skeleton } from '@ui/atoms/skeleton'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
+import { useMediaParams } from '../../hooks/use-media-params'
 
-export function DetailSkeleton() {
+export function DetailSkeleton({ mediaType }: { mediaType?: string } = {}) {
   const { isDesktop } = useDesktopPlatform()
+  const { mediaType: paramMediaType } = useMediaParams()
+  const effectiveType = mediaType || paramMediaType
+  const isMusic = effectiveType === 'music'
 
   return (
     <div
@@ -23,10 +27,10 @@ export function DetailSkeleton() {
         </div>
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 sm:pt-22 pb-2">
-          <div className="flex flex-col items-center sm:flex-row sm:items-end gap-6 sm:gap-8 lg:gap-10">
+          <div className="flex flex-col items-center sm:flex-row sm:items-center lg:items-end gap-6 sm:gap-8 lg:gap-10">
             {/* Poster */}
             <div className="w-36 shrink-0 sm:w-44 lg:w-56 xl:w-60">
-              <Skeleton className="aspect-[2/3] w-full rounded-2xl" />
+              <Skeleton className={`${isMusic ? 'aspect-square' : 'aspect-[2/3]'} w-full rounded-2xl`} />
             </div>
 
             {/* Title / meta / actions */}
@@ -34,15 +38,15 @@ export function DetailSkeleton() {
               <Skeleton className="h-12 w-56 sm:h-16 sm:w-72 lg:h-20 lg:w-96 rounded-lg" />
               <Skeleton className="h-4 w-64 sm:w-80 max-w-full" />
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-0.5">
-                <Skeleton className="h-7 w-16 rounded-full" />
-                <Skeleton className="h-7 w-14 rounded-full" />
-                <Skeleton className="h-7 w-20 rounded-full" />
-                <Skeleton className="h-7 w-12 rounded-full" />
+                <Skeleton className="h-6 w-16 rounded-full" />
+                <Skeleton className="h-6 w-14 rounded-full" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+                <Skeleton className="h-6 w-12 rounded-full" />
               </div>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2">
-                <Skeleton className="h-9 w-28 rounded-full" />
-                <Skeleton className="h-9 w-9 rounded-full" />
-                <Skeleton className="h-10 w-36 rounded-full" />
+                <Skeleton className="h-10 w-32 rounded-full" />
+                <Skeleton className="h-10 w-24 rounded-full" />
+                <Skeleton className="h-10 w-28 rounded-full" />
               </div>
             </div>
           </div>

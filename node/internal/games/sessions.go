@@ -120,6 +120,15 @@ func (s *SessionStore) loadOverlaySettings() {
 
 	var prefs OverlaySettings
 	if err := json.Unmarshal(data, &prefs); err == nil {
+		if prefs.Monitor == "" {
+			prefs.Monitor = "auto"
+		}
+		if prefs.Corner == "" {
+			prefs.Corner = "top-wide"
+		}
+		if prefs.Hotkey == "" {
+			prefs.Hotkey = "Ctrl+`"
+		}
 		s.overlayPrefs = prefs
 	}
 }

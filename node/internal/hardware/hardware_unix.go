@@ -15,13 +15,18 @@ import (
 
 func detectHardware() *MachineHardware {
 	return &MachineHardware{
-		CPU:     detectUnixCPU(),
-		Memory:  detectUnixMemory(),
-		GPUs:    detectUnixGPUs(),
-		Storage: detectUnixStorage(),
-		System:  detectUnixSystem(),
-		OS:      detectUnixOS(),
+		CPU:      detectUnixCPU(),
+		Memory:   detectUnixMemory(),
+		GPUs:     detectUnixGPUs(),
+		Displays: detectUnixDisplays(),
+		Storage:  detectUnixStorage(),
+		System:   detectUnixSystem(),
+		OS:       detectUnixOS(),
 	}
+}
+
+func detectUnixDisplays() []DisplayInfo {
+	return []DisplayInfo{}
 }
 
 func detectUnixCPU() CPUInfo {

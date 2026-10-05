@@ -138,14 +138,14 @@ sonarr:
           season_folder: true
           language_profile_id: null
 desktop:
-    launch_on_startup: false
+    launch_on_startup: true
     minimize_to_tray: false
     close_to_tray: false
     always_on_top: false
     start_minimized: false
     games_download_path: ""
     games_install_path: D:\Games
-    scan_on_launch: false
+    scan_on_launch: true
 organize:
     post_process_enabled: true
     auto_search_wishlist: false

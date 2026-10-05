@@ -3,10 +3,12 @@
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.library.models import UserGameServer
+from apps.media.models import ExternalID, MediaAsset, MediaItem
 
 User = get_user_model()
 
@@ -115,3 +117,153 @@ class GameSessionsProxyApiTests(TestCase):
         # Should be sorted descending by time (Cyberpunk on 2026-09-30 is first)
         self.assertEqual(data[0]["game_title"], "Cyberpunk 2077")
         self.assertEqual(data[1]["game_title"], "Elden Ring")
+
+    def test_post_hydrate_sessions_with_existing_media_item(self):
+        self.client.force_authenticate(user=self.user)
+        item = MediaItem.objects.create(
+            media_type="game",
+            title="Hades II",
+            slug="hades-ii",
+        )
+        MediaAsset.objects.create(
+            media_item=item,
+            asset_type="poster",
+            url="https://images.otix.tv/hades-poster.jpg",
+        )
+        MediaAsset.objects.create(
+            media_item=item,
+            asset_type="backdrop",
+            url="https://images.otix.tv/hades-backdrop.jpg",
+        )
+
+        resp = self.client.post(
+            "/api/v1/library/game-sessions",
+            {"sessions": [{"game_title": "Hades II", "game_id": "hades-2", "start_time": "2026-10-01T12:00:00Z"}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["otix_media_id"], str(item.id))
+        self.assertEqual(data[0]["slug"], "hades-ii")
+        self.assertIn("hades-poster.jpg", data[0]["poster_url"])
+        self.assertIn("hades-backdrop.jpg", data[0]["backdrop_url"])
+
+    def test_post_hydrate_sessions_with_external_id_match(self):
+        self.client.force_authenticate(user=self.user)
+        item = MediaItem.objects.create(
+            media_type="game",
+            title="Dota 2",
+            slug="dota-2",
+        )
+        media_ct = ContentType.objects.get_for_model(MediaItem)
+        ExternalID.objects.create(
+            content_type=media_ct,
+            object_id=item.id,
+            provider="steam",
+            external_id="570",
+        )
+
+        resp = self.client.post(
+            "/api/v1/library/game-sessions",
+            {
+                "sessions": [
+                    {
+                        "game_title": "dota2.exe",
+                        "game_id": "steam_570",
+                        "steam_app_id": "570",
+                        "start_time": "2026-10-01T12:00:00Z",
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["otix_media_id"], str(item.id))
+        self.assertEqual(data[0]["game_title"], "Dota 2")
+
+    @mock.patch("apps.library.views.nodes.hydrate_game_to_otix")
+    def test_post_hydrate_game_seeds_from_igdb_when_not_in_catalog(self, mock_hydrate):
+        self.client.force_authenticate(user=self.user)
+        mock_item = MediaItem.objects.create(
+            media_type="game",
+            title="Deep Rock Galactic",
+            slug="deep-rock-galactic",
+        )
+        mock_hydrate.return_value = mock_item
+
+        resp = self.client.post(
+            "/api/v1/library/game-sessions",
+            {
+                "sessions": [
+                    {
+                        "game_title": "FSD.exe",
+                        "game_id": "steam_548430",
+                        "steam_app_id": "548430",
+                        "start_time": "2026-10-01T12:00:00Z",
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_hydrate.assert_called_once()
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["otix_media_id"], str(mock_item.id))
+        self.assertEqual(data[0]["game_title"], "Deep Rock Galactic")
+
+    def test_steam_app_id_does_not_collide_with_igdb_id(self):
+        self.client.force_authenticate(user=self.user)
+        # Create GTA 3 which has IGDB ID 730
+        gta3 = MediaItem.objects.create(
+            media_type="game",
+            title="Grand Theft Auto III",
+            slug="grand-theft-auto-iii",
+        )
+        media_ct = ContentType.objects.get_for_model(MediaItem)
+        ExternalID.objects.create(
+            content_type=media_ct,
+            object_id=gta3.id,
+            provider="igdb",
+            external_id="730",
+        )
+
+        # Create CS2 which has Steam App ID 730
+        cs2 = MediaItem.objects.create(
+            media_type="game",
+            title="Counter-Strike 2",
+            slug="counter-strike-2",
+        )
+        ExternalID.objects.create(
+            content_type=media_ct,
+            object_id=cs2.id,
+            provider="steam",
+            external_id="730",
+        )
+
+        resp = self.client.post(
+            "/api/v1/library/game-sessions",
+            {
+                "sessions": [
+                    {
+                        "game_title": "cs2.exe",
+                        "game_id": "steam_730",
+                        "steam_app_id": "730",
+                        "start_time": "2026-10-01T12:00:00Z",
+                    }
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        # Must match Counter-Strike 2, NOT Grand Theft Auto III
+        self.assertEqual(data[0]["otix_media_id"], str(cs2.id))
+        self.assertEqual(data[0]["game_title"], "Counter-Strike 2")
+        self.assertEqual(data[0]["slug"], "counter-strike-2")
+
+

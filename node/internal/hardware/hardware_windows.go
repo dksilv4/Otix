@@ -12,18 +12,25 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"unsafe"
 )
 
 var (
-	kernel32              = syscall.NewLazyDLL("kernel32.dll")
+	kernel32                              = syscall.NewLazyDLL("kernel32.dll")
 	procGlobalMemoryStatusEx              = kernel32.NewProc("GlobalMemoryStatusEx")
 	procGetPhysicallyInstalledSystemMemory = kernel32.NewProc("GetPhysicallyInstalledSystemMemory")
 	procGetLogicalDrives                  = kernel32.NewProc("GetLogicalDrives")
 	procGetDriveTypeW                     = kernel32.NewProc("GetDriveTypeW")
 	procGetVolumeInfoW                    = kernel32.NewProc("GetVolumeInformationW")
 	procGetDiskFreeSpaceEx                = kernel32.NewProc("GetDiskFreeSpaceExW")
+
+	user32                   = syscall.NewLazyDLL("user32.dll")
+	procEnumDisplayMonitors  = user32.NewProc("EnumDisplayMonitors")
+	procGetMonitorInfoW      = user32.NewProc("GetMonitorInfoW")
+	procEnumDisplaySettingsW = user32.NewProc("EnumDisplaySettingsW")
+	procEnumDisplayDevicesW  = user32.NewProc("EnumDisplayDevicesW")
 )
 
 const (
@@ -49,6 +56,94 @@ type memoryStatusEx struct {
 	ullTotalVirtual         uint64
 	ullAvailVirtual         uint64
 	ullAvailExtendedVirtual uint64
+}
+
+type rect struct {
+	left, top, right, bottom int32
+}
+
+type monitorInfoExW struct {
+	cbSize    uint32
+	rcMonitor rect
+	rcWork    rect
+	dwFlags   uint32
+	szDevice  [32]uint16
+}
+
+type rawMon struct {
+	device    string
+	left      int
+	top       int
+	width     int
+	height    int
+	isPrimary bool
+}
+
+var (
+	enumMonsMu            sync.Mutex
+	enumMonsList          []rawMon
+	enumDisplayMonitorsCb = syscall.NewCallback(func(hMon, hdc, lprc, lParam uintptr) uintptr {
+		var mi monitorInfoExW
+		mi.cbSize = uint32(unsafe.Sizeof(mi))
+		ok, _, _ := procGetMonitorInfoW.Call(hMon, uintptr(unsafe.Pointer(&mi)))
+		if ok != 0 {
+			w := int(mi.rcMonitor.right - mi.rcMonitor.left)
+			h := int(mi.rcMonitor.bottom - mi.rcMonitor.top)
+			isPrimary := (mi.dwFlags & 1) != 0
+			dev := syscall.UTF16ToString(mi.szDevice[:])
+			enumMonsList = append(enumMonsList, rawMon{
+				device:    dev,
+				left:      int(mi.rcMonitor.left),
+				top:       int(mi.rcMonitor.top),
+				width:     w,
+				height:    h,
+				isPrimary: isPrimary,
+			})
+		}
+		return 1
+	})
+)
+
+type displayDeviceW struct {
+	cb           uint32
+	deviceName   [32]uint16
+	deviceString [128]uint16
+	stateFlags   uint32
+	deviceID     [128]uint16
+	deviceKey    [128]uint16
+}
+
+type devModeW struct {
+	dmDeviceName         [32]uint16
+	dmSpecVersion        uint16
+	dmDriverVersion      uint16
+	dmSize               uint16
+	dmDriverExtra        uint16
+	dmFields             uint32
+	dmPositionX          int32
+	dmPositionY          int32
+	dmDisplayOrientation uint32
+	dmDisplayFixedOutput uint32
+	dmColor              int16
+	dmDuplex             int16
+	dmYResolution        int16
+	dmTTOption           int16
+	dmCollate            int16
+	dmFormName           [32]uint16
+	dmLogPixels          uint16
+	dmBitsPerPel         uint32
+	dmPelsWidth          uint32
+	dmPelsHeight         uint32
+	dmDisplayFlags       uint32
+	dmDisplayFrequency   uint32
+	dmICMMethod          uint32
+	dmICMIntent          uint32
+	dmMediaType          uint32
+	dmDitherType         uint32
+	dmReserved1          uint32
+	dmReserved2          uint32
+	dmPanningWidth       uint32
+	dmPanningHeight      uint32
 }
 
 func regGetString(root syscall.Handle, path string, valueName string) string {
@@ -355,13 +450,248 @@ func detectOS() OSInfo {
 	}
 }
 
+func detectDisplays() []DisplayInfo {
+	displays := make([]DisplayInfo, 0)
+	wmiMap := queryWmiMonitorMap()
+
+	var rawMons []rawMon
+
+	enumMonsMu.Lock()
+	enumMonsList = nil
+	procEnumDisplayMonitors.Call(0, 0, enumDisplayMonitorsCb, 0)
+	rawMons = make([]rawMon, len(enumMonsList))
+	copy(rawMons, enumMonsList)
+	enumMonsList = nil
+	enumMonsMu.Unlock()
+
+	if len(rawMons) == 0 {
+		return displays
+	}
+
+	var primary rawMon
+	for _, m := range rawMons {
+		if m.isPrimary {
+			primary = m
+			break
+		}
+	}
+	if !primary.isPrimary && len(rawMons) > 0 {
+		primary = rawMons[0]
+	}
+
+	for idx, m := range rawMons {
+		displayIdx := idx + 1
+		devPtr, err := syscall.UTF16PtrFromString(m.device)
+		if err != nil {
+			continue
+		}
+
+		var dm devModeW
+		dm.dmSize = uint16(unsafe.Sizeof(dm))
+		refreshRate := 60
+		orientation := "Landscape"
+		okSet, _, _ := procEnumDisplaySettingsW.Call(uintptr(unsafe.Pointer(devPtr)), ^uintptr(0), uintptr(unsafe.Pointer(&dm)))
+		if okSet != 0 {
+			if dm.dmDisplayFrequency > 0 {
+				refreshRate = int(dm.dmDisplayFrequency)
+			}
+			switch dm.dmDisplayOrientation {
+			case 1:
+				orientation = "Portrait"
+			case 2:
+				orientation = "Landscape (Flipped)"
+			case 3:
+				orientation = "Portrait (Flipped)"
+			default:
+				orientation = "Landscape"
+			}
+		}
+
+		var monDev displayDeviceW
+		monDev.cb = uint32(unsafe.Sizeof(monDev))
+		procEnumDisplayDevicesW.Call(uintptr(unsafe.Pointer(devPtr)), 0, uintptr(unsafe.Pointer(&monDev)), 0)
+		monDeviceID := syscall.UTF16ToString(monDev.deviceID[:])
+		monDeviceStr := syscall.UTF16ToString(monDev.deviceString[:])
+
+		var mfg, model, friendlyName string
+		matched := false
+		for pnpKey, detail := range wmiMap {
+			if strings.Contains(strings.ToUpper(monDeviceID), pnpKey) {
+				mfg = detail.Manufacturer
+				model = detail.Model
+				matched = true
+				break
+			}
+		}
+
+		if matched && model != "" {
+			if mfg != "" && !strings.HasPrefix(strings.ToLower(model), strings.ToLower(mfg)) {
+				friendlyName = fmt.Sprintf("%s %s", mfg, model)
+			} else {
+				friendlyName = model
+			}
+		} else if monDeviceStr != "" && monDeviceStr != "Generic PnP Monitor" {
+			friendlyName = monDeviceStr
+			model = monDeviceStr
+		} else {
+			friendlyName = fmt.Sprintf("Display %d (%s)", displayIdx, m.device)
+			model = fmt.Sprintf("%dx%d Display", m.width, m.height)
+		}
+
+		var arrangement string
+		if m.isPrimary {
+			arrangement = "Primary Display (Center)"
+		} else {
+			px := primary.left
+			py := primary.top
+			pw := primary.width
+			ph := primary.height
+
+			mr := m.left + m.width
+			mb := m.top + m.height
+
+			if mb <= py+10 && m.left >= px-200 && mr <= px+pw+200 {
+				arrangement = "Stacked Above Primary"
+			} else if m.top >= py+ph-10 && m.left >= px-200 && mr <= px+pw+200 {
+				arrangement = "Stacked Below Primary"
+			} else if mr <= px+10 {
+				arrangement = "Left of Primary"
+			} else if m.left >= px+pw-10 {
+				arrangement = "Right of Primary"
+			} else if m.left < px && m.top < py {
+				arrangement = "Top-Left of Primary"
+			} else if m.left > px && m.top < py {
+				arrangement = "Top-Right of Primary"
+			} else if m.left < px && m.top > py {
+				arrangement = "Bottom-Left of Primary"
+			} else if m.left > px && m.top > py {
+				arrangement = "Bottom-Right of Primary"
+			} else {
+				arrangement = "Secondary Display"
+			}
+
+			if strings.Contains(orientation, "Portrait") && !strings.Contains(arrangement, "Portrait") {
+				arrangement += " (Vertical Portrait)"
+			}
+		}
+
+		displays = append(displays, DisplayInfo{
+			Index:        displayIdx,
+			DeviceName:   m.device,
+			Name:         friendlyName,
+			Manufacturer: mfg,
+			Model:        model,
+			Resolution:   fmt.Sprintf("%dx%d", m.width, m.height),
+			Width:        m.width,
+			Height:       m.height,
+			RefreshRate:  refreshRate,
+			IsPrimary:    m.isPrimary,
+			PositionX:    m.left,
+			PositionY:    m.top,
+			Orientation:  orientation,
+			Arrangement:  arrangement,
+		})
+	}
+
+	return displays
+}
+
+type wmiMonitorID struct {
+	InstanceName     string `json:"InstanceName"`
+	ManufacturerName []int  `json:"ManufacturerName"`
+	UserFriendlyName []int  `json:"UserFriendlyName"`
+	SerialNumberID   []int  `json:"SerialNumberID"`
+}
+
+type wmiMonDetail struct {
+	Manufacturer string
+	Model        string
+	Serial       string
+}
+
+func parseAsciiInts(ints []int) string {
+	var sb strings.Builder
+	for _, v := range ints {
+		if v > 0 && v < 128 {
+			sb.WriteByte(byte(v))
+		}
+	}
+	return strings.TrimSpace(sb.String())
+}
+
+func queryWmiMonitorMap() map[string]wmiMonDetail {
+	result := make(map[string]wmiMonDetail)
+	psScript := "Get-CimInstance -Namespace root\\wmi -ClassName WmiMonitorID -ErrorAction SilentlyContinue | Select-Object InstanceName, ManufacturerName, UserFriendlyName, SerialNumberID | ConvertTo-Json -Compress"
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", psScript)
+	out, err := cmd.Output()
+	if err != nil {
+		return result
+	}
+	outBytes := bytes.TrimSpace(out)
+	if len(outBytes) == 0 {
+		return result
+	}
+
+	var list []wmiMonitorID
+	if outBytes[0] == '[' {
+		_ = json.Unmarshal(outBytes, &list)
+	} else if outBytes[0] == '{' {
+		var single wmiMonitorID
+		if err := json.Unmarshal(outBytes, &single); err == nil {
+			list = append(list, single)
+		}
+	}
+
+	for _, item := range list {
+		mfg := parseAsciiInts(item.ManufacturerName)
+		model := parseAsciiInts(item.UserFriendlyName)
+		serial := parseAsciiInts(item.SerialNumberID)
+
+		switch strings.ToUpper(mfg) {
+		case "SAM":
+			mfg = "Samsung"
+		case "MSI":
+			mfg = "MSI"
+		case "AUS":
+			mfg = "ASUS"
+		case "DEL":
+			mfg = "Dell"
+		case "LGD", "GSM":
+			mfg = "LG"
+		case "ACR":
+			mfg = "Acer"
+		case "AOC":
+			mfg = "AOC"
+		case "BEN":
+			mfg = "BenQ"
+		case "GIG":
+			mfg = "Gigabyte"
+		}
+
+		detail := wmiMonDetail{
+			Manufacturer: mfg,
+			Model:        model,
+			Serial:       serial,
+		}
+
+		parts := strings.Split(item.InstanceName, "\\")
+		if len(parts) >= 2 {
+			pnpKey := strings.ToUpper(parts[1])
+			result[pnpKey] = detail
+		}
+		result[strings.ToLower(item.InstanceName)] = detail
+	}
+	return result
+}
+
 func detectHardware() *MachineHardware {
 	return &MachineHardware{
-		CPU:     detectCPU(),
-		Memory:  detectMemory(),
-		GPUs:    detectGPUs(),
-		Storage: detectStorage(),
-		System:  detectSystem(),
-		OS:      detectOS(),
+		CPU:      detectCPU(),
+		Memory:   detectMemory(),
+		GPUs:     detectGPUs(),
+		Displays: detectDisplays(),
+		Storage:  detectStorage(),
+		System:   detectSystem(),
+		OS:       detectOS(),
 	}
 }

@@ -21,6 +21,7 @@ export interface RunningGame {
 }
 
 export interface PlaySession {
+  id?: string;
   gameId: string;
   gameTitle: string;
   startTime: number;
@@ -30,6 +31,12 @@ export interface PlaySession {
   node?: SessionNodeInfo | null;
   hardware?: SessionHardwareInfo | null;
   shareEligible?: boolean;
+  posterUrl?: string | null;
+  backdropUrl?: string | null;
+  bannerUrl?: string | null;
+  slug?: string | null;
+  otixMediaId?: string | number | null;
+  processName?: string | null;
 }
 
 export interface DetectedProcess {
@@ -329,7 +336,6 @@ export class GameDetector extends EventEmitter {
       // End sessions for game no longer detected (verify PID dead first)
       for (const [id, entry] of this.runningGames) {
         if (currentlyRunning.has(id)) continue;
-        if (entry.launchedByOtix) continue;
         // PID still alive even though scan didn't match — keep session
         if (entry.pid) {
           try {
@@ -338,6 +344,7 @@ export class GameDetector extends EventEmitter {
             continue;
           } catch {
             // PID is dead — end session below
+            this.trackedPids.delete(entry.pid);
           }
         }
         this.endSession(entry);
@@ -663,31 +670,23 @@ export class GameDetector extends EventEmitter {
     this.stopProcessCheck();
     this.processCheckTimer = setInterval(() => {
       let hasTrackedPid = false;
-      for (const [, entry] of this.runningGames) {
+      for (const [id, entry] of this.runningGames) {
         if (entry.pid) {
           try {
             process.kill(entry.pid, 0);
             hasTrackedPid = true;
           } catch {
-            // PID dead — end session for non-Otix games immediately.
-            // Otherwise wait for next scan (game may have moved PID).
+            // PID is dead — end session and clean up tracking
             this.trackedPids.delete(entry.pid);
-            if (!entry.launchedByOtix) {
-              this.endSession(entry);
-              this.runningGames.delete(entry.game.id);
-              continue;
-            }
-            entry.pid = undefined;
+            this.endSession(entry);
+            this.runningGames.delete(id);
           }
         }
-      }
-      if (!hasTrackedPid && this.runningGames.size > 0) {
-        // Games in runningGames have no PIDs — re-check next cycle
       }
       if (this.runningGames.size === 0) {
         this.stopProcessCheck();
       }
-    }, 5000);
+    }, 2000);
   }
 
   private stopProcessCheck() {
@@ -701,8 +700,11 @@ export class GameDetector extends EventEmitter {
     // FPS stats are captured by the fps-capture plugin via eventBus.
     // The plugin saves the enriched session to play-sessions.json.
     const hostMatch = getCachedHostNodeAndHardware();
+    const g = entry.game as any;
+    const procName = g.processName || (g.exePath ? path.basename(g.exePath) : undefined);
 
     const session: PlaySession = {
+      id: `sess-${entry.game.id}-${entry.startTime}`,
       gameId: entry.game.id,
       gameTitle: entry.game.title,
       startTime: entry.startTime,
@@ -711,6 +713,12 @@ export class GameDetector extends EventEmitter {
       node: entry.node ?? hostMatch.node ?? null,
       hardware: entry.hardware ?? hostMatch.hardware ?? null,
       shareEligible: entry.shareEligible ?? Boolean(entry.node?.installed || entry.hardware?.gpu || hostMatch.shareEligible),
+      posterUrl: g.posterUrl || g.otixPosterUrl || null,
+      backdropUrl: g.backdropUrl || g.otixBackdropUrl || null,
+      bannerUrl: g.bannerUrl || null,
+      slug: g.slug || g.otixMediaSlug || null,
+      otixMediaId: g.otixMediaId || null,
+      processName: procName || null,
     };
 
     this.saveSession(session);
@@ -746,6 +754,12 @@ export class GameDetector extends EventEmitter {
           hardware: session.hardware || sessions[existingIdx].hardware || null,
           fpsStats: session.fpsStats || sessions[existingIdx].fpsStats || null,
           shareEligible: session.shareEligible ?? sessions[existingIdx].shareEligible ?? false,
+          posterUrl: session.posterUrl || sessions[existingIdx].posterUrl || null,
+          backdropUrl: session.backdropUrl || sessions[existingIdx].backdropUrl || null,
+          bannerUrl: session.bannerUrl || sessions[existingIdx].bannerUrl || null,
+          slug: session.slug || sessions[existingIdx].slug || null,
+          otixMediaId: session.otixMediaId || sessions[existingIdx].otixMediaId || null,
+          processName: session.processName || sessions[existingIdx].processName || null,
         };
       } else {
         sessions.push(session);
@@ -758,6 +772,27 @@ export class GameDetector extends EventEmitter {
       fs.writeFileSync(this.sessionsPath, JSON.stringify(sessions, null, 2));
     } catch (err) {
       console.error('[GameDetector] Failed to save session:', err);
+    }
+  }
+
+  updateSessionFpsStats(gameId: string, fpsStats: FpsStats): void {
+    try {
+      if (!fs.existsSync(this.sessionsPath)) return;
+      const data = fs.readFileSync(this.sessionsPath, 'utf-8');
+      const sessions: PlaySession[] = JSON.parse(data);
+      let updated = false;
+      for (let i = sessions.length - 1; i >= 0; i--) {
+        if (sessions[i].gameId === gameId) {
+          sessions[i].fpsStats = fpsStats;
+          updated = true;
+          break;
+        }
+      }
+      if (updated) {
+        fs.writeFileSync(this.sessionsPath, JSON.stringify(sessions, null, 2));
+      }
+    } catch (err) {
+      console.error('[GameDetector] Failed to update FPS stats for session:', err);
     }
   }
 }

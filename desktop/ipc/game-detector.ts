@@ -44,11 +44,27 @@ export function registerGameDetectorIPC(
   });
 
   ipcMain.handle('game:get-recent-sessions', async () => {
+    const detectorSessions = gameDetector?.getRecentSessions() ?? [];
     if (pluginManager) {
-      try { return await pluginManager.callPluginData('fps-capture', 'getRecentSessions', 20); }
-      catch { /* fall back to detector */ }
+      try {
+        const pluginSessions = await pluginManager.callPluginData('fps-capture', 'getRecentSessions', 20);
+        if (Array.isArray(pluginSessions) && pluginSessions.length > 0) {
+          const map = new Map<string, any>();
+          for (const s of detectorSessions) {
+            const key = s.id || `${s.gameId}-${s.startTime}`;
+            map.set(key, s);
+          }
+          for (const s of pluginSessions) {
+            const key = s.id || `${s.gameId}-${s.startTime}`;
+            map.set(key, { ...(map.get(key) || {}), ...s });
+          }
+          return Array.from(map.values()).slice(-20);
+        }
+      } catch {
+        /* fall back to detector */
+      }
     }
-    return gameDetector?.getRecentSessions() ?? [];
+    return detectorSessions;
   });
 
   ipcMain.handle('game:get-playtime', async (_event, gameId: string) => {

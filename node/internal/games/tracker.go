@@ -87,6 +87,37 @@ var KnownGameSignatures = map[string]string{
 	"deadcells.exe":                       "Dead Cells",
 	"slaythespire.exe":                    "Slay the Spire",
 	"balatro.exe":                         "Balatro",
+	"bloonstd6.exe":                       "Bloons TD 6",
+	"btd6.exe":                            "Bloons TD 6",
+	"cleaner-btd6.exe":                    "Bloons TD 6",
+	"factorygamesteam.exe":                "Satisfactory",
+	"satisfactory.exe":                    "Satisfactory",
+	"modernwarfare.exe":                   "Call of Duty: Modern Warfare",
+	"supermarket together.exe":            "Supermarket Together",
+	"supermarkettogether.exe":             "Supermarket Together",
+	"rs2client.exe":                       "RuneScape",
+	"runescape.exe":                       "RuneScape",
+	"rsdragonwilds.exe":                   "RuneScape Dragonwilds",
+	"rsdragonwilds-win64-shipping.exe":    "RuneScape Dragonwilds",
+	"oriwotw.exe":                         "Ori and the Will of the Wisps",
+	"oride.exe":                           "Ori and the Blind Forest",
+	"timberborn.exe":                      "Timberborn",
+	"pragmata.exe":                        "Pragmata",
+	"brawlhalla.exe":                      "Brawlhalla",
+	"pathofexilesteam.exe":                "Path of Exile 2",
+	"pathofexile.exe":                     "Path of Exile",
+	"pathofexile_x64.exe":                 "Path of Exile",
+	"pathofexile2.exe":                    "Path of Exile 2",
+	"losslessscaling.exe":                 "Lossless Scaling",
+	"transportfever3.exe":                 "Transport Fever 3",
+	"transportfever2.exe":                 "Transport Fever 2",
+	"whiskerwood.exe":                     "Whiskerwood",
+	"whiskerwood-win64-shipping.exe":      "Whiskerwood",
+	"ultimatechickenhorse.exe":            "Ultimate Chicken Horse",
+	"tekken 8.exe":                        "Tekken 8",
+	"tekken8.exe":                         "Tekken 8",
+	"risk of rain 2.exe":                  "Risk of Rain 2",
+	"riskofrain2.exe":                     "Risk of Rain 2",
 }
 
 var NoiseProcesses = map[string]bool{
@@ -203,23 +234,44 @@ func (gt *GameTracker) scanStep() {
 
 	// No active game running: scan processes to detect one
 	for _, p := range procs {
-		gameID, gameTitle := gt.identifyGame(p.Name)
-		if gameID != "" {
-			gt.startActiveSessionLocked(p.PID, p.Name, p.Path, gameID, gameTitle)
+		identified := gt.identifyGameFull(p.Name)
+		if identified != nil && identified.ID != "" {
+			gt.startActiveSessionLocked(p.PID, p.Name, p.Path, identified.ID, identified.Title, identified)
 			break
 		}
 	}
 }
 
+// IdentifiedGame holds the resolved metadata for a detected game process.
+type IdentifiedGame struct {
+	ID          string
+	Title       string
+	OtixMediaID string
+	PosterURL   string
+	BackdropURL string
+	Overview    string
+}
+
 func (gt *GameTracker) identifyGame(processName string) (string, string) {
+	g := gt.identifyGameFull(processName)
+	if g == nil {
+		return "", ""
+	}
+	return g.ID, g.Title
+}
+
+func (gt *GameTracker) identifyGameFull(processName string) *IdentifiedGame {
 	lower := strings.ToLower(processName)
 	if NoiseProcesses[lower] {
-		return "", ""
+		return nil
 	}
 
 	// 1. Check custom mappings
 	if m := gt.store.GetMappingForProcess(lower); m != nil {
-		return m.GameID, m.GameTitle
+		return &IdentifiedGame{
+			ID:    m.GameID,
+			Title: m.GameTitle,
+		}
 	}
 
 	// 2. Check local indexed libraries
@@ -234,12 +286,32 @@ func (gt *GameTracker) identifyGame(processName string) (string, string) {
 				}
 				title := f.OtixTitle
 				if title == "" {
-					title = f.GameTitle
+					if sigTitle, ok := KnownGameSignatures[lower]; ok {
+						title = sigTitle
+					} else if f.GameTitle != "" {
+						title = f.GameTitle
+					} else {
+						title = strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename))
+					}
 				}
-				if title == "" {
-					title = strings.TrimSuffix(f.Filename, filepath.Ext(f.Filename))
+				poster := ""
+				backdrop := ""
+				if f.OtixImages != nil {
+					if p, ok := f.OtixImages["poster"]; ok {
+						poster = p.URL
+					}
+					if b, ok := f.OtixImages["backdrop"]; ok {
+						backdrop = b.URL
+					}
 				}
-				return id, title
+				return &IdentifiedGame{
+					ID:          id,
+					Title:       title,
+					OtixMediaID: f.OtixMediaID,
+					PosterURL:   poster,
+					BackdropURL: backdrop,
+					Overview:    f.OtixOverview,
+				}
 			}
 		}
 	}
@@ -247,13 +319,24 @@ func (gt *GameTracker) identifyGame(processName string) (string, string) {
 	// 3. Check known popular game executable signatures
 	if title, ok := KnownGameSignatures[lower]; ok {
 		slug := strings.ToLower(strings.ReplaceAll(title, " ", "-"))
-		return slug, title
+		return &IdentifiedGame{
+			ID:    slug,
+			Title: title,
+		}
 	}
 
-	return "", ""
+	return nil
 }
 
-func (gt *GameTracker) startActiveSessionLocked(pid int, procName, exePath, gameID, gameTitle string) {
+func (gt *GameTracker) startActiveSessionLocked(pid int, procName, exePath, gameID, gameTitle string, meta ...*IdentifiedGame) {
+	var otixMediaID, posterURL, backdropURL, overview string
+	if len(meta) > 0 && meta[0] != nil {
+		otixMediaID = meta[0].OtixMediaID
+		posterURL = meta[0].PosterURL
+		backdropURL = meta[0].BackdropURL
+		overview = meta[0].Overview
+	}
+
 	running := &RunningGame{
 		ID:                 gameID,
 		Title:              gameTitle,
@@ -263,6 +346,10 @@ func (gt *GameTracker) startActiveSessionLocked(pid int, procName, exePath, game
 		StartTime:          time.Now(),
 		CurrentDurationSec: 0,
 		FpsAvailable:       gt.fpsCollector != nil && gt.fpsCollector.IsAvailable(),
+		OtixMediaID:        otixMediaID,
+		PosterURL:          posterURL,
+		BackdropURL:        backdropURL,
+		Overview:           overview,
 	}
 
 	gt.running = running

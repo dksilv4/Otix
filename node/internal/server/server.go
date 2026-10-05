@@ -75,8 +75,8 @@ func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
 	fpsCollector := games.NewPresentMonCollector(storageDir)
 	gamesTracker := games.NewGameTracker(gamesStore, fpsCollector, idx)
 	gamesTracker.SetNodeInfo(cfg.Server.Name, cfg.Server.Port)
-	gamesTracker.Start()
 	overlayMgr := games.NewOverlayManager(gamesStore, gamesTracker, fpsCollector)
+	gamesTracker.Start()
 	overlayMgr.Start()
 
 	s := &Server{
@@ -447,9 +447,17 @@ func (s *Server) setupRoutes() {
 		jsonResponse(w, http.StatusOK, map[string]string{"status": "stopped"})
 	})
 
-	// Overlay Settings & controls
+	// Overlay Settings, monitors & controls
 	r.Get("/api/v1/games/overlay/settings", func(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, http.StatusOK, s.gamesStore.GetOverlaySettings())
+	})
+
+	r.Get("/api/v1/games/overlay/monitors", func(w http.ResponseWriter, r *http.Request) {
+		if s.overlayMgr != nil {
+			jsonResponse(w, http.StatusOK, s.overlayMgr.GetAvailableMonitors())
+		} else {
+			jsonResponse(w, http.StatusOK, []games.MonitorInfo{{ID: "auto", Name: "Auto (Follow Active Game)"}})
+		}
 	})
 
 	r.Post("/api/v1/games/overlay/settings", func(w http.ResponseWriter, r *http.Request) {
@@ -462,13 +470,8 @@ func (s *Server) setupRoutes() {
 			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
 			return
 		}
-		if settings.Corner != "" {
-			s.overlayMgr.SetCorner(settings.Corner)
-		}
-		if settings.Enabled {
-			s.overlayMgr.Show()
-		} else {
-			s.overlayMgr.Hide()
+		if s.overlayMgr != nil {
+			s.overlayMgr.ApplySettings(settings)
 		}
 		jsonResponse(w, http.StatusOK, settings)
 	})
@@ -1699,7 +1702,27 @@ func (s *Server) setupRoutes() {
 		// ── Desktop & Organize ────────────────────────────────────────────────
 		authed.Get("/api/v1/desktop/settings", func(w http.ResponseWriter, r *http.Request) {
 			refresh := r.URL.Query().Get("refresh") == "true"
-			jsonResponse(w, http.StatusOK, desktop.GetDesktopSettings(s.cfg, refresh))
+			resp := desktop.GetDesktopSettings(s.cfg, refresh)
+			if s.gamesStore != nil {
+				ov := s.gamesStore.GetOverlaySettings()
+				resp.OverlayEnabled = ov.Enabled
+				resp.OverlayCorner = ov.Corner
+				resp.OverlayMonitor = ov.Monitor
+				resp.OverlayHotkey = ov.Hotkey
+			}
+			if resp.OverlayMonitor == "" {
+				resp.OverlayMonitor = "auto"
+			}
+			if resp.OverlayCorner == "" {
+				resp.OverlayCorner = "top-wide"
+			}
+			if resp.OverlayHotkey == "" {
+				resp.OverlayHotkey = "Ctrl+`"
+			}
+			if s.overlayMgr != nil {
+				resp.OverlayMonitors = s.overlayMgr.GetAvailableMonitors()
+			}
+			jsonResponse(w, http.StatusOK, resp)
 		})
 
 		authed.Get("/api/v1/desktop/hardware", func(w http.ResponseWriter, r *http.Request) {
@@ -1713,7 +1736,58 @@ func (s *Server) setupRoutes() {
 				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
 				return
 			}
-			jsonResponse(w, http.StatusOK, desktop.ApplyDesktopSettings(s.cfg, payload))
+			resp := desktop.ApplyDesktopSettings(s.cfg, payload)
+			if s.gamesStore != nil {
+				ov := s.gamesStore.GetOverlaySettings()
+				changed := false
+				if v, ok := payload["overlayEnabled"]; ok {
+					if b, okB := v.(bool); okB {
+						ov.Enabled = b
+						changed = true
+					}
+				} else if v, ok := payload["overlay_enabled"]; ok {
+					if b, okB := v.(bool); okB {
+						ov.Enabled = b
+						changed = true
+					}
+				}
+				if v, ok := payload["overlayCorner"]; ok {
+					if sVal, okS := v.(string); okS && sVal != "" {
+						ov.Corner = sVal
+						changed = true
+					}
+				} else if v, ok := payload["overlay_corner"]; ok {
+					if sVal, okS := v.(string); okS && sVal != "" {
+						ov.Corner = sVal
+						changed = true
+					}
+				}
+				if v, ok := payload["overlayMonitor"]; ok {
+					if sVal, okS := v.(string); okS && sVal != "" {
+						ov.Monitor = sVal
+						changed = true
+					}
+				} else if v, ok := payload["overlay_monitor"]; ok {
+					if sVal, okS := v.(string); okS && sVal != "" {
+						ov.Monitor = sVal
+						changed = true
+					}
+				}
+				if changed {
+					_ = s.gamesStore.SaveOverlaySettings(ov)
+					if s.overlayMgr != nil {
+						s.overlayMgr.ApplySettings(ov)
+					}
+				}
+				resp.OverlayEnabled = ov.Enabled
+				resp.OverlayCorner = ov.Corner
+				resp.OverlayMonitor = ov.Monitor
+				resp.OverlayHotkey = ov.Hotkey
+			}
+			if s.overlayMgr != nil {
+				resp.OverlayMonitors = s.overlayMgr.GetAvailableMonitors()
+			}
+			jsonResponse(w, http.StatusOK, resp)
 		})
 
 		authed.Get("/api/v1/organize", func(w http.ResponseWriter, r *http.Request) {

@@ -51,6 +51,8 @@ const KNOWN_GAME_SIGNATURES: Record<string, string> = {
   'spacemarine2.exe': 'Warhammer 40,000: Space Marine 2',
   'warhammer3.exe': 'Total War: Warhammer III',
   'civ6.exe': "Sid Meier's Civilization VI",
+  'civ7.exe': "Sid Meier's Civilization VII",
+  'civ7_win64_dx12_finalrelease.exe': "Sid Meier's Civilization VII",
   'sekiro.exe': 'Sekiro: Shadows Die Twice',
   'darksoulsiii.exe': 'Dark Souls III',
   'armoredcore6.exe': 'Armored Core VI: Fires of Rubicon',
@@ -77,12 +79,74 @@ const KNOWN_GAME_SIGNATURES: Record<string, string> = {
   'deadcells.exe': 'Dead Cells',
   'slaythespire.exe': 'Slay the Spire',
   'balatro.exe': 'Balatro',
+  // Popular titles & user library entries
+  'bloonstd6.exe': 'Bloons TD 6',
+  'bloonstd6': 'Bloons TD 6',
+  'cleaner-btd6.exe': 'Bloons TD 6',
+  'btd6.exe': 'Bloons TD 6',
+  'factorygamesteam.exe': 'Satisfactory',
+  'satisfactory.exe': 'Satisfactory',
+  'modernwarfare.exe': 'Call of Duty: Modern Warfare',
+  'supermarket together.exe': 'Supermarket Together',
+  'supermarkettogether.exe': 'Supermarket Together',
+  'rs2client.exe': 'RuneScape',
+  'runescape.exe': 'RuneScape',
+  'rsdragonwilds.exe': 'RuneScape Dragonwilds',
+  'rsdragonwilds-win64-shipping.exe': 'RuneScape Dragonwilds',
+  'oriwotw.exe': 'Ori and the Will of the Wisps',
+  'oride.exe': 'Ori and the Blind Forest',
+  'timberborn.exe': 'Timberborn',
+  'pragmata.exe': 'Pragmata',
+  'brawlhalla.exe': 'Brawlhalla',
+  'pathofexilesteam.exe': 'Path of Exile 2',
+  'pathofexile.exe': 'Path of Exile',
+  'pathofexile_x64.exe': 'Path of Exile',
+  'pathofexile2.exe': 'Path of Exile 2',
+  'losslessscaling.exe': 'Lossless Scaling',
+  'transportfever3.exe': 'Transport Fever 3',
+  'transportfever2.exe': 'Transport Fever 2',
+  'whiskerwood.exe': 'Whiskerwood',
+  'whiskerwood-win64-shipping.exe': 'Whiskerwood',
+  'ultimatechickenhorse.exe': 'Ultimate Chicken Horse',
+  'tekken 8.exe': 'Tekken 8',
+  'tekken8.exe': 'Tekken 8',
+  'risk of rain 2.exe': 'Risk of Rain 2',
+  'riskofrain2.exe': 'Risk of Rain 2',
+  'subnautica.exe': 'Subnautica',
+  'factorio.exe': 'Factorio',
+  'terraria.exe': 'Terraria',
+}
+
+function splitWordBoundaries(text: string): string {
+  return text
+    // CamelCase: "BloonsTD" -> "Bloons TD"
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    // Acronym followed by capitalized word: "BTDGame" -> "BTD Game"
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    // Letter followed by digits: "TD6" -> "TD 6", "Witcher3" -> "Witcher 3" (preserve v1, v2 version tags)
+    .replace(/([a-uw-zA-UW-Z])([0-9]+)/g, '$1 $2')
+    // Digits followed by letters: "2Fast" -> "2 Fast"
+    .replace(/([0-9]+)([a-zA-Z])/g, '$1 $2')
 }
 
 export function cleanGameTitle(rawTitle: string, exePath?: string): string {
   const filename = (exePath || rawTitle || '').split(/[/\\]/).pop()?.toLowerCase() || ''
   if (KNOWN_GAME_SIGNATURES[filename]) {
     return KNOWN_GAME_SIGNATURES[filename]
+  }
+
+  // Check parent directory name if exePath is provided
+  if (exePath) {
+    const parts = exePath.split(/[/\\]/).filter(Boolean)
+    if (parts.length >= 2) {
+      const parentDir = parts[parts.length - 2].toLowerCase()
+      if (KNOWN_GAME_SIGNATURES[parentDir]) {
+        return KNOWN_GAME_SIGNATURES[parentDir]
+      }
+      if (KNOWN_GAME_SIGNATURES[`${parentDir}.exe`]) {
+        return KNOWN_GAME_SIGNATURES[`${parentDir}.exe`]
+      }
+    }
   }
 
   const cleanedFilename = filename
@@ -93,18 +157,54 @@ export function cleanGameTitle(rawTitle: string, exePath?: string): string {
     .replace(/_dx12$/i, '')
     .replace(/-win64-shipping$/i, '')
     .replace(/_shipping$/i, '')
+    .replace(/-shipping$/i, '')
+    .replace(/_x64$/i, '')
+    .replace(/_win64$/i, '')
 
+  if (KNOWN_GAME_SIGNATURES[cleanedFilename]) {
+    return KNOWN_GAME_SIGNATURES[cleanedFilename]
+  }
   if (KNOWN_GAME_SIGNATURES[`${cleanedFilename}.exe`]) {
     return KNOWN_GAME_SIGNATURES[`${cleanedFilename}.exe`]
   }
 
+  // Use the best base title: prefer parent folder if rawTitle looks like a generic file ID
   let title = rawTitle || cleanedFilename
+  if (/^file_[a-f0-9]+$/i.test(title) && exePath) {
+    const parts = exePath.split(/[/\\]/).filter(Boolean)
+    if (parts.length >= 2) {
+      title = parts[parts.length - 2]
+    }
+  }
+
   title = title
     .replace(/\.exe$/i, '')
+    .replace(/\.iso$/i, '')
     .replace(/_dx11$/i, '')
     .replace(/_dx12$/i, '')
     .replace(/-win64-shipping$/i, '')
+    .replace(/_shipping$/i, '')
+    .replace(/-shipping$/i, '')
+    .replace(/_x64$/i, '')
+    .replace(/_win64$/i, '')
+    .replace(/-voices\d*$/i, '')
+    .replace(/-i know$/i, '')
+    .replace(/-razor1911$/i, '')
     .replace(/[._-]+/g, ' ')
+
+  // Split word boundaries (e.g., BloonsTD6 -> Bloons TD 6)
+  title = splitWordBoundaries(title)
+
+  // Normalize common Roman numerals and abbreviations
+  title = title
+    .replace(/\btd\b/gi, 'TD')
+    .replace(/\bii\b/gi, 'II')
+    .replace(/\biii\b/gi, 'III')
+    .replace(/\biv\b/gi, 'IV')
+    .replace(/\bvi\b/gi, 'VI')
+    .replace(/\bvii\b/gi, 'VII')
+    .replace(/\bviii\b/gi, 'VIII')
+    .replace(/\s+/g, ' ')
     .trim()
 
   return title
@@ -120,7 +220,7 @@ export function useMatchedRunningGame(): {
 
   const rawTitle = runningGame?.game.title || ''
   const exePath = runningGame?.game.exePath || ''
-  const otixMediaId = runningGame?.game.otixMediaId || (runningGame?.game.id && /^\d+$/.test(runningGame.game.id) ? runningGame.game.id : '')
+  const otixMediaId = runningGame?.game.otixMediaId || (runningGame?.game.id && !/^file_/i.test(runningGame.game.id) ? runningGame.game.id : '')
   const cleanedTitle = useMemo(() => cleanGameTitle(rawTitle, exePath), [rawTitle, exePath])
 
   const { data: matchedGame, isLoading: isMatching } = useQuery<MatchedGameInfo | null>({
@@ -129,7 +229,9 @@ export function useMatchedRunningGame(): {
       // 1. Direct fetch if otixMediaId is known
       if (otixMediaId) {
         try {
-          const { data } = await apiClient.get<MediaItemDetail>(`/media/game/${otixMediaId}`)
+          const { data } = await apiClient.get<MediaItemDetail>(`/media/game/${otixMediaId}`, {
+            signal: AbortSignal.timeout(4000),
+          })
           if (data) {
             const dev = data.involvedCompanies?.find((c) => c.developer)?.company?.name
             return {
@@ -152,45 +254,84 @@ export function useMatchedRunningGame(): {
 
       if (!cleanedTitle) return null
 
-      // 2. Search catalog by title
-      try {
-        interface SearchItem {
-          id: string
-          title: string
-          slug: string
-          posterUrl: string | null
-          backdropUrl: string | null
-          releaseDate: string | null
-          avgRating?: number | null
-        }
-        const { data: searchData } = await apiClient.get<{ items: SearchItem[] }>(
-          '/search',
-          { params: { q: cleanedTitle, media_type: 'game', page_size: 5 } },
-        )
+      // 2. Search catalog by title with smart fallbacks
+      interface SearchItem {
+        id: string
+        title: string
+        slug: string
+        posterUrl: string | null
+        backdropUrl: string | null
+        releaseDate: string | null
+        avgRating?: number | null
+        overview?: string | null
+        genres?: Array<{ id: number; name: string } | string>
+      }
 
-        const items = searchData?.items || []
-        if (items.length === 0) return null
+      const searchQueries = [cleanedTitle]
 
-        // Pick exact match if available, else first item
-        const exact = items.find((i) => i.title.toLowerCase() === cleanedTitle.toLowerCase()) || items[0]
-
-        // Fetch detail for genres and developer
-        try {
-          const { data: detail } = await apiClient.get<MediaItemDetail>(`/media/game/${exact.id}`)
-          const dev = detail.involvedCompanies?.find((c) => c.developer)?.company?.name
-          return {
-            id: detail.id,
-            title: detail.title,
-            slug: detail.slug,
-            posterUrl: detail.posterUrl,
-            backdropUrl: detail.backdropUrl,
-            releaseDate: detail.releaseDate,
-            genres: detail.genres?.map((g) => g.name),
-            developer: dev || detail.involvedCompanies?.[0]?.company?.name || null,
-            rating: detail.avgRating ?? detail.overallRating ?? null,
-            overview: detail.overview,
+      // Fallback 1: If exePath has a folder name different from cleanedTitle
+      if (exePath) {
+        const parts = exePath.split(/[/\\]/).filter(Boolean)
+        if (parts.length >= 2) {
+          const folderClean = cleanGameTitle(parts[parts.length - 2])
+          if (folderClean && !searchQueries.includes(folderClean)) {
+            searchQueries.push(folderClean)
           }
-        } catch {
+        }
+      }
+
+      // Fallback 2: Strip trailing numbers or edition markers
+      const strippedNumbers = cleanedTitle.replace(/\s+\d+$/, '').trim()
+      if (strippedNumbers && !searchQueries.includes(strippedNumbers)) {
+        searchQueries.push(strippedNumbers)
+      }
+
+      // Fallback 3: Try raw title if distinct
+      if (rawTitle && !searchQueries.includes(rawTitle) && !/^file_/i.test(rawTitle)) {
+        searchQueries.push(rawTitle)
+      }
+
+      for (const query of searchQueries) {
+        try {
+          const { data: searchData } = await apiClient.get<{ items: SearchItem[] }>(
+            '/search',
+            { params: { q: query, media_type: 'game', page_size: 5 } },
+          )
+
+          const items = searchData?.items || []
+          if (items.length === 0) continue
+
+          // Pick exact match or closest, else first item
+          const exact = items.find((i) => i.title.toLowerCase() === cleanedTitle.toLowerCase())
+            || items.find((i) => i.title.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanedTitle.toLowerCase().replace(/[^a-z0-9]/g, ''))
+            || items[0]
+
+          // If exact.id is a numeric database ID, attempt to fetch richer details (genres & dev)
+          if (/^\d+$/.test(exact.id)) {
+            try {
+              const { data: detail } = await apiClient.get<MediaItemDetail>(`/media/game/${exact.id}`, {
+                signal: AbortSignal.timeout(3000),
+              })
+              const dev = detail.involvedCompanies?.find((c) => c.developer)?.company?.name
+              return {
+                id: detail.id,
+                title: detail.title,
+                slug: detail.slug,
+                posterUrl: detail.posterUrl,
+                backdropUrl: detail.backdropUrl,
+                releaseDate: detail.releaseDate,
+                genres: detail.genres?.map((g) => g.name),
+                developer: dev || detail.involvedCompanies?.[0]?.company?.name || null,
+                rating: detail.avgRating ?? detail.overallRating ?? null,
+                overview: detail.overview,
+              }
+            } catch {
+              // Fall through to exact search item
+            }
+          }
+
+          // Hydrate directly from the search item (contains full poster, backdrop, overview, ratings)
+          const searchGenres = exact.genres?.map((g) => (typeof g === 'string' ? g : g.name))
           return {
             id: exact.id,
             title: exact.title,
@@ -198,11 +339,21 @@ export function useMatchedRunningGame(): {
             posterUrl: exact.posterUrl,
             backdropUrl: exact.backdropUrl,
             releaseDate: exact.releaseDate,
+            genres: searchGenres,
             rating: exact.avgRating ?? null,
+            overview: exact.overview || null,
           }
+        } catch {
+          // Try next fallback query
         }
-      } catch {
-        return null
+      }
+
+      // Fallback if not in search catalog: return cleaned title and any local artwork
+      return {
+        id: runningGame?.game.id || '',
+        title: cleanedTitle || rawTitle,
+        posterUrl: runningGame?.game.posterUrl || null,
+        backdropUrl: null,
       }
     },
     enabled: Boolean(runningGame && (otixMediaId || cleanedTitle)),

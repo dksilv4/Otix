@@ -16,6 +16,10 @@ export interface DesktopSettingsData {
   gamesInstallPath?: string;
   isoDownloadPath?: string;
   scanOnLaunch?: boolean;
+  overlayEnabled?: boolean;
+  overlayCorner?: string;
+  overlayMonitor?: string;
+  overlayHotkey?: string;
 }
 
 export interface DiskInfo {
@@ -84,7 +88,9 @@ export interface RunningGameData {
     platform: string
     iconUrl?: string
     posterUrl?: string | null
+    backdropUrl?: string | null
     exePath?: string
+    processName?: string
     installDir?: string
     otixMediaId?: string
     otixMediaTitle?: string

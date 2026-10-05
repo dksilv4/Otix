@@ -85,10 +85,20 @@ export function sonarrStatusFromLookup(item: ArrLookupItem | null): ArrRequestSt
   if (!item || !libraryIdFromLookup(item)) return 'not_exists'
   const stats = (pick(item, 'statistics') as ArrLookupItem | undefined) || {}
   const files = asNumber(pick(stats, 'episodeFileCount', 'episode_file_count')) ?? 0
-  const sizeOnDisk = asNumber(pick(stats, 'sizeOnDisk', 'size_on_disk', 'totalEpisodeCount')) ?? 0
+  const total = asNumber(pick(stats, 'totalEpisodeCount', 'total_episode_count'))
+    ?? asNumber(pick(stats, 'episodeCount', 'episode_count'))
+    ?? 0
+  const sizeOnDisk = asNumber(pick(stats, 'sizeOnDisk', 'size_on_disk')) ?? 0
   const hasFile = Boolean(pick(item, 'hasFile', 'has_file'))
   const statusStr = String(pick(item, 'status') ?? '').toLowerCase()
-  return files > 0 || (hasFile && sizeOnDisk > 0) || statusStr === 'downloaded' ? 'downloaded' : 'requested'
+  if (statusStr === 'downloaded') return 'downloaded'
+  if (files > 0 || (hasFile && sizeOnDisk > 0)) {
+    if (total > 0 && files < total) {
+      return 'partially_available'
+    }
+    return 'downloaded'
+  }
+  return 'requested'
 }
 
 export function fileFromRadarrLookup(item: ArrLookupItem | null): RequestInstance['file'] {
@@ -117,8 +127,12 @@ export function fileFromSonarrLookup(item: ArrLookupItem | null): RequestInstanc
   if (!item) return null
   const stats = (pick(item, 'statistics') as ArrLookupItem | undefined) || {}
   const size = asNumber(pick(stats, 'sizeOnDisk', 'size_on_disk')) ?? asNumber(pick(item, 'sizeOnDisk', 'size_on_disk'))
-  if (size == null) return null
-  return { name: null, size, quality: null, video: null, audio: null }
+  const files = asNumber(pick(stats, 'episodeFileCount', 'episode_file_count'))
+  const total = asNumber(pick(stats, 'totalEpisodeCount', 'total_episode_count'))
+    ?? asNumber(pick(stats, 'episodeCount', 'episode_count'))
+  const quality = files != null && total != null ? `${files}/${total} episodes` : null
+  if (size == null && files == null) return null
+  return { name: null, size, quality, video: null, audio: null }
 }
 
 export function queueProgress(item?: Pick<ServerArrQueueItem, 'size' | 'sizeLeft' | 'size_left'> | null): number {

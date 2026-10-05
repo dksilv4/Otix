@@ -15,6 +15,10 @@ type RunningGame struct {
 	CurrentDurationSec int              `json:"current_duration_seconds"`
 	FpsAvailable       bool             `json:"fps_available"`
 	FpsSnapshot        *LiveFpsSnapshot `json:"fps_snapshot,omitempty"`
+	OtixMediaID        string           `json:"otix_media_id,omitempty"`
+	PosterURL          string           `json:"poster_url,omitempty"`
+	BackdropURL        string           `json:"backdrop_url,omitempty"`
+	Overview           string           `json:"overview,omitempty"`
 }
 
 // LiveFpsSnapshot captures the instant performance metrics for live display and sparklines.
@@ -97,10 +101,23 @@ type GameMapping struct {
 	GameTitle   string `json:"game_title"`
 }
 
+// MonitorInfo describes a connected display monitor.
+type MonitorInfo struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Device    string `json:"device"`
+	Width     int32  `json:"width"`
+	Height    int32  `json:"height"`
+	IsPrimary bool   `json:"is_primary"`
+	Left      int32  `json:"left"`
+	Top       int32  `json:"top"`
+}
+
 // OverlaySettings controls the appearance and behavior of the HUD overlay.
 type OverlaySettings struct {
 	Enabled         bool    `json:"enabled"`
-	Corner          string  `json:"corner"` // "top-left", "top-right", "bottom-left", "bottom-right"
+	Corner          string  `json:"corner"`  // "top-wide", "bottom-wide", "top-left", "top-right"
+	Monitor         string  `json:"monitor"` // "auto", "1", "2", "3", etc.
 	ShowFps         bool    `json:"show_fps"`
 	ShowPercentiles bool    `json:"show_percentiles"`
 	ShowPlaytime    bool    `json:"show_playtime"`
@@ -114,14 +131,15 @@ type OverlaySettings struct {
 func DefaultOverlaySettings() OverlaySettings {
 	return OverlaySettings{
 		Enabled:         true,
-		Corner:          "top-left",
+		Corner:          "top-wide",
+		Monitor:         "auto",
 		ShowFps:         true,
 		ShowPercentiles: true,
 		ShowPlaytime:    true,
 		ShowTitle:       true,
 		Opacity:         0.92,
 		Scale:           1.0,
-		Hotkey:          "Ctrl+Shift+O",
+		Hotkey:          "Ctrl+`",
 	}
 }
 

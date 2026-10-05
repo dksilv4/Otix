@@ -7,7 +7,7 @@ import { useMediaDetailPluginActions } from '@/features/media/hooks/use-media-de
 export interface RequestInstance {
   id: string
   name: string
-  status: 'downloaded' | 'requested' | 'not_exists' | 'error'
+  status: 'downloaded' | 'requested' | 'not_exists' | 'error' | 'partially_available'
   file?: {
     name?: string | null
     size?: number | null
@@ -70,21 +70,22 @@ function formatBytes(bytes?: number | null): string {
 }
 
 const REQUESTABLE = new Set(['not_exists', 'error'])
-const IN_LIBRARY = new Set(['downloaded', 'requested'])
+const IN_LIBRARY = new Set(['downloaded', 'requested', 'partially_available'])
 
 // Aggregate state of a request widget's instances → button label, glow and
-// icon. Any downloaded instance wins the label; any requested one shows a
-// pending (amber) state so a partially-downloaded library reads honestly.
+// icon. Shows Available or Partially Available if downloaded, while reflecting
+// any requested instances honestly.
 function getButtonState(widget: RequestWidget) {
   const instances = widget.props.instances || []
   const anyInLib = instances.some(i => IN_LIBRARY.has(i.status))
   const anyNotInLib = instances.some(i => REQUESTABLE.has(i.status))
-  const anyDownloaded = instances.some(i => i.status === 'downloaded')
-  const anyRequested = instances.some(i => i.status === 'requested')
+  const anyDownloaded = instances.some(i => i.status === 'downloaded' || i.status === 'partially_available')
+  const anyRequested = instances.some(i => i.status === 'requested' || i.status === 'partially_available')
 
   const requestLabel = widget.props.mediaType === 'movie' ? 'Request Movie' : 'Request Show'
   let label: string
   if (anyNotInLib) label = anyInLib ? 'Request Additional' : requestLabel
+  else if (anyDownloaded && anyRequested) label = 'Partially Available'
   else if (anyDownloaded) label = 'Available'
   else label = 'Requested'
 
@@ -116,6 +117,7 @@ function FileDetails({ file }: { file: NonNullable<RequestInstance['file']> }) {
 
 const STATUS_CHIP: Record<RequestInstance['status'], { cls: string; icon: React.ReactNode; label: string }> = {
   downloaded: { cls: 'bg-green-500/10 text-green-400/90', icon: <Check className="h-3 w-3" />, label: 'Available' },
+  partially_available: { cls: 'bg-amber-500/10 text-amber-300/90', icon: <Clock className="h-3 w-3" />, label: 'Partially Available' },
   requested: { cls: 'bg-amber-500/10 text-amber-300/90', icon: <Clock className="h-3 w-3" />, label: 'Requested' },
   not_exists: { cls: 'bg-white/5 text-white/40', icon: <ArrowDownToLine className="h-3 w-3" />, label: 'Not in library' },
   error: { cls: 'bg-red-500/10 text-red-400/90', icon: <AlertTriangle className="h-3 w-3" />, label: 'Error' },
@@ -255,7 +257,7 @@ function RequestButton({
         title={buttonTitle}
         className={cn(
           variant === 'pill'
-            ? 'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:h-4 [&_svg]:w-4 [&_svg]:scale-100'
+            ? 'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-lg backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:h-4 [&_svg]:w-4 [&_svg]:scale-100'
             : cn(
                 'dk-interaction__btn glass-inset disabled:cursor-not-allowed',
                 requesting && 'dk-interaction__btn--pending',
@@ -396,7 +398,7 @@ function StreamMediaButton({
           'relative overflow-hidden group/stream-btn transition-all duration-200',
           variant === 'pill'
             ? cn(
-                'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4',
+                'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4',
                 isResume
                   ? 'bg-amber-500/25 text-amber-200 ring-1 ring-amber-400/50 hover:bg-amber-500/35 hover:ring-amber-400/70 shadow-amber-500/10'
                   : 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30 hover:ring-emerald-400/60 shadow-emerald-500/10',
@@ -462,7 +464,7 @@ function StreamMediaButton({
           'relative overflow-hidden group/stream-btn transition-all duration-200',
           variant === 'pill'
             ? cn(
-                'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs sm:text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] [&_svg]:h-4 [&_svg]:w-4',
+                'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] [&_svg]:h-4 [&_svg]:w-4',
                 isResume
                   ? 'bg-amber-500/25 text-amber-200 ring-1 ring-amber-400/50 hover:bg-amber-500/35 hover:ring-amber-400/70 shadow-amber-500/10'
                   : 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30 hover:ring-emerald-400/60 shadow-emerald-500/10',

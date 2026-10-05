@@ -61,6 +61,18 @@ export const KNOWN_STEAM_APP_IDS: Record<string, string> = {
   'rimworld': '294100',
   'subnautica': '264710',
   'deep rock galactic': '548430',
+  'brawlhalla': '291550',
+  'sid meiers civilization vii': '2358720',
+  'sid meier\'s civilization vii': '2358720',
+  'civilization vii': '2358720',
+  'civ 7': '2358720',
+  'civ vii': '2358720',
+  'transport fever 2': '1066780',
+  'transport fever 3': '1066780',
+  'transport fever': '1066780',
+  'bloonstd6': '960090',
+  'pal': '1623730',
+  'steamcmd': '228980',
 }
 
 export interface GameResolvedArtwork {
@@ -117,10 +129,23 @@ export function resolveSessionArtwork(
     }
   }
 
-  // 3. Match by cleaned title or raw title
+  // 3. Match by cleaned title, raw title, or alphanumeric normalized key
   const normTitle = cleanedTitle.toLowerCase().trim()
   const normRaw = rawTitle.toLowerCase().trim()
-  const appId = KNOWN_STEAM_APP_IDS[normTitle] || KNOWN_STEAM_APP_IDS[normRaw]
+  const alphaTitle = normTitle.replace(/[^a-z0-9]/g, '')
+  const alphaRaw = normRaw.replace(/[^a-z0-9]/g, '')
+
+  let appId = KNOWN_STEAM_APP_IDS[normTitle] || KNOWN_STEAM_APP_IDS[normRaw]
+
+  if (!appId) {
+    for (const [key, id] of Object.entries(KNOWN_STEAM_APP_IDS)) {
+      const cleanKey = key.replace(/[^a-z0-9]/g, '')
+      if (cleanKey === alphaTitle || cleanKey === alphaRaw || (cleanKey.length > 5 && alphaTitle.includes(cleanKey))) {
+        appId = id
+        break
+      }
+    }
+  }
 
   if (appId) {
     const steamUrls = getSteamCdnUrls(appId)

@@ -30,6 +30,7 @@ export function useMediaDetailPluginActions(
   mediaId: string,
   tmdbId?: string | null,
   enabled = true,
+  mediaTitle?: string | null,
 ) {
   // Radarr/other source services need the real TMDB id, not the internal ULID.
   const requestId = tmdbId || mediaId
@@ -133,6 +134,53 @@ export function useMediaDetailPluginActions(
               ],
             },
           })
+        } else if (mediaType === 'show') {
+          const { data } = await apiClient.get<Array<{
+            id: number
+            title: string
+            tvdb_id?: number
+            tvdbId?: number
+            tmdb_id?: number
+            tmdbId?: number
+            statistics?: {
+              episodeFileCount?: number
+              totalEpisodeCount?: number
+              episodeCount?: number
+            }
+            monitored?: boolean
+          }>>(`/library/servers/${activeServer.id}/sonarr/series`)
+          const seriesList = data || []
+          const existing = seriesList.find(
+            s => (s.tvdb_id || s.tvdbId) === numId || (s.tmdb_id || s.tmdbId) === numId,
+          )
+          let status: RequestInstance['status'] = 'not_exists'
+          if (existing) {
+            const stats = existing.statistics || {}
+            const files = stats.episodeFileCount ?? 0
+            const total = stats.totalEpisodeCount ?? stats.episodeCount ?? 0
+            if (files > 0) {
+              status = total > 0 && files < total ? 'partially_available' : 'downloaded'
+            } else {
+              status = 'requested'
+            }
+          }
+
+          requestWidgets.push({
+            pluginId: 'server-sonarr',
+            label: `${activeServer.name} (Sonarr)`,
+            props: {
+              label: 'Sonarr',
+              mediaType: 'show',
+              mediaId: requestId,
+              instances: [
+                {
+                  id: String(activeServer.id),
+                  name: `${activeServer.name} Sonarr`,
+                  status,
+                },
+              ],
+            },
+          })
         }
       } catch (err) {
         console.warn('Failed to query server arr media status:', err)
@@ -141,11 +189,13 @@ export function useMediaDetailPluginActions(
 
     // Check backend Plex connect-info if no play widgets found yet
     if (playList.length === 0) {
-      const candidates = [mediaId, requestId].filter(Boolean)
+      const candidates = Array.from(
+        new Set([mediaId, requestId, tmdbId, mediaTitle].filter((c): c is string => Boolean(c))),
+      )
       for (const targetId of candidates) {
         try {
           const { data: plexInfo } = await apiClient.get<Record<string, unknown>>(
-            `/integrations/plex/connect-info/${targetId}`,
+            `/integrations/plex/connect-info/${encodeURIComponent(targetId)}`,
           )
           const ratingKey = String(plexInfo?.ratingKey || plexInfo?.rating_key || '')
           const baseUrl = String(plexInfo?.baseUrl || plexInfo?.base_url || '')
@@ -206,7 +256,7 @@ export function useMediaDetailPluginActions(
     setWidgets(requestWidgets)
     setPlayWidgets(playList)
     setLoading(false)
-  }, [requestId, mediaType, mediaId, activeServer])
+  }, [requestId, mediaType, mediaId, tmdbId, mediaTitle, activeServer])
 
   useEffect(() => {
     if (!enabled) return
@@ -488,5 +538,6 @@ export function useMediaDetailPluginActions(
     handleRequest,
     handlePlay,
     hasLibraryStatus,
+    refreshPlayWidgets: loadSlots,
   }
 }
