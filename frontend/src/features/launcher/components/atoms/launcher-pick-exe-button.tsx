@@ -4,7 +4,7 @@ import { useToast } from '@ui/molecules/toast'
 import {useParams} from "@tanstack/react-router";
 import {useLocalGame} from "@/features/launcher/data/game-queries";
 
-export function PickExeButton() {
+export const PickExeButton = () => {
   const { toast } = useToast()
   const {gameId} = useParams({ strict: false })
   const { data: g } = useLocalGame(gameId)
@@ -29,4 +29,4 @@ export function PickExeButton() {
       <FileCode size={16} />
     </button>
   )
-}
+};

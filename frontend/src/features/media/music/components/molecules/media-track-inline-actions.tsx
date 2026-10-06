@@ -8,13 +8,13 @@ interface TrackInlineActionsProps {
   className?: string
 }
 
-export function TrackInlineActions({
+export const TrackInlineActions = ({
   trackId,
   ratingPending = false,
   myRating,
   onRate,
   className,
-}: TrackInlineActionsProps) {
+}: TrackInlineActionsProps) => {
   const canRate = Boolean(trackId && onRate)
 
   if (!canRate) return null
@@ -35,4 +35,4 @@ export function TrackInlineActions({
       )}
     </div>
   )
-}
+};

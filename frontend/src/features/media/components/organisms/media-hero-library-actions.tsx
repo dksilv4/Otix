@@ -10,7 +10,7 @@ import { useRequestMedia } from '@/features/media/hooks/use-request-media'
 import { apiClient } from '@/lib/api/client'
 import { showToast } from '@ui/molecules/toast'
 
-export function MediaHeroLibraryActions() {
+export const MediaHeroLibraryActions = () => {
   const { mediaType, mediaId } = useMediaParams()
   const { data: detail } = useQuery(mediaQueries.detail(mediaType, mediaId))
   const effectiveMediaId = detail?.id ? String(detail.id) : mediaId
@@ -128,4 +128,4 @@ export function MediaHeroLibraryActions() {
       )}
     </>
   )
-}
+};

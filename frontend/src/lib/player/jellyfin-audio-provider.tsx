@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { getJellyfinClientId } from './utils'
 
 export interface JellyfinTrackInfo {
   id: string
@@ -37,20 +38,8 @@ interface JellyfinPlayerContextValue {
 const JellyfinPlayerContext = createContext<JellyfinPlayerContextValue | null>(null)
 
 const VOLUME_KEY = 'jellyfin-player-volume'
-const CLIENT_ID_KEY = 'jellyfin-audio-client-id'
 
-function getClientId(): string {
-  let id = typeof localStorage !== 'undefined' ? localStorage.getItem(CLIENT_ID_KEY) : null
-  if (!id) {
-    id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : 'otix-jf-aud-' + Date.now().toString(36)
-    if (typeof localStorage !== 'undefined') localStorage.setItem(CLIENT_ID_KEY, id)
-  }
-  return id
-}
-
-export function JellyfinAudioProvider({ children }: { children: React.ReactNode }) {
+export const JellyfinAudioProvider = ({ children }: { children: React.ReactNode }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTrack, setCurrentTrack] = useState<JellyfinTrackInfo | null>(null)
@@ -67,7 +56,7 @@ export function JellyfinAudioProvider({ children }: { children: React.ReactNode 
   const queueRef = useRef<JellyfinTrackInfo[]>([])
   const currentIndexRef = useRef(-1)
 
-  const clientIdRef = useRef(getClientId())
+  const clientIdRef = useRef(getJellyfinClientId())
   const playSessionIdRef = useRef('')
 
   // Report progress heartbeat to Jellyfin
@@ -296,10 +285,10 @@ export function JellyfinAudioProvider({ children }: { children: React.ReactNode 
       {children}
     </JellyfinPlayerContext.Provider>
   )
-}
+};
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function useJellyfinPlayer(): JellyfinPlayerContextValue {
+export const useJellyfinPlayer = (): JellyfinPlayerContextValue => {
   const ctx = useContext(JellyfinPlayerContext)
   if (!ctx) throw new Error('useJellyfinPlayer must be used within JellyfinAudioProvider')
   return ctx

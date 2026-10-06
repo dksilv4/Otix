@@ -14,11 +14,11 @@ interface MediaGameServersSectionProps {
   className?: string
 }
 
-export function MediaGameServersSection({
+export const MediaGameServersSection = ({
   mediaId,
   gameTitle,
   className = '',
-}: MediaGameServersSectionProps) {
+}: MediaGameServersSectionProps) => {
   const { data: servers = [] } = useGameServersByGame(mediaId)
   const queryMutation = useQueryGameServer()
 
@@ -185,4 +185,4 @@ export function MediaGameServersSection({
       )}
     </div>
   )
-}
+};

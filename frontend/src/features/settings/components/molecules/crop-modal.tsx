@@ -3,41 +3,7 @@ import { useState, useCallback } from 'react'
 import Cropper, { type Area } from 'react-easy-crop'
 import { SlidersHorizontal, Check, X, AlertTriangle } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
-
-async function getCroppedBlob(
-  imageUrl: string,
-  pixelCrop: { x: number; y: number; width: number; height: number },
-  outputSize: { width: number; height: number },
-  format: 'image/jpeg' | 'image/webp' | 'image/png' = 'image/webp',
-  quality = 0.92,
-): Promise<Blob> {
-  const response = await fetch(imageUrl)
-  const blob = await response.blob()
-  const image = await createImageBitmap(blob)
-
-  const canvas = document.createElement('canvas')
-  canvas.width = outputSize.width
-  canvas.height = outputSize.height
-  const ctx = canvas.getContext('2d')!
-
-  ctx.drawImage(
-    image,
-    pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height,
-    0, 0, outputSize.width, outputSize.height,
-  )
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (result) => {
-        if (result) resolve(result)
-        else reject(new Error('Canvas toBlob returned null'))
-      },
-      format,
-      quality,
-    )
-  })
-}
-
+import { getCroppedBlob } from '../../utils/crop'
 import './crop-modal.scss'
 
 interface CropModalProps {
@@ -49,14 +15,14 @@ interface CropModalProps {
   onCancel: () => void
 }
 
-export function CropModal({
+export const CropModal = ({
   imageUrl,
   shape,
   aspect,
   outputSize,
   onComplete,
   onCancel,
-}: CropModalProps) {
+}: CropModalProps) => {
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [rotation, setRotation] = useState(0)
@@ -187,4 +153,4 @@ export function CropModal({
       </div>
     </div>
   )
-}
+};

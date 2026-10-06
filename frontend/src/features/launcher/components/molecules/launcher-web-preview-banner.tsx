@@ -2,7 +2,7 @@
 
 import { isDesktop } from '@/lib/desktop/api'
 
-export function WebPreviewBanner({ id }: { id?: string }) {
+export const WebPreviewBanner = ({ id }: { id?: string }) => {
   const desktop = isDesktop()
   if (desktop) return null
   return (
@@ -13,4 +13,4 @@ export function WebPreviewBanner({ id }: { id?: string }) {
       </div>
     </div>
   )
-}
+};

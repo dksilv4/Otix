@@ -7,8 +7,8 @@ import {
 export type NodeRadarrSettingsModalProps = Omit<NodeArrSettingsModalProps, 'appType'>;
 export type ServerRadarrSettingsModalProps = NodeRadarrSettingsModalProps;
 
-export function NodeRadarrSettingsModal(props: NodeRadarrSettingsModalProps) {
+export const NodeRadarrSettingsModal = (props: NodeRadarrSettingsModalProps) => {
   return <NodeArrSettingsModal {...props} appType="radarr" />;
-}
+};
 
 export const ServerRadarrSettingsModal = NodeRadarrSettingsModal;

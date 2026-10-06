@@ -12,12 +12,12 @@ interface RemoteDownloadCardProps {
   onCancel: (id: string) => void
 }
 
-export function RemoteDownloadCard({
+export const RemoteDownloadCard = ({
   transfer,
   onPause,
   onResume,
   onCancel,
-}: RemoteDownloadCardProps) {
+}: RemoteDownloadCardProps) => {
   const isDownloading = transfer.status === 'downloading'
   const isPaused = transfer.status === 'paused'
   const isCompleted = transfer.status === 'completed'
@@ -148,4 +148,4 @@ export function RemoteDownloadCard({
       </div>
     </div>
   )
-}
+};

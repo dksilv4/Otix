@@ -11,7 +11,7 @@ interface LoginFormProps {
 }
 
 /** Login form organism with identity/password fields, validation, and 2FA redirect. */
-export function LoginForm({ onSuccess }: LoginFormProps) {
+export const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const { login } = useAuth()
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as { redirect?: string }
@@ -25,7 +25,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [showSuccess, setShowSuccess] = useState(false)
   const firstInputRef = useRef<HTMLInputElement>(null)
 
-  function validate() {
+  const validate = () => {
     const errors: { identity?: string; password?: string } = {}
     if (!identity.trim()) errors.identity = 'Username or email is required'
     if (!password) errors.password = 'Password is required'
@@ -33,7 +33,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     return errors
   }
 
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setAuthError('')
     const errors = validate()
@@ -162,4 +162,4 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       </div>
     </motion.form>
   )
-}
+};

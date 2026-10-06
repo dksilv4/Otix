@@ -35,7 +35,7 @@ export interface SettingsPathsSectionProps {
   nodeId?: number | null
 }
 
-export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeIdProp }: SettingsPathsSectionProps) {
+export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeIdProp }: SettingsPathsSectionProps) => {
   const { toast } = useToast()
   let user: any = null
   try {
@@ -228,7 +228,7 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
 
   useEffect(() => {
     let cancelled = false
-    async function loadOtixSettings() {
+    const loadOtixSettings = async () => {
       if (!remoteNodeId) {
         setWriteOtixAfterScan(true)
         setDownloadOtixImages(false)
@@ -276,7 +276,7 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
   // ── 2. Load destination folders from the node or this device ──
   useEffect(() => {
     let cancelled = false
-    async function loadDestinations() {
+    const loadDestinations = async () => {
       if (remoteNodeId) {
         try {
           const [desktopRes, organizeRes] = await Promise.allSettled([
@@ -1139,4 +1139,4 @@ export function SettingsPathsSection({ onScanComplete, className, nodeId: nodeId
       </SettingsCard>
     </div>
   )
-}
+};

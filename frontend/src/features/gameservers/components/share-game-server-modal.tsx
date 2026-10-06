@@ -19,7 +19,7 @@ interface ShareGameServerModalProps {
   onClose: () => void
 }
 
-export function ShareGameServerModal({ server, isOpen, onClose }: ShareGameServerModalProps) {
+export const ShareGameServerModal = ({ server, isOpen, onClose }: ShareGameServerModalProps) => {
   const { toast } = useToast()
   const { data: friends = [], isLoading: isLoadingFriends } = useOtixFriends()
   const { data: shares = [], isLoading: isLoadingShares } = useGameServerShares(server.id)
@@ -268,4 +268,4 @@ export function ShareGameServerModal({ server, isOpen, onClose }: ShareGameServe
       </div>
     </DkDialog>
   )
-}
+};

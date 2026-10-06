@@ -19,7 +19,7 @@ interface AddSectionButtonProps {
   username: string
 }
 
-export function AddSectionButton({ currentSections, username }: AddSectionButtonProps) {
+export const AddSectionButton = ({ currentSections, username }: AddSectionButtonProps) => {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
 
@@ -84,4 +84,4 @@ export function AddSectionButton({ currentSections, username }: AddSectionButton
       )}
     </div>
   )
-}
+};

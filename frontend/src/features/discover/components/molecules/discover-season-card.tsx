@@ -16,10 +16,10 @@ interface DiscoverSeasonCardProps {
  * has no logo artwork in this context, so a persistent bottom caption carries
  * the season + show name instead of the hover-only caption used by media cards.
  */
-export const DiscoverSeasonCard = memo(function DiscoverSeasonCard({
+export const DiscoverSeasonCard = memo(({
   season,
   className,
-}: DiscoverSeasonCardProps) {
+}: DiscoverSeasonCardProps) => {
   const title =
     season.name && season.name.trim()
       ? season.name

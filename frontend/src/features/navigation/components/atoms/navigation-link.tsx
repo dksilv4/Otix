@@ -4,7 +4,7 @@ import { useNavigation } from "@navigation/hooks/use-navigation"
 const iconBg = "flex items-center justify-center w-9 h-9 rounded-full shrink-0 bg-[var(--dk-surface-ghost-active)]"
 
 /** Atom navigation link with icon and label for the sidebar. */
-export function NavLink({ to, icon, label, params }: { to: string; icon: React.ReactNode; label: string; params?: Record<string, string> }) {
+export const NavLink = ({ to, icon, label, params }: { to: string; icon: React.ReactNode; label: string; params?: Record<string, string> }) => {
   const location = useLocation()
   const { close } = useNavigation()
 
@@ -23,4 +23,4 @@ export function NavLink({ to, icon, label, params }: { to: string; icon: React.R
       {label}
     </Link>
   )
-}
+};

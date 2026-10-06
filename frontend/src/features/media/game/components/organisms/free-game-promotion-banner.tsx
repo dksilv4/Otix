@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import {
   Gift,
   ExternalLink,
@@ -19,7 +19,7 @@ import type { MediaItemDetail, FreePromotionItem } from '../../queries/media-que
 import { useGameFreePromotions } from '../../hooks/use-game-free-promotions'
 import { cn } from '@/lib/utils'
 
-function StoreIcon({ store, className }: { store: string; className?: string }) {
+const StoreIcon = ({ store, className }: { store: string; className?: string }) => {
   switch (store.toLowerCase()) {
     case 'epic':
       return <EpicIcon className={className} />
@@ -30,64 +30,17 @@ function StoreIcon({ store, className }: { store: string; className?: string }) 
     default:
       return <Gamepad2 className={className} />
   }
-}
+};
 
-function formatTimeRemaining(dateStr: string | null | undefined): string | null {
-  if (!dateStr) return null
-  const target = new Date(dateStr).getTime()
-  const now = Date.now()
-  const diff = target - now
-  if (diff <= 0) return 'Ending soon'
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  if (days > 1) return `${days}d ${hours}h left`
-  if (days === 1) return `1d ${hours}h left`
-  if (hours > 0) return `${hours}h ${mins}m left`
-  if (mins > 0) return `${mins}m left`
-  return 'Ending soon'
-}
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-
-function isEndingSoon(dateStr: string | null | undefined): boolean {
-  if (!dateStr) return false
-  const diff = new Date(dateStr).getTime() - Date.now()
-  return diff > 0 && diff < 48 * 60 * 60 * 1000
-}
-
-function useCountdown(dateStr: string | null | undefined): string | null {
-  const [label, setLabel] = useState(() => formatTimeRemaining(dateStr))
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  useEffect(() => {
-    setLabel(formatTimeRemaining(dateStr))
-    if (!dateStr) return
-    intervalRef.current = setInterval(() => {
-      setLabel(formatTimeRemaining(dateStr))
-    }, 60_000)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [dateStr])
-
-  return label
-}
+import { formatDate, isEndingSoon } from '@/features/media/game/utils/free-games'
+import { useCountdown } from '@/features/discover/hooks/use-countdown'
 
 interface FreeGamePromotionBannerProps {
   detail: MediaItemDetail
   className?: string
 }
 
-export function FreeGamePromotionBanner({ detail, className }: FreeGamePromotionBannerProps) {
+export const FreeGamePromotionBanner = ({ detail, className }: FreeGamePromotionBannerProps) => {
   const { promotions, hasPromotion } = useGameFreePromotions(detail)
   const [selectedIndex, setSelectedIndex] = useState(0)
 
@@ -105,7 +58,7 @@ export function FreeGamePromotionBanner({ detail, className }: FreeGamePromotion
       className={className}
     />
   )
-}
+};
 
 interface FreePromoCardProps {
   currentPromo: FreePromotionItem
@@ -115,13 +68,13 @@ interface FreePromoCardProps {
   className?: string
 }
 
-function FreePromoCard({
+const FreePromoCard = ({
   currentPromo,
   promotions,
   selectedIndex,
   setSelectedIndex,
   className,
-}: FreePromoCardProps) {
+}: FreePromoCardProps) => {
   const [copied, setCopied] = useState(false)
   const isNow = currentPromo.isFreeNow
   const countdown = useCountdown(currentPromo.endDate)
@@ -321,4 +274,4 @@ function FreePromoCard({
       </div>
     </div>
   )
-}
+};

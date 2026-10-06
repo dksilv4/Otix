@@ -9,7 +9,7 @@ interface Props {
   suggestionMediaId: string
 }
 
-export function RejectSuggestionButton({ gameId, suggestionMediaId }: Props) {
+export const RejectSuggestionButton = ({ gameId, suggestionMediaId }: Props) => {
   const { toast } = useToast()
   const rejectMutation = useRejectSuggestion()
 
@@ -27,4 +27,4 @@ export function RejectSuggestionButton({ gameId, suggestionMediaId }: Props) {
       <X size={13} />
     </button>
   )
-}
+};

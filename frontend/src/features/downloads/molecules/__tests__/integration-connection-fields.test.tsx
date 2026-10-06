@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import React, { useState } from 'react'
 import { IntegrationConnectionFields } from '../integration-connection-fields'
 
-function Harness({
+const Harness = ({
   initialHost = '127.0.0.1',
   initialPort = 8080,
   initialApiKey = '',
@@ -16,7 +16,7 @@ function Harness({
   initialApiKey?: string
   initialSsl?: boolean
   initialUrlBase?: string
-}) {
+}) => {
   const [host, setHost] = useState(initialHost)
   const [port, setPort] = useState(initialPort)
   const [apiKey, setApiKey] = useState(initialApiKey)
@@ -38,7 +38,7 @@ function Harness({
       defaultPort={8080}
     />
   )
-}
+};
 
 describe('IntegrationConnectionFields', () => {
   it('shows SSL and URL base inline without an Advanced disclosure', () => {

@@ -8,7 +8,7 @@ import type { SortValue, TypeValue } from '@search/types'
 
 const AnimatedShaderBackground = lazy(() => import('@/components/animated-shader-background'))
 
-export function SearchPage() {
+export const SearchPage = () => {
   const search = useSearch({ from: '/search' })
   const navigate = useNavigate({ from: '/search' })
 
@@ -137,4 +137,4 @@ export function SearchPage() {
       <Outlet />
     </div>
   )
-}
+};

@@ -8,12 +8,12 @@ interface MediaSectionSkeletonProps {
   count?: number
 }
 
-export function MediaSectionSkeleton({
+export const MediaSectionSkeleton = ({
   cardAspectRatio = 'aspect-[2/3]',
   cardWidth = 'w-[200px]',
   cardClassName,
   count = 6,
-}: MediaSectionSkeletonProps = {}) {
+}: MediaSectionSkeletonProps = {}) => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between px-4 lg:px-8">
@@ -30,4 +30,4 @@ export function MediaSectionSkeleton({
       </div>
     </div>
   )
-}
+};

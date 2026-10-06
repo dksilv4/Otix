@@ -5,7 +5,7 @@ import { useOffline } from "@/lib/offline"
 import { useUserLists, useCreateList, useDeleteLists, type UserListCreate, ListComposer, ListCard } from "@list"
 import { useModal } from "@/lib/modals"
 
-export function ListsTabContent() {
+export const ListsTabContent = () => {
   const { data: lists, isLoading, isError, refetch } = useUserLists()
   const offline = useOffline()
   const createList = useCreateList()
@@ -239,4 +239,4 @@ export function ListsTabContent() {
       </div>
     </div>
   )
-}
+};

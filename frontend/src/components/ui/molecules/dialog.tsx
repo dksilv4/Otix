@@ -14,7 +14,7 @@ interface DkDialogProps {
   showAmbient?: boolean
 }
 
-function DkDialog({ open, onOpenChange, title, description, children, className }: DkDialogProps) {
+const DkDialog = ({ open, onOpenChange, title, description, children, className }: DkDialogProps) => {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -97,6 +97,6 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
     </div>,
     document.body,
   )
-}
+};
 
 export { DkDialog }

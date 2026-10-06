@@ -17,13 +17,13 @@ interface LauncherActionButtonsProps {
   className?: string
 }
 
-export function LauncherActionButtons({
+export const LauncherActionButtons = ({
   game,
   size = "md",
   onOpenDetails,
   _onOpenMatch,
   className = "",
-}: LauncherActionButtonsProps) {
+}: LauncherActionButtonsProps) => {
   const { toast } = useToast()
   const isDesktop = hasDesktopAPI()
   const { activeInstalls, startInstall, cancelInstall } = useInstallProgress()
@@ -225,4 +225,4 @@ export function LauncherActionButtons({
       )}
     </div>
   )
-}
+};

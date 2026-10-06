@@ -12,7 +12,7 @@ import { apiClient } from '@/lib/api/client'
 import { extractErrorMessage } from '@auth/utils'
 import type { ResetPasswordPageState } from '@auth/types'
 
-export function ResetPasswordPage() {
+export const ResetPasswordPage = () => {
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as { token?: string }
   const [password, setPassword] = useState('')
@@ -41,7 +41,7 @@ export function ResetPasswordPage() {
     )
   }
 
-  function validate(): boolean {
+  const validate = (): boolean => {
     const errors: { password?: string; confirm?: string } = {}
     if (!password) errors.password = 'Password is required'
     else if (password.length < 8) errors.password = 'Password must be at least 8 characters'
@@ -53,7 +53,7 @@ export function ResetPasswordPage() {
     return Object.keys(errors).length === 0
   }
 
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setErrorMessage('')
     if (!validate()) return
@@ -163,4 +163,4 @@ export function ResetPasswordPage() {
       </AuthCard>
     </div>
   )
-}
+};

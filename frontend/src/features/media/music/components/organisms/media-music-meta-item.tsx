@@ -1,4 +1,4 @@
-export function MetaItem({ label, value }: { label: string; value: string | null | undefined }) {
+export const MetaItem = ({ label, value }: { label: string; value: string | null | undefined }) => {
   if (value == null || value === '') return null
   return (
     <div>
@@ -6,4 +6,4 @@ export function MetaItem({ label, value }: { label: string; value: string | null
       <dd className="text-sm font-medium capitalize">{value}</dd>
     </div>
   )
-}
+};

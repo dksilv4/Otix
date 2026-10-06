@@ -63,7 +63,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 // ── Component ──────────────────────────────────────────────────────────
 
-export function ActivityModulePlugins() {
+export const ActivityModulePlugins = () => {
   const [activities, setActivities] = useState<Record<string, PluginActivityItem[]>>({})
   const [labels, setLabels] = useState<Record<string, string>>({})
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -212,4 +212,4 @@ export function ActivityModulePlugins() {
       })}
     </>
   )
-}
+};

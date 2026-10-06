@@ -26,18 +26,9 @@ import {
   formatTemplateSample,
 } from '../../utils/naming-template'
 import { cn } from '@/lib/utils'
+import { SCAN_ON_LAUNCH_KEY, readScanOnLaunch } from '../../utils/organize'
 
-const SCAN_ON_LAUNCH_KEY = 'otix:scan-on-launch'
-
-function readScanOnLaunch(): boolean {
-  try {
-    return localStorage.getItem(SCAN_ON_LAUNCH_KEY) === 'true'
-  } catch {
-    return false
-  }
-}
-
-export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: number | null } = {}) {
+export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: number | null } = {}) => {
   const auth = useContext(AuthContext)
   const user = auth?.user as { id: string } | null
 
@@ -579,4 +570,4 @@ export function SettingsOrganizeSection({ nodeId: nodeIdProp }: { nodeId?: numbe
       )}
     </div>
   )
-}
+};

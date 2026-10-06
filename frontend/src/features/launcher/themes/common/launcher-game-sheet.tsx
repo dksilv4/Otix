@@ -14,7 +14,7 @@ interface LauncherGameSheetProps {
   onClose: () => void
 }
 
-export function LauncherGameSheet({ game, onClose }: LauncherGameSheetProps) {
+export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => {
   const { openModal } = useModal()
   const [_selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'updates' | 'servers'>('overview')
@@ -267,4 +267,4 @@ export function LauncherGameSheet({ game, onClose }: LauncherGameSheetProps) {
       </div>
     </AnimatePresence>
   )
-}
+};

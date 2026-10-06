@@ -2,7 +2,7 @@ import { Info } from 'lucide-react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useLocalGame } from '@/features/launcher/data/game-queries'
 
-export function GameDetailButton() {
+export const GameDetailButton = () => {
   const { gameId } = useParams({ strict: false })
   const { data: g } = useLocalGame(gameId)
   const navigate = useNavigate()
@@ -19,4 +19,4 @@ export function GameDetailButton() {
       <Info size={16} />
     </button>
   )
-}
+};

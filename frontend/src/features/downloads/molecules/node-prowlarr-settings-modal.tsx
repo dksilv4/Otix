@@ -50,12 +50,12 @@ interface ProwlarrFormProps {
   onClose: () => void;
 }
 
-function ProwlarrForm({
+const ProwlarrForm = ({
   config,
   targetNodeId,
   targetNodeName,
   onClose,
-}: ProwlarrFormProps) {
+}: ProwlarrFormProps) => {
   const { toast } = useToast();
   const saveHook = useSaveServerProwlarrConfig || useSaveNodeProwlarrConfig;
   const saveMutation = saveHook(targetNodeId);
@@ -259,9 +259,9 @@ function ProwlarrForm({
       </IntegrationCardSection>
     </IntegrationModalForm>
   );
-}
+};
 
-export function NodeProwlarrSettingsModal({
+export const NodeProwlarrSettingsModal = ({
   nodeId,
   nodeName = 'Node',
   serverId,
@@ -269,7 +269,7 @@ export function NodeProwlarrSettingsModal({
   isOpen = true,
   isExiting,
   onClose,
-}: NodeProwlarrSettingsModalProps) {
+}: NodeProwlarrSettingsModalProps) => {
   const effectiveId = nodeId ?? serverId;
   const effectiveName = nodeName !== 'Node' ? nodeName : (serverName ?? 'Node');
   const { targetNodeId, targetNodeName } = useIntegrationTargetNode(effectiveId, effectiveName);
@@ -305,6 +305,6 @@ export function NodeProwlarrSettingsModal({
       ) : null}
     </NodeIntegrationModalShell>
   );
-}
+};
 
 export const ServerProwlarrSettingsModal = NodeProwlarrSettingsModal;

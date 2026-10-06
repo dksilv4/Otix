@@ -4,7 +4,7 @@ import { InstancesEditor } from '../organisms/instances-editor'
 import type { PluginConfigField } from '@/features/plugins/types/plugins'
 import type { PluginAPI } from '@/features/plugins/api'
 
-function makeField(): PluginConfigField {
+const makeField = (): PluginConfigField  => {
   return {
     type: 'instances',
     label: 'Radarr Instances',

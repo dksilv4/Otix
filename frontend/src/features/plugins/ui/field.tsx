@@ -11,7 +11,7 @@ interface FieldProps {
   className?: string
 }
 
-export function Field({ label, description, error, required, htmlFor, children, className }: FieldProps) {
+export const Field = ({ label, description, error, required, htmlFor, children, className }: FieldProps) => {
   const generatedId = useId()
   const id = htmlFor || generatedId
 
@@ -44,4 +44,4 @@ export function Field({ label, description, error, required, htmlFor, children, 
       {error && <p className="text-[11px] text-red-400">{error}</p>}
     </div>
   )
-}
+};

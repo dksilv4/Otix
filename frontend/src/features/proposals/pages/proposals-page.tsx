@@ -31,14 +31,9 @@ interface MatchProposalList {
   total: number
 }
 
-function confidenceColor(c: number) {
-  if (c >= 0.95) return 'text-green-400 bg-green-500/10'
-  if (c >= 0.85) return 'text-blue-400 bg-blue-500/10'
-  if (c >= 0.75) return 'text-amber-400 bg-amber-500/10'
-  return 'text-white/40 bg-white/5'
-}
+import { confidenceColor } from '../utils'
 
-export function ProposalsPage() {
+export const ProposalsPage = () => {
   const [proposals, setProposals] = useState<MatchProposal[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -245,4 +240,4 @@ export function ProposalsPage() {
       </div>
     </SettingsCard>
   )
-}
+};

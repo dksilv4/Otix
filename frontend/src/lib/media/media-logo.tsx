@@ -32,7 +32,7 @@ interface MediaLogoProps {
  * (hero, cards, launcher) stays in sync, while `background`/`theme`/`shadow`
  * let a specific scope tailor the treatment.
  */
-export function MediaLogo({
+export const MediaLogo = ({
   src,
   alt = '',
   className,
@@ -42,11 +42,11 @@ export function MediaLogo({
   shadow = DEFAULT_LOGO_FILTER,
   onError,
   style,
-}: MediaLogoProps) {
+}: MediaLogoProps) => {
   const { resolvedTheme } = useTheme()
   const backdrop = background === 'theme' ? (theme ?? resolvedTheme) : background
   const contrast = background === 'none' ? '' : logoContrast(colorGuess, backdrop as 'light' | 'dark')
   const filter = contrast ? `${contrast} ${shadow}` : shadow
 
   return <img src={src} alt={alt} className={className} onError={onError} style={{ filter, ...style }} />
-}
+};

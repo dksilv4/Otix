@@ -7,7 +7,7 @@ interface PanelContextValue {
 
 const PanelContext = createContext<PanelContextValue | null>(null)
 
-export function PanelProvider({ children }: { children: ReactNode }) {
+export const PanelProvider = ({ children }: { children: ReactNode }) => {
   const [isUserMenuOpen, setUserMenuOpen] = useState(false)
 
   return (
@@ -15,9 +15,9 @@ export function PanelProvider({ children }: { children: ReactNode }) {
       {children}
     </PanelContext.Provider>
   )
-}
+};
 
-export function usePanelContext(): PanelContextValue {
+export const usePanelContext = (): PanelContextValue => {
   const ctx = useContext(PanelContext)
   if (!ctx) throw new Error('usePanelContext must be used within PanelProvider')
   return ctx

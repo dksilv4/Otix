@@ -24,7 +24,7 @@ interface Props {
   onViewDetail: (blueprint: any) => void
 }
 
-export function BlueprintCommunity({ pluginId, onViewDetail }: Props) {
+export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
   const [blueprints, setBlueprints] = useState<CommunityBlueprint[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -267,4 +267,4 @@ export function BlueprintCommunity({ pluginId, onViewDetail }: Props) {
       )}
     </div>
   )
-}
+};

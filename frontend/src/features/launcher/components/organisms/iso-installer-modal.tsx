@@ -13,7 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DkButton } from "@ui/atoms/button";
-import { hasDesktopAPI, getScanPaths, markGameInstalled } from "@/features/launcher/data/storage";
+import { hasDesktopAPI, markGameInstalled } from "@/features/launcher/data/storage";
 import { usePickFolder } from "@/components/path-picker";
 import { useInstallProgress } from "@/features/launcher/data/install-store";
 import type {
@@ -21,20 +21,7 @@ import type {
   InstallResult,
   InstallPhase,
 } from "@/features/launcher/types";
-
-/** Clean a title string by removing scene group tags and normalizing. */
-function cleanTitle(raw: string): string {
-  return raw
-    .replace(/\.iso$/i, '')
-    .replace(/[._-]/g, ' ')
-    .replace(/\b(repack|elamigos|fitgirl|dodi|codex|flt|plaza|skidrow|rune|tenoke|goldberg|razor1911|fairlight|hoodlum|hbg|multi\d*|voices\d*)\b/gi, '')
-    .replace(/\[.*?\]/g, '')
-    .replace(/\(.*?\)/g, '')
-    .replace(/\bv\d+(\.\d+)*\b/gi, '')
-    .replace(/\bbuild\s*\d+\b/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+import { cleanTitle, suggestInstallDir } from "@/features/launcher/utils";
 
 const PHASE_LABELS: Record<InstallPhase, string> = {
   mounting: "Mounting ISO...",
@@ -46,22 +33,6 @@ const PHASE_LABELS: Record<InstallPhase, string> = {
   error: "Install failed",
 };
 
-/** Suggest a default install directory — prefer configured games installation folder, then first game library folder, fall back to ISO dir. */
-function suggestInstallDir(isoPath: string, gameTitle: string): string {
-  let base: string;
-  try {
-    base = localStorage.getItem('otix:games-install-dir') || '';
-  } catch {
-    base = '';
-  }
-  if (!base) {
-    const dirs = getScanPaths();
-    base = dirs.length > 0 ? dirs[0] : isoPath.replace(/[/\\][^/\\]+$/, "");
-  }
-  const clean = gameTitle.replace(/[<>:"|?*]/g, "").trim();
-  return clean ? `${base}/${clean}` : base;
-}
-
 interface IsoInstallerModalProps {
   onClose: () => void;
   games: LocalGame[];
@@ -70,13 +41,13 @@ interface IsoInstallerModalProps {
   isExiting?: boolean;
 }
 
-export function IsoInstallerModal({
+export const IsoInstallerModal = ({
   onClose,
   games,
   initialIsoPath,
   onInstallComplete,
   isExiting,
-}: IsoInstallerModalProps) {
+}: IsoInstallerModalProps) => {
   const [isoPath, setIsoPath] = useState("");
   const [targetDir, setTargetDir] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -447,4 +418,4 @@ export function IsoInstallerModal({
       )}
     </AnimatePresence>
   );
-}
+};

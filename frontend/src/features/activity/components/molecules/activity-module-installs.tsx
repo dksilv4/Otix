@@ -3,7 +3,7 @@ import { useInstallProgress } from '@/features/launcher/data/install-store'
 import { ActivityModuleSection } from './activity-module-section'
 
 /** Molecule showing in-progress and completed game installs. */
-export function ActivityModuleInstalls() {
+export const ActivityModuleInstalls = () => {
   const { installs, dismissInstall, cancelInstall } = useInstallProgress()
 
   if (installs.length === 0) return null
@@ -91,4 +91,4 @@ export function ActivityModuleInstalls() {
         </div>
     </ActivityModuleSection>
   )
-}
+};

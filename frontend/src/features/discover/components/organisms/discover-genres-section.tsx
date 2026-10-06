@@ -14,13 +14,13 @@ interface DiscoverGenresSectionProps {
   limit?: number
 }
 
-export const DiscoverGenresSection = memo(function DiscoverGenresSection({
+export const DiscoverGenresSection = memo(({
   title = 'Explore by Genre',
   mediaType,
   className,
   eager = false,
   limit = 10,
-}: DiscoverGenresSectionProps) {
+}: DiscoverGenresSectionProps) => {
   const { ref, items, showSkeleton, isEmpty, isError, refetch } = useGenreSectionFetch(
     mediaType,
     eager,

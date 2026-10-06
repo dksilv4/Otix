@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { FileQuestion } from 'lucide-react'
 
-export function NotFoundPage() {
+export const NotFoundPage = () => {
   return (
     <div className="min-h-screen bg-[#0a0a0d] flex items-center justify-center p-8">
       <div className="text-center space-y-4 max-w-md">
@@ -14,4 +14,4 @@ export function NotFoundPage() {
       </div>
     </div>
   )
-}
+};

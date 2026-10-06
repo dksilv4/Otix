@@ -1,6 +1,6 @@
 import { MediaGrid } from "@ui/molecules/media-grid"
 
-export function SkeletonGrid() {
+export const SkeletonGrid = () => {
   return (
     <MediaGrid>
       {Array.from({ length: 12 }).map((_, i) => (
@@ -11,4 +11,4 @@ export function SkeletonGrid() {
       ))}
     </MediaGrid>
   )
-}
+};

@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { HardDrive, Gamepad2, Disc } from 'lucide-react'
+import { formatBytes, driveLetter } from '@/features/launcher/utils'
 
 interface DriveInfo {
   drive: string
@@ -12,17 +13,7 @@ interface DriveInfo {
   hasIsoPaths?: boolean
 }
 
-function formatBytes(bytes: number) {
-  const gb = bytes / (1024 * 1024 * 1024)
-  return gb >= 1 ? `${gb.toFixed(0)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`
-}
-
-function driveLetter(drive: string) {
-  // Normalize "C:\" or "C:" to just "C:"
-  return drive.endsWith('\\') || drive.endsWith('/') ? drive.slice(0, -1) : drive
-}
-
-export function DriveRow({ drive, total, used, free, hasGamePaths, hasIsoPaths, index = 0 }: DriveInfo & { index?: number }) {
+export const DriveRow = ({ drive, total, used, free, hasGamePaths, hasIsoPaths, index = 0 }: DriveInfo & { index?: number }) => {
   const totalBytes = total || used + free
   const usedPct = (used / totalBytes) * 100
 
@@ -62,4 +53,4 @@ export function DriveRow({ drive, total, used, free, hasGamePaths, hasIsoPaths, 
       </div>
     </motion.div>
   )
-}
+};

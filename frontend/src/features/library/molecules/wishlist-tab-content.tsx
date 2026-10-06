@@ -10,7 +10,7 @@ import { useSteamWishlist, useSteamWishlistScan } from "../library-queries"
 import { SkeletonGrid } from "./skeleton-grid"
 import { WishlistEmptyState } from "./wishlist-empty-state"
 
-export function WishlistTabContent() {
+export const WishlistTabContent = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(loadMoreRef, { margin: "0px 0px 800px 0px" })
   const offline = useOffline()
@@ -116,4 +116,4 @@ export function WishlistTabContent() {
       </div>
     </>
   )
-}
+};

@@ -141,7 +141,7 @@ vi.mock('@ui/molecules/toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }))
 
-function renderModal(props: Partial<React.ComponentProps<typeof PlexStorageOptimizerModal>> = {}) {
+const renderModal = (props: Partial<React.ComponentProps<typeof PlexStorageOptimizerModal>> = {}) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })

@@ -23,7 +23,7 @@ interface TimelineBeamProps {
 
 const ROOT_OVERLAP = 4
 
-export const TimelineBeam = memo(function TimelineBeam({
+export const TimelineBeam = memo(({
   id,
   x,
   axisOffsetY,
@@ -36,7 +36,7 @@ export const TimelineBeam = memo(function TimelineBeam({
   isPast,
   showDetails,
   onSelect,
-}: TimelineBeamProps) {
+}: TimelineBeamProps) => {
   const isUp = side === 'up'
   const colors = kinds.map((k) => MEDIA_COLORS[k] ?? MEDIA_COLORS.other)
   const count = events.length
@@ -100,7 +100,7 @@ export const TimelineBeam = memo(function TimelineBeam({
   )
 })
 
-function BeamFilament({
+const BeamFilament = ({
   colors,
   isAura,
   height,
@@ -114,7 +114,7 @@ function BeamFilament({
   side: BeamSide
   selected: boolean
   count: number
-}) {
+}) => {
   const toTip = side === 'up' ? 'to top' : 'to bottom'
   const bloomPos = side === 'up' ? { bottom: -4 } : { top: -4 }
   const core = selected ? 3 : 2
@@ -179,9 +179,9 @@ function BeamFilament({
       />
     </div>
   )
-}
+};
 
-function BeamTip({
+const BeamTip = ({
   events,
   kinds,
   isAura,
@@ -193,7 +193,7 @@ function BeamTip({
   isAura: boolean
   selected: boolean
   titleOnTop: boolean
-}) {
+}) => {
   const posters = events.filter((e) => e.posterUrl).slice(0, 3)
   const label = events.length === 1 ? events[0].title : `${events.length} items`
   const overflow = Math.max(0, events.length - posters.length)
@@ -286,4 +286,4 @@ function BeamTip({
       )}
     </div>
   )
-}
+};

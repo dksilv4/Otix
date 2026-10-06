@@ -16,18 +16,8 @@ import { SettingsCard } from '../components/molecules/settings-card'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { useSettingsSaveBar } from '../context/settings-save-context'
 import { useToast } from '@ui/molecules/toast'
-
-export function normalizeUploadedUrl(rawUrl: string): string {
-  if (!rawUrl) return rawUrl
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  if (/^https?:\/\/(api|otix-api)(:\d+)?(\/.*)?$/i.test(rawUrl)) {
-    return rawUrl.replace(/^https?:\/\/(api|otix-api)(:\d+)?/i, origin)
-  }
-  if (rawUrl.startsWith('/')) {
-    return `${origin}${rawUrl}`
-  }
-  return rawUrl
-}
+import { normalizeUploadedUrl } from '../utils/profile'
+export { normalizeUploadedUrl }
 
 const BIO_MAX_LENGTH = 250
 
@@ -65,7 +55,7 @@ const VISIBILITY_OPTIONS = [
   { value: 'hidden', label: 'Hidden' },
 ]
 
-export function AssetEditor({
+export const AssetEditor = ({
   compact = false,
   onSubmit,
   onRemove,
@@ -77,7 +67,7 @@ export function AssetEditor({
   onRemove?: () => void
   value: string
   cropConfig?: { shape: 'round' | 'rect'; aspect: number; outputSize: { width: number; height: number } }
-}) {
+}) => {
   const [mode, setMode] = useState<'file' | 'url'>('file')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null)
@@ -383,9 +373,9 @@ export function AssetEditor({
       </div>
     </>
   )
-}
+};
 
-export function SettingsProfilePage() {
+export const SettingsProfilePage = () => {
   const { user, isAuthenticated, refreshUser } = useAuth()
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -868,4 +858,4 @@ export function SettingsProfilePage() {
       )}
     </div>
   )
-}
+};

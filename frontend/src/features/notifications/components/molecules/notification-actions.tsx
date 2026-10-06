@@ -12,7 +12,7 @@ const variants = {
   danger: 'bg-red-500/20 text-red-400 hover:bg-red-500/30',
 }
 
-export function NotificationActions({ actions }: NotificationActionsProps) {
+export const NotificationActions = ({ actions }: NotificationActionsProps) => {
   const [pendingLabel, setPendingLabel] = useState<string | null>(null)
 
   if (actions.length === 0) return null
@@ -42,4 +42,4 @@ export function NotificationActions({ actions }: NotificationActionsProps) {
       ))}
     </div>
   )
-}
+};

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+from django.contrib.auth import get_user_model
 from django.db.models import Count, Sum
 
 from apps.lists.models import UserList
@@ -24,6 +25,7 @@ _COMPLETION_TYPES = ("watched", "played", "listened")
 
 def get_user_stats(user_id: int) -> dict:
     """Aggregate review/interaction/workout/list counts for a user."""
+    user = get_user_model().objects.filter(pk=user_id).first()
     return {
         "review_count": Review.objects.filter(
             user_id=user_id, content__isnull=False, is_private=False
@@ -31,7 +33,7 @@ def get_user_stats(user_id: int) -> dict:
         "interaction_count": UserMediaInteraction.objects.filter(user_id=user_id).count(),
         "workout_count": Workout.objects.filter(user_id=user_id).count(),
         "list_count": UserList.objects.filter(user_id=user_id).count(),
-        "total_xp": 0,
+        "total_xp": user.total_xp if user else 0,
     }
 
 

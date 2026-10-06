@@ -33,21 +33,11 @@ interface GroupedField {
   field: PluginConfigField
 }
 
-// ── Visibility ────────────────────────────────────────────────────────────────
-
-function isVisible(field: PluginConfigField, values: Record<string, unknown>): boolean {
-  const cond = field.if
-  if (!cond) return true
-  const current = values[cond.field]
-  if (cond.equals !== undefined) return current === cond.equals
-  if (cond.not !== undefined) return current !== cond.not
-  if (cond.truthy !== undefined) return cond.truthy ? Boolean(current) : !current
-  return true
-}
+import { isVisible } from '../utils/form'
 
 // ── Field input ───────────────────────────────────────────────────────────────
 
-function ConfigFieldInput({
+const ConfigFieldInput = ({
   field,
   value,
   error,
@@ -61,7 +51,7 @@ function ConfigFieldInput({
   onChange: (value: unknown) => void
   pluginId?: string
   api?: PluginAPI | null
-}) {
+}) => {
   switch (field.type) {
     case 'boolean':
       return (
@@ -162,9 +152,9 @@ function ConfigFieldInput({
         </Field>
       )
   }
-}
+};
 
-function SecretInput({
+const SecretInput = ({
   field,
   value,
   error,
@@ -174,7 +164,7 @@ function SecretInput({
   value: unknown
   error?: string
   onChange: (value: unknown) => void
-}) {
+}) => {
   const [revealed, setRevealed] = useState(false)
   const inputId = useId()
   return (
@@ -201,9 +191,9 @@ function SecretInput({
       </div>
     </Field>
   )
-}
+};
 
-function ListEditor({
+const ListEditor = ({
   field,
   value,
   error,
@@ -213,7 +203,7 @@ function ListEditor({
   value: unknown
   error?: string
   onChange: (value: unknown) => void
-}) {
+}) => {
   const items = (Array.isArray(value) ? value : []) as Record<string, unknown>[]
   const hasItems = !!field.items
 
@@ -276,9 +266,9 @@ function ListEditor({
       </div>
     </Field>
   )
-}
+};
 
-function PathListEditor({
+const PathListEditor = ({
   field,
   value,
   error,
@@ -288,7 +278,7 @@ function PathListEditor({
   value: unknown
   error?: string
   onChange: (value: unknown) => void
-}) {
+}) => {
   const paths = (Array.isArray(value) ? value : value ? [value] : []) as string[]
 
   const update = (idx: number, v: string) => {
@@ -330,11 +320,11 @@ function PathListEditor({
       </div>
     </Field>
   )
-}
+};
 
 // ── Form ──────────────────────────────────────────────────────────────────────
 
-export function PluginForm({
+export const PluginForm = ({
   fields,
   values,
   errors = {},
@@ -348,7 +338,7 @@ export function PluginForm({
   submitLabel = 'Save',
   inline,
   className,
-}: PluginFormProps) {
+}: PluginFormProps) => {
   const { sections, advanced } = useMemo(() => {
     const grouped = new Map<string, GroupedField[]>()
     const adv: GroupedField[] = []
@@ -454,4 +444,4 @@ export function PluginForm({
       )}
     </div>
   )
-}
+};

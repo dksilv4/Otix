@@ -17,9 +17,9 @@ interface ShowSectionProps {
 }
 
 
-export function ShowSection({
+export const ShowSection = ({
   className,
-}: ShowSectionProps = {}) {
+}: ShowSectionProps = {}) => {
   const { mediaType, mediaId } = useMediaParams()
   const { isAuthenticated } = useAuth()
   const { openModal } = useModal()
@@ -469,6 +469,6 @@ export function ShowSection({
 
  </section>
  )
-}
+};
 
 // ── EpisodeModal ──────────────────────────────────────────────────

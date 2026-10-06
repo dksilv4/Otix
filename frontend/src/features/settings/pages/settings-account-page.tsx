@@ -11,37 +11,15 @@ import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { useSettingsSaveBar } from '../context/settings-save-context'
+import {
+  fetchSessions,
+  revokeSession,
+  revokeOtherSessions,
+  extractAccountErrorMessage,
+  type SessionInfo,
+} from '../utils/account'
 
-interface SessionInfo {
-  sessionKey: string
-  ipAddress: string | null
-  userAgent: string | null
-  lastSeenAt: string | null
-  createdAt: string | null
-}
-
-interface SessionListData {
-  sessions: SessionInfo[]
-  currentSessionKey: string | null
-}
-
-async function fetchSessions(): Promise<SessionListData> {
-  const { data } = await apiClient.get('/auth/sessions')
-  return data as SessionListData
-}
-
-async function revokeSession(sessionKey: string): Promise<void> {
-  await apiClient.delete(`/auth/sessions/${sessionKey}`)
-}
-
-async function revokeOtherSessions(): Promise<number> {
-  const { data } = await apiClient.delete('/auth/sessions')
-  const msg = data.message as string
-  const match = msg.match(/Revoked (\d+)/)
-  return match ? parseInt(match[1], 10) : 0
-}
-
-function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
+const TwoFactorCard = ({ twoFactorEnabled }: { twoFactorEnabled: boolean }) => {
   const [mode, setMode] = useState<'idle' | 'setup' | 'enabling' | 'disabling'>('idle')
   const [setupData, setSetupData] = useState<{ secret: string; provisioningUri: string; qrCodeSvg: string } | null>(null)
   const [code, setCode] = useState('')
@@ -56,7 +34,7 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
       setSetupData({ secret: data.secret, provisioningUri: data.provisioningUri, qrCodeSvg: data.qrCodeSvg })
       setMode('setup')
     } catch (err) {
-      setError(extractMessage(err))
+      setError(extractAccountErrorMessage(err))
     }
   }
 
@@ -72,7 +50,7 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
       window.location.reload()
     } catch (err) {
       setMode('setup')
-      setError(extractMessage(err))
+      setError(extractAccountErrorMessage(err))
     }
   }
 
@@ -87,7 +65,7 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
       window.location.reload()
     } catch (err) {
       setMode('idle')
-      setError(extractMessage(err))
+      setError(extractAccountErrorMessage(err))
     }
   }
 
@@ -97,15 +75,6 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
     setCode('')
     setDisablePassword('')
     setError('')
-  }
-
-  function extractMessage(err: unknown): string {
-    if (err && typeof err === 'object' && 'response' in err) {
-      const resp = (err as { response?: { data?: { detail?: string } } }).response
-      if (resp?.data?.detail) return resp.data.detail
-    }
-    if (err instanceof Error) return err.message
-    return 'Something went wrong. Please try again.'
   }
 
   if (twoFactorEnabled) {
@@ -246,9 +215,9 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
       )}
     </SettingsCard>
   )
-}
+};
 
-function VerificationCard({
+const VerificationCard = ({
   isVerified,
   state,
   onSend,
@@ -256,7 +225,7 @@ function VerificationCard({
   isVerified: boolean
   state: 'idle' | 'sending' | 'sent'
   onSend: () => void
-}) {
+}) => {
   return (
     <SettingsCard>
       <SectionHeader
@@ -312,11 +281,11 @@ function VerificationCard({
       )}
     </SettingsCard>
   )
-}
+};
 
 const SESSIONS_PER_PAGE = 5
 
-function SessionsCard() {
+const SessionsCard = () => {
   const [sessions, setSessions] = useState<SessionInfo[]>([])
   const [currentKey, setCurrentKey] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -541,9 +510,9 @@ function SessionsCard() {
       )}
     </SettingsCard>
   )
-}
+};
 
-export function SettingsAccountPage() {
+export const SettingsAccountPage = () => {
   const { user, isAuthenticated } = useAuth()
   const [email, setEmail] = useState(user?.email ?? '')
   const [username, setUsername] = useState(user?.username ?? '')
@@ -715,4 +684,4 @@ export function SettingsAccountPage() {
       </SettingsCard>
     </div>
   )
-}
+};

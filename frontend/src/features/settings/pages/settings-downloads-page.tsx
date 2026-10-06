@@ -46,10 +46,10 @@ export interface SettingsDownloadsPageProps {
   variant?: 'all' | 'nodes' | 'clients'
 }
 
-export function SettingsDownloadsPage({
+export const SettingsDownloadsPage = ({
   embedded = false,
   variant = 'all',
-}: SettingsDownloadsPageProps = {}) {
+}: SettingsDownloadsPageProps = {}) => {
   const { openModal } = useModal()
   const { toast } = useToast()
   const showClients = variant !== 'nodes'
@@ -954,6 +954,6 @@ export function SettingsDownloadsPage({
       )}
     </div>
   )
-}
+};
 
 export { SettingsDownloadsPage as SettingsDownloadsSection }

@@ -2,7 +2,7 @@ import { Skeleton } from '@ui/atoms/skeleton'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { useMediaParams } from '../../hooks/use-media-params'
 
-export function DetailSkeleton({ mediaType }: { mediaType?: string } = {}) {
+export const DetailSkeleton = ({ mediaType }: { mediaType?: string } = {}) => {
   const { isDesktop } = useDesktopPlatform()
   const { mediaType: paramMediaType } = useMediaParams()
   const effectiveType = mediaType || paramMediaType
@@ -158,4 +158,4 @@ export function DetailSkeleton({ mediaType }: { mediaType?: string } = {}) {
       </section>
     </div>
   )
-}
+};

@@ -59,13 +59,13 @@ interface ScanProgress {
   message: string
 }
 
-export function PluginSlot({ location, pluginApi }: Props) {
+export const PluginSlot = ({ location, pluginApi }: Props) => {
   const [slotData, setSlotData] = useState<SlotEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    async function load() {
+    const load = async () => {
       try {
         const data = await pluginApi.getSlotData?.(location) as SlotEntry[] | undefined
         if (!cancelled) setSlotData(data || [])
@@ -108,9 +108,9 @@ export function PluginSlot({ location, pluginApi }: Props) {
       )}
     </div>
   )
-}
+};
 
-function SteamScanSlotCard() {
+const SteamScanSlotCard = () => {
   const [steamConnected, setSteamConnected] = useState(false)
   const [steamProfile, setSteamProfile] = useState<any>(null)
   const [steamId, setSteamId] = useState<string | null>(null)
@@ -316,9 +316,9 @@ function SteamScanSlotCard() {
       )}
     </div>
   )
-}
+};
 
-function EpicScanSlotCard() {
+const EpicScanSlotCard = () => {
   const { openModal } = useModal()
   const { data: gameServers = [] } = useGameServers()
   const hasOnlineNode = workerConnectionNodes(gameServers).some((s) => s.isOnline)
@@ -543,9 +543,9 @@ function EpicScanSlotCard() {
       )}
     </div>
   )
-}
+};
 
-function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: PluginAPI }) {
+const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: PluginAPI }) => {
   const data = entry.data!
   const pluginName = data.label || entry.label
   const hasAuth = !!data.actions?.login
@@ -633,7 +633,7 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
 
   useEffect(() => {
     let cancelled = false
-    async function load() {
+    const load = async () => {
       try {
         const cfg = await pluginApi.getConfig(entry.pluginId)
         if (cancelled) return
@@ -1097,4 +1097,4 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
       )}
     </div>
   )
-}
+};

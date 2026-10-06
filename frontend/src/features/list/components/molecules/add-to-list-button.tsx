@@ -18,7 +18,7 @@ interface AddToListButtonProps {
   variant?: 'default' | 'pill' | 'icon'
 }
 
-export function AddToListButton({ mediaItemId, className, variant = 'default' }: AddToListButtonProps) {
+export const AddToListButton = ({ mediaItemId, className, variant = 'default' }: AddToListButtonProps) => {
   const { isAuthenticated } = useAuth()
   const { data: lists } = useUserLists()
   const { data: memberListIds } = useListsForMedia(mediaItemId, {
@@ -41,12 +41,12 @@ export function AddToListButton({ mediaItemId, className, variant = 'default' }:
   )
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    const handleClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
-    function handleKeyDown(e: KeyboardEvent) {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false)
       }
@@ -248,4 +248,4 @@ export function AddToListButton({ mediaItemId, className, variant = 'default' }:
       )}
     </div>
   )
-}
+};

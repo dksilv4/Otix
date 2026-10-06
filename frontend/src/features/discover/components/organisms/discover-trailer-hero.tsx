@@ -12,16 +12,9 @@ import type { TrendingTrailerItem } from '@discover/types'
 
 const AUTO_ROTATE_MS = 8000
 
-/**
- * Upscale backdrop for hero display.
- * TMDB: /w1280/ is fine, but we can go larger.
- */
-function heroBackdrop(url: string | null): string | undefined {
-  if (!url) return undefined
-  return url.replace(/\/w1280\//, '/original/')
-}
+import { heroBackdrop } from '@/features/discover/utils/trailer'
 
-export function DiscoverTrailerHero({ className }: { className?: string }) {
+export const DiscoverTrailerHero = ({ className }: { className?: string }) => {
   const { data: items = [], isLoading } = useQuery(discoverQueries.trailers())
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
@@ -250,4 +243,4 @@ export function DiscoverTrailerHero({ className }: { className?: string }) {
       )}
     </>
   )
-}
+};

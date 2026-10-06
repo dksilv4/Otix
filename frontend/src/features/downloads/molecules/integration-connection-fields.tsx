@@ -24,11 +24,9 @@ export interface IntegrationConnectionFieldsProps {
   children?: React.ReactNode
 }
 
-function looksLikeAddressPaste(val: string) {
-  return /^https?:\/\//i.test(val) || val.includes(',') || /:\d+/.test(val) || /\/.+/.test(val)
-}
+import { looksLikeAddressPaste } from '../utils'
 
-export function IntegrationConnectionFields({
+export const IntegrationConnectionFields = ({
   host,
   port,
   apiKey,
@@ -45,7 +43,7 @@ export function IntegrationConnectionFields({
   hostPlaceholder = '127.0.0.1 or service.local',
   urlBasePlaceholder = 'e.g. /service',
   children,
-}: IntegrationConnectionFieldsProps) {
+}: IntegrationConnectionFieldsProps) => {
   const handleHostChange = (val: string) => {
     if (looksLikeAddressPaste(val)) {
       const parsed = parseServiceAddress(val, defaultPort)
@@ -116,4 +114,4 @@ export function IntegrationConnectionFields({
       </div>
     </div>
   )
-}
+};

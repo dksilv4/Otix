@@ -236,3 +236,21 @@ export function groupCredits(credits: PersonCredit[]): TimelineGroup[] {
     return { year, credits }
   })
 }
+
+const voiceMarkerPattern = /\(\s*voice\s*\)/i
+const voiceOnlyPattern = /^(voice actor|voice)$/i
+
+export const getRoleMeta = (role?: string | null): { label: string; isVoice: boolean } => {
+  const rawLabel = role?.trim() ?? ''
+  if (!rawLabel) return { label: '', isVoice: false }
+
+  const isVoice = voiceMarkerPattern.test(rawLabel) || voiceOnlyPattern.test(rawLabel)
+  const label = rawLabel
+    .replace(/\s*\(\s*voice\s*\)\s*/gi, ' ')
+    .replace(voiceOnlyPattern, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+
+  return { label, isVoice }
+}
+

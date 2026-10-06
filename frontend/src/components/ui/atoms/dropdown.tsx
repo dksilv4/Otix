@@ -19,7 +19,7 @@ interface DkDropdownProps<T extends string = string> {
   align?: 'left' | 'right'
 }
 
-function DkDropdownInner<T extends string = string>({
+const DkDropdownInner = <T extends string = string>({
   options,
   value,
   onChange,
@@ -28,7 +28,7 @@ function DkDropdownInner<T extends string = string>({
   variant = 'default',
   label,
   align = 'left',
-}: DkDropdownProps<T>) {
+}: DkDropdownProps<T>) => {
   const [open, setOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -63,7 +63,7 @@ function DkDropdownInner<T extends string = string>({
   useEffect(() => {
     if (!open) return
 
-    function handleClickOutside(e: MouseEvent) {
+    const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node
       if (
         buttonRef.current?.contains(target) ||
@@ -74,17 +74,17 @@ function DkDropdownInner<T extends string = string>({
       setOpen(false)
     }
 
-    function handleKeyDown(e: KeyboardEvent) {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
 
     // Close on scroll instead of repositioning — avoids jank while the page
     // infinite-scrolls or the layout shifts under an open menu.
-    function handleScroll() {
+    const handleScroll = () => {
       setOpen(false)
     }
 
-    function handleResize() {
+    const handleResize = () => {
       updateCoords()
     }
 
@@ -192,6 +192,6 @@ function DkDropdownInner<T extends string = string>({
         )}
     </div>
   )
-}
+};
 
 export const DkDropdown = memo(DkDropdownInner) as typeof DkDropdownInner

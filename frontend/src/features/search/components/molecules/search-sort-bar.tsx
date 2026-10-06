@@ -28,14 +28,14 @@ interface SearchSortBarProps {
   className?: string
 }
 
-export function SearchSortBar({
+export const SearchSortBar = ({
   type,
   sort,
   total,
   onTypeChange,
   onSortChange,
   className,
-}: SearchSortBarProps) {
+}: SearchSortBarProps) => {
   return (
     <div className={`flex items-center justify-between ${className}`}>
       <div className="flex items-center gap-2">
@@ -55,4 +55,4 @@ export function SearchSortBar({
       )}
     </div>
   )
-}
+};

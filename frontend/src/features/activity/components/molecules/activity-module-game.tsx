@@ -1,6 +1,6 @@
-import { Gamepad2, Clock, Star, ExternalLink, Activity } from 'lucide-react'
+import { Gamepad2, Clock, Star, ExternalLink, Activity, Zap } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useMatchedRunningGame } from '@/features/launcher'
+import { useMatchedRunningGame, useGamingSessionXp } from '@/features/launcher'
 import { formatDuration } from '@/lib/utils'
 import { ActivityModuleSection } from './activity-module-section'
 
@@ -9,8 +9,9 @@ interface ActivityModuleGameProps {
 }
 
 /** Molecule displaying the currently running game with matched Otix catalog info, live FPS, and elapsed time. */
-export function ActivityModuleGame({ onClose }: ActivityModuleGameProps = {}) {
+export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) => {
   const { runningGame, elapsedMs, matchedGame } = useMatchedRunningGame()
+  const { sessionXp } = useGamingSessionXp()
 
   if (!runningGame) return null
 
@@ -24,10 +25,10 @@ export function ActivityModuleGame({ onClose }: ActivityModuleGameProps = {}) {
 
   const fpsColorClass =
     fpsRounded >= 60
-      ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/25'
+      ? 'text-emerald-400 bg-emerald-500/15'
       : fpsRounded >= 30
-        ? 'text-amber-400 bg-amber-500/15 border-amber-500/25'
-        : 'text-rose-400 bg-rose-500/15 border-rose-500/25'
+        ? 'text-amber-400 bg-amber-500/15'
+        : 'text-rose-400 bg-rose-500/15'
 
   return (
     <ActivityModuleSection className="relative overflow-hidden group">
@@ -40,7 +41,7 @@ export function ActivityModuleGame({ onClose }: ActivityModuleGameProps = {}) {
       )}
 
       <div className="relative flex items-start gap-3">
-        <div className="relative w-14 h-20 rounded-xl overflow-hidden shrink-0 bg-white/[0.04] shadow-md border border-white/10 group-hover:border-emerald-500/40 transition-colors">
+        <div className="relative w-14 h-20 rounded-xl overflow-hidden shrink-0 bg-white/[0.04] shadow-md transition-colors">
           {posterUrl ? (
             <img
               src={posterUrl}
@@ -103,9 +104,15 @@ export function ActivityModuleGame({ onClose }: ActivityModuleGameProps = {}) {
               {formatDuration(elapsedMs)}
             </span>
             {fpsRounded > 0 && (
-              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold border ${fpsColorClass}`}>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${fpsColorClass}`}>
                 <Activity size={10} />
                 {fpsRounded} FPS
+              </span>
+            )}
+            {sessionXp > 0 && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15">
+                <Zap size={10} className="fill-amber-300" />
+                +{sessionXp} XP
               </span>
             )}
           </div>
@@ -113,4 +120,4 @@ export function ActivityModuleGame({ onClose }: ActivityModuleGameProps = {}) {
       </div>
     </ActivityModuleSection>
   )
-}
+};

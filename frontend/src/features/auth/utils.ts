@@ -74,3 +74,51 @@ export function validateRegisterFields(fields: {
   }
   return errors
 }
+
+export const CACHED_USER_KEY = 'otix_cached_user'
+
+export const getCachedUser = (): import('@auth/types').User | null => {
+  try {
+    const raw = localStorage.getItem(CACHED_USER_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as import('@auth/types').User
+  } catch {
+    return null
+  }
+}
+
+export const setCachedUser = (user: import('@auth/types').User | null): void => {
+  try {
+    if (user) {
+      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(user))
+    } else {
+      localStorage.removeItem(CACHED_USER_KEY)
+    }
+  } catch {
+    // Storage full or unavailable
+  }
+}
+
+export const fetchAuthenticatedUser = async (): Promise<import('@auth/types').User | null> => {
+  const { apiClient } = await import('@/lib/api/client')
+  const { ACCESS_TOKEN_KEY } = await import('@/lib/config')
+  try {
+    const [meRes, intRes] = await Promise.all([
+      apiClient.get('/auth/me'),
+      apiClient.get('/auth/me/integrations').catch(() => null),
+    ])
+    const user = meRes.data as import('@auth/types').User
+    if (intRes?.data) Object.assign(user, intRes.data)
+    setCachedUser(user)
+    return user
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    if (status === 401 || status === 403) {
+      setCachedUser(null)
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+      window.desktopAPI?.plugin?.setAuthToken(null)
+    }
+    return null
+  }
+}
+

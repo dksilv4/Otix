@@ -9,7 +9,7 @@ import { ModernLibrary } from "./modern-library"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame, DisplayGame } from "@/features/launcher/types"
 
-export function ModernLauncherView() {
+export const ModernLauncherView = () => {
   const isDesktop = hasDesktopAPI()
   const { setOverride } = useNavPillsVisibility()
 
@@ -74,4 +74,4 @@ export function ModernLauncherView() {
       />
     </div>
   )
-}
+};

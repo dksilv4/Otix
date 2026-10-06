@@ -3,7 +3,7 @@ import { DkDropdown } from '@ui/atoms/dropdown'
 import { DkInput } from '@ui/atoms/input'
 import type { ArrQualityProfile, ArrRootFolder } from '../arr-types'
 
-export function ArrLibraryDefaults({
+export const ArrLibraryDefaults = ({
   qualityProfiles,
   rootFolders,
   qualityProfileId,
@@ -26,7 +26,7 @@ export function ArrLibraryDefaults({
   focusClass?: string
   rootPlaceholder?: string
   children?: React.ReactNode
-}) {
+}) => {
   const profileOptions = [
     { value: '', label: 'Default / Any' },
     ...qualityProfiles.map((qp) => ({ value: String(qp.id), label: qp.name })),
@@ -82,4 +82,4 @@ export function ArrLibraryDefaults({
       </div>
     </div>
   )
-}
+};

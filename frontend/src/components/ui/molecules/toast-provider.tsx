@@ -37,7 +37,7 @@ class ToastErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
   }
 }
 
-export function DkToastProvider({ children }: { children: ReactNode }) {
+export const DkToastProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const addToast = useCallback((t: Omit<Toast, 'id'>) => {
@@ -73,9 +73,9 @@ export function DkToastProvider({ children }: { children: ReactNode }) {
       </div>
     </ToastContext.Provider>
   )
-}
+};
 
-function ToastItem({ toast: t, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
+const ToastItem = ({ toast: t, onRemove }: { toast: Toast; onRemove: (id: string) => void }) => {
   const config = (t.variant && variantConfig[t.variant]) || variantConfig.default
   const Icon = config?.icon || variantConfig.default.icon
 
@@ -112,4 +112,4 @@ function ToastItem({ toast: t, onRemove }: { toast: Toast; onRemove: (id: string
       </button>
     </motion.div>
   )
-}
+};

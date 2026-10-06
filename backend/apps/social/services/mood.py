@@ -33,6 +33,7 @@ def submit_checkin(
 ) -> UserMoodCheckIn:
     """Create or update today's row with a submitted mood."""
     checkin = get_today_checkin(user_id)
+    is_first_submission = checkin is None or checkin.status != "submitted"
     if checkin is None:
         checkin = UserMoodCheckIn(user_id=user_id, checkin_date=_today())
     checkin.status = "submitted"
@@ -40,6 +41,14 @@ def submit_checkin(
     checkin.feeling = feeling or None
     checkin.note = note or None
     checkin.save()
+
+    if is_first_submission:
+        from apps.social.services.streak import update_login_streak
+        from apps.social.services.xp import MOOD_CHECKIN, award_xp
+
+        award_xp(user_id, MOOD_CHECKIN, reason="mood_checkin")
+        update_login_streak(user_id)
+
     return checkin
 
 

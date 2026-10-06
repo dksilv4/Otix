@@ -8,7 +8,7 @@ interface ActivityModulePlexSectionProps {
 }
 
 /** Inline Plex streaming section showing active sessions for the activity panel (admin-only). */
-export function ActivityModulePlexSection({ onClose }: ActivityModulePlexSectionProps = {}) {
+export const ActivityModulePlexSection = ({ onClose }: ActivityModulePlexSectionProps = {}) => {
   const { sessions: plexSessions, isAdmin } = usePlexSessions()
 
   // Only show if the user is the admin (owner) of the server and there are active sessions
@@ -32,4 +32,4 @@ export function ActivityModulePlexSection({ onClose }: ActivityModulePlexSection
       <ActivityModulePlexList sessions={plexSessions} onClose={onClose} />
     </ActivityModuleSection>
   )
-}
+};

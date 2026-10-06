@@ -10,7 +10,7 @@ import { IsoInstallerModal } from '@/features/launcher/components/organisms/iso-
 import { LauncherGameSheet } from '@/features/launcher/themes/common/launcher-game-sheet'
 import { useModal } from '@/lib/modals'
 
-export function LauncherGameButtons() {
+export const LauncherGameButtons = () => {
   const { gameId } = useParams({ strict: false })
   const { game: g } = useLauncherGame(gameId)
   const { openModal } = useModal()
@@ -60,4 +60,4 @@ export function LauncherGameButtons() {
       )}
     </>
   )
-}
+};

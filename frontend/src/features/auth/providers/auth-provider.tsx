@@ -6,55 +6,16 @@ import { queryClient } from '@/lib/query/client'
 import type { User, TwoFactorChallenge, LoginResponse } from '@auth/types'
 import { AuthContext } from '@auth/hooks/use-auth'
 import { useDeepLink } from '@auth/hooks/use-deep-link'
+import { xpGainListeners } from '@ui/atoms/xp-toast'
 
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
+import {
+  getCachedUser,
+  setCachedUser,
+  fetchAuthenticatedUser,
+} from '@auth/utils'
 
-const CACHED_USER_KEY = 'otix_cached_user'
-
-function getCachedUser(): User | null {
-  try {
-    const raw = localStorage.getItem(CACHED_USER_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as User
-  } catch {
-    return null
-  }
-}
-
-function setCachedUser(user: User | null): void {
-  try {
-    if (user) {
-      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(user))
-    } else {
-      localStorage.removeItem(CACHED_USER_KEY)
-    }
-  } catch {
-    // Storage full or unavailable
-  }
-}
-
-async function fetchAuthenticatedUser(): Promise<User | null> {
-  try {
-    const [meRes, intRes] = await Promise.all([
-      apiClient.get('/auth/me'),
-      apiClient.get('/auth/me/integrations').catch(() => null),
-    ])
-    const user = meRes.data as User
-    if (intRes?.data) Object.assign(user, intRes.data)
-    setCachedUser(user)
-    return user
-  } catch (error: unknown) {
-    const status = (error as { response?: { status?: number } })?.response?.status
-    if (status === 401 || status === 403) {
-      setCachedUser(null)
-      localStorage.removeItem(ACCESS_TOKEN_KEY)
-      window.desktopAPI?.plugin?.setAuthToken(null)
-    }
-    return null
-  }
-}
-
-export function AuthProvider({ children }: { children: ReactNode }) {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => {
     if (typeof window === 'undefined') return null
     const token = localStorage.getItem(ACCESS_TOKEN_KEY)
@@ -89,6 +50,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener('auth:sessionExpired', handler)
     return () => window.removeEventListener('auth:sessionExpired', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (amount: number) => {
+      setUser((prev) => {
+        if (!prev) return null
+        const currentXp = prev.totalXp ?? 0
+        const nextXp = currentXp + amount
+        const updated = { ...prev, totalXp: nextXp }
+        setCachedUser(updated)
+        if (prev.username) {
+          queryClient.invalidateQueries({ queryKey: ['user', prev.username] })
+        }
+        return updated
+      })
+    }
+    xpGainListeners.add(handler)
+    return () => {
+      xpGainListeners.delete(handler)
+    }
   }, [])
 
   // Handle otix:// deep links (OAuth return from system browser)
@@ -202,4 +183,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
-}
+};

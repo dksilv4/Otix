@@ -11,77 +11,17 @@ import { HeroCard } from '@discover/components/molecules/discover-hero-card'
 import { HeroIndicator } from '@discover/components/molecules/discover-hero-indicator'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { openDecideWatch } from '@discover/open-decide-watch'
-
-function formatSeasonBadgeText(releaseDate?: string | null): string {
-  if (!releaseDate) return 'New Season'
-  const date = new Date(releaseDate)
-  const now = new Date()
-  const days = Math.floor((date.getTime() - now.getTime()) / 86400000)
-  const month = date.toLocaleString('en-US', { month: 'short' })
-  const year = date.getFullYear()
-  if (days > 0) return `New Season · ${month} ${year}`
-  if (days >= -14) return 'New Season · Just Landed'
-  return `New Season · ${month} ${year}`
-}
-
-const CONTENT_FADE = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -12 },
-  transition: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
-} as const
-
 import { heroImage } from '@/lib/utils'
 
-/**
- * Compute the CSS transform and positioning for a card at a given slide offset.
- *
- * slideOffset -3:  far left,   scale 0.7,  translateX strongly negative
- * slideOffset -2:  left,       scale 0.8,  translateX moderately negative
- * slideOffset -1:  adjacent,   scale 0.9,  translateX slightly negative
- * slideOffset  0:  active,     scale 1,    translateX 0,     highest z-index
- * slideOffset  1:  right peek, scale 0.9,  translateX slightly positive
- *
- * Cards fan from the left-center area with diminishing spacing per layer.
- */
-function calculateCardTransform(
-  slideOffset: number,
-  cardOffset: number,
-  isActive: boolean,
-): React.CSSProperties {
-  const abs = Math.abs(slideOffset)
-  const scale = Math.max(0.7, 1 - abs * 0.10)
-  const translateY = abs * 14
-  const layerGap = cardOffset * (1 - abs * 0.06)
-
-  let transform: string
-  if (isActive) {
-    transform = 'translateX(-50%) translateY(-50%) scale(1)'
-  } else {
-    transform = [
-      'translateX(-50%)',
-      `translateX(${slideOffset * layerGap}px)`,
-      `translateY(calc(-50% + ${translateY}px))`,
-      `scale(${scale})`,
-    ].join(' ')
-  }
-
-  return {
-    left: '50%',
-    top: '50%',
-    transform,
-    zIndex: Math.max(0, 10 - abs * 2),
-    transition:
-      'transform 600ms cubic-bezier(0.34, 1.3, 0.64, 1), opacity 500ms ease-out',
-    pointerEvents: abs >= 3 ? 'none' : 'auto',
-    perspective: '1200px',
-    touchAction: 'manipulation',
-  }
-}
+import {
+  formatSeasonBadgeText,
+  calculateCardTransform,
+  CONTENT_FADE,
+} from '@/features/discover/utils/hero'
 
 // ── Component ──────────────────────────────────────────────────────────
 
-export function DiscoverHero({ className }: { className?: string }) {
+export const DiscoverHero = ({ className }: { className?: string }) => {
   const {
     items,
     totalItems,
@@ -495,6 +435,6 @@ export function DiscoverHero({ className }: { className?: string }) {
       </div>
     </div>
   )
-}
+};
 
 export default DiscoverHero

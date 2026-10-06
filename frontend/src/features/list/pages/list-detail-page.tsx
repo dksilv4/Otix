@@ -45,7 +45,7 @@ const TYPE_TABS = [
   { value: "game", label: "Games" },
 ]
 
-export function ListDetailPage() {
+export const ListDetailPage = () => {
   const { listId } = useParams({ from: "/library/$listId" })
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -143,13 +143,13 @@ export function ListDetailPage() {
   const isOwner = user?.id === list.userId
   const searchItems = Array.isArray(searchData?.items) ? searchData.items : (Array.isArray((searchData as any)?.results) ? (searchData as any).results : [])
 
-  async function handleDelete() {
+  const handleDelete = async () => {
     if (!confirm("Delete this list?")) return
     await deleteList.mutateAsync(listId)
     navigate({ to: "/library/watchlist" })
   }
 
-  async function handleRemoveItem(mediaItemId: string, mediaType: string) {
+  const handleRemoveItem = async (mediaItemId: string, mediaType: string) => {
     await removeItem.mutateAsync({ listId, mediaItemId, mediaType })
   }
 
@@ -481,4 +481,4 @@ export function ListDetailPage() {
       </div>
     </div>
   )
-}
+};

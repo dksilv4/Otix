@@ -6,7 +6,7 @@ interface HeroIndicatorProps {
   onSelect: (index: number) => void
 }
 
-export function HeroIndicator({ total, activeIndex, onSelect }: HeroIndicatorProps) {
+export const HeroIndicator = ({ total, activeIndex, onSelect }: HeroIndicatorProps) => {
   return (
     <div className="flex items-center gap-1.5">
       {Array.from({ length: Math.min(total, 9) }).map((_, i) => (
@@ -31,4 +31,4 @@ export function HeroIndicator({ total, activeIndex, onSelect }: HeroIndicatorPro
       ))}
     </div>
   )
-}
+};

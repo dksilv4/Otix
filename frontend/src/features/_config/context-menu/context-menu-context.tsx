@@ -5,7 +5,7 @@ interface ContextMenuContextValue extends ContextMenuState, ContextMenuActions {
 
 const ContextMenuCtx = createContext<ContextMenuContextValue | null>(null)
 
-export function ContextMenuProvider({ children }: { children: ReactNode }) {
+export const ContextMenuProvider = ({ children }: { children: ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [position, setPosition] = useState<ContextMenuPosition | null>(null)
   const [items, setItems] = useState<ContextMenuItemDef[]>([])
@@ -37,13 +37,13 @@ export function ContextMenuProvider({ children }: { children: ReactNode }) {
       {children}
     </ContextMenuCtx.Provider>
   )
-}
+};
 
-export function useOptionalMenuContext(): ContextMenuContextValue | null {
+export const useOptionalMenuContext = (): ContextMenuContextValue | null => {
   return useContext(ContextMenuCtx)
 }
 
-export function useMenuContext(): ContextMenuContextValue {
+export const useMenuContext = (): ContextMenuContextValue => {
   const ctx = useContext(ContextMenuCtx)
   if (!ctx) throw new Error('useMenuContext must be used within ContextMenuProvider')
   return ctx

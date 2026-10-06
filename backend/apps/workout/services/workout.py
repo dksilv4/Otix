@@ -90,6 +90,14 @@ def create_workout(
                 sort_order=index,
                 sets=entry.get("sets") or [],
             )
+
+    from apps.social.services.streak import update_login_streak, update_workout_streak
+    from apps.social.services.xp import WORKOUT_COMPLETE, award_xp
+
+    award_xp(user_id, WORKOUT_COMPLETE, reason="workout_completed")
+    update_workout_streak(user_id)
+    update_login_streak(user_id)
+
     return get_workout(workout.pk)
 
 

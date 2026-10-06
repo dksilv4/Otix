@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Copy, X, Check, Layers, Grid3X3, Hammer } from 'lucide-react'
 import { BlueprintIcon } from '../atoms/media-game-blueprint-icon'
+import { categorizeEntity } from '../../utils/blueprint'
 
 interface ParsedBlueprint {
   type: string
@@ -25,32 +26,7 @@ interface Props {
   onDelete?: (id: string) => void
 }
 
-// Group entities by category based on name patterns
-function categorizeEntity(name: string): string {
-  if (name.includes('assembling') || name.includes('furnace') || name.includes('chemical') || name.includes('refinery'))
-    return 'Production'
-  if (name.includes('belt') || name.includes('splitter') || name.includes('underground') || name.includes('loader'))
-    return 'Logistics (Belts)'
-  if (name.includes('inserter'))
-    return 'Logistics (Inserters)'
-  if (name.includes('train') || name.includes('rail') || name.includes('signal') || name.includes('station'))
-    return 'Rail'
-  if (name.includes('pole') || name.includes('substation') || name.includes('accumulator') || name.includes('solar') || name.includes('reactor'))
-    return 'Power'
-  if (name.includes('pipe') || name.includes('pump') || name.includes('tank') || name.includes('offshore'))
-    return 'Fluids'
-  if (name.includes('chest') || name.includes('logistic') || name.includes('requester') || name.includes('provider') || name.includes('storage'))
-    return 'Logistics (Chests)'
-  if (name.includes('drill') || name.includes('mining'))
-    return 'Mining'
-  if (name.includes('module') || name.includes('beacon'))
-    return 'Modules'
-  if (name.includes('wall') || name.includes('gun') || name.includes('laser') || name.includes('ammo') || name.includes('radar'))
-    return 'Military'
-  return 'Other'
-}
-
-export function BlueprintDetail({ blueprint, onClose, onCopy, onEdit, onDelete }: Props) {
+export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }: Props) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -177,4 +153,4 @@ export function BlueprintDetail({ blueprint, onClose, onCopy, onEdit, onDelete }
       </div>
     </div>
   )
-}
+};

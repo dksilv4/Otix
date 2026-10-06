@@ -32,6 +32,7 @@ from apps.social.views import (
     FollowRequestsView,
     FollowStatusView,
     FriendsActivityView,
+    GamingHeartbeatView,
     KarmaTransactionsView,
     KarmaView,
     LibraryStatsView,
@@ -63,6 +64,11 @@ urlpatterns = [
         "me/badges/<str:badge_key>/claim",
         ClaimBadgeView.as_view(),
         name="me-badge-claim",
+    ),
+    path(
+        "me/gaming-heartbeat",
+        GamingHeartbeatView.as_view(),
+        name="me-gaming-heartbeat",
     ),
     # Per-username routes.
     path("<str:username>", UserDetailView.as_view(), name="user-detail"),

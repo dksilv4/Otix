@@ -7,7 +7,7 @@ import { usePlexSessions } from '../../hooks/use-plex-sessions'
 import { ActivityModulePlexList } from './activity-module-plex-list'
 
 /** Standalone Plex activity toggle pill with a popover showing active streaming sessions. */
-export function ActivityModulePlex() {
+export const ActivityModulePlex = () => {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const { isDesktop } = useDesktopPlatform()
@@ -89,6 +89,6 @@ export function ActivityModulePlex() {
       </AnimatePresence>
     </>
   )
-}
+};
 export { ActivityModulePlexList }
 export type { PlexSession } from '../../types'

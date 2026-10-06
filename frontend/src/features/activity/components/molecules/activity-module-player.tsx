@@ -12,34 +12,13 @@ import JellyfinIcon from '@/assets/provider-logos/jellyfin.svg?react'
 import { apiClient } from '@/lib/api/client'
 import { usePalette, rgbCss, rgbaCss } from '../../hooks/use-palette'
 import { formatTime } from '@/lib/utils'
-
-interface PersonListResponse {
-  items: Array<{ id: string; name: string }>
-}
-
-interface QueueTrackView {
-  uri?: string
-  id?: string
-  albumArt?: string
-  name?: string
-  title?: string
-  artist?: string
-}
-
-function normalizeTrack(t: {
-  id?: string
-  uri?: string
-  albumArt?: string | null
-  name?: string
-  title?: string
-  artist?: string
-}): QueueTrackView {
-  const { albumArt, ...rest } = t
-  return { ...rest, albumArt: albumArt ?? undefined }
-}
+import {
+  type PersonListResponse,
+  normalizeTrack,
+} from '../../utils/player'
 
 /** Full-featured music player widget with album art, playback controls, progress, volume, and queue views. */
-export function ActivityModulePlayer() {
+export const ActivityModulePlayer = () => {
   const navigate = useNavigate()
   const {
     source, isPlaying, currentTrack, position, duration, volume,
@@ -199,7 +178,7 @@ export function ActivityModulePlayer() {
         }}
       >
         <div className="flex items-center gap-3">
-          <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-white/[0.04] shadow-md border border-white/10">
+          <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-white/[0.04] shadow-md">
             {currentTrack.albumArt ? (
               <img src={currentTrack.albumArt} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -428,7 +407,7 @@ export function ActivityModulePlayer() {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.92 }}
                         transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                        className="absolute right-0 bottom-full mb-2 rounded-xl px-3 py-2.5 border border-white/[0.08] backdrop-blur-md shadow-xl"
+                        className="absolute right-0 bottom-full mb-2 rounded-xl px-3 py-2.5 backdrop-blur-md shadow-xl"
                         style={{ background: `linear-gradient(135deg, ${rgbaCss(palette.background, 0.98)}, ${rgbaCss(palette.surface, 0.96)})` }}
                       >
                         <div className="relative h-1.5 w-28 cursor-pointer" title="Volume">
@@ -489,11 +468,11 @@ export function ActivityModulePlayer() {
       )}
     </div>
   )
-}
+};
 
 /* ── Queue inline ── */
 
-function QueueInline({
+const QueueInline = ({
   queueItems, prevItems, queueContainerRef, upNextContainerRef,
   onQueueItemClick, onPrevItemClick,
 }: {
@@ -503,7 +482,7 @@ function QueueInline({
   upNextContainerRef: React.RefObject<HTMLDivElement | null>
   onQueueItemClick: (item: { uri?: string; id?: string }, i: number) => void
   onPrevItemClick: (item: { uri?: string; id?: string }, i: number) => void
-}) {
+}) => {
   return (
     <div className="px-6 pb-6 flex-1 flex flex-col min-h-0">
       <div className="flex items-center gap-2 mb-2 shrink-0">
@@ -541,7 +520,7 @@ function QueueInline({
                 </div>
               </button>
             ))}
-            <div className="my-1.5 border-t border-white/[0.04]" />
+            <div className="my-1.5" />
           </>
         )}
 
@@ -573,11 +552,11 @@ function QueueInline({
       </div>
     </div>
   )
-}
+};
 
 /* ── Queue full view ── */
 
-function QueueFullView({
+const QueueFullView = ({
   currentTrack, isPlaying, queueItems, prevItems, palette, accentColor,
   onBack, onQueueItemClick, onPrevItemClick,
 }: {
@@ -590,7 +569,7 @@ function QueueFullView({
   onBack: () => void
   onQueueItemClick: (item: { uri?: string; id?: string }, i: number) => void
   onPrevItemClick: (item: { uri?: string; id?: string }, i: number) => void
-}) {
+}) => {
   return (
     <motion.div
       key="queue"
@@ -613,8 +592,8 @@ function QueueFullView({
 
       <div className="px-6 pb-4 shrink-0">
         <div
-          className="flex items-center gap-3 rounded-xl border px-3 py-2.5"
-          style={{ backgroundColor: rgbaCss(palette.surface, 0.5), borderColor: rgbaCss(palette.accent, 0.15) }}
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 shadow-sm"
+          style={{ backgroundColor: rgbaCss(palette.surface, 0.5) }}
         >
           {currentTrack.albumArt ? (
             <img src={currentTrack.albumArt} alt="" className="h-9 w-9 rounded-md object-cover shrink-0" />
@@ -703,4 +682,4 @@ function QueueFullView({
       </div>
     </motion.div>
   )
-}
+};

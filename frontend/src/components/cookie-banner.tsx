@@ -3,20 +3,12 @@ import { Link } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Cookie, X } from 'lucide-react'
 
-const COOKIE_CONSENT_KEY = 'otix_cookie_consent'
+import {
+  COOKIE_CONSENT_KEY,
+  getCookieConsent,
+} from '@/lib/utils/cookies'
 
-export type CookieConsentState = 'all' | 'necessary' | null
-
-function getCookieConsent(): CookieConsentState {
-  if (typeof window === 'undefined') return null
-  try {
-    return (localStorage.getItem(COOKIE_CONSENT_KEY) as CookieConsentState) || null
-  } catch {
-    return null
-  }
-}
-
-export function CookieBanner() {
+export const CookieBanner = () => {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -97,4 +89,4 @@ export function CookieBanner() {
       )}
     </AnimatePresence>
   )
-}
+};

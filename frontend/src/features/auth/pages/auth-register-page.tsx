@@ -8,7 +8,7 @@ import { RegisterForm } from '@auth/components/organisms/auth-register-form'
 import { Logo } from '@ui/atoms/logo'
 import { AuthBackButton } from '@auth/components/molecules/auth-back-button'
 
-export function RegisterPage() {
+export const RegisterPage = () => {
   const navigate = useNavigate()
   const redirect = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('redirect') || '/'
@@ -65,4 +65,4 @@ export function RegisterPage() {
       </AuthCard>
     </div>
   )
-}
+};

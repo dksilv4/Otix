@@ -26,61 +26,18 @@ interface PluginSettingsPageProps {
   tab?: PluginSettingsTab
 }
 
-// ── Provider auth cards ───────────────────────────────────────────────────────
+import {
+  type ProviderDef,
+  PROVIDERS,
+  providerFields,
+  isProviderRelevant,
+  providerManagedKeys,
+  formatBytes,
+  parseGenres,
+  formatAdded,
+} from '../../utils/settings'
 
-interface ProviderDef {
-  id: 'spotify' | 'google' | 'plex'
-  label: string
-  statusKey: string
-  credsKey?: string
-  sourceKey?: string
-  errorKey?: string
-}
-
-const PROVIDERS: ProviderDef[] = [
-  { id: 'spotify', label: 'Spotify', statusKey: 'spotify', credsKey: 'spotify_creds' },
-  { id: 'google', label: 'Google', statusKey: 'google', sourceKey: 'google_source', errorKey: 'google_error' },
-  { id: 'plex', label: 'Plex', statusKey: 'plex', errorKey: 'plex_error' },
-]
-
-/** Manifest config fields that belong to a provider card (by section or key prefix). */
-function providerFields(plugin: PluginInfo | null, providerId: string): Record<string, PluginConfigField> {
-  const fields = plugin?.manifest.config
-  if (!fields) return {}
-  const out: Record<string, PluginConfigField> = {}
-  for (const [key, field] of Object.entries(fields)) {
-    if ((field.section || '').toLowerCase() === providerId || key.startsWith(providerId + '_')) {
-      out[key] = field
-    }
-  }
-  return out
-}
-
-/** A provider card is only shown when the plugin actually integrates it:
- *  it declares config fields for the provider, or its status reports a connection. */
-function isProviderRelevant(plugin: PluginInfo | null, status: Record<string, any> | null, provider: ProviderDef): boolean {
-  if (Object.keys(providerFields(plugin, provider.id)).length > 0) return true
-  if (!status) return false
-  if (status[provider.statusKey]) return true
-  if (provider.credsKey && status[provider.credsKey]) return true
-  if (provider.sourceKey && status[provider.sourceKey] && status[provider.sourceKey] !== 'not connected') return true
-  if (provider.errorKey && status[provider.errorKey]) return true
-  return false
-}
-
-/** Keys owned by a provider card — excluded from the general config form. */
-function providerManagedKeys(plugin: PluginInfo | null): string[] {
-  const fields = plugin?.manifest.config
-  if (!fields) return []
-  return Object.entries(fields)
-    .filter(([key, field]) => {
-      const s = (field.section || '').toLowerCase()
-      return s === 'spotify' || s === 'google' || s === 'plex' || key.startsWith('spotify_') || key.startsWith('google_') || key.startsWith('plex_')
-    })
-    .map(([key]) => key)
-}
-
-function ConnectionsCards({ pluginId }: { pluginId: string }) {
+const ConnectionsCards = ({ pluginId }: { pluginId: string }) => {
   const api = getPluginAPI()
   const [status, setStatus] = useState<Record<string, any> | null>(null)
   const [plugin, setPlugin] = useState<PluginInfo | null>(null)
@@ -147,9 +104,9 @@ function ConnectionsCards({ pluginId }: { pluginId: string }) {
       ))}
     </div>
   )
-}
+};
 
-function AuthCard({
+const AuthCard = ({
   provider,
   pluginId,
   api,
@@ -167,7 +124,7 @@ function AuthCard({
   config: Record<string, unknown>
   onConfigSave: (key: string, value: unknown) => Promise<void>
   onConnected: () => Promise<void>
-}) {
+}) => {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -313,7 +270,7 @@ function AuthCard({
       </div>
     </div>
   )
-}
+};
 
 // ── Sync card ─────────────────────────────────────────────────────────────────
 // Drives a plugin's `sync.now` / `sync.status` data methods (SyncPlay, Radarr,
@@ -364,7 +321,7 @@ interface SyncItem {
   error?: string
 }
 
-function SyncCard({ pluginId }: { pluginId: string }) {
+const SyncCard = ({ pluginId }: { pluginId: string }) => {
   const api = getPluginAPI()
   const [syncing, setSyncing] = useState(false)
   const [status, setStatus] = useState<SyncStatus | null>(null)
@@ -573,7 +530,7 @@ function SyncCard({ pluginId }: { pluginId: string }) {
       )}
     </div>
   )
-}
+};
 
 // ── Movies (local catalog) ────────────────────────────────────────────────────
 // Browses the movies the plugin synced into the shared local `media` table via
@@ -613,7 +570,7 @@ interface InstanceSummary {
 }
 
 /** Pill showing a synced movie's live Radarr status on the card art. */
-function MovieStatusBadge({ status }: { status: string | null }) {
+const MovieStatusBadge = ({ status }: { status: string | null }) => {
   if (status === 'downloading') {
     return (
       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold text-blue-300 bg-blue-950/75 border border-blue-500/30 backdrop-blur-md">
@@ -637,7 +594,7 @@ function MovieStatusBadge({ status }: { status: string | null }) {
       Missing
     </span>
   )
-}
+};
 
 // ── arr media detail drawer ─────────────────────────────────────────────
 // Clicking a synced catalog card opens this right-hand panel. It renders the
@@ -684,36 +641,7 @@ interface ArrDetail {
   error?: string | null
 }
 
-function formatBytes(bytes?: number | null): string {
-  if (bytes == null || isNaN(bytes) || bytes < 0) return ''
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let i = 0
-  let n = bytes
-  while (n >= 1024 && i < units.length - 1) {
-    n /= 1024
-    i++
-  }
-  return `${n >= 10 || i === 0 ? n.toFixed(0) : n.toFixed(1)} ${units[i]}`
-}
-
-function parseGenres(raw: string | null): string[] {
-  if (!raw) return []
-  try {
-    const g = JSON.parse(raw)
-    return Array.isArray(g) ? g : []
-  } catch {
-    return []
-  }
-}
-
-function formatAdded(raw?: string | null): string {
-  if (!raw) return ''
-  const d = new Date(raw)
-  if (isNaN(d.getTime())) return raw
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
-function DetailStatusBadge({ status }: { status: string | null }) {
+const DetailStatusBadge = ({ status }: { status: string | null }) => {
   if (status === 'downloaded') {
     return (
       <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
@@ -740,9 +668,9 @@ function DetailStatusBadge({ status }: { status: string | null }) {
       Missing
     </span>
   )
-}
+};
 
-function DetailRow({ label, value }: { label: string; value?: ReactNode }) {
+const DetailRow = ({ label, value }: { label: string; value?: ReactNode }) => {
   if (value == null || value === '' || value === false) return null
   return (
     <div className="flex items-start justify-between gap-3 py-2">
@@ -750,9 +678,9 @@ function DetailRow({ label, value }: { label: string; value?: ReactNode }) {
       <span className="min-w-0 text-right text-xs text-white/80">{value}</span>
     </div>
   )
-}
+};
 
-function ArrMediaDetailDrawer({
+const ArrMediaDetailDrawer = ({
   pluginId,
   movie,
   onClose,
@@ -760,7 +688,7 @@ function ArrMediaDetailDrawer({
   pluginId: string
   movie: CatalogMovie
   onClose: () => void
-}) {
+}) => {
   const api = getPluginAPI()
   const [detail, setDetail] = useState<ArrDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -938,9 +866,9 @@ function ArrMediaDetailDrawer({
       </div>
     </SlidePanel>
   )
-}
+};
 
-function MoviesSection({ pluginId }: { pluginId?: string }) {
+const MoviesSection = ({ pluginId }: { pluginId?: string }) => {
   const api = getPluginAPI()
   const { openModal } = useModal()
 
@@ -1191,7 +1119,7 @@ function MoviesSection({ pluginId }: { pluginId?: string }) {
       )}
     </div>
   )
-}
+};
 
 // ── Requests ──────────────────────────────────────────────────────────────
 // Lists every movie requested on a Radarr instance (radarr_requests) — via the
@@ -1213,7 +1141,7 @@ interface CatalogRequest {
 
 const REQUESTS_PAGE = 50
 
-function RequestsSection({ pluginId }: { pluginId?: string }) {
+const RequestsSection = ({ pluginId }: { pluginId?: string }) => {
   const api = getPluginAPI()
   const [searchInput, setSearchInput] = useState('')
   const [requests, setRequests] = useState<CatalogRequest[] | null>(null)
@@ -1367,7 +1295,7 @@ function RequestsSection({ pluginId }: { pluginId?: string }) {
       )}
     </div>
   )
-}
+};
 
 // ── Sync history ──────────────────────────────────────────────────────────────
 // Lists every `sync.now` run (radarr_sync_log) newest-first. Expand a run to see
@@ -1394,7 +1322,7 @@ interface SyncRunError {
   tmdb_id?: string | null
 }
 
-function SyncHistorySection({ pluginId }: { pluginId?: string }) {
+const SyncHistorySection = ({ pluginId }: { pluginId?: string }) => {
   const api = getPluginAPI()
   const [runs, setRuns] = useState<SyncRun[] | null>(null)
   const [total, setTotal] = useState(0)
@@ -1524,7 +1452,7 @@ function SyncHistorySection({ pluginId }: { pluginId?: string }) {
       )}
     </div>
   )
-}
+};
 
 // ── Playlist mapping form ─────────────────────────────────────────────────────
 // Lets the user pick a Spotify playlist from a dropdown (instead of pasting a
@@ -1539,7 +1467,7 @@ interface SpotifyPlaylist {
   public: boolean
 }
 
-function PlaylistMappingForm({ pluginId }: { pluginId: string }) {
+const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
   const api = getPluginAPI()
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([])
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle')
@@ -1692,11 +1620,11 @@ function PlaylistMappingForm({ pluginId }: { pluginId: string }) {
       </div>
     </div>
   )
-}
+};
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export function PluginSettingsPage({ tab }: PluginSettingsPageProps) {
+export const PluginSettingsPage = ({ tab }: PluginSettingsPageProps) => {
   const [activeSection, setActiveSection] = useState<string | undefined>(tab?.sections[0]?.id)
   const { data, isLoading } = useSlotData(tab ? `settings/${tab.id}` : '')
   const api = getPluginAPI()
@@ -1789,9 +1717,9 @@ export function PluginSettingsPage({ tab }: PluginSettingsPageProps) {
       )}
     </div>
   )
-}
+};
 
-function ConfigSection({ section, pluginId }: { section: PluginSettingsSection; pluginId?: string }) {
+const ConfigSection = ({ section, pluginId }: { section: PluginSettingsSection; pluginId?: string }) => {
   const api = getPluginAPI()
   const [plugin, setPlugin] = useState<PluginInfo | null>(null)
   const [config, setConfig] = useState<Record<string, unknown>>({})
@@ -1801,7 +1729,7 @@ function ConfigSection({ section, pluginId }: { section: PluginSettingsSection; 
 
   useEffect(() => {
     let cancelled = false
-    async function load() {
+    const load = async () => {
       if (!api || !pluginId) {
         setLoading(false)
         return
@@ -1890,4 +1818,4 @@ function ConfigSection({ section, pluginId }: { section: PluginSettingsSection; 
       )}
     </div>
   )
-}
+};

@@ -15,7 +15,7 @@ interface ReviewActionButtonProps {
   className?: string
 }
 
-export function ReviewActionButton({ mediaType, mediaId, className }: ReviewActionButtonProps) {
+export const ReviewActionButton = ({ mediaType, mediaId, className }: ReviewActionButtonProps) => {
   const { isAuthenticated } = useAuth()
   const { openModal } = useModal()
 
@@ -75,4 +75,4 @@ export function ReviewActionButton({ mediaType, mediaId, className }: ReviewActi
       </span>
     </button>
   )
-}
+};

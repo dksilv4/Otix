@@ -24,7 +24,7 @@ export interface TrackRowProps {
   artistName: string | null
 }
 
-export function TrackRow({
+export const TrackRow = ({
   track,
   showDisc,
   plexConnection,
@@ -32,7 +32,7 @@ export function TrackRow({
   albumTitle,
   albumArt,
   artistName,
-}: TrackRowProps) {
+}: TrackRowProps) => {
   const {
     currentTrack,
     source,
@@ -224,4 +224,4 @@ export function TrackRow({
       </td>
     </tr>
   )
-}
+};

@@ -22,7 +22,7 @@ interface ScreenshotLightboxModalProps {
   onClose: () => void
 }
 
-function ScreenshotLightboxModal({ screenshots, initialIndex, onClose }: ScreenshotLightboxModalProps) {
+const ScreenshotLightboxModal = ({ screenshots, initialIndex, onClose }: ScreenshotLightboxModalProps) => {
   const [lightboxIdx, setLightboxIdx] = useState(initialIndex)
 
   useEffect(() => {
@@ -99,9 +99,9 @@ function ScreenshotLightboxModal({ screenshots, initialIndex, onClose }: Screens
       </div>
     </motion.div>
   )
-}
+};
 
-export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, autoPlay = true }: LauncherScreenshotGalleryProps) {
+export const LauncherScreenshotGallery = ({ screenshots, onHoverScreenshot, autoPlay = true }: LauncherScreenshotGalleryProps) => {
   const { openModal } = useModal()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeIdx, setActiveIdx] = useState(0)
@@ -242,4 +242,4 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, auto
       </div>
     </div>
   )
-}
+};

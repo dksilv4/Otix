@@ -18,7 +18,7 @@ export interface DownloadNodeModalProps {
 const GITHUB_RELEASE_BASE = 'https://github.com/dksilv4/Otix/releases/latest/download'
 const GITHUB_RELEASE_PAGE = 'https://github.com/dksilv4/Otix/releases/latest'
 
-export function DownloadNodeModal({ isOpen, isExiting, onClose }: DownloadNodeModalProps) {
+export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeModalProps) => {
   const downloadOptions = [
     {
       platform: 'macOS',
@@ -162,4 +162,4 @@ export function DownloadNodeModal({ isOpen, isExiting, onClose }: DownloadNodeMo
       </div>
     </DkDialog>
   )
-}
+};

@@ -6,7 +6,7 @@ import { notificationQueries } from '../queries'
 import { useMarkAllRead } from '../hooks/use-mark-all-read'
 import { NotificationList } from '../components/organisms/notification-list'
 
-export function NotificationsPage() {
+export const NotificationsPage = () => {
   const hasSession = useHasSession()
   const markAllRead = useMarkAllRead()
 
@@ -51,4 +51,4 @@ export function NotificationsPage() {
       <NotificationList />
     </div>
   )
-}
+};

@@ -78,7 +78,7 @@ describe('SettingsOrganizeSection', () => {
     } as unknown as ReturnType<typeof apiClient.get>)
   })
 
-  function renderSection(nodeId = 1) {
+  const renderSection = (nodeId = 1) => {
     return render(
       <QueryClientProvider client={queryClient}>
         <SettingsSaveProvider>

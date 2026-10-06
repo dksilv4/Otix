@@ -45,6 +45,7 @@ from apps.social.views.user_follow import (
 from apps.social.views.user_gamification import (
     AchievementsView,
     ClaimBadgeView,
+    GamingHeartbeatView,
     KarmaTransactionsView,
     KarmaView,
     UserBadgesView,
@@ -76,6 +77,7 @@ __all__ = [
     "FriendRequestsOutgoingView",
     "FriendsActivityView",
     "FriendshipStatusView",
+    "GamingHeartbeatView",
     "KarmaTransactionsView",
     "KarmaView",
     "LibraryStatsView",

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { usePickFolder } from './use-pick-folder'
 import type { FolderPickTarget } from './strategy'
 
-export function PathInput({
+export const PathInput = ({
   value,
   onChange,
   onCommit,
@@ -39,7 +39,7 @@ export function PathInput({
   allowClear?: boolean
   showConfirmButton?: boolean
   confirmLabel?: string
-}) {
+}) => {
   const autoId = useId()
   const inputId = id || autoId
   const { pick, canBrowse } = usePickFolder({ target, serverId })
@@ -155,4 +155,4 @@ export function PathInput({
       {hint && <p className="text-[11px] text-white/50">{hint}</p>}
     </div>
   )
-}
+};

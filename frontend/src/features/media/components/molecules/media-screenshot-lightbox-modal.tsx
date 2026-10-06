@@ -16,12 +16,12 @@ interface MediaScreenshotLightboxModalProps {
   isExiting?: boolean
 }
 
-export function MediaScreenshotLightboxModal({
+export const MediaScreenshotLightboxModal = ({
   screenshots,
   initialIndex = 0,
   onClose,
   isExiting,
-}: MediaScreenshotLightboxModalProps) {
+}: MediaScreenshotLightboxModalProps) => {
   const [index, setIndex] = useState(
     Math.max(0, Math.min(initialIndex, screenshots.length - 1)),
   )
@@ -179,4 +179,4 @@ export function MediaScreenshotLightboxModal({
       </div>
     </motion.div>
   )
-}
+};

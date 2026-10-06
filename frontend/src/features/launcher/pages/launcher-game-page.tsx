@@ -6,7 +6,7 @@ import { LauncherShelf } from '@/features/launcher/components/organisms/launcher
 import { LauncherFooter } from '@/features/launcher/components/organisms/launcher-footer'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 
-export function LauncherGamePage() {
+export const LauncherGamePage = () => {
   const { gameId } = useParams({ from: '/launcher/$gameId' })
   const { game, isLoading } = useLauncherGame(gameId)
 
@@ -32,4 +32,4 @@ export function LauncherGamePage() {
       </section>
     </main>
   )
-}
+};

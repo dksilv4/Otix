@@ -13,11 +13,11 @@ export interface ManageDownloadersModalProps {
   onClose: () => void
 }
 
-export function ManageDownloadersModal({
+export const ManageDownloadersModal = ({
   isOpen,
   isExiting,
   onClose,
-}: ManageDownloadersModalProps) {
+}: ManageDownloadersModalProps) => {
   const navigate = useNavigate()
   const { servers } = useSettingsNode()
   const instances = servers.filter((server) => !isLocalDesktopNode(server))
@@ -77,4 +77,4 @@ export function ManageDownloadersModal({
       </div>
     </DkDialog>
   )
-}
+};

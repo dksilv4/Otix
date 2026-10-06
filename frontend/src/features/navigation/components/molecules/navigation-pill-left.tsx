@@ -7,7 +7,7 @@ import {BackButton} from "../atoms/navigation-back-button"
 import {MenuToggle} from "../atoms/navigation-menu-toggle"
 
 /** Left-side floating navigation pill with back button, menu toggle, and optional logo. */
-export function NavPillLeft() {
+export const NavPillLeft = () => {
     const {navLogo} = usePageMeta()
     const location = useLocation()
     const {isDesktop} = useDesktopPlatform()
@@ -33,4 +33,4 @@ export function NavPillLeft() {
 
         </NavPill>
     )
-}
+};

@@ -18,7 +18,7 @@ import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
 
-export function XboxLauncherView() {
+export const XboxLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
   const { data: localGames = [] } = useLauncherVisibleGames()
@@ -356,4 +356,4 @@ export function XboxLauncherView() {
       )}
     </div>
   )
-}
+};

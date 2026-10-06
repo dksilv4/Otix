@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
@@ -24,7 +24,7 @@ import './free-games-section.scss'
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
-function StoreIcon({ store, className }: { store: string; className?: string }) {
+const StoreIcon = ({ store, className }: { store: string; className?: string }) => {
   switch (store) {
     case 'epic':
       return <EpicIcon className={className} />
@@ -35,72 +35,14 @@ function StoreIcon({ store, className }: { store: string; className?: string }) 
     default:
       return <Gamepad2 className={className} />
   }
-}
+};
 
-const STORE_LABELS: Record<string, string> = {
-  epic: 'Epic Games',
-  steam: 'Steam',
-  gog: 'GOG',
-}
-
-function storeLabel(store: string, storeName?: string | null): string {
-  return STORE_LABELS[store] || storeName || store
-}
-
-function formatTimeRemaining(dateStr: string | null | undefined): string | null {
-  if (!dateStr) return null
-  const target = new Date(dateStr).getTime()
-  const now = Date.now()
-  const diff = target - now
-  if (diff <= 0) return 'Ending soon'
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  if (days > 1) return `${days}d ${hours}h left`
-  if (days === 1) return `1d ${hours}h left`
-  if (hours > 0) return `${hours}h ${mins}m left`
-  if (mins > 0) return `${mins}m left`
-  return 'Ending soon'
-}
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-/** Returns true when the game ends within 48 hours. */
-function isEndingSoon(dateStr: string | null | undefined): boolean {
-  if (!dateStr) return false
-  const diff = new Date(dateStr).getTime() - Date.now()
-  return diff > 0 && diff < 48 * 60 * 60 * 1000
-}
-
-// ── Countdown hook (re-renders every minute) ──────────────────────────
-
-function useCountdown(dateStr: string | null | undefined): string | null {
-  const [label, setLabel] = useState(() => formatTimeRemaining(dateStr))
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  useEffect(() => {
-    setLabel(formatTimeRemaining(dateStr))
-    if (!dateStr) return
-    intervalRef.current = setInterval(() => {
-      setLabel(formatTimeRemaining(dateStr))
-    }, 60_000)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [dateStr])
-
-  return label
-}
+import { storeLabel, formatDate, isEndingSoon } from '@/features/discover/utils/free-games'
+import { useCountdown } from '@/features/discover/hooks/use-countdown'
 
 // ── Main Section ──────────────────────────────────────────────────────
 
-export function FreeGamesSection() {
+export const FreeGamesSection = () => {
   const { data, isLoading, error } = useQuery(discoverQueries.freeGames())
   const [showSteamPacks] = useSteamFreePacksSetting()
 
@@ -230,11 +172,11 @@ export function FreeGamesSection() {
       )}
     </motion.section>
   )
-}
+};
 
 // ── Spotlight Card (Featured, Large — Borderless) ─────────────────────
 
-function SpotlightCard({ item }: { item: FreeGameItem }) {
+const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
   const isNow = item.isFreeNow
   const countdown = useCountdown(item.endDate)
   const ending = isEndingSoon(item.endDate)
@@ -432,11 +374,11 @@ function SpotlightCard({ item }: { item: FreeGameItem }) {
       </div>
     </div>
   )
-}
+};
 
 // ── Free Game Card (always MediaCard; catalog data when matched) ───────
 
-function FreeGameCard({ item }: { item: FreeGameItem }) {
+const FreeGameCard = ({ item }: { item: FreeGameItem }) => {
   const isNow = item.isFreeNow
   const countdown = useCountdown(item.endDate)
   const ending = isEndingSoon(item.endDate)
@@ -567,4 +509,4 @@ function FreeGameCard({ item }: { item: FreeGameItem }) {
       )}
     </div>
   )
-}
+};

@@ -11,7 +11,7 @@ interface SettingsNodeSharingSectionProps {
   server: GameServer
 }
 
-export function SettingsNodeSharingSection({ server }: SettingsNodeSharingSectionProps) {
+export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectionProps) => {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { data: friends = [], isLoading: isLoadingFriends } = useOtixFriends()
@@ -271,4 +271,4 @@ export function SettingsNodeSharingSection({ server }: SettingsNodeSharingSectio
       </div>
     </div>
   )
-}
+};

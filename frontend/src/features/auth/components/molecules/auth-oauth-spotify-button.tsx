@@ -6,11 +6,11 @@ import {useFeature} from '@/features/_config'
 import type {FeatureName} from "@/features/_config/types.ts";
 
 /** Spotify OAuth login button, gated by the auth:oauth:spotify feature flag. */
-export function SpotifyOAuthButton() {
+export const SpotifyOAuthButton = () => {
     const enabled = useFeature(SpotifyOAuthButton.featureName)
     if (!enabled) return null
 
-    async function handleSpotifyLogin() {
+    const handleSpotifyLogin = async () => {
         const {data} = await apiClient.post('/auth/spotify/initiate')
         openExternal(data.authUrl)
     }
@@ -23,6 +23,6 @@ export function SpotifyOAuthButton() {
             onClick={handleSpotifyLogin}
         />
     )
-}
+};
 
 SpotifyOAuthButton.featureName = 'auth:oauth:spotify' as FeatureName

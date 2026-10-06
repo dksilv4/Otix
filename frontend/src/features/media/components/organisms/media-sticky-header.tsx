@@ -25,7 +25,7 @@ export type MediaStickyHeaderV4Props = MediaStickyHeaderProps
 const MIN_BETWEEN_WIDTH = 460
 const PILL_GAP = 12
 
-export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps) {
+export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps) => {
   const [visible, setVisible] = useState(false)
   const [placement, setPlacement] = useState<'between' | 'below'>('between')
   const [bounds, setBounds] = useState<{ center: number; maxWidth: number } | null>(null)
@@ -306,6 +306,6 @@ export function MediaStickyHeader({ detail, mediaType }: MediaStickyHeaderProps)
       </div>
     </div>
   )
-}
+};
 
 export { MediaStickyHeader as MediaStickyHeaderV4 }

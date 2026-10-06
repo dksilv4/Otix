@@ -21,7 +21,7 @@ const KIND_SHORT_LABELS: Record<FeatureStatusKind, string> = {
   alpha: 'Alpha',
 }
 
-export function FeatureStatusTag({
+export const FeatureStatusTag = ({
   kind,
   short = false,
   className,
@@ -29,7 +29,7 @@ export function FeatureStatusTag({
   kind: FeatureStatusKind
   short?: boolean
   className?: string
-}) {
+}) => {
   return (
     <span
       className={cn(
@@ -41,9 +41,9 @@ export function FeatureStatusTag({
       {short ? KIND_SHORT_LABELS[kind] : KIND_LABELS[kind]}
     </span>
   )
-}
+};
 
-export function FeatureStatusTags({
+export const FeatureStatusTags = ({
   kinds,
   short = false,
   className,
@@ -51,7 +51,7 @@ export function FeatureStatusTags({
   kinds: FeatureStatusKind[]
   short?: boolean
   className?: string
-}) {
+}) => {
   if (kinds.length === 0) return null
   return (
     <span className={cn('inline-flex flex-wrap items-center gap-1.5', className)}>
@@ -60,11 +60,6 @@ export function FeatureStatusTags({
       ))}
     </span>
   )
-}
+};
 
-/** Map plugin manifest stage → status chips (stable → none). */
-export function kindsFromPluginStage(stage?: string | null): FeatureStatusKind[] {
-  if (stage === 'alpha') return ['alpha']
-  if (stage === 'beta') return ['beta']
-  return []
-}
+export { kindsFromPluginStage } from '@/lib/utils/feature-status'

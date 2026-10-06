@@ -2,7 +2,7 @@ import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { MediaLogo } from '@/lib/media/media-logo'
 
-function LogoImage({ src, alt, colorGuess }: { src: string; alt: string; colorGuess?: string | null }) {
+const LogoImage = ({ src, alt, colorGuess }: { src: string; alt: string; colorGuess?: string | null }) => {
   return (
     <MediaLogo
       src={src}
@@ -18,9 +18,9 @@ function LogoImage({ src, alt, colorGuess }: { src: string; alt: string; colorGu
       }}
     />
   )
-}
+};
 
-export function LauncherGameDetailInfo() {
+export const LauncherGameDetailInfo = () => {
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
@@ -47,4 +47,4 @@ export function LauncherGameDetailInfo() {
       </p>
     </div>
   )
-}
+};

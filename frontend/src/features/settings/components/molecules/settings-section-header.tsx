@@ -14,7 +14,7 @@ interface SectionHeaderProps {
   variant?: 'section' | 'page'
 }
 
-export function SectionHeader({ title, description, action, className, icon: Icon, badges, variant = 'section' }: SectionHeaderProps) {
+export const SectionHeader = ({ title, description, action, className, icon: Icon, badges, variant = 'section' }: SectionHeaderProps) => {
   const isPage = variant === 'page'
 
   return (
@@ -52,4 +52,4 @@ export function SectionHeader({ title, description, action, className, icon: Ico
       {action && <div className="shrink-0 self-start sm:self-center">{action}</div>}
     </div>
   )
-}
+};

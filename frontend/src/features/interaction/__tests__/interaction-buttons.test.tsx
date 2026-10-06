@@ -33,7 +33,7 @@ vi.mock('@ui/atoms/xp-toast', () => ({
 
 import { InteractionSection } from '../molecules/interaction-buttons'
 
-function createWrapper() {
+const createWrapper = () => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: React.ReactNode }) =>
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>

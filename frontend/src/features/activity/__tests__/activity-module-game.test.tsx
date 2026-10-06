@@ -5,6 +5,7 @@ import * as launcherHooks from '@/features/launcher'
 
 vi.mock('@/features/launcher', () => ({
   useMatchedRunningGame: vi.fn(),
+  useGamingSessionXp: vi.fn().mockReturnValue({ sessionXp: 0, dailyXp: 0, isGaming: false }),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
@@ -18,6 +19,13 @@ vi.mock('@tanstack/react-router', () => ({
 describe('ActivityModuleGame', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(launcherHooks.useGamingSessionXp).mockReturnValue({
+      sessionXp: 0,
+      dailyXp: 0,
+      currentGameId: null,
+      currentGameTitle: null,
+      isGaming: false,
+    })
   })
 
   it('renders nothing when no game is running', () => {
@@ -73,5 +81,32 @@ describe('ActivityModuleGame', () => {
 
     const img = screen.getByRole('img', { name: "Baldur's Gate 3" })
     expect(img).toHaveAttribute('src', 'https://images.otix.tv/posters/bg3.jpg')
+  })
+
+  it('renders session XP badge when sessionXp is greater than 0', () => {
+    vi.mocked(launcherHooks.useGamingSessionXp).mockReturnValue({
+      sessionXp: 30,
+      dailyXp: 30,
+      currentGameId: 'bg3',
+      currentGameTitle: "Baldur's Gate 3",
+      isGaming: true,
+    })
+
+    vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
+      runningGame: {
+        game: { id: 'bg3', title: 'bg3.exe', platform: 'pc' },
+        startTime: Date.now() - 900000,
+        launchedByOtix: false,
+      },
+      elapsedMs: 900000,
+      matchedGame: {
+        id: '1086940',
+        title: "Baldur's Gate 3",
+      },
+      isMatching: false,
+    })
+
+    render(<ActivityModuleGame />)
+    expect(screen.getByText('+30 XP')).toBeInTheDocument()
   })
 })

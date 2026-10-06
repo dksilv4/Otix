@@ -20,15 +20,12 @@ import { SettingsNodeProvider } from '../context/settings-node-context'
 import { SettingsSaveBar } from '../components/molecules/settings-save-bar'
 import { usePluginTabs } from '@/features/_config/slots'
 import { QueryErrorBoundary } from '@/components/query-error-boundary'
+import {
+  SETTINGS_SIDEBAR_COLLAPSED_KEY,
+  getInitialCollapsed,
+} from '../utils/layout'
 
-const SETTINGS_SIDEBAR_COLLAPSED_KEY = 'otix-settings-sidebar-collapsed'
-
-function getInitialCollapsed(): boolean {
-  if (typeof window === 'undefined') return false
-  return localStorage.getItem(SETTINGS_SIDEBAR_COLLAPSED_KEY) === 'true'
-}
-
-function SettingsNavGroups({
+const SettingsNavGroups = ({
   items,
   activeSection,
   collapsed,
@@ -40,7 +37,7 @@ function SettingsNavGroups({
   collapsed?: boolean
   user: { isAdmin?: boolean } | null | undefined
   onNavigate?: () => void
-}) {
+}) => {
   const navLinkClass = (isActive: boolean) =>
     cn(
       'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200',
@@ -121,9 +118,9 @@ function SettingsNavGroups({
       })}
     </>
   )
-}
+};
 
-function SettingsLayoutInner() {
+const SettingsLayoutInner = () => {
   const location = useLocation()
   const { user } = useAuth()
   const desktop = isDesktop()
@@ -336,9 +333,9 @@ function SettingsLayoutInner() {
       <SettingsSaveBar />
     </div>
   )
-}
+};
 
-export function SettingsLayout() {
+export const SettingsLayout = () => {
   return (
     <SettingsSaveProvider>
       <SettingsNodeProvider>
@@ -346,4 +343,4 @@ export function SettingsLayout() {
       </SettingsNodeProvider>
     </SettingsSaveProvider>
   )
-}
+};

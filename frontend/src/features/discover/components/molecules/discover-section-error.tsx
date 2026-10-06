@@ -3,7 +3,7 @@ interface DiscoverSectionErrorProps {
   onRetry: () => void
 }
 
-export function DiscoverSectionError({ title, onRetry }: DiscoverSectionErrorProps) {
+export const DiscoverSectionError = ({ title, onRetry }: DiscoverSectionErrorProps) => {
   return (
     <div className="space-y-3 px-4 lg:px-8 py-2">
       {title && <h2 className="text-xl font-bold tracking-tight text-white/90">{title}</h2>}
@@ -17,4 +17,4 @@ export function DiscoverSectionError({ title, onRetry }: DiscoverSectionErrorPro
       </button>
     </div>
   )
-}
+};

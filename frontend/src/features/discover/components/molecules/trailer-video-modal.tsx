@@ -22,56 +22,16 @@ interface TrailerVideoModalProps {
   onClose: () => void
 }
 
-const SETTINGS_KEY = 'otix:video-player-settings'
+import {
+  type VideoPlayerSettings,
+  loadPlayerSettings,
+  savePlayerSettings,
+  formatTime,
+} from '@/features/discover/utils/trailer'
 
-export interface VideoPlayerSettings {
-  volume: number
-  isMuted: boolean
-  isZoomedOut: boolean
-  isTheater: boolean
-}
+export { loadPlayerSettings, savePlayerSettings, formatTime, type VideoPlayerSettings }
 
-export function loadPlayerSettings(): VideoPlayerSettings {
-  const defaults: VideoPlayerSettings = {
-    volume: 1,
-    isMuted: false,
-    isZoomedOut: false,
-    isTheater: false,
-  }
-  if (typeof window === 'undefined') return defaults
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
-    if (!raw) return defaults
-    const parsed = JSON.parse(raw)
-    return {
-      volume: typeof parsed.volume === 'number' ? Math.max(0, Math.min(1, parsed.volume)) : defaults.volume,
-      isMuted: typeof parsed.isMuted === 'boolean' ? parsed.isMuted : defaults.isMuted,
-      isZoomedOut: typeof parsed.isZoomedOut === 'boolean' ? parsed.isZoomedOut : defaults.isZoomedOut,
-      isTheater: typeof parsed.isTheater === 'boolean' ? parsed.isTheater : defaults.isTheater,
-    }
-  } catch {
-    return defaults
-  }
-}
-
-export function savePlayerSettings(partial: Partial<VideoPlayerSettings>) {
-  if (typeof window === 'undefined') return
-  try {
-    const current = loadPlayerSettings()
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...partial }))
-  } catch {
-    // Ignore storage quota errors
-  }
-}
-
-function formatTime(seconds: number): string {
-  if (!seconds || isNaN(seconds) || seconds < 0) return '0:00'
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs < 10 ? '0' : ''}${secs}`
-}
-
-export function TrailerVideoModal({ youtubeId, title, isExiting, onClose }: TrailerVideoModalProps) {
+export const TrailerVideoModal = ({ youtubeId, title, isExiting, onClose }: TrailerVideoModalProps) => {
   const [initialSettings] = useState(loadPlayerSettings)
 
   const [isZoomedOut, setIsZoomedOutState] = useState(initialSettings.isZoomedOut)
@@ -731,4 +691,4 @@ export function TrailerVideoModal({ youtubeId, title, isExiting, onClose }: Trai
     </AnimatePresence>,
     document.body,
   )
-}
+};

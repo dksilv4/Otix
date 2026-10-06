@@ -8,13 +8,13 @@ vi.mock('@/features/downloads/use-server-downloads', () => ({
   useGameServers: () => ({ data: [], isLoading: false }),
 }))
 
-function Harness({
+const Harness = ({
   initial = [{ remotePath: '', hostPath: '' }] as PathMappingRow[],
   folderError,
 }: {
   initial?: PathMappingRow[]
   folderError?: string
-}) {
+}) => {
   const [mappings, setMappings] = useState(initial)
   return (
     <IntegrationPathMappings
@@ -23,7 +23,7 @@ function Harness({
       folderError={folderError}
     />
   )
-}
+};
 
 describe('IntegrationPathMappings', () => {
   it('shows a calm discovery state instead of raw folderError copy', () => {

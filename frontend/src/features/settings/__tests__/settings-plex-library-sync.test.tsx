@@ -136,7 +136,7 @@ describe('Plex Library Sync and Error Isolation', () => {
     ]
   })
 
-  function renderPage() {
+  const renderPage = () => {
     return render(
       <ModalProvider>
         <SettingsIntegrationsPage />

@@ -9,10 +9,10 @@ const DOMAIN_ICONS: Record<CommandDomain, typeof Compass> = {
   plugin: Puzzle,
 }
 
-function FallbackIcon({ domain }: { domain: CommandDomain }) {
+const FallbackIcon = ({ domain }: { domain: CommandDomain }) => {
   const Icon = DOMAIN_ICONS[domain] ?? Compass
   return <Icon className="h-4 w-4" />
-}
+};
 
 interface CommandItemProps {
   command: Command
@@ -22,7 +22,7 @@ interface CommandItemProps {
   innerRef: (el: HTMLButtonElement | null) => void
 }
 
-export function CommandItem({ command, active, onSelect, onHover, innerRef }: CommandItemProps) {
+export const CommandItem = ({ command, active, onSelect, onHover, innerRef }: CommandItemProps) => {
   return (
     <button
       ref={innerRef}
@@ -46,4 +46,4 @@ export function CommandItem({ command, active, onSelect, onHover, innerRef }: Co
       </span>
     </button>
   )
-}
+};

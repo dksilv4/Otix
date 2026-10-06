@@ -8,7 +8,7 @@ export interface TabBarProps {
   onTabClick: (id: string) => void
 }
 
-export function TabBar({ tabs, activeTab, onTabClick }: TabBarProps) {
+export const TabBar = ({ tabs, activeTab, onTabClick }: TabBarProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Scroll active tab into view on change
@@ -50,4 +50,4 @@ export function TabBar({ tabs, activeTab, onTabClick }: TabBarProps) {
       ))}
     </div>
   )
-}
+};

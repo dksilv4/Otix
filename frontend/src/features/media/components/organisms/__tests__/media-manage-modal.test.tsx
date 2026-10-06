@@ -256,7 +256,7 @@ describe('MediaManageModal', () => {
   it('renders correctly inside ModalProvider with openModal', async () => {
     const { ModalProvider, ModalRoot, useModal } = await import('@/lib/modals')
 
-    function TestTrigger() {
+    const TestTrigger = () => {
       const { openModal } = useModal()
       return (
         <button
@@ -273,7 +273,7 @@ describe('MediaManageModal', () => {
           Open Manager
         </button>
       )
-    }
+    };
 
     const user = userEvent.setup()
     render(

@@ -10,6 +10,8 @@ import { CatalogStreamProvider } from "@/features/media/providers/catalog-stream
 import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permissions"
 import { useModal, ModalRoot } from "@/lib/modals"
 import { DecideWatchHost } from "@/features/discover/components/organisms/decide-watch-host"
+import { LevelUpHost } from "@/features/user"
+import { GamingXpHost } from "@/features/launcher"
 import { IndexerSearchHost } from "@/features/downloads/molecules/indexer-search-host"
 import { CookieBanner } from "@/components/cookie-banner"
 import { AppMicroFooter } from "@/components/app-micro-footer"
@@ -23,17 +25,9 @@ const PluginPermissionModal = lazy(() =>
   })),
 )
 
-const PIN_KEY = "otix_player_pinned"
+import { loadPinState } from "../../utils"
 
-function loadPinState(): boolean {
-  try {
-    return localStorage.getItem(PIN_KEY) === "true"
-  } catch {
-    return false
-  }
-}
-
-export function RootLayout() {
+export const RootLayout = () => {
   const isPinned = loadPinState()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const location = useLocation()
@@ -106,9 +100,11 @@ export function RootLayout() {
       </PanelProvider>
       <CommandPaletteMount />
       <DecideWatchHost />
+      <LevelUpHost />
+      <GamingXpHost />
       <IndexerSearchHost />
       <ModalRoot />
       <CookieBanner />
     </div>
   )
-}
+};

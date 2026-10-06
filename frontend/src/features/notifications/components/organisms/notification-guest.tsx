@@ -1,7 +1,7 @@
 import { Bell } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
-export function NotificationGuest() {
+export const NotificationGuest = () => {
   return (
     <div className="flex flex-col items-center justify-center py-16">
       <Bell className="h-10 w-10 text-white/30" />
@@ -14,4 +14,4 @@ export function NotificationGuest() {
       </Link>
     </div>
   )
-}
+};

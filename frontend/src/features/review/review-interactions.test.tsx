@@ -57,7 +57,7 @@ describe('StarInput', () => {
 })
 
 describe('useSwipe', () => {
-  function SwipeHarness({ onLeft = vi.fn(), onRight = vi.fn() }) {
+  const SwipeHarness = ({ onLeft = vi.fn(), onRight = vi.fn() }) => {
     const swipe = useSwipe({ threshold: 50, onSwipeLeft: onLeft, onSwipeRight: onRight })
     return (
       <div
@@ -71,7 +71,7 @@ describe('useSwipe', () => {
         <button onClick={swipe.reset}>Reset</button>
       </div>
     )
-  }
+  };
 
   it('snaps and calls callbacks when swipes pass the threshold', () => {
     const onLeft = vi.fn()

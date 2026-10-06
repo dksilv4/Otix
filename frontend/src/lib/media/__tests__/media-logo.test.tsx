@@ -3,7 +3,7 @@ import { render } from '@testing-library/react'
 
 import { MediaLogo } from '../media-logo'
 
-function renderLogo(props: Parameters<typeof MediaLogo>[0]) {
+const renderLogo = (props: Parameters<typeof MediaLogo>[0]) => {
   const { container } = render(<MediaLogo {...props} />)
   return container.querySelector('img') as HTMLImageElement
 }

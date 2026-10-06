@@ -10,7 +10,7 @@ interface FollowButtonProps {
   isFollowing: boolean
 }
 
-export function FollowButton({ username, isFollowing }: FollowButtonProps) {
+export const FollowButton = ({ username, isFollowing }: FollowButtonProps) => {
   const { user: currentUser } = useAuth()
   const follow = useFollowUser(username)
   const unfollow = useUnfollowUser(username)
@@ -44,4 +44,4 @@ export function FollowButton({ username, isFollowing }: FollowButtonProps) {
       Follow
     </DkButton>
   )
-}
+};

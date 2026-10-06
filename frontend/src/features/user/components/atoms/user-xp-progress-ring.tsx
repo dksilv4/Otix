@@ -8,13 +8,13 @@ interface XPProgressRingProps {
   children: React.ReactNode
 }
 
-export function XPProgressRing({
+export const XPProgressRing = ({
   progress,
   size,
   strokeWidth = 3,
   strokeColor = 'var(--primary)',
   children,
-}: XPProgressRingProps) {
+}: XPProgressRingProps) => {
   const [animProgress, setAnimProgress] = useState(0)
 
   useEffect(() => {
@@ -62,4 +62,4 @@ export function XPProgressRing({
       </div>
     </div>
   )
-}
+};

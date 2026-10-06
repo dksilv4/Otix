@@ -11,7 +11,7 @@ interface StarInputProps {
   className?: string
 }
 
-function StarInput({ value, onChange, size = "md", disabled = false, className }: StarInputProps) {
+const StarInput = ({ value, onChange, size = "md", disabled = false, className }: StarInputProps) => {
   const [hoveredScore, setHoveredScore] = useState(0)
   const [isHolding, setIsHolding] = useState(false)
   const [tooltipScore, setTooltipScore] = useState(0)
@@ -152,6 +152,6 @@ function StarInput({ value, onChange, size = "md", disabled = false, className }
       )}
     </div>
   )
-}
+};
 
 export { StarInput }

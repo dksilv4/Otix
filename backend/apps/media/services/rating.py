@@ -20,12 +20,18 @@ def my_rating(user_id: int, media_item_id: int) -> MediaItemRating | None:
 
 def upsert_rating(user: AbstractBaseUser, media_item_id: int, score: int) -> dict:
     """Create/update a rating and return the aggregate response payload."""
-    rating, _ = MediaItemRating.objects.update_or_create(
+    rating, created = MediaItemRating.objects.update_or_create(
         user=user,
         media_item_id=media_item_id,
         defaults={"score": score},
     )
     _recalc(media_item_id)
+    if created:
+        from apps.social.services.streak import update_login_streak
+        from apps.social.services.xp import RATING_SUBMIT, award_xp
+
+        award_xp(user.id, RATING_SUBMIT, reason="media_rating_created")
+        update_login_streak(user.id)
     aggregate = _aggregates(media_item_id)
     return {"score": rating.score, **aggregate}
 

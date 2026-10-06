@@ -53,7 +53,7 @@ const MEDIA_TYPE_LABELS: Record<GenreMediaType, string> = {
   game: 'Games',
 }
 
-export function GenrePage() {
+export const GenrePage = () => {
   const params = useParams({ strict: false }) as { genreId?: string }
   const search = useSearch({ strict: false }) as GenreSearchParams
   const navigate = useNavigate()
@@ -470,4 +470,4 @@ export function GenrePage() {
       )}
     </div>
   )
-}
+};

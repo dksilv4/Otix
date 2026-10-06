@@ -22,7 +22,7 @@ import {
  *    event is lost; instead it drops `PENDING_LOGIN_SYNC_KEY` which we consume
  *    on mount and fire once auth has resolved.
  */
-export function WatchlistSyncPrompt() {
+export const WatchlistSyncPrompt = () => {
   const { isAuthenticated } = useAuth()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -118,4 +118,4 @@ export function WatchlistSyncPrompt() {
       </div>
     </DkDialog>
   )
-}
+};

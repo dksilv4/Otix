@@ -33,12 +33,9 @@ const TYPE_OPTIONS: Array<{ id: MediaTypeFilter; label: string }> = [
   { id: 'game', label: 'Games' },
 ]
 
-function yearOf(item: MediaItemSummary | null): string | null {
-  if (!item?.releaseDate) return null
-  return item.releaseDate.slice(0, 4)
-}
+import { yearOf } from '@/features/discover/utils/decide'
 
-export function DecideWatchModal({ onClose, isExiting }: DecideWatchModalProps) {
+export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) => {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [mediaTypes, setMediaTypes] = useState<MediaTypeFilter[]>(['movie', 'show'])
   const [runtime, setRuntime] = useState<DecideRuntime | 'any'>('any')
@@ -420,4 +417,4 @@ export function DecideWatchModal({ onClose, isExiting }: DecideWatchModalProps) 
       </div>
     </DkDialog>
   )
-}
+};

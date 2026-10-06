@@ -15,7 +15,7 @@ interface DkTabsProps {
   className?: string
 }
 
-function DkTabs({ defaultValue, value: controlledValue, onValueChange, children, className }: DkTabsProps) {
+const DkTabs = ({ defaultValue, value: controlledValue, onValueChange, children, className }: DkTabsProps) => {
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue)
   const value = controlledValue ?? uncontrolledValue
   const onChange = onValueChange ?? setUncontrolledValue
@@ -25,9 +25,9 @@ function DkTabs({ defaultValue, value: controlledValue, onValueChange, children,
       <div className={className}>{children}</div>
     </TabsContext.Provider>
   )
-}
+};
 
-function DkTabList({ children, className }: { children: ReactNode; className?: string }) {
+const DkTabList = ({ children, className }: { children: ReactNode; className?: string }) => {
   return (
     <div
       role="tablist"
@@ -39,9 +39,9 @@ function DkTabList({ children, className }: { children: ReactNode; className?: s
       {children}
     </div>
   )
-}
+};
 
-function DkTab({ value, children, className }: { value: string; children: ReactNode; className?: string }) {
+const DkTab = ({ value, children, className }: { value: string; children: ReactNode; className?: string }) => {
   const ctx = useContext(TabsContext)
   if (!ctx) throw new Error('DkTab must be inside DkTabs')
   const isActive = ctx.value === value
@@ -63,9 +63,9 @@ function DkTab({ value, children, className }: { value: string; children: ReactN
       {children}
     </button>
   )
-}
+};
 
-function DkTabPanel({ value, children, className }: { value: string; children: ReactNode; className?: string }) {
+const DkTabPanel = ({ value, children, className }: { value: string; children: ReactNode; className?: string }) => {
   const ctx = useContext(TabsContext)
   if (!ctx) throw new Error('DkTabPanel must be inside DkTabs')
   if (ctx.value !== value) return null
@@ -75,6 +75,6 @@ function DkTabPanel({ value, children, className }: { value: string; children: R
       {children}
     </div>
   )
-}
+};
 
 export { DkTabs, DkTabList, DkTab, DkTabPanel }

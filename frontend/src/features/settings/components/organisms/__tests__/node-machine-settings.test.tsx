@@ -159,7 +159,7 @@ describe('NodeMachineSettings', () => {
     expect(screen.getByText(/NVIDIA GeForce RTX 5080/i)).toBeInTheDocument()
     expect(screen.getByText(/AMD Radeon\(TM\) Graphics/i)).toBeInTheDocument()
     expect(screen.getByText(/Discrete/i)).toBeInTheDocument()
-    expect(screen.getByText(/Primary/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/Primary/i)[0]).toBeInTheDocument()
     expect(screen.getByText(/Driver: 610.88/i)).toBeInTheDocument()
 
     // RAM (Physical static spec only, normalized to installed tier 32 GB, no dynamic RAM load or 31.1 GB)

@@ -10,13 +10,13 @@ export interface TokenizedTemplateDisplayProps {
   onTokenClick?: (tokenKey: string) => void
 }
 
-export function TokenizedTemplateDisplay({
+export const TokenizedTemplateDisplay = ({
   template,
   size = 'sm',
   className,
   interactive = false,
   onTokenClick,
-}: TokenizedTemplateDisplayProps) {
+}: TokenizedTemplateDisplayProps) => {
   const spans = useMemo(() => tokenizeTemplate(template), [template])
 
   const textSize = size === 'xs' ? 'text-[11px]' : size === 'sm' ? 'text-xs' : 'text-sm'
@@ -70,4 +70,4 @@ export function TokenizedTemplateDisplay({
       })}
     </div>
   )
-}
+};

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@auth/hooks/use-auth'
-import { Bookmark, ImageOff, Info, Loader2, Monitor, Moon, Scissors, ShieldAlert, Sun, X } from 'lucide-react'
+import { Bookmark, ImageOff, Info, Loader2, Scissors, ShieldAlert, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { mediaQueries } from '../../queries/media-queries'
 import { useToast } from '@ui/molecules/toast'
@@ -18,80 +18,24 @@ import {
 } from '@/features/admin'
 import { useMirroring, useSetMirroring } from '@/features/media/hooks/use-media-admin-settings'
 
-const ARTWORK_GROUPS: {
-  value: string
-  label: string
-  assetTypes: string[]
-  textless?: boolean
-}[] = [
-  { value: 'poster', label: 'Poster', assetTypes: ['poster', 'textless_poster'], textless: true },
-  { value: 'backdrop', label: 'Backdrop', assetTypes: ['backdrop', 'textless_backdrop'], textless: true },
-  { value: 'logo', label: 'Logo', assetTypes: ['logo'] },
-  { value: 'icon', label: 'Icon', assetTypes: ['icon'] },
-]
-
-const ASSET_TYPE_LABELS: Record<string, string> = {
-  poster: 'Poster',
-  textless_poster: 'Textless poster',
-  backdrop: 'Backdrop',
-  textless_backdrop: 'Textless backdrop',
-  logo: 'Logo',
-  icon: 'Icon',
-  screenshot: 'Screenshot',
-}
-
-const PORTRAIT = new Set(['poster', 'textless_poster', 'icon'])
-
-const CONTEXTS: ArtworkContext[] = ['general', 'dark', 'light']
-
-const CONTEXT_META: Record<ArtworkContext, { label: string; icon: typeof Sun; hint: string }> = {
-  general: {
-    label: 'General',
-    icon: Monitor,
-    hint: 'Served to every viewer, and the fallback for Dark and Light.',
-  },
-  dark: {
-    label: 'Dark',
-    icon: Moon,
-    hint: 'Served in Dark mode; falls back to General when no Dark pick is set.',
-  },
-  light: {
-    label: 'Light',
-    icon: Sun,
-    hint: 'Served in Light mode; falls back to General when no Light pick is set.',
-  },
-}
+import {
+  ARTWORK_GROUPS,
+  PORTRAIT,
+  CONTEXTS,
+  CONTEXT_META,
+  labelFor,
+  isContextActive,
+  aspectRatioOf,
+} from '../../utils/manage'
 
 const focusRing =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-0'
 
-function labelFor(typeOrAssetType: string): string {
-  return (
-    ARTWORK_GROUPS.find((g) => g.value === typeOrAssetType)?.label ??
-    ASSET_TYPE_LABELS[typeOrAssetType] ??
-    typeOrAssetType
-  )
-}
-
-function isContextActive(asset: MediaAsset, context: ArtworkContext): boolean {
-  if (asset.selectedContext === context) return true
-  if (context === 'general' && asset.selectedContext == null && asset.currentContexts.includes('general')) {
-    return true
-  }
-  return false
-}
-
-function Dot({ className }: { className?: string }) {
+const Dot = ({ className }: { className?: string }) => {
   return <span aria-hidden="true" className={cn('inline-block h-1.5 w-1.5 rounded-full', className)} />
-}
+};
 
-function aspectRatioOf(asset: MediaAsset): string | undefined {
-  const { width, height } = asset
-  if (width && height && width > 0 && height > 0) return `${width} / ${height}`
-  return undefined
-}
-
-function PreviewImage({ asset }: { asset: MediaAsset }) {
+const PreviewImage = ({ asset }: { asset: MediaAsset }) => {
   const [isLoading, setIsLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const ratio = aspectRatioOf(asset)
@@ -121,9 +65,9 @@ function PreviewImage({ asset }: { asset: MediaAsset }) {
       />
     </>
   )
-}
+};
 
-function AdminDenied({ onClose }: { onClose: () => void }) {
+const AdminDenied = ({ onClose }: { onClose: () => void }) => {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -140,7 +84,7 @@ function AdminDenied({ onClose }: { onClose: () => void }) {
       </button>
     </div>
   )
-}
+};
 
 export interface MediaManageModalProps {
   open?: boolean
@@ -150,7 +94,7 @@ export interface MediaManageModalProps {
   mediaId: string
 }
 
-export function MediaManageModal({ open, isExiting, onClose, mediaType, mediaId }: MediaManageModalProps) {
+export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId }: MediaManageModalProps) => {
   const { user } = useAuth()
   const { toast } = useToast()
   const mirroring = useMirroring(Boolean(user?.isAdmin))
@@ -728,4 +672,4 @@ export function MediaManageModal({ open, isExiting, onClose, mediaType, mediaId 
       </div>
     </div>
   )
-}
+};

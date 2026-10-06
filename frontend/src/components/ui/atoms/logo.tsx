@@ -23,7 +23,7 @@ const SNAKE_STROKE_WIDTH = 118
 const SNAKE_BORDER = 36
 const SNAKE_BORDER_COLOR = 'var(--background)'
 
-function DkLogo({ className = 'h-7', color, animateInfinity = false }: DkLogoProps) {
+const DkLogo = ({ className = 'h-7', color, animateInfinity = false }: DkLogoProps) => {
   const wrapRef = useRef<HTMLSpanElement | null>(null)
 
   useEffect(() => {
@@ -151,7 +151,7 @@ function DkLogo({ className = 'h-7', color, animateInfinity = false }: DkLogoPro
       <OtixLogoSvg className={cn(className, 'w-auto overflow-visible')} aria-hidden />
     </span>
   )
-}
+};
 
 export { DkLogo, DkLogo as Logo }
 export type { DkLogoProps }

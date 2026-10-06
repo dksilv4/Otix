@@ -1,4 +1,4 @@
-export function SeasonProgressBar({ watched, total }: { watched: number; total: number }) {
+export const SeasonProgressBar = ({ watched, total }: { watched: number; total: number }) => {
   const pct = total > 0 ? Math.round((watched / total) * 100) : 0
   return (
     <div className="flex items-center gap-2">
@@ -13,4 +13,4 @@ export function SeasonProgressBar({ watched, total }: { watched: number; total: 
       </span>
     </div>
   )
-}
+};

@@ -1,11 +1,16 @@
-// TODO: Review this file
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { applyAccentColor } from '@/lib/theme/accent'
+import {
+  type Theme,
+  type ThemeSetting,
+  THEME_STORAGE_KEY,
+  LAYOUT_STORAGE_KEY,
+  getInitialTheme,
+  getInitialLayoutTheme,
+  resolveTheme,
+} from '@/lib/theme/theme-utils'
 
-type Theme = 'light' | 'dark'
-export type ThemeSetting = Theme | 'system'
-
-const LAYOUT_STORAGE_KEY = 'otix-layout-theme'
+export type { Theme, ThemeSetting }
 
 const ThemeContext = createContext<{
   theme: ThemeSetting
@@ -21,32 +26,11 @@ const ThemeContext = createContext<{
   setLayoutTheme: () => {},
 })
 
-export function useTheme() {
+export const useTheme = () => {
   return useContext(ThemeContext)
 }
 
-const STORAGE_KEY = 'otix-theme'
-
-function getInitialTheme(): ThemeSetting {
-  if (typeof window === 'undefined') return 'system'
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
-  return 'system'
-}
-
-function getInitialLayoutTheme(): string {
-  if (typeof window === 'undefined') return 'default'
-  return localStorage.getItem(LAYOUT_STORAGE_KEY) ?? 'default'
-}
-
-function resolveTheme(setting: ThemeSetting): Theme {
-  if (setting === 'system') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-  return setting
-}
-
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<ThemeSetting>(getInitialTheme)
   const [resolvedTheme, setResolvedTheme] = useState<Theme>(() => resolveTheme(theme))
   const [layoutTheme, setLayoutThemeState] = useState<string>(getInitialLayoutTheme)
@@ -59,7 +43,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', resolvedTheme)
-    localStorage.setItem(STORAGE_KEY, theme)
+    localStorage.setItem(THEME_STORAGE_KEY, theme)
   }, [theme, resolvedTheme])
 
   useEffect(() => {
@@ -89,4 +73,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       {children}
     </ThemeContext.Provider>
   )
-}
+};

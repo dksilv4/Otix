@@ -34,7 +34,7 @@ interface Props {
 
 // ── Component ────────────────────────────────────────────────────
 
-export function MatchGameModal({ game, onClose, isExiting }: Props) {
+export const MatchGameModal = ({ game, onClose, isExiting }: Props) => {
   const queryClient = useQueryClient()
   const matchMutation = useMatchLocalGames()
   const syncMutation = useSyncLocalGames()
@@ -622,7 +622,7 @@ export function MatchGameModal({ game, onClose, isExiting }: Props) {
       </div>
     </DkDialog>
   )
-}
+};
 
 export { MatchGameModal as LauncherMatchGameModal }
 export default MatchGameModal

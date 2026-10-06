@@ -9,14 +9,9 @@ import type { ActionCallbacks } from '../../types'
 import { apiClient } from '@/lib/api/client'
 import { useQueryClient } from '@tanstack/react-query'
 import { showErrorToast, showToast } from '@ui/molecules/toast'
-import type { AxiosError } from 'axios'
+import { actionErrorMessage } from '../../utils'
 
-function actionErrorMessage(error: unknown, fallback: string): string {
-  const detail = (error as AxiosError<{ detail?: string }>)?.response?.data?.detail
-  return typeof detail === 'string' && detail.length > 0 ? detail : fallback
-}
-
-export function NotificationList() {
+export const NotificationList = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const hasSession = useHasSession()
   const markRead = useMarkRead()
@@ -105,4 +100,4 @@ export function NotificationList() {
       {isFetchingNextPage && <NotificationSkeleton count={3} />}
     </div>
   )
-}
+};

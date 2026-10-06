@@ -15,16 +15,16 @@ import { RatingsSection } from '@/features/review/organisms/ratings-section'
 
 // ── Sub-components ────────────────────────────────
 
-function StatBox({ label, value }: { label: string; value: string | number }) {
+const StatBox = ({ label, value }: { label: string; value: string | number }) => {
   return (
     <div className="rounded-2xl bg-white/5 px-4 py-3.5 text-center shadow-lg hover:bg-white/10 hover:-translate-y-0.5 transition-all duration-300 min-w-[110px] shrink-0">
       <div className="text-2xl font-black text-white tracking-tight whitespace-nowrap truncate">{value}</div>
       <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mt-1 whitespace-nowrap truncate">{label}</div>
     </div>
   )
-}
+};
 
-function StarRating({
+const StarRating = ({
   value,
   onChange,
   readonly,
@@ -32,7 +32,7 @@ function StarRating({
   value: number | null
   onChange?: (score: number) => void
   readonly?: boolean
-}) {
+}) => {
   const [hover, setHover] = useState(0)
   const active = hover || value || 0
 
@@ -66,11 +66,11 @@ function StarRating({
       {value != null && <span className="ml-1.5 text-xs text-muted-foreground">{value}/5</span>}
     </div>
   )
-}
+};
 
 // ── Page ──────────────────────────────────────────
 
-export function PeopleDetailPage() {
+export const PeopleDetailPage = () => {
   const params = useParams({ from: '/person/$personId' })
   const search = useSearch({ from: '/person/$personId' })
   const navigate = useNavigate()
@@ -357,4 +357,4 @@ export function PeopleDetailPage() {
 
     </div>
   )
-}
+};

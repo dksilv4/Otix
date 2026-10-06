@@ -11,7 +11,7 @@ import { apiClient } from '@/lib/api/client'
 import { extractErrorMessage } from '@auth/utils'
 import type { VerifyEmailPageState } from '@auth/types'
 
-export function VerifyEmailPage() {
+export const VerifyEmailPage = () => {
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as { token?: string; email?: string }
   const { isAuthenticated } = useAuth()
@@ -30,7 +30,7 @@ export function VerifyEmailPage() {
     return () => { cancelled = true }
   }, [search.token])
 
-  async function handleResend() {
+  const handleResend = async () => {
     setState('sending')
     try {
       await apiClient.post('/auth/verify-email/send')
@@ -147,4 +147,4 @@ export function VerifyEmailPage() {
       </AuthCard>
     </div>
   )
-}
+};

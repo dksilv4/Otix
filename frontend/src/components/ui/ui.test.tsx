@@ -163,7 +163,7 @@ describe('dk-ui molecules', () => {
   })
 
   it('shows and dismisses toasts', async () => {
-    function ToastTrigger() {
+    const ToastTrigger = () => {
       const { toast } = useToast()
       return (
         <div className="flex gap-2">
@@ -193,7 +193,7 @@ describe('dk-ui molecules', () => {
           </button>
         </div>
       )
-    }
+    };
 
     render(
       <DkToastProvider>

@@ -90,6 +90,11 @@ def create_list(user_id: int, name: str, description: str | None, is_public: boo
         description=description,
         is_public=is_public,
     )
+
+    from apps.social.services.xp import LIST_CREATE, award_xp
+
+    award_xp(user_id, LIST_CREATE, reason="list_created")
+
     return _with_empty_like_state(lst)
 
 

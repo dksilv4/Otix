@@ -19,7 +19,7 @@ interface ReviewsListSectionProps {
   className?: string
 }
 
-function ReviewCardSkeleton() {
+const ReviewCardSkeleton = () => {
   return (
     <div className="dk-review__skeleton">
       <div className="dk-review__skeleton-row">
@@ -33,9 +33,9 @@ function ReviewCardSkeleton() {
       <div className="dk-review__skeleton-line dk-review__skeleton-line--short" />
     </div>
   )
-}
+};
 
-function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectionProps) {
+const ReviewsListSection = ({ mediaType, mediaId, className }: ReviewsListSectionProps) => {
   const { user, isAuthenticated } = useAuth()
   const { openModal } = useModal()
   const [selectedTab, setSelectedTab] = useState<'reviews' | 'ratings' | null>(null)
@@ -390,6 +390,6 @@ function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectio
       )}
     </section>
   )
-}
+};
 
 export { ReviewsListSection }

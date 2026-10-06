@@ -19,7 +19,7 @@ import {
 } from "@/features/interaction/offline-watchlist"
 import { SkeletonGrid } from "./skeleton-grid"
 
-function OfflineWatchlistTab({ items }: { items: OfflineWatchlistItem[] }) {
+const OfflineWatchlistTab = ({ items }: { items: OfflineWatchlistItem[] }) => {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -70,9 +70,9 @@ function OfflineWatchlistTab({ items }: { items: OfflineWatchlistItem[] }) {
       </p>
     </>
   )
-}
+};
 
-export function MediaTabContent({ tab }: { tab: LibraryTab }) {
+export const MediaTabContent = ({ tab }: { tab: LibraryTab }) => {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(loadMoreRef, { margin: "0px 0px 800px 0px" })
   const offline = useOffline()
@@ -213,4 +213,4 @@ export function MediaTabContent({ tab }: { tab: LibraryTab }) {
       </div>
     </>
   )
-}
+};

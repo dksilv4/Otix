@@ -11,14 +11,14 @@ interface ContextMenuTriggerProps {
   disabled?: boolean
 }
 
-export function ContextMenuTrigger({
+export const ContextMenuTrigger = ({
   items,
   mediaType,
   data,
   children,
   className,
   disabled,
-}: ContextMenuTriggerProps) {
+}: ContextMenuTriggerProps) => {
   const menu = useOptionalMenuContext()
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressPos = useRef<{ x: number; y: number } | null>(null)
@@ -77,4 +77,4 @@ export function ContextMenuTrigger({
       {children}
     </div>
   )
-}
+};

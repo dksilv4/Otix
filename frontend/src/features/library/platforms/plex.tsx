@@ -17,9 +17,10 @@ import { DkDropdown } from "@ui/atoms/dropdown"
 import PlexIcon from "@/assets/provider-logos/plex.svg?react"
 import { registerPlatform } from "./index"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
+import { formatDaysAgo } from "../utils"
 import "./plex.scss"
 
-function SkeletonGrid() {
+const SkeletonGrid = () => {
   return (
     <MediaGrid>
       {Array.from({ length: 12 }).map((_, i) => (
@@ -30,19 +31,11 @@ function SkeletonGrid() {
       ))}
     </MediaGrid>
   )
-}
-
-function formatDaysAgo(unixTimestamp: number): string {
-  const days = Math.floor((Date.now() / 1000 - unixTimestamp) / 86400)
-  if (days <= 0) return "Today"
-  if (days === 1) return "1d ago"
-  if (days <= 14) return `${days}d ago`
-  return ""
-}
+};
 
 // ── Empty state ──
 
-function PlexEmptyState({ onScan, isScanning, scanResult, scanError }: PlatformEmptyStateProps) {
+const PlexEmptyState = ({ onScan, isScanning, scanResult, scanError }: PlatformEmptyStateProps) => {
   return (
     <div className="dk-library-plex__center-col">
       <div className="dk-library-plex__empty-icon">
@@ -75,7 +68,7 @@ function PlexEmptyState({ onScan, isScanning, scanResult, scanError }: PlatformE
       )}
     </div>
   )
-}
+};
 
 // ── Main content ──
 
@@ -85,7 +78,7 @@ type SyncProgress = {
   itemsTotal?: number
 }
 
-export function PlexTabContent() {
+export const PlexTabContent = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(loadMoreRef, { margin: "0px 0px 800px 0px" })
   const navigate = useNavigate()
@@ -343,11 +336,11 @@ export function PlexTabContent() {
       </div>
     </>
   )
-}
+};
 
 // ── Dashboard section ──
 
-function PlexOverviewModule({ expanded, onToggle }: { expanded?: boolean; onToggle?: () => void } = {}) {
+const PlexOverviewModule = ({ expanded, onToggle }: { expanded?: boolean; onToggle?: () => void } = {}) => {
   const navigate = useNavigate()
   const { data, isLoading } = useLibraryTab("plex")
   const { data: status } = usePlexStatus()
@@ -487,7 +480,7 @@ function PlexOverviewModule({ expanded, onToggle }: { expanded?: boolean; onTogg
       </AnimatePresence>
     </div>
   )
-}
+};
 // ── Register ──
 
 export const plexPlatform: PlatformDefinition = {

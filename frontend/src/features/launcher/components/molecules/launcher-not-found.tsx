@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Gamepad2 } from 'lucide-react'
 
-export function LauncherNotFound() {
+export const LauncherNotFound = () => {
   return (
     <div className="w-full h-full min-h-screen bg-[#0a0a0d] flex items-center justify-center">
       <div className="text-center space-y-4">
@@ -14,4 +14,4 @@ export function LauncherNotFound() {
       </div>
     </div>
   )
-}
+};

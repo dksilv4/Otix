@@ -19,7 +19,7 @@ interface MediaTypeBadgeProps {
   className?: string
 }
 
-export function MediaTypeBadge({ mediaType, className }: MediaTypeBadgeProps) {
+export const MediaTypeBadge = ({ mediaType, className }: MediaTypeBadgeProps) => {
   const Icon = MEDIA_ICONS[mediaType as keyof typeof MEDIA_ICONS]
   if (!Icon) return null
 
@@ -28,4 +28,4 @@ export function MediaTypeBadge({ mediaType, className }: MediaTypeBadgeProps) {
       <Icon className="h-3 w-3 text-white" />
     </span>
   )
-}
+};

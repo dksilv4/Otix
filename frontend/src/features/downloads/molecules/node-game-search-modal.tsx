@@ -67,7 +67,7 @@ export interface NodeGameSearchModalProps {
 
 export type ServerGameSearchModalProps = NodeGameSearchModalProps
 
-export function NodeGameSearchModal({
+export const NodeGameSearchModal = ({
   nodeId,
   nodeName = 'Node',
   serverId,
@@ -77,7 +77,7 @@ export function NodeGameSearchModal({
   onClose,
   onDownloadStarted,
   isExiting,
-}: NodeGameSearchModalProps) {
+}: NodeGameSearchModalProps) => {
   const effectiveId = nodeId ?? serverId
   const effectiveName = nodeName !== 'Node' ? nodeName : (serverName ?? 'Node')
   const { toast } = useToast()
@@ -491,57 +491,20 @@ export function NodeGameSearchModal({
       )}
     </DkDialog>
   )
-}
+};
 
 export const ServerGameSearchModal = NodeGameSearchModal
 
-export function normalizeReleaseKey(str: string): string {
-  return str.toLowerCase().replace(/[\s._-]+/g, ' ').trim()
-}
+import {
+  findReleaseQueueItem,
+  findReleaseHistoryItem,
+  kindLabel,
+  seederClass,
+} from '../utils'
 
-export function findReleaseQueueItem(
-  release: ServerProwlarrRelease,
-  queueItems: ServerSabnzbdQueueItem[],
-  trackedNzoId?: string,
-): ServerSabnzbdQueueItem | null {
-  if (trackedNzoId) {
-    const direct = queueItems.find((item) => item.nzo_id === trackedNzoId)
-    if (direct) return direct
-  }
-  const cleanTitle = normalizeReleaseKey(release.title)
-  if (!cleanTitle) return null
-  return (
-    queueItems.find((item) => {
-      if (item.nzo_id === release.guid) return true
-      const itemTitle = normalizeReleaseKey(item.filename)
-      if (!itemTitle) return false
-      return itemTitle === cleanTitle || itemTitle.includes(cleanTitle) || cleanTitle.includes(itemTitle)
-    }) || null
-  )
-}
+export { findReleaseQueueItem, findReleaseHistoryItem }
 
-export function findReleaseHistoryItem(
-  release: ServerProwlarrRelease,
-  historyItems: ServerDownloadHistoryItem[],
-  trackedNzoId?: string,
-): ServerDownloadHistoryItem | null {
-  if (trackedNzoId) {
-    const direct = historyItems.find((item) => item.nzo_id === trackedNzoId)
-    if (direct) return direct
-  }
-  const cleanTitle = normalizeReleaseKey(release.title)
-  if (!cleanTitle) return null
-  return (
-    historyItems.find((item) => {
-      if (item.nzo_id === release.guid) return true
-      const itemTitle = normalizeReleaseKey(item.title)
-      if (!itemTitle) return false
-      return itemTitle === cleanTitle || itemTitle.includes(cleanTitle) || cleanTitle.includes(itemTitle)
-    }) || null
-  )
-}
-
-function EditionBlock({
+const EditionBlock = ({
   group,
   queuedGuids,
   pendingGuid,
@@ -565,7 +528,7 @@ function EditionBlock({
   trackedNzoMap: Map<string, string>
   onQueue: (release: ServerProwlarrRelease, companionUpdates?: ServerProwlarrRelease[]) => void
   onCancelQueue: (nzoId: string, guid: string) => void
-}) {
+}) => {
   return (
     <section>
       {group.title ? (
@@ -591,9 +554,9 @@ function EditionBlock({
       ))}
     </section>
   )
-}
+};
 
-function PackBlock({
+const PackBlock = ({
   pack,
   queuedGuids,
   pendingGuid,
@@ -617,7 +580,7 @@ function PackBlock({
   trackedNzoMap: Map<string, string>
   onQueue: (release: ServerProwlarrRelease, companionUpdates?: ServerProwlarrRelease[]) => void
   onCancelQueue: (nzoId: string, guid: string) => void
-}) {
+}) => {
   const [updatesOpen, setUpdatesOpen] = useState(pack.updates.length > 0)
   const releaseCount = pack.releases.length
   const updateCount = pack.updates.length
@@ -694,9 +657,9 @@ function PackBlock({
       )}
     </div>
   )
-}
+};
 
-function EmptyState({
+const EmptyState = ({
   icon,
   title,
   body,
@@ -706,7 +669,7 @@ function EmptyState({
   title: string
   body: string
   tone?: 'default' | 'error'
-}) {
+}) => {
   return (
     <div className="flex min-h-[240px] flex-1 flex-col items-center justify-center gap-2 px-2 py-14 text-center">
       {icon}
@@ -716,9 +679,9 @@ function EmptyState({
       <p className="max-w-sm text-[12px] leading-relaxed text-white/40">{body}</p>
     </div>
   )
-}
+};
 
-function ReleaseRow({
+const ReleaseRow = ({
   release,
   kind,
   version,
@@ -746,7 +709,7 @@ function ReleaseRow({
   isHistoryCompleted?: boolean
   onQueue: () => void
   onCancelQueue?: () => void
-}) {
+}) => {
   const badges = extractReleaseBadges(release.title)
   const protocolBadge = getProtocolBadgeInfo(release.protocol)
   const cleaned = cleanReleaseTitle(release.title)
@@ -936,32 +899,5 @@ function ReleaseRow({
       </div>
     </div>
   )
-}
+};
 
-function kindLabel(kind?: 'game' | 'update' | 'dlc' | 'other', version?: string | null) {
-  if (kind === 'update') {
-    return {
-      label: version ? `Update ${version}` : 'Update',
-      className: 'bg-sky-500/15 text-sky-300 border-sky-400/30',
-    }
-  }
-  if (kind === 'dlc') {
-    return {
-      label: 'DLC',
-      className: 'bg-violet-500/15 text-violet-300 border-violet-400/30',
-    }
-  }
-  if (kind === 'game') {
-    return {
-      label: version ? `Game v${version}` : 'Game',
-      className: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30',
-    }
-  }
-  return null
-}
-
-function seederClass(seeders: number) {
-  if (seeders >= 20) return 'text-emerald-400'
-  if (seeders >= 5) return 'text-amber-400'
-  return 'text-white/45'
-}

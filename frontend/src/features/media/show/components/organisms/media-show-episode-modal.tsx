@@ -18,7 +18,7 @@ interface EpisodeModalProps {
   seasonNumber?: number
 }
 
-export function EpisodeModal({
+export const EpisodeModal = ({
   episode,
   seasonPoster,
   sourceRect,
@@ -27,7 +27,7 @@ export function EpisodeModal({
   showId,
   showTitle,
   seasonNumber,
-}: EpisodeModalProps) {
+}: EpisodeModalProps) => {
   const { streamEpisode } = useStreamEpisode()
   const thumbRef = useRef<HTMLDivElement>(null)
   const [targetRect, setTargetRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null)
@@ -196,4 +196,4 @@ export function EpisodeModal({
       )}
     </AnimatePresence>
   )
-}
+};

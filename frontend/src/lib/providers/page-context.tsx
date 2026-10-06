@@ -11,7 +11,7 @@ const PageMetaContext = createContext<PageMeta>({
   setNavLogo: () => {},
 })
 
-export function PageMetaProvider({ children }: { children: ReactNode }) {
+export const PageMetaProvider = ({ children }: { children: ReactNode }) => {
   const [navLogo, setNavLogo] = useState<string | null>(null)
 
   return (
@@ -19,8 +19,8 @@ export function PageMetaProvider({ children }: { children: ReactNode }) {
       {children}
     </PageMetaContext.Provider>
   )
-}
+};
 
-export function usePageMeta() {
+export const usePageMeta = () => {
   return useContext(PageMetaContext)
 }

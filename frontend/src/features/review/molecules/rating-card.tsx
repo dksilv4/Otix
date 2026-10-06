@@ -12,19 +12,9 @@ interface RatingCardProps {
   className?: string
 }
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  const now = new Date()
-  const diff = now.getTime() - d.getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  if (days < 1) return 'Today'
-  if (days < 2) return 'Yesterday'
-  if (days < 7) return `${days}d ago`
-  if (days < 365) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
+import { formatDate } from '../utils'
 
-export function RatingCard({ rating, isOwn, onEdit, className }: RatingCardProps) {
+export const RatingCard = ({ rating, isOwn, onEdit, className }: RatingCardProps) => {
   const username = rating.user?.username || 'Anonymous'
   const initial = username.charAt(0).toUpperCase()
 
@@ -85,4 +75,4 @@ export function RatingCard({ rating, isOwn, onEdit, className }: RatingCardProps
       </div>
     </div>
   )
-}
+};

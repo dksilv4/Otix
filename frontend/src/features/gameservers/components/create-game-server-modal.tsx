@@ -16,12 +16,12 @@ interface CreateGameServerModalProps {
   initialGameTitle?: string
 }
 
-export function CreateGameServerModal({
+export const CreateGameServerModal = ({
   isOpen,
   onClose,
   initialMediaId,
   initialGameTitle = '',
-}: CreateGameServerModalProps) {
+}: CreateGameServerModalProps) => {
   const { toast } = useToast()
   const createMutation = useCreateGameServer()
 
@@ -387,4 +387,4 @@ export function CreateGameServerModal({
       </form>
     </DkDialog>
   )
-}
+};

@@ -7,7 +7,7 @@ import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { useServerExplorer } from '@/features/downloads/use-server-explorer'
 import { normalizeExplorerBrowse, parseBreadcrumbs, sortExplorerEntries } from '@/features/downloads/server-explorer-utils'
 
-export function FolderPickerModal({
+export const FolderPickerModal = ({
   initialServerId,
   initialPath,
   onSelect,
@@ -19,7 +19,7 @@ export function FolderPickerModal({
   onSelect: (path: string) => void
   onClose: () => void
   isExiting?: boolean
-}) {
+}) => {
   const { data: servers = [] } = useGameServers()
   const [selectedServerId, setSelectedServerId] = useState<number | undefined>(
     initialServerId ?? servers[0]?.id,
@@ -203,4 +203,4 @@ export function FolderPickerModal({
       )}
     </DkDialog>
   )
-}
+};

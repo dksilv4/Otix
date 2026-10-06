@@ -6,7 +6,7 @@ import { calendarQueries } from '../queries/calendar-queries'
 import { CalendarGrid } from '../components/organisms/calendar-grid'
 import { Helmet } from 'react-helmet-async'
 
-export function CalendarPage() {
+export const CalendarPage = () => {
   const { data: events, isLoading, isError, refetch } = useQuery(calendarQueries.events())
 
   const today = new Date()
@@ -101,4 +101,4 @@ export function CalendarPage() {
       )}
     </div>
   )
-}
+};

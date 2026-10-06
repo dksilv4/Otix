@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { DriveRow } from '@/features/launcher/components/atoms/launcher-drive-row'
+import { extractDrive } from '@/features/launcher/utils'
 
 interface DiskInfo {
   drive: string
@@ -12,20 +13,7 @@ interface DiskInfo {
   free: number
 }
 
-function extractDrive(path: string): string {
-  // Windows: "C:\Games\..." → "C:"
-  const win = path.match(/^([A-Za-z]:)/)
-  if (win) return win[1]
-  // UNC: "\\server\share\..." → store the share root
-  const unc = path.match(/^(\\\\[^\\]+\\[^\\]+)/)
-  if (unc) return unc[1]
-  // Unix absolute: "/mnt/games/..." → "/mnt/games"
-  const unix = path.match(/^(\/[^/]+\/[^/]+)/)
-  if (unix) return unix[1]
-  return ''
-}
-
-export function DiskSpaceWidget({ id }: { id?: string }) {
+export const DiskSpaceWidget = ({ id }: { id?: string }) => {
   const { isDesktop } = useDesktopPlatform()
   const [drives, setDrives] = useState<DiskInfo[]>([])
   const [gameDrives, setGameDrives] = useState<Set<string>>(new Set())
@@ -119,4 +107,4 @@ export function DiskSpaceWidget({ id }: { id?: string }) {
       ))}
     </div>
   )
-}
+};

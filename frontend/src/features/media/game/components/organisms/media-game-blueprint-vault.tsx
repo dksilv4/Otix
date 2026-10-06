@@ -28,7 +28,7 @@ interface Props {
   onViewDetail: (blueprint: ParsedBlueprint) => void
 }
 
-export function BlueprintVault({ pluginId, onViewDetail }: Props) {
+export const BlueprintVault = ({ pluginId, onViewDetail }: Props) => {
   const [blueprints, setBlueprints] = useState<ParsedBlueprint[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +44,7 @@ export function BlueprintVault({ pluginId, onViewDetail }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    async function fetchBlueprints() {
+    const fetchBlueprints = async () => {
       const api = desktopAPI as Record<string, unknown> | undefined
       if (!api?.plugin || typeof api.plugin !== 'object') return
       const plugin = api.plugin as Record<string, unknown>
@@ -244,4 +244,4 @@ export function BlueprintVault({ pluginId, onViewDetail }: Props) {
       )}
     </div>
   )
-}
+};

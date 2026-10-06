@@ -27,7 +27,7 @@ const RELEASE_KIND_BADGE: Record<string, { label: string; className: string }> =
   episode: { label: 'Episode airs', className: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300' },
 }
 
-export const CalendarEventRow = memo(function CalendarEventRow({ event }: CalendarEventRowProps) {
+export const CalendarEventRow = memo(({ event }: CalendarEventRowProps) => {
   const navigate = useNavigate()
   const sourceBadge = EVENT_BADGE[event.eventType] ?? EVENT_BADGE.watchlist_release
   const kindBadge =

@@ -10,14 +10,9 @@ interface RatingsSectionProps {
   className?: string
 }
 
-function scoreColor(score: number): { scoreClass: string; glowClass: string } {
-  if (score >= 80) return { scoreClass: "dk-review-ratings__score--positive", glowClass: "dk-review-ratings__glow--positive" }
-  if (score >= 60) return { scoreClass: "dk-review-ratings__score--medium", glowClass: "dk-review-ratings__glow--medium" }
-  if (score >= 40) return { scoreClass: "dk-review-ratings__score--low", glowClass: "dk-review-ratings__glow--low" }
-  return { scoreClass: "dk-review-ratings__score--critical", glowClass: "dk-review-ratings__glow--critical" }
-}
+import { ratingsScoreColor as scoreColor } from "../utils"
 
-function StarRow({ count, filled }: { count: number; filled: number }) {
+const StarRow = ({ count, filled }: { count: number; filled: number }) => {
   return (
     <div className="dk-review-ratings__stars">
       {Array.from({ length: count }).map((_, i) => {
@@ -39,9 +34,9 @@ function StarRow({ count, filled }: { count: number; filled: number }) {
       })}
     </div>
   )
-}
+};
 
-function RatingsSection({ overallRating, overallRatingSource, ratingCount, className }: RatingsSectionProps) {
+const RatingsSection = ({ overallRating, overallRatingSource, ratingCount, className }: RatingsSectionProps) => {
   const hasRating = overallRating != null
   const rating = overallRating ?? 0
   const colors = hasRating
@@ -106,6 +101,6 @@ function RatingsSection({ overallRating, overallRatingSource, ratingCount, class
       </div>
     </section>
   )
-}
+};
 
 export { RatingsSection }

@@ -13,6 +13,7 @@ import {
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { getDesktopAPI, hasDesktopAPI, type DiskInfo } from "@/lib/desktop/api"
 import { useToast } from "@ui/molecules/toast"
+import { formatElapsed } from "@/features/launcher/utils"
 
 interface ModernHeaderProps {
   activeTab: "dashboard" | "library"
@@ -22,24 +23,13 @@ interface ModernHeaderProps {
   onOpenScan?: () => void
 }
 
-function formatElapsed(ms: number): string {
-  const totalSec = Math.floor(ms / 1000)
-  const hours = Math.floor(totalSec / 3600)
-  const minutes = Math.floor((totalSec % 3600) / 60)
-  const seconds = totalSec % 60
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-  }
-  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-}
-
-export function ModernHeader({
+export const ModernHeader = ({
   activeTab,
   setActiveTab,
   searchQuery,
   setSearchQuery,
   onOpenScan: _onOpenScan,
-}: ModernHeaderProps) {
+}: ModernHeaderProps) => {
   const navigate = useNavigate()
   const isDesktop = hasDesktopAPI()
   const { runningGame, elapsedMs } = useRunningGame()
@@ -225,4 +215,4 @@ export function ModernHeader({
       </div>
     </header>
   )
-}
+};

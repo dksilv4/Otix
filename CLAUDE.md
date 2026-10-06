@@ -1,3 +1,7 @@
+## Multi-agent guideline synchronization
+
+Whenever `CLAUDE.md` is updated or modified, all instruction and configuration files read by AI coding agents (`AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursorrules`, `.windsurfrules`) must also be updated and/or created to stay in complete parity. This ensures all agents operate under identical project preferences and rules.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
@@ -29,10 +33,9 @@ Frontend code must read and write camelCase (`displayName`, `authUrl`, `totalInE
 
 ## Frontend component files
 
-Frontend component files (`.tsx` under components/pages/etc.) must only contain component functions and may only export components.
-
-Do not define or export utility helpers, formatters, parsers, constants bags, or other non-component logic in a component file. Put those in:
-
-- the feature’s utils file or folder (`frontend/src/features/<feature>/utils.ts` or `frontend/src/features/<feature>/utils/`), or
-- the shared utils folder (`frontend/src/lib/utils/`) when the helper is cross-feature.
-
+- **Arrow functions only:** All frontend React components must be defined as arrow functions (`export const ComponentName = (...) => { ... };` or `const ComponentName = (...) => { ... };`). Never use function declarations (`function ComponentName(...)` or `export default function ComponentName(...)`). For generic components, use `const ComponentName = <T extends ...>(...) => { ... };` (or `<T,>` if single bare type parameter).
+- **No helper functions in component files:** Frontend component files (`.tsx` under components/pages/features/etc.) must strictly contain React component definitions and their component-specific props/types, and may only export components.
+- Do not define or export utility helpers, formatters, parsers, calculations, constants bags, or other non-component logic in a component file. Put those in:
+  - the feature’s utils file or folder (`frontend/src/features/<feature>/utils.ts` or `frontend/src/features/<feature>/utils/`), or
+  - the shared utils folder (`frontend/src/lib/utils/`) when the helper is cross-feature.
+- Custom hooks must be placed in dedicated hook files (under a `hooks/` directory or hook module), not defined alongside components in component files.

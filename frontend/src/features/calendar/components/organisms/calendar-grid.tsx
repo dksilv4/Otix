@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { CalendarEvent } from '../../types'
 import { CalendarDayCell } from '../molecules/calendar-day-cell'
 import { CalendarEventRow } from '../molecules/calendar-event-row'
+import { DAYS, getMonthGrid } from '../../utils/grid'
 
 interface CalendarGridProps {
   events: CalendarEvent[]
@@ -9,20 +10,7 @@ interface CalendarGridProps {
   month: number
 }
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-function getMonthGrid(year: number, month: number): (number | null)[] {
-  const firstDay = new Date(year, month, 1).getDay()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const grid: (number | null)[] = []
-  for (let i = 0; i < firstDay; i++) grid.push(null)
-  for (let d = 1; d <= daysInMonth; d++) grid.push(d)
-  // Pad to complete the last week
-  while (grid.length % 7 !== 0) grid.push(null)
-  return grid
-}
-
-export function CalendarGrid({ events, year, month }: CalendarGridProps) {
+export const CalendarGrid = ({ events, year, month }: CalendarGridProps) => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const todayStr = useMemo(() => {
     const t = new Date()
@@ -106,4 +94,4 @@ export function CalendarGrid({ events, year, month }: CalendarGridProps) {
       )}
     </div>
   )
-}
+};

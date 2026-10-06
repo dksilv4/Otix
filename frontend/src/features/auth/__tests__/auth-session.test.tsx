@@ -24,7 +24,7 @@ vi.mock('@/lib/query/client', () => ({
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
-function createWrapper() {
+const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })

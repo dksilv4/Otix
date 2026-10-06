@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { useAuth } from "@/lib/providers/auth"
 import { getPlatform } from "../platforms"
 
-export function LibraryIntegrationSteamSection() {
+export const LibraryIntegrationSteamSection = () => {
   const navigate = useNavigate()
   const { user, isLoading: authLoading } = useAuth()
 
@@ -20,4 +20,4 @@ export function LibraryIntegrationSteamSection() {
   if (!platformDef) return null
   const PlatformContent = platformDef.Content
   return <PlatformContent />
-}
+};

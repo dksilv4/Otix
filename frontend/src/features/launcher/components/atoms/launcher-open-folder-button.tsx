@@ -6,7 +6,7 @@ import {useLocalGame} from "@/features/launcher/data/game-queries";
 
 
 
-export function OpenFolderButton() {
+export const OpenFolderButton = () => {
   const { toast } = useToast()
   const {gameId} = useParams({ strict: false })
   const { data: g } = useLocalGame(gameId)
@@ -33,4 +33,4 @@ export function OpenFolderButton() {
       <FolderOpen size={16} />
     </button>
   )
-}
+};

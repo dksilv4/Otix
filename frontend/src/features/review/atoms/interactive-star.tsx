@@ -19,7 +19,7 @@ const sizeMap = {
   lg: "w-9 h-9",
 }
 
-function InteractiveStar({
+const InteractiveStar = ({
   starIndex,
   currentScore,
   hoveredScore,
@@ -27,7 +27,7 @@ function InteractiveStar({
   onPointerEnter,
   onPointerMove,
   size = "md",
-}: InteractiveStarProps) {
+}: InteractiveStarProps) => {
   const iconSize = sizeMap[size]
   const activeScore = hoveredScore || currentScore
 
@@ -78,6 +78,6 @@ function InteractiveStar({
       )}
     </span>
   )
-}
+};
 
 export { InteractiveStar }

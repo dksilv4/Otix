@@ -25,12 +25,12 @@ interface PeopleTimelineFiltersProps {
   onRoleChange: (value: string) => void
 }
 
-export function PeopleTimelineFilters({
+export const PeopleTimelineFilters = ({
   mediaTypeFilter,
   onMediaTypeChange,
   roleFilter,
   onRoleChange,
-}: PeopleTimelineFiltersProps) {
+}: PeopleTimelineFiltersProps) => {
   return (
     <div className="flex items-center gap-2">
       <DkDropdown
@@ -49,4 +49,4 @@ export function PeopleTimelineFilters({
       />
     </div>
   )
-}
+};

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { DkDropdown, type DkDropdownOption } from '@ui/atoms/dropdown'
+import { DkDropdown } from '@ui/atoms/dropdown'
 import { DkButton } from '@ui/atoms/button'
 import { DkSwitch } from '@ui/atoms/switch'
 import { DkDialog } from '@ui/molecules/dialog'
@@ -15,36 +15,14 @@ import { useToast } from '@ui/molecules/toast'
 import { queryClient } from '@/lib/query/client'
 import { mediaKeys } from '@media/queries/media-keys'
 import { mediaQueries, useUnblockRecommendation } from '@media/queries/media-queries'
+import {
+  DEFAULT_LANDING_PAGE_KEY as STORAGE_KEY,
+  LANDING_PAGE_OPTIONS,
+  readDefaultPage,
+  formatResetAt,
+} from '../utils/general'
 
-const STORAGE_KEY = 'otix:default-landing-page'
-
-const LANDING_PAGE_OPTIONS = [
-  { value: 'discover', label: 'Discover' },
-  { value: 'launcher', label: 'Launcher' },
-  { value: 'library', label: 'Library' },
-] satisfies readonly DkDropdownOption[]
-
-function readDefaultPage(): string {
-  try {
-    return localStorage.getItem(STORAGE_KEY) || 'discover'
-  } catch {
-    return 'discover'
-  }
-}
-
-function formatResetAt(value: string | null | undefined): string | null {
-  if (!value) return null
-  try {
-    return new Date(value).toLocaleString(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    })
-  } catch {
-    return null
-  }
-}
-
-export function SettingsGeneralPage() {
+export const SettingsGeneralPage = () => {
   const [defaultPage, setDefaultPage] = useState(readDefaultPage)
   const [showSteamPacks, setShowSteamPacks] = useSteamFreePacksSetting()
   const [cleared, setCleared] = useState(false)
@@ -359,4 +337,4 @@ export function SettingsGeneralPage() {
       </SettingsCard>
     </div>
   )
-}
+};

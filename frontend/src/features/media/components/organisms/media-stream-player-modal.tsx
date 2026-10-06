@@ -28,40 +28,9 @@ import {
 import { useMediaStreamPlayer } from '../../hooks/use-media-stream-player'
 import { cn } from '@/lib/utils'
 
-function safePlay(el: HTMLVideoElement | null) {
-  if (!el) return
-  try {
-    const res = el.play()
-    if (res && typeof res.catch === 'function') {
-      res.catch(() => {})
-    }
-  } catch {
-    // Ignore error
-  }
-}
+import { safePlay, safePause, formatSeconds } from '../../utils/player'
 
-function safePause(el: HTMLVideoElement | null) {
-  if (!el) return
-  try {
-    el.pause()
-  } catch {
-    // Ignore error
-  }
-}
-
-function formatSeconds(sec: number): string {
-  if (isNaN(sec) || sec < 0) return '0:00'
-  const totalSec = Math.floor(sec)
-  const h = Math.floor(totalSec / 3600)
-  const m = Math.floor((totalSec % 3600) / 60)
-  const s = totalSec % 60
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  }
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
-export function MediaStreamPlayerModal() {
+export const MediaStreamPlayerModal = () => {
   const {
     session,
     isOpen,
@@ -1186,4 +1155,4 @@ export function MediaStreamPlayerModal() {
     </AnimatePresence>,
     document.body
   )
-}
+};

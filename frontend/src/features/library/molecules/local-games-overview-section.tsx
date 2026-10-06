@@ -3,7 +3,7 @@ import { isDesktop } from "@/lib/desktop"
 import { useLocalGames } from "@/features/launcher/data/game-queries"
 import { GameCard } from "@/features/launcher/components/molecules/game-card"
 
-export function LocalGamesOverviewSection() {
+export const LocalGamesOverviewSection = () => {
   const navigate = useNavigate()
   const { data: games = [] } = useLocalGames({ sortBy: 'last_played_at', sortDir: 'desc' })
 
@@ -48,4 +48,4 @@ export function LocalGamesOverviewSection() {
       </div>
     </div>
   )
-}
+};

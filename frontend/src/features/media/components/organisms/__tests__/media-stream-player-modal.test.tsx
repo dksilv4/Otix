@@ -31,14 +31,14 @@ const mockSession: StreamPlaybackSession = {
   durationMs: 7200000,
 }
 
-function TestPlayerTrigger() {
+const TestPlayerTrigger = () => {
   const { openStream } = useMediaStreamPlayer()
   return (
     <button type="button" onClick={() => openStream(mockSession)}>
       Open Stream
     </button>
   )
-}
+};
 
 describe('MediaStreamPlayerModal', () => {
   beforeEach(() => {

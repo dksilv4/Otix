@@ -8,7 +8,7 @@ interface MediaSpecsCardProps {
   className?: string
 }
 
-export function MediaSpecsCard({ detail, className = '' }: MediaSpecsCardProps) {
+export const MediaSpecsCard = ({ detail, className = '' }: MediaSpecsCardProps) => {
   const movie = detail.movie
   const game = detail.game
   const companies = Array.isArray(detail?.involvedCompanies) ? detail.involvedCompanies : []
@@ -159,4 +159,4 @@ export function MediaSpecsCard({ detail, className = '' }: MediaSpecsCardProps) 
       )}
     </div>
   )
-}
+};

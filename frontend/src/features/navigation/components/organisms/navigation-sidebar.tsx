@@ -7,7 +7,7 @@ import { NavLink } from "@navigation/components/atoms/navigation-link"
 import { useDesktopPlatform } from "@/lib/desktop/platform"
 
 /** Animated floating dropdown menu for app navigation, positioned based on screen and route. */
-export function MenuDropdown() {
+export const MenuDropdown = () => {
   const { isOpen, close } = useNavigation()
   const location = useLocation()
   const ref = useRef<HTMLDivElement>(null)
@@ -63,4 +63,4 @@ export function MenuDropdown() {
       )}
     </AnimatePresence>
   )
-}
+};

@@ -37,7 +37,7 @@ def upsert_review(
     now = timezone.now()
     cooldown_until = now + timedelta(minutes=REVIEW_COOLDOWN_MINUTES)
     if existing is None:
-        return Review.objects.create(
+        created = Review.objects.create(
             user=user,
             media_item_id=media_item_id,
             title=title,
@@ -46,6 +46,18 @@ def upsert_review(
             is_private=is_private,
             cooldown_until=cooldown_until,
         )
+        from apps.social.services.streak import update_login_streak, update_review_streak
+        from apps.social.services.xp import (
+            REVIEW_SCORE_ONLY,
+            REVIEW_WITH_CONTENT,
+            award_xp,
+        )
+
+        amount = REVIEW_WITH_CONTENT if content and content.strip() else REVIEW_SCORE_ONLY
+        award_xp(user.id, amount, reason="review_created")
+        update_review_streak(user.id)
+        update_login_streak(user.id)
+        return created
     in_cooldown = existing.cooldown_until is not None and existing.cooldown_until > now
     if in_cooldown:
         existing.title = title

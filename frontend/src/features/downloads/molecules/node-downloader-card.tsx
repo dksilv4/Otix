@@ -14,7 +14,7 @@ import { useServerUsenetConfig, useTestSabnzbd } from '../use-server-usenet'
 import { isSabnzbdConfigured } from '../usenet-utils'
 import { ServerSabnzbdSettingsModal } from './server-sabnzbd-settings-modal'
 
-export function NodeDownloaderCard({ server }: { server: GameServer }) {
+export const NodeDownloaderCard = ({ server }: { server: GameServer }) => {
   const { openModal } = useModal()
   const { data: usenetConfig, isLoading: configLoading } = useServerUsenetConfig(server.id)
   const testSabMutation = useTestSabnzbd(server.id)
@@ -123,4 +123,4 @@ export function NodeDownloaderCard({ server }: { server: GameServer }) {
       )}
     </div>
   )
-}
+};

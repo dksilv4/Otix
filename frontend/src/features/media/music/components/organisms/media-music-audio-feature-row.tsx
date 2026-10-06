@@ -1,4 +1,4 @@
-export function AudioFeatureRow({
+export const AudioFeatureRow = ({
   featKey,
   label,
   features,
@@ -6,7 +6,7 @@ export function AudioFeatureRow({
   featKey: string
   label: string
   features: Record<string, unknown>
-}) {
+}) => {
   const raw = features[featKey]
   if (raw == null || typeof raw !== 'number') return null
 
@@ -33,4 +33,4 @@ export function AudioFeatureRow({
       </div>
     </div>
   )
-}
+};

@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { usePopularGames } from '@/features/launcher/data/queries'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 
-export function LauncherSlidePicker() {
+export const LauncherSlidePicker = () => {
   const { data: popularGames = [] } = usePopularGames()
   const { settings } = useLauncherSettings()
   const navigate = useNavigate()
@@ -17,4 +17,4 @@ export function LauncherSlidePicker() {
   }, [popularGames, navigate, settings.defaultPage])
 
   return null
-}
+};

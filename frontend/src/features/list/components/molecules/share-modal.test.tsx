@@ -17,13 +17,13 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 })
 
-function renderWithClient(ui: React.ReactElement) {
+const renderWithClient = (ui: React.ReactElement) => {
   return render(
     <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
   )
 }
 
-function makeDetail(overrides: Partial<UserListDetailOut> = {}): UserListDetailOut {
+const makeDetail = (overrides: Partial<UserListDetailOut> = {}): UserListDetailOut  => {
   return {
     id: "list-42",
     userId: "user-1",

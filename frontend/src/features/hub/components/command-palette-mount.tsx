@@ -14,7 +14,7 @@ const CommandPalette = lazy(() =>
  * registers the bundled providers, and portals the overlay to document.body.
  * Gate on the 'hub' feature flag so it can be flipped off.
  */
-export function CommandPaletteMount() {
+export const CommandPaletteMount = () => {
   const enabled = useFeature('hub')
   const palette = useCommandPalette()
   const [hasOpened, setHasOpened] = useState(false)
@@ -38,4 +38,4 @@ export function CommandPaletteMount() {
     </Suspense>,
     document.body,
   )
-}
+};

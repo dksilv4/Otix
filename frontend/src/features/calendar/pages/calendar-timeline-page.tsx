@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async'
 import { calendarQueries } from '../queries/calendar-queries'
 import { CalendarTimeline } from '../components/organisms/calendar-timeline'
 
-export function CalendarTimelinePage() {
+export const CalendarTimelinePage = () => {
   const { data: events, isLoading, isError, refetch } = useQuery(calendarQueries.events())
 
   return (
@@ -39,4 +39,4 @@ export function CalendarTimelinePage() {
       )}
     </div>
   )
-}
+};

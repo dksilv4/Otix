@@ -9,7 +9,7 @@ import {
 } from '../node-settings'
 import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
 
-export function SettingsNodeDetailPage() {
+export const SettingsNodeDetailPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams({ strict: false }) as { nodeId?: string }
@@ -58,4 +58,4 @@ export function SettingsNodeDetailPage() {
       onDisconnectSuccess={handleClose}
     />
   )
-}
+};

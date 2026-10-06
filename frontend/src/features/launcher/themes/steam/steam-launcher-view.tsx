@@ -27,7 +27,7 @@ import { PLATFORM_LABELS } from "@/constants/games"
 import { useAuth } from "@/lib/providers/auth"
 import type { LocalGame } from "@/features/launcher/types"
 
-export function SteamLauncherView() {
+export const SteamLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
   const { data: localGames = [] } = useLauncherVisibleGames()
@@ -472,4 +472,4 @@ export function SteamLauncherView() {
       />
     </div>
   )
-}
+};

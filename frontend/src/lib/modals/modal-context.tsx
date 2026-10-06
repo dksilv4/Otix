@@ -23,7 +23,7 @@ const ModalContext = createContext<ModalContextValue>({
 const EXIT_DURATION = 300
 let nextId = 0
 
-export function ModalProvider({ children }: { children: ReactNode }) {
+export const ModalProvider = ({ children }: { children: ReactNode }) => {
   const [modals, setModals] = useState<ModalInstance[]>([])
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
@@ -63,8 +63,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
       {children}
     </ModalContext.Provider>
   )
-}
+};
 
-export function useModal() {
+export const useModal = () => {
   return useContext(ModalContext)
 }

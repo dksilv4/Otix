@@ -17,6 +17,7 @@ import {
   xToDate,
   xToDays,
   zoomStopsForViewport,
+  unionRange,
 } from '../../utils/timeline-scale'
 import { waveOffsetY } from '../../utils/timeline-wave'
 import {
@@ -45,17 +46,7 @@ const CULL_PAD = 480
 const MAX_CANVAS_PX = 480_000
 const INITIAL_STOPS = zoomStopsForViewport(960)
 
-function unionRange(
-  a: { start: Date; end: Date },
-  b: { start: Date; end: Date }
-): { start: Date; end: Date } {
-  return {
-    start: a.start < b.start ? a.start : b.start,
-    end: a.end > b.end ? a.end : b.end,
-  }
-}
-
-export function CalendarTimeline({ events }: CalendarTimelineProps) {
+export const CalendarTimeline = ({ events }: CalendarTimelineProps) => {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [viewportWidth, setViewportWidth] = useState(0)
   const zoomStops = useMemo(
@@ -545,9 +536,9 @@ export function CalendarTimeline({ events }: CalendarTimelineProps) {
       )}
     </div>
   )
-}
+};
 
-function Legend() {
+const Legend = () => {
   return (
     <div className="hidden items-center gap-2 sm:flex">
       {(['movie', 'show', 'game'] as const).map((k) => (
@@ -567,15 +558,15 @@ function Legend() {
       </span>
     </div>
   )
-}
+};
 
-function ClusterDetailPanel({
+const ClusterDetailPanel = ({
   cluster,
   onClose,
 }: {
   cluster: TimelineCluster
   onClose: () => void
-}) {
+}) => {
   const heading =
     cluster.grain === 'hour'
       ? format(cluster.date, 'EEE, MMM d · HH:mm')
@@ -612,4 +603,4 @@ function ClusterDetailPanel({
       </div>
     </div>
   )
-}
+};

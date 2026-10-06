@@ -15,13 +15,13 @@ interface ConnectNodeModalProps {
   initialTab?: 'claim' | 'manual'
 }
 
-export function ConnectNodeModal({
+export const ConnectNodeModal = ({
   isOpen,
   onClose,
   defaultName = 'Node',
   initialNodeUrl = '',
   initialTab = 'claim',
-}: ConnectNodeModalProps) {
+}: ConnectNodeModalProps) => {
   const { toast } = useToast()
   const claimServerMutation = useClaimGameServer()
   const createServerMutation = useCreateGameServer()
@@ -402,4 +402,4 @@ export function ConnectNodeModal({
       </div>
     </DkDialog>
   )
-}
+};

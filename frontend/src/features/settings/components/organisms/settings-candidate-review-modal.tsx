@@ -35,7 +35,7 @@ export interface CandidateReviewModalProps {
 
 type Row = [string, string | null, string | null]
 
-export function CandidateReviewModal({ game, onClose, isExiting, onMatchResolved }: CandidateReviewModalProps) {
+export const CandidateReviewModal = ({ game, onClose, isExiting, onMatchResolved }: CandidateReviewModalProps) => {
   const { user } = useAuth()
   const isAuthenticated = !!user
   const [selectedIdx, setSelectedIdx] = useState(0)
@@ -235,4 +235,4 @@ export function CandidateReviewModal({ game, onClose, isExiting, onMatchResolved
       </div>
     </div>
   )
-}
+};

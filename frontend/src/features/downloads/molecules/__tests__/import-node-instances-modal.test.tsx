@@ -26,7 +26,7 @@ vi.mock('../../use-server-downloads', () => ({
   }),
 }))
 
-function renderButton(destId = 1) {
+const renderButton = (destId = 1) => {
   const dest = mockGameServers.find((server) => server.id === destId)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(

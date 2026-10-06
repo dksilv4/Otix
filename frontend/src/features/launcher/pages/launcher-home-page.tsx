@@ -62,7 +62,7 @@ const themeViews: Record<LauncherThemeId, LazyExoticComponent<ComponentType>> = 
   ),
 }
 
-function LauncherContent() {
+const LauncherContent = () => {
   const { currentTheme } = useLauncherTheme()
   const ThemeView = themeViews[currentTheme] ?? themeViews.modern
 
@@ -80,9 +80,9 @@ function LauncherContent() {
       </Suspense>
     </div>
   )
-}
+};
 
-export function LauncherHomePage() {
+export const LauncherHomePage = () => {
   useHydrateLocalGames()
 
   return (
@@ -92,4 +92,4 @@ export function LauncherHomePage() {
       </LauncherThemeProvider>
     </QueryErrorBoundary>
   )
-}
+};

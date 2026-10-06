@@ -97,7 +97,7 @@ describe('SettingsNodeDetailPage', () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: {} } as any)
   })
 
-  function renderPage() {
+  const renderPage = () => {
     return render(
       <QueryClientProvider client={queryClient}>
         <SettingsSaveProvider>

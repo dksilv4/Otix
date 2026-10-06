@@ -14,14 +14,14 @@ interface DiscoverMediaCardProps {
   interactive?: boolean
 }
 
-export const DiscoverMediaCard = memo(function DiscoverMediaCard({
+export const DiscoverMediaCard = memo(({
   item,
   showTypeBadge = true,
   subtitle,
   className,
   priority = false,
   interactive = true,
-}: DiscoverMediaCardProps) {
+}: DiscoverMediaCardProps) => {
   const navigate = useNavigate()
 
   const menuItems: ContextMenuItemDef[] = [

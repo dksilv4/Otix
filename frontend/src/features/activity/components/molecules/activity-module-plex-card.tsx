@@ -16,7 +16,7 @@ import {
   truncate,
 } from '../../utils/plex-helpers'
 
-function DeviceIcon({ device, platform }: { device?: string; platform?: string }) {
+const DeviceIcon = ({ device, platform }: { device?: string; platform?: string }) => {
   const type = getDeviceType(device ?? null, platform ?? null)
   switch (type) {
     case 'tv':
@@ -30,14 +30,14 @@ function DeviceIcon({ device, platform }: { device?: string; platform?: string }
     default:
       return <Monitor className="h-3 w-3 shrink-0 text-white/40" />
   }
-}
+};
 
 export interface ActivityModulePlexCardProps {
   s: PlexSession
   onClose?: () => void
 }
 
-export function ActivityModulePlexCard({ s, onClose }: ActivityModulePlexCardProps) {
+export const ActivityModulePlexCard = ({ s, onClose }: ActivityModulePlexCardProps) => {
   const navigate = useNavigate()
   const { user: currentUser } = useAuth()
   const [imgError, setImgError] = useReducer(() => true, false)
@@ -93,7 +93,7 @@ export function ActivityModulePlexCard({ s, onClose }: ActivityModulePlexCardPro
           handleClick()
         }
       }}
-      className="group relative flex flex-col gap-2.5 p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-amber-400/30 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md text-left outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+      className="group relative flex flex-col gap-2.5 p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md text-left outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
       title={summary ?? undefined}
     >
       {/* Top row: User, Device, and Stream Status */}
@@ -104,7 +104,7 @@ export function ActivityModulePlexCard({ s, onClose }: ActivityModulePlexCardPro
               src={s.user_thumb}
               alt=""
               onError={() => setAvatarError(true)}
-              className="h-4 w-4 rounded-full object-cover ring-1 ring-white/10 shrink-0"
+              className="h-4 w-4 rounded-full object-cover shrink-0"
             />
           ) : (
             <div className="h-4 w-4 rounded-full flex items-center justify-center bg-amber-400/20 text-[8px] font-bold text-amber-400 uppercase shrink-0">
@@ -128,11 +128,11 @@ export function ActivityModulePlexCard({ s, onClose }: ActivityModulePlexCardPro
 
         <div className="flex items-center gap-1.5 shrink-0">
           {streamBadge ? (
-            <span className="text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/20">
+            <span className="text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider rounded-md bg-amber-500/15 text-amber-400">
               {streamBadge}
             </span>
           ) : (
-            <span className="text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+            <span className="text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider rounded-md bg-emerald-500/15 text-emerald-400">
               Direct Play
             </span>
           )}
@@ -142,7 +142,7 @@ export function ActivityModulePlexCard({ s, onClose }: ActivityModulePlexCardPro
 
       {/* Main content: Poster + Details */}
       <div className="flex items-start gap-3 min-w-0">
-        <div className="relative shrink-0 w-12 h-16 rounded-xl overflow-hidden bg-white/[0.04] shadow-inner border border-white/10 group-hover:border-amber-400/40 transition-colors">
+        <div className="relative shrink-0 w-12 h-16 rounded-xl overflow-hidden bg-white/[0.04] shadow-inner transition-colors">
           {s.thumb && !imgError ? (
             <img
               src={s.thumb}
@@ -157,7 +157,7 @@ export function ActivityModulePlexCard({ s, onClose }: ActivityModulePlexCardPro
           )}
 
           {/* Playing / Paused indicator pill */}
-          <div className="absolute bottom-1 right-1 flex items-center justify-center h-4 w-4 rounded-full bg-black/70 backdrop-blur-sm border border-white/20">
+          <div className="absolute bottom-1 right-1 flex items-center justify-center h-4 w-4 rounded-full bg-black/70 backdrop-blur-sm">
             {isPlaying ? (
               <Play className="h-2 w-2 text-amber-400 fill-amber-400 ml-0.5" />
             ) : (
@@ -221,4 +221,4 @@ export function ActivityModulePlexCard({ s, onClose }: ActivityModulePlexCardPro
       )}
     </div>
   )
-}
+};

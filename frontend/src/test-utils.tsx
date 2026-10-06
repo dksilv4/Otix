@@ -1,7 +1,7 @@
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-export function createWrapper() {
+export const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {

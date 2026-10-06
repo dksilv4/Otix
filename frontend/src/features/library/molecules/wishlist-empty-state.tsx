@@ -2,7 +2,7 @@ import { BookmarkIcon, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useSteamWishlistScan } from "../library-queries"
 
-export function WishlistEmptyState() {
+export const WishlistEmptyState = () => {
   const scan = useSteamWishlistScan()
 
   return (
@@ -43,4 +43,4 @@ export function WishlistEmptyState() {
       )}
     </div>
   )
-}
+};

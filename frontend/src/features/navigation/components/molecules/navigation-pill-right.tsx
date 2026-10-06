@@ -15,7 +15,7 @@ interface NavPillRightProps {
 }
 
 /** Right-side floating navigation pill containing search, user menu, and activity toggle. */
-export function NavPillRight({ isPinned, isSidebarOpen, onToggleSidebar }: NavPillRightProps) {
+export const NavPillRight = ({ isPinned, isSidebarOpen, onToggleSidebar }: NavPillRightProps) => {
   const { isDesktop } = useDesktopPlatform()
   const titleBarOffset = isDesktop ? "top-12" : "top-4"
   const { modals, closeAll } = useModal()
@@ -51,4 +51,4 @@ export function NavPillRight({ isPinned, isSidebarOpen, onToggleSidebar }: NavPi
       <ActivityModuleButton bare isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar} />
     </NavPill>
   )
-}
+};

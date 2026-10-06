@@ -42,13 +42,13 @@ vi.mock('@/features/downloads/use-server-explorer', () => ({
   }),
 }))
 
-function Harness({
+const Harness = ({
   target = 'local' as 'local' | 'server',
   initial = '',
 }: {
   target?: 'local' | 'server'
   initial?: string
-}) {
+}) => {
   const [value, setValue] = useState(initial)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return (
@@ -59,7 +59,7 @@ function Harness({
       </ModalProvider>
     </QueryClientProvider>
   )
-}
+};
 
 type WindowWithDesktop = Window & { desktopAPI?: { selectDirectory: (...args: unknown[]) => Promise<string> } }
 
@@ -125,7 +125,7 @@ describe('PathInput', () => {
     clearDesktopAPICache()
 
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    function CommitHarness() {
+    const CommitHarness = () => {
       const [value, setValue] = useState('')
       return (
         <QueryClientProvider client={queryClient}>
@@ -135,7 +135,7 @@ describe('PathInput', () => {
           </ModalProvider>
         </QueryClientProvider>
       )
-    }
+    };
 
     render(<CommitHarness />)
     await user.click(screen.getByRole('button', { name: /Browse/i }))
@@ -146,10 +146,10 @@ describe('PathInput', () => {
     const user = userEvent.setup()
     const onCommit = vi.fn()
 
-    function BlurHarness() {
+    const BlurHarness = () => {
       const [value, setValue] = useState('')
       return <PathInput label="Target folder" value={value} onChange={setValue} onCommit={onCommit} />
-    }
+    };
 
     render(<BlurHarness />)
     const input = screen.getByLabelText('Target folder')
@@ -163,10 +163,10 @@ describe('PathInput', () => {
     const user = userEvent.setup()
     const onCommit = vi.fn()
 
-    function NoBlurHarness() {
+    const NoBlurHarness = () => {
       const [value, setValue] = useState('')
       return <PathInput label="Draft folder" value={value} onChange={setValue} onCommit={onCommit} commitOnBlur={false} />
-    }
+    };
 
     render(<NoBlurHarness />)
     const input = screen.getByLabelText('Draft folder')
@@ -180,10 +180,10 @@ describe('PathInput', () => {
     const user = userEvent.setup()
     const onCommit = vi.fn()
 
-    function EnterHarness() {
+    const EnterHarness = () => {
       const [value, setValue] = useState('')
       return <PathInput label="Target folder" value={value} onChange={setValue} onCommit={onCommit} />
-    }
+    };
 
     render(<EnterHarness />)
     const input = screen.getByLabelText('Target folder')
@@ -196,7 +196,7 @@ describe('PathInput', () => {
     const user = userEvent.setup()
     const onCommit = vi.fn()
 
-    function ConfirmHarness() {
+    const ConfirmHarness = () => {
       const [value, setValue] = useState('')
       return (
         <PathInput
@@ -208,7 +208,7 @@ describe('PathInput', () => {
           confirmLabel="Confirm"
         />
       )
-    }
+    };
 
     render(<ConfirmHarness />)
     const input = screen.getByLabelText('Confirmed folder')

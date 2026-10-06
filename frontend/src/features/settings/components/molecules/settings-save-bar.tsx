@@ -4,7 +4,7 @@ import { DkButton } from '@ui/atoms/button'
 import { CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react'
 import { useSettingsSaveContext } from '../../context/settings-save-context'
 
-export function SettingsSaveBar() {
+export const SettingsSaveBar = () => {
   const { config } = useSettingsSaveContext()
   const [autoSavedVisible, setAutoSavedVisible] = useState(false)
 
@@ -83,4 +83,4 @@ export function SettingsSaveBar() {
       </div>
     </div>
   )
-}
+};

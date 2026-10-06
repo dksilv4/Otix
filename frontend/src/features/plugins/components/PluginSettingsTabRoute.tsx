@@ -26,15 +26,9 @@ const LEGACY_SETTINGS_TABS: Record<string, { to: string; hash?: string }> = {
   proposals: { to: '/settings/library', hash: 'proposals' },
 }
 
-function openBoundModal(
-  openFn: (element: React.ReactNode) => () => void,
-  renderModal: (onClose: () => void) => React.ReactNode
-) {
-  let close = () => {}
-  close = openFn(renderModal(() => close()))
-}
+import { openBoundModal } from '../utils/settings'
 
-export function PluginSettingsTabRoute() {
+export const PluginSettingsTabRoute = () => {
   const { tabId } = useParams({ from: '/settings/$tabId' })
   const { tabs, isLoading } = usePluginTabs()
   const tab = tabs.find((t) => t.id === tabId)
@@ -246,4 +240,4 @@ export function PluginSettingsTabRoute() {
     )
   }
   return <PluginSettingsPage tab={tab} />
-}
+};

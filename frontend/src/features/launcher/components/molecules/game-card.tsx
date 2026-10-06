@@ -31,7 +31,7 @@ interface GameCardProps {
   onRejectSuggestion?: (game: LocalGame) => void;
 }
 
-export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }: GameCardProps) {
+export const GameCard = ({ game, index, onAcceptSuggestion, onRejectSuggestion }: GameCardProps) => {
   const [posterError, setPosterError] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -254,4 +254,4 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
       {cardContent}
     </Wrapper>
   );
-}
+};

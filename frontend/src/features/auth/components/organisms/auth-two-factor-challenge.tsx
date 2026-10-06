@@ -10,14 +10,14 @@ interface TwoFactorChallengeProps {
 }
 
 /** Two-factor authentication TOTP challenge form. */
-export function TwoFactorChallenge({ onSuccess, onCancel }: TwoFactorChallengeProps) {
+export const TwoFactorChallenge = ({ onSuccess, onCancel }: TwoFactorChallengeProps) => {
   const { verifyTwoFactor } = useAuth()
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (code.length !== 6) return
     setError('')
@@ -109,4 +109,4 @@ export function TwoFactorChallenge({ onSuccess, onCancel }: TwoFactorChallengePr
       </div>
     </form>
   )
-}
+};

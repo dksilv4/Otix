@@ -16,9 +16,10 @@ import {
 import SteamIcon from "@/assets/provider-logos/steam.svg?react"
 import { registerPlatform } from "./index"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
+import { formatPlaytime, formatDaysAgo } from "../utils"
 import "./steam.scss"
 
-function SkeletonGrid() {
+const SkeletonGrid = () => {
   return (
     <MediaGrid>
       {Array.from({ length: 12 }).map((_, i) => (
@@ -29,26 +30,11 @@ function SkeletonGrid() {
       ))}
     </MediaGrid>
   )
-}
-
-function formatPlaytime(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`
-  const hours = minutes / 60
-  if (hours < 1) return `${Math.round(hours * 10) / 10}h`
-  return `${Math.round(hours)}h`
-}
-
-function formatDaysAgo(unixTimestamp: number): string {
-  const days = Math.floor((Date.now() / 1000 - unixTimestamp) / 86400)
-  if (days <= 0) return "Today"
-  if (days === 1) return "1d ago"
-  if (days <= 14) return `${days}d ago`
-  return ""
-}
+};
 
 // ── Empty state ──
 
-function SteamEmptyState({ onScan, isScanning, scanResult, scanError }: PlatformEmptyStateProps) {
+const SteamEmptyState = ({ onScan, isScanning, scanResult, scanError }: PlatformEmptyStateProps) => {
   return (
     <div className="dk-library-steam__center-col">
       <div className="dk-library-steam__empty-icon">
@@ -81,11 +67,11 @@ function SteamEmptyState({ onScan, isScanning, scanResult, scanError }: Platform
       )}
     </div>
   )
-}
+};
 
 // ── Unmatched Grid ──
 
-function UnmatchedGrid({ items, hasMore, onLoadMore, loading }: { items: UnmatchedGame[]; hasMore: boolean; onLoadMore: () => void; loading: boolean }) {
+const UnmatchedGrid = ({ items, hasMore, onLoadMore, loading }: { items: UnmatchedGame[]; hasMore: boolean; onLoadMore: () => void; loading: boolean }) => {
   return (
     <>
       <div className="dk-library-steam__unmatched-grid">
@@ -130,11 +116,11 @@ function UnmatchedGrid({ items, hasMore, onLoadMore, loading }: { items: Unmatch
       )}
     </>
   )
-}
+};
 
 // ── Main content ──
 
-function SteamTabContent() {
+const SteamTabContent = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(loadMoreRef, { margin: "0px 0px 800px 0px" })
   const [showUnmatched, setShowUnmatched] = useState(false)
@@ -326,11 +312,11 @@ function SteamTabContent() {
       </div>
     </>
   )
-}
+};
 
 // ── Dashboard section ──
 
-function SteamOverviewModule({ expanded, onToggle }: { expanded?: boolean; onToggle?: () => void } = {}) {
+const SteamOverviewModule = ({ expanded, onToggle }: { expanded?: boolean; onToggle?: () => void } = {}) => {
   const navigate = useNavigate()
   const { data, isLoading } = useLibraryTab("steam")
   const { data: status } = useSteamStatus()
@@ -466,7 +452,7 @@ function SteamOverviewModule({ expanded, onToggle }: { expanded?: boolean; onTog
       </AnimatePresence>
     </div>
   )
-}
+};
 // ── Register ──
 
 export const steamPlatform: PlatformDefinition = {

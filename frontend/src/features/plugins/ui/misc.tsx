@@ -2,11 +2,11 @@ import type { ReactNode } from 'react'
 import { Loader2, Inbox } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function Spinner({ className }: { className?: string }) {
+export const Spinner = ({ className }: { className?: string }) => {
   return <Loader2 className={cn('h-5 w-5 text-primary animate-spin', className)} />
-}
+};
 
-export function EmptyState({
+export const EmptyState = ({
   icon: Icon = Inbox,
   title,
   message,
@@ -18,7 +18,7 @@ export function EmptyState({
   message?: string
   action?: ReactNode
   className?: string
-}) {
+}) => {
   return (
     <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
       <Icon className="h-9 w-9 text-white/20 mb-3" />
@@ -27,9 +27,9 @@ export function EmptyState({
       {action && <div className="mt-4">{action}</div>}
     </div>
   )
-}
+};
 
-export function Progress({ value, tone = 'primary', className }: { value: number; tone?: 'primary' | 'success' | 'error'; className?: string }) {
+export const Progress = ({ value, tone = 'primary', className }: { value: number; tone?: 'primary' | 'success' | 'error'; className?: string }) => {
   const clamped = Math.max(0, Math.min(100, value))
   const color = tone === 'success' ? 'bg-emerald-400' : tone === 'error' ? 'bg-red-400' : 'bg-primary'
   return (
@@ -37,12 +37,12 @@ export function Progress({ value, tone = 'primary', className }: { value: number
       <div className={cn('h-full rounded-full transition-all duration-500', color)} style={{ width: `${clamped}%` }} />
     </div>
   )
-}
+};
 
-export function SectionTitle({ children, className }: { children: ReactNode; className?: string }) {
+export const SectionTitle = ({ children, className }: { children: ReactNode; className?: string }) => {
   return (
     <h3 className={cn('text-xs font-semibold uppercase tracking-wider text-white/40', className)}>
       {children}
     </h3>
   )
-}
+};

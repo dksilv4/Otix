@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { discoverQueries, discoverStaleTime } from './discover-queries'
-import { getRailTitle } from '../pages/discover-rail-page'
+import { getRailTitle } from '../utils/rail'
 import { apiClient } from '@/lib/api/client'
 
 const TWO_HOURS = 1000 * 60 * 60 * 2

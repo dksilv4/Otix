@@ -44,7 +44,7 @@ vi.mock('@/lib/api/client', () => ({
 
 import { DiscoverGenresSection } from './discover-genres-section'
 
-function renderWithClient(ui: React.ReactElement) {
+const renderWithClient = (ui: React.ReactElement) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },

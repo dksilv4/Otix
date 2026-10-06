@@ -18,7 +18,7 @@ interface LauncherShelfProps {
   id?: string
 }
 
-export function LauncherShelf({ id }: LauncherShelfProps) {
+export const LauncherShelf = ({ id }: LauncherShelfProps) => {
   const { data: localGames = [], isLoading: localLoading } = useLauncherVisibleGames()
   const { data: popularGames = [], isLoading: popularLoading } = usePopularGames()
   const [shelfTab, setShelfTab] = useState<ShelfTab>('my-games')
@@ -100,4 +100,4 @@ export function LauncherShelf({ id }: LauncherShelfProps) {
       )}
     </div>
   )
-}
+};

@@ -9,7 +9,7 @@ import { Badge } from '@ui/atoms/badge'
 import { characterQueries } from '../queries/character-queries'
 import { cn } from '@/lib/utils'
 
-export function CharacterDetailPage() {
+export const CharacterDetailPage = () => {
   const params = useParams({ from: '/character/$characterId' })
   const characterId = params.characterId || ''
   const [descExpanded, setDescExpanded] = useState(false)
@@ -200,4 +200,4 @@ export function CharacterDetailPage() {
       </section>
     </div>
   )
-}
+};

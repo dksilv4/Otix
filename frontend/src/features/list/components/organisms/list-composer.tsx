@@ -10,12 +10,12 @@ export interface ListComposerProps {
   isExiting?: boolean
 }
 
-export function ListComposer({
+export const ListComposer = ({
   onClose,
   onSave,
   initial,
   isExiting,
-}: ListComposerProps) {
+}: ListComposerProps) => {
   const [name, setName] = useState(initial?.name ?? "")
   const [description, setDescription] = useState(initial?.description ?? "")
   const [isPublic, setIsPublic] = useState(initial?.isPublic ?? false)
@@ -28,7 +28,7 @@ export function ListComposer({
   }, [])
 
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose?.()
       }
@@ -39,7 +39,7 @@ export function ListComposer({
 
   const visible = animateIn && !isExiting
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
     setIsSavingLocal(true)
@@ -165,4 +165,4 @@ export function ListComposer({
       </div>
     </div>
   )
-}
+};

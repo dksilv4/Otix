@@ -10,7 +10,7 @@ interface ErrorCardProps {
   onReenable?: () => void
 }
 
-export function ErrorCard({ pluginName, message, details, suspended, onReenable }: ErrorCardProps) {
+export const ErrorCard = ({ pluginName, message, details, suspended, onReenable }: ErrorCardProps) => {
   const [expanded, setExpanded] = useState(false)
   const isDev = import.meta.env.DEV
 
@@ -66,4 +66,4 @@ export function ErrorCard({ pluginName, message, details, suspended, onReenable 
       )}
     </div>
   )
-}
+};

@@ -30,13 +30,9 @@ interface FreeCheckResult {
   error?: string
 }
 
-function getPluginAPI() {
-  return (window as any).desktopAPI?.plugin as
-    | { callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown> }
-    | undefined
-}
+import { getPluginAPI } from '@/features/discover/utils/plugins'
 
-export function SteamFreeGamesSection() {
+export const SteamFreeGamesSection = () => {
   const [result, setResult] = useState<FreeCheckResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -149,9 +145,9 @@ export function SteamFreeGamesSection() {
       </Carousel>
     </motion.section>
   )
-}
+};
 
-function SteamFreeGameCard({ game, isClaimable }: { game: SteamFreeGame; isClaimable: boolean }) {
+const SteamFreeGameCard = ({ game, isClaimable }: { game: SteamFreeGame; isClaimable: boolean }) => {
   const isDlcOrPack = game.itemType === 'dlc' || game.itemType === 'pack' || game.itemType === 'bundle'
   const typeLabel = game.itemType === 'bundle' ? 'Bundle' : game.itemType === 'pack' ? 'Pack' : 'DLC'
 
@@ -225,4 +221,4 @@ function SteamFreeGameCard({ game, isClaimable }: { game: SteamFreeGame; isClaim
       )}
     </div>
   )
-}
+};

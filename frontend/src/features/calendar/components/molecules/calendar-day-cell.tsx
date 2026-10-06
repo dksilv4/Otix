@@ -17,7 +17,7 @@ const TYPE_DOT_COLORS: Record<string, string> = {
   new_season: 'bg-purple-400',
 }
 
-export const CalendarDayCell = memo(function CalendarDayCell({
+export const CalendarDayCell = memo(({
   day,
   isToday,
   isSelected,
@@ -25,7 +25,7 @@ export const CalendarDayCell = memo(function CalendarDayCell({
   eventCount,
   eventTypes,
   onSelect,
-}: CalendarDayCellProps) {
+}: CalendarDayCellProps) => {
   return (
     <button
       onClick={onSelect}

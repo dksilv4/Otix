@@ -440,3 +440,37 @@ export function usePlexAlbumTracks(mediaItemId: string | undefined) {
     staleTime: 1000 * 60 * 2,
   })
 }
+
+export interface YoutubeLikedVideo {
+  videoId: string
+  title: string
+  channelTitle: string
+  channelId: string
+  thumbnailUrl: string | null
+  publishedAt: string
+  matchedMediaItemId: string | null
+  matchedTitle: string | null
+  matchedArtist: string | null
+  createdAt: string | null
+}
+
+export interface YoutubeLibraryResponse {
+  items: YoutubeLikedVideo[]
+  nextCursor: string | null
+  hasMore: boolean
+}
+
+export const useYoutubeLibrary = () => {
+  return useInfiniteQuery({
+    queryKey: [...libraryKeys.all(), "youtube", "raw"],
+    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+      const params: Record<string, string> = { limit: "48" }
+      if (pageParam) params.cursor = pageParam
+      const { data } = await apiClient.get<YoutubeLibraryResponse>("/library/youtube", { params })
+      return data
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: 1000 * 60 * 2,
+  })
+}

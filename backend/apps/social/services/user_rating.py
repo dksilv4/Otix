@@ -51,6 +51,9 @@ def upsert_rating(rater_id: int, rated_user_id: int, score: int) -> UserRating:
                 "score": score,
             },
         )
+        from apps.social.services.xp import RATING_SUBMIT, award_xp
+
+        award_xp(rater_id, RATING_SUBMIT, reason="user_rating_submitted")
     return rating
 
 

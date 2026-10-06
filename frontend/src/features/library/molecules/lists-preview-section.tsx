@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router"
 import { useUserLists, ListCard } from "@list"
 
-export function ListsPreviewSection() {
+export const ListsPreviewSection = () => {
   const navigate = useNavigate()
   const { data: lists, isLoading } = useUserLists()
 
@@ -42,4 +42,4 @@ export function ListsPreviewSection() {
       </div>
     </div>
   )
-}
+};

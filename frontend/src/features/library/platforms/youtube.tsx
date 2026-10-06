@@ -1,52 +1,16 @@
 // TODO: Review this file
 import { useMemo } from "react"
-import { useInfiniteQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { ExternalLink, RefreshCw, Play, Music, Link2 } from "lucide-react"
-import { apiClient } from "@/lib/api/client"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
-import { libraryKeys } from "../library-keys"
 import { registerPlatform } from "./index"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
-
-interface YoutubeLikedVideo {
-  videoId: string
-  title: string
-  channelTitle: string
-  channelId: string
-  thumbnailUrl: string | null
-  publishedAt: string
-  matchedMediaItemId: string | null
-  matchedTitle: string | null
-  matchedArtist: string | null
-  createdAt: string | null
-}
-
-interface YoutubeLibraryResponse {
-  items: YoutubeLikedVideo[]
-  nextCursor: string | null
-  hasMore: boolean
-}
-
-function useYoutubeLibrary() {
-  return useInfiniteQuery({
-    queryKey: [...libraryKeys.all(), "youtube", "raw"],
-    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
-      const params: Record<string, string> = { limit: "48" }
-      if (pageParam) params.cursor = pageParam
-      const { data } = await apiClient.get<YoutubeLibraryResponse>("/library/youtube", { params })
-      return data
-    },
-    initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    staleTime: 1000 * 60 * 2,
-  })
-}
+import { useYoutubeLibrary, type YoutubeLikedVideo } from "../library-queries"
 
 // ── Skeleton ──
 
-function SkeletonGrid() {
+const SkeletonGrid = () => {
   return (
     <MediaGrid>
       {Array.from({ length: 12 }).map((_, i) => (
@@ -58,11 +22,11 @@ function SkeletonGrid() {
       ))}
     </MediaGrid>
   )
-}
+};
 
 // ── Empty state ──
 
-function YoutubeEmptyState({ onScan }: PlatformEmptyStateProps) {
+const YoutubeEmptyState = ({ onScan }: PlatformEmptyStateProps) => {
   const navigate = useNavigate()
 
   return (
@@ -91,11 +55,11 @@ function YoutubeEmptyState({ onScan }: PlatformEmptyStateProps) {
       </div>
     </div>
   )
-}
+};
 
 // ── Video card ──
 
-function YoutubeVideoCard({ video }: { video: YoutubeLikedVideo }) {
+const YoutubeVideoCard = ({ video }: { video: YoutubeLikedVideo }) => {
   const youtubeUrl = `https://www.youtube.com/watch?v=${video.videoId}`
   const isMatched = !!video.matchedMediaItemId
 
@@ -172,11 +136,11 @@ function YoutubeVideoCard({ video }: { video: YoutubeLikedVideo }) {
       </div>
     </div>
   )
-}
+};
 
 // ── YouTube Content Tab ──
 
-export function YoutubeTabContent() {
+export const YoutubeTabContent = () => {
   const navigate = useNavigate()
   const query = useYoutubeLibrary()
   const items = useMemo(
@@ -257,11 +221,11 @@ export function YoutubeTabContent() {
       </div>
     </div>
   )
-}
+};
 
 // ── Dashboard section ──
 
-function YoutubeOverviewModule() {
+const YoutubeOverviewModule = () => {
   const query = useYoutubeLibrary()
   const items = useMemo(
     () => query.data?.pages.flatMap((page) => page.items) ?? [],
@@ -284,7 +248,7 @@ function YoutubeOverviewModule() {
       </button>
     </div>
   )
-}
+};
 
 // ── Register ──
 

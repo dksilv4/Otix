@@ -5,7 +5,7 @@ import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import type { ArrServiceInstance } from '../arr-instances'
 
-export function ArrInstanceSwitcher({
+export const ArrInstanceSwitcher = ({
   instances,
   selectedId,
   onSelect,
@@ -18,7 +18,7 @@ export function ArrInstanceSwitcher({
   onAdd: () => void
   onDelete: (id: string) => void
   accentClass?: string
-}) {
+}) => {
   const canDelete = instances.length > 1
   const [pendingDelete, setPendingDelete] = useState<ArrServiceInstance | null>(null)
 
@@ -109,4 +109,4 @@ export function ArrInstanceSwitcher({
       </DkDialog>
     </>
   )
-}
+};

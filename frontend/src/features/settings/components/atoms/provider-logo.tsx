@@ -8,7 +8,7 @@ interface ProviderLogoProps {
   showTextFallback?: boolean
 }
 
-export function ProviderLogo({ platform, className = 'h-4 w-4', showTextFallback = false }: ProviderLogoProps) {
+export const ProviderLogo = ({ platform, className = 'h-4 w-4', showTextFallback = false }: ProviderLogoProps) => {
   const p = (platform || '').toLowerCase().trim()
 
   if (p === 'epic' || p === 'egs' || p === 'epic games' || p === 'epic games store') {
@@ -97,5 +97,5 @@ export function ProviderLogo({ platform, className = 'h-4 w-4', showTextFallback
       <path d="M20 3H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h6l-2 3v1h8v-1l-2-3h6c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H4V5h16v10z" />
     </svg>
   )
-}
+};
 

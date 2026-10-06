@@ -36,7 +36,7 @@ vi.mock('@/lib/api/client', () => ({
 
 import { FreeGamesSection } from '../free-games-section'
 
-function renderWithClient(ui: React.ReactElement) {
+const renderWithClient = (ui: React.ReactElement) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },

@@ -4,7 +4,7 @@ import { DECIDE_WATCH_EVENT } from '@discover/open-decide-watch'
 import { DecideWatchModal } from '@discover/components/organisms/decide-watch-modal'
 
 /** Listens for Hub / CTA events and opens the Decide modal via useModal + DkDialog. */
-export function DecideWatchHost() {
+export const DecideWatchHost = () => {
   const { openModal } = useModal()
   const openModalRef = useRef(openModal)
   useEffect(() => {
@@ -31,4 +31,4 @@ export function DecideWatchHost() {
   }, [])
 
   return null
-}
+};

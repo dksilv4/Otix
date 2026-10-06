@@ -10,27 +10,22 @@ import {
 import { useAuth } from '@/lib/providers/auth'
 import { ActivityModuleSection } from './activity-module-section'
 import { formatBytes } from '@/lib/utils'
-import type { ServerDownloadHistoryItem } from '@/features/downloads/usenet-types'
+
+import { historyMeta } from '../../utils/downloads'
 
 const FIFTEEN_MIN = 15 * 60 * 1000
 const HISTORY_LIMIT = 12
 
-function historyStatusIcon(status: string) {
+const HistoryStatusIcon = ({ status }: { status: string }) => {
   if (status === 'completed') return <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
   if (status === 'failed') return <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
   if (status === 'processing') return <RefreshCw className="h-4 w-4 text-purple-400 animate-spin shrink-0" />
   if (status === 'paused') return <Clock className="h-4 w-4 text-amber-400 shrink-0" />
   return <Clock className="h-4 w-4 text-white/35 shrink-0" />
-}
-
-function historyMeta(item: ServerDownloadHistoryItem) {
-  const parts: string[] = [(item.protocol || 'usenet').toUpperCase(), item.status]
-  if (item.size_bytes) parts.push(formatBytes(item.size_bytes))
-  return parts.join(' · ')
-}
+};
 
 /** Molecule showing active and recent downloads with progress bars. */
-export function ActivityModuleDownloads() {
+export const ActivityModuleDownloads = () => {
   const { user: currentUser } = useAuth()
   const { downloads, cancelDownload } = useDownloads(currentUser?.id)
   const { data: gameServers = [] } = useGameServers()
@@ -141,7 +136,7 @@ export function ActivityModuleDownloads() {
           {historyItems.map((item) => (
             <div key={item.nzo_id || item.id} className="flex flex-col gap-2">
               <div className="flex items-center gap-3">
-                {historyStatusIcon(item.status)}
+                <HistoryStatusIcon status={item.status} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold truncate text-white/90" title={item.title}>
                     {item.title}
@@ -233,4 +228,4 @@ export function ActivityModuleDownloads() {
         </div>
     </ActivityModuleSection>
   )
-}
+};

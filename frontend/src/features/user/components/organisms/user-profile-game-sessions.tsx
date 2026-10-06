@@ -16,48 +16,11 @@ import {
 import { DkDialog } from '@ui/molecules/dialog'
 import { useUserGameSessions, type NormalizedPlaySession } from '../../hooks/use-user-game-sessions'
 import { formatDuration } from '@/lib/utils'
-
-// ── Timing & Formatters ────────────────────────────────────────────
-
-function relativeDate(ts: number): string {
-  if (!ts) return 'Recently'
-  const diff = Date.now() - ts
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days}d ago`
-  if (days < 30) return `${Math.floor(days / 7)}w ago`
-  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
-
-function fullDateTime(ts: number): string {
-  if (!ts) return ''
-  return new Date(ts).toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function humanPlaytime(seconds: number): string {
-  if (seconds <= 0) return '0m'
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0 && m > 0) return `${h}h ${m}m`
-  if (h > 0) return `${h}h`
-  return `${m}m`
-}
+import { relativeDate, fullDateTime, humanPlaytime } from '../../utils'
 
 // ── Poster Shelf Card (Non-list, Seamless Media Card) ──────────────
 
-function GameShelfCard({
+const GameShelfCard = ({
   session,
   isLive = false,
   onClick,
@@ -65,7 +28,7 @@ function GameShelfCard({
   session: NormalizedPlaySession
   isLive?: boolean
   onClick: () => void
-}) {
+}) => {
   const [imgError, setImgError] = useState(false)
   const hasArt = session.posterUrl && !imgError
 
@@ -137,11 +100,11 @@ function GameShelfCard({
       </div>
     </button>
   )
-}
+};
 
 // ── Detail Modal ───────────────────────────────────────────────────
 
-function SessionDetailModal({
+const SessionDetailModal = ({
   session,
   open,
   onOpenChange,
@@ -149,7 +112,7 @@ function SessionDetailModal({
   session: NormalizedPlaySession
   open: boolean
   onOpenChange: (open: boolean) => void
-}) {
+}) => {
   const [showNerdStats, setShowNerdStats] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -306,7 +269,7 @@ function SessionDetailModal({
       </div>
     </DkDialog>
   )
-}
+};
 
 // ── Main UserProfileGameSessions Organism ──────────────────────────
 
@@ -314,7 +277,7 @@ interface UserProfileGameSessionsProps {
   username: string
 }
 
-export function UserProfileGameSessions({ username: _username }: UserProfileGameSessionsProps) {
+export const UserProfileGameSessions = ({ username: _username }: UserProfileGameSessionsProps) => {
   const { data, isLoading } = useUserGameSessions()
   const [selectedSession, setSelectedSession] = useState<NormalizedPlaySession | null>(null)
 
@@ -407,4 +370,4 @@ export function UserProfileGameSessions({ username: _username }: UserProfileGame
       )}
     </div>
   )
-}
+};

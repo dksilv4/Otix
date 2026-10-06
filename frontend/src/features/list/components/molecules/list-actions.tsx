@@ -19,7 +19,7 @@ import {
 
 // ── Like Button ───────────────────────────────────────────────────
 
-export function ListLikeButton({ list }: { list: UserListDetailOut }) {
+export const ListLikeButton = ({ list }: { list: UserListDetailOut }) => {
   const { isAuthenticated } = useAuth()
   const like = useLikeList(list.id)
   const unlike = useUnlikeList(list.id)
@@ -44,7 +44,7 @@ export function ListLikeButton({ list }: { list: UserListDetailOut }) {
       {count > 0 && <span className="tabular-nums">{count}</span>}
     </button>
   )
-}
+};
 
 // ── Share / Export Modal ──────────────────────────────────────────
 
@@ -54,7 +54,7 @@ interface ShareModalProps {
   isExiting?: boolean
 }
 
-export function ShareModal({ list, onClose, isExiting }: ShareModalProps) {
+export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
   const { user } = useAuth()
   const updateList = useUpdateList()
   const [copied, setCopied] = useState(false)
@@ -356,7 +356,7 @@ export function ShareModal({ list, onClose, isExiting }: ShareModalProps) {
       </div>
     </div>
   )
-}
+};
 
 // ── Collaborators Modal ───────────────────────────────────────────
 
@@ -366,7 +366,7 @@ interface CollaboratorsModalProps {
   isExiting?: boolean
 }
 
-export function CollaboratorsModal({ list, onClose, isExiting }: CollaboratorsModalProps) {
+export const CollaboratorsModal = ({ list, onClose, isExiting }: CollaboratorsModalProps) => {
   const { user } = useAuth()
   const [inviteUsername, setInviteUsername] = useState('')
   const [permission, setPermission] = useState('VIEW')
@@ -505,11 +505,11 @@ export function CollaboratorsModal({ list, onClose, isExiting }: CollaboratorsMo
       </div>
     </div>
   )
-}
+};
 
 // ── Rank History Timeline ─────────────────────────────────────────
 
-export function RankHistoryTimeline({ listId }: { listId: string }) {
+export const RankHistoryTimeline = ({ listId }: { listId: string }) => {
   const { data: history, isLoading } = useRankHistory(listId)
 
   const historyList = Array.isArray(history) ? history.filter(Boolean) : []
@@ -544,4 +544,4 @@ export function RankHistoryTimeline({ listId }: { listId: string }) {
       </div>
     </div>
   )
-}
+};

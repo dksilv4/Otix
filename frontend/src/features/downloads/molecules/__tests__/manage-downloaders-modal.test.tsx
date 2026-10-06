@@ -24,7 +24,7 @@ vi.mock('../../use-server-usenet', () => ({
   useTestSabnzbd: () => ({ mutateAsync: mockTestSabnzbd, isPending: false }),
 }))
 
-function renderModal() {
+const renderModal = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>

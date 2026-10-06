@@ -1,22 +1,9 @@
 import { useParams } from '@tanstack/react-router'
 import { Clock } from 'lucide-react'
 import { useGamePlaytime } from '@/features/launcher/hooks/use-launcher-playtime'
+import { formatPlaytime } from '@/features/launcher/utils'
 
-function formatPlaytime(playtime: { totalMinutes: number } | null, steamPlaytime: number | null | undefined): string {
-  if (steamPlaytime != null) {
-    const hours = Math.round(steamPlaytime / 60)
-    const mins = steamPlaytime % 60
-    return hours >= 1 ? `${hours}h ${mins}m` : `${mins}m`
-  }
-  if (playtime && playtime.totalMinutes > 0) {
-    const hours = Math.floor(playtime.totalMinutes / 60)
-    const mins = playtime.totalMinutes % 60
-    return hours >= 1 ? `${hours}h ${mins}m` : `${mins}m`
-  }
-  return '—'
-}
-
-export function LauncherPlaytimeStats() {
+export const LauncherPlaytimeStats = () => {
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const playtime = useGamePlaytime(gameId)
@@ -31,4 +18,4 @@ export function LauncherPlaytimeStats() {
       </div>
     </div>
   )
-}
+};

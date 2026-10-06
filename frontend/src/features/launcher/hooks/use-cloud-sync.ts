@@ -1,0 +1,270 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { getDesktopAPI } from '@/lib/desktop/api'
+import { API_BASE_URL, ACCESS_TOKEN_KEY } from '@/lib/config'
+import { getErrorMessage } from '@/features/launcher/utils'
+
+export interface CloudSettings {
+  gameId: string
+  autoSync: boolean
+  lastSyncAt: string | null
+  isPathConfirmed: boolean
+  confirmedPath: string | null
+}
+
+export interface SaveLocationEntry {
+  platform: string
+  pathPattern: string
+}
+
+export interface ServerLocations {
+  verified?: SaveLocationEntry[]
+  suggested?: SaveLocationEntry[]
+}
+
+export interface UseCloudSyncOptions {
+  gameId: string | null
+  gameTitle: string
+  serverLocations: ServerLocations | undefined
+  refetchServerLocations: () => void
+}
+
+export const useCloudSync = ({ gameId, gameTitle, serverLocations, refetchServerLocations }: UseCloudSyncOptions) => {
+  const [cloudSettings, setCloudSettings] = useState<CloudSettings | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [detectedPath, setDetectedPath] = useState<string | null>(null)
+  const [overridePath, setOverridePath] = useState<string | null>(null)
+  const [resolvingServerPaths, setResolvingServerPaths] = useState(false)
+  const [confirmingPath, setConfirmingPath] = useState(false)
+  const autoAssignedGames = useRef(new Set<string>())
+
+  const api = getDesktopAPI()
+
+  useEffect(() => {
+    if (!gameId || !api) return
+    setCloudSettings(null)
+    setSyncError(null)
+    setSuccessMsg(null)
+    api.saveGetCloudSettings(gameId)
+      .then((settings: CloudSettings | null) => { setCloudSettings(settings) })
+      .catch((err: unknown) => { console.error('Failed to get cloud settings', err) })
+  }, [gameId, api])
+
+  useEffect(() => {
+    if (!gameId || !api || !cloudSettings) return
+    if (autoAssignedGames.current.has(gameId)) return
+    autoAssignedGames.current.add(gameId)
+
+    let cancelled = false
+    setResolvingServerPaths(true)
+
+    ;(async () => {
+      try {
+        const discoverRes = await api.saveDiscoverForGame(gameId, gameTitle)
+        if (cancelled) return
+        const localDetected = (discoverRes.detectedPaths as string[])?.[0] || null
+
+        const override = await api.saveGetOverride(gameId)
+        if (cancelled) return
+        const overridePathVal = override?.userPath || null
+        setOverridePath(overridePathVal)
+
+        const currentPlatform = api.platform || 'win32'
+        const platformKey = currentPlatform === 'win32' ? 'windows' : currentPlatform === 'darwin' ? 'mac' : 'linux'
+
+        let verifiedPathVal: string | null = null
+        if (serverLocations?.verified) {
+          const verifiedPatterns = serverLocations.verified
+            .filter((loc: SaveLocationEntry) => loc.platform === platformKey)
+            .map((loc: SaveLocationEntry) => loc.pathPattern)
+          if (verifiedPatterns.length > 0) {
+            const resolved = await api.saveResolvePathPatterns(verifiedPatterns)
+            if (cancelled) return
+            if (resolved && resolved.length > 0) {
+              verifiedPathVal = resolved[0]
+            }
+          }
+        }
+
+        let suggestedPathVal: string | null = null
+        if (serverLocations?.suggested) {
+          const suggestedPatterns = serverLocations.suggested
+            .filter((loc: SaveLocationEntry) => loc.platform === platformKey)
+            .map((loc: SaveLocationEntry) => loc.pathPattern)
+          if (suggestedPatterns.length > 0) {
+            const resolved = await api.saveResolvePathPatterns(suggestedPatterns)
+            if (cancelled) return
+            if (resolved && resolved.length > 0) {
+              suggestedPathVal = resolved[0]
+            }
+          }
+        }
+
+        let candidate: string | null = null
+        if (overridePathVal) {
+          candidate = overridePathVal
+        } else if (verifiedPathVal) {
+          candidate = verifiedPathVal
+        } else if (localDetected) {
+          candidate = localDetected
+        } else if (suggestedPathVal) {
+          candidate = suggestedPathVal
+        }
+
+        setDetectedPath(candidate)
+
+        if (candidate && !cloudSettings.isPathConfirmed) {
+          setConfirmingPath(true)
+          const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
+          await api.saveConfirmPath(gameId, candidate, API_BASE_URL, token ? `Bearer ${token}` : '')
+          if (cancelled) return
+          const updated = await api.saveGetCloudSettings(gameId)
+          if (cancelled) return
+          setCloudSettings(updated || null)
+          setSuccessMsg("Save path automatically detected and confirmed!")
+          refetchServerLocations()
+        }
+      } catch (err) {
+        console.error('Failed in path detection/assignment', err)
+      } finally {
+        if (!cancelled) {
+          setResolvingServerPaths(false)
+          setConfirmingPath(false)
+        }
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [gameId, serverLocations, cloudSettings, confirmingPath, refetchServerLocations, api])
+
+  useEffect(() => {
+    if (!api) return
+    const unsubscribe = api.onGameEnded(async (data: { gameId?: string; gameTitle?: string }) => {
+      const gid = data?.gameId
+      const gTitle = data?.gameTitle || 'Game'
+      if (!gid) return
+      try {
+        const settings = await api.saveGetCloudSettings(gid)
+        if (settings && settings.autoSync) {
+          const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
+          await api.saveSyncCloud(gid, gTitle, 'default', API_BASE_URL, token ? `Bearer ${token}` : '')
+          if (gid === gid) {
+            const updated = await api.saveGetCloudSettings(gid)
+            setCloudSettings(updated)
+          }
+        }
+      } catch (err) {
+        console.error(`[AutoSync] Auto-sync failed for game: ${gid}`, err)
+      }
+    })
+    return () => { unsubscribe() }
+  }, [gameId, api])
+
+  const handleToggleAutoSync = useCallback(async (checked: boolean) => {
+    if (!gameId || !api) return
+    try {
+      await api.saveSetCloudSettings(gameId, checked)
+      setCloudSettings((prev) => prev ? { ...prev, autoSync: checked } : null)
+    } catch (err: unknown) {
+      console.error('Failed to set cloud settings', err)
+    }
+  }, [gameId, api])
+
+  const handleConfirmPath = useCallback(async (pathUrl: string) => {
+    if (!gameId || !api) return
+    setConfirmingPath(true)
+    setSyncError(null)
+    setSuccessMsg(null)
+    try {
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
+      await api.saveConfirmPath(gameId, pathUrl, API_BASE_URL, token ? `Bearer ${token}` : '')
+      setSuccessMsg("Save location confirmed successfully!")
+      const updated = await api.saveGetCloudSettings(gameId)
+      setCloudSettings(updated)
+      refetchServerLocations()
+    } catch (err: unknown) {
+      console.error('Failed to confirm path', err)
+      setSyncError(getErrorMessage(err, 'Failed to confirm save path.'))
+    } finally {
+      setConfirmingPath(false)
+    }
+  }, [gameId, api, refetchServerLocations])
+
+  const handleSelectFolder = useCallback(async () => {
+    if (!gameId || !api) return
+    try {
+      const selected = await api.saveSelectOverridePath()
+      if (selected) {
+        await api.saveSetOverride(gameId, selected)
+        setOverridePath(selected)
+        setDetectedPath(selected)
+        const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
+        await api.saveConfirmPath(gameId, selected, API_BASE_URL, token ? `Bearer ${token}` : '')
+        const updated = await api.saveGetCloudSettings(gameId)
+        setCloudSettings(updated)
+        setSuccessMsg("Save folder selected and confirmed successfully!")
+        refetchServerLocations()
+      }
+    } catch (err: unknown) {
+      console.error('Failed to select override path', err)
+      setSyncError(getErrorMessage(err, 'Failed to confirm selected folder.'))
+    }
+  }, [gameId, api, refetchServerLocations])
+
+  const handleClearOverride = useCallback(async () => {
+    if (!gameId || !api) return
+    try {
+      await api.saveClearOverride(gameId)
+      setOverridePath(null)
+      setSuccessMsg("Custom path override cleared.")
+      const updated = await api.saveGetCloudSettings(gameId)
+      setCloudSettings(updated)
+    } catch (err) {
+      console.error('Failed to clear override', err)
+    }
+  }, [gameId, api])
+
+  const handleSyncNow = useCallback(async () => {
+    if (!gameId || !api) return
+    if (!cloudSettings?.isPathConfirmed) {
+      setSyncError("Please confirm your save folder location first before syncing.")
+      return
+    }
+    setSyncing(true)
+    setSyncError(null)
+    setSuccessMsg(null)
+    try {
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
+      const res = await api.saveSyncCloud(gameId, gameTitle, 'default', API_BASE_URL, token ? `Bearer ${token}` : '')
+      if (res.success) {
+        setSuccessMsg(res.message || 'Sync successful!')
+        const updated = await api.saveGetCloudSettings(gameId)
+        setCloudSettings(updated)
+      } else {
+        setSyncError(res.message || 'Sync failed.')
+      }
+    } catch (err: unknown) {
+      console.error('Sync failed', err)
+      setSyncError(getErrorMessage(err, 'An error occurred during synchronization.'))
+    } finally {
+      setSyncing(false)
+    }
+  }, [gameId, gameTitle, api, cloudSettings?.isPathConfirmed])
+
+  return {
+    cloudSettings,
+    syncing,
+    syncError,
+    successMsg,
+    detectedPath,
+    overridePath,
+    confirmingPath,
+    resolvingServerPaths,
+    handleToggleAutoSync,
+    handleConfirmPath,
+    handleSelectFolder,
+    handleClearOverride,
+    handleSyncNow,
+  }
+}

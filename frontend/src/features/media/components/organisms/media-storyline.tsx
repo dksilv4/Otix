@@ -12,7 +12,7 @@ interface MediaStorylineProps {
 
 export type MediaStorylineV4Props = MediaStorylineProps
 
-export function MediaStoryline({ detail, mediaType, className = '' }: MediaStorylineProps) {
+export const MediaStoryline = ({ detail, mediaType, className = '' }: MediaStorylineProps) => {
   const [expanded, setExpanded] = useState(false)
   const overview = detail.overview || ''
   const isLong = overview.length > 280
@@ -139,6 +139,6 @@ export function MediaStoryline({ detail, mediaType, className = '' }: MediaStory
       )}
     </div>
   )
-}
+};
 
 export { MediaStoryline as MediaStorylineV4 }

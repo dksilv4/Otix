@@ -8,12 +8,12 @@ interface DkDeferredSectionProps {
   className?: string
 }
 
-function DkDeferredSection({
+const DkDeferredSection = ({
   children,
   fallback = null,
   rootMargin = '320px 0px',
   className,
-}: DkDeferredSectionProps) {
+}: DkDeferredSectionProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [isActive, setIsActive] = useState(
     () => typeof window === 'undefined' || typeof IntersectionObserver === 'undefined'
@@ -49,6 +49,6 @@ function DkDeferredSection({
       {isActive ? children : fallback}
     </div>
   )
-}
+};
 
 export { DkDeferredSection, DkDeferredSection as DeferredSection }

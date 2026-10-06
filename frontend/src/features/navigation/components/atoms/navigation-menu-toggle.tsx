@@ -3,7 +3,7 @@ import { DkButton } from "@ui/atoms/button"
 import { useNavigation } from "@navigation/hooks/use-navigation"
 
 /** Atom toggle button for the sidebar navigation menu. */
-export function MenuToggle() {
+export const MenuToggle = () => {
   const { toggle } = useNavigation()
 
   return (
@@ -17,4 +17,4 @@ export function MenuToggle() {
       <Menu className="h-5 w-5" />
     </DkButton>
   )
-}
+};

@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useAuth } from '@auth/hooks/use-auth'
 import { router } from '@/lib/router'
 
-export function AuthRouterBridge() {
+export const AuthRouterBridge = () => {
   const { isAuthenticated, isLoading } = useAuth()
 
   useEffect(() => {
@@ -19,4 +19,4 @@ export function AuthRouterBridge() {
   }, [isAuthenticated, isLoading])
 
   return null
-}
+};

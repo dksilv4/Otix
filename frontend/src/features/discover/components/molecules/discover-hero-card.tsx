@@ -17,7 +17,7 @@ interface HeroCardProps {
   children?: ReactNode
 }
 
-export function HeroCard({
+export const HeroCard = ({
   item,
   isActive,
   layerDistance,
@@ -29,7 +29,7 @@ export function HeroCard({
   onTouchStart,
   onTouchEnd,
   children,
-}: HeroCardProps) {
+}: HeroCardProps) => {
   const cardRef = useRef<HTMLDivElement>(null)
   const tilt = useCardTilt(isActive)
 
@@ -107,4 +107,4 @@ export function HeroCard({
       </motion.div>
     </motion.div>
   )
-}
+};

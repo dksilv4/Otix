@@ -14,7 +14,7 @@ interface DiscoverEmptyFeedProps {
  * implies every media section would be empty too — making this the single
  * correct signal for a truly empty discover feed.
  */
-export function DiscoverEmptyFeed({ onRefresh }: DiscoverEmptyFeedProps) {
+export const DiscoverEmptyFeed = ({ onRefresh }: DiscoverEmptyFeedProps) => {
   const [refreshing, setRefreshing] = useState(false)
 
   const handleRefresh = useCallback(async () => {
@@ -58,4 +58,4 @@ export function DiscoverEmptyFeed({ onRefresh }: DiscoverEmptyFeedProps) {
       )}
     </section>
   )
-}
+};

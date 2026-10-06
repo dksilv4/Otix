@@ -5,7 +5,7 @@ import { AnimatePresence } from 'framer-motion'
 import { ContextMenuContent } from './context-menu-content'
 import { useMenuContext } from './context-menu-context'
 
-export function ContextMenuPortal() {
+export const ContextMenuPortal = () => {
   const { isOpen, position, items, close } = useMenuContext()
   const [ready, setReady] = useState(false)
 
@@ -92,4 +92,4 @@ export function ContextMenuPortal() {
     </AnimatePresence>,
     document.body,
   )
-}
+};

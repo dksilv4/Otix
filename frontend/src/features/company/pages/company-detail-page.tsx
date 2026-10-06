@@ -17,7 +17,7 @@ import {
 } from '@company/queries/company-queries'
 import { cn } from '@/lib/utils'
 
-function StarRating({
+const StarRating = ({
   value,
   onChange,
   readonly,
@@ -25,7 +25,7 @@ function StarRating({
   value: number | null
   onChange?: (score: number) => void
   readonly?: boolean
-}) {
+}) => {
   const [hover, setHover] = useState(0)
   const active = hover || value || 0
 
@@ -59,9 +59,9 @@ function StarRating({
       {value != null && <span className="ml-1.5 text-xs text-muted-foreground">{value}/5</span>}
     </div>
   )
-}
+};
 
-export function CompanyDetailPage() {
+export const CompanyDetailPage = () => {
   const params = useParams({ from: '/company/$companyId' })
   const companyId = params.companyId || ''
   const { isAuthenticated } = useAuth()
@@ -330,4 +330,4 @@ export function CompanyDetailPage() {
       </section>
     </div>
   )
-}
+};

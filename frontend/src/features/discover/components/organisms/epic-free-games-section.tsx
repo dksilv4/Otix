@@ -37,13 +37,9 @@ interface MatchResult {
   alreadyOwned?: number
 }
 
-function getPluginAPI() {
-  return (window as any).desktopAPI?.plugin as
-    | { callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown> }
-    | undefined
-}
+import { getPluginAPI } from '@/features/discover/utils/plugins'
 
-export function EpicFreeGamesSection() {
+export const EpicFreeGamesSection = () => {
   const [result, setResult] = useState<MatchResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -154,9 +150,9 @@ export function EpicFreeGamesSection() {
       </Carousel>
     </motion.section>
   )
-}
+};
 
-function EpicFreeGameCard({
+const EpicFreeGameCard = ({
   entry,
   isClaimable,
   onViewDetails,
@@ -164,7 +160,7 @@ function EpicFreeGameCard({
   entry: MatchedEntry
   isClaimable: boolean
   onViewDetails: (mediaId: string) => void
-}) {
+}) => {
   const { game, match } = entry
   const hasMatch = !!match?.media_item_id
   const poster = match?.poster_url || game.posterUrl
@@ -271,4 +267,4 @@ function EpicFreeGameCard({
       </div>
     </div>
   )
-}
+};

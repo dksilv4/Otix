@@ -1,4 +1,4 @@
-export function SectionSkeleton({ height = 200 }: { height?: number }) {
+export const SectionSkeleton = ({ height = 200 }: { height?: number }) => {
   return (
     <div
       aria-hidden="true"
@@ -9,4 +9,4 @@ export function SectionSkeleton({ height = 200 }: { height?: number }) {
       }}
     />
   )
-}
+};

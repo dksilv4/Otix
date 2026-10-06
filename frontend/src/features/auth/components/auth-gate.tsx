@@ -17,10 +17,10 @@ interface AuthGateProps {
  * Users with no stored token bypass the gate entirely and see the app
  * immediately.
  */
-export function AuthGate({ children }: AuthGateProps) {
+export const AuthGate = ({ children }: AuthGateProps) => {
   const { isLoading } = useAuth()
 
   if (!isLoading) return <>{children}</>
 
   return <OtixLoadingScreen className="fixed inset-0 z-[9999]" />
-}
+};

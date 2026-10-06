@@ -23,12 +23,7 @@ interface RatingsHubProps {
 }
 
 
-function scoreColor(score: number) {
-  if (score >= 80) return { text: 'text-emerald-400', bg: 'bg-emerald-400/10', ring: 'ring-emerald-400/30', glow: 'shadow-[0_0_24px_rgba(52,211,153,0.18)]' }
-  if (score >= 60) return { text: 'text-sky-400', bg: 'bg-sky-400/10', ring: 'ring-sky-400/30', glow: 'shadow-[0_0_24px_rgba(56,189,248,0.18)]' }
-  if (score >= 40) return { text: 'text-amber-400', bg: 'bg-amber-400/10', ring: 'ring-amber-400/30', glow: 'shadow-[0_0_24px_rgba(251,191,36,0.18)]' }
-  return { text: 'text-red-400', bg: 'bg-red-400/10', ring: 'ring-red-400/30', glow: 'shadow-[0_0_24px_rgba(248,113,113,0.18)]' }
-}
+import { hubScoreColor as scoreColor } from '@/features/review/utils'
 
 const SCORE_LABELS: Record<number, string> = {
   1: '0.5 ★ Appalling',
@@ -43,7 +38,7 @@ const SCORE_LABELS: Record<number, string> = {
   10: '5.0 ★ Masterpiece',
 }
 
-export function RatingsHub({
+export const RatingsHub = ({
   mediaId,
   mediaType,
   overallRating,
@@ -53,7 +48,7 @@ export function RatingsHub({
   tmdbId: _tmdbId,
   imdbId,
   className = '',
-}: RatingsHubProps) {
+}: RatingsHubProps) => {
   const { isAuthenticated } = useAuth()
   const { openModal } = useModal()
   const [hoverRating, setHoverRating] = useState<number | null>(null)
@@ -361,6 +356,6 @@ export function RatingsHub({
       )}
     </div>
   )
-}
+};
 
 export default RatingsHub;

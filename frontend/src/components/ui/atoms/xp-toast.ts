@@ -1,2 +1,9 @@
 export { XPToastContainer } from './xp-toast-container'
-export { showXPToast, type XPToast } from './xp-toast-dispatcher'
+export {
+  showXPToast,
+  showLevelUpToast,
+  levelUpListeners,
+  xpGainListeners,
+  type XPToast,
+  type LevelUpEvent,
+} from './xp-toast-dispatcher'

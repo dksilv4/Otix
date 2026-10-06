@@ -18,7 +18,7 @@ import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
 
-export function GlassLauncherView() {
+export const GlassLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated: _isAuthenticated } = useAuth()
   const _isDesktop = hasDesktopAPI()
@@ -289,4 +289,4 @@ export function GlassLauncherView() {
       )}
     </div>
   )
-}
+};

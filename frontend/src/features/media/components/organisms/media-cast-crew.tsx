@@ -22,7 +22,7 @@ export type CastCrewV4Props = CastCrewProps
 
 type CreditCategory = 'cast' | 'directing' | 'crew'
 
-export function CastCrew({ credits = [], className = '' }: CastCrewProps) {
+export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -198,6 +198,6 @@ export function CastCrew({ credits = [], className = '' }: CastCrewProps) {
       )}
     </div>
   )
-}
+};
 
 export { CastCrew as CastCrewV4 }

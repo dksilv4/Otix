@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { useAuth } from "@/lib/providers/auth"
 import { YoutubeTabContent } from "../platforms/youtube"
 
-export function LibraryIntegrationYoutubeSection() {
+export const LibraryIntegrationYoutubeSection = () => {
   const navigate = useNavigate()
   const { user, isLoading: authLoading } = useAuth()
 
@@ -18,4 +18,4 @@ export function LibraryIntegrationYoutubeSection() {
   if (!user?.googleId) return null
 
   return <YoutubeTabContent />
-}
+};

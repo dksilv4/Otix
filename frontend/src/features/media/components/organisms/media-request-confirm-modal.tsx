@@ -24,12 +24,12 @@ interface MediaRequestConfirmModalProps {
   initialInstanceId?: string
 }
 
-export function MediaRequestConfirmModal({
+export const MediaRequestConfirmModal = ({
   open,
   onClose,
   state,
   initialInstanceId,
-}: MediaRequestConfirmModalProps) {
+}: MediaRequestConfirmModalProps) => {
   const isMovie = state.mediaType === 'movie'
 
   // Requestable instances
@@ -404,4 +404,4 @@ export function MediaRequestConfirmModal({
       </div>
     </DkDialog>
   )
-}
+};

@@ -19,7 +19,7 @@ import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
 
-export function RetroLauncherView() {
+export const RetroLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated: _isAuthenticated } = useAuth()
   const _isDesktop = hasDesktopAPI()
@@ -315,4 +315,4 @@ export function RetroLauncherView() {
       )}
     </div>
   )
-}
+};

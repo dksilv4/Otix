@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { Minus, Square, Maximize2, X } from 'lucide-react'
 import './title-bar.scss'
 
-function MacOSTitleBar() {
+const MacOSTitleBar = () => {
   return (
     <div className="dk-title-bar dk-title-bar--macos">
       <span className="dk-title-bar__app-title">
@@ -12,9 +12,9 @@ function MacOSTitleBar() {
       </span>
     </div>
   )
-}
+};
 
-function WindowsLinuxTitleBar() {
+const WindowsLinuxTitleBar = () => {
   const [isMaximized, setIsMaximized] = useState(false)
   const api = window.desktopAPI as unknown as {
     isWindowMaximized: () => Promise<boolean>
@@ -83,9 +83,9 @@ function WindowsLinuxTitleBar() {
       </div>
     </div>
   )
-}
+};
 
-export function TitleBar() {
+export const TitleBar = () => {
   const { isDesktop, isMac } = useDesktopPlatform()
 
   if (!isDesktop) return null
@@ -93,4 +93,4 @@ export function TitleBar() {
   if (isMac) return <MacOSTitleBar />
 
   return <WindowsLinuxTitleBar />
-}
+};

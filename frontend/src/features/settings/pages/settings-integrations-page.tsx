@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
@@ -123,67 +123,14 @@ type PlexLibraryProgress = {
   phase: 'pending' | 'syncing' | 'complete' | 'failed'
 }
 
-type YouTubeProgressState = {
-  phase: string
-  detail?: string
-}
-
-function formatAccountAge(unixTimestamp: number | null): string {
-  if (!unixTimestamp) return ''
-  const created = new Date(unixTimestamp * 1000)
-  const now = new Date()
-  const years = now.getFullYear() - created.getFullYear()
-  const monthDiff = now.getMonth() - created.getMonth()
-  const adjustedYears = monthDiff < 0 ? years - 1 : years
-  if (adjustedYears < 1) return 'Joined this year'
-  if (adjustedYears === 1) return '1 year on Steam'
-  return `${adjustedYears} years on Steam`
-}
-
-const PERSONA_STATES: Record<number, string> = {
-  0: 'Offline',
-  1: 'Online',
-  2: 'Busy',
-  3: 'Away',
-  4: 'Snooze',
-  5: 'Looking to trade',
-  6: 'Looking to play',
-}
-
-function personaStateLabel(state: number | null): string {
-  if (state === null || state === undefined) return 'Unknown'
-  return PERSONA_STATES[state] ?? 'Unknown'
-}
-
-function extractIntegrationMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const resp = (err as { response?: { data?: { detail?: string } } }).response
-    if (resp?.data?.detail) return resp.data.detail
-  }
-  if (err instanceof Error) return err.message
-  return 'Something went wrong. Please try again.'
-}
-
-function openBoundModal(
-  openModal: (component: ReactNode) => () => void,
-  render: (onClose: () => void) => ReactNode,
-) {
-  const closeRef = { current: () => {} }
-  closeRef.current = openModal(render(() => closeRef.current()))
-}
-
-function formatDaysAgo(unixTimestamp: number): string {
-  const seconds = Math.floor(Date.now() / 1000 - unixTimestamp)
-  if (isNaN(seconds) || seconds < 0) return 'today'
-  if (seconds < 60) return 'just now'
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  const days = Math.floor(seconds / 86400)
-  if (days === 1) return 'yesterday'
-  if (days < 30) return `${days}d ago`
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`
-  return `${Math.floor(days / 365)}y ago`
-}
+import {
+  type YouTubeProgressState,
+  formatAccountAge,
+  personaStateLabel,
+  extractIntegrationMessage,
+  openBoundModal,
+  formatDaysAgo,
+} from '../utils/integrations'
 
 const BRAND_COLORS: Record<string, string> = {
   steam: '#1a6bcc',
@@ -216,13 +163,13 @@ const BRAND_BG: Record<string, string> = {
 const NODE_KEYWORDS = 'sabnzbd prowlarr radarr sonarr usenet torrent arr downloader server node'
 
 /** Renders SABnzbd, Prowlarr, Radarr, and Sonarr cards scoped to a single Otix worker node. */
-function NodeConnectionsGroup({
+const NodeConnectionsGroup = ({
   server,
   searchQuery,
 }: {
   server: GameServer
   searchQuery: string
-}) {
+}) => {
   const { openModal } = useModal()
   const hasQuery = Boolean(searchQuery && searchQuery.trim().length > 0)
   const [nodeOpen, setNodeOpen] = useState(hasQuery)
@@ -609,11 +556,11 @@ function NodeConnectionsGroup({
       )}
     </div>
   )
-}
+};
 
 let activeIntegrationAbortController: AbortController | null = null
 
-export function SettingsIntegrationsPage() {
+export const SettingsIntegrationsPage = () => {
   const { openModal } = useModal()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   useSettingsHashScroll()
@@ -2452,5 +2399,5 @@ export function SettingsIntegrationsPage() {
       )}
     </div>
   )
-}
+};
 

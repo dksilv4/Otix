@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { useOffline } from '@/lib/offline'
 
 /** Subtle "you're offline, here's saved data" pill. Renders nothing when online. */
-export function OfflineNotice({ className }: { className?: string }) {
+export const OfflineNotice = ({ className }: { className?: string }) => {
   const offline = useOffline()
   if (!offline) return null
   return (
@@ -17,4 +17,4 @@ export function OfflineNotice({ className }: { className?: string }) {
       Offline — showing cached data
     </div>
   )
-}
+};

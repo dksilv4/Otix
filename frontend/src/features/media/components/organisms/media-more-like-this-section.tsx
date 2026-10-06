@@ -15,11 +15,11 @@ interface MoreLikeThisSectionProps {
 
 type Tab = 'similar' | 'forYou'
 
-export function MoreLikeThisSection({
+export const MoreLikeThisSection = ({
   className,
   headerClassName,
   trackPaddingInline,
-}: MoreLikeThisSectionProps) {
+}: MoreLikeThisSectionProps) => {
   const [activeTab, setActiveTab] = useState<Tab>('similar')
   const { isAuthenticated } = useAuth()
 
@@ -97,4 +97,4 @@ export function MoreLikeThisSection({
       </Carousel>
     </section>
   )
-}
+};

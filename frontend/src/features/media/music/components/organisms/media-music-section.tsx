@@ -11,20 +11,13 @@ import { AudioFeatureRow } from './media-music-audio-feature-row'
 import { MetaItem } from './media-music-meta-item'
 import { TrackRow } from './media-music-track-row'
 import { usePlexAlbumTracks, type PlexAlbumTrack } from '@library/library-queries'
+import { formatMs } from '@media'
 
 interface MusicSectionProps {
  className?: string
 }
 
 const EMPTY_TRACKS: TrackOut[] = []
-
-function formatMs(ms: number | null | undefined): string {
- if (ms == null || ms <= 0) return '—'
- const totalSec = Math.round(ms / 1000)
- const m = Math.floor(totalSec / 60)
- const s = totalSec % 60
- return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 /** Spotify-style audio feature keys we show when present on album or tracks */
 const ALBUM_AUDIO_FEATURE_ORDER = [
@@ -38,7 +31,7 @@ const ALBUM_AUDIO_FEATURE_ORDER = [
  ['speechiness', 'Speech'],
 ] as const
 
-function renderAlbumAudioFeatures(features: Record<string, unknown> | null | undefined) {
+const AlbumAudioFeatures = ({ features }: { features: Record<string, unknown> | null | undefined }) => {
  if (!features || typeof features !== 'object') return null
  const hasAny = ALBUM_AUDIO_FEATURE_ORDER.some(([k]) => {
  const v = features[k]
@@ -57,9 +50,9 @@ function renderAlbumAudioFeatures(features: Record<string, unknown> | null | und
  </div>
  </div>
  )
-}
+};
 
-export function MusicSection({ className }: MusicSectionProps = {}) {
+export const MusicSection = ({ className }: MusicSectionProps = {}) => {
 	const { mediaId } = useMediaParams()
 
 	const { data } = useQuery(mediaQueries.detail('music', mediaId))
@@ -232,7 +225,7 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  </div>
  )}
 
- {renderAlbumAudioFeatures(album.audioFeatures)}
+ <AlbumAudioFeatures features={album.audioFeatures} />
 
  {/* Track list */}
  <div className="space-y-3">
@@ -301,4 +294,4 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  )}
  </section>
  )
-}
+};

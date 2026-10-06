@@ -10,7 +10,7 @@ export interface PathMappingRow {
   error?: string
 }
 
-export function IntegrationPathMappings({
+export const IntegrationPathMappings = ({
   mappings,
   onChange,
   folderError,
@@ -20,7 +20,7 @@ export function IntegrationPathMappings({
   onChange: (next: PathMappingRow[]) => void
   folderError?: string
   addButtonClass?: string
-}) {
+}) => {
   const anyLinked = mappings.some((mapping) => mapping.linked)
   const showDiscovery = Boolean(folderError) && !anyLinked
 
@@ -106,4 +106,4 @@ export function IntegrationPathMappings({
       </p>
     </div>
   )
-}
+};

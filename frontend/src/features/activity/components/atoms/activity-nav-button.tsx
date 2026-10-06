@@ -17,7 +17,7 @@ const GLASS_STYLE: React.CSSProperties = {
   borderRadius: '2rem',
 }
 
-function EqualizerBars({ isPlaying }: { isPlaying: boolean }) {
+const EqualizerBars = ({ isPlaying }: { isPlaying: boolean }) => {
   return (
     <div className="flex items-end h-4 w-4 gap-px">
       {[0, 1, 2].map((i) => (
@@ -32,10 +32,10 @@ function EqualizerBars({ isPlaying }: { isPlaying: boolean }) {
       ))}
     </div>
   )
-}
+};
 
 /** Atom button showing current activity state (playing game, music, downloads, Plex). */
-export function ActivityModuleButton({
+export const ActivityModuleButton = ({
   isPinned,
   isSidebarOpen,
   onToggleSidebar,
@@ -45,7 +45,7 @@ export function ActivityModuleButton({
   isSidebarOpen?: boolean
   onToggleSidebar?: () => void
   bare?: boolean
-}) {
+}) => {
   const { source, isPlaying, currentTrack } = usePlayer()
   const { runningGame, matchedGame } = useMatchedRunningGame()
 
@@ -130,7 +130,7 @@ export function ActivityModuleButton({
               <img
                 src={plexSessions[0].thumb}
                 alt=""
-                className="h-6 w-6 rounded-full object-cover ring-1 ring-amber-400/30"
+                className="h-6 w-6 rounded-full object-cover shadow-sm"
               />
               <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#e5a00d]">
                 <PlexIcon className="h-2 w-2 text-black" />
@@ -160,4 +160,4 @@ export function ActivityModuleButton({
       </button>
     </>
   )
-}
+};

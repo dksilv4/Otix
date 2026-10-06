@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { useAuth } from "@/lib/providers/auth"
 import { PlexTabContent } from "../platforms/plex"
 
-export function LibraryIntegrationPlexSection() {
+export const LibraryIntegrationPlexSection = () => {
   const navigate = useNavigate()
   const { user, isLoading: authLoading } = useAuth()
 
@@ -18,4 +18,4 @@ export function LibraryIntegrationPlexSection() {
   if (!user?.plexId) return null
 
   return <PlexTabContent />
-}
+};

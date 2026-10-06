@@ -7,7 +7,7 @@ import { Skeleton } from '@ui/atoms/skeleton'
 import { DkDropdown, type DkDropdownOption } from '@ui/atoms/dropdown'
 import { apiClient } from '@/lib/api/client'
 import { GenreCard } from '../components/genre-card'
-import type { GenreMediaType, GenreOption } from '../types'
+import type { GenreOption } from '../types'
 
 const MEDIA_TYPE_OPTIONS: readonly DkDropdownOption[] = [
   { value: '', label: 'All' },
@@ -16,12 +16,9 @@ const MEDIA_TYPE_OPTIONS: readonly DkDropdownOption[] = [
   { value: 'game', label: 'Games' },
 ]
 
-function parseMediaType(value: string): GenreMediaType | undefined {
-  if (value === 'movie' || value === 'show' || value === 'game') return value
-  return undefined
-}
+import { parseMediaType } from '../utils'
 
-export function GenresDirectoryPage() {
+export const GenresDirectoryPage = () => {
   const [selectedType, setSelectedType] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -138,4 +135,4 @@ export function GenresDirectoryPage() {
       )}
     </div>
   )
-}
+};

@@ -9,11 +9,11 @@ interface GuestCtaBannerProps {
 }
 
 /** Non-intrusive inline Call-to-Action banner for guest (unauthenticated) users. */
-export function GuestCtaBanner({
+export const GuestCtaBanner = ({
   title = 'Track your movies, shows, games, and music in one place',
   description = 'Create a free Otix account to build your library, sync your watch history, and share your ratings.',
   className = '',
-}: GuestCtaBannerProps) {
+}: GuestCtaBannerProps) => {
   const { isAuthenticated, isLoading } = useAuth()
 
   if (isLoading || isAuthenticated) return null
@@ -60,4 +60,4 @@ export function GuestCtaBanner({
       </div>
     </div>
   )
-}
+};

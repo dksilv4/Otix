@@ -28,7 +28,7 @@ export interface NodeSettingsModalProps {
   onDisconnectSuccess?: () => void
 }
 
-export function NodeSettingsModal({
+export const NodeSettingsModal = ({
   server,
   open,
   onOpenChange,
@@ -36,7 +36,7 @@ export function NodeSettingsModal({
   isLoading = false,
   onTabChange,
   onDisconnectSuccess,
-}: NodeSettingsModalProps) {
+}: NodeSettingsModalProps) => {
   const { setSelectedNodeId } = useSettingsNode()
 
   useEffect(() => {
@@ -325,4 +325,4 @@ export function NodeSettingsModal({
       )}
     </>
   )
-}
+};

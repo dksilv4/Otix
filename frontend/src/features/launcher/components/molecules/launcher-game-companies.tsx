@@ -8,7 +8,7 @@ interface CompanyEntry {
   publisher: boolean
 }
 
-export function LauncherGameCompanies() {
+export const LauncherGameCompanies = () => {
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
@@ -35,4 +35,4 @@ export function LauncherGameCompanies() {
       </div>
     </div>
   )
-}
+};

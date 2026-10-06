@@ -20,7 +20,7 @@ const TONE_META: Record<AlertTone, { icon: React.ComponentType<{ className?: str
   error: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
 }
 
-export function Alert({ tone = 'info', title, children, className, dismissible, onDismiss }: AlertProps) {
+export const Alert = ({ tone = 'info', title, children, className, dismissible, onDismiss }: AlertProps) => {
   const meta = TONE_META[tone]
   const Icon = meta.icon
   return (
@@ -40,4 +40,4 @@ export function Alert({ tone = 'info', title, children, className, dismissible, 
       )}
     </div>
   )
-}
+};

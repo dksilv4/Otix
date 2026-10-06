@@ -39,7 +39,7 @@ type TabId = (typeof TABS)[number]['id']
 
 // ── Connection section (OAuth + scan) ─────────────────────────────────────────
 
-function PluginConnectionSection({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }) {
+const PluginConnectionSection = ({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }) => {
   const [state, setState] = useState<{
     loading: boolean
     connected?: boolean
@@ -270,11 +270,11 @@ function PluginConnectionSection({ plugin, api }: { plugin: PluginInfo; api: Plu
       </div>
     </div>
   )
-}
+};
 
 // ── Overview content ──────────────────────────────────────────────────────────
 
-function OverviewContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }) {
+const OverviewContent = ({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }) => {
   const hasSlots = (plugin.manifest.slots?.length ?? 0) > 0
 
   return (
@@ -343,11 +343,11 @@ function OverviewContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
       )}
     </div>
   )
-}
+};
 
 // ── Configure content ─────────────────────────────────────────────────────────
 
-function ConfigureContent({
+const ConfigureContent = ({
   plugin,
   api,
   onConfigSaved,
@@ -355,7 +355,7 @@ function ConfigureContent({
   plugin: PluginInfo
   api: PluginAPI
   onConfigSaved?: () => void
-}) {
+}) => {
   const configFields = useMemo(() => plugin.manifest.config || {}, [plugin.manifest.config])
   const hasConfig = Object.keys(configFields).length > 0
   const [values, setValues] = useState<Record<string, unknown>>({})
@@ -447,11 +447,11 @@ function ConfigureContent({
       />
     </div>
   )
-}
+};
 
 // ── Permissions content ───────────────────────────────────────────────────────
 
-function PermissionsContent({ plugin }: { plugin: PluginInfo }) {
+const PermissionsContent = ({ plugin }: { plugin: PluginInfo }) => {
   const perms = plugin.manifest.permissions || []
   // API access follows the plugin's DB-enabled state; an errored host is still
   // enabled in the registry, so only disabled/installed count as off.
@@ -483,11 +483,11 @@ function PermissionsContent({ plugin }: { plugin: PluginInfo }) {
       <PluginAccessTokenCard pluginId={plugin.id} pluginName={plugin.name} enabled={apiEnabled} />
     </div>
   )
-}
+};
 
 // ── Activity content ──────────────────────────────────────────────────────────
 
-function ActivityContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }) {
+const ActivityContent = ({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }) => {
   const [status, setStatus] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -566,7 +566,7 @@ function ActivityContent({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
       )}
     </div>
   )
-}
+};
 
 // ── Dependencies content ────────────────────────────────────────────────────────
 
@@ -577,7 +577,7 @@ type DepEntry = {
   status?: PluginStatus
 }
 
-function DepRow({
+const DepRow = ({
   dep,
   clickable,
   onOpenPlugin,
@@ -585,7 +585,7 @@ function DepRow({
   dep: DepEntry
   clickable: boolean
   onOpenPlugin?: (id: string) => void
-}) {
+}) => {
   return (
     <button
       type="button"
@@ -611,9 +611,9 @@ function DepRow({
       {clickable && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/25" />}
     </button>
   )
-}
+};
 
-function DependenciesContent({
+const DependenciesContent = ({
   plugin,
   allPlugins,
   onOpenPlugin,
@@ -621,7 +621,7 @@ function DependenciesContent({
   plugin: PluginInfo
   allPlugins: PluginInfo[]
   onOpenPlugin?: (id: string) => void
-}) {
+}) => {
   const nameById = new Map(allPlugins.map((p) => [p.id, p.name]))
   const statusById = new Map(allPlugins.map((p) => [p.id, p.status]))
 
@@ -669,11 +669,11 @@ function DependenciesContent({
       )}
     </div>
   )
-}
+};
 
 // ── Detail panel ──────────────────────────────────────────────────────────────
 
-export function PluginDetailPanel({
+export const PluginDetailPanel = ({
   plugin,
   api,
   allPlugins,
@@ -689,7 +689,7 @@ export function PluginDetailPanel({
   onClose: () => void
   onConfigSaved?: () => void
   isExiting?: boolean
-}) {
+}) => {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const icon = getPluginIcon(plugin.manifest.icon)
 
@@ -752,4 +752,4 @@ export function PluginDetailPanel({
       </div>
     </SlidePanel>
   )
-}
+};

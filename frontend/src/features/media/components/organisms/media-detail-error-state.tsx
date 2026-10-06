@@ -1,4 +1,4 @@
-export function ErrorState({ mediaType }: { mediaType: string }) {
+export const ErrorState = ({ mediaType }: { mediaType: string }) => {
   const typeLabel =
     mediaType === 'movie'
       ? 'Movie'
@@ -37,4 +37,4 @@ export function ErrorState({ mediaType }: { mediaType: string }) {
       </div>
     </div>
   )
-}
+};

@@ -11,7 +11,7 @@ interface ContextMenuSubProps {
   parentItemRef?: React.RefObject<HTMLButtonElement | null>
 }
 
-export function ContextMenuSub({ item, isOpen, onToggle, parentRef }: ContextMenuSubProps) {
+export const ContextMenuSub = ({ item, isOpen, onToggle, parentRef }: ContextMenuSubProps) => {
   const subRef = useRef<HTMLDivElement>(null)
   const itemRef = useRef<HTMLButtonElement>(null)
   const [subPos, setSubPos] = useState<'right' | 'left'>('right')
@@ -84,4 +84,4 @@ export function ContextMenuSub({ item, isOpen, onToggle, parentRef }: ContextMen
       </AnimatePresence>
     </div>
   )
-}
+};

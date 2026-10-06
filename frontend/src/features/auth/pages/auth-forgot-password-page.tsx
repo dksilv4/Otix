@@ -10,13 +10,13 @@ import { apiClient } from '@/lib/api/client'
 import { extractErrorMessage } from '@auth/utils'
 import type { ForgotPasswordPageState } from '@auth/types'
 
-export function ForgotPasswordPage() {
+export const ForgotPasswordPage = () => {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [state, setState] = useState<ForgotPasswordPageState>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!email.trim()) return
     setState('sending')
@@ -130,4 +130,4 @@ export function ForgotPasswordPage() {
       </AuthCard>
     </div>
   )
-}
+};

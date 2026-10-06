@@ -16,13 +16,13 @@ export interface SettingsLibraryTabsProps {
   className?: string
 }
 
-export function SettingsLibraryTabs({
+export const SettingsLibraryTabs = ({
   value,
   onValueChange,
   panels,
   proposalsCount,
   className,
-}: SettingsLibraryTabsProps) {
+}: SettingsLibraryTabsProps) => {
   return (
     <DkTabs
       defaultValue={value}
@@ -50,4 +50,4 @@ export function SettingsLibraryTabs({
       ))}
     </DkTabs>
   )
-}
+};

@@ -14,13 +14,13 @@ interface ModernDashboardProps {
   onSwitchToLibrary: () => void
 }
 
-export function ModernDashboard({
+export const ModernDashboard = ({
   localGames,
   popularGames,
   onOpenDetails,
   onSelectGame,
   onSwitchToLibrary,
-}: ModernDashboardProps) {
+}: ModernDashboardProps) => {
   // Filter out non-games
   const playableLocalGames = useMemo(
     () => localGames.filter((g) => !isApplicationGame(g)),
@@ -251,4 +251,4 @@ export function ModernDashboard({
       )}
     </div>
   )
-}
+};

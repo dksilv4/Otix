@@ -4,18 +4,9 @@ import { cn } from '@/lib/utils'
 import type { ProwlarrIndexerItem } from '../usenet-types'
 import { filterIndexersByProtocol } from '../usenet-utils'
 
-function protocolChip(protocol?: string) {
-  const p = (protocol || '').toLowerCase()
-  if (p === 'usenet') {
-    return { label: 'Usenet', className: 'bg-cyan-500/15 text-cyan-300' }
-  }
-  if (p === 'torrent') {
-    return { label: 'Torrent', className: 'bg-amber-500/15 text-amber-300' }
-  }
-  return { label: protocol || 'Unknown', className: 'bg-white/10 text-white/50' }
-}
+import { protocolChip } from '../utils'
 
-export function ProwlarrIndexersPanel({
+export const ProwlarrIndexersPanel = ({
   protocol,
   onProtocolChange,
   onSync,
@@ -29,7 +20,7 @@ export function ProwlarrIndexersPanel({
   isSyncing?: boolean
   indexers: ProwlarrIndexerItem[]
   syncMessage?: string | null
-}) {
+}) => {
   const visible = filterIndexersByProtocol(indexers, protocol)
   const count = visible.length
 
@@ -122,4 +113,4 @@ export function ProwlarrIndexersPanel({
       ) : null}
     </div>
   )
-}
+};

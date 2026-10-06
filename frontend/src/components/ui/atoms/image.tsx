@@ -10,7 +10,7 @@ interface DkImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   priority?: boolean
 }
 
-function DkImage({
+const DkImage = ({
   src,
   className,
   alt,
@@ -20,7 +20,7 @@ function DkImage({
   onLoad,
   priority = false,
   ...props
-}: DkImageProps) {
+}: DkImageProps) => {
   if (!src) {
     return (
       <div className={cn('flex items-center justify-center bg-muted text-xs text-muted-foreground', className)}>
@@ -45,9 +45,9 @@ function DkImage({
       />
     </div>
   )
-}
+};
 
-function DkImageInner({ src, alt, fallback, imgClassName, onError, onLoad, priority = false, ...props }: DkImageProps) {
+const DkImageInner = ({ src, alt, fallback, imgClassName, onError, onLoad, priority = false, ...props }: DkImageProps) => {
   const imgRef = useRef<HTMLImageElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -98,6 +98,6 @@ function DkImageInner({ src, alt, fallback, imgClassName, onError, onLoad, prior
       />
     </>
   )
-}
+};
 
 export { DkImage, DkImage as Image }

@@ -13,7 +13,7 @@ interface MediaCarouselProps {
   priority?: boolean
 }
 
-export const MediaCarousel = memo(function MediaCarousel({
+export const MediaCarousel = memo(({
   items,
   isLoading = false,
   className,
@@ -21,7 +21,7 @@ export const MediaCarousel = memo(function MediaCarousel({
   viewAllLink,
   viewAllSearch,
   priority = false,
-}: MediaCarouselProps) {
+}: MediaCarouselProps) => {
   return (
     <Carousel
       className={className}

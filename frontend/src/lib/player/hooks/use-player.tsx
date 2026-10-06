@@ -2,40 +2,11 @@ import { createContext, useCallback, useContext, useMemo } from 'react'
 import { usePlexPlayer, type PlexTrackInfo } from '../plex-audio-provider'
 import { useJellyfinPlayer, type JellyfinTrackInfo } from '../jellyfin-audio-provider'
 import type { PlayerContextValue, PlayerSource, PlayerTrackInfo } from '../types'
+import { mapPlexTrack, mapJellyfinTrack } from '../utils'
 
 const PlayerContext = createContext<PlayerContextValue | null>(null)
 
-function mapPlexTrack(track: PlexTrackInfo): PlayerTrackInfo {
-  return {
-    id: track.ratingKey,
-    title: track.title,
-    artist: track.artist,
-    artists: track.artist
-      ? [{ name: track.artist, uri: '' }]
-      : [],
-    albumName: track.albumName,
-    albumArt: track.albumArt,
-    durationMs: track.durationMs,
-    source: 'plex',
-  }
-}
-
-function mapJellyfinTrack(track: JellyfinTrackInfo): PlayerTrackInfo {
-  return {
-    id: track.itemId,
-    title: track.title,
-    artist: track.artist,
-    artists: track.artist
-      ? [{ name: track.artist, uri: '' }]
-      : [],
-    albumName: track.albumName,
-    albumArt: track.albumArt,
-    durationMs: track.durationMs,
-    source: 'jellyfin',
-  }
-}
-
-export function PlayerProvider({ children }: { children: React.ReactNode }) {
+export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const plex = usePlexPlayer()
   const jellyfin = useJellyfinPlayer()
 
@@ -134,7 +105,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
-}
+};
 
 const defaultContextValue: PlayerContextValue = {
   source: 'none',
@@ -163,7 +134,7 @@ const defaultContextValue: PlayerContextValue = {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function usePlayer(): PlayerContextValue {
+export const usePlayer = (): PlayerContextValue => {
   const ctx = useContext(PlayerContext)
   return ctx ?? defaultContextValue
 }

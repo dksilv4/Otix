@@ -26,7 +26,7 @@ interface Props {
   variant?: 'default' | 'pill' | 'icon'
 }
 
-export function AdminActionsMenu({ mediaId, media, variant = 'default' }: Props) {
+export const AdminActionsMenu = ({ mediaId, media, variant = 'default' }: Props) => {
   const { user } = useAuth()
   const { openModal } = useModal()
   const { toast } = useToast()
@@ -179,5 +179,5 @@ export function AdminActionsMenu({ mediaId, media, variant = 'default' }: Props)
       </div>
     </div>
   )
-}
+};
 

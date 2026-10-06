@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { MediaItemSummary } from '@media/queries/media-queries'
 
 /** Expandable search input with autocomplete suggestions for media across all types. */
-export function NavSearch() {
+export const NavSearch = () => {
  const navigate = useNavigate()
  const location = useLocation()
  const [expanded, setExpanded] = useState(false)
@@ -234,4 +234,4 @@ export function NavSearch() {
  )}
  </div>
  )
-}
+};

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
-import { useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { useToast } from '@ui/molecules/toast'
 import { useSseStream } from '@/lib/hooks/use-sse-stream'
@@ -10,88 +10,22 @@ import { createWebChannel } from '../channels/web-channel'
 import { createToastChannel } from '../channels/toast-channel'
 import { createDesktopChannel } from '../channels/desktop-channel'
 import type {
-  Notification,
   NotificationEvent,
-  NotificationListResponse,
   NotificationType,
   NotificationPreferences,
-  UnreadCount,
 } from '../types'
+
+import {
+  isInQuietHours,
+  appendNotificationToFeed,
+  bumpUnreadCount,
+} from '../utils'
 
 interface NotificationsProviderProps {
   children: React.ReactNode
 }
 
-function isInQuietHours(prefs: NotificationPreferences): boolean {
-  const start = prefs._quiet_start as string | undefined
-  const end = prefs._quiet_end as string | undefined
-  if (!start || !end) return false
-  const now = new Date()
-  const current = now.getHours() * 60 + now.getMinutes()
-  const [sh, sm] = start.split(':').map(Number)
-  const [eh, em] = end.split(':').map(Number)
-  const startMin = sh * 60 + sm
-  const endMin = eh * 60 + em
-  if (startMin <= endMin) return current >= startMin && current < endMin
-  return current >= startMin || current < endMin
-}
-
-function toFeedItem(event: NotificationEvent): Notification {
-  return {
-    id: String(event.id),
-    type: event.type,
-    title: event.title,
-    body: event.body,
-    metadataJson: event.metadata ?? {},
-    isRead: event.isRead,
-    createdAt: event.createdAt,
-  }
-}
-
-type FeedUpdate = 'inserted' | 'duplicate' | 'no-cache'
-
-/**
- * Insert a live notification at the top of any cached feed.
- * Never invalidates/refetches — the page stays put and just gains a row.
- */
-function appendNotificationToFeed(
-  queryClient: QueryClient,
-  event: NotificationEvent,
-): FeedUpdate {
-  const item = toFeedItem(event)
-  let outcome: FeedUpdate = 'no-cache'
-
-  queryClient.setQueriesData<InfiniteData<NotificationListResponse>>(
-    { queryKey: ['notifications', 'list'] },
-    (old) => {
-      if (!old?.pages?.length) return old
-      const exists = old.pages.some((page) =>
-        page.items.some((n) => String(n.id) === item.id),
-      )
-      if (exists) {
-        outcome = 'duplicate'
-        return old
-      }
-      outcome = 'inserted'
-      const [first, ...rest] = old.pages
-      return {
-        ...old,
-        pages: [{ ...first, items: [item, ...first.items] }, ...rest],
-      }
-    },
-  )
-
-  return outcome
-}
-
-function bumpUnreadCount(queryClient: QueryClient) {
-  queryClient.setQueryData<UnreadCount>(
-    ['notifications', 'unread-count'],
-    (prev) => ({ count: (prev?.count ?? 0) + 1 }),
-  )
-}
-
-export function NotificationsProvider({ children }: NotificationsProviderProps) {
+export const NotificationsProvider = ({ children }: NotificationsProviderProps) => {
   const { isAuthenticated, user } = useAuth()
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -155,4 +89,4 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
   })
 
   return <>{children}</>
-}
+};

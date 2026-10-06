@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getDesktopAPI } from '@/lib/desktop/api'
 
-export function FpsPermissionDialog() {
+export const FpsPermissionDialog = () => {
   const [show, setShow] = useState(false)
   const [fixing, setFixing] = useState(false)
   const [done, setDone] = useState(false)
@@ -107,4 +107,4 @@ export function FpsPermissionDialog() {
       </div>
     </div>
   )
-}
+};

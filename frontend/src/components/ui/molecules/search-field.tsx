@@ -11,13 +11,13 @@ interface DkSearchFieldProps {
   className?: string
 }
 
-function DkSearchField({
+const DkSearchField = ({
   value,
   onChange,
   placeholder = 'Search...',
   debounceMs = 300,
   className,
-}: DkSearchFieldProps) {
+}: DkSearchFieldProps) => {
   const [localValue, setLocalValue] = useState(value)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -58,6 +58,6 @@ function DkSearchField({
       )}
     </div>
   )
-}
+};
 
 export { DkSearchField, DkSearchField as SearchField }

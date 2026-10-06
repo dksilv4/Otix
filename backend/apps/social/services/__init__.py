@@ -34,6 +34,11 @@ from apps.social.services.review import (
     remove_vote,
     vote_review,
 )
+from apps.social.services.streak import (
+    update_login_streak,
+    update_review_streak,
+    update_workout_streak,
+)
 from apps.social.services.user_activity import (
     get_activity_heatmap,
     get_daily_activity,
@@ -41,7 +46,11 @@ from apps.social.services.user_activity import (
     get_mood_timeline,
     get_user_activity,
 )
-from apps.social.services.user_badges import claim_badge, get_user_badges
+from apps.social.services.user_badges import (
+    check_and_award_badges,
+    claim_badge,
+    get_user_badges,
+)
 from apps.social.services.user_follow import (
     accept_follow_request,
     decline_follow_request,
@@ -72,10 +81,22 @@ from apps.social.services.user_stats import (
     get_library_stats,
     get_user_stats,
 )
+from apps.social.services.xp import (
+    GAMING_HEARTBEAT_INTERVAL_SECONDS,
+    GAMING_XP_PER_TICK,
+    award_xp,
+    calculate_level,
+    calculate_xp_rank_and_percentile,
+    record_gaming_heartbeat,
+)
 
 __all__ = [
     "accept_follow_request",
     "accept_friend_request",
+    "award_xp",
+    "calculate_level",
+    "calculate_xp_rank_and_percentile",
+    "check_and_award_badges",
     "claim_badge",
     "compute_composite_score",
     "count_friends",
@@ -128,6 +149,12 @@ __all__ = [
     "submit_checkin",
     "top_rated",
     "unfollow_user",
+    "update_login_streak",
+    "update_review_streak",
+    "update_workout_streak",
     "upsert_rating",
     "vote_review",
+    "record_gaming_heartbeat",
+    "GAMING_XP_PER_TICK",
+    "GAMING_HEARTBEAT_INTERVAL_SECONDS",
 ]

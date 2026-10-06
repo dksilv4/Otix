@@ -6,11 +6,11 @@ import {useFeature} from '@/features/_config'
 import type {FeatureName} from "@/features/_config/types.ts";
 
 /** Plex OAuth login button, gated by the auth:oauth:plex feature flag. (molecule) */
-export function PlexOAuthButton() {
+export const PlexOAuthButton = () => {
     const enabled = useFeature(PlexOAuthButton.featureName)
     if (!enabled) return null
 
-    async function handlePlexLogin() {
+    const handlePlexLogin = async () => {
         const {data} = await apiClient.post('/auth/plex/initiate')
         openExternal(data.authUrl)
     }
@@ -23,6 +23,6 @@ export function PlexOAuthButton() {
             onClick={handlePlexLogin}
         />
     )
-}
+};
 
 PlexOAuthButton.featureName = 'auth:oauth:plex' as FeatureName

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { MediaCard } from '@ui/molecules/media-card'
 import { mediaQueries, useMediaParams } from '@media'
 
-export function ArtistAlbumsSection({ className }: { className?: string } = {}) {
+export const ArtistAlbumsSection = ({ className }: { className?: string } = {}) => {
   const { mediaType, mediaId } = useMediaParams()
 
   const { data: detailData } = useQuery(mediaQueries.detail(mediaType, mediaId))
@@ -72,4 +72,4 @@ export function ArtistAlbumsSection({ className }: { className?: string } = {}) 
       </div>
     </section>
   )
-}
+};

@@ -1,6 +1,6 @@
 import { Skeleton } from '@ui/atoms/skeleton'
 
-export function NotificationSkeleton({ count = 8 }: { count?: number }) {
+export const NotificationSkeleton = ({ count = 8 }: { count?: number }) => {
   return (
     <div className="space-y-2">
       {Array.from({ length: count }).map((_, i) => (
@@ -14,4 +14,4 @@ export function NotificationSkeleton({ count = 8 }: { count?: number }) {
       ))}
     </div>
   )
-}
+};

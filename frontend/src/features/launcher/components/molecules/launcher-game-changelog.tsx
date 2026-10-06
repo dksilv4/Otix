@@ -23,7 +23,7 @@ interface LauncherGameChangelogProps {
   game: LocalGame | DisplayGame | null
 }
 
-export function LauncherGameChangelog({ game }: LauncherGameChangelogProps) {
+export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
   const { data, isLoading } = useGameChangelog(game)
   const { openModal } = useModal()
   const [filterPatchesOnly, setFilterPatchesOnly] = useState(false)
@@ -264,4 +264,4 @@ export function LauncherGameChangelog({ game }: LauncherGameChangelogProps) {
       </div>
     </div>
   )
-}
+};

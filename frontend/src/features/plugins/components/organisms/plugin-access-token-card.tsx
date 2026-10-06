@@ -10,7 +10,7 @@ interface PluginAccessTokenCardProps {
   enabled: boolean
 }
 
-export function PluginAccessTokenCard({ pluginId, pluginName, enabled }: PluginAccessTokenCardProps) {
+export const PluginAccessTokenCard = ({ pluginId, pluginName, enabled }: PluginAccessTokenCardProps) => {
   const [reveal, setReveal] = useState<{ name: string; token: string } | null>(null)
   const [rotating, setRotating] = useState(false)
   const [rotateError, setRotateError] = useState<string | null>(null)
@@ -126,4 +126,4 @@ export function PluginAccessTokenCard({ pluginId, pluginName, enabled }: PluginA
       )}
     </div>
   )
-}
+};

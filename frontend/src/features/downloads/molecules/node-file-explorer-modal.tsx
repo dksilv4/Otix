@@ -15,7 +15,7 @@ export interface NodeFileExplorerModalProps {
 
 export type ServerFileExplorerModalProps = NodeFileExplorerModalProps
 
-export function NodeFileExplorerModal({
+export const NodeFileExplorerModal = ({
   isOpen,
   isExiting,
   onClose,
@@ -24,7 +24,7 @@ export function NodeFileExplorerModal({
   initialPath,
   nodeName,
   serverName,
-}: NodeFileExplorerModalProps) {
+}: NodeFileExplorerModalProps) => {
   const effectiveName = nodeName || serverName
   const effectiveId = initialNodeId ?? initialServerId
 
@@ -63,6 +63,6 @@ export function NodeFileExplorerModal({
       </div>
     </DkDialog>
   )
-}
+};
 
 export const ServerFileExplorerModal = NodeFileExplorerModal

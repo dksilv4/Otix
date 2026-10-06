@@ -54,14 +54,14 @@ export interface NodeFileExplorerProps {
 
 export type ServerFileExplorerProps = NodeFileExplorerProps
 
-export function NodeFileExplorer({
+export const NodeFileExplorer = ({
   initialNodeId,
   initialServerId,
   initialPath,
   className,
   onClose,
   variant = 'panel',
-}: NodeFileExplorerProps) {
+}: NodeFileExplorerProps) => {
   const { toast } = useToast()
   const desktop = isDesktop()
   const isModal = variant === 'modal'
@@ -1015,6 +1015,6 @@ export function NodeFileExplorer({
       )}
     </div>
   )
-}
+};
 
 export const ServerFileExplorer = NodeFileExplorer

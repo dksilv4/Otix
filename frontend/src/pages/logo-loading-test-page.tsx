@@ -1,7 +1,7 @@
 import { Logo } from '@ui/atoms/logo'
 
 /** Dev-only preview for the animated Otix loading mark. */
-export function LogoLoadingTestPage() {
+export const LogoLoadingTestPage = () => {
   return (
     <div className="fixed inset-0 flex items-center justify-center gap-10 sm:gap-16 bg-background">
       <div className="flex flex-col items-center gap-3">
@@ -20,4 +20,4 @@ export function LogoLoadingTestPage() {
       </div>
     </div>
   )
-}
+};

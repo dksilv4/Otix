@@ -1,5 +1,6 @@
 // TODO: Review this file
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
+import { getPlexClientId, generateSessionId } from "./utils"
 
 export interface PlexTrackInfo {
   id: string
@@ -38,38 +39,8 @@ interface PlexPlayerContextValue {
 const PlexPlayerContext = createContext<PlexPlayerContextValue | null>(null)
 
 const VOLUME_KEY = "plex-player-volume"
-const CLIENT_ID_KEY = "plex-client-id"
 
-function generateUuid(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID()
-  }
-  // Fallback for non-secure contexts (e.g. plain HTTP over remote IP)
-  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
-    (
-      +c ^
-      ((typeof crypto !== "undefined" && crypto.getRandomValues
-        ? crypto.getRandomValues(new Uint8Array(1))[0]
-        : Math.floor(Math.random() * 256)) &
-        (15 >> (+c / 4)))
-    ).toString(16)
-  )
-}
-
-function getClientId(): string {
-  let id = localStorage.getItem(CLIENT_ID_KEY)
-  if (!id) {
-    id = generateUuid()
-    localStorage.setItem(CLIENT_ID_KEY, id)
-  }
-  return id
-}
-
-function generateSessionId(): string {
-  return generateUuid()
-}
-
-export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
+export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTrack, setCurrentTrack] = useState<PlexTrackInfo | null>(null)
@@ -86,7 +57,7 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
   const currentIndexRef = useRef(-1)
 
   // Plex session identifiers for timeline reporting
-  const clientIdRef = useRef(getClientId())
+  const clientIdRef = useRef(getPlexClientId())
   const sessionIdRef = useRef("")
   const commandIdRef = useRef(0)
   const timelineIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -430,9 +401,9 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
       {children}
     </PlexPlayerContext.Provider>
   )
-}
+};
 
-export function usePlexPlayer(): PlexPlayerContextValue {
+export const usePlexPlayer = (): PlexPlayerContextValue => {
   const ctx = useContext(PlexPlayerContext)
   if (!ctx) throw new Error("usePlexPlayer must be used within PlexAudioProvider")
   return ctx

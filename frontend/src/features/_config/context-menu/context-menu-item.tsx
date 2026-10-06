@@ -10,7 +10,7 @@ interface ContextMenuItemProps extends Omit<ContextMenuItemDef, 'id' | 'subItems
   className?: string
 }
 
-export const ContextMenuItem = forwardRef(function ContextMenuItem(
+export const ContextMenuItem = forwardRef((
   {
     label,
     icon: Icon,
@@ -24,7 +24,7 @@ export const ContextMenuItem = forwardRef(function ContextMenuItem(
     className,
   }: ContextMenuItemProps,
   ref: ForwardedRef<HTMLButtonElement>,
-) {
+) => {
   return (
     <button
       ref={ref}

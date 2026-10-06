@@ -19,39 +19,12 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Proposal } from '../../proposals-queries'
-
-// ── Helpers ──────────────────────────────────────────────────────────
-
-const FIELD_LABELS: Record<string, string> = {
-  title: 'Title',
-  overview: 'Overview',
-  tagline: 'Tagline',
-  status: 'Status',
-  release_date: 'Release Date',
-  original_language: 'Language',
-  runtime: 'Runtime',
-  poster_url: 'Poster',
-  backdrop_url: 'Backdrop',
-  logo_url: 'Logo',
-  textless_poster_url: 'Textless Poster',
-}
-
-const IMAGE_TYPE_LABELS: Record<string, string> = {
-  poster: 'Poster',
-  backdrop: 'Backdrop',
-  logo: 'Logo',
-  textless_poster: 'Textless Poster',
-}
-
-const MATCH_TYPE_LABELS: Record<string, string> = {
-  direct: 'Direct ID match',
-  exact_title: 'Exact title match',
-  ilike: 'Fuzzy title match',
-  trigram: 'Similar title',
-  igdb_crossref: 'IGDB cross-reference',
-  igdb_search: 'IGDB search',
-  igdb_fuzzy: 'IGDB fuzzy',
-}
+import {
+  FIELD_LABELS,
+  IMAGE_TYPE_LABELS,
+  MATCH_TYPE_LABELS,
+  formatProposalDate as formatDate,
+} from '../../utils'
 
 const STATUS_CONFIG = {
   pending: { bg: 'bg-amber-500/10', text: 'text-amber-400', label: 'Pending', icon: Clock },
@@ -59,13 +32,7 @@ const STATUS_CONFIG = {
   rejected: { bg: 'bg-red-500/10', text: 'text-red-400', label: 'Rejected', icon: XCircle },
 } as const
 
-function formatDate(s: string) {
-  try {
-    return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  } catch { return s }
-}
-
-function ConfidenceBadge({ confidence, className }: { confidence: number; className?: string }) {
+const ConfidenceBadge = ({ confidence, className }: { confidence: number; className?: string }) => {
   const level = confidence >= 0.98 ? 'high' : confidence >= 0.90 ? 'medium' : confidence >= 0.80 ? 'low' : 'very-low'
   return (
     <span className={cn(
@@ -79,11 +46,11 @@ function ConfidenceBadge({ confidence, className }: { confidence: number; classN
       {Math.round(confidence * 100)}%
     </span>
   )
-}
+};
 
 // ── Type-specific summary snippets ───────────────────────────────────
 
-function MatchSummary({ proposal }: { proposal: Proposal }) {
+const MatchSummary = ({ proposal }: { proposal: Proposal }) => {
   const p = proposal.payload as Record<string, any>
   return (
     <div className="flex items-center gap-2 text-xs text-white/60">
@@ -94,9 +61,9 @@ function MatchSummary({ proposal }: { proposal: Proposal }) {
       <span className="text-white/30">{MATCH_TYPE_LABELS[p.matchType ?? p.match_type] ?? p.matchType ?? p.match_type}</span>
     </div>
   )
-}
+};
 
-function EditSummary({ proposal }: { proposal: Proposal }) {
+const EditSummary = ({ proposal }: { proposal: Proposal }) => {
   const p = proposal.payload as Record<string, any>
   const changes = p.changes as Record<string, any> ?? {}
   const overrides = (p.imageOverrides ?? p.image_overrides) as any[] ?? []
@@ -109,11 +76,11 @@ function EditSummary({ proposal }: { proposal: Proposal }) {
       {parts.length > 0 ? parts.join(' · ') : 'No changes recorded'}
     </div>
   )
-}
+};
 
 // ── Type-specific expanded details ───────────────────────────────────
 
-function PosterSection({ src, label }: { src: string | null | undefined; label: string }) {
+const PosterSection = ({ src, label }: { src: string | null | undefined; label: string }) => {
   return (
     <div className="w-full aspect-[2/3] rounded-lg overflow-hidden bg-white/5 flex items-center justify-center">
       {src ? (
@@ -123,9 +90,9 @@ function PosterSection({ src, label }: { src: string | null | undefined; label: 
       )}
     </div>
   )
-}
+};
 
-function MatchDetails({ proposal }: { proposal: Proposal }) {
+const MatchDetails = ({ proposal }: { proposal: Proposal }) => {
   const p = proposal.payload as Record<string, any>
   const confidence = p.otixConfidence ?? p.otix_confidence ?? 0
   const level = confidence >= 0.98 ? 'high' : confidence >= 0.90 ? 'medium' : confidence >= 0.80 ? 'low' : 'very-low'
@@ -241,9 +208,9 @@ function MatchDetails({ proposal }: { proposal: Proposal }) {
       </div>
     </div>
   )
-}
+};
 
-function EditDetails({ proposal }: { proposal: Proposal }) {
+const EditDetails = ({ proposal }: { proposal: Proposal }) => {
   const p = proposal.payload as Record<string, any>
   const changes = p.changes as Record<string, any> ?? {}
   const overrides = (p.imageOverrides ?? p.image_overrides) as any[] ?? []
@@ -283,7 +250,7 @@ function EditDetails({ proposal }: { proposal: Proposal }) {
       )}
     </div>
   )
-}
+};
 
 // ── Main ProposalCard ────────────────────────────────────────────────
 
@@ -301,7 +268,7 @@ interface ProposalCardProps {
   isUndoing?: boolean
 }
 
-export function ProposalCard({
+export const ProposalCard = ({
   proposal,
   isAdmin = false,
   isTrusted = false,
@@ -313,7 +280,7 @@ export function ProposalCard({
   isApproving,
   isRejecting,
   isUndoing,
-}: ProposalCardProps) {
+}: ProposalCardProps) => {
   const [expanded, setExpanded] = useState(false)
   const [showRejectInput, setShowRejectInput] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
@@ -514,4 +481,4 @@ export function ProposalCard({
       )}
     </div>
   )
-}
+};

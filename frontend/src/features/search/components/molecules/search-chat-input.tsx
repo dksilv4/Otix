@@ -34,7 +34,7 @@ interface SearchInputProps {
   activeType?: string | null
 }
 
-export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(function SearchInput({
+export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(({
   value,
   onChange,
   onSubmit,
@@ -47,7 +47,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
   className,
   onTypeChange,
   activeType,
-}, ref) {
+}, ref) => {
   const [inputValue, setInputValue] = useState(value)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 

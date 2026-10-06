@@ -1,7 +1,7 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { Logo } from '@ui/atoms/logo'
 
-export function SignInCTA() {
+export const SignInCTA = () => {
   const location = useLocation()
 
   return (
@@ -38,4 +38,4 @@ export function SignInCTA() {
       </div>
     </div>
   )
-}
+};

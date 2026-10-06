@@ -16,7 +16,7 @@ class ModalErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
   }
 }
 
-export function ModalRoot() {
+export const ModalRoot = () => {
   const { modals, closeModal } = useModal()
 
   if (modals.length === 0) return null
@@ -38,4 +38,4 @@ export function ModalRoot() {
     }),
     document.body,
   )
-}
+};

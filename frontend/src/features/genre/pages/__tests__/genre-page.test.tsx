@@ -87,7 +87,7 @@ vi.mock('@media/queries/media-queries', () => ({
 
 import { GenrePage } from '../genre-page'
 
-function renderWithClient(ui: React.ReactElement) {
+const renderWithClient = (ui: React.ReactElement) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },

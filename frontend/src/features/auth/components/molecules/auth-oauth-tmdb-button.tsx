@@ -6,11 +6,11 @@ import {useFeature} from '@/features/_config'
 import type {FeatureName} from "@/features/_config/types.ts";
 
 /** TMDb OAuth login button, gated by the auth:oauth:tmdb feature flag. */
-export function TmdbOAuthButton() {
+export const TmdbOAuthButton = () => {
     const enabled = useFeature(TmdbOAuthButton.featureName)
     if (!enabled) return null
 
-    async function handleTmdbLogin() {
+    const handleTmdbLogin = async () => {
         const {data} = await apiClient.post('/auth/tmdb/initiate')
         openExternal(data.authUrl)
     }
@@ -23,6 +23,6 @@ export function TmdbOAuthButton() {
             onClick={handleTmdbLogin}
         />
     )
-}
+};
 
 TmdbOAuthButton.featureName = 'auth:oauth:tmdb' as FeatureName

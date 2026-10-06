@@ -3,7 +3,7 @@ import { useRouter } from "@tanstack/react-router"
 import { DkButton } from "@ui/atoms/button"
 
 /** Atom button to navigate back in browser history, falling back to home when there's no prior entry (e.g. the page was deep-linked). */
-export function BackButton() {
+export const BackButton = () => {
   const router = useRouter()
 
   const handleBack = () => {
@@ -25,4 +25,4 @@ export function BackButton() {
       <ArrowLeft className="h-5 w-5" />
     </DkButton>
   )
-}
+};

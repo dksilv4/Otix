@@ -13,7 +13,7 @@ import {SteamOAuthButton} from '@auth/components/molecules/auth-oauth-steam-butt
 import {Logo} from '@ui/atoms/logo'
 import {AuthBackButton} from '@auth/components/molecules/auth-back-button'
 
-export function AuthPage() {
+export const AuthPage = () => {
     const navigate = useNavigate()
     const redirect = typeof window !== 'undefined'
         ? new URLSearchParams(window.location.search).get('redirect') || '/'
@@ -79,4 +79,4 @@ export function AuthPage() {
             </OAuthContainer>
         </div>
     )
-}
+};

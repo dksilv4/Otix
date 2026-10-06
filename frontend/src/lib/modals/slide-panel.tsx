@@ -8,7 +8,7 @@ interface SlidePanelProps {
   navOffset?: string
 }
 
-export function SlidePanel({ children, onClose, isExiting, navOffset = '17rem' }: SlidePanelProps) {
+export const SlidePanel = ({ children, onClose, isExiting, navOffset = '17rem' }: SlidePanelProps) => {
   const [animateIn, setAnimateIn] = useState(false)
   const visible = animateIn && !isExiting
 
@@ -42,4 +42,4 @@ export function SlidePanel({ children, onClose, isExiting, navOffset = '17rem' }
       </div>
     </div>
   )
-}
+};

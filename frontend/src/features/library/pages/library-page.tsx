@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Loader2, Film, List, Download, ChevronDown, CheckCircle2, XCircle, Clock, ArchiveX, Tv, Music } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatBytes } from '@/lib/utils'
 import { ListsTabContent } from '@library/molecules/lists-tab-content'
 import { isDesktop } from '@/lib/desktop/api'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
@@ -28,7 +28,7 @@ interface DownloadItem {
   createdAt: string
 }
 
-export function LibraryPage() {
+export const LibraryPage = () => {
   const [activeTab, setActiveTab] = useState('lists')
 
   return (
@@ -62,15 +62,15 @@ export function LibraryPage() {
       {activeTab === 'downloads' && <DownloadsTab />}
     </div>
   )
-}
+};
 
-function ListsTab() {
+const ListsTab = () => {
   return (
     <div>
       <ListsTabContent />
     </div>
   )
-}
+};
 
 // ── Arr tab helper (shares logic between Radarr, Sonarr, Lidarr) ──
 
@@ -92,7 +92,7 @@ interface ArrLibrary {
   error?: string
 }
 
-function ArrTab({
+const ArrTab = ({
   pluginId,
   label,
   icon: Icon,
@@ -100,7 +100,7 @@ function ArrTab({
   pluginId: string
   label: string
   icon: React.ComponentType<{ className?: string }>
-}) {
+}) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [libraries, setLibraries] = useState<ArrLibrary[]>([])
@@ -274,29 +274,23 @@ function ArrTab({
       })}
     </div>
   )
-}
+};
 
-function RadarrTab() {
+const RadarrTab = () => {
   return <ArrTab pluginId="otix-radarr" label="Radarr" icon={Film} />
-}
+};
 
-function SonarrTab() {
+const SonarrTab = () => {
   return <ArrTab pluginId="otix-sonarr" label="Sonarr" icon={Tv} />
-}
+};
 
-function LidarrTab() {
+const LidarrTab = () => {
   return <ArrTab pluginId="otix-lidarr" label="Lidarr" icon={Music} />
-}
+};
 
 // ── Downloads tab (slot-driven from plugin) ──
 
-function formatBytes(bytes: number): string {
-  if (!bytes) return ''
-  const gb = bytes / 1073741824
-  return gb.toFixed(1) + ' GB'
-}
-
-function DownloadsTab() {
+const DownloadsTab = () => {
   const [loading, setLoading] = useState(true)
   const [downloads, setDownloads] = useState<DownloadItem[]>([])
   const desktop = isDesktop()
@@ -411,4 +405,4 @@ function DownloadsTab() {
       ))}
     </div>
   )
-}
+};

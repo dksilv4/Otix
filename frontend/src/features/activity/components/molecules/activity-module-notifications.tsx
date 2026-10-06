@@ -1,7 +1,6 @@
 import { BellRing, CheckCheck, ExternalLink } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { AxiosError } from 'axios'
 import { useAuth, useHasSession } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { showToast, showErrorToast } from '@ui/molecules/toast'
@@ -14,19 +13,15 @@ import { NotificationIcon } from '@/features/notifications/components/atoms/noti
 import { NotificationTime } from '@/features/notifications/components/atoms/notification-time'
 import { NotificationActions } from '@/features/notifications/components/molecules/notification-actions'
 import type { ActionCallbacks, Notification } from '@/features/notifications/types'
+import { actionErrorMessage } from '@/features/notifications/utils'
 import { ActivityModuleSection } from './activity-module-section'
-
-function actionErrorMessage(error: unknown, fallback: string): string {
-  const detail = (error as AxiosError<{ detail?: string }>)?.response?.data?.detail
-  return typeof detail === 'string' && detail.length > 0 ? detail : fallback
-}
 
 export interface ActivityModuleNotificationsProps {
   onClose: () => void
 }
 
 /** Notifications panel section synchronized in real time with the notification page and SSE stream. */
-export function ActivityModuleNotifications({ onClose }: ActivityModuleNotificationsProps) {
+export const ActivityModuleNotifications = ({ onClose }: ActivityModuleNotificationsProps) => {
   const { isAuthenticated } = useAuth()
   const hasSession = useHasSession()
   const queryClient = useQueryClient()
@@ -101,7 +96,7 @@ export function ActivityModuleNotifications({ onClose }: ActivityModuleNotificat
   return (
     <ActivityModuleSection className="flex flex-col gap-2">
       {/* Header */}
-      <div className="flex items-center justify-between pb-1 border-b border-white/[0.04]">
+      <div className="flex items-center justify-between pb-1">
         <div className="flex items-center gap-2">
           <BellRing className="h-4 w-4 text-primary" />
           <span className="text-xs font-bold uppercase tracking-wider text-white/80">
@@ -145,9 +140,9 @@ export function ActivityModuleNotifications({ onClose }: ActivityModuleNotificat
               className={
                 'group relative flex items-start gap-2.5 p-2.5 rounded-xl transition-all duration-150 ' +
                 (!n.isRead
-                  ? 'bg-white/[0.04] border border-white/[0.06]'
-                  : 'bg-white/[0.015] hover:bg-white/[0.04] border border-transparent') +
-                (link ? ' cursor-pointer hover:border-white/10' : '')
+                  ? 'bg-white/[0.04]'
+                  : 'bg-white/[0.015] hover:bg-white/[0.04]') +
+                (link ? ' cursor-pointer' : '')
               }
             >
               <div className="shrink-0 mt-0.5">
@@ -201,11 +196,11 @@ export function ActivityModuleNotifications({ onClose }: ActivityModuleNotificat
       <Link
         to="/notifications"
         onClick={onClose}
-        className="flex items-center justify-center gap-1.5 w-full py-2 text-center text-xs font-medium text-white/50 hover:text-white transition-colors rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.04]"
+        className="flex items-center justify-center gap-1.5 w-full py-2 text-center text-xs font-medium text-white/50 hover:text-white transition-colors rounded-xl bg-white/[0.03] hover:bg-white/[0.07]"
       >
         <span>View all notifications</span>
         <ExternalLink className="h-3 w-3 opacity-60" />
       </Link>
     </ActivityModuleSection>
   )
-}
+};

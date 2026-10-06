@@ -2,7 +2,7 @@
 // casts bridge the plugin-provided prop bag into React component props — Zod
 // schemas guarantee correctness; TypeScript cannot verify cross-boundary unions.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createElement, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
+import { createElement, useCallback, useState, type ComponentType, type ReactNode } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -42,12 +42,12 @@ interface SlotRendererProps {
   className?: string
 }
 
-type SlotAction = (pluginId: string, actionKey: string, payload: unknown) => void | Promise<void>
-
-interface ActionFeedback {
-  tone: 'success' | 'error'
-  message: string
-}
+import {
+  useSlotActions,
+  type SlotAction,
+  type ActionFeedback,
+} from './hooks/use-slot-actions'
+import { safeUrl, renderInline, renderCell } from './slot-utils'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -76,13 +76,13 @@ const ICONS: Record<string, ComponentType<{ className?: string }>> = {
   x: XCircle,
 }
 
-function IconComp(name?: string): ComponentType<{ className?: string }> {
+const IconComp = (name?: string): ComponentType<{ className?: string }> => {
   return (name && ICONS[name]) || Inbox
-}
+};
 
-function Icon({ name, className }: { name?: string; className?: string }) {
+const Icon = ({ name, className }: { name?: string; className?: string }) => {
   return createElement(IconComp(name), { className })
-}
+};
 
 // ── Variant / tone maps ───────────────────────────────────────────────────────
 
@@ -137,66 +137,9 @@ const ALIGN: Record<string, string> = {
   stretch: 'justify-stretch',
 }
 
-// ── Action feedback hook ──────────────────────────────────────────────────────
-
-function useSlotActions(onAction?: SlotAction): { busy: Record<string, boolean>; feedback: Record<string, ActionFeedback>; run: SlotAction } {
-  const [busy, setBusy] = useState<Record<string, boolean>>({})
-  const [feedback, setFeedback] = useState<Record<string, ActionFeedback>>({})
-  const onActionRef = useRef<SlotAction | undefined>(onAction)
-  useEffect(() => {
-    onActionRef.current = onAction
-  }, [onAction])
-
-  const run = useCallback<SlotAction>(async (pluginId, actionKey, payload) => {
-    const id = `${pluginId}:${actionKey}`
-    setBusy((b) => ({ ...b, [id]: true }))
-    setFeedback((f) => {
-      const next = { ...f }
-      delete next[id]
-      return next
-    })
-    const clear = () => {
-      window.setTimeout(() => {
-        setFeedback((f) => {
-          const next = { ...f }
-          delete next[id]
-          return next
-        })
-      }, 4000)
-    }
-    try {
-      const res = await onActionRef.current?.(pluginId, actionKey, payload)
-      if (res && typeof res === 'object') {
-        const r = res as { success?: boolean; message?: string; error?: string }
-        const ok = r.success !== false
-        setFeedback((f) => ({
-          ...f,
-          [id]: { tone: ok ? 'success' : 'error', message: ok ? r.message || 'Done' : r.error || r.message || 'Action failed' },
-        }))
-        clear()
-      }
-    } catch (err) {
-      setFeedback((f) => ({
-        ...f,
-        [id]: { tone: 'error', message: err instanceof Error ? err.message : 'Action failed' },
-      }))
-      clear()
-    } finally {
-      setBusy((b) => ({ ...b, [id]: false }))
-    }
-  }, [])
-
-  return { busy, feedback, run }
-}
-
-function safeUrl(url: string): string | undefined {
-  if (/^(https?:|mailto:)/i.test(url)) return url
-  return undefined
-}
-
 // ── SlotRenderer (top-level) ──────────────────────────────────────────────────
 
-export function SlotRenderer({ contributions, onAction, loading, className }: SlotRendererProps) {
+export const SlotRenderer = ({ contributions, onAction, loading, className }: SlotRendererProps) => {
   const { busy, feedback, run } = useSlotActions(onAction)
 
   const handleAction: SlotAction = useCallback(
@@ -245,11 +188,11 @@ export function SlotRenderer({ contributions, onAction, loading, className }: Sl
       ))}
     </div>
   )
-}
+};
 
 // ── Widget-level isolation + recursive children ───────────────────────────────
 
-function WidgetRenderer({
+const WidgetRenderer = ({
   widget,
   pluginId,
   onAction,
@@ -261,7 +204,7 @@ function WidgetRenderer({
   onAction: SlotAction
   busy: Record<string, boolean>
   feedback: Record<string, ActionFeedback>
-}) {
+}) => {
   const validation = validateWidget(widget)
   if (!validation.valid) {
     return (
@@ -289,17 +232,17 @@ function WidgetRenderer({
       {renderedChildren}
     </WidgetSwitch>
   )
-}
+};
 
-function ActionFeedback({ feedback }: { feedback: ActionFeedback }) {
+const ActionFeedback = ({ feedback }: { feedback: ActionFeedback }) => {
   return (
     <span className={cn('text-[11px]', feedback.tone === 'success' ? 'text-emerald-400' : 'text-red-400')}>
       {feedback.message}
     </span>
   )
-}
+};
 
-function ActionButton({
+const ActionButton = ({
   label,
   variant,
   size = 'sm',
@@ -315,17 +258,17 @@ function ActionButton({
   disabled?: boolean
   loading?: boolean
   onClick?: () => void
-}) {
+}) => {
   return (
     <Button variant={BTN_VARIANT[variant || 'secondary']} size={size} disabled={disabled} loading={loading} icon={icon ? <Icon name={icon} className={cn(size === 'xs' ? 'h-3 w-3' : 'h-3.5 w-3.5')} /> : undefined} onClick={onClick}>
       {label}
     </Button>
   )
-}
+};
 
 // ── Type → Tailwind widget map ────────────────────────────────────────────────
 
-function WidgetSwitch({
+const WidgetSwitch = ({
   widget,
   pluginId,
   onAction,
@@ -339,7 +282,7 @@ function WidgetSwitch({
   busy: Record<string, boolean>
   feedback: Record<string, ActionFeedback>
   children?: ReactNode
-}) {
+}) => {
   const p = widget.props || {}
 
   switch (widget.type) {
@@ -767,11 +710,11 @@ function WidgetSwitch({
     default:
       return <div data-widget-type={widget.type} className="space-y-4">{children}</div>
   }
-}
+};
 
 // ── Composite widgets (use local state) ──────────────────────────────────────
 
-function TabsWidget({
+const TabsWidget = ({
   tabs,
   activeTab,
   pluginId,
@@ -785,7 +728,7 @@ function TabsWidget({
   onAction: SlotAction
   actionKey?: string
   children?: ReactNode
-}) {
+}) => {
   const [active, setActive] = useState(activeTab || tabs[0]?.id || '')
 
   return (
@@ -811,9 +754,9 @@ function TabsWidget({
       <div className="space-y-4">{children}</div>
     </div>
   )
-}
+};
 
-function FormWidget({
+const FormWidget = ({
   fields,
   submitLabel,
   action,
@@ -829,7 +772,7 @@ function FormWidget({
   pluginId: string
   onAction: SlotAction
   children?: ReactNode
-}) {
+}) => {
   const keyed = fields.filter((f): f is typeof fields[number] & { key: string } => !!f.key)
   const [values, setValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
@@ -886,9 +829,9 @@ function FormWidget({
       </div>
     </form>
   )
-}
+};
 
-function FieldsWidget({
+const FieldsWidget = ({
   fields,
   submitLabel,
   action,
@@ -902,7 +845,7 @@ function FieldsWidget({
   cancelAction?: string
   pluginId: string
   onAction: SlotAction
-}) {
+}) => {
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const init: Record<string, unknown> = {}
     for (const f of fields) if (f.key) init[f.key] = f.default ?? ''
@@ -985,9 +928,9 @@ function FieldsWidget({
       </div>
     </form>
   )
-}
+};
 
-function PathListField({
+const PathListField = ({
   field,
   value,
   onChange,
@@ -995,7 +938,7 @@ function PathListField({
   field: { label?: string; placeholder?: string; description?: string; required?: boolean }
   value: string[]
   onChange: (v: string[]) => void
-}) {
+}) => {
   const update = (idx: number, v: string) => {
     const next = [...value]
     next[idx] = v
@@ -1027,11 +970,11 @@ function PathListField({
       </div>
     </Field>
   )
-}
+};
 
 // ── Markdown (minimal, HTML-escaped via React) ────────────────────────────────
 
-function Markdown({ content }: { content: string }) {
+const Markdown = ({ content }: { content: string }) => {
   const blocks = content.trim().split(/\n{2,}/).filter(Boolean)
   if (blocks.length === 0) return null
 
@@ -1071,39 +1014,5 @@ function Markdown({ content }: { content: string }) {
       })}
     </div>
   )
-}
+};
 
-function renderInline(text: string): ReactNode[] {
-  const pattern = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g
-  const nodes: ReactNode[] = []
-  let last = 0
-  let k = 0
-  let m: RegExpExecArray | null
-  while ((m = pattern.exec(text)) !== null) {
-    if (m.index > last) nodes.push(text.slice(last, m.index))
-    if (m[2]) {
-      nodes.push(<strong key={k++} className="font-semibold text-white">{m[2]}</strong>)
-    } else if (m[3]) {
-      nodes.push(<em key={k++}>{m[3]}</em>)
-    } else if (m[4]) {
-      nodes.push(<code key={k++} className="rounded bg-white/5 px-1 py-0.5 font-mono text-xs">{m[4]}</code>)
-    } else if (m[5] && m[6] && safeUrl(m[6])) {
-      nodes.push(<a key={k++} className="text-sky-400 hover:underline" href={m[6]}>{m[5]}</a>)
-    } else {
-      nodes.push(text.slice(m.index, m.index + m[0].length))
-    }
-    last = m.index + m[0].length
-  }
-  if (last < text.length) nodes.push(text.slice(last))
-  return nodes
-}
-
-// ── Cell renderer ─────────────────────────────────────────────────────────────
-
-function renderCell(value: unknown): ReactNode {
-  if (value === null || value === undefined) return '—'
-  if (typeof value === 'boolean') return value ? '✓' : '✗'
-  if (typeof value === 'string' || typeof value === 'number') return String(value)
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
-}

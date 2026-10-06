@@ -33,7 +33,7 @@ import {
   type DedicatedGameServer,
 } from '@/features/gameservers'
 
-export function SettingsGameServersPage() {
+export const SettingsGameServersPage = () => {
   useSettingsHashScroll()
   const { user } = useAuth()
   const { toast } = useToast()
@@ -398,4 +398,4 @@ export function SettingsGameServersPage() {
       )}
     </div>
   )
-}
+};

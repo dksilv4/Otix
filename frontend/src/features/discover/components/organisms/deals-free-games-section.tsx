@@ -25,13 +25,9 @@ interface DealsCheckResult {
   error?: string
 }
 
-function getPluginAPI() {
-  return (window as any).desktopAPI?.plugin as
-    | { callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown> }
-    | undefined
-}
+import { getPluginAPI } from '@/features/discover/utils/plugins'
 
-export function DealsFreeGamesSection() {
+export const DealsFreeGamesSection = () => {
   const [result, setResult] = useState<DealsCheckResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -127,9 +123,9 @@ export function DealsFreeGamesSection() {
       </Carousel>
     </motion.section>
   )
-}
+};
 
-function DealGameCard({ deal }: { deal: DealGame }) {
+const DealGameCard = ({ deal }: { deal: DealGame }) => {
   return (
     <div className="group relative w-full select-none">
       {/* Poster */}
@@ -192,4 +188,4 @@ function DealGameCard({ deal }: { deal: DealGame }) {
       )}
     </div>
   )
-}
+};

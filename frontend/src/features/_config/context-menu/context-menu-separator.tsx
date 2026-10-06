@@ -1,4 +1,4 @@
-export function ContextMenuSeparator() {
+export const ContextMenuSeparator = () => {
   return (
     <div
       role="separator"
@@ -6,4 +6,4 @@ export function ContextMenuSeparator() {
       style={{ borderColor: 'var(--dk-separator)' }}
     />
   )
-}
+};

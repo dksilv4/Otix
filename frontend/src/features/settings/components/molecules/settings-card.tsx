@@ -14,7 +14,7 @@ interface SettingsCardProps {
  * Standardized glass settings card container.
  * Replaces ad-hoc `rounded-2xl sm:rounded-3xl p-5 sm:p-6 bg-white/5 backdrop-blur-xl` wrappers.
  */
-export function SettingsCard({ children, className, compact, tone = 'default' }: SettingsCardProps) {
+export const SettingsCard = ({ children, className, compact, tone = 'default' }: SettingsCardProps) => {
   return (
     <div
       className={cn(
@@ -36,4 +36,4 @@ export function SettingsCard({ children, className, compact, tone = 'default' }:
       {children}
     </div>
   )
-}
+};

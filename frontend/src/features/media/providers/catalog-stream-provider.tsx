@@ -10,7 +10,7 @@ interface CatalogStreamProviderProps {
   children: React.ReactNode
 }
 
-export function CatalogStreamProvider({ children }: CatalogStreamProviderProps) {
+export const CatalogStreamProvider = ({ children }: CatalogStreamProviderProps) => {
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
 
@@ -30,4 +30,4 @@ export function CatalogStreamProvider({ children }: CatalogStreamProviderProps) 
   })
 
   return <>{children}</>
-}
+};

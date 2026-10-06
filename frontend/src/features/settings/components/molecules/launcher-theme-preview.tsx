@@ -15,7 +15,7 @@ interface LauncherThemePreviewProps {
   isSelected?: boolean
 }
 
-export function LauncherThemePreview({ themeId, isSelected }: LauncherThemePreviewProps) {
+export const LauncherThemePreview = ({ themeId, isSelected }: LauncherThemePreviewProps) => {
   return (
     <div
       className={`w-full aspect-[16/10] rounded-lg overflow-hidden relative border transition-all duration-300 select-none pointer-events-none shadow-md ${
@@ -24,12 +24,12 @@ export function LauncherThemePreview({ themeId, isSelected }: LauncherThemePrevi
           : 'border-white/10 group-hover:border-white/20'
       }`}
     >
-      {renderMiniTheme(themeId)}
+      <MiniTheme themeId={themeId} />
     </div>
   )
-}
+};
 
-function renderMiniTheme(themeId: LauncherThemeId) {
+const MiniTheme = ({ themeId }: { themeId: LauncherThemeId }) => {
   switch (themeId) {
     case 'classic':
       return <ClassicMiniPreview />
@@ -54,10 +54,10 @@ function renderMiniTheme(themeId: LauncherThemeId) {
     default:
       return null
   }
-}
+};
 
 // ── V1: Classic (Original Otix Rail) ───────────────────────────
-function ClassicMiniPreview() {
+const ClassicMiniPreview = () => {
   return (
     <div className="w-full h-full bg-[#0a0c14] relative overflow-hidden flex">
       {/* Subtle blue backdrop glow */}
@@ -100,10 +100,10 @@ function ClassicMiniPreview() {
       </div>
     </div>
   )
-}
+};
 
 // ── V2: Modern (Cinematic Deck) ────────────────────────────────
-function ModernMiniPreview() {
+const ModernMiniPreview = () => {
   return (
     <div className="w-full h-full bg-neutral-950 text-white relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* Top Header */}
@@ -156,10 +156,10 @@ function ModernMiniPreview() {
       </div>
     </div>
   )
-}
+};
 
 // ── V3: Steam (Console Layout / Steam Deck) ───────────────────
-function SteamMiniPreview() {
+const SteamMiniPreview = () => {
   return (
     <div className="w-full h-full bg-[#171a21] text-white relative overflow-hidden flex flex-col">
       {/* Top Steam Header */}
@@ -217,10 +217,10 @@ function SteamMiniPreview() {
       </div>
     </div>
   )
-}
+};
 
 // ── V4: PlayStation (CrossBar / Console Ribbon) ────────────────
-function PlayStationMiniPreview() {
+const PlayStationMiniPreview = () => {
   return (
     <div className="w-full h-full bg-[#05070e] text-white relative overflow-hidden flex flex-col justify-between p-1.5">
       {/* Ambient Blue Backlight */}
@@ -259,10 +259,10 @@ function PlayStationMiniPreview() {
       </div>
     </div>
   )
-}
+};
 
 // ── V5: Xbox (Blade / Metro Matrix) ───────────────────────────
-function XboxMiniPreview() {
+const XboxMiniPreview = () => {
   return (
     <div className="w-full h-full bg-[#0b120c] text-white relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* Subtle green ambient bloom */}
@@ -332,10 +332,10 @@ function XboxMiniPreview() {
       </div>
     </div>
   )
-}
+};
 
 // ── V6: Switch (Arcade / Handheld Carousel) ───────────────────
-function SwitchMiniPreview() {
+const SwitchMiniPreview = () => {
   return (
     <div className="w-full h-full bg-[#1b1b1e] text-white relative overflow-hidden flex flex-col justify-between p-1.5">
       {/* Joy-Con Color Edges */}
@@ -380,10 +380,10 @@ function SwitchMiniPreview() {
       </div>
     </div>
   )
-}
+};
 
 // ── V7: Retro (Cyberpunk / Terminal Netrunner) ─────────────────
-function RetroMiniPreview() {
+const RetroMiniPreview = () => {
   return (
     <div className="w-full h-full bg-[#080a08] text-[#33ff33] font-mono relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* CRT Scanline Effect */}
@@ -436,10 +436,10 @@ function RetroMiniPreview() {
       </div>
     </div>
   )
-}
+};
 
 // ── V8: Minimal (Gallery Zen) ─────────────────────────────────
-function MinimalMiniPreview() {
+const MinimalMiniPreview = () => {
   return (
     <div className="w-full h-full bg-[#09090b] text-neutral-300 font-sans relative overflow-hidden flex p-1.5 gap-2">
       {/* Left Clean Index */}
@@ -470,10 +470,10 @@ function MinimalMiniPreview() {
       </div>
     </div>
   )
-}
+};
 
 // ── V9: Forge (Storefront Client) ─────────────────────────────
-function ForgeMiniPreview() {
+const ForgeMiniPreview = () => {
   return (
     <div className="w-full h-full bg-[#121212] text-white font-sans relative overflow-hidden flex">
       {/* Left Navigation Rail */}
@@ -518,10 +518,10 @@ function ForgeMiniPreview() {
       </div>
     </div>
   )
-}
+};
 
 // ── V10: Spatial Glass (Aero Prism) ───────────────────────────
-function GlassMiniPreview() {
+const GlassMiniPreview = () => {
   return (
     <div className="w-full h-full bg-[#07050d] text-white font-sans relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* Ambient Gradient Mesh Orbs */}
@@ -564,4 +564,4 @@ function GlassMiniPreview() {
       </div>
     </div>
   )
-}
+};

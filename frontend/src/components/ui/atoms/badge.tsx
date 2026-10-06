@@ -40,7 +40,7 @@ interface DkBadgeProps
   show?: boolean
 }
 
-function DkBadge({ className, variant, size, removable, onRemove, show = true, children, ...props }: DkBadgeProps) {
+const DkBadge = ({ className, variant, size, removable, onRemove, show = true, children, ...props }: DkBadgeProps) => {
   if (!show || children == null || children === '' || children === false) return null
 
   const mediaColors: Record<string, string> = {
@@ -72,6 +72,6 @@ function DkBadge({ className, variant, size, removable, onRemove, show = true, c
       )}
     </span>
   )
-}
+};
 
 export { DkBadge, DkBadge as Badge }

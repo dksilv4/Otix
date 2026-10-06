@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useFeature } from '../../hooks/use-feature'
 import type { FeatureName } from '../../types'
 
-export function Feature({
+export const Feature = ({
   name,
   children,
   fallback = null,
@@ -10,7 +10,7 @@ export function Feature({
   name: FeatureName
   children: ReactNode
   fallback?: ReactNode
-}) {
+}) => {
   const enabled = useFeature(name)
   return enabled ? <>{children}</> : <>{fallback}</>
-}
+};

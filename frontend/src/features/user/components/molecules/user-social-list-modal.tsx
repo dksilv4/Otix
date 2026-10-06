@@ -28,12 +28,12 @@ const EMPTY: Record<SocialListKind, string> = {
 const EASE = [0.16, 1, 0.3, 1] as const
 const NAV_DELAY_MS = 240
 
-export function UserSocialListModal({
+export const UserSocialListModal = ({
   username,
   kind,
   onClose,
   isExiting = false,
-}: UserSocialListModalProps) {
+}: UserSocialListModalProps) => {
   const navigate = useNavigate()
   const visible = !isExiting
   const listQuery = useQuery(userQueries.socialList(username, kind))
@@ -198,4 +198,4 @@ export function UserSocialListModal({
       </motion.div>
     </div>
   )
-}
+};

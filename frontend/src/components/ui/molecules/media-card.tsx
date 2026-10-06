@@ -9,18 +9,7 @@ import { MediaLogo } from '@/lib/media/media-logo'
 import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { MediaCardBadges } from '@/features/plugins/components/media-card-badges'
 import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/utils/image-position'
-
-function formatSeasonBadgeText(releaseDate?: string | null): string {
-  if (!releaseDate) return 'New Season'
-  const date = new Date(releaseDate)
-  const now = new Date()
-  const days = Math.floor((date.getTime() - now.getTime()) / 86400000)
-  const month = date.toLocaleString('en-US', { month: 'short' })
-  const year = date.getFullYear()
-  if (days > 0) return `New Season · ${month} ${year}`
-  if (days >= -14) return 'New Season · Just Landed'
-  return `New Season · ${month} ${year}`
-}
+import { formatSeasonBadgeText } from '@/lib/utils/media-badge'
 
 interface DkMediaCardProps {
   id: string
@@ -51,7 +40,7 @@ interface DkMediaCardProps {
   priority?: boolean
 }
 
-const DkMediaCard = memo(function DkMediaCard({
+const DkMediaCard = memo(({
   id,
   mediaType,
   title,
@@ -75,7 +64,7 @@ const DkMediaCard = memo(function DkMediaCard({
   artistName,
   interactive = true,
   priority = false,
-}: DkMediaCardProps) {
+}: DkMediaCardProps) => {
   const year = releaseDate?.slice(0, 4)
   const params = useMemo(() => ({ mediaType, mediaId: id }), [mediaType, id])
   const queryClient = useQueryClient()

@@ -6,7 +6,7 @@ import { mediaQueries, formatYear, useMediaParams } from '@media'
 import { Image } from '@ui/atoms/image'
 import { cn } from '@/lib/utils'
 
-export function CollectionSection({ className }: { className?: string } = {}) {
+export const CollectionSection = ({ className }: { className?: string } = {}) => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -226,4 +226,4 @@ export function CollectionSection({ className }: { className?: string } = {}) {
       </div>
     </section>
   )
-}
+};

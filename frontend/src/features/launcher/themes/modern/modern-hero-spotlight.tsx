@@ -13,10 +13,10 @@ interface ModernHeroSpotlightProps {
   onSelectGame?: (gameId: string) => void
 }
 
-export function ModernHeroSpotlight({
+export const ModernHeroSpotlight = ({
   game,
   onOpenDetails,
-}: ModernHeroSpotlightProps) {
+}: ModernHeroSpotlightProps) => {
   const [hoveredScreenshot, setHoveredScreenshot] = useState<string | null>(null)
   const [logoError, setLogoError] = useState(false)
 
@@ -149,4 +149,4 @@ export function ModernHeroSpotlight({
       </div>
     </section>
   )
-}
+};

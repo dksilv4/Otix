@@ -11,7 +11,7 @@ interface UserSocialCountsProps {
   className?: string
 }
 
-function CountButton({
+const CountButton = ({
   count,
   label,
   onClick,
@@ -19,7 +19,7 @@ function CountButton({
   count: number
   label: string
   onClick: () => void
-}) {
+}) => {
   return (
     <button
       type="button"
@@ -30,15 +30,15 @@ function CountButton({
       <span>{label}</span>
     </button>
   )
-}
+};
 
-export function UserSocialCounts({
+export const UserSocialCounts = ({
   username,
   friendCount,
   followerCount,
   followingCount,
   className,
-}: UserSocialCountsProps) {
+}: UserSocialCountsProps) => {
   const { openModal } = useModal()
 
   const openList = (kind: SocialListKind) => {
@@ -77,4 +77,4 @@ export function UserSocialCounts({
       />
     </div>
   )
-}
+};

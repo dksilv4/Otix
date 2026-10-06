@@ -11,7 +11,7 @@ interface RegisterFormProps {
 }
 
 /** Registration form organism with email, username, date of birth, and password fields. */
-export function RegisterForm({ onSuccess }: RegisterFormProps) {
+export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
   const { register } = useAuth()
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
@@ -29,7 +29,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-muted-foreground/50' +
     (hasError ? ' shadow-[0_0_0_1px_rgb(248_113_113_/_0.4)]' : '')
 
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setAuthError('')
     const errors = validateRegisterFields({ email, username, password, confirmPassword, dateOfBirth })
@@ -263,4 +263,4 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       </div>
     </motion.form>
   )
-}
+};

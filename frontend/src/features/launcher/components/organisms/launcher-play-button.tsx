@@ -20,7 +20,7 @@ interface LauncherPlayButtonProps {
   onOpenInstaller: () => void
 }
 
-export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps) {
+export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps) => {
   const navigate = useNavigate()
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
@@ -199,4 +199,4 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
       )}
     </div>
   )
-}
+};

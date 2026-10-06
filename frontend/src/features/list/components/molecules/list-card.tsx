@@ -13,7 +13,7 @@ interface ListCardProps {
   onSelect?: (id: string, selected: boolean) => void
 }
 
-export function ListCard({ list, selectable = false, selected = false, onSelect }: ListCardProps) {
+export const ListCard = ({ list, selectable = false, selected = false, onSelect }: ListCardProps) => {
   const { openModal } = useModal()
 
   const handleClick = (e: React.MouseEvent) => {
@@ -99,4 +99,4 @@ export function ListCard({ list, selectable = false, selected = false, onSelect 
       </div>
     </Link>
   )
-}
+};

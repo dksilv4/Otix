@@ -13,7 +13,7 @@ interface Props {
   onCancel: (isoPath: string) => void
 }
 
-export function IsoInstallingProgress({ install, onOpenInstaller, onCancel }: Props) {
+export const IsoInstallingProgress = ({ install, onOpenInstaller, onCancel }: Props) => {
   return (
     <div className="flex gap-2 items-stretch h-[38px]">
       <button
@@ -38,4 +38,4 @@ export function IsoInstallingProgress({ install, onOpenInstaller, onCancel }: Pr
       </button>
     </div>
   )
-}
+};

@@ -42,7 +42,7 @@ const SECTIONS = [
   { id: 'licensing', label: '10. Licensing' },
 ]
 
-export function PrivacyPage() {
+export const PrivacyPage = () => {
   const { toast } = useToast()
   const [copiedEmail, setCopiedEmail] = useState(false)
   const [cookieConsent, setCookieConsent] = useState<string | null>(null)
@@ -781,4 +781,4 @@ export function PrivacyPage() {
       </div>
     </div>
   )
-}
+};

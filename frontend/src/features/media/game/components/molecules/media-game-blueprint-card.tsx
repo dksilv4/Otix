@@ -27,7 +27,7 @@ interface Props {
   onClick?: () => void
 }
 
-export function BlueprintCard({ blueprint, showActions, onCopy, onEdit, onDelete, onClick }: Props) {
+export const BlueprintCard = ({ blueprint, showActions, onCopy, onEdit, onDelete, onClick }: Props) => {
   const entityEntries = Object.entries(blueprint.entities).slice(0, 3)
   const extraCount = Math.max(0, Object.keys(blueprint.entities).length - 3)
 
@@ -116,4 +116,4 @@ export function BlueprintCard({ blueprint, showActions, onCopy, onEdit, onDelete
       )}
     </div>
   )
-}
+};

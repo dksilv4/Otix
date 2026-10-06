@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Tv, ExternalLink, Play } from 'lucide-react'
 import type { MediaWatchProvider } from '@media'
-import { API_BASE_URL } from '@/lib/config'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { cn } from '@/lib/utils'
+import { resolveProviderUrl } from '../../utils/provider'
 
 interface WhereToWatchProps {
   watchProviders?: MediaWatchProvider[]
@@ -36,16 +36,7 @@ const COMMERCIAL_MAP: Record<CommercialCategory, { label: string; types: string[
   },
 }
 
-function resolveProviderUrl(url?: string | null): string | null {
-  if (!url) return null
-  if (url.startsWith('/api/')) {
-    const base = API_BASE_URL.endsWith('/api/v1') ? API_BASE_URL.slice(0, -7) : API_BASE_URL
-    return `${base}${url}`
-  }
-  return url
-}
-
-export function WhereToWatch({ watchProviders = [], className = '', mediaType }: WhereToWatchProps) {
+export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }: WhereToWatchProps) => {
   const [activeTab, setActiveTab] = useState<CommercialCategory>('stream')
 
   // Games do not have "Where to Watch" or movie/show video streaming providers
@@ -207,6 +198,6 @@ export function WhereToWatch({ watchProviders = [], className = '', mediaType }:
       )}
     </div>
   )
-}
+};
 
 export { WhereToWatch as WhereToWatchV4 }

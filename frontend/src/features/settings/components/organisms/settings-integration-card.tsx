@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
 
-export function IntegrationCard({
+export const IntegrationCard = ({
   name,
   description,
   brandColor,
@@ -40,7 +40,7 @@ export function IntegrationCard({
   children?: ReactNode
   className?: string
   style?: React.CSSProperties
-}) {
+}) => {
   return (
     <>
       <div
@@ -156,9 +156,9 @@ export function IntegrationCard({
       )}
     </>
   )
-}
+};
 
-export function IntegrationProfile({
+export const IntegrationProfile = ({
   avatarUrl,
   avatarAlt,
   name,
@@ -176,7 +176,7 @@ export function IntegrationProfile({
   brandBg?: string
   icon?: React.ComponentType<{ className?: string }>
   meta?: ReactNode
-}) {
+}) => {
   return (
     <div className="flex items-center gap-3 px-5 py-4">
       {avatarUrl ? (
@@ -196,9 +196,9 @@ export function IntegrationProfile({
       {meta}
     </div>
   )
-}
+};
 
-export function IntegrationAction({
+export const IntegrationAction = ({
   label,
   description,
   result,
@@ -222,7 +222,7 @@ export function IntegrationAction({
   progress?: ReactNode
   children?: ReactNode
   muted?: boolean
-}) {
+}) => {
   return (
     <div className={cn('flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4', muted && 'bg-white/[0.02]')}>
       <div className="min-w-0 flex-1">
@@ -247,9 +247,9 @@ export function IntegrationAction({
       </DkButton>
     </div>
   )
-}
+};
 
-export function IntegrationStats({ items }: { items: { label: string; value: string | number }[] }) {
+export const IntegrationStats = ({ items }: { items: { label: string; value: string | number }[] }) => {
   return (
     <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/60 px-5 py-3">
       {items.map((item) => (
@@ -259,4 +259,4 @@ export function IntegrationStats({ items }: { items: { label: string; value: str
       ))}
     </div>
   )
-}
+};

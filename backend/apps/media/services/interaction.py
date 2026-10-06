@@ -82,6 +82,28 @@ def set_interaction(
             interaction.extra_data = extra_data
             interaction.save(update_fields=("extra_data", "updated_at"))
     _recalc_count(media_item_id, interaction_type)
+
+    if created:
+        from apps.social.services.streak import update_login_streak
+        from apps.social.services.xp import (
+            INTERACTION_LIKE_WATCHLIST_STARTED,
+            INTERACTION_WATCHED_PLAYED_LISTENED,
+            award_xp,
+        )
+
+        amount = (
+            INTERACTION_WATCHED_PLAYED_LISTENED
+            if interaction_type in ("watched", "played", "listened")
+            else (
+                INTERACTION_LIKE_WATCHLIST_STARTED
+                if interaction_type in ("liked", "watchlisted", "started")
+                else 0
+            )
+        )
+        if amount > 0:
+            award_xp(user.id, amount, reason=f"interaction_{interaction_type}")
+        update_login_streak(user.id)
+
     return interaction
 
 

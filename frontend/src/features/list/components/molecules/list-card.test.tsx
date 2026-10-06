@@ -12,7 +12,7 @@ vi.mock("@tanstack/react-router", () => ({
     React.createElement("a", { href: `/list/${params ? params.listId : ""}`, className, ...props } as Record<string, unknown>, children),
 }))
 
-function makeList(overrides: Partial<UserListOut> = {}): UserListOut {
+const makeList = (overrides: Partial<UserListOut> = {}): UserListOut  => {
   return {
     id: "list-1",
     userId: "user-1",

@@ -2,7 +2,7 @@ import { Logo } from '@ui/atoms/logo'
 import { cn } from '@/lib/utils'
 
 /** Full-viewport Otix loading mark (animated ∞ snake). */
-export function OtixLoadingScreen({ className }: { className?: string }) {
+export const OtixLoadingScreen = ({ className }: { className?: string }) => {
   return (
     <div
       className={cn('flex items-center justify-center bg-background', className)}
@@ -15,4 +15,4 @@ export function OtixLoadingScreen({ className }: { className?: string }) {
       />
     </div>
   )
-}
+};

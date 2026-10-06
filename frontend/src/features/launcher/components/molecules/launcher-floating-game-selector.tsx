@@ -12,7 +12,7 @@ import {OTIX_DEFAULT_GAME} from '@/features/launcher/data/otix-default-game'
 import GameThumbList from '@/features/launcher/components/molecules/launcher-game-thumb-list'
 import type {DisplayGame, LauncherPlatform} from '@/features/launcher/types'
 
-export function FloatingGameSelector() {
+export const FloatingGameSelector = () => {
     const navigate = useNavigate()
     const p = useParams({strict: false})
     const activeGameId = (p as Record<string, string>).gameId || null
@@ -201,6 +201,6 @@ export function FloatingGameSelector() {
             </AnimatePresence>
         </>
     )
-}
+};
 
 export default FloatingGameSelector;

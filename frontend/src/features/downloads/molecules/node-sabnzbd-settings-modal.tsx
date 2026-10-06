@@ -42,12 +42,12 @@ interface SabnzbdFormProps {
   onClose: () => void;
 }
 
-function SabnzbdForm({
+const SabnzbdForm = ({
   config,
   targetNodeId,
   targetNodeName,
   onClose,
-}: SabnzbdFormProps) {
+}: SabnzbdFormProps) => {
   const { toast } = useToast();
   const saveHook = useSaveServerSabnzbdConfig || useSaveNodeSabnzbdConfig;
   const saveMutation = saveHook(targetNodeId);
@@ -245,9 +245,9 @@ function SabnzbdForm({
       </IntegrationCardSection>
     </IntegrationModalForm>
   );
-}
+};
 
-export function NodeSabnzbdSettingsModal({
+export const NodeSabnzbdSettingsModal = ({
   nodeId,
   nodeName = 'Node',
   serverId,
@@ -255,7 +255,7 @@ export function NodeSabnzbdSettingsModal({
   isOpen = true,
   isExiting,
   onClose,
-}: NodeSabnzbdSettingsModalProps) {
+}: NodeSabnzbdSettingsModalProps) => {
   const effectiveId = nodeId ?? serverId;
   const effectiveName = nodeName !== 'Node' ? nodeName : (serverName ?? 'Node');
   const { targetNodeId, targetNodeName } = useIntegrationTargetNode(effectiveId, effectiveName);
@@ -291,6 +291,6 @@ export function NodeSabnzbdSettingsModal({
       ) : null}
     </NodeIntegrationModalShell>
   );
-}
+};
 
 export const ServerSabnzbdSettingsModal = NodeSabnzbdSettingsModal;

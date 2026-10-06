@@ -62,13 +62,13 @@ interface ArrFormProps {
   onClose: () => void;
 }
 
-function ArrForm({
+const ArrForm = ({
   appType,
   config,
   targetNodeId,
   targetNodeName,
   onClose,
-}: ArrFormProps) {
+}: ArrFormProps) => {
   const isRadarr = appType === 'radarr';
   const defaultPort = isRadarr ? 7878 : 8989;
   const { toast } = useToast();
@@ -114,7 +114,7 @@ function ArrForm({
     }
   }, [rootFolders, selected?.id]);
 
-  function updateSelected(patch: Partial<ArrServiceInstance>) {
+  const updateSelected = (patch: Partial<ArrServiceInstance>) => {
     setInstances((items) =>
       items.map((item) => (item.id === selected?.id ? { ...item, ...patch } : item))
     );
@@ -291,9 +291,9 @@ function ArrForm({
       </IntegrationCardSection>
     </IntegrationModalForm>
   );
-}
+};
 
-export function NodeArrSettingsModal({
+export const NodeArrSettingsModal = ({
   appType,
   nodeId,
   nodeName = 'Node',
@@ -302,7 +302,7 @@ export function NodeArrSettingsModal({
   isOpen = true,
   isExiting,
   onClose,
-}: NodeArrSettingsModalProps) {
+}: NodeArrSettingsModalProps) => {
   const isRadarr = appType === 'radarr';
   const effectiveId = nodeId ?? serverId;
   const effectiveName = nodeName !== 'Node' ? nodeName : (serverName ?? 'Node');
@@ -343,6 +343,6 @@ export function NodeArrSettingsModal({
       ) : null}
     </NodeIntegrationModalShell>
   );
-}
+};
 
 export const ServerArrSettingsModal = NodeArrSettingsModal;

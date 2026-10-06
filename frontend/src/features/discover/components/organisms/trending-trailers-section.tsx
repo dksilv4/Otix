@@ -8,13 +8,13 @@ import { MediaSectionSkeleton } from '../molecules/discover-media-section-skelet
 import { TrailerVideoModal } from '../molecules/trailer-video-modal'
 import type { TrendingTrailerItem } from '@discover/types'
 
-function TrailerCard({
+const TrailerCard = ({
   item,
   onPlay,
 }: {
   item: TrendingTrailerItem
   onPlay: () => void
-}) {
+}) => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
@@ -50,9 +50,9 @@ function TrailerCard({
       </div>
     </div>
   )
-}
+};
 
-export function TrendingTrailersSection({ className }: { className?: string }) {
+export const TrendingTrailersSection = ({ className }: { className?: string }) => {
   const { data: items = [], isLoading } = useQuery(discoverQueries.trailers())
   const [activeTrailer, setActiveTrailer] = useState<TrendingTrailerItem | null>(null)
 
@@ -90,4 +90,4 @@ export function TrendingTrailersSection({ className }: { className?: string }) {
       )}
     </>
   )
-}
+};

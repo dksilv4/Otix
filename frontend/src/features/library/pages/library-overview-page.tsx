@@ -8,7 +8,7 @@ import { ListsPreviewSection } from "../molecules/lists-preview-section"
 
 // ── Expandable integration accordion ──
 
-function IntegrationAccordion({ def }: { def: PlatformDefinition }) {
+const IntegrationAccordion = ({ def }: { def: PlatformDefinition }) => {
   const [open, setOpen] = useState(false)
 
   return (
@@ -16,11 +16,11 @@ function IntegrationAccordion({ def }: { def: PlatformDefinition }) {
       <def.OverviewModule expanded={open} onToggle={() => setOpen(!open)} />
     </div>
   )
-}
+};
 
 // ── Overview page ──
 
-export function LibraryOverviewPage() {
+export const LibraryOverviewPage = () => {
   const { user } = useAuth()
   const platforms = getConnectedPlatforms(user)
 
@@ -53,4 +53,4 @@ export function LibraryOverviewPage() {
       )}
     </div>
   )
-}
+};

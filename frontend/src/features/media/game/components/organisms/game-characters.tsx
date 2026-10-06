@@ -14,7 +14,7 @@ interface GameCharactersProps {
   className?: string
 }
 
-export function GameCharacters({ characters = [], className = '' }: GameCharactersProps) {
+export const GameCharacters = ({ characters = [], className = '' }: GameCharactersProps) => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -276,4 +276,4 @@ export function GameCharacters({ characters = [], className = '' }: GameCharacte
       )}
     </div>
   )
-}
+};

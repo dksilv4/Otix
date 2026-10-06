@@ -5,10 +5,21 @@ import * as launcherHooks from '@/features/launcher'
 
 vi.mock('@/features/launcher', () => ({
   useMatchedRunningGame: vi.fn(),
+  useGamingSessionXp: vi.fn().mockReturnValue({ sessionXp: 0, dailyXp: 0, isGaming: false }),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, params, className }: any) => (
+  Link: ({
+    children,
+    to,
+    params,
+    className,
+  }: {
+    children: React.ReactNode
+    to: string
+    params?: Record<string, unknown>
+    className?: string
+  }) => (
     <a href={to} data-params={JSON.stringify(params)} className={className}>
       {children}
     </a>
@@ -18,6 +29,13 @@ vi.mock('@tanstack/react-router', () => ({
 describe('UserProfileNowPlaying', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(launcherHooks.useGamingSessionXp).mockReturnValue({
+      sessionXp: 0,
+      dailyXp: 0,
+      currentGameId: null,
+      currentGameTitle: null,
+      isGaming: false,
+    })
   })
 
   it('renders nothing when no game is running', () => {
@@ -32,7 +50,7 @@ describe('UserProfileNowPlaying', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders rich Now Playing card with matched Otix metadata and live FPS', () => {
+  it('renders streamlined status bar with game title, cover, and no misleading LIVE badge or bloated metadata', () => {
     vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
       runningGame: {
         game: {
@@ -42,12 +60,6 @@ describe('UserProfileNowPlaying', () => {
         },
         startTime: Date.now() - 5400000,
         launchedByOtix: false,
-        fpsSnapshot: {
-          currentFps: 92.4,
-          frameCount: 495000,
-          captureDurationMs: 5400000,
-          gameId: 'cp2077',
-        },
       },
       elapsedMs: 5400000,
       matchedGame: {
@@ -65,16 +77,44 @@ describe('UserProfileNowPlaying', () => {
 
     render(<UserProfileNowPlaying />)
 
-    expect(screen.getByText('Currently Playing')).toBeInTheDocument()
-    expect(screen.getByText('LIVE')).toBeInTheDocument()
+    expect(screen.getByText('Playing')).toBeInTheDocument()
     expect(screen.getByText('Cyberpunk 2077')).toBeInTheDocument()
-    expect(screen.getByText('CD PROJEKT RED')).toBeInTheDocument()
-    expect(screen.getByText('2020')).toBeInTheDocument()
-    expect(screen.getByText(/Action · RPG · Open World/)).toBeInTheDocument()
-    expect(screen.getByText('9.1')).toBeInTheDocument()
-    expect(screen.getByText('92 FPS')).toBeInTheDocument()
 
+    // Verify misleading LIVE badge and bloated metadata are NOT rendered
+    expect(screen.queryByText('LIVE')).not.toBeInTheDocument()
+    expect(screen.queryByText('CD PROJEKT RED')).not.toBeInTheDocument()
+    expect(screen.queryByText('9.1')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Action · RPG · Open World/)).not.toBeInTheDocument()
+
+    // Poster cover image is present
     const img = screen.getByRole('img', { name: 'Cyberpunk 2077' })
     expect(img).toHaveAttribute('src', 'https://images.otix.tv/posters/cp2077.jpg')
+  })
+
+  it('renders session XP badge when sessionXp is greater than 0', () => {
+    vi.mocked(launcherHooks.useGamingSessionXp).mockReturnValue({
+      sessionXp: 20,
+      dailyXp: 20,
+      currentGameId: 'cp2077',
+      currentGameTitle: 'Cyberpunk 2077',
+      isGaming: true,
+    })
+
+    vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
+      runningGame: {
+        game: { id: 'cp2077', title: 'Cyberpunk 2077', platform: 'pc' },
+        startTime: Date.now() - 600000,
+        launchedByOtix: false,
+      },
+      elapsedMs: 600000,
+      matchedGame: {
+        id: '1091500',
+        title: 'Cyberpunk 2077',
+      },
+      isMatching: false,
+    })
+
+    render(<UserProfileNowPlaying />)
+    expect(screen.getByText('+20 XP')).toBeInTheDocument()
   })
 })

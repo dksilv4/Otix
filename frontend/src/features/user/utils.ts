@@ -1,18 +1,20 @@
 import { XP_PER_LEVEL, LEVEL_TIERS, LEVEL_TITLES, GRADIENTS } from './constants'
 import type { UserGamification, LevelTier } from './types'
 
+export function getLevelTitle(level: number): string {
+  for (const t of LEVEL_TITLES) {
+    if (level >= t.min && level <= t.max) {
+      return t.title
+    }
+  }
+  return 'Novice'
+}
+
 export function computeGamification(totalXp: number): UserGamification {
   const level = Math.floor(totalXp / XP_PER_LEVEL) + 1
   const xpFloor = (level - 1) * XP_PER_LEVEL
   const xpCeil = level * XP_PER_LEVEL
-
-  let levelTitle = 'Novice'
-  for (const t of LEVEL_TITLES) {
-    if (level >= t.min && level <= t.max) {
-      levelTitle = t.title
-      break
-    }
-  }
+  const levelTitle = getLevelTitle(level)
 
   return {
     level,
@@ -57,3 +59,40 @@ export function formatMemberSince(dateStr: string): { label: string; tooltip: st
   if (years === 1) return { label: `1yr ${months}mo ago`, tooltip: exact }
   return { label: `${years}yr ago`, tooltip: exact }
 }
+
+export const relativeDate = (ts: number): string => {
+  if (!ts) return 'Recently'
+  const diff = Date.now() - ts
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days}d ago`
+  if (days < 30) return `${Math.floor(days / 7)}w ago`
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+export const fullDateTime = (ts: number): string => {
+  if (!ts) return ''
+  return new Date(ts).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+export const humanPlaytime = (seconds: number): string => {
+  if (seconds <= 0) return '0m'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0 && m > 0) return `${h}h ${m}m`
+  if (h > 0) return `${h}h`
+  return `${m}m`
+}
+

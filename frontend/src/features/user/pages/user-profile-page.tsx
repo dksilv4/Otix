@@ -25,7 +25,6 @@ import { UserRatingSection } from '../components/molecules/user-rating-section'
 import { FollowButton } from '../components/molecules/follow-button'
 import { StreakDisplay } from '../components/molecules/streak-display'
 import { UserSocialCounts } from '../components/molecules/user-social-counts'
-import { UserProfileNowPlaying } from '../components/molecules/user-profile-now-playing'
 import { UserProfileGameSessions } from '../components/organisms/user-profile-game-sessions'
 
 import { computeGamification, getLevelTier, pickGradient, formatMemberSince } from '@user/utils'
@@ -34,7 +33,7 @@ import { UserProfileSkeleton } from '@user/components/organisms/user-profile-ske
 
 // ── Page ──
 
-export function UserProfilePage() {
+export const UserProfilePage = () => {
   const { username } = useParams({ from: '/u/$username' })
   const { user: currentUser } = useAuth()
   const queryClient = useQueryClient()
@@ -206,10 +205,6 @@ export function UserProfilePage() {
                   <UserRatingSection username={username} />
                 </span>
               </h1>
-
-              {currentUser?.username === profile.username && (
-                <UserProfileNowPlaying />
-              )}
 
               <div
                 className="flex flex-wrap items-center gap-x-2 text-sm text-white/60"
@@ -517,4 +512,4 @@ export function UserProfilePage() {
 
     </div>
   )
-}
+};

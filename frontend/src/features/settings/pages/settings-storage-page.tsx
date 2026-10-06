@@ -50,7 +50,7 @@ interface StorageStats {
   disk: { total: number; used: number; free: number }
 }
 
-function Metric({
+const Metric = ({
   icon: Icon,
   label,
   value,
@@ -60,7 +60,7 @@ function Metric({
   label: string
   value: string
   hint?: string
-}) {
+}) => {
   return (
     <div className="flex items-center gap-3">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -73,7 +73,7 @@ function Metric({
       </div>
     </div>
   )
-}
+};
 
 const SWEEP_INTERVAL_OPTIONS = [
   { value: '1', label: 'Every 1 minute' },
@@ -84,7 +84,7 @@ const SWEEP_INTERVAL_OPTIONS = [
   { value: '60', label: 'Every hour' },
 ]
 
-function ToggleRow({
+const ToggleRow = ({
   title,
   description,
   checked,
@@ -96,7 +96,7 @@ function ToggleRow({
   checked: boolean
   disabled?: boolean
   onCheckedChange: (checked: boolean) => void
-}) {
+}) => {
   return (
     <SettingsRow
       label={title}
@@ -105,17 +105,17 @@ function ToggleRow({
       action={<DkSwitch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />}
     />
   )
-}
+};
 
-function SubHeading({ title, description }: { title: string; description?: string }) {
+const SubHeading = ({ title, description }: { title: string; description?: string }) => {
   return <SectionHeader title={title} description={description} />
-}
+};
 
 /** Auto-mirror sub-settings: fetch/discover/local-game triggers, sweep rate,
  * artwork types, and download guardrails (max-storage budget + disk cap).
  * Grayed out while the master mirroring switch (owned by SettingsStoragePage)
  * is off. */
-function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
+const AutoMirrorControls = ({ masterEnabled }: { masterEnabled: boolean }) => {
   const { toast } = useToast()
   const { data: settings, isLoading } = useArtworkSettings()
   const setSettings = useSetArtworkSettings()
@@ -354,9 +354,9 @@ function AutoMirrorControls({ masterEnabled }: { masterEnabled: boolean }) {
       </SettingsCard>
     </>
   )
-}
+};
 
-export function SettingsStoragePage() {
+export const SettingsStoragePage = () => {
   const { isAuthenticated, user } = useAuth()
   const admin = Boolean(user?.isAdmin)
   const { toast } = useToast()
@@ -636,4 +636,4 @@ export function SettingsStoragePage() {
       )}
     </div>
   )
-}
+};

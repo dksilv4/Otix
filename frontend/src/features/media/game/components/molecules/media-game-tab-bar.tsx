@@ -13,14 +13,14 @@ interface Props {
   onTabsLoaded?: (tabs: Array<{tabId: string; pluginId: string}>) => void
 }
 
-export function GameTabBar({ gameExternalId, activeTab, onTabChange, onTabsLoaded }: Props) {
+export const GameTabBar = ({ gameExternalId, activeTab, onTabChange, onTabsLoaded }: Props) => {
   const [pluginTabs, setPluginTabs] = useState<GameTab[]>([])
   const [loading, setLoading] = useState(true)
   const desktopAPI = (window as any).desktopAPI
 
   useEffect(() => {
     let cancelled = false
-    async function loadTabs() {
+    const loadTabs = async () => {
       if (!desktopAPI?.plugin?.getSlotData) {
         setLoading(false)
         return
@@ -83,4 +83,4 @@ export function GameTabBar({ gameExternalId, activeTab, onTabChange, onTabsLoade
       ))}
     </div>
   )
-}
+};

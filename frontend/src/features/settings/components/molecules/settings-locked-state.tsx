@@ -15,7 +15,7 @@ interface SettingsLockedStateProps {
   action?: ReactNode
 }
 
-export function SettingsLockedState({
+export const SettingsLockedState = ({
   title,
   description,
   icon: Icon = Lock,
@@ -24,7 +24,7 @@ export function SettingsLockedState({
   secondaryLabel,
   secondaryTo,
   action,
-}: SettingsLockedStateProps) {
+}: SettingsLockedStateProps) => {
   const location = useLocation()
 
   return (
@@ -57,4 +57,4 @@ export function SettingsLockedState({
       )}
     </SettingsCard>
   )
-}
+};

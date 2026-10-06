@@ -6,32 +6,9 @@ import type {
   AudioTrack,
 } from '../types/stream-player'
 import { determinePlaybackMethod } from '../utils/stream-compatibility'
-import { loadPlayerSettings, savePlayerSettings } from '@/features/discover/components/molecules/trailer-video-modal'
+import { loadPlayerSettings, savePlayerSettings } from '@/features/discover/utils/trailer'
 import { apiClient } from '@/lib/api/client'
-
-interface PluginApi {
-  callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>
-}
-
-function getPluginApi(): PluginApi | undefined {
-  if (typeof window === 'undefined') return undefined
-  return (window as Window & { desktopAPI?: { plugin?: PluginApi } }).desktopAPI?.plugin
-}
-
-function getPlexClientId(): string {
-  if (typeof window === 'undefined') return 'otix-web-player'
-  try {
-    const key = 'otix_plex_client_id'
-    let id = localStorage.getItem(key)
-    if (!id) {
-      id = 'otix-web-' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36)
-      localStorage.setItem(key, id)
-    }
-    return id
-  } catch {
-    return 'otix-web-player'
-  }
-}
+import { getPluginApi, getPlexClientId } from '../utils/player'
 
 export interface MediaStreamPlayerContextValue {
   session: StreamPlaybackSession | null
@@ -78,7 +55,7 @@ export interface MediaStreamPlayerContextValue {
 
 const MediaStreamPlayerContext = createContext<MediaStreamPlayerContextValue | null>(null)
 
-export function MediaStreamPlayerProvider({ children }: { children: React.ReactNode }) {
+export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const [initialSettings] = useState(loadPlayerSettings)
   const [session, setSession] = useState<StreamPlaybackSession | null>(null)
   const [isOpen, setIsOpen] = useState(false)
@@ -414,7 +391,7 @@ export function MediaStreamPlayerProvider({ children }: { children: React.ReactN
       {children}
     </MediaStreamPlayerContext.Provider>
   )
-}
+};
 
 const noop = () => {}
 const defaultPlayerContextValue: MediaStreamPlayerContextValue = {
@@ -455,7 +432,7 @@ const defaultPlayerContextValue: MediaStreamPlayerContextValue = {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function useMediaStreamPlayer(): MediaStreamPlayerContextValue {
+export const useMediaStreamPlayer = (): MediaStreamPlayerContextValue => {
   const ctx = useContext(MediaStreamPlayerContext)
   return ctx || defaultPlayerContextValue
 }

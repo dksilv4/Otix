@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
+import { formatTimeToBeat } from '@/features/launcher/utils'
 
-function AnimatedRoleLabel() {
+const AnimatedRoleLabel = () => {
   const [label, setLabel] = useState('Developer')
   const [leaving, setLeaving] = useState(false)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -33,19 +34,7 @@ function AnimatedRoleLabel() {
       </span>
     </span>
   )
-}
-
-function formatTimeToBeat(ttb: Record<string, unknown> | undefined): string | null {
-  if (!ttb) return null
-  const main = ttb.mainStory as number | undefined
-  const extras = ttb.mainPlusExtras as number | undefined
-  const comp = ttb.completionist as number | undefined
-  if (main && extras) return `${Math.round(main / 3600)}h`
-  if (main) return `${Math.round(main / 3600)}h`
-  if (extras) return `${Math.round(extras / 3600)}h`
-  if (comp) return `${Math.round(comp / 3600)}h`
-  return null
-}
+};
 
 interface CompanyEntry {
   id: string
@@ -54,7 +43,7 @@ interface CompanyEntry {
   publisher: boolean
 }
 
-export function LauncherGameHeroMeta() {
+export const LauncherGameHeroMeta = () => {
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
@@ -149,4 +138,4 @@ export function LauncherGameHeroMeta() {
       )}
     </div>
   )
-}
+};

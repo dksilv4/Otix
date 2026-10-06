@@ -1,7 +1,7 @@
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 
-export function LauncherRatingStats() {
+export const LauncherRatingStats = () => {
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
@@ -22,4 +22,4 @@ export function LauncherRatingStats() {
       </div>
     </>
   )
-}
+};

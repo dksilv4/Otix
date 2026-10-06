@@ -31,7 +31,7 @@ export interface NodeIntegrationModalShellProps {
 
 export type ServerIntegrationModalShellProps = NodeIntegrationModalShellProps;
 
-export function NodeIntegrationModalShell({
+export const NodeIntegrationModalShell = ({
   isOpen = true,
   isExiting,
   onClose,
@@ -49,7 +49,7 @@ export function NodeIntegrationModalShell({
   emptyNodeState,
   emptyServerState,
   children,
-}: NodeIntegrationModalShellProps) {
+}: NodeIntegrationModalShellProps) => {
   const titleId = 'integration-modal-title';
   const descriptionId = description ? 'integration-modal-description' : undefined;
   const isAvailable = hasNode ?? hasServer;
@@ -116,11 +116,11 @@ export function NodeIntegrationModalShell({
       </div>
     </DkDialog>
   );
-}
+};
 
 export const ServerIntegrationModalShell = NodeIntegrationModalShell;
 
-export function IntegrationCardSection({
+export const IntegrationCardSection = ({
   title,
   statusBadge,
   children,
@@ -132,7 +132,7 @@ export function IntegrationCardSection({
   statusBadge?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
-}) {
+}) => {
   return (
     <div
       className={cn('space-y-3 rounded-2xl p-3', className)}
@@ -155,15 +155,15 @@ export function IntegrationCardSection({
       {children}
     </div>
   );
-}
+};
 
-export function IntegrationStatusBadge({
+export const IntegrationStatusBadge = ({
   testResult,
   isConfigured,
 }: {
   testResult?: { ok: boolean; message?: string } | null;
   isConfigured?: boolean;
-}) {
+}) => {
   if (testResult) {
     return (
       <span
@@ -197,9 +197,9 @@ export function IntegrationStatusBadge({
       Not Connected
     </span>
   );
-}
+};
 
-export function IntegrationEmptyNodeState({
+export const IntegrationEmptyNodeState = ({
   serviceName,
   title,
   description,
@@ -213,7 +213,7 @@ export function IntegrationEmptyNodeState({
   iconBgClass?: string;
   buttonBgClass?: string;
   onClose?: () => void;
-}) {
+}) => {
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
       <div
@@ -238,17 +238,13 @@ export function IntegrationEmptyNodeState({
       </DkButton>
     </div>
   );
-}
+};
 
 export const IntegrationEmptyServerState = IntegrationEmptyNodeState;
 
-function connectionTestToneClass(testResult?: { ok: boolean } | null) {
-  if (!testResult) return '!bg-amber-400 !text-black hover:!bg-amber-300'
-  if (testResult.ok) return '!bg-emerald-500 !text-white hover:!bg-emerald-400'
-  return '!bg-rose-500 !text-white hover:!bg-rose-400'
-}
+import { connectionTestToneClass } from '../utils'
 
-export function IntegrationModalFooter({
+export const IntegrationModalFooter = ({
   onCancel,
   onSave,
   isSaving,
@@ -270,7 +266,7 @@ export function IntegrationModalFooter({
   isTesting?: boolean;
   testResult?: { ok: boolean; message?: string } | null;
   isConfigured?: boolean;
-}) {
+}) => {
   return (
     <div className="flex shrink-0 items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-2">
@@ -308,4 +304,4 @@ export function IntegrationModalFooter({
       </div>
     </div>
   );
-}
+};

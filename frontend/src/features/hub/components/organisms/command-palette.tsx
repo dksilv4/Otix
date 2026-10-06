@@ -1,15 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Search, CornerDownLeft } from 'lucide-react'
-import { getHubProviders } from '../../registry'
-import type { Command, CommandProvider } from '../../types'
 import { CommandItem } from '../molecules/command-item'
-
-interface CommandGroup {
-  providerId: string
-  label: string
-  commands: Command[]
-}
+import { type CommandGroup, searchAllProviders } from '../../utils'
 
 interface CommandPaletteProps {
   isOpen: boolean
@@ -17,28 +10,12 @@ interface CommandPaletteProps {
 }
 
 const SEARCH_DEBOUNCE_MS = 150
-const RESULT_LIMIT = 50
-
-async function searchAllProviders(query: string): Promise<CommandGroup[]> {
-  const rawProviders = getHubProviders()
-  const providers: CommandProvider[] = Array.isArray(rawProviders) ? rawProviders : []
-  const groups = await Promise.all(
-    providers.map(async (p) => {
-      const rawCommands = await Promise.resolve(p.search(query)).catch(() => [] as Command[])
-      const commands = Array.isArray(rawCommands) ? rawCommands : []
-      return { providerId: p.id, label: p.label, commands }
-    }),
-  )
-  return (Array.isArray(groups) ? groups : [])
-    .map((g) => ({ ...g, commands: (Array.isArray(g.commands) ? g.commands : []).slice(0, RESULT_LIMIT) }))
-    .filter((g) => g.commands.length > 0)
-}
 
 /**
  * Overlay shell. Keeps AnimatePresence mounted so exit animations play; the
  * inner panel is mounted only while open, so its state resets on every open.
  */
-export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
+export const CommandPalette = ({ isOpen, onClose }: CommandPaletteProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -58,9 +35,9 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       )}
     </AnimatePresence>
   )
-}
+};
 
-function CommandPalettePanel({ onClose }: { onClose: () => void }) {
+const CommandPalettePanel = ({ onClose }: { onClose: () => void }) => {
   const [query, setQuery] = useState('')
   const [groups, setGroups] = useState<CommandGroup[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -210,4 +187,4 @@ function CommandPalettePanel({ onClose }: { onClose: () => void }) {
       </div>
     </motion.div>
   )
-}
+};

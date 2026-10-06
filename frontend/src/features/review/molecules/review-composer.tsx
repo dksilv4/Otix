@@ -8,12 +8,7 @@ import { StarInput } from "./star-input"
 import { useUpsertReview, useDeleteReview, type ReviewOut } from "../review-queries"
 import "./review-composer.scss"
 import { useUpsertRating, useDeleteRating, type MediaRatingOut } from "../rating-queries"
-import { cn } from "@/lib/utils"
-
-function isPastCooldown(cooldownUntil: string | null): boolean {
- if (!cooldownUntil) return true
- return new Date(cooldownUntil) <= new Date()
-}
+import { isPastCooldown } from "../utils"
 
 interface ReviewComposerProps {
  mediaType: string
@@ -24,7 +19,7 @@ interface ReviewComposerProps {
  onSaved?: () => void
 }
 
-function ReviewComposer({ mediaType, mediaId, existingReview, existingRating, onClose, onSaved }: ReviewComposerProps) {
+const ReviewComposer = ({ mediaType, mediaId, existingReview, existingRating, onClose, onSaved }: ReviewComposerProps) => {
  const [score, setScore] = useState<number>(existingRating?.score ?? 0)
  const [title, setTitle] = useState(existingReview?.title ?? "")
  const [content, setContent] = useState(existingReview?.content ?? "")
@@ -193,6 +188,6 @@ function ReviewComposer({ mediaType, mediaId, existingReview, existingRating, on
      </div>
    </div>
  )
-}
+};
 
 export { ReviewComposer }

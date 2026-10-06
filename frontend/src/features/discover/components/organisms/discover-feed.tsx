@@ -5,6 +5,7 @@ import { MediaSection } from './discover-media-section'
 import { TrendingSeasonsSection } from './trending-seasons-section'
 import { DiscoverGenresSection } from './discover-genres-section'
 import { FreeGamesSection } from './free-games-section'
+import { DiscoverPlayerActivitySection } from './discover-player-activity-section'
 import { discoverQueries } from '../../queries/discover-queries'
 
 const PRIORITY_RAILS = [
@@ -33,7 +34,7 @@ const DEFERRED_RAILS = [
  * means an empty catalog, and mounting every rail would leave a stack of
  * skeletons to scroll through.
  */
-export function DiscoverFeed() {
+export const DiscoverFeed = () => {
   const { data: heroData, isFetched } = useInfiniteQuery(discoverQueries.hero())
   const hasFeedContent = useMemo(() => {
     const pages = heroData?.pages ?? []
@@ -47,6 +48,7 @@ export function DiscoverFeed() {
   return (
     <div id="discover-feed" className="space-y-16">
       <DiscoverHero />
+      <DiscoverPlayerActivitySection />
       {!catalogEmpty && (
         <>
           {PRIORITY_RAILS.map((rail) => (
@@ -78,4 +80,4 @@ export function DiscoverFeed() {
       )}
     </div>
   )
-}
+};

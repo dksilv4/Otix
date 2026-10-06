@@ -19,7 +19,7 @@ import './download-queue.scss';
 
 
 
-export function DownloadQueuePage() {
+export const DownloadQueuePage = () => {
   const { user } = useAuth();
   const downloadsEnabled = useFeature('downloads');
   const userId = user?.id;
@@ -441,4 +441,4 @@ export function DownloadQueuePage() {
   );
 
 
-}
+};

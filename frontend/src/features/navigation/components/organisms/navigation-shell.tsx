@@ -13,7 +13,7 @@ interface NavShellProps {
   onToggleSidebar: () => void
 }
 
-function NavShellInner({ children, isPinned, isSidebarOpen, onToggleSidebar }: NavShellProps) {
+const NavShellInner = ({ children, isPinned, isSidebarOpen, onToggleSidebar }: NavShellProps) => {
   const { showLeft, showRight } = useNavPillsVisibility()
 
   return (
@@ -26,10 +26,10 @@ function NavShellInner({ children, isPinned, isSidebarOpen, onToggleSidebar }: N
       {children}
     </>
   )
-}
+};
 
 /** Top-level navigation layout wrapper providing pill navigation, sidebar, and routing context. */
-export function NavShell({ children, isPinned, isSidebarOpen, onToggleSidebar }: NavShellProps) {
+export const NavShell = ({ children, isPinned, isSidebarOpen, onToggleSidebar }: NavShellProps) => {
   return (
     <NavigationProvider>
       <NavShellInner isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar}>
@@ -37,4 +37,4 @@ export function NavShell({ children, isPinned, isSidebarOpen, onToggleSidebar }:
       </NavShellInner>
     </NavigationProvider>
   )
-}
+};

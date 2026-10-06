@@ -37,7 +37,7 @@ vi.mock('../../queries/character-queries', () => ({
 
 import { CharacterDetailPage } from '../character-detail-page'
 
-function renderWithClient(ui: React.ReactElement) {
+const renderWithClient = (ui: React.ReactElement) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })

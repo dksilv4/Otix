@@ -9,7 +9,7 @@ interface Props {
   game: LocalGame
 }
 
-export function PlayGameButton({ game }: Props) {
+export const PlayGameButton = ({ game }: Props) => {
   const { toast } = useToast()
 
   const handleClick = () => {
@@ -34,4 +34,4 @@ export function PlayGameButton({ game }: Props) {
       <Play size={14} fill="currentColor" /> Play
     </button>
   )
-}
+};

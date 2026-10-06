@@ -1,14 +1,13 @@
 """Badge progress/earning reads and the badge-claim mutation.
 
-Port of the read half of ``old-backend/otix/services/gamification_service.py``
-(``get_user_badges``). ``accounts.User`` has no ``total_xp`` column, so the
-level/XP-derived badge metrics stay at their zero value; ``UserBadge`` rows are
-the earned signal and are written by the future gamification worker, exactly as
-legacy only persisted earned badges.
+Port of the gamification badge system. Badges are evaluated against the user's
+activity metrics; qualifying milestones unlock `UserBadge` rows which can then
+be claimed for XP rewards.
 """
 
 from __future__ import annotations
 
+from django.contrib.auth import get_user_model
 from django.db.models import Q, Sum
 
 from apps.lists.models import UserList
@@ -30,6 +29,11 @@ FR_ACCEPTED = "accepted"
 
 def build_badge_context(user_id: int) -> dict:
     """Scalar stats used as badge metric inputs (legacy ``BadgeContext``)."""
+    user_model = get_user_model()
+    user = user_model.objects.filter(pk=user_id).first()
+    total_xp = user.total_xp if user else 0
+    level = (total_xp // 300) + 1
+
     streak = UserStreak.objects.filter(pk=user_id).first()
     ratings = peer_rating_aggregates(user_id)
     review_count = Review.objects.filter(user_id=user_id, is_private=False).count()
@@ -53,8 +57,8 @@ def build_badge_context(user_id: int) -> dict:
         "interaction_count": interaction_count,
         "list_count": UserList.objects.filter(user_id=user_id).count(),
         "workout_count": Workout.objects.filter(user_id=user_id).count(),
-        "total_xp": 0,
-        "level": 1,
+        "total_xp": total_xp,
+        "level": level,
         "login_streak": streak.current_login_streak if streak else 0,
         "review_streak": streak.current_review_streak if streak else 0,
         "workout_streak": streak.current_workout_streak if streak else 0,
@@ -67,8 +71,28 @@ def build_badge_context(user_id: int) -> dict:
     }
 
 
+def check_and_award_badges(user_id: int) -> list[str]:
+    """Evaluate badge criteria against the user's context; persist newly earned badges."""
+    context = build_badge_context(user_id)
+    earned_keys = set(
+        UserBadge.objects.filter(user_id=user_id).values_list("badge_key", flat=True)
+    )
+    new_badges: list[str] = []
+    for badge_def in ordered_badge_defs():
+        if badge_def.key in earned_keys:
+            continue
+        current_val = float(context.get(badge_def.metric, 0))
+        if current_val >= badge_def.target:
+            UserBadge.objects.create(user_id=user_id, badge_key=badge_def.key)
+            new_badges.append(badge_def.key)
+    return new_badges
+
+
 def get_user_badges(user_id: int) -> list[dict]:
     """All badge definitions merged with the user's earned/claimed state."""
+    # Ensure any newly achieved badges are recorded
+    check_and_award_badges(user_id)
+
     context = build_badge_context(user_id)
     earned = {
         badge.badge_key: badge
@@ -97,7 +121,7 @@ def get_user_badges(user_id: int) -> list[dict]:
 
 
 def claim_badge(user_id: int, badge_key: str) -> int:
-    """Mark an earned badge claimed; returns its ``xp_reward``.
+    """Mark an earned badge claimed and award its ``xp_reward`` to the user.
 
     Raises ``ValueError`` with a legacy detail string when the badge is not yet
     earned or was already claimed.
@@ -109,5 +133,13 @@ def claim_badge(user_id: int, badge_key: str) -> int:
         raise ValueError("Badge reward already claimed")
     badge.claimed = True
     badge.save(update_fields=["claimed", "updated_at"])
+
     badge_def = BADGE_DEFS.get(badge_key)
-    return badge_def.xp_reward if badge_def else 0
+    xp_reward = badge_def.xp_reward if badge_def else 0
+
+    if xp_reward > 0:
+        from apps.social.services.xp import award_xp
+
+        award_xp(user_id, xp_reward, reason=f"badge_{badge_key}")
+
+    return xp_reward

@@ -13,7 +13,7 @@ interface NotificationCardProps {
   actionCallbacks: ActionCallbacks
 }
 
-export function NotificationCard({ notification, onMarkRead, actionCallbacks }: NotificationCardProps) {
+export const NotificationCard = ({ notification, onMarkRead, actionCallbacks }: NotificationCardProps) => {
   const navigate = useNavigate()
   const config = getTypeConfig(notification.type)
   const link = config?.getLink?.(notification)
@@ -60,4 +60,4 @@ export function NotificationCard({ notification, onMarkRead, actionCallbacks }: 
       )}
     </div>
   )
-}
+};

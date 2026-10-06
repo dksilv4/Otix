@@ -157,7 +157,7 @@ import { LibraryListsPage } from "./pages/library-lists-page"
 import { LibraryWatchlistPage } from "./pages/library-core-tab-pages"
 import { useLibraryTab } from "./library-queries"
 
-function createMediaItem(overrides: Record<string, unknown> = {}) {
+const createMediaItem = (overrides: Record<string, unknown> = {}) => {
   return {
     id: "item-1",
     mediaType: "movie",

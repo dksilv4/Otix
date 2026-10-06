@@ -5,7 +5,7 @@ import { useUserLists, useCreateList, useDeleteLists, ListCard, ListComposer, ty
 import { PlusIcon, LibraryIcon, Trash2, CheckSquare } from 'lucide-react'
 import { useModal } from '@/lib/modals'
 
-export function ListIndexPage() {
+export const ListIndexPage = () => {
   const { user } = useAuth()
   const { data: lists, isLoading, isError, refetch } = useUserLists()
   const createList = useCreateList()
@@ -220,4 +220,4 @@ export function ListIndexPage() {
       )}
     </div>
   )
-}
+};

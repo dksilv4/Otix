@@ -1,4 +1,4 @@
-export function PlatformIcon({ slug }: { slug: string }) {
+export const PlatformIcon = ({ slug }: { slug: string }) => {
   const cls = 'h-4 w-4 text-muted-foreground shrink-0'
   const s = slug.toLowerCase()
 
@@ -94,4 +94,4 @@ export function PlatformIcon({ slug }: { slug: string }) {
       <path d="M3 6h2M11 6h2" />
     </svg>
   )
-}
+};

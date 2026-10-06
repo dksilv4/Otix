@@ -27,7 +27,7 @@ vi.mock('@/lib/api/client', () => ({
   },
 }))
 
-function TestOpener({ onClose }: { onClose: () => void }) {
+const TestOpener = ({ onClose }: { onClose: () => void }) => {
   const { openModal } = useModal()
   return (
     <button
@@ -45,7 +45,7 @@ function TestOpener({ onClose }: { onClose: () => void }) {
       Open Decide
     </button>
   )
-}
+};
 
 describe('DecideWatchModal', () => {
   beforeEach(() => {

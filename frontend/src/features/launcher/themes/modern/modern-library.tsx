@@ -27,13 +27,13 @@ interface ModernLibraryProps {
   onOpenDetails: (game: LocalGame | DisplayGame) => void
 }
 
-export function ModernLibrary({
+export const ModernLibrary = ({
   localGames,
   popularGames: _popularGames,
   searchQuery,
   setSearchQuery: _setSearchQuery,
   onOpenDetails,
-}: ModernLibraryProps) {
+}: ModernLibraryProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>("grid")
   const [selectedPlatform, setSelectedPlatform] = useState<string>("all")
   const [installedOnly, setInstalledOnly] = useState(false)
@@ -384,4 +384,4 @@ export function ModernLibrary({
       <LauncherFoundGames />
     </div>
   )
-}
+};

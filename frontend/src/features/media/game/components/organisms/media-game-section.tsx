@@ -8,7 +8,7 @@ interface GameSectionProps {
   className?: string
 }
 
-export function GameSection({ className }: GameSectionProps = {}) {
+export const GameSection = ({ className }: GameSectionProps = {}) => {
   const { mediaId } = useMediaParams()
 
   const { data } = useQuery(mediaQueries.detail('game', mediaId))
@@ -200,4 +200,4 @@ export function GameSection({ className }: GameSectionProps = {}) {
       )}
     </section>
   )
-}
+};

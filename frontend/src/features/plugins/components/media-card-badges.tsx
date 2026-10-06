@@ -27,7 +27,7 @@ const TONE_STYLES: Record<NonNullable<CardBadge['tone']>, string> = {
   danger: 'text-red-300 bg-red-500/15 border-red-400/30',
 }
 
-export function MediaCardBadges({ mediaId, mediaType, tmdbId, className }: MediaCardBadgesProps) {
+export const MediaCardBadges = ({ mediaId, mediaType, tmdbId, className }: MediaCardBadgesProps) => {
   const [badges, setBadges] = useState<CardBadge[]>([])
 
   useEffect(() => {
@@ -86,4 +86,4 @@ export function MediaCardBadges({ mediaId, mediaType, tmdbId, className }: Media
       ))}
     </div>
   )
-}
+};

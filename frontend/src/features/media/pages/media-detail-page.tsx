@@ -85,7 +85,7 @@ import {
 } from '../utils'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 
-export function MediaDetailPage() {
+export const MediaDetailPage = () => {
   const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
   const mediaType = mediaTypeFromParam(params.mediaType || 'movie')
   const mediaId = params.mediaId || ''
@@ -413,4 +413,4 @@ export function MediaDetailPage() {
       </DeferredSection>
     </div>
   )
-}
+};

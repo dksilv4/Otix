@@ -21,8 +21,7 @@ import { cn } from "@/lib/utils"
 import "@library/platforms/steam"
 import "@library/platforms/plex"
 import "@library/platforms/youtube"
-
-const VISIBILITY_KEY = "otix:library-tabs:visible"
+import { VISIBILITY_KEY, readVisibility } from "../utils"
 
 type LibTab = {
   id: string
@@ -32,18 +31,7 @@ type LibTab = {
   contribution?: SlotContribution
 }
 
-function readVisibility(): string[] | null {
-  try {
-    const raw = localStorage.getItem(VISIBILITY_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? (parsed.filter((x): x is string => typeof x === "string")) : null
-  } catch {
-    return null
-  }
-}
-
-export function LibraryLayout() {
+export const LibraryLayout = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, isLoading: authLoading } = useAuth()
@@ -214,4 +202,4 @@ export function LibraryLayout() {
       </AnimatePresence>
     </div>
   )
-}
+};

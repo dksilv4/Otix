@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { GLASS_STYLE } from '../../constants/activity-panel-constants'
 
 /** Glass-morphism wrapper container for individual activity panel sections. */
-export function ActivityModuleSection({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+export const ActivityModuleSection = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   return (
     <motion.div variants={sectionVariants} exit="exit" className="will-change-transform">
       <div className={`rounded-2xl p-3 shrink-0 ${className}`} style={GLASS_STYLE}>
@@ -11,7 +11,7 @@ export function ActivityModuleSection({ children, className = '' }: { children: 
       </div>
     </motion.div>
   )
-}
+};
 
 export const sectionVariants: Variants = {
   hidden: { opacity: 0, y: -8, scale: 0.98 },

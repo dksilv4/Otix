@@ -35,7 +35,7 @@ export interface SettingsLibraryOverviewSectionProps {
   onNavigate: (tab: Exclude<LibrarySettingsTab, 'overview'>) => void
 }
 
-function Metric({
+const Metric = ({
   icon: Icon,
   label,
   value,
@@ -47,7 +47,7 @@ function Metric({
   value: ReactNode
   hint?: string
   tone?: 'default' | 'success' | 'warn' | 'muted'
-}) {
+}) => {
   const toneClass =
     tone === 'success'
       ? 'text-emerald-400'
@@ -69,9 +69,9 @@ function Metric({
       </div>
     </div>
   )
-}
+};
 
-function OverviewNavCard({
+const OverviewNavCard = ({
   title,
   description,
   icon: Icon,
@@ -89,7 +89,7 @@ function OverviewNavCard({
   params?: Record<string, string>
   hash?: string
   children: ReactNode
-}) {
+}) => {
   const className =
     'group text-left w-full rounded-2xl sm:rounded-3xl p-5 sm:p-6 backdrop-blur-xl transition-all duration-200 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
   const style = {
@@ -141,7 +141,7 @@ function OverviewNavCard({
       {body}
     </button>
   )
-}
+};
 
 type OverviewOrganize = {
   autoSearchWishlist?: boolean
@@ -152,10 +152,10 @@ type OverviewOrganize = {
   isoDownloadPath?: string | null
 }
 
-export function SettingsLibraryOverviewSection({
+export const SettingsLibraryOverviewSection = ({
   stats,
   onNavigate,
-}: SettingsLibraryOverviewSectionProps) {
+}: SettingsLibraryOverviewSectionProps) => {
   const desktop = isDesktop()
   const auth = useOptionalAuth()
   const user = auth?.user ?? null
@@ -435,4 +435,4 @@ export function SettingsLibraryOverviewSection({
       </div>
     </div>
   )
-}
+};

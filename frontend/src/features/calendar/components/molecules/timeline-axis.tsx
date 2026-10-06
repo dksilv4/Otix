@@ -8,7 +8,7 @@ interface TimelineAxisProps {
   offsetX?: number
 }
 
-export const TimelineAxis = memo(function TimelineAxis({ width, offsetX = 0 }: TimelineAxisProps) {
+export const TimelineAxis = memo(({ width, offsetX = 0 }: TimelineAxisProps) => {
   const uid = useId().replace(/:/g, '')
   const path = useMemo(() => buildWavePath(width, offsetX), [width, offsetX])
   const stars = useMemo(

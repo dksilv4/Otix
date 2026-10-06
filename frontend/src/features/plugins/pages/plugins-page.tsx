@@ -26,104 +26,9 @@ import { FeatureStatusTags, kindsFromPluginStage } from '@ui/atoms/feature-statu
 import { SettingsCard } from '@/features/settings/components/molecules/settings-card'
 import { SectionHeader } from '@/features/settings/components/molecules/settings-section-header'
 import { SettingsLockedState } from '@/features/settings/components/molecules/settings-locked-state'
+import { buildPluginGraph, getDependents } from '../utils/graph'
 
-// ── Topology Graph ─────────────────────────────────────────────────────────────
-
-const NODE_COLORS = [
-  '#6366f1', // indigo
-  '#8b5cf6', // violet
-  '#3b82f6', // blue
-  '#06b6d4', // cyan
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#f97316', // orange
-  '#ec4899', // pink
-]
-
-function hashColor(id: string): string {
-  const hash = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0)
-  return NODE_COLORS[hash % NODE_COLORS.length]
-}
-
-interface GraphEdge {
-  source: string
-  target: string
-  type: 'depends_on' | 'service' | 'same_author'
-}
-
-interface GraphNode {
-  id: string
-  name: string
-  status: PluginInfo['status']
-  color: string
-}
-
-function buildPluginGraph(enabled: PluginInfo[]): { nodes: GraphNode[]; edges: GraphEdge[] } {
-  const nodes: GraphNode[] = enabled.map((p) => ({
-    id: p.id,
-    name: p.name,
-    status: p.status,
-    color: p.status === 'error' ? '#ef4444' : hashColor(p.id),
-  }))
-
-  const edges: GraphEdge[] = []
-  const nodeIds = new Set(nodes.map((n) => n.id))
-
-  // depends_on edges
-  for (const plugin of enabled) {
-    for (const dep of plugin.manifest.depends_on || []) {
-      if (nodeIds.has(dep)) {
-        edges.push({ source: plugin.id, target: dep, type: 'depends_on' })
-      }
-    }
-  }
-
-  // Same-author edges
-  const byAuthor = new Map<string, string[]>()
-  for (const plugin of enabled) {
-    const author = plugin.author.toLowerCase()
-    if (!byAuthor.has(author)) byAuthor.set(author, [])
-    byAuthor.get(author)!.push(plugin.id)
-  }
-  for (const [, ids] of byAuthor) {
-    if (ids.length > 1) {
-      for (let i = 0; i < ids.length; i++) {
-        for (let j = i + 1; j < ids.length; j++) {
-          edges.push({ source: ids[i], target: ids[j], type: 'same_author' })
-        }
-      }
-    }
-  }
-
-  return { nodes, edges }
-}
-
-/** Plugins that transitively declare `pluginId` in their manifest's `depends_on`. */
-function getDependents(pluginId: string, plugins: PluginInfo[]): PluginInfo[] {
-  const dependentsOf = new Map<string, PluginInfo[]>()
-  for (const p of plugins) {
-    for (const dep of p.manifest.depends_on ?? []) {
-      const list = dependentsOf.get(dep) ?? []
-      list.push(p)
-      dependentsOf.set(dep, list)
-    }
-  }
-  const result: PluginInfo[] = []
-  const seen = new Set<string>([pluginId])
-  const queue = [pluginId]
-  while (queue.length) {
-    const current = queue.shift()!
-    for (const dependent of dependentsOf.get(current) ?? []) {
-      if (seen.has(dependent.id)) continue
-      seen.add(dependent.id)
-      result.push(dependent)
-      queue.push(dependent.id)
-    }
-  }
-  return result
-}
-
-function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] }) {
+const PluginTopologyGraph = ({ enabledPlugins }: { enabledPlugins: PluginInfo[] }) => {
   const graph = buildPluginGraph(enabledPlugins)
   const nodeCount = graph.nodes.length
 
@@ -276,11 +181,11 @@ function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
       </div>
     </div>
   )
-}
+};
 
 // ── Hero Banner ────────────────────────────────────────────────────────────────
 
-function HeroBanner({ plugins }: { plugins: PluginInfo[] }) {
+const HeroBanner = ({ plugins }: { plugins: PluginInfo[] }) => {
   const connectedPlugins = plugins.filter((p) => p.status === 'enabled' && p.connected)
   const enabledPlugins = plugins.filter((p) => p.status === 'enabled' && !p.connected)
   const hasActive = connectedPlugins.length > 0 || enabledPlugins.length > 0
@@ -309,11 +214,11 @@ function HeroBanner({ plugins }: { plugins: PluginInfo[] }) {
       </div>
     </SettingsCard>
   )
-}
+};
 
 // ── Installed Row ──────────────────────────────────────────────────────────────
 
-function InstalledPluginRow({
+const InstalledPluginRow = ({
   plugin,
   category,
   onManage,
@@ -325,7 +230,7 @@ function InstalledPluginRow({
   onManage: () => void
   onToggle: () => void
   toggling: boolean
-}) {
+}) => {
   const icon = getPluginIcon(plugin.manifest.icon)
   const isError = plugin.status === 'error'
   const isEnabled = plugin.status === 'enabled'
@@ -394,11 +299,11 @@ function InstalledPluginRow({
       </div>
     </div>
   )
-}
+};
 
 // ── Dependency Warning ─────────────────────────────────────────────────────────
 
-function DependencyWarningModal({
+const DependencyWarningModal = ({
   plugin,
   dependents,
   onCancel,
@@ -410,7 +315,7 @@ function DependencyWarningModal({
   onCancel: () => void
   onConfirm: () => void
   isExiting?: boolean
-}) {
+}) => {
   const [animateIn, setAnimateIn] = useState(false)
   const visible = animateIn && !isExiting
 
@@ -465,7 +370,7 @@ function DependencyWarningModal({
       </div>
     </div>
   )
-}
+};
 const STATUS_FILTERS: Array<{ id: 'all' | 'enabled' | 'disabled' | 'error'; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'enabled', label: 'Enabled' },
@@ -475,7 +380,7 @@ const STATUS_FILTERS: Array<{ id: 'all' | 'enabled' | 'disabled' | 'error'; labe
 
 // ── Plugin Settings Page ──────────────────────────────────────────────────────
 
-export function SettingsPluginsPage() {
+export const SettingsPluginsPage = () => {
   const [plugins, setPlugins] = useState<PluginInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -811,4 +716,4 @@ export function SettingsPluginsPage() {
       )}
     </div>
   )
-}
+};

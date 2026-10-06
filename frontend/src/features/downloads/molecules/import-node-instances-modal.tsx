@@ -5,25 +5,11 @@ import { DkButton } from '@ui/atoms/button'
 import { DkSelect } from '@ui/atoms/select'
 import { useModal } from '@/lib/modals'
 import { useToast } from '@ui/molecules/toast'
-import { isLocalDesktopNode } from '@/features/settings/local-desktop-node'
 import { useSettingsNode } from '@/features/settings/context/settings-node-context'
 import type { GameServer } from '../types'
 import { useImportNodeInstances } from '../use-import-node-instances'
 
-function importEligibleNodes(servers: GameServer[]): GameServer[] {
-  return servers.filter((server) => !isLocalDesktopNode(server) && Number(server.id) > 0)
-}
-
-function pickDefaultPair(
-  nodes: GameServer[],
-  preferredDestId?: number,
-): { fromId: number | null; toId: number | null } {
-  if (nodes.length < 2) return { fromId: null, toId: null }
-  const preferredDest = nodes.find((server) => server.id === preferredDestId) ?? null
-  const to = preferredDest ?? nodes[0]
-  const from = nodes.find((server) => server.id !== to.id) ?? null
-  return { fromId: from?.id ?? null, toId: to.id }
-}
+import { importEligibleNodes, pickDefaultPair } from '../utils'
 
 export interface ImportNodeInstancesModalProps {
   dest?: GameServer
@@ -32,12 +18,12 @@ export interface ImportNodeInstancesModalProps {
   onClose: () => void
 }
 
-export function ImportNodeInstancesModal({
+export const ImportNodeInstancesModal = ({
   dest,
   isOpen,
   isExiting,
   onClose,
-}: ImportNodeInstancesModalProps) {
+}: ImportNodeInstancesModalProps) => {
   const { toast } = useToast()
   const { servers } = useSettingsNode()
   const importMutation = useImportNodeInstances()
@@ -148,9 +134,9 @@ export function ImportNodeInstancesModal({
       </div>
     </DkDialog>
   )
-}
+};
 
-export function ImportNodeInstancesButton({ dest }: { dest?: GameServer } = {}) {
+export const ImportNodeInstancesButton = ({ dest }: { dest?: GameServer } = {}) => {
   const { openModal } = useModal()
   const { servers } = useSettingsNode()
   if (importEligibleNodes(servers).length < 2) return null
@@ -167,4 +153,4 @@ export function ImportNodeInstancesButton({ dest }: { dest?: GameServer } = {}) 
       Import from another node
     </DkButton>
   )
-}
+};

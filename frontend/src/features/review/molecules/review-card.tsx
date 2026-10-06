@@ -8,20 +8,9 @@ import { useReviewVoteCounts, useVoteReview } from "../review-vote-queries"
 import type { ReviewWithUserOut } from "../review-queries"
 import './review-card.scss'
 
-function isInCooldown(cooldownUntil: string | null): boolean {
-	if (!cooldownUntil) return false
-	return new Date(cooldownUntil) > new Date()
-}
+import { formatRemaining, formatDate, isInCooldown } from '../utils'
 
-function formatRemaining(ms: number): string {
-	const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
-	const m = Math.floor(totalSeconds / 60)
-	const s = totalSeconds % 60
-	if (m > 0) return `${m}m ${s}s`
-	return `${s}s`
-}
-
-function CooldownBadge({ cooldownUntil }: { cooldownUntil: string }) {
+const CooldownBadge = ({ cooldownUntil }: { cooldownUntil: string }) => {
 	const [remaining, setRemaining] = useState(() => new Date(cooldownUntil).getTime() - Date.now())
 
 	useEffect(() => {
@@ -45,7 +34,7 @@ function CooldownBadge({ cooldownUntil }: { cooldownUntil: string }) {
 			{formatRemaining(remaining)}
 		</span>
 	)
-}
+};
 
 interface ReviewCardProps {
 	review: ReviewWithUserOut
@@ -54,19 +43,8 @@ interface ReviewCardProps {
 	onDelete?: () => void
 }
 
-function formatDate(dateStr: string): string {
-	const d = new Date(dateStr)
-	const now = new Date()
-	const diff = now.getTime() - d.getTime()
-	const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-	if (days < 1) return "Today"
-	if (days < 2) return "Yesterday"
-	if (days < 7) return `${days}d ago`
-	if (days < 365) return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-	return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-}
 
-function ReviewCard({ review, isOwn, onEdit, onDelete }: ReviewCardProps) {
+const ReviewCard = ({ review, isOwn, onEdit, onDelete }: ReviewCardProps) => {
 	const reviewScore = review.rating?.score ?? null
 
 	return (
@@ -141,9 +119,9 @@ function ReviewCard({ review, isOwn, onEdit, onDelete }: ReviewCardProps) {
 			</div>
 		</div>
 	)
-}
+};
 
-function ReviewVoteSection({ review }: { review: ReviewWithUserOut }) {
+const ReviewVoteSection = ({ review }: { review: ReviewWithUserOut }) => {
 	const { user: currentUser } = useAuth()
 	const { data: voteCounts } = useReviewVoteCounts(review.userId, review.mediaItemId)
 	const voteMutation = useVoteReview(review.userId, review.mediaItemId)
@@ -180,6 +158,6 @@ function ReviewVoteSection({ review }: { review: ReviewWithUserOut }) {
 			</button>
 		</div>
 	)
-}
+};
 
 export { ReviewCard }

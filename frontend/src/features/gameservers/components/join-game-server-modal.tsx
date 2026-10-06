@@ -11,7 +11,7 @@ interface JoinGameServerModalProps {
   onClose: () => void
 }
 
-export function JoinGameServerModal({ server, isOpen, onClose }: JoinGameServerModalProps) {
+export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerModalProps) => {
   const { toast } = useToast()
   const [copiedAddress, setCopiedAddress] = useState(false)
   const [copiedPassword, setCopiedPassword] = useState(false)
@@ -169,4 +169,4 @@ export function JoinGameServerModal({ server, isOpen, onClose }: JoinGameServerM
       </div>
     </DkDialog>
   )
-}
+};

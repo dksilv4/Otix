@@ -8,11 +8,11 @@ interface MediaDetailLibraryPanelProps {
   tmdbId?: string | null
 }
 
-export function MediaDetailLibraryPanel({
+export const MediaDetailLibraryPanel = ({
   mediaType,
   mediaId,
   tmdbId,
-}: MediaDetailLibraryPanelProps) {
+}: MediaDetailLibraryPanelProps) => {
   const pluginActions = useMediaDetailPluginActions(mediaType, mediaId, tmdbId, true)
   const requestMedia = useRequestMedia()
   const libraryWidgets = requestMedia.hidden ? pluginActions.widgets : requestMedia.widgets
@@ -31,4 +31,4 @@ export function MediaDetailLibraryPanel({
       <MediaDetailPluginLibraryStatus widgets={libraryWidgets} />
     </div>
   )
-}
+};

@@ -1,107 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { AlertTriangle, ArrowDownToLine, Check, ChevronDown, Clock, Loader2, Play, RotateCcw } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatBytes } from '@/lib/utils'
 import { useMediaDetailPluginActions } from '@/features/media/hooks/use-media-detail-plugin-actions'
+import {
+  REQUESTABLE,
+  getButtonState,
+  getStreamPresentation,
+} from '../../utils/plugin-actions'
 
-export interface RequestInstance {
-  id: string
-  name: string
-  status: 'downloaded' | 'requested' | 'not_exists' | 'error' | 'partially_available'
-  file?: {
-    name?: string | null
-    size?: number | null
-    quality?: string | null
-    video?: string | null
-    audio?: string | null
-  } | null
-}
-
-export interface RequestWidget {
-  pluginId: string
-  label: string
-  props: {
-    label?: string
-    mediaType: string
-    mediaId: string
-    instances: RequestInstance[]
-  }
-}
-
-export interface PlayInstance {
-  id: string
-  serverId: string
-  name: string
-  ratingKey: string
-  baseUrl?: string
-  token?: string
-  provider?: string
-  providerLabel?: string
-  serverName?: string
-  mediaType?: 'movie' | 'show' | 'episode'
-  seasonNumber?: number
-  episodeNumber?: number
-  episodeTitle?: string
-  viewOffset?: number
-  duration?: number
-  progressPercent?: number
-  viewed?: boolean
-  itemId?: string
-  title?: string
-}
-
-export interface PlayWidget {
-  pluginId: string
-  label: string
-  props: {
-    mediaType: string
-    mediaId: string
-    instances: PlayInstance[]
-  }
-}
-
-function formatBytes(bytes?: number | null): string {
-  if (bytes == null || isNaN(bytes) || bytes < 0) return ''
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let i = 0
-  let n = bytes
-  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++ }
-  return `${n >= 10 || i === 0 ? n.toFixed(0) : n.toFixed(1)} ${units[i]}`
-}
-
-const REQUESTABLE = new Set(['not_exists', 'error'])
-const IN_LIBRARY = new Set(['downloaded', 'requested', 'partially_available'])
-
-// Aggregate state of a request widget's instances → button label, glow and
-// icon. Shows Available or Partially Available if downloaded, while reflecting
-// any requested instances honestly.
-function getButtonState(widget: RequestWidget) {
-  const instances = widget.props.instances || []
-  const anyInLib = instances.some(i => IN_LIBRARY.has(i.status))
-  const anyNotInLib = instances.some(i => REQUESTABLE.has(i.status))
-  const anyDownloaded = instances.some(i => i.status === 'downloaded' || i.status === 'partially_available')
-  const anyRequested = instances.some(i => i.status === 'requested' || i.status === 'partially_available')
-
-  const requestLabel = widget.props.mediaType === 'movie' ? 'Request Movie' : 'Request Show'
-  let label: string
-  if (anyNotInLib) label = anyInLib ? 'Request Additional' : requestLabel
-  else if (anyDownloaded && anyRequested) label = 'Partially Available'
-  else if (anyDownloaded) label = 'Available'
-  else label = 'Requested'
-
-  let glow: string | null = null
-  let icon = <ArrowDownToLine className="relative h-5 w-5 transition-all duration-200 text-primary scale-100" />
-  if (anyDownloaded) {
-    glow = 'dk-interaction__glow--emerald'
-    icon = <Check className="relative h-5 w-5 transition-all duration-200 text-emerald-400 scale-110" />
-  } else if (anyRequested) {
-    glow = 'dk-interaction__glow--amber'
-    icon = <Clock className="relative h-5 w-5 transition-all duration-200 text-amber-400 scale-110" />
-  }
-  return { label, glow, icon }
-}
-
-function FileDetails({ file }: { file: NonNullable<RequestInstance['file']> }) {
+const FileDetails = ({ file }: { file: NonNullable<RequestInstance['file']> }) => {
   return (
     <div className="mt-1">
       <div className="text-[11px] leading-relaxed text-white/40">
@@ -113,7 +21,7 @@ function FileDetails({ file }: { file: NonNullable<RequestInstance['file']> }) {
       {file.name && <div className="text-[10px] text-white/25 mt-0.5 break-all">{file.name}</div>}
     </div>
   )
-}
+};
 
 const STATUS_CHIP: Record<RequestInstance['status'], { cls: string; icon: React.ReactNode; label: string }> = {
   downloaded: { cls: 'bg-green-500/10 text-green-400/90', icon: <Check className="h-3 w-3" />, label: 'Available' },
@@ -123,7 +31,7 @@ const STATUS_CHIP: Record<RequestInstance['status'], { cls: string; icon: React.
   error: { cls: 'bg-red-500/10 text-red-400/90', icon: <AlertTriangle className="h-3 w-3" />, label: 'Error' },
 }
 
-function StatusChip({ status }: { status: RequestInstance['status'] }) {
+const StatusChip = ({ status }: { status: RequestInstance['status'] }) => {
   const s = STATUS_CHIP[status]
   return (
     <span className={cn('inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium', s.cls)}>
@@ -131,12 +39,12 @@ function StatusChip({ status }: { status: RequestInstance['status'] }) {
       {s.label}
     </span>
   )
-}
+};
 
 // Per-widget library status list: one row per instance with status chip and,
 // when downloaded, the file details. Rendered inside the page's "Library
 // Status" section (and the legacy standalone plugin actions block).
-function LibraryStatusPanel({ widget }: { widget: RequestWidget }) {
+const LibraryStatusPanel = ({ widget }: { widget: RequestWidget }) => {
   const instances = widget.props.instances || []
   return (
     <div className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-left">
@@ -158,14 +66,14 @@ function LibraryStatusPanel({ widget }: { widget: RequestWidget }) {
       </ul>
     </div>
   )
-}
+};
 
 // Grid request button carrying the aggregate status icon. A single requestable
 // instance requests immediately; multiple requestable instances open a small
 // picker (portal into document.body, same as the shared DkDropdown atom, so the
 // fixed overlay escapes overflow-hidden ancestors). When nothing is requestable
 // the button is a status display only.
-function RequestButton({
+const RequestButton = ({
   widget,
   requesting,
   onRequest,
@@ -175,8 +83,16 @@ function RequestButton({
   requesting: string | null
   onRequest: (pluginId: string, instanceId: string) => Promise<void> | void
   variant?: 'default' | 'pill'
-}) {
-  const { label, glow, icon } = getButtonState(widget)
+}) => {
+  const { label, glow, statusTone } = getButtonState(widget)
+  const icon =
+    statusTone === 'emerald' ? (
+      <Check className="relative h-5 w-5 transition-all duration-200 text-emerald-400 scale-110" />
+    ) : statusTone === 'amber' ? (
+      <Clock className="relative h-5 w-5 transition-all duration-200 text-amber-400 scale-110" />
+    ) : (
+      <ArrowDownToLine className="relative h-5 w-5 transition-all duration-200 text-primary scale-100" />
+    )
   const requestable = (widget.props.instances || []).filter(i => REQUESTABLE.has(i.status))
 
   const [open, setOpen] = useState(false)
@@ -196,7 +112,7 @@ function RequestButton({
   }, [open, updateCoords])
 
   useEffect(() => {
-    function onDown(e: MouseEvent) {
+    const onDown = (e: MouseEvent) => {
       const t = e.target as Node
       if (
         triggerRef.current && !triggerRef.current.contains(t) &&
@@ -205,10 +121,10 @@ function RequestButton({
         setOpen(false)
       }
     }
-    function onKey(e: KeyboardEvent) {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
-    function onScrollOrResize() {
+    const onScrollOrResize = () => {
       if (open) updateCoords()
     }
     if (open) {
@@ -311,58 +227,9 @@ function RequestButton({
         )}
     </div>
   )
-}
+};
 
-function formatRemaining(offsetMs: number, durationMs: number): string {
-  const leftMs = Math.max(0, durationMs - offsetMs)
-  const totalMins = Math.round(leftMs / 60000)
-  if (totalMins < 60) return `${totalMins}m left`
-  const hours = Math.floor(totalMins / 60)
-  const mins = totalMins % 60
-  return `${hours}h ${mins > 0 ? `${mins}m ` : ''}left`
-}
-
-function getStreamPresentation(inst: PlayInstance) {
-  const offset = inst.viewOffset || 0
-  const duration = inst.duration || 0
-  const isResume = Boolean(offset > 5000 && (!duration || offset < duration - 15000) && !inst.viewed)
-  const isWatched = Boolean(inst.viewed) && !isResume
-  const hasEpisode = inst.seasonNumber != null && inst.episodeNumber != null
-
-  let primaryText: string
-  let subText: string | null = null
-
-  if (hasEpisode) {
-    const epTag = `S${inst.seasonNumber}:E${inst.episodeNumber}`
-    if (isResume) {
-      primaryText = `Resume ${epTag}`
-      subText = inst.episodeTitle || null
-    } else if (isWatched) {
-      primaryText = `Rewatch ${epTag}`
-      subText = inst.episodeTitle || null
-    } else {
-      primaryText = `Play ${epTag}`
-      subText = inst.episodeTitle || null
-    }
-  } else {
-    if (isResume) {
-      primaryText = 'Resume'
-      subText = duration > 0 ? formatRemaining(offset, duration) : null
-    } else if (isWatched) {
-      primaryText = 'Watch Again'
-    } else {
-      primaryText = inst.title || 'Stream'
-    }
-  }
-
-  const progressPercent =
-    inst.progressPercent ??
-    (duration > 0 && offset > 0 ? Math.min(100, Math.round((offset / duration) * 100)) : 0)
-
-  return { isResume, isWatched, primaryText, subText, progressPercent }
-}
-
-function StreamMediaButton({
+const StreamMediaButton = ({
   widget,
   onPlay,
   variant = 'default',
@@ -370,7 +237,7 @@ function StreamMediaButton({
   widget: PlayWidget
   onPlay: (pluginId: string, instance: PlayInstance) => Promise<void>
   variant?: 'default' | 'pill'
-}) {
+}) => {
   const instances = widget.props.instances || []
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -555,12 +422,12 @@ function StreamMediaButton({
         )}
     </>
   )
-}
+};
 
 // Request/Play action buttons meant to live inside the base interaction
 // `.dk-interaction__btns` row (no own wrapper). These talk to the user's own
 // servers via the desktop plugins, so they render even when signed out.
-export function MediaDetailPluginButtons({
+export const MediaDetailPluginButtons = ({
   widgets,
   playWidgets,
   requesting,
@@ -574,7 +441,7 @@ export function MediaDetailPluginButtons({
   onRequest: (pluginId: string, instanceId: string) => Promise<void> | void
   onPlay: (pluginId: string, instance: PlayInstance) => Promise<void>
   variant?: 'default' | 'pill'
-}) {
+}) => {
   if (widgets.length === 0 && playWidgets.length === 0) return null
   return (
     <>
@@ -592,12 +459,12 @@ export function MediaDetailPluginButtons({
       ))}
     </>
   )
-}
+};
 
 // Per-instance library status + file details, rendered inside the page's own
 // "Library Status" section. Hidden until at least one instance is requested,
 // downloaded or errored so a fresh "Request" page stays clean.
-export function MediaDetailPluginLibraryStatus({ widgets }: { widgets: RequestWidget[] }) {
+export const MediaDetailPluginLibraryStatus = ({ widgets }: { widgets: RequestWidget[] }) => {
   const visible = widgets.filter(w =>
     (w.props.instances || []).some(i => i.status === 'requested' || i.status === 'downloaded' || i.status === 'error'))
   if (visible.length === 0) return null
@@ -606,11 +473,11 @@ export function MediaDetailPluginLibraryStatus({ widgets }: { widgets: RequestWi
       {visible.map(w => <LibraryStatusPanel key={w.pluginId} widget={w} />)}
     </div>
   )
-}
+};
 
 // Standalone request/play actions block (buttons row + status) — kept for the
 // legacy media detail modal which doesn't share the base interaction row.
-export function MediaDetailPluginActions({
+export const MediaDetailPluginActions = ({
   mediaId,
   mediaType,
   tmdbId,
@@ -618,7 +485,7 @@ export function MediaDetailPluginActions({
   mediaId: string
   mediaType: string
   tmdbId?: string | null
-}) {
+}) => {
   const p = useMediaDetailPluginActions(mediaType, mediaId, tmdbId)
   if (p.loading || (p.widgets.length === 0 && p.playWidgets.length === 0)) return null
   return (
@@ -633,4 +500,4 @@ export function MediaDetailPluginActions({
       )}
     </section>
   )
-}
+};

@@ -1,5 +1,6 @@
 import { forwardRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { getInitials } from '@/lib/utils/avatar'
 
 interface DkAvatarProps {
   src?: string | null
@@ -14,15 +15,6 @@ const sizeClasses: Record<string, string> = {
   md: 'h-10 w-10 text-sm',
   lg: 'h-12 w-12 text-base',
   xl: 'h-16 w-16 text-lg',
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
 }
 
 const DkAvatar = forwardRef<HTMLDivElement, DkAvatarProps>(

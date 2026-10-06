@@ -2,12 +2,9 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { ArrowDownToLine, Check, ChevronDown, Clock, Loader2, Play, Server, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRequestMedia, type RequestMediaState } from '../../hooks/use-request-media'
-import type { RequestInstance } from './plugin-detail-actions'
 import { MediaRequestConfirmModal } from './media-request-confirm-modal'
 
-function requestableInstances(instances: RequestInstance[]) {
-  return instances.filter((item) => item.status === 'not_exists' || item.status === 'error')
-}
+import { requestableInstances } from '../../utils/request'
 
 export interface RequestMediaButtonProps {
   state?: RequestMediaState
@@ -15,11 +12,11 @@ export interface RequestMediaButtonProps {
   hideIfAvailable?: boolean
 }
 
-export function RequestMediaButton({
+export const RequestMediaButton = ({
   state,
   onWatch,
   hideIfAvailable = false,
-}: RequestMediaButtonProps = {}) {
+}: RequestMediaButtonProps = {}) => {
   if (state) {
     return (
       <RequestMediaButtonInner
@@ -30,15 +27,15 @@ export function RequestMediaButton({
     )
   }
   return <RequestMediaButtonWithHook onWatch={onWatch} hideIfAvailable={hideIfAvailable} />
-}
+};
 
-function RequestMediaButtonWithHook({
+const RequestMediaButtonWithHook = ({
   onWatch,
   hideIfAvailable,
 }: {
   onWatch?: () => void
   hideIfAvailable?: boolean
-}) {
+}) => {
   const state = useRequestMedia()
   return (
     <RequestMediaButtonInner
@@ -47,9 +44,9 @@ function RequestMediaButtonWithHook({
       hideIfAvailable={hideIfAvailable}
     />
   )
-}
+};
 
-function RequestMediaButtonInner({
+const RequestMediaButtonInner = ({
   state,
   onWatch,
   hideIfAvailable = false,
@@ -57,7 +54,7 @@ function RequestMediaButtonInner({
   state: RequestMediaState
   onWatch?: () => void
   hideIfAvailable?: boolean
-}) {
+}) => {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -301,6 +298,6 @@ function RequestMediaButtonInner({
       />
     </>
   )
-}
+};
 
 

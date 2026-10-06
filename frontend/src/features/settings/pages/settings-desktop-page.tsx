@@ -51,7 +51,7 @@ import { isLocalDesktopNode } from '../local-desktop-node'
 import { nodeSettingsNavigateOptions } from '../node-settings'
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
 
-export function SettingsNodesPage() {
+export const SettingsNodesPage = () => {
   useSettingsHashScroll()
   const { toast } = useToast()
   const { openModal } = useModal()
@@ -846,6 +846,6 @@ export function SettingsNodesPage() {
       />
     </div>
   )
-}
+};
 
 export { SettingsNodesPage as SettingsDesktopPage }

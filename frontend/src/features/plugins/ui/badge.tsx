@@ -28,7 +28,7 @@ const DOT_CLASSES: Record<BadgeTone, string> = {
   system: 'bg-sky-400',
 }
 
-export function Badge({ tone = 'default', dot, className, children }: BadgeProps) {
+export const Badge = ({ tone = 'default', dot, className, children }: BadgeProps) => {
   return (
     <span
       className={cn(
@@ -41,4 +41,4 @@ export function Badge({ tone = 'default', dot, className, children }: BadgeProps
       {children}
     </span>
   )
-}
+};

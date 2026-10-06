@@ -113,7 +113,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     mockSonarrConfig = null
   })
 
-  function renderPage() {
+  const renderPage = () => {
     return render(
       <ModalProvider>
         <SettingsIntegrationsPage />

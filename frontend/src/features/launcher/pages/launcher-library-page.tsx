@@ -21,7 +21,7 @@ import type { DisplayGame, LauncherPlatform } from '@/features/launcher/types'
 
 type SortMode = 'recent' | 'title' | 'platform'
 
-export function LauncherLibraryPage() {
+export const LauncherLibraryPage = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isDesktop = hasDesktopAPI()
@@ -404,4 +404,4 @@ export function LauncherLibraryPage() {
       </div>
     </div>
   )
-}
+};

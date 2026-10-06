@@ -10,7 +10,7 @@ import { Logo } from '@ui/atoms/logo'
 import { AuthBackButton } from '@auth/components/molecules/auth-back-button'
 import { useFeature } from '@/features/_config'
 
-export function TwoFactorPage() {
+export const TwoFactorPage = () => {
     const { twoFactorChallenge, cancelTwoFactor } = useAuth()
     const navigate = useNavigate()
     const is2faEnabled = useFeature('auth:two-factor')
@@ -62,4 +62,4 @@ export function TwoFactorPage() {
             </AuthCard>
         </div>
     )
-}
+};

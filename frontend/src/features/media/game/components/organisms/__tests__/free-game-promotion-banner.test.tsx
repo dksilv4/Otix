@@ -77,7 +77,7 @@ vi.mock('@/features/discover/queries/discover-queries', () => ({
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-function renderWithClient(ui: React.ReactElement) {
+const renderWithClient = (ui: React.ReactElement) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },

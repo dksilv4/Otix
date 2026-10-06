@@ -9,7 +9,7 @@ import { MediaManageModal } from '../components/organisms/media-manage-modal'
  * `/media/$mediaType/$mediaId/manage`. It opens the modal via the modal framework
  * and navigates back to the media detail page when closed.
  */
-export function MediaManagePage() {
+export const MediaManagePage = () => {
   const navigate = useNavigate()
   const { openModal } = useModal()
   const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
@@ -36,6 +36,6 @@ export function MediaManagePage() {
   }, [mediaType, mediaId, openModal, navigate])
 
   return null
-}
+};
 
 export { MediaManageModal } from '../components/organisms/media-manage-modal'

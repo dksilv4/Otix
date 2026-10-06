@@ -17,7 +17,7 @@ interface MediaSectionProps {
   eager?: boolean
 }
 
-export const MediaSection = memo(function MediaSection({
+export const MediaSection = memo(({
   title,
   mediaType,
   listType,
@@ -26,7 +26,7 @@ export const MediaSection = memo(function MediaSection({
   isAnime,
   platform,
   eager = false,
-}: MediaSectionProps) {
+}: MediaSectionProps) => {
   const { ref, items, showSkeleton, isEmpty, isError, refetch } = useSectionFetch({
     id: '',
     title,

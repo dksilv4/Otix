@@ -13,7 +13,7 @@ interface ContextMenuContentProps {
   parentRef?: React.RefObject<HTMLDivElement | null>
 }
 
-export function ContextMenuContent({ items, isSubmenu, onRequestClose }: ContextMenuContentProps) {
+export const ContextMenuContent = ({ items, isSubmenu, onRequestClose }: ContextMenuContentProps) => {
   const panelRef = useRef<HTMLDivElement>(null)
   const [focusedIdx, setFocusedIdx] = useState(0)
   const [openSubIdx, setOpenSubIdx] = useState<number | null>(null)
@@ -146,4 +146,4 @@ export function ContextMenuContent({ items, isSubmenu, onRequestClose }: Context
       })}
     </motion.div>
   )
-}
+};

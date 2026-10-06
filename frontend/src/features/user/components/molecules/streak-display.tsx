@@ -9,12 +9,12 @@ interface StreakDisplayProps {
   longestReviewStreak: number
 }
 
-export function StreakDisplay({
+export const StreakDisplay = ({
   loginStreak,
   longestLoginStreak,
   reviewStreak,
   longestReviewStreak,
-}: StreakDisplayProps) {
+}: StreakDisplayProps) => {
   return (
     <div className="dk-user__streak">
       <span className="dk-user__streak__login" title={`${longestLoginStreak}-day best`}>
@@ -28,4 +28,4 @@ export function StreakDisplay({
       </span>
     </div>
   )
-}
+};

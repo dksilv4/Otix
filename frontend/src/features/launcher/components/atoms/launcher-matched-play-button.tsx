@@ -7,7 +7,7 @@ interface Props {
   mediaId: string
 }
 
-export function MatchedPlayButton({ mediaId }: Props) {
+export const MatchedPlayButton = ({ mediaId }: Props) => {
   const navigate = useNavigate()
 
   return (
@@ -18,4 +18,4 @@ export function MatchedPlayButton({ mediaId }: Props) {
       <Play size={14} fill="currentColor" /> Play
     </button>
   )
-}
+};

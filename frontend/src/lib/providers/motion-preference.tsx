@@ -1,9 +1,14 @@
-// TODO: Review this file
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import {
+  type MotionPreference,
+  MOTION_STORAGE_KEY,
+  MOTION_OPTIONS,
+  getInitialMotionPreference,
+  resolveReducedMotion,
+} from '@/lib/utils/motion'
 
-export type MotionPreference = 'system' | 'reduce' | 'full'
-
-const STORAGE_KEY = 'otix-motion'
+export type { MotionPreference }
+export { MOTION_OPTIONS }
 
 const MotionPreferenceContext = createContext<{
   motionPreference: MotionPreference
@@ -13,36 +18,11 @@ const MotionPreferenceContext = createContext<{
   setMotionPreference: () => {},
 })
 
-export const MOTION_OPTIONS: {
-  value: MotionPreference
-  label: string
-  description: string
-}[] = [
-  { value: 'system', label: 'System', description: 'Follow your device motion settings.' },
-  { value: 'full', label: 'Full', description: 'Enable all animations.' },
-  { value: 'reduce', label: 'Reduced', description: 'Minimize motion and transitions.' },
-]
-
-function getInitialMotionPreference(): MotionPreference {
-  if (typeof window === 'undefined') return 'system'
-  const stored = localStorage.getItem(STORAGE_KEY)
-  return MOTION_OPTIONS.some((option) => option.value === stored)
-    ? (stored as MotionPreference)
-    : 'system'
-}
-
-function resolveReducedMotion(preference: MotionPreference): boolean {
-  if (preference === 'reduce') return true
-  if (preference === 'full') return false
-  if (typeof window === 'undefined') return false
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-export function MotionPreferenceProvider({ children }: { children: ReactNode }) {
+export const MotionPreferenceProvider = ({ children }: { children: ReactNode }) => {
   const [motionPreference, setMotionPreference] = useState<MotionPreference>(getInitialMotionPreference)
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, motionPreference)
+    localStorage.setItem(MOTION_STORAGE_KEY, motionPreference)
   }, [motionPreference])
 
   useEffect(() => {
@@ -72,6 +52,7 @@ export function MotionPreferenceProvider({ children }: { children: ReactNode }) 
   )
 }
 
-export function useMotionPreference() {
+export const useMotionPreference = () => {
   return useContext(MotionPreferenceContext)
 }
+

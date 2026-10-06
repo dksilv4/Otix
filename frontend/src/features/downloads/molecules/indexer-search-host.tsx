@@ -5,7 +5,7 @@ import { ServerGameSearchModal } from './server-game-search-modal'
 import { useGameServers, getCachedNodes } from '../hooks/use-node-downloads'
 
 /** Listens for Hub (Ctrl+K) / global CTA events and opens the Indexer Search modal. */
-export function IndexerSearchHost() {
+export const IndexerSearchHost = () => {
   const { openModal } = useModal()
   const openModalRef = useRef(openModal)
   useEffect(() => {
@@ -55,4 +55,4 @@ export function IndexerSearchHost() {
   }, [])
 
   return null
-}
+};

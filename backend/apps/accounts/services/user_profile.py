@@ -18,8 +18,7 @@ from apps.proposals.models import MediaEditProposal
 from apps.social.models import Review, UserStreak
 from apps.social.services import count_friends, get_counts, get_friendship_status, is_following
 from apps.social.services.user_rating import compute_composite_score, peer_rating_aggregates
-
-LEVEL_TITLE = "Novice"
+from apps.social.services.xp import calculate_level, calculate_xp_rank_and_percentile
 
 
 def get_user_by_username(username: str):
@@ -58,6 +57,9 @@ def build_user_profile(user: User, viewer) -> dict:
         is_following_viewer = is_following(viewer_id, user.id)
         friendship_status = get_friendship_status(viewer_id, user.id)
 
+    level, level_title = calculate_level(user.total_xp)
+    xp_rank, xp_percentile = calculate_xp_rank_and_percentile(user)
+
     return {
         "id": user.id,
         "username": user.username,
@@ -82,10 +84,10 @@ def build_user_profile(user: User, viewer) -> dict:
         "follower_count": counts["followers"],
         "following_count": counts["following"],
         "friend_count": count_friends(user.id),
-        "level": 1,
-        "level_title": LEVEL_TITLE,
-        "xp_rank": None,
-        "xp_percentile": None,
+        "level": level,
+        "level_title": level_title,
+        "xp_rank": xp_rank,
+        "xp_percentile": xp_percentile,
         "proposal_count": proposal_count,
         "proposal_approval_rate": proposal_approval_rate,
         "current_login_streak": streak.current_login_streak if streak else 0,
@@ -107,8 +109,8 @@ def search_users(query: str, limit: int) -> list[dict]:
             "username": user.username,
             "avatar_url": user.avatar_url,
             "bio": user.bio,
-            "level": 1,
-            "level_title": LEVEL_TITLE,
+            "level": calculate_level(user.total_xp)[0],
+            "level_title": calculate_level(user.total_xp)[1],
             "is_admin": bool(user.is_staff or user.is_superuser),
             "media_type": "user",
         }

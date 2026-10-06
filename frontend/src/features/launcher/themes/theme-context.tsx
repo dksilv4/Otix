@@ -150,7 +150,7 @@ interface LauncherThemeContextType {
 
 const LauncherThemeContext = createContext<LauncherThemeContextType | null>(null)
 
-export function LauncherThemeProvider({ children }: { children: React.ReactNode }) {
+export const LauncherThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentTheme, setCurrentThemeState] = useState<LauncherThemeId>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as LauncherThemeId | null
@@ -221,9 +221,9 @@ export function LauncherThemeProvider({ children }: { children: React.ReactNode 
   )
 
   return <LauncherThemeContext.Provider value={value}>{children}</LauncherThemeContext.Provider>
-}
+};
 
-export function useLauncherTheme() {
+export const useLauncherTheme = () => {
   const ctx = useContext(LauncherThemeContext)
   if (!ctx) {
     throw new Error("useLauncherTheme must be used within a LauncherThemeProvider")

@@ -8,7 +8,7 @@ import {
   type NavPillsConfig,
 } from '../hooks/use-nav-pills-visibility'
 
-export function NavigationProvider({ children }: { children: ReactNode }) {
+export const NavigationProvider = ({ children }: { children: ReactNode }) => {
   const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const [override, setOverride] = useState<NavPillsConfig | null>(null)
@@ -29,4 +29,4 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       </NavPillsContext.Provider>
     </NavigationContext.Provider>
   )
-}
+};

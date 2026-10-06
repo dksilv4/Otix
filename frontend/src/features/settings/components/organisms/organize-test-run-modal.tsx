@@ -38,13 +38,13 @@ export interface OrganizeTestRunModalProps {
   isoDirectory: string
 }
 
-export function OrganizeTestRunModal({
+export const OrganizeTestRunModal = ({
   open,
   onOpenChange,
   nodeId,
   template,
   isoDirectory,
-}: OrganizeTestRunModalProps) {
+}: OrganizeTestRunModalProps) => {
   const [useSamples, setUseSamples] = useState(false)
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState<PreviewItem[]>([])
@@ -315,4 +315,4 @@ export function OrganizeTestRunModal({
       </div>
     </DkDialog>
   )
-}
+};

@@ -6,7 +6,7 @@ interface DkMediaGridProps {
   className?: string
 }
 
-function DkMediaGrid({ children, className }: DkMediaGridProps) {
+const DkMediaGrid = ({ children, className }: DkMediaGridProps) => {
   return (
     <div
       className={cn(
@@ -17,6 +17,6 @@ function DkMediaGrid({ children, className }: DkMediaGridProps) {
       {children}
     </div>
   )
-}
+};
 
 export { DkMediaGrid, DkMediaGrid as MediaGrid }

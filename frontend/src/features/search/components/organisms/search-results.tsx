@@ -21,7 +21,7 @@ import { DiscoverSectionError } from '@discover/components/molecules/discover-se
 import { MediaSectionSkeleton } from '@discover/components/molecules/discover-media-section-skeleton'
 import { TYPE_OPTIONS } from '@search/components/molecules/search-sort-bar'
 
-function SearchSkeleton({ count = 12 }: { count?: number }) {
+const SearchSkeleton = ({ count = 12 }: { count?: number }) => {
   return (
     <MediaGrid>
       {Array.from({ length: count }).map((_, i) => (
@@ -29,9 +29,9 @@ function SearchSkeleton({ count = 12 }: { count?: number }) {
       ))}
     </MediaGrid>
   )
-}
+};
 
-function SearchEmpty({ query, type }: { query: string; type: string }) {
+const SearchEmpty = ({ query, type }: { query: string; type: string }) => {
   const typeLabel =
     type === 'all'
       ? ''
@@ -47,9 +47,9 @@ function SearchEmpty({ query, type }: { query: string; type: string }) {
       </p>
     </div>
   )
-}
+};
 
-function SearchError() {
+const SearchError = () => {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <p className="text-lg font-semibold text-muted-foreground">
@@ -60,7 +60,7 @@ function SearchError() {
       </p>
     </div>
   )
-}
+};
 
 interface SearchResultsProps {
   query: string
@@ -68,7 +68,7 @@ interface SearchResultsProps {
   sort: string
 }
 
-function renderBestResultItem(item: any) {
+const BestResultItem = ({ item }: { item: any }) => {
   const mediaType = item.mediaType
 
   if (mediaType === 'user') {
@@ -122,10 +122,10 @@ function renderBestResultItem(item: any) {
   }
 
   return <DiscoverMediaCard item={item} />
-}
+};
 
 /** Fetches and renders one curated section carousel. */
-function CuratedSectionCarousel({ section }: { section: CuratedSectionConfig }) {
+const CuratedSectionCarousel = ({ section }: { section: CuratedSectionConfig }) => {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['curated-section', section.id],
     queryFn: () =>
@@ -175,9 +175,9 @@ function CuratedSectionCarousel({ section }: { section: CuratedSectionConfig }) 
       </Carousel>
     </section>
   )
-}
+};
 
-export function SearchResults({ query, type, sort }: SearchResultsProps) {
+export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const isSentinelInView = useInView(sentinelRef, { margin: '0px 0px 600px 0px' })
 
@@ -333,7 +333,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
                 >
-                  {renderBestResultItem(item)}
+                  <BestResultItem item={item} />
                 </motion.div>
               ))}
             </Carousel>
@@ -626,4 +626,4 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
       <div ref={sentinelRef} />
     </div>
   )
-}
+};

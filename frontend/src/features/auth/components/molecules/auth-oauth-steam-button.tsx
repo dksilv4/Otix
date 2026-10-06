@@ -7,11 +7,11 @@ import {useFeature} from '@/features/_config'
 import type {FeatureName} from "@/features/_config/types.ts";
 
 /** Steam OAuth login button, gated by the auth:oauth:steam feature flag. */
-export function SteamOAuthButton() {
+export const SteamOAuthButton = () => {
     const enabled = useFeature(SteamOAuthButton.featureName)
     if (!enabled) return null
 
-    async function handleSteamLogin() {
+    const handleSteamLogin = async () => {
         const {data} = await apiClient.post(
             '/auth/steam/initiate',
             isDesktop() ? {source: 'desktop'} : undefined,
@@ -28,7 +28,7 @@ export function SteamOAuthButton() {
             onClick={handleSteamLogin}
         />
     )
-}
+};
 
 SteamOAuthButton.featureName = 'auth:oauth:steam' as FeatureName
 

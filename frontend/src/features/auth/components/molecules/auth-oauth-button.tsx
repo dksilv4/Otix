@@ -2,7 +2,7 @@ import {useState, type ReactNode} from 'react'
 import {Loader2} from 'lucide-react'
 
 /** Reusable circular button that initiates an OAuth provider flow with loading state. (molecule) */
-export function OAuthButton({
+export const OAuthButton = ({
                                 icon,
                                 ariaLabel,
                                 gradient,
@@ -12,10 +12,10 @@ export function OAuthButton({
     ariaLabel: string
     gradient: { from: string; to: string }
     onClick: () => Promise<void>
-}) {
+}) => {
     const [loading, setLoading] = useState(false)
 
-    async function handleClick() {
+    const handleClick = async () => {
         setLoading(true)
         try {
             await onClick()
@@ -45,4 +45,4 @@ export function OAuthButton({
             )}
         </button>
     )
-}
+};

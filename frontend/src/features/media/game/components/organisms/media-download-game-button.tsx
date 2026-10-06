@@ -8,7 +8,7 @@ import { DOWNLOAD_STATUS_LABELS } from '../../../constants'
 import { useDownloadGame } from '../../hooks/use-download-game'
 import { useModal } from '@/lib/modals'
 
-export function DownloadGameButton() {
+export const DownloadGameButton = () => {
   const state = useDownloadGame()
   const { openModal } = useModal()
   const hvCloseRef = useRef<(() => void) | null>(null)
@@ -566,4 +566,4 @@ export function DownloadGameButton() {
 
   // ── Fallback (downloads disabled) → null content ──
   return null
-}
+};

@@ -12,7 +12,7 @@ interface PeopleTimelineProps {
   roleFilter: string
 }
 
-export function PeopleTimeline({ credits, mediaTypeFilter, roleFilter }: PeopleTimelineProps) {
+export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleTimelineProps) => {
   let filtered = credits.filter((c) => c.mediaItem != null)
 
   if (mediaTypeFilter !== 'all') {
@@ -203,5 +203,5 @@ export function PeopleTimeline({ credits, mediaTypeFilter, roleFilter }: PeopleT
       </div>
     </div>
   )
-}
+};
 

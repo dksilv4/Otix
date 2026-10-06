@@ -1,41 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { MediaCard } from '@ui/molecules/media-card'
 import { cn } from '@/lib/utils'
-import type { DisplayGame, LocalGame } from '@/features/launcher/types'
-
-type LauncherCardGame = LocalGame | DisplayGame
-
-function asLocal(game: LauncherCardGame): LocalGame | null {
-  if ('rawGame' in game && game.rawGame) return game.rawGame
-  if ('exePath' in game && 'installDir' in game && 'platform' in game) return game
-  return null
-}
-
-export function launcherMediaCardProps(game: LauncherCardGame) {
-  const raw = asLocal(game)
-  const data = raw?.data
-  const display = game as DisplayGame
-  const textless = raw?.otixTextlessPosterUrl || data?.textlessPosterUrl || display.textlessPosterUrl || null
-  const backdrop = raw?.otixBackdropUrl || data?.backdropUrl || display.backdropUrl || null
-  const poster = raw?.otixPosterUrl || data?.posterUrl || raw?.posterUrl || display.posterUrl || null
-  const hasCleanArt = Boolean(textless || backdrop)
-  const logo = hasCleanArt
-    ? (raw?.otixLogoUrl || data?.logoUrl || display.logoUrl || null)
-    : null
-
-  return {
-    id: raw?.otixMediaId || data?.id || display.otixMediaId || game.id,
-    title: data?.title || raw?.otixMediaTitle || game.title,
-    posterUrl: poster,
-    textlessPosterUrl: textless || backdrop || poster,
-    backdropUrl: backdrop,
-    logoUrl: logo,
-    logoColorGuess: data?.logoColorGuess ?? display.logoColorGuess ?? null,
-    avgRating: data?.avgRating ?? null,
-    ratingCount: data?.ratingCount,
-    releaseDate: data?.releaseDate ?? null,
-  }
-}
+import { asLocal, launcherMediaCardProps, type LauncherCardGame } from '@/features/launcher/utils'
 
 interface LauncherMediaCardProps {
   game: LauncherCardGame
@@ -46,14 +12,14 @@ interface LauncherMediaCardProps {
   showTypeBadge?: boolean
 }
 
-export function LauncherMediaCard({
+export const LauncherMediaCard = ({
   game,
   onClick,
   onMouseEnter,
   onMouseLeave,
   className,
   showTypeBadge = true,
-}: LauncherMediaCardProps) {
+}: LauncherMediaCardProps) => {
   const navigate = useNavigate()
   const art = launcherMediaCardProps(game)
   const raw = asLocal(game)
@@ -93,4 +59,4 @@ export function LauncherMediaCard({
       />
     </button>
   )
-}
+};

@@ -11,25 +11,10 @@ import { SettingsCard } from '../components/molecules/settings-card'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsRow } from '../components/molecules/settings-row'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
-
-const LOCAL_PREFS_KEY = 'otix:local-notification-preferences'
-
-function getLocalPrefs(): Record<string, boolean | string> {
-  try {
-    const raw = localStorage.getItem(LOCAL_PREFS_KEY)
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveLocalPrefs(prefs: Record<string, boolean | string>) {
-  try {
-    localStorage.setItem(LOCAL_PREFS_KEY, JSON.stringify(prefs))
-  } catch {
-    // ignore
-  }
-}
+import {
+  getLocalPrefs,
+  saveLocalPrefs,
+} from '../utils/notifications'
 
 const CATEGORIES: { id: string; label: string; description: string; types: NotificationType[] }[] = [
   {
@@ -64,7 +49,7 @@ const CATEGORIES: { id: string; label: string; description: string; types: Notif
   },
 ]
 
-export function SettingsNotificationsPage() {
+export const SettingsNotificationsPage = () => {
   const { user, refreshUser } = useAuth()
   const local = getLocalPrefs()
 
@@ -289,4 +274,4 @@ export function SettingsNotificationsPage() {
       )}
     </div>
   )
-}
+};

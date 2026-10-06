@@ -3,25 +3,9 @@ import { Heart, UserRound } from 'lucide-react'
 import { Image } from '@ui/atoms/image'
 import { cn } from '@/lib/utils'
 import type { PeopleCardProps } from '@people/types'
+import { getRoleMeta } from '@people/utils'
 
-const voiceMarkerPattern = /\(\s*voice\s*\)/i
-const voiceOnlyPattern = /^(voice actor|voice)$/i
-
-function getRoleMeta(role?: string | null) {
-  const rawLabel = role?.trim() ?? ''
-  if (!rawLabel) return { label: '', isVoice: false }
-
-  const isVoice = voiceMarkerPattern.test(rawLabel) || voiceOnlyPattern.test(rawLabel)
-  const label = rawLabel
-    .replace(/\s*\(\s*voice\s*\)\s*/gi, ' ')
-    .replace(voiceOnlyPattern, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
-
-  return { label, isVoice }
-}
-
-export function PeopleCard({
+export const PeopleCard = ({
   id,
   name,
   imageUrl,
@@ -29,7 +13,7 @@ export function PeopleCard({
   className,
   isFavorite = false,
   onFavoriteToggle,
-}: PeopleCardProps) {
+}: PeopleCardProps) => {
   const { label, isVoice } = getRoleMeta(role)
   const showMeta = Boolean(label || isVoice)
 
@@ -113,4 +97,4 @@ export function PeopleCard({
       )}
     </div>
   )
-}
+};

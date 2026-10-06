@@ -23,13 +23,7 @@ const STATUS_LABELS: Record<string, string> = {
   deleted: 'Deleted',
 };
 
-function formatSize(bytes: number | null): string {
-  if (!bytes) return '—';
-  if (bytes > 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
-  if (bytes > 1_000_000) return `${(bytes / 1_000_000).toFixed(1)} MB`;
-  if (bytes > 1_000) return `${(bytes / 1_000).toFixed(0)} KB`;
-  return `${bytes} B`;
-}
+import { formatSize } from '../utils'
 
 interface DownloadCardProps {
   download: DownloadType;
@@ -38,7 +32,7 @@ interface DownloadCardProps {
   onOpenFolder?: (path: string) => void;
 }
 
-export function DownloadCard({ download, onCancel, onDelete, onOpenFolder }: DownloadCardProps) {
+export const DownloadCard = ({ download, onCancel, onDelete, onOpenFolder }: DownloadCardProps) => {
   const StatusIcon = STATUS_ICONS[download.status] ?? Clock;
   const isActive = download.status === 'queued' || download.status === 'downloading';
   const gameTitle = download.mediaItemTitle ?? download.nzbName ?? 'Unknown';
@@ -128,4 +122,4 @@ export function DownloadCard({ download, onCancel, onDelete, onOpenFolder }: Dow
       </div>
     </div>
   );
-}
+};

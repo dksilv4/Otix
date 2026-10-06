@@ -30,15 +30,9 @@ interface FreeCheckResult {
   alreadyOwned: number
 }
 
-const EPIC_FREE_PAGE = 'https://store.epicgames.com/free-games'
+import { claimUrl } from '../../utils/free-games'
 
-function claimUrl(game: EpicFreeGame): string {
-  // offerId is NOT a valid product-page slug — only urlSlug navigates to the
-  // game. Without one, drop to the free-games page where it can be claimed.
-  return game.urlSlug ? `https://store.epicgames.com/p/${game.urlSlug}` : EPIC_FREE_PAGE
-}
-
-function FreeClaimCard({ game }: { game: EpicFreeGame }) {
+const FreeClaimCard = ({ game }: { game: EpicFreeGame }) => {
   const [posterError, setPosterError] = useState(false)
 
   const endDate = game.freeEndDate
@@ -112,9 +106,9 @@ function FreeClaimCard({ game }: { game: EpicFreeGame }) {
       </div>
     </button>
   )
-}
+};
 
-export function SettingsFreeGamesSection() {
+export const SettingsFreeGamesSection = () => {
   const [games, setGames] = useState<EpicFreeGame[] | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
@@ -199,4 +193,4 @@ export function SettingsFreeGamesSection() {
       </Carousel>
     </SettingsCard>
   )
-}
+};

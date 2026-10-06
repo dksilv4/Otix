@@ -20,12 +20,12 @@ interface MediaGalleryProps {
 
 type GalleryTab = 'all' | 'videos' | 'screenshots'
 
-export function MediaGallery({
+export const MediaGallery = ({
   videos = [],
   screenshots = [],
   title = 'Media',
   className = '',
-}: MediaGalleryProps) {
+}: MediaGalleryProps) => {
   const { openModal } = useModal()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
@@ -250,4 +250,4 @@ export function MediaGallery({
       </div>
     </section>
   )
-}
+};

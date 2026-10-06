@@ -49,7 +49,7 @@ interface MediaHeroProps {
   onTrailerClick?: () => void
 }
 
-export function MediaHero({ className = '' }: MediaHeroProps) {
+export const MediaHero = ({ className = '' }: MediaHeroProps) => {
   const { mediaType, mediaId } = useMediaParams()
   const { user, isAuthenticated } = useAuth()
   const { openModal } = useModal()
@@ -447,6 +447,6 @@ export function MediaHero({ className = '' }: MediaHeroProps) {
       </div>
     </header>
   )
-}
+};
 
 export { MediaHero as MediaHeroV4 }

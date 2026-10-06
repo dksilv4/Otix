@@ -97,3 +97,37 @@ class KarmaTransactionsView(generics.ListAPIView):
         if user is None:
             raise NotFound(USER_NOT_FOUND)
         return services.get_karma_transactions(user.id)
+
+
+class GamingHeartbeatView(APIView):
+    """``POST /users/me/gaming-heartbeat`` — record active gameplay heartbeat and award XP."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request: Request) -> Response:
+        data = request.data or {}
+        game_id = str(data.get("game_id", "")).strip()
+        game_title = str(data.get("game_title", "")).strip() or "Game"
+        try:
+            duration_seconds = int(data.get("duration_seconds", 0))
+        except (ValueError, TypeError):
+            duration_seconds = 0
+
+        session_id = str(data.get("session_id", "")).strip() or None
+        is_final = bool(data.get("is_final", False))
+
+        if not game_id:
+            return Response(
+                {"detail": "game_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = services.record_gaming_heartbeat(
+            user_id=request.user.id,
+            game_id=game_id,
+            game_title=game_title,
+            duration_seconds=duration_seconds,
+            session_id=session_id,
+            is_final=is_final,
+        )
+        return Response(result, status=status.HTTP_200_OK)

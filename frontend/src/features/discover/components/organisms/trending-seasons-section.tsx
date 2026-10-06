@@ -13,11 +13,11 @@ import { MediaSectionSkeleton } from '../molecules/discover-media-section-skelet
  * represents. Fed by /discover/season/trending (show/trending stays the plain
  * shows feed rendered by MediaSection).
  */
-export const TrendingSeasonsSection = memo(function TrendingSeasonsSection({
+export const TrendingSeasonsSection = memo(({
   eager = false,
 }: {
   eager?: boolean
-}) {
+}) => {
   const { ref, items, showSkeleton, isEmpty, isError, refetch } = useSeasonSectionFetch(eager)
 
   if (isEmpty) return null

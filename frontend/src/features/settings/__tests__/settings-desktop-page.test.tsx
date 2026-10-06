@@ -93,7 +93,7 @@ describe('SettingsDesktopPage', () => {
     })
   })
 
-  function renderPage() {
+  const renderPage = () => {
     return render(
       <QueryClientProvider client={queryClient}>
         <SettingsSaveProvider>

@@ -6,7 +6,7 @@ interface Props {
   onClick: () => void
 }
 
-export function IsoInstallButton({ onClick }: Props) {
+export const IsoInstallButton = ({ onClick }: Props) => {
   return (
     <button
       onClick={onClick}
@@ -15,4 +15,4 @@ export function IsoInstallButton({ onClick }: Props) {
       <Disc size={14} /> Install
     </button>
   )
-}
+};

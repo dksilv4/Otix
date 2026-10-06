@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { GenreCard, getGenreVisual, DEFAULT_VISUAL } from '../genre-card'
+import { GenreCard } from '../genre-card'
+import { getGenreVisual, DEFAULT_VISUAL } from '../../visual'
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, params, search, ...props }: any) => {

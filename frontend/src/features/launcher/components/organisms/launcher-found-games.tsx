@@ -15,7 +15,7 @@ interface Props {
   compact?: boolean
 }
 
-export function LauncherFoundGames({ className, compact = false }: Props) {
+export const LauncherFoundGames = ({ className, compact = false }: Props) => {
   const { data: found = [], persistable, isLoading } = useLauncherFoundGames()
   const { openModal } = useModal()
   const unmatchedCount = found.filter((item) => item.status === 'unmatched').length
@@ -123,15 +123,15 @@ export function LauncherFoundGames({ className, compact = false }: Props) {
       )}
     </section>
   )
-}
+};
 
-function FoundGameRow({
+const FoundGameRow = ({
   item,
   onMatch,
 }: {
   item: FoundServerGame
   onMatch: () => void
-}) {
+}) => {
   const unmatched = item.status === 'unmatched'
   const extras = item.extraCount > 0
     ? ` · ${item.extraCount} extra file${item.extraCount === 1 ? '' : 's'}`
@@ -167,4 +167,4 @@ function FoundGameRow({
       )}
     </div>
   )
-}
+};

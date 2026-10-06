@@ -83,11 +83,11 @@ const TABS: TabDef[] = [
   },
 ]
 
-export function PlexStorageOptimizerModal({
+export const PlexStorageOptimizerModal = ({
   open,
   onOpenChange,
   initialServerId,
-}: PlexStorageOptimizerModalProps) {
+}: PlexStorageOptimizerModalProps) => {
   const { toast } = useToast()
   const { data: servers = [] } = usePlexStorageServers({ enabled: open })
 
@@ -593,15 +593,15 @@ export function PlexStorageOptimizerModal({
       </div>
     </DkDialog>
   )
-}
+};
 
-function StorageItemCard({
+const StorageItemCard = ({
   item,
   category,
 }: {
   item: PlexStorageRecommendationItem
   category: SavingsCategory
-}) {
+}) => {
   const [expanded, setExpanded] = useState(false)
   const totalSize = item.totalSize ?? item.total_size ?? 0
   const reclaimableBytes = item.reclaimableBytes ?? item.reclaimable_bytes
@@ -759,4 +759,4 @@ function StorageItemCard({
       )}
     </div>
   )
-}
+};

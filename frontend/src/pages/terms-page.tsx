@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { Logo } from '@ui/atoms/logo'
 
-export function TermsPage() {
+export const TermsPage = () => {
   const navigate = useNavigate()
 
   return (
@@ -223,4 +223,4 @@ export function TermsPage() {
       </div>
     </div>
   )
-}
+};

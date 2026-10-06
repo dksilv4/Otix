@@ -332,3 +332,14 @@ export function focusLabel(date: Date, scale: TimelineScale): string {
       return `${Math.floor(date.getFullYear() / 10) * 10}s`
   }
 }
+
+export const unionRange = (
+  a: { start: Date; end: Date },
+  b: { start: Date; end: Date }
+): { start: Date; end: Date } => {
+  return {
+    start: a.start < b.start ? a.start : b.start,
+    end: a.end > b.end ? a.end : b.end,
+  }
+}
+

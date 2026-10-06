@@ -7,8 +7,8 @@ import {
 export type NodeSonarrSettingsModalProps = Omit<NodeArrSettingsModalProps, 'appType'>;
 export type ServerSonarrSettingsModalProps = NodeSonarrSettingsModalProps;
 
-export function NodeSonarrSettingsModal(props: NodeSonarrSettingsModalProps) {
+export const NodeSonarrSettingsModal = (props: NodeSonarrSettingsModalProps) => {
   return <NodeArrSettingsModal {...props} appType="sonarr" />;
-}
+};
 
 export const ServerSonarrSettingsModal = NodeSonarrSettingsModal;

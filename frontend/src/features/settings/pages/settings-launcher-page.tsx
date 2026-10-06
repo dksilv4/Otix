@@ -21,36 +21,13 @@ import { LAUNCHER_THEMES, type LauncherThemeId } from '@/features/launcher/theme
 import { useToast } from '@ui/molecules/toast'
 import { cn } from '@/lib/utils'
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
+import {
+  type ThemeCategory,
+  THEME_CATEGORIES,
+  getThemeCategory,
+} from '../utils/launcher'
 
-type ThemeCategory = 'all' | 'console' | 'cinematic' | 'specialty'
-
-const THEME_CATEGORIES: { id: ThemeCategory; label: string }[] = [
-  { id: 'all', label: 'All Themes' },
-  { id: 'console', label: 'Console Editions' },
-  { id: 'cinematic', label: 'Modern & Glass' },
-  { id: 'specialty', label: 'Retro & Zen' },
-]
-
-function getThemeCategory(id: LauncherThemeId): ThemeCategory {
-  switch (id) {
-    case 'steam':
-    case 'playstation':
-    case 'xbox':
-    case 'switch':
-      return 'console'
-    case 'modern':
-    case 'glass':
-    case 'forge':
-      return 'cinematic'
-    case 'retro':
-    case 'minimal':
-    case 'classic':
-    default:
-      return 'specialty'
-  }
-}
-
-export function SettingsLauncherPage() {
+export const SettingsLauncherPage = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { settings, update } = useLauncherSettings()
@@ -356,4 +333,4 @@ export function SettingsLauncherPage() {
       </div>
     </div>
   )
-}
+};

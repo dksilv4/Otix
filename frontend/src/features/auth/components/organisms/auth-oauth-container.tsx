@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 
 /** Glassmorphism container for grouping OAuth provider buttons. */
-export function OAuthContainer({
+export const OAuthContainer = ({
   id,
   children,
 }: {
   id: string
   children: ReactNode
-}) {
+}) => {
   return (
     <div
       id={id}
@@ -23,4 +23,4 @@ export function OAuthContainer({
       <div className="flex justify-center gap-3">{children}</div>
     </div>
   )
-}
+};

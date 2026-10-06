@@ -5,10 +5,10 @@ import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { resolveFolderPickStrategy, type FolderPickTarget } from '../strategy'
 
-export function usePickFolder(options?: {
+export const usePickFolder = (options?: {
   target?: FolderPickTarget
   serverId?: number
-}) {
+}) => {
   const api = getDesktopAPI()
   const { data: servers = [] } = useGameServers()
   const { openModal } = useModal()

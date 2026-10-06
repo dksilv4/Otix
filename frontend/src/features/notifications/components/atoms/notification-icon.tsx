@@ -8,7 +8,7 @@ interface NotificationIconProps {
   className?: string
 }
 
-export function NotificationIcon({ type, className }: NotificationIconProps) {
+export const NotificationIcon = ({ type, className }: NotificationIconProps) => {
   const config = getTypeConfig(type)
   const Icon = getTypeIcon(type)
   return (
@@ -16,4 +16,4 @@ export function NotificationIcon({ type, className }: NotificationIconProps) {
       {createElement(Icon, { className: cn('h-4 w-4', config?.color ?? 'text-white/70') })}
     </div>
   )
-}
+};

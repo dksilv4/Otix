@@ -119,7 +119,7 @@ const BUTTONS: ButtonDef[] = [
 
 // ── Single button ───────────────────────────────────────────────
 
-function InteractionButton({
+const InteractionButton = ({
  type,
  label,
  activeColor,
@@ -130,8 +130,9 @@ function InteractionButton({
  mediaId,
  mediaType,
  onClick,
-}: ButtonDef & { active: boolean; mediaId: string; mediaType: string; onClick?: () => void }) {
+}: ButtonDef & { active: boolean; mediaId: string; mediaType: string; onClick?: () => void }) => {
  const toggle = useToggleInteraction(mediaType, mediaId)
+ const { user } = useAuth()
  const [localActive, setLocalActive] = useState<boolean | null>(null)
  const prevActiveRef = useRef(active)
 
@@ -153,7 +154,7 @@ function InteractionButton({
  setLocalActive(nextActive)
  toggle.mutate({ type, active: nextActive })
  if (nextActive) {
- showXPToast(XP_VALUES[type])
+ showXPToast(XP_VALUES[type], user?.totalXp)
  }
  }
 
@@ -190,7 +191,7 @@ function InteractionButton({
  </span>
  </button>
  )
-}
+};
 
 // ── Section ─────────────────────────────────────────────────────
 
@@ -206,7 +207,7 @@ interface InteractionSectionProps {
  showEpisodeInfo?: { watched: number; total: number }
 }
 
-function InteractionSection({
+const InteractionSection = ({
   mediaId,
   mediaType,
   className,
@@ -214,7 +215,7 @@ function InteractionSection({
   children,
   onShowWatchedToggle,
   showEpisodeInfo,
-}: InteractionSectionProps) {
+}: InteractionSectionProps) => {
   const { isAuthenticated } = useAuth()
   const location = useLocation()
   const { openModal } = useModal()
@@ -367,7 +368,7 @@ function InteractionSection({
     </div>
   </section>
  )
-}
+};
 
 export { InteractionSection }
 export type { InteractionSectionProps }

@@ -7,7 +7,7 @@ import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api'
 import { fetchIsoPaths } from '@/features/launcher/data/storage'
 import { useToast } from '@ui/molecules/toast'
 
-export function LauncherScanWidget({ id }: { id?: string }) {
+export const LauncherScanWidget = ({ id }: { id?: string }) => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [scanning, setScanning] = useState(false)
@@ -78,4 +78,4 @@ export function LauncherScanWidget({ id }: { id?: string }) {
       </div>
     </div>
   )
-}
+};

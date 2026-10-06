@@ -8,7 +8,7 @@ interface ActivityModulePlexListProps {
 }
 
 /** Animated list of active Plex streaming sessions with per-session cards. */
-export function ActivityModulePlexList({ sessions, onClose }: ActivityModulePlexListProps) {
+export const ActivityModulePlexList = ({ sessions, onClose }: ActivityModulePlexListProps) => {
   if (sessions.length === 0) {
     return (
       <p className="px-2 py-6 text-center text-xs text-muted-foreground/50">
@@ -31,4 +31,4 @@ export function ActivityModulePlexList({ sessions, onClose }: ActivityModulePlex
       ))}
     </div>
   )
-}
+};

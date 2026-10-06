@@ -4,9 +4,9 @@ import { ContextMenuProvider } from './context-menu-context'
 import { ContextMenuContent } from './context-menu-content'
 import type { ContextMenuItemDef } from './types'
 
-function Wrapper({ children }: { children: React.ReactNode }) {
+const Wrapper = ({ children }: { children: React.ReactNode }) => {
   return <ContextMenuProvider>{children}</ContextMenuProvider>
-}
+};
 
 describe('ContextMenuContent', () => {
   const items: ContextMenuItemDef[] = [

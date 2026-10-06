@@ -40,7 +40,7 @@ vi.mock('@/features/downloads/use-server-explorer', () => ({
   }),
 }))
 
-function renderModal(props?: Partial<React.ComponentProps<typeof FolderPickerModal>>) {
+const renderModal = (props?: Partial<React.ComponentProps<typeof FolderPickerModal>>) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const onSelect = vi.fn()
   const onClose = vi.fn()

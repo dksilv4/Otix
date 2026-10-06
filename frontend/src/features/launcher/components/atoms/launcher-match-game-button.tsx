@@ -8,7 +8,7 @@ interface Props {
   game: LocalGame
 }
 
-export function MatchGameButton({ game }: Props) {
+export const MatchGameButton = ({ game }: Props) => {
   const { openModal } = useModal()
 
   const handleOpenMatchModal = () => {
@@ -28,4 +28,4 @@ export function MatchGameButton({ game }: Props) {
       Match to Play
     </button>
   )
-}
+};

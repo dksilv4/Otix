@@ -21,7 +21,7 @@ import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
 
-export function PlayStationLauncherView() {
+export const PlayStationLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
   const _isDesktop = hasDesktopAPI()
@@ -331,4 +331,4 @@ export function PlayStationLauncherView() {
       )}
     </div>
   )
-}
+};

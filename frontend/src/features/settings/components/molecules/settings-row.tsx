@@ -14,7 +14,7 @@ interface SettingsRowProps {
  * Standardized settings toggle/action row.
  * Optional icon + label/description on the left, action (switch/button/dropdown) on the right.
  */
-export function SettingsRow({ icon, label, description, action, disabled, className }: SettingsRowProps) {
+export const SettingsRow = ({ icon, label, description, action, disabled, className }: SettingsRowProps) => {
   return (
     <div
       className={cn(
@@ -41,4 +41,4 @@ export function SettingsRow({ icon, label, description, action, disabled, classN
       <div className="ml-3 shrink-0">{action}</div>
     </div>
   )
-}
+};

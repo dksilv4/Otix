@@ -17,14 +17,9 @@ interface ReviewSectionProps {
  className?: string
 }
 
-function scoreColor(score: number): { text: string; glow: string } {
- if (score >= 8) return { text: "dk-review-section__score-value--emerald", glow: "dk-review-section__glow--emerald" }
- if (score >= 6) return { text: "dk-review-section__score-value--sky", glow: "dk-review-section__glow--sky" }
- if (score >= 4) return { text: "dk-review-section__score-value--amber", glow: "dk-review-section__glow--amber" }
- return { text: "dk-review-section__score-value--red", glow: "dk-review-section__glow--red" }
-}
+import { reviewScoreColor as scoreColor } from "../utils"
 
-function StarRow({ count, filled, size = "md" }: { count: number; filled: number; size?: "sm" | "md" }) {
+const StarRow = ({ count, filled, size = "md" }: { count: number; filled: number; size?: "sm" | "md" }) => {
  const dims = size === "md" ? "w-6 h-6" : "w-4 h-4"
  return (
  <div className="flex items-center gap-0.5">
@@ -47,9 +42,9 @@ function StarRow({ count, filled, size = "md" }: { count: number; filled: number
  })}
  </div>
  )
-}
+};
 
-function ReviewSection({ mediaId, mediaType, className }: ReviewSectionProps) {
+const ReviewSection = ({ mediaId, mediaType, className }: ReviewSectionProps) => {
  const { isAuthenticated } = useAuth()
  const { openModal } = useModal()
 
@@ -226,6 +221,6 @@ function ReviewSection({ mediaId, mediaType, className }: ReviewSectionProps) {
      )}
    </section>
  )
-}
+};
 
 export { ReviewSection }

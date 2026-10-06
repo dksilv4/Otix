@@ -21,7 +21,7 @@ interface CarouselProps {
   trackPaddingInline?: string
 }
 
-export const Carousel = forwardRef(function Carousel(
+export const Carousel = forwardRef((
   {
     children,
     className,
@@ -38,7 +38,7 @@ export const Carousel = forwardRef(function Carousel(
     trackPaddingInline,
   }: CarouselProps,
   ref: Ref<HTMLDivElement>,
-) {
+) => {
   const trackRef = useRef<HTMLDivElement>(null)
   const [itemWidth, setItemWidth] = useState(minItemWidth)
   const [isDragging, setIsDragging] = useState(false)

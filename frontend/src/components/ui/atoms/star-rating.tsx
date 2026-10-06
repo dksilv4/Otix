@@ -9,7 +9,7 @@ interface DkStarRatingProps {
   className?: string
 }
 
-function DkStarRating({ score, maxScore = 10, size = "sm", color = "text-amber-400", className }: DkStarRatingProps) {
+const DkStarRating = ({ score, maxScore = 10, size = "sm", color = "text-amber-400", className }: DkStarRatingProps) => {
   const normalized = (score / maxScore) * 5
   const stars = Math.round(normalized * 2) / 2
   const starSize = size === "sm" ? "w-3.5 h-3.5" : "w-5 h-5"
@@ -36,6 +36,6 @@ function DkStarRating({ score, maxScore = 10, size = "sm", color = "text-amber-4
       })}
     </div>
   )
-}
+};
 
 export { DkStarRating, DkStarRating as StarRating }
