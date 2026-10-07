@@ -13,6 +13,7 @@ from apps.library.views import (
     EpicLibraryView,
     EpicStatusView,
     EpicUnmatchedView,
+    GameServerClaimDirectView,
     GameServerClaimView,
     GameServerConnectionsSyncView,
     GameServerDesktopView,
@@ -107,6 +108,11 @@ urlpatterns = [
     path("game-sessions", UserGameSessionsView.as_view(), name="library-user-game-sessions"),
     path("nodes", GameServerListCreateView.as_view(), name="library-nodes"),
     path("nodes/claim", GameServerClaimView.as_view(), name="library-nodes-claim"),
+    path(
+        "nodes/claim-direct",
+        GameServerClaimDirectView.as_view(),
+        name="library-nodes-claim-direct",
+    ),
     path("nodes/pending", GameServerPendingView.as_view(), name="library-nodes-pending"),
     path("nodes/<sint:server_id>", GameServerDetailView.as_view(), name="library-node-detail"),
     path(
@@ -138,6 +144,11 @@ urlpatterns = [
         name="library-server-share-delete",
     ),
     path("servers/claim", GameServerClaimView.as_view(), name="library-servers-claim"),
+    path(
+        "servers/claim-direct",
+        GameServerClaimDirectView.as_view(),
+        name="library-servers-claim-direct",
+    ),
     path("servers/pending", GameServerPendingView.as_view(), name="library-servers-pending"),
     path(
         "servers/downloads", GameServerDownloadsListView.as_view(), name="library-servers-downloads"

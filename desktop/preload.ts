@@ -112,6 +112,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
 
   // Game detection
   getRunningGame: () => ipcRenderer.invoke('game:get-running-single'),
+  getRunningGames: () => ipcRenderer.invoke('game:get-running'),
   getRecentSessions: () => ipcRenderer.invoke('game:get-recent-sessions'),
   getPlaytimeForGame: (gameId: string) => ipcRenderer.invoke('game:get-playtime', gameId),
   setLibrary: (games: LocalGame[]) => ipcRenderer.invoke('game:set-library', games),

@@ -2,6 +2,8 @@ package server
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -49,6 +51,7 @@ type Server struct {
 	gamesTracker *games.GameTracker
 	fpsCollector games.FpsCollector
 	overlayMgr   *games.OverlayManager
+	trayMgr      *desktop.TrayManager
 	startTime    time.Time
 	router       *chi.Mux
 }
@@ -79,6 +82,9 @@ func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
 	gamesTracker.Start()
 	overlayMgr.Start()
 
+	trayMgr := desktop.NewTrayManager(cfg, claimMgr, gamesStore, overlayMgr, gamesTracker, idx)
+	trayMgr.Start()
+
 	s := &Server{
 		cfg:          cfg,
 		claimMgr:     claimMgr,
@@ -92,6 +98,7 @@ func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
 		gamesTracker: gamesTracker,
 		fpsCollector: fpsCollector,
 		overlayMgr:   overlayMgr,
+		trayMgr:      trayMgr,
 		startTime:    time.Now(),
 		router:       chi.NewRouter(),
 	}
@@ -114,6 +121,10 @@ func (s *Server) FpsCollector() games.FpsCollector {
 
 func (s *Server) OverlayManager() *games.OverlayManager {
 	return s.overlayMgr
+}
+
+func (s *Server) TrayManager() *desktop.TrayManager {
+	return s.trayMgr
 }
 
 func (s *Server) Router() http.Handler {
@@ -250,6 +261,190 @@ func (s *Server) setupRoutes() {
 		})
 	})
 
+	r.Post("/api/v1/claim/login", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Username    string `json:"username"`
+			Password    string `json:"password"`
+			RegistryURL string `json:"registry_url"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+			return
+		}
+
+		req.Username = strings.TrimSpace(req.Username)
+		req.Password = strings.TrimSpace(req.Password)
+		if req.Username == "" || req.Password == "" {
+			http.Error(w, `{"error":"Username/Email and password are required"}`, http.StatusBadRequest)
+			return
+		}
+
+		registryURL := strings.TrimSpace(req.RegistryURL)
+		if registryURL == "" {
+			registryURL = heartbeat.ResolveRegistryURL(s.cfg)
+		}
+		if registryURL == "" {
+			registryURL = "https://otix.app/api"
+		}
+		registryURL = strings.TrimRight(registryURL, "/")
+
+		// Auto-prepend scheme if omitted (e.g. "otix.app/api" -> "https://otix.app/api")
+		if !strings.HasPrefix(registryURL, "http://") && !strings.HasPrefix(registryURL, "https://") {
+			if strings.HasPrefix(registryURL, "localhost") || strings.HasPrefix(registryURL, "127.0.0.1") {
+				registryURL = "http://" + registryURL
+			} else {
+				registryURL = "https://" + registryURL
+			}
+		}
+
+		// Normalize base API URL
+		baseAPI := registryURL
+		if strings.HasSuffix(baseAPI, "/api/v1") {
+			baseAPI = strings.TrimSuffix(baseAPI, "/v1")
+		} else if !strings.HasSuffix(baseAPI, "/api") {
+			baseAPI = baseAPI + "/api"
+		}
+
+
+		loginURL := fmt.Sprintf("%s/v1/auth/login", baseAPI)
+		claimURL := fmt.Sprintf("%s/v1/library/servers/claim-direct", baseAPI)
+
+		// 1. Authenticate with Otix backend
+		loginPayload := map[string]string{
+			"identity": req.Username,
+			"password": req.Password,
+		}
+		loginData, err := json.Marshal(loginPayload)
+		if err != nil {
+			http.Error(w, `{"error":"Failed to marshal login request"}`, http.StatusInternalServerError)
+			return
+		}
+
+		httpClient := &http.Client{Timeout: 15 * time.Second}
+		loginReq, err := http.NewRequestWithContext(r.Context(), "POST", loginURL, bytes.NewReader(loginData))
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"Failed to create login request: %s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		loginReq.Header.Set("Content-Type", "application/json")
+
+		loginResp, err := httpClient.Do(loginReq)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"Could not connect to Otix backend at %s: %s"}`, loginURL, err.Error()), http.StatusBadGateway)
+			return
+		}
+		defer loginResp.Body.Close()
+
+		loginBody, _ := io.ReadAll(loginResp.Body)
+		if loginResp.StatusCode != http.StatusOK {
+			var errMap map[string]any
+			errMsg := fmt.Sprintf("Authentication failed (HTTP %d)", loginResp.StatusCode)
+			if err := json.Unmarshal(loginBody, &errMap); err == nil {
+				if d, ok := errMap["detail"].(string); ok && d != "" {
+					errMsg = d
+				} else if e, ok := errMap["error"].(string); ok && e != "" {
+					errMsg = e
+				}
+			}
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, errMsg), http.StatusUnauthorized)
+			return
+		}
+
+		var loginResult struct {
+			AccessToken       string `json:"access_token"`
+			TwoFactorRequired bool   `json:"two_factor_required"`
+		}
+		if err := json.Unmarshal(loginBody, &loginResult); err != nil {
+			http.Error(w, `{"error":"Failed to parse login response"}`, http.StatusInternalServerError)
+			return
+		}
+
+		if loginResult.TwoFactorRequired || loginResult.AccessToken == "" {
+			http.Error(w, `{"error":"Two-factor authentication is required. Please claim via PIN in the Otix Web interface or disable 2FA temporarily."}`, http.StatusForbidden)
+			return
+		}
+
+		// 2. Prepare auth token for the node
+		authToken := strings.TrimSpace(s.cfg.Server.AuthToken)
+		if authToken == "" || authToken == "otix_secret_token" {
+			tokenBytes := make([]byte, 24)
+			if _, err := rand.Read(tokenBytes); err == nil {
+				authToken = hex.EncodeToString(tokenBytes)
+			} else {
+				authToken = fmt.Sprintf("otix_tok_%d", time.Now().UnixNano())
+			}
+		}
+
+		// 3. Perform direct claim with Otix backend
+		localIP := heartbeat.GetLocalIP()
+		claimPayload := map[string]any{
+			"server_name": s.cfg.Server.Name,
+			"auth_token":  authToken,
+			"port":        s.cfg.Server.Port,
+			"local_endpoints": []string{
+				fmt.Sprintf("http://%s:%d", localIP, s.cfg.Server.Port),
+				fmt.Sprintf("http://127.0.0.1:%d", s.cfg.Server.Port),
+			},
+		}
+		claimData, err := json.Marshal(claimPayload)
+		if err != nil {
+			http.Error(w, `{"error":"Failed to marshal claim request"}`, http.StatusInternalServerError)
+			return
+		}
+
+		claimReq, err := http.NewRequestWithContext(r.Context(), "POST", claimURL, bytes.NewReader(claimData))
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"Failed to create claim request: %s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		claimReq.Header.Set("Content-Type", "application/json")
+		claimReq.Header.Set("Authorization", "Bearer "+loginResult.AccessToken)
+
+		claimResp, err := httpClient.Do(claimReq)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"Failed to reach Otix claim endpoint: %s"}`, err.Error()), http.StatusBadGateway)
+			return
+		}
+		defer claimResp.Body.Close()
+
+		claimBody, _ := io.ReadAll(claimResp.Body)
+		if claimResp.StatusCode != http.StatusOK && claimResp.StatusCode != http.StatusCreated {
+			var errMap map[string]any
+			errMsg := fmt.Sprintf("Server claim failed (HTTP %d)", claimResp.StatusCode)
+			if err := json.Unmarshal(claimBody, &errMap); err == nil {
+				if e, ok := errMap["error"].(string); ok && e != "" {
+					errMsg = e
+				} else if d, ok := errMap["detail"].(string); ok && d != "" {
+					errMsg = d
+				}
+			}
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, errMsg), http.StatusBadRequest)
+			return
+		}
+
+		// Update registry URL if user explicitly supplied one
+		if strings.TrimSpace(req.RegistryURL) != "" {
+			s.cfg.Server.RegistryURL = strings.TrimSpace(req.RegistryURL)
+		}
+
+		// 4. Confirm direct claim locally and save config
+		if err := s.claimMgr.ConfirmDirect(authToken, s.cfg.Server.Name, req.Username); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		// Trigger background synchronization
+		s.triggerBackendSync()
+
+		jsonResponse(w, http.StatusOK, map[string]any{
+			"status":      "claimed",
+			"username":    req.Username,
+			"server_name": s.cfg.Server.Name,
+			"message":     "Successfully logged in and claimed Otix node",
+		})
+	})
+
+
 	// Hardware inspection (host hardware specs)
 	r.Get("/api/v1/hardware", func(w http.ResponseWriter, r *http.Request) {
 		refresh := r.URL.Query().Get("refresh") == "true"
@@ -347,12 +542,14 @@ func (s *Server) setupRoutes() {
 		}
 	})
 
-	// Currently running game
+	// Currently running games
 	r.Get("/api/v1/games/running", func(w http.ResponseWriter, r *http.Request) {
-		running := s.gamesTracker.GetRunningGame()
+		runningGames := s.gamesTracker.GetRunningGames()
+		single := s.gamesTracker.GetRunningGame()
 		jsonResponse(w, http.StatusOK, map[string]interface{}{
-			"running": running != nil,
-			"game":    running,
+			"running": len(runningGames) > 0,
+			"game":    single,
+			"games":   runningGames,
 		})
 	})
 
@@ -1786,6 +1983,12 @@ func (s *Server) setupRoutes() {
 			}
 			if s.overlayMgr != nil {
 				resp.OverlayMonitors = s.overlayMgr.GetAvailableMonitors()
+			}
+			if s.gamesTracker != nil {
+				s.gamesTracker.SetNodeInfo(s.cfg.Server.Name, s.cfg.Server.Port)
+			}
+			if s.trayMgr != nil {
+				s.trayMgr.UpdateTooltip()
 			}
 			jsonResponse(w, http.StatusOK, resp)
 		})

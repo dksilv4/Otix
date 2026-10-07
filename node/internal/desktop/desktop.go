@@ -115,7 +115,7 @@ func GetDesktopSettings(cfg *config.AppConfig, refresh ...bool) DesktopSettingsR
 		GamesInstallPath:  cfg.Desktop.GamesInstallPath,
 		ScanOnLaunch:      cfg.Desktop.ScanOnLaunch,
 		GameTracking:      true,
-		OverlayEnabled:    true,
+		OverlayEnabled:    false,
 		OverlayCorner:     "top-wide",
 		OverlayMonitor:    "auto",
 		OverlayHotkey:     "Ctrl+`",

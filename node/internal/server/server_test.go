@@ -104,6 +104,86 @@ func TestClaimFlowEndpoints(t *testing.T) {
 	}
 }
 
+func TestClaimLoginDirect(t *testing.T) {
+	// Mock Otix backend server
+	mockBackend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/auth/login":
+			var loginReq struct {
+				Identity string `json:"identity"`
+				Password string `json:"password"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&loginReq)
+			if loginReq.Identity == "alice" && loginReq.Password == "password123" {
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"access_token":        "jwt_access_token_abc",
+					"two_factor_required": false,
+				})
+				return
+			}
+			http.Error(w, `{"detail":"Invalid email or password"}`, http.StatusUnauthorized)
+		case "/api/v1/library/servers/claim-direct":
+			authHeader := r.Header.Get("Authorization")
+			if authHeader != "Bearer jwt_access_token_abc" {
+				http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			var claimReq map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&claimReq)
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"name":       claimReq["server_name"],
+				"auth_token": claimReq["auth_token"],
+				"is_online":  true,
+				"created":    true,
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer mockBackend.Close()
+
+	srv, cfg, cm := setupTestServer()
+
+	// 1. Invalid credentials should fail
+	badBody, _ := json.Marshal(map[string]string{
+		"username":     "alice",
+		"password":     "wrongpass",
+		"registry_url": mockBackend.URL + "/api",
+	})
+	reqBad := httptest.NewRequest("POST", "/api/v1/claim/login", bytes.NewReader(badBody))
+	wBad := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wBad, reqBad)
+	if wBad.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401 for bad pass, got %d", wBad.Code)
+	}
+
+	// 2. Valid credentials should succeed and claim the server
+	goodBody, _ := json.Marshal(map[string]string{
+		"username":     "alice",
+		"password":     "password123",
+		"registry_url": mockBackend.URL + "/api",
+	})
+	reqGood := httptest.NewRequest("POST", "/api/v1/claim/login", bytes.NewReader(goodBody))
+	wGood := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wGood, reqGood)
+	if wGood.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d (body: %s)", wGood.Code, wGood.Body.String())
+	}
+
+	if !cm.IsClaimed() {
+		t.Fatal("expected server to be claimed after login")
+	}
+	if cfg.Server.ClaimedBy != "alice" {
+		t.Fatalf("expected claimed_by 'alice', got %s", cfg.Server.ClaimedBy)
+	}
+	if cfg.Server.AuthToken == "" {
+		t.Fatal("expected auth token to be generated and saved")
+	}
+}
+
+
 func TestWebUIOnboardingRender(t *testing.T) {
 	srv, _, _ := setupTestServer()
 

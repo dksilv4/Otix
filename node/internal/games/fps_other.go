@@ -6,3 +6,8 @@ package games
 func isProcessInForeground(pid int) bool {
 	return true
 }
+
+// getForegroundProcessPID stub for non-windows platforms.
+func getForegroundProcessPID() int {
+	return 0
+}

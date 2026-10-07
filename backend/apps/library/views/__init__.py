@@ -19,6 +19,7 @@ from apps.library.views.library import (
     YoutubeLibraryView,
 )
 from apps.library.views.nodes import (
+    GameServerClaimDirectView,
     GameServerClaimView,
     GameServerConnectionsSyncView,
     GameServerDesktopView,
@@ -80,6 +81,7 @@ from apps.library.views.nodes import (
     GameServerUsenetSearchView,
     GameServerUsenetTestProwlarrView,
     GameServerUsenetTestSabnzbdView,
+    NodeClaimDirectView,
     NodeClaimView,
     NodeConnectionsSyncView,
     NodeConnectionsView,
@@ -96,7 +98,9 @@ from apps.library.views.nodes import (
 
 __all__ = [
     "GameServerClaimView",
+    "GameServerClaimDirectView",
     "NodeClaimView",
+    "NodeClaimDirectView",
     "NodeListCreateView",
     "NodeDetailView",
     "NodePingView",

@@ -75,7 +75,8 @@ describe('ActivityModuleGame', () => {
 
     expect(screen.getByText('Now Playing')).toBeInTheDocument()
     expect(screen.getByText("Baldur's Gate 3")).toBeInTheDocument()
-    expect(screen.getByText(/Larian Studios/)).toBeInTheDocument()
+    expect(screen.getByText(/RPG · Adventure/)).toBeInTheDocument()
+    expect(screen.queryByText(/Larian Studios/)).not.toBeInTheDocument()
     expect(screen.getByText(/84 FPS/)).toBeInTheDocument()
     expect(screen.getByText('9.6')).toBeInTheDocument()
 

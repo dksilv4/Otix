@@ -325,6 +325,98 @@ def claim_node_by_pin(
     return server, created
 
 
+def claim_node_direct(
+    user,
+    payload: dict,
+    remote_ip: str | None = None,
+) -> tuple[UserNode, bool]:
+    """Claim and bind a node directly using an outbound authenticated request from the node.
+
+    Because the node connects outbound directly to the Otix backend, remote reachability
+    and inbound port forwarding are not required.
+    """
+    import secrets
+
+    server_name = (
+        payload.get("server_name")
+        or payload.get("serverName")
+        or payload.get("name")
+        or ""
+    ).strip()
+
+    user_nodes_count = UserNode.objects.filter(user=user).count() + 1
+    if not server_name or server_name in ("Otix Game Server", "Otix Node"):
+        resolved_name = f"Node ID:{user_nodes_count}"
+    else:
+        resolved_name = server_name
+
+    auth_token = (
+        payload.get("auth_token")
+        or payload.get("authToken")
+        or secrets.token_hex(24)
+    ).strip()
+
+    port = int(payload.get("port") or 8090)
+    endpoints = payload.get("local_endpoints") or payload.get("localEndpoints") or []
+
+    local_url = ""
+    if isinstance(endpoints, list):
+        for ep in endpoints:
+            if ep and isinstance(ep, str):
+                ep_clean = ep.strip().rstrip("/")
+                if "127.0.0.1" not in ep_clean and "localhost" not in ep_clean:
+                    local_url = ep_clean
+                    break
+        if not local_url and endpoints:
+            local_url = str(endpoints[0]).strip().rstrip("/")
+    if not local_url:
+        local_url = f"http://127.0.0.1:{port}"
+
+    is_local = payload.get("is_local") if "is_local" in payload else payload.get("isLocal")
+    if is_local is None:
+        parsed_target = urlparse(local_url)
+        target_h = (parsed_target.hostname or "").lower()
+        is_local = (
+            target_h in _LOOPBACK_HOSTS
+            or target_h.startswith("192.168.")
+            or target_h.startswith("10.")
+            or target_h.startswith("172.")
+        )
+
+    server_data = {
+        "name": resolved_name,
+        "local_url": local_url,
+        "auth_token": auth_token,
+        "is_local": bool(is_local),
+    }
+
+    clean_ip = (remote_ip or "").strip()
+    if clean_ip and clean_ip not in _LOOPBACK_HOSTS:
+        server_data["remote_url"] = f"http://{clean_ip}:{port}"
+
+    server, created = link_or_create_node(user, server_data)
+    server.is_online = True
+    server.last_seen_at = timezone.now()
+    server.save(update_fields=["is_online", "last_seen_at", "updated_at"])
+
+    # Prune any pending cache entries that match this node or its claim code
+    claim_code = (payload.get("claim_code") or payload.get("claimCode") or "").strip().upper()
+    cached_pending = cache.get(PENDING_CACHE_KEY) or []
+    if cached_pending:
+        new_pending = []
+        for r in cached_pending:
+            if claim_code and str(r.get("claim_code") or "").strip().upper() == claim_code:
+                continue
+            r_eps = r.get("local_endpoints") or []
+            if local_url in r_eps:
+                continue
+            new_pending.append(r)
+        cache.set(PENDING_CACHE_KEY, new_pending, PENDING_TTL)
+
+    return server, created
+
+
+
 def probe_node_reachability(server: UserGameServer) -> dict:
     """Plex-style remote connectivity probe: test if the node is accessible from WAN."""
 

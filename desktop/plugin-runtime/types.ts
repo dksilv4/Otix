@@ -262,8 +262,8 @@ export interface OtixEvents {
   'scan:progress': { currentDir: string; progress: number; pluginId?: string }   // NEW
 
   // ── Game lifecycle (emitted by GameDetector, consumed by plugins) ──
-  'game:started': { gameId: string; gameTitle: string; pid: number; launchedByOtix: boolean }
-  'game:ended': { gameId: string; gameTitle: string; startTime: number; endTime: number; launchedByOtix: boolean }
+  'game:started': { gameId: string; gameTitle: string; pid: number; launchedByOtix: boolean; node?: unknown; hardware?: unknown; shareEligible?: boolean }
+  'game:ended': { gameId: string; gameTitle: string; startTime: number; endTime: number; launchedByOtix: boolean; node?: unknown; hardware?: unknown; shareEligible?: boolean }
 
   // ── FPS capture (emitted by fps-capture plugin) ──
   'fps:live': { currentFps: number; frameCount: number; captureDurationMs: number; gameId: string }

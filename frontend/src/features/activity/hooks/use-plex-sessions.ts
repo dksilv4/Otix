@@ -151,7 +151,8 @@ export function usePlexSessions() {
       const sessions = isAdmin ? normalized : []
       return { sessions, isAdmin }
     },
-    refetchInterval: 15000,
+    refetchInterval: (query) => (query.state.status === 'error' ? false : 15000),
+    refetchIntervalInBackground: false,
     staleTime: 10000,
     retry: false,
     enabled: plexEnabled && hasPlexLinked,

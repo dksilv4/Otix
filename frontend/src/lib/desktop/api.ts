@@ -206,6 +206,7 @@ export interface DesktopAPI {
   rejectSuggestion(gameId: string, suggestionMediaId: string): Promise<void>
   onGamesDbChanged(cb: () => void): () => void
   getRunningGame(): Promise<RunningGameData | null>
+  getRunningGames?: () => Promise<RunningGameData[]>
 
   // Game launching
   launchGame(game: LocalGame): Promise<void>

@@ -105,7 +105,8 @@ export const UserProfilePage = () => {
   ].join(', ')
 
   return (
-    <div id="user-profile-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12 w-full flex flex-col">
+    <div id="user-profile-page" className="w-full flex flex-col pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 w-full flex flex-col">
       <Helmet>
         <title>{`${profile.username} - Otix`}</title>
         <meta
@@ -502,10 +503,11 @@ export const UserProfilePage = () => {
           </div>
         </div>
       )}
+      </div>
 
       {/* Private Gaming Performance & Sessions (Owner only) */}
       {currentUser?.username === profile.username && (
-        <div className="mx-4 mt-8">
+        <div className="w-full mt-10">
           <UserProfileGameSessions username={username} />
         </div>
       )}

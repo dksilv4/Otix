@@ -23,6 +23,7 @@ type RunningGame struct {
 
 // LiveFpsSnapshot captures the instant performance metrics for live display and sparklines.
 type LiveFpsSnapshot struct {
+	GameID       string  `json:"game_id,omitempty"`
 	FPS          float64 `json:"fps"`
 	AvgFPS       float64 `json:"avg_fps"`
 	MinFPS       float64 `json:"min_fps"`
@@ -130,7 +131,7 @@ type OverlaySettings struct {
 // DefaultOverlaySettings provides sensible defaults for the HUD.
 func DefaultOverlaySettings() OverlaySettings {
 	return OverlaySettings{
-		Enabled:         true,
+		Enabled:         false,
 		Corner:          "top-wide",
 		Monitor:         "auto",
 		ShowFps:         true,

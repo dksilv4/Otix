@@ -220,7 +220,7 @@ class XpSystemTests(TestCase):
         cache.clear()
         session_id = "test-session-123"
 
-        # Duration 120s (< 300s tick) without is_final: 0 XP awarded
+        # Duration 120s (2 min) without is_final: tracks 2 XP live, awards 0 XP during session
         res1 = record_gaming_heartbeat(
             user_id=self.user1.id,
             game_id="elden-ring",
@@ -230,9 +230,10 @@ class XpSystemTests(TestCase):
             is_final=False,
         )
         self.assertEqual(res1["xp_awarded"], 0)
-        self.assertEqual(res1["session_xp"], 0)
+        self.assertEqual(res1["session_xp"], 2)
+        self.assertEqual(res1["total_xp"], 0)
 
-        # Duration 300s: reaches 1st 5-minute tick -> 10 XP awarded
+        # Duration 300s (5 min) without is_final: tracks 5 XP live, awards 0 XP during session
         res2 = record_gaming_heartbeat(
             user_id=self.user1.id,
             game_id="elden-ring",
@@ -241,24 +242,12 @@ class XpSystemTests(TestCase):
             session_id=session_id,
             is_final=False,
         )
-        self.assertEqual(res2["xp_awarded"], 10)
-        self.assertEqual(res2["session_xp"], 10)
-        self.assertEqual(res2["total_xp"], 10)
+        self.assertEqual(res2["xp_awarded"], 0)
+        self.assertEqual(res2["session_xp"], 5)
+        self.assertEqual(res2["total_xp"], 0)
 
-        # Duration 450s: still in 1st tick -> 0 additional XP
+        # Duration 600s (10 min) without is_final: tracks 10 XP live, awards 0 XP during session
         res3 = record_gaming_heartbeat(
-            user_id=self.user1.id,
-            game_id="elden-ring",
-            game_title="Elden Ring",
-            duration_seconds=450,
-            session_id=session_id,
-            is_final=False,
-        )
-        self.assertEqual(res3["xp_awarded"], 0)
-        self.assertEqual(res3["session_xp"], 10)
-
-        # Duration 600s: reaches 2nd 5-minute tick -> 10 XP awarded
-        res4 = record_gaming_heartbeat(
             user_id=self.user1.id,
             game_id="elden-ring",
             game_title="Elden Ring",
@@ -266,12 +255,12 @@ class XpSystemTests(TestCase):
             session_id=session_id,
             is_final=False,
         )
-        self.assertEqual(res4["xp_awarded"], 10)
-        self.assertEqual(res4["session_xp"], 20)
-        self.assertEqual(res4["total_xp"], 20)
+        self.assertEqual(res3["xp_awarded"], 0)
+        self.assertEqual(res3["session_xp"], 10)
+        self.assertEqual(res3["total_xp"], 0)
 
-        # Final heartbeat at 750s (150s remaining >= 120s) -> 5 XP prorated bonus
-        res5 = record_gaming_heartbeat(
+        # Final heartbeat at 750s (12 min 30 sec): awards 12 XP (1 XP per full minute) at end of session
+        res4 = record_gaming_heartbeat(
             user_id=self.user1.id,
             game_id="elden-ring",
             game_title="Elden Ring",
@@ -279,9 +268,9 @@ class XpSystemTests(TestCase):
             session_id=session_id,
             is_final=True,
         )
-        self.assertEqual(res5["xp_awarded"], 5)
-        self.assertEqual(res5["session_xp"], 25)
-        self.assertEqual(res5["total_xp"], 25)
+        self.assertEqual(res4["xp_awarded"], 12)
+        self.assertEqual(res4["session_xp"], 12)
+        self.assertEqual(res4["total_xp"], 12)
 
     def test_record_gaming_heartbeat_has_no_daily_cap(self) -> None:
         from django.core.cache import cache
@@ -300,11 +289,11 @@ class XpSystemTests(TestCase):
             game_title="Elden Ring",
             duration_seconds=300,
             session_id="no-cap-session",
-            is_final=False,
+            is_final=True,
         )
-        # Awards full 10 XP regardless of how much XP was gained today
-        self.assertEqual(res["xp_awarded"], 10)
-        self.assertEqual(res["daily_xp"], 1510)
+        # Awards full 5 XP (5 minutes) regardless of how much XP was gained today
+        self.assertEqual(res["xp_awarded"], 5)
+        self.assertEqual(res["daily_xp"], 1505)
 
     def test_gaming_heartbeat_api_endpoint(self) -> None:
         from rest_framework.test import APIClient

@@ -45,6 +45,8 @@ otix-frontend-dist.tar.gz
 
 # Node service local storage and caches
 /node/storage/
+/node/storage-prod/
+/storage-prod/
 /node/internal/server/storage/
 /node/otix_server/__pycache__
 

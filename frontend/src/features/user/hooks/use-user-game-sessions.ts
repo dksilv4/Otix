@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { getDesktopAPI } from '@/lib/desktop/api'
@@ -58,6 +58,7 @@ export interface UserGameSessionsSummary {
   overallAvgFps: number | null
   overallAvgLow1: number | null
   activeSession?: NormalizedPlaySession | null
+  activeSessions?: NormalizedPlaySession[]
 }
 
 function parseTimestamp(ts: string | number | undefined | null): number {
@@ -179,7 +180,7 @@ export function normalizeSession(raw: Record<string, unknown>): NormalizedPlaySe
 
 export function useUserGameSessions(options?: { enabled?: boolean }) {
   const queryClient = useQueryClient()
-  const { runningGame, elapsedMs } = useRunningGame()
+  const { runningGame, runningGames = [], elapsedMs } = useRunningGame()
   const { data: localGames } = useLocalGames()
 
   // Build a lookup map from local games to resolve poster artwork for sessions
@@ -195,7 +196,7 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
     return { byId, byTitle }
   }, [localGames])
 
-  function resolveGameArt(session: NormalizedPlaySession): NormalizedPlaySession {
+  const resolveGameArt = useCallback((session: NormalizedPlaySession): NormalizedPlaySession => {
     const match = gameMap
       ? (session.otixMediaId ? gameMap.byId.get(String(session.otixMediaId)) : null) ||
         gameMap.byId.get(session.gameId) ||
@@ -221,7 +222,7 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
       slug: session.slug || match?.data?.slug || match?.otixMediaSlug || null,
       otixMediaId: session.otixMediaId || (match?.otixMediaId ?? null),
     }
-  }
+  }, [gameMap])
 
   useEffect(() => {
     const api = getDesktopAPI()
@@ -365,70 +366,75 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
       }
     },
     staleTime: 1000 * 30,
-    refetchInterval: runningGame ? 5000 : false,
+    refetchInterval: (runningGame || runningGames.length > 0) ? 5000 : false,
     enabled: options?.enabled ?? true,
   })
 
-  const activeSession: NormalizedPlaySession | null = useMemo(() => {
-    if (!runningGame) return null
-    const currentFps = runningGame.fpsSnapshot?.currentFps ?? null
-    const elapsedSec = Math.max(0, Math.floor(elapsedMs / 1000))
-    const procName = runningGame.game.exePath
-      ? runningGame.game.exePath.split(/[/\\]/).pop()
-      : undefined
+  const activeSessions: NormalizedPlaySession[] = useMemo(() => {
+    const list = runningGames.length > 0 ? runningGames : (runningGame ? [runningGame] : [])
+    if (list.length === 0) return []
 
-    const runningNode = runningGame.node || runningGame.fpsSnapshot?.node || null
-    const runningHw = runningGame.hardware || runningGame.fpsSnapshot?.hardware || null
-    let activeHwSummary: string | null = null
-    if (runningHw?.gpu && runningHw?.cpu) {
-      const shortGpu = runningHw.gpu.replace(/(NVIDIA|AMD|Radeon|GeForce|\(R\)|\(TM\))/gi, '').trim()
-      const shortCpu = runningHw.cpu.replace(/(Processor|8-Core|16-Core|12-Core|6-Core|32-Core|24-Core|\(R\)|\(TM\))/gi, '').trim()
-      activeHwSummary = `${shortGpu || runningHw.gpu} · ${shortCpu || runningHw.cpu}`
-    } else if (runningHw?.gpu) {
-      activeHwSummary = runningHw.gpu
-    } else if (runningHw?.cpu) {
-      activeHwSummary = runningHw.cpu
-    }
+    const firstStart = list[0]?.startTime ?? 0
+    return list.map((rg, idx) => {
+      const currentFps = rg.fpsSnapshot?.currentFps ?? null
+      const offsetMs = idx === 0 ? 0 : Math.max(0, rg.startTime - firstStart)
+      const elapsedSec = Math.max(0, Math.floor((elapsedMs - offsetMs) / 1000))
+      const procName = rg.game.exePath
+        ? rg.game.exePath.split(/[/\\]/).pop()
+        : undefined
 
-    return {
-      id: `active-${runningGame.game.id}-${runningGame.startTime}`,
-      gameId: runningGame.game.id,
-      gameTitle: runningGame.game.title,
-      processName: procName,
-      startTime: runningGame.startTime,
-      endTime: null,
-      durationSeconds: elapsedSec,
-      avgFps: currentFps && currentFps > 0 ? currentFps : null,
-      low1Percent: null,
-      low01Percent: null,
-      minFps: null,
-      maxFps: null,
-      totalFrames: runningGame.fpsSnapshot?.frameCount || null,
-      node: runningNode,
-      hardware: runningHw,
-      hardwareSummary: activeHwSummary,
-      shareEligible: Boolean(runningNode?.installed || runningHw?.gpu || runningHw?.cpu),
-    }
-  }, [runningGame, elapsedMs])
+      const runningNode = rg.node || rg.fpsSnapshot?.node || null
+      const runningHw = rg.hardware || rg.fpsSnapshot?.hardware || null
+      let activeHwSummary: string | null = null
+      if (runningHw?.gpu && runningHw?.cpu) {
+        const shortGpu = runningHw.gpu.replace(/(NVIDIA|AMD|Radeon|GeForce|\(R\)|\(TM\))/gi, '').trim()
+        const shortCpu = runningHw.cpu.replace(/(Processor|8-Core|16-Core|12-Core|6-Core|32-Core|24-Core|\(R\)|\(TM\))/gi, '').trim()
+        activeHwSummary = `${shortGpu || runningHw.gpu} · ${shortCpu || runningHw.cpu}`
+      } else if (runningHw?.gpu) {
+        activeHwSummary = runningHw.gpu
+      } else if (runningHw?.cpu) {
+        activeHwSummary = runningHw.cpu
+      }
+
+      return {
+        id: `active-${rg.game.id}-${rg.startTime}`,
+        gameId: rg.game.id,
+        gameTitle: rg.game.title,
+        processName: procName,
+        startTime: rg.startTime,
+        endTime: null,
+        durationSeconds: elapsedSec,
+        avgFps: currentFps && currentFps > 0 ? currentFps : null,
+        low1Percent: null,
+        low01Percent: null,
+        minFps: null,
+        maxFps: null,
+        totalFrames: rg.fpsSnapshot?.frameCount || null,
+        node: runningNode,
+        hardware: runningHw,
+        hardwareSummary: activeHwSummary,
+        shareEligible: Boolean(runningNode?.installed || runningHw?.gpu || runningHw?.cpu),
+      }
+    })
+  }, [runningGames, runningGame, elapsedMs])
 
   const enrichedData = useMemo(() => {
     if (!query.data) return undefined
 
     // Resolve game artwork for all sessions
     const resolvedSessions = query.data.sessions.map(resolveGameArt)
-    const resolvedActive = activeSession ? resolveGameArt(activeSession) : null
+    const resolvedActiveSessions = activeSessions.map(resolveGameArt)
+    const resolvedActive = resolvedActiveSessions[0] ?? null
+    const activeDurationTotal = resolvedActiveSessions.reduce((acc, s) => acc + s.durationSeconds, 0)
 
     return {
       ...query.data,
       sessions: resolvedSessions,
-      ...(resolvedActive
-        ? {
-            activeSession: resolvedActive,
-            totalDurationSeconds: query.data.totalDurationSeconds + resolvedActive.durationSeconds,
-          }
-        : {}),
+      activeSession: resolvedActive,
+      activeSessions: resolvedActiveSessions,
+      totalDurationSeconds: query.data.totalDurationSeconds + activeDurationTotal,
     }
-  }, [query.data, activeSession, gameMap])
+  }, [query.data, activeSessions, resolveGameArt])
 
   return {
     ...query,

@@ -2,17 +2,9 @@
 
 Whenever `CLAUDE.md` is updated or modified, all instruction and configuration files read by AI coding agents (`AGENTS.md`, `GEMINI.md`, `.github/copilot-instructions.md`, `.cursorrules`, `.windsurfrules`) must also be updated and/or created to stay in complete parity. This ensures all agents operate under identical project preferences and rules.
 
-## graphify
+## Modal framework
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
-
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
-
-- Always use the existing modal framework that is already established in the codebase to create new modals and user interfaces. Do not create new modal styles or frameworks.
+Always use the existing modal framework that is already established in the codebase to create new modals and user interfaces. Do not create new modal styles or frameworks.
 
 ## Colours / theming
 
@@ -39,3 +31,7 @@ Frontend code must read and write camelCase (`displayName`, `authUrl`, `totalInE
   - the feature’s utils file or folder (`frontend/src/features/<feature>/utils.ts` or `frontend/src/features/<feature>/utils/`), or
   - the shared utils folder (`frontend/src/lib/utils/`) when the helper is cross-feature.
 - Custom hooks must be placed in dedicated hook files (under a `hooks/` directory or hook module), not defined alongside components in component files.
+
+## Script placement
+
+Do not place scripts in the root/parent directory (no `.sh`, `.ps1`, `.py`, `.js`, `.mjs`, etc. at the repository root). All scripts must reside in dedicated script directories (such as `scripts/`, `backend/scripts/`, `desktop/scripts/`, etc.). Keep the parent/root directory clean of standalone execution scripts.

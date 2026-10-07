@@ -139,6 +139,10 @@ func (c *PresentMonCollector) IsAvailable() bool {
 
 func (c *PresentMonCollector) Start(pid int, processName string, gameID string) error {
 	c.mu.Lock()
+	if c.isRunning && c.targetPID == pid {
+		c.mu.Unlock()
+		return nil
+	}
 	if c.isRunning {
 		c.mu.Unlock()
 		c.Stop()
@@ -410,6 +414,7 @@ func (c *PresentMonCollector) computeLiveSnapshot() *LiveFpsSnapshot {
 	low01 := math.Round((dotOneSum/float64(dotOnePctCount))*10) / 10
 
 	return &LiveFpsSnapshot{
+		GameID:       c.gameID,
 		FPS:          liveFps,
 		AvgFPS:       avgFps,
 		MinFPS:       minFps,

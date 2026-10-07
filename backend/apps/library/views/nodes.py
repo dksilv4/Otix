@@ -40,6 +40,7 @@ from apps.library.services.node import (
     PENDING_TTL,
     apply_node_heartbeat,
     claim_node_by_pin,
+    claim_node_direct,
     clear_scanned_game_libraries,
     collapse_duplicate_game_servers,
     contact_urls,
@@ -316,6 +317,40 @@ class GameServerClaimView(APIView):
             return Response(
                 {"error": f"Failed to claim node: {exc}"}, status=status.HTTP_502_BAD_GATEWAY
             )
+
+
+class GameServerClaimDirectView(APIView):
+    """``POST /api/v1/library/servers/claim-direct`` — Direct outbound claim from the node daemon."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request) -> Response:
+        user = _resolve_user(request)
+        if not user:
+            raise NotAuthenticated("User authentication required to claim a server node")
+
+        payload = request.data if isinstance(request.data, dict) else {}
+        client_ip = (
+            request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+            or request.META.get("REMOTE_ADDR")
+        )
+        try:
+            server, created = claim_node_direct(
+                user=user,
+                payload=payload,
+                remote_ip=client_ip,
+            )
+            data = UserGameServerSerializer(server).data
+            data["created"] = created
+            return Response(data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response(
+                {"error": f"Failed to claim node directly: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 
 class GameServerProbeView(APIView):
@@ -2018,6 +2053,7 @@ NodeListCreateView = GameServerListCreateView
 NodeDetailView = GameServerDetailView
 NodePingView = GameServerPingView
 NodeClaimView = GameServerClaimView
+NodeClaimDirectView = GameServerClaimDirectView
 NodePendingView = GameServerPendingView
 NodeProbeView = GameServerProbeView
 NodeInstancesImportView = GameServerInstancesImportView

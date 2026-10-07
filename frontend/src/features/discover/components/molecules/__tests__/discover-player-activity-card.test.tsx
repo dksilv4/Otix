@@ -49,7 +49,7 @@ describe('DiscoverPlayerActivityCard', () => {
     expect(screen.queryByText('Playing Now')).not.toBeInTheDocument()
     expect(screen.getByText('Elden Ring')).toBeInTheDocument()
     expect(screen.getByText('FromSoftware')).toBeInTheDocument()
-    expect(screen.getByText(/105:00/)).toBeInTheDocument()
+    expect(screen.getByText(/1:45:00/)).toBeInTheDocument()
     expect(screen.getByText('144 FPS')).toBeInTheDocument()
     expect(screen.getByText('+20 XP')).toBeInTheDocument()
   })

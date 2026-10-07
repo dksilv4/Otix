@@ -30,9 +30,11 @@ REVIEW_SCORE_ONLY = 50
 INTERACTION_WATCHED_PLAYED_LISTENED = 30
 INTERACTION_LIKE_WATCHLIST_STARTED = 10
 
-# Gaming Activities
-GAMING_HEARTBEAT_INTERVAL_SECONDS = 300  # 5 minutes
-GAMING_XP_PER_TICK = 10                  # 10 XP per 5-minute interval (~120 XP/hour)
+# Gaming Activities: 1 XP per minute (60 seconds) awarded at the end of the session
+GAMING_SECONDS_PER_XP = 60
+GAMING_XP_PER_MINUTE = 1
+GAMING_HEARTBEAT_INTERVAL_SECONDS = 300  # Periodic heartbeat ping interval
+GAMING_XP_PER_TICK = 5                   # Legacy alias (5 minutes = 5 XP)
 
 # Activities & Checks
 WORKOUT_COMPLETE = 100
@@ -154,48 +156,42 @@ def record_gaming_heartbeat(
     today_str = timezone.now().strftime("%Y-%m-%d")
     cache_daily_key = f"gaming_daily:{user_id}:{today_str}"
 
-    sess_data = cache.get(cache_sess_key) or {"last_awarded_seconds": 0, "session_xp": 0}
-    last_awarded = int(sess_data.get("last_awarded_seconds", 0))
-    session_xp = int(sess_data.get("session_xp", 0))
-
-    delta_seconds = duration_seconds - last_awarded
-    if delta_seconds < 0:
-        delta_seconds = 0
-
-    ticks = delta_seconds // GAMING_HEARTBEAT_INTERVAL_SECONDS
-    awarded_seconds = ticks * GAMING_HEARTBEAT_INTERVAL_SECONDS
-    xp_to_award = ticks * GAMING_XP_PER_TICK
-
-    # If final heartbeat and remaining unawarded time >= 2 minutes (120s), award 5 XP
-    if is_final:
-        remaining_unawarded = delta_seconds - awarded_seconds
-        if remaining_unawarded >= 120:
-            xp_to_award += 5
-            awarded_seconds = delta_seconds
+    sess_data = cache.get(cache_sess_key) or {
+        "last_awarded_seconds": 0,
+        "session_xp": 0,
+        "awarded_xp": 0,
+    }
+    # 1 XP per minute (60 seconds)
+    session_xp = duration_seconds // GAMING_SECONDS_PER_XP
+    already_awarded_xp = int(sess_data.get("awarded_xp", 0))
 
     daily_xp = int(cache.get(cache_daily_key, 0))
-
     new_total_xp = user.total_xp
-    if xp_to_award > 0:
-        new_total_xp = award_xp(user_id, xp_to_award, reason=f"gaming_{game_title[:30]}")
-        session_xp += xp_to_award
-        daily_xp += xp_to_award
-        cache.set(cache_daily_key, daily_xp, timeout=86400)
+    xp_to_award = 0
 
-        # Update login streak for active gaming
-        try:
-            from apps.social.services.streak import update_login_streak
+    # Only reward XP at the end of the session (is_final=True)
+    if is_final:
+        xp_to_award = max(0, session_xp - already_awarded_xp)
+        if xp_to_award > 0:
+            new_total_xp = award_xp(user_id, xp_to_award, reason=f"gaming_{game_title[:30]}")
+            already_awarded_xp += xp_to_award
+            daily_xp += xp_to_award
+            cache.set(cache_daily_key, daily_xp, timeout=86400)
 
-            update_login_streak(user_id)
-        except Exception as exc:  # pragma: no cover
-            logger.warning("Failed updating login streak during gaming heartbeat: %s", exc)
+            # Update login streak for active gaming
+            try:
+                from apps.social.services.streak import update_login_streak
 
-    new_awarded_seconds = last_awarded + awarded_seconds
+                update_login_streak(user_id)
+            except Exception as exc:  # pragma: no cover
+                logger.warning("Failed updating login streak during gaming heartbeat: %s", exc)
+
     cache.set(
         cache_sess_key,
         {
-            "last_awarded_seconds": new_awarded_seconds,
+            "last_awarded_seconds": duration_seconds,
             "session_xp": session_xp,
+            "awarded_xp": already_awarded_xp,
         },
         timeout=86400,
     )

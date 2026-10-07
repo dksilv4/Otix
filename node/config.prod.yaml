@@ -1,0 +1,155 @@
+server:
+    name: Node ID:1 (Prod)
+    port: 8091
+    host: 0.0.0.0
+    auth_token: ""
+    registry_url: https://otix.app/api
+    enable_upnp: false
+    enable_heartbeat: true
+    downloads_path: ./storage-prod/downloads
+    write_otix_after_scan: true
+    download_otix_images: false
+game_libraries:
+    - name: Games
+      path: \\SERVER\Games
+      kind: iso
+      allowed_extensions:
+        - .iso
+        - .img
+        - .chd
+        - .rvz
+        - .nkit
+        - .cso
+        - .cue
+        - .wbfs
+        - .gcm
+    - name: Games
+      path: D:\Games
+      kind: game
+      allowed_extensions:
+        - .iso
+        - .img
+        - .exe
+        - .msi
+        - .dmg
+        - .pkg
+        - .app
+        - .zip
+        - .7z
+        - .rar
+        - .chd
+        - .rvz
+        - .nsp
+        - .xci
+    - name: common
+      path: D:\SteamLibrary\steamapps\common
+      kind: game
+      allowed_extensions:
+        - .iso
+        - .img
+        - .exe
+        - .msi
+        - .dmg
+        - .pkg
+        - .app
+        - .zip
+        - .7z
+        - .rar
+        - .chd
+        - .rvz
+        - .nsp
+        - .xci
+saves:
+    storage_path: ./storage-prod/saves
+    max_snapshots_per_game: 10
+    auto_backup_on_exit: true
+usenet:
+    enabled: true
+    sabnzbd:
+        host: server.diogodasilva.com
+        port: 443
+        url_base: /sabnzbd
+        api_key: 24b204f4b0634ffca64e4c6f5b920acc
+        use_ssl: true
+        category: games
+        complete_dir: ""
+        local_complete_dir: ""
+        remote_path: ""
+        host_path: ""
+        linked_library_path: ""
+        path_mappings: []
+    prowlarr:
+        host: server.diogodasilva.com
+        port: 443
+        url_base: /prowlarr
+        api_key: 4e03935ffed34d0a887df2f938dd724e
+        use_ssl: true
+        categories:
+            - 1000
+            - 4000
+radarr:
+    enabled: true
+    host: server.diogodasilva.com
+    port: 443
+    url_base: /radarr/main
+    api_key: 0ca18af25cc84fefb065996f68a10098
+    use_ssl: true
+    quality_profile_id: 5
+    root_folder_path: /Media/Movies
+    minimum_availability: announced
+    instances:
+        - id: default
+          name: Default
+          enabled: true
+          host: server.diogodasilva.com
+          port: 443
+          url_base: /radarr/main
+          api_key: 0ca18af25cc84fefb065996f68a10098
+          use_ssl: true
+          quality_profile_id: 5
+          root_folder_path: /Media/Movies
+          minimum_availability: announced
+sonarr:
+    enabled: true
+    host: server.diogodasilva.com
+    port: 443
+    url_base: /sonarr/main
+    api_key: e98f5a0dcaef46f5ab41a0d9854dc7f4
+    use_ssl: true
+    quality_profile_id: 5
+    root_folder_path: /Media/Shows
+    series_type: standard
+    season_folder: true
+    language_profile_id: null
+    instances:
+        - id: default
+          name: Default
+          enabled: true
+          host: server.diogodasilva.com
+          port: 443
+          url_base: /sonarr/main
+          api_key: e98f5a0dcaef46f5ab41a0d9854dc7f4
+          use_ssl: true
+          quality_profile_id: 5
+          root_folder_path: /Media/Shows
+          series_type: standard
+          season_folder: true
+          language_profile_id: null
+desktop:
+    launch_on_startup: false
+    minimize_to_tray: false
+    close_to_tray: false
+    always_on_top: false
+    start_minimized: false
+    games_download_path: ""
+    games_install_path: D:\Games
+    scan_on_launch: true
+organize:
+    post_process_enabled: true
+    auto_search_wishlist: false
+    wishlist_interval_hours: 12
+    preferred_repackers: ""
+    allow_hypervisor: false
+    auto_organize_enabled: false
+    naming_template: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}'
+    iso_download_path: \\SERVER\Games

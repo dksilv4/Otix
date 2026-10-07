@@ -4,6 +4,24 @@ import { UserProfileGameSessions } from '../components/organisms/user-profile-ga
 import { normalizeSession } from '../hooks/use-user-game-sessions'
 import * as sessionsHooks from '../hooks/use-user-game-sessions'
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    to,
+    params,
+    className,
+  }: {
+    children: React.ReactNode
+    to: string
+    params?: Record<string, unknown>
+    className?: string
+  }) => (
+    <a href={to} data-params={JSON.stringify(params)} className={className}>
+      {children}
+    </a>
+  ),
+}))
+
 vi.mock('../hooks/use-user-game-sessions', async (importOriginal) => {
   const actual = await importOriginal<typeof sessionsHooks>()
   return {
@@ -343,5 +361,111 @@ describe('UserProfileGameSessions component', () => {
     const poster = screen.getByAltText("Baldur's Gate 3")
     expect(poster).toBeInTheDocument()
     expect(poster).toHaveAttribute('src', 'https://otix.example/posters/bg3.jpg')
+  })
+
+  it('renders multiple active running games concurrently as live cards', () => {
+    vi.mocked(sessionsHooks.useUserGameSessions).mockReturnValue({
+      data: {
+        sessions: [],
+        totalSessions: 0,
+        totalDurationSeconds: 7200,
+        overallAvgFps: null,
+        overallAvgLow1: null,
+        activeSessions: [
+          {
+            id: 'active-game1',
+            gameId: 'cp2077',
+            gameTitle: 'Cyberpunk 2077',
+            startTime: Date.now() - 3600000,
+            durationSeconds: 3600,
+            avgFps: 95,
+          },
+          {
+            id: 'active-game2',
+            gameId: 'eldenring',
+            gameTitle: 'Elden Ring',
+            startTime: Date.now() - 3600000,
+            durationSeconds: 3600,
+            avgFps: 120,
+          },
+        ],
+      },
+      isLoading: false,
+    } as any)
+
+    render(<UserProfileGameSessions username="dan" />)
+
+    const liveBadges = screen.getAllByText('Live')
+    expect(liveBadges).toHaveLength(2)
+    const activeCards = screen.getAllByTestId('user-profile-active-session')
+    expect(activeCards).toHaveLength(2)
+    expect(screen.getByText('Cyberpunk 2077')).toBeInTheDocument()
+    expect(screen.getByText('Elden Ring')).toBeInTheDocument()
+  })
+
+  it('features distinct games prominently and groups remaining in past games shelf', () => {
+    vi.mocked(sessionsHooks.useUserGameSessions).mockReturnValue({
+      data: {
+        sessions: [
+          {
+            id: 'sess-bg3-1',
+            gameId: 'bg3',
+            gameTitle: "Baldur's Gate 3",
+            startTime: 5000,
+            durationSeconds: 3600,
+            avgFps: 80,
+          },
+          {
+            id: 'sess-bg3-2',
+            gameId: 'bg3',
+            gameTitle: "Baldur's Gate 3",
+            startTime: 4000,
+            durationSeconds: 3600,
+            avgFps: 82,
+          },
+          {
+            id: 'sess-cp',
+            gameId: 'cp',
+            gameTitle: 'Cyberpunk 2077',
+            startTime: 3000,
+            durationSeconds: 3600,
+            avgFps: 90,
+          },
+          {
+            id: 'sess-er',
+            gameId: 'er',
+            gameTitle: 'Elden Ring',
+            startTime: 2000,
+            durationSeconds: 3600,
+            avgFps: 100,
+          },
+          {
+            id: 'sess-hades',
+            gameId: 'hades',
+            gameTitle: 'Hades II',
+            startTime: 1000,
+            durationSeconds: 1800,
+            avgFps: 144,
+          },
+        ],
+        totalSessions: 5,
+        totalDurationSeconds: 16200,
+        overallAvgFps: 95,
+        overallAvgLow1: 75,
+      },
+      isLoading: false,
+    } as any)
+
+    render(<UserProfileGameSessions username="dan" />)
+
+    // Top 3 featured slots showcase distinct recent games: BG3, Cyberpunk, Elden Ring
+    expect(screen.getByRole('heading', { name: "Baldur's Gate 3" })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Cyberpunk 2077' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Elden Ring' })).toBeInTheDocument()
+
+    // Past games shelf is rendered for the remaining game: Hades II
+    expect(screen.getByText('Past Games')).toBeInTheDocument()
+    expect(screen.getByText('1 game')).toBeInTheDocument()
+    expect(screen.getByTestId('user-profile-game-icon-tile')).toBeInTheDocument()
   })
 })

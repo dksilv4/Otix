@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import type { RunningGameData } from '@/lib/desktop/api'
 
 export function useRunningGame() {
-  const [runningGame, setRunningGame] = useState<RunningGameData | null>(null)
+  const [runningGames, setRunningGames] = useState<RunningGameData[]>([])
   const [elapsedMs, setElapsedMs] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<number>(0)
@@ -26,35 +26,71 @@ export function useRunningGame() {
   // Subscribe to game detection events
   useEffect(() => {
     if (typeof window !== 'undefined' && window.desktopAPI) {
-      // Check if a game is already running
-      window.desktopAPI.getRunningGame().then((game: RunningGameData | null) => {
-        if (game) {
-          setRunningGame(game)
-          startTimer(game.startTime)
+      // Check if games are already running
+      const initGames = async () => {
+        try {
+          if (window.desktopAPI.getRunningGames) {
+            const list = await window.desktopAPI.getRunningGames()
+            if (Array.isArray(list) && list.length > 0) {
+              setRunningGames(list)
+              startTimer(list[0].startTime)
+              return
+            }
+          }
+          const single = await window.desktopAPI.getRunningGame()
+          if (single) {
+            setRunningGames([single])
+            startTimer(single.startTime)
+          } else {
+            setRunningGames([])
+          }
+        } catch {
+          // ignore
         }
-      }).catch(() => {})
+      }
+      void initGames()
 
       // Listen for game started
       const unsubStart = window.desktopAPI.onGameStarted((data: RunningGameData) => {
-        setRunningGame(data)
+        setRunningGames((prev) => {
+          const next = [data, ...prev.filter((g) => g.game.id !== data.game.id)]
+          return next
+        })
         startTimer(data.startTime)
       })
 
       // Listen for game ended
-      const unsubEnd = window.desktopAPI.onGameEnded(() => {
-        setRunningGame(null)
-        clearTimer()
-        setElapsedMs(0)
+      const unsubEnd = window.desktopAPI.onGameEnded((data?: { gameId?: string; gameTitle?: string }) => {
+        setRunningGames((prev) => {
+          if (data?.gameId) {
+            const remaining = prev.filter((g) => g.game.id !== data.gameId)
+            if (remaining.length === 0) {
+              clearTimer()
+              setElapsedMs(0)
+            } else {
+              startTimer(remaining[0].startTime)
+            }
+            return remaining
+          }
+          clearTimer()
+          setElapsedMs(0)
+          return []
+        })
       })
 
       // Listen for live FPS updates
       const unsubFps = window.desktopAPI.onFpsUpdate?.((data) => {
-        setRunningGame((prev) => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            fpsSnapshot: data,
-          }
+        setRunningGames((prev) => {
+          if (prev.length === 0) return prev
+          return prev.map((g, index) => {
+            if (data?.gameId ? g.game.id === data.gameId : index === 0) {
+              return {
+                ...g,
+                fpsSnapshot: data,
+              }
+            }
+            return g
+          })
         })
       })
 
@@ -75,40 +111,50 @@ export function useRunningGame() {
         const data = await res.json()
         if (!active) return
 
-        if (data?.running && data?.game) {
-          const rawStart = new Date(data.game.start_time).getTime()
-          const elapsedFallback = Date.now() - (data.game.current_duration_seconds * 1000)
-          const startTime = rawStart || elapsedFallback
-          setRunningGame({
-            game: {
-              id: data.game.id,
-              title: data.game.title,
-              platform: 'pc',
-              exePath: data.game.exe_path,
-              processName: data.game.process_name,
-              otixMediaId: data.game.otix_media_id,
-              posterUrl: data.game.poster_url,
-              backdropUrl: data.game.backdrop_url,
-            },
-            startTime,
-            launchedByOtix: false,
-            pid: data.game.pid,
-            fpsAvailable: data.game.fps_available,
-            fpsSnapshot: data.game.fps_snapshot ? {
-              currentFps: data.game.fps_snapshot.fps,
-              frameCount: data.game.fps_snapshot.frame_count || 0,
-              captureDurationMs: 0,
-              gameId: data.game.id,
-            } : null,
+        if (data?.running && (data?.games?.length || data?.game)) {
+          const rawList: any[] = Array.isArray(data.games) && data.games.length > 0
+            ? data.games
+            : (data.game ? [data.game] : [])
+
+          const parsedGames: RunningGameData[] = rawList.map((g) => {
+            const rawStart = new Date(g.start_time).getTime()
+            const elapsedFallback = Date.now() - ((g.current_duration_seconds || 0) * 1000)
+            const startTime = rawStart || elapsedFallback
+            return {
+              game: {
+                id: g.id,
+                title: g.title,
+                platform: 'pc',
+                exePath: g.exe_path,
+                processName: g.process_name,
+                otixMediaId: g.otix_media_id,
+                posterUrl: g.poster_url,
+                backdropUrl: g.backdrop_url,
+              },
+              startTime,
+              launchedByOtix: false,
+              pid: g.pid,
+              fpsAvailable: g.fps_available,
+              fpsSnapshot: g.fps_snapshot ? {
+                currentFps: g.fps_snapshot.fps,
+                frameCount: g.fps_snapshot.frame_count || 0,
+                captureDurationMs: 0,
+                gameId: g.id,
+              } : null,
+            }
           })
-          startTimer(startTime)
+
+          setRunningGames(parsedGames)
+          if (parsedGames.length > 0) {
+            startTimer(parsedGames[0].startTime)
+          }
         } else {
-          setRunningGame((prev) => {
-            if (prev) {
+          setRunningGames((prev) => {
+            if (prev.length > 0) {
               clearTimer()
               setElapsedMs(0)
             }
-            return null
+            return []
           })
         }
       } catch {
@@ -126,5 +172,7 @@ export function useRunningGame() {
     }
   }, [startTimer, clearTimer])
 
-  return { runningGame, elapsedMs }
+  const runningGame = runningGames[0] ?? null
+
+  return { runningGame, runningGames, elapsedMs }
 }

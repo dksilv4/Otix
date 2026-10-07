@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { LogOut, User, Shield, Gamepad2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -7,6 +7,8 @@ import { DkAvatar } from '@ui/atoms/avatar'
 import { usePanelContext } from '@activity/providers/panel-context'
 import { useRunningGame } from '@/features/launcher'
 import { formatDuration } from '@/lib/utils'
+import { computeGamification, getLevelTier } from '@user/utils'
+import { XPProgressRing } from '@user/components/atoms/user-xp-progress-ring'
 
 /** User avatar trigger with dropdown containing profile link and sign out. */
 export const UserMenu = ({ bare }: { bare?: boolean }) => {
@@ -15,6 +17,10 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
   const { setUserMenuOpen } = usePanelContext()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const totalXp = user?.totalXp ?? 0
+  const gamification = useMemo(() => computeGamification(totalXp), [totalXp])
+  const tier = useMemo(() => getLevelTier(gamification.level), [gamification.level])
 
   const toggle = useCallback(() => {
     setOpen(prev => !prev)
@@ -95,10 +101,27 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
               ' cursor-pointer rounded-full transition-all hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]'
         }
         style={pillStyle}
-        title={runningGame ? `Playing ${runningGame.game.title}` : undefined}
+        title={
+          runningGame
+            ? `Playing ${runningGame.game.title} • Level ${gamification.level} (${Math.round(gamification.xpProgress * 100)}%)`
+            : `Level ${gamification.level} • ${gamification.levelTitle} (${Math.round(gamification.xpProgress * 100)}%)`
+        }
+        aria-label={`User menu, Level ${gamification.level}`}
       >
         <div className="relative flex items-center justify-center">
-          <DkAvatar src={avatarUrl} name={user?.username || ''} size="sm" />
+          <XPProgressRing
+            progress={gamification.xpProgress}
+            size={32}
+            strokeWidth={2}
+            strokeColor={tier.color}
+          >
+            <DkAvatar
+              src={avatarUrl}
+              name={user?.username || ''}
+              size="sm"
+              className="!h-6 !w-6 text-[10px]"
+            />
+          </XPProgressRing>
           {runningGame && (
             <span
               className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-black"
@@ -127,7 +150,14 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
               className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
             >
               <div className="relative flex items-center justify-center">
-                <DkAvatar src={avatarUrl} name={user?.username || ''} size="md" />
+                <XPProgressRing
+                  progress={gamification.xpProgress}
+                  size={44}
+                  strokeWidth={2.5}
+                  strokeColor={tier.color}
+                >
+                  <DkAvatar src={avatarUrl} name={user?.username || ''} size="md" className="!h-8 !w-8" />
+                </XPProgressRing>
                 {runningGame && (
                   <span
                     className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-black"
@@ -144,16 +174,19 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
                     <Shield className="ml-1 inline-block h-3.5 w-3.5 text-amber-400/80" />
                   )}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span style={{ color: tier.color }} className="font-medium">
+                    Level {gamification.level}
+                  </span>
+                  <span>·</span>
+                  <span className="truncate">{gamification.levelTitle}</span>
+                </div>
               </div>
             </Link>
 
             {runningGame && (
-              <div className="mx-1 my-1.5 flex items-center gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs">
-                <div className="relative flex h-2.5 w-2.5 items-center justify-center shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                </div>
+              <div className="mx-1 my-1.5 flex items-center gap-2.5 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs">
+                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-1">
                     <span className="font-extrabold uppercase tracking-wider text-[10px] text-emerald-400">

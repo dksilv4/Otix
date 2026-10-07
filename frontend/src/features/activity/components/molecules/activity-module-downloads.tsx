@@ -29,13 +29,19 @@ export const ActivityModuleDownloads = () => {
   const { user: currentUser } = useAuth()
   const { downloads, cancelDownload } = useDownloads(currentUser?.id)
   const { data: gameServers = [] } = useGameServers()
-  const activeServer = gameServers.find((s) => s.is_active) || gameServers[0]
-  const { data: serverQueue } = useServerUsenetQueue(activeServer?.id)
-  const { data: serverHistory = [] } = useServerUsenetHistory(activeServer?.id)
-  const cancelServerQueue = useCancelServerQueueDownload(activeServer?.id)
+  const activeServer = useMemo(
+    () =>
+      gameServers.find((s) => typeof s.id === 'number' && s.id > 0 && s.is_active) ??
+      gameServers.find((s) => typeof s.id === 'number' && s.id > 0),
+    [gameServers],
+  )
+  const activeServerId = activeServer?.id
+  const { data: serverQueue } = useServerUsenetQueue(activeServerId)
+  const { data: serverHistory = [] } = useServerUsenetHistory(activeServerId)
+  const cancelServerQueue = useCancelServerQueueDownload(activeServerId)
   const [cutoff] = useState(() => Date.now() - FIFTEEN_MIN)
 
-  const serverItems = serverQueue?.items ?? []
+  const serverItems = useMemo(() => serverQueue?.items ?? [], [serverQueue?.items])
   const activeNzoIds = useMemo(() => new Set(serverItems.map((item) => item.nzo_id)), [serverItems])
   const historyItems = useMemo(
     () =>

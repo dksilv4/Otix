@@ -7,6 +7,10 @@ const UserProfilePage = lazy(() =>
   import('./pages/user-profile-page').then(m => ({ default: m.UserProfilePage })),
 )
 
+const UserGameActivityPage = lazy(() =>
+  import('./pages/user-game-activity-page').then(m => ({ default: m.UserGameActivityPage })),
+)
+
 export function createUserRoutes(rootRoute: AnyRoute) {
   const userProfileRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -19,5 +23,15 @@ export function createUserRoutes(rootRoute: AnyRoute) {
     },
   })
 
-  return [userProfileRoute]
+  const userActivityRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/u/$username/activity',
+    component: UserGameActivityPage,
+    loader: ({ context, params }) => {
+      void import('./pages/user-game-activity-page')
+      void context.queryClient.prefetchQuery(userQueries.profile(params.username))
+    },
+  })
+
+  return [userProfileRoute, userActivityRoute]
 }

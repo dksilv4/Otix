@@ -17,9 +17,13 @@ import (
 )
 
 var (
-	modUser32 = syscall.NewLazyDLL("user32.dll")
-	modGdi32  = syscall.NewLazyDLL("gdi32.dll")
+	modKernel32 = syscall.NewLazyDLL("kernel32.dll")
+	modUser32   = syscall.NewLazyDLL("user32.dll")
+	modGdi32    = syscall.NewLazyDLL("gdi32.dll")
 
+	procCreateMutexW               = modKernel32.NewProc("CreateMutexW")
+	procCloseHandle                = modKernel32.NewProc("CloseHandle")
+	procGetLastError               = modKernel32.NewProc("GetLastError")
 	procCreateWindowExW            = modUser32.NewProc("CreateWindowExW")
 	procDefWindowProcW             = modUser32.NewProc("DefWindowProcW")
 	procRegisterClassExW          = modUser32.NewProc("RegisterClassExW")
@@ -161,6 +165,8 @@ type OverlayManager struct {
 	tracker      *GameTracker
 	collector    FpsCollector
 	hwnd         uintptr
+	hMutex       uintptr
+	isPrimary    bool
 	visible      bool
 	corner       string // "top-wide", "bottom-wide", "top-left", "top-right", "hidden"
 	monitor      string // "auto", "1", "2", "3", etc.
@@ -316,42 +322,113 @@ func NewOverlayManager(store *SessionStore, tracker *GameTracker, collector FpsC
 		collector: collector,
 		corner:    corner,
 		monitor:   mon,
-		visible:   settings.Enabled,
+		visible:   false,
 		gameTitle: "Standby",
 		stopChan:  make(chan struct{}),
 	}
 	globalOverlayManager = om
 
-	// Check if a game is ALREADY running right now
+	// Check if an active game is ALREADY running right now
 	if tracker != nil {
-		if running := tracker.GetRunningGame(); running != nil {
-			om.gameTitle = running.Title
-			fmt.Printf("[Overlay] Active game detected on init: %s (PID %d)\n", running.Title, running.PID)
+		if active := tracker.GetActiveGame(); active != nil {
+			om.gameTitle = active.Title
+			om.playtimeSec = active.CurrentDurationSec
+			om.visible = settings.Enabled
+			fmt.Printf("[Overlay] Active game detected on init: %s (PID %d)\n", active.Title, active.PID)
 		}
 	}
+
+	// Hook active game changed callback
+	tracker.SetActiveGameCallback(func(game *RunningGame) {
+		fmt.Printf("[Overlay] Active game switched to: %s (PID %d)\n", game.Title, game.PID)
+		om.mu.Lock()
+		om.gameTitle = game.Title
+		om.playtimeSec = game.CurrentDurationSec
+		om.currentFps = 0
+		om.low1Fps = 0
+		om.avgFps = 0
+		om.gameHwnd = 0
+		hwnd := om.hwnd
+		corner := om.corner
+		enabled := om.store != nil && om.store.GetOverlaySettings().Enabled
+		om.visible = enabled
+		vis := om.visible
+		om.mu.Unlock()
+
+		if hwnd != 0 {
+			if vis {
+				newX, newY, newW, newH := om.calculatePosition(corner)
+				procSetWindowPos.Call(
+					hwnd,
+					^uintptr(0), // HWND_TOPMOST
+					uintptr(newX), uintptr(newY),
+					uintptr(newW), uintptr(newH),
+					0x0010|0x0040, // SWP_NOACTIVATE | SWP_SHOWWINDOW
+				)
+				procPostMessageW.Call(hwnd, wmUpdate, 0, 0)
+			} else {
+				procShowWindow.Call(hwnd, swHide)
+			}
+		}
+	})
 
 	// Hook tracker callbacks
 	tracker.SetCallbacks(func(game *RunningGame) {
 		fmt.Printf("[Overlay] onGameStarted callback triggered for: %s\n", game.Title)
 		om.mu.Lock()
-		om.gameTitle = game.Title
-		om.playtimeSec = 0
-		om.currentFps = 0
-		om.low1Fps = 0
-		om.avgFps = 0
+		active := om.tracker.GetActiveGame()
+		if active == nil || active.ID == game.ID || om.gameTitle == "Standby" {
+			om.gameTitle = game.Title
+			om.playtimeSec = game.CurrentDurationSec
+			om.currentFps = 0
+			om.low1Fps = 0
+			om.avgFps = 0
+			om.gameHwnd = 0
+		}
+		enabled := om.store != nil && om.store.GetOverlaySettings().Enabled
 		om.mu.Unlock()
-		om.Show()
+		if enabled {
+			om.Show()
+		} else {
+			om.Hide()
+		}
 	}, func(session *PlaySession) {
-		fmt.Printf("[Overlay] onGameStopped callback triggered (keeping overlay visible on standby)\n")
+		fmt.Printf("[Overlay] onGameStopped callback triggered\n")
 		om.mu.Lock()
-		om.gameTitle = "Standby"
-		om.currentFps = 0
-		om.low1Fps = 0
-		om.avgFps = 0
-		om.gameHwnd = 0
+		active := om.tracker.GetActiveGame()
+		if active != nil {
+			om.gameTitle = active.Title
+			om.playtimeSec = active.CurrentDurationSec
+			om.currentFps = 0
+			om.low1Fps = 0
+			om.avgFps = 0
+			om.gameHwnd = 0
+		} else {
+			om.gameTitle = "Standby"
+			om.currentFps = 0
+			om.low1Fps = 0
+			om.avgFps = 0
+			om.gameHwnd = 0
+			om.visible = false
+		}
+		hwnd := om.hwnd
+		corner := om.corner
+		vis := om.visible
 		om.mu.Unlock()
-		if om.hwnd != 0 {
-			procPostMessageW.Call(om.hwnd, wmUpdate, 0, 0)
+		if hwnd != 0 {
+			if vis {
+				newX, newY, newW, newH := om.calculatePosition(corner)
+				procSetWindowPos.Call(
+					hwnd,
+					^uintptr(0),
+					uintptr(newX), uintptr(newY),
+					uintptr(newW), uintptr(newH),
+					0x0010|0x0040,
+				)
+				procPostMessageW.Call(hwnd, wmUpdate, 0, 0)
+			} else {
+				procShowWindow.Call(hwnd, swHide)
+			}
 		}
 	})
 
@@ -384,6 +461,13 @@ func (om *OverlayManager) listenFpsStream() {
 				return
 			}
 			om.mu.Lock()
+			// If tracker has an active game, ignore snapshots from a previous game
+			if om.tracker != nil {
+				if active := om.tracker.GetActiveGame(); active != nil && snap.GameID != "" && snap.GameID != active.ID {
+					om.mu.Unlock()
+					continue
+				}
+			}
 			om.currentFps = snap.FPS
 			om.low1Fps = snap.Low1Percent
 			om.avgFps = snap.AvgFPS
@@ -426,7 +510,15 @@ func (om *OverlayManager) playtimeTicker() {
 					om.lastH = newH
 				}
 				if tickCount%5 == 0 && om.gameTitle != "Standby" && om.gameTitle != "" {
-					om.playtimeSec++
+					if om.tracker != nil {
+						if active := om.tracker.GetActiveGame(); active != nil {
+							om.playtimeSec = active.CurrentDurationSec
+						} else {
+							om.playtimeSec++
+						}
+					} else {
+						om.playtimeSec++
+					}
 				}
 				om.mu.Unlock()
 
@@ -459,6 +551,26 @@ func (om *OverlayManager) runWin32Thread() {
 	// Must lock OS thread for Win32 message loop
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+
+	// Try acquiring named mutex to ensure only ONE instance manages the Win32 overlay on the host
+	mutexName, _ := syscall.UTF16PtrFromString("Local\\OtixGameOverlayInstanceMutex")
+	hMutex, _, _ := procCreateMutexW.Call(0, 0, uintptr(unsafe.Pointer(mutexName)))
+	lastErr, _, _ := procGetLastError.Call()
+	const errorAlreadyExists = 183
+
+	if hMutex != 0 && lastErr == errorAlreadyExists {
+		fmt.Printf("[Overlay] Another Otix instance is already managing the Win32 HUD overlay; running in passive mode\n")
+		om.mu.Lock()
+		om.isPrimary = false
+		om.hMutex = hMutex
+		om.mu.Unlock()
+		return
+	}
+
+	om.mu.Lock()
+	om.isPrimary = true
+	om.hMutex = hMutex
+	om.mu.Unlock()
 
 	// Ensure the overlay thread attaches to the interactive "Default" desktop
 	// (critical when launched via background runners, services, or dev terminals)
@@ -541,13 +653,14 @@ func (om *OverlayManager) runWin32Thread() {
 	fmt.Printf("[Overlay] Hotkeys: Ctrl+` (0xC0) ret=%v (%v), Ctrl+` (0xDC) ret=%v (%v), Ctrl+` (0xDE) ret=%v, Ctrl+Shift+O ret=%v\n",
 		hkRet1, hkErr1, hkRet2, hkErr2, hkRet3, hkRet6)
 
-	// If overlay is already active, position as HWND_TOPMOST and show immediately
+	// If overlay is enabled AND an active game is running, position as HWND_TOPMOST and show
 	om.mu.RLock()
 	vis := om.visible
 	corner := om.corner
+	hasActiveGame := om.tracker != nil && om.tracker.GetActiveGame() != nil
 	om.mu.RUnlock()
 
-	if vis && corner != "hidden" {
+	if vis && hasActiveGame && corner != "hidden" {
 		xInit, yInit, wInit, hInit := om.calculatePosition(corner)
 		fmt.Printf("[Overlay] Auto-showing overlay on startup at %s (%d, %d, %dx%d)\n", corner, xInit, yInit, wInit, hInit)
 		procSetWindowPos.Call(
@@ -963,9 +1076,18 @@ func (om *OverlayManager) paint(hwnd uintptr) {
 	}
 }
 
-// Show makes the overlay visible above fullscreen/borderless games.
+// Show makes the overlay visible above fullscreen/borderless games if enabled and game active.
 func (om *OverlayManager) Show() {
 	om.mu.Lock()
+	if om.store != nil && !om.store.GetOverlaySettings().Enabled {
+		om.mu.Unlock()
+		return
+	}
+	hasActiveGame := om.tracker != nil && om.tracker.GetActiveGame() != nil
+	if !hasActiveGame {
+		om.mu.Unlock()
+		return
+	}
 	om.visible = true
 	hwnd := om.hwnd
 	om.mu.Unlock()
@@ -991,21 +1113,13 @@ func (om *OverlayManager) Hide() {
 
 // Toggle toggles overlay visibility and persists state to store.
 func (om *OverlayManager) Toggle() {
-	om.mu.RLock()
-	vis := om.visible
-	om.mu.RUnlock()
-
-	if vis {
-		om.Hide()
-	} else {
-		om.Show()
+	if om.store == nil {
+		return
 	}
-
-	if om.store != nil {
-		settings := om.store.GetOverlaySettings()
-		settings.Enabled = !vis
-		_ = om.store.SaveOverlaySettings(settings)
-	}
+	settings := om.store.GetOverlaySettings()
+	settings.Enabled = !settings.Enabled
+	_ = om.store.SaveOverlaySettings(settings)
+	om.ApplySettings(settings)
 }
 
 // ApplySettings applies updated overlay configuration (enabled, corner, monitor).
@@ -1017,13 +1131,14 @@ func (om *OverlayManager) ApplySettings(settings OverlaySettings) {
 	if settings.Monitor != "" {
 		om.monitor = settings.Monitor
 	}
-	om.visible = settings.Enabled
+	hasActiveGame := om.tracker != nil && om.tracker.GetActiveGame() != nil
+	om.visible = settings.Enabled && hasActiveGame
 	vis := om.visible
 	corner := om.corner
 	hwnd := om.hwnd
 	om.mu.Unlock()
 
-	fmt.Printf("[Overlay] ApplySettings: enabled=%v, corner=%s, monitor=%s\n", vis, corner, settings.Monitor)
+	fmt.Printf("[Overlay] ApplySettings: enabled=%v, hasActiveGame=%v, visible=%v, corner=%s, monitor=%s\n", settings.Enabled, hasActiveGame, vis, corner, settings.Monitor)
 
 	if hwnd != 0 {
 		if vis {
@@ -1139,5 +1254,9 @@ func (om *OverlayManager) Stop() {
 	if om.hwnd != 0 {
 		procDestroyWindow.Call(om.hwnd)
 		om.hwnd = 0
+	}
+	if om.hMutex != 0 {
+		procCloseHandle.Call(om.hMutex)
+		om.hMutex = 0
 	}
 }

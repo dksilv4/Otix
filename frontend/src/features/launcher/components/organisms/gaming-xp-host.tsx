@@ -3,7 +3,11 @@ import { apiClient } from '@/lib/api/client'
 import { showXPToast } from '@/components/ui/atoms/xp-toast'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { useRunningGame } from '../../hooks/use-running-game'
-import { setGamingSessionState, resetGamingSessionState } from '../../utils/gaming-xp-store'
+import {
+  setGamingSessionState,
+  resetGamingSessionState,
+  getGamingSessionState,
+} from '../../utils/gaming-xp-store'
 
 interface HeartbeatResponse {
   status: string
@@ -15,7 +19,7 @@ interface HeartbeatResponse {
   dailyXp: number
 }
 
-/** Headless host component that tracks active gaming duration and posts periodic XP heartbeats to Django. */
+/** Headless host component that tracks active gaming duration and awards session XP at the end of the session. */
 export const GamingXpHost = () => {
   const { runningGame, elapsedMs } = useRunningGame()
   const { user } = useAuth()
@@ -34,7 +38,7 @@ export const GamingXpHost = () => {
     isRequestInFlight: boolean
   } | null>(null)
 
-  // 1. Periodic tick handling while game is running
+  // 1. Live session XP calculation & periodic heartbeat while game is running
   useEffect(() => {
     if (!runningGame || !userRef.current) return
 
@@ -42,6 +46,8 @@ export const GamingXpHost = () => {
     const gameTitle = runningGame.game.title
     const startTime = runningGame.startTime
     const durationSeconds = Math.floor(elapsedMs / 1000)
+    // 1 XP per minute (60 seconds)
+    const liveSessionXp = Math.floor(durationSeconds / 60)
 
     if (!sessionRef.current || sessionRef.current.gameId !== gameId || sessionRef.current.startTime !== startTime) {
       sessionRef.current = {
@@ -55,46 +61,51 @@ export const GamingXpHost = () => {
         isGaming: true,
         currentGameId: gameId,
         currentGameTitle: gameTitle,
-        sessionXp: 0,
+        sessionXp: liveSessionXp,
       })
+    } else {
+      // Keep live XP in sync with elapsed time (1 XP per minute)
+      const currentStoreState = getGamingSessionState()
+      if (currentStoreState.sessionXp !== liveSessionXp) {
+        setGamingSessionState({
+          sessionXp: liveSessionXp,
+        })
+      }
     }
 
     const session = sessionRef.current
     if (session.isRequestInFlight) return
 
-    // Next 5-minute tick threshold
+    // Periodic heartbeat every 5 minutes (300s) to keep server session cached
     const nextTick = session.lastAwardedSeconds + 300
     if (durationSeconds >= nextTick) {
       session.isRequestInFlight = true
       const sessionId = `sess-${gameId}-${startTime}`
 
-      apiClient
-        .post<HeartbeatResponse>('/users/me/gaming-heartbeat', {
-          gameId,
-          gameTitle,
-          sessionId,
-          durationSeconds,
-          isFinal: false,
-        })
-        .then((res) => {
-          const data = res.data
+      void (async () => {
+        try {
+          const res = await apiClient.post<HeartbeatResponse>('/users/me/gaming-heartbeat', {
+            gameId,
+            gameTitle,
+            sessionId,
+            durationSeconds,
+            isFinal: false,
+          })
+          const data = res?.data
           if (data && data.status === 'ok') {
-            session.lastAwardedSeconds = Math.floor(durationSeconds / 300) * 300
-            setGamingSessionState({
-              sessionXp: data.sessionXp,
-              dailyXp: data.dailyXp,
-            })
-            if (data.xpAwarded > 0) {
-              showXPToast(data.xpAwarded, `Gaming: ${gameTitle}`, userRef.current?.totalXp)
+            session.lastAwardedSeconds = durationSeconds
+            if (typeof data.dailyXp === 'number') {
+              setGamingSessionState({
+                dailyXp: data.dailyXp,
+              })
             }
           }
-        })
-        .catch(() => {
+        } catch {
           // ignore network or offline errors
-        })
-        .finally(() => {
+        } finally {
           session.isRequestInFlight = false
-        })
+        }
+      })()
     }
   }, [runningGame, elapsedMs])
 
@@ -107,25 +118,26 @@ export const GamingXpHost = () => {
       const durationSeconds = Math.floor(prevElapsedMsRef.current / 1000)
       const sessionId = `sess-${activeSession.gameId}-${activeSession.startTime}`
 
-      apiClient
-        .post<HeartbeatResponse>('/users/me/gaming-heartbeat', {
-          gameId: activeSession.gameId,
-          gameTitle: activeSession.gameTitle,
-          sessionId,
-          durationSeconds,
-          isFinal: true,
-        })
-        .then((res) => {
-          const data = res.data
+      void (async () => {
+        try {
+          const res = await apiClient.post<HeartbeatResponse>('/users/me/gaming-heartbeat', {
+            gameId: activeSession.gameId,
+            gameTitle: activeSession.gameTitle,
+            sessionId,
+            durationSeconds,
+            isFinal: true,
+          })
+          const data = res?.data
           if (data && data.status === 'ok' && data.xpAwarded > 0) {
             showXPToast(data.xpAwarded, `Gaming: ${activeSession.gameTitle}`, userRef.current?.totalXp)
           }
-        })
-        .catch(() => {})
-        .finally(() => {
+        } catch {
+          // ignore
+        } finally {
           resetGamingSessionState()
           sessionRef.current = null
-        })
+        }
+      })()
     }
 
     prevRunningGameRef.current = runningGame

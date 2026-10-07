@@ -19,7 +19,11 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
   const posterUrl = matchedGame?.posterUrl || runningGame.game.posterUrl || runningGame.game.iconUrl
   const releaseYear = matchedGame?.releaseDate ? new Date(matchedGame.releaseDate).getFullYear() : null
   const genresStr = matchedGame?.genres?.slice(0, 2).join(' · ')
-  const devOrGenre = matchedGame?.developer || genresStr
+  const subtitle = genresStr
+    ? `${genresStr}${releaseYear ? ` (${releaseYear})` : ''}`
+    : releaseYear
+      ? `${releaseYear}`
+      : null
   const currentFps = runningGame.fpsSnapshot?.currentFps ?? 0
   const fpsRounded = Math.round(currentFps)
 
@@ -53,15 +57,15 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
               <Gamepad2 size={24} className="text-white/30" />
             </div>
           )}
-          <div className="absolute top-1 right-1">
-            <span className="block w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
+          <div className="absolute top-1.5 right-1.5">
+            <span className="block w-2 h-2 rounded-full bg-emerald-400 shadow-sm" />
           </div>
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-1 mb-1">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               Now Playing
             </span>
             {matchedGame?.rating != null && (
@@ -88,29 +92,30 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
             </h3>
           )}
 
-          {devOrGenre && (
+          {subtitle && (
             <p className="text-[11px] text-white/50 truncate mt-0.5 font-medium">
-              {devOrGenre}
-              {releaseYear ? ` (${releaseYear})` : ''}
+              {subtitle}
             </p>
           )}
 
-          <div className="flex items-center gap-1.5 mt-2 text-[11px] text-white/70 flex-wrap">
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-white/[0.06] text-white/70 font-mono">
-              {runningGame.game.platform.toUpperCase()}
-            </span>
-            <span className="inline-flex items-center gap-1 tabular-nums font-mono text-emerald-300">
-              <Clock size={10} />
-              {formatDuration(elapsedMs)}
-            </span>
-            {fpsRounded > 0 && (
-              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${fpsColorClass}`}>
-                <Activity size={10} />
-                {fpsRounded} FPS
+          <div className="flex items-center justify-between gap-2 mt-2 text-[11px] text-white/70">
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-white/[0.06] text-white/70 font-mono shrink-0">
+                {runningGame.game.platform.toUpperCase()}
               </span>
-            )}
+              <span className="inline-flex items-center gap-1 tabular-nums font-mono text-emerald-300 shrink-0">
+                <Clock size={10} />
+                {formatDuration(elapsedMs)}
+              </span>
+              {fpsRounded > 0 && (
+                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold shrink-0 ${fpsColorClass}`}>
+                  <Activity size={10} />
+                  {fpsRounded} FPS
+                </span>
+              )}
+            </div>
             {sessionXp > 0 && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 shrink-0 ml-auto">
                 <Zap size={10} className="fill-amber-300" />
                 +{sessionXp} XP
               </span>

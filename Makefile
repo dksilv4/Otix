@@ -26,6 +26,12 @@ run: dev
 worker: ## Run local distributed compute worker to help production
 	powershell -ExecutionPolicy Bypass -File ./start_worker.ps1
 
+node-local: ## Run local Otix node (port 8090 -> localhost:8000)
+	powershell -ExecutionPolicy Bypass -File ./scripts/start_node_local.ps1
+
+node-prod: ## Run production Otix node (port 8091 -> production 84.8.154.67:8000)
+	powershell -ExecutionPolicy Bypass -File ./scripts/start_node_prod.ps1
+
 # ── Dev compose lifecycle ────────────────────────────────────────────────
 up: ## Start the dev stack (api/worker/beat/db/redis)
 	docker compose up -d

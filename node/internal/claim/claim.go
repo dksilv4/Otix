@@ -160,6 +160,39 @@ func (cm *ClaimManager) Confirm(code string, authToken string, serverName string
 	return nil
 }
 
+func (cm *ClaimManager) ConfirmDirect(authToken string, serverName string, username string) error {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if strings.TrimSpace(authToken) == "" {
+		return fmt.Errorf("valid auth token is required")
+	}
+
+	prevToken := cm.cfg.Server.AuthToken
+	prevName := cm.cfg.Server.Name
+	prevClaimed := cm.cfg.Server.Claimed
+	prevClaimedBy := cm.cfg.Server.ClaimedBy
+
+	cm.cfg.Server.AuthToken = strings.TrimSpace(authToken)
+	if strings.TrimSpace(serverName) != "" {
+		cm.cfg.Server.Name = strings.TrimSpace(serverName)
+	}
+	cm.cfg.Server.Claimed = true
+	cm.cfg.Server.ClaimedBy = strings.TrimSpace(username)
+
+	if err := cm.cfg.Save(""); err != nil {
+		cm.cfg.Server.AuthToken = prevToken
+		cm.cfg.Server.Name = prevName
+		cm.cfg.Server.Claimed = prevClaimed
+		cm.cfg.Server.ClaimedBy = prevClaimedBy
+		return fmt.Errorf("failed to save claimed configuration: %w", err)
+	}
+
+	cm.claimed = true
+	cm.claimedBy = strings.TrimSpace(username)
+	return nil
+}
+
 func (cm *ClaimManager) Unclaim() error {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()

@@ -13,16 +13,21 @@ var (
 	procFpsGetWindowThreadProcessId = fpsUser32.NewProc("GetWindowThreadProcessId")
 )
 
+// getForegroundProcessPID returns the PID of the process owning the current foreground window.
+func getForegroundProcessPID() int {
+	hwnd, _, _ := procFpsGetForegroundWindow.Call()
+	if hwnd == 0 {
+		return 0
+	}
+	var fgPid uint32
+	procFpsGetWindowThreadProcessId.Call(hwnd, uintptr(unsafe.Pointer(&fgPid)))
+	return int(fgPid)
+}
+
 // isProcessInForeground checks if the window currently in the foreground belongs to the target PID.
 func isProcessInForeground(pid int) bool {
 	if pid <= 0 {
 		return false
 	}
-	hwnd, _, _ := procFpsGetForegroundWindow.Call()
-	if hwnd == 0 {
-		return false
-	}
-	var fgPid uint32
-	procFpsGetWindowThreadProcessId.Call(hwnd, uintptr(unsafe.Pointer(&fgPid)))
-	return int(fgPid) == pid
+	return getForegroundProcessPID() == pid
 }

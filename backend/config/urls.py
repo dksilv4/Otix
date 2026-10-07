@@ -14,6 +14,7 @@ from apps.blueprint.views import BlueprintListCreateView
 from apps.freegames.views import FreeGamesListView
 from apps.gameservers.views import GameServerListCreateView
 from apps.library.views import (
+    GameServerClaimDirectView,
     GameServerClaimView,
     GameServerHeartbeatView,
     GameServerScanCompleteView,
@@ -65,6 +66,11 @@ urlpatterns = [
         name="game-server-scan-complete",
     ),
     path("api/v1/servers/claim", GameServerClaimView.as_view(), name="game-server-claim"),
+    path(
+        "api/v1/servers/claim-direct",
+        GameServerClaimDirectView.as_view(),
+        name="game-server-claim-direct",
+    ),
     path("api/v1/library/", include("apps.library.urls")),
     path("api/v1/game-servers", GameServerListCreateView.as_view(), name="game-server-root"),
     path("api/v1/game-servers/", include("apps.gameservers.urls")),

@@ -255,4 +255,58 @@ describe('useUserGameSessions hook', () => {
     const customSession = sessions.find((s) => s.id === 'sess-custom')
     expect(customSession?.posterUrl).toBe('https://images.example.com/custom_poster.jpg')
   })
+
+  it('supports multiple simultaneously running games via activeSessions', async () => {
+    vi.mocked(launcherHooks.useRunningGame).mockReturnValue({
+      runningGames: [
+        {
+          game: {
+            id: 'cp2077',
+            title: 'Cyberpunk 2077',
+            exePath: 'C:\\Games\\Cyberpunk 2077\\bin\\x64\\Cyberpunk2077.exe',
+            platform: 'pc',
+          },
+          startTime: Date.now() - 600000,
+          pid: 1234,
+          fpsSnapshot: {
+            currentFps: 95,
+            frameCount: 58000,
+            captureDurationMs: 600000,
+          },
+        },
+        {
+          game: {
+            id: 'eldenring',
+            title: 'Elden Ring',
+            exePath: 'C:\\Games\\Elden Ring\\game.exe',
+            platform: 'pc',
+          },
+          startTime: Date.now() - 300000,
+          pid: 5678,
+          fpsSnapshot: {
+            currentFps: 120,
+            frameCount: 36000,
+            captureDurationMs: 300000,
+          },
+        },
+      ],
+      runningGame: {
+        game: { id: 'cp2077', title: 'Cyberpunk 2077' },
+      },
+      elapsedMs: 600000,
+    } as any)
+
+    const { result } = renderHook(() => useUserGameSessions(), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    expect(result.current.data?.activeSessions).toHaveLength(2)
+    expect(result.current.data?.activeSessions?.[0].gameTitle).toBe('Cyberpunk 2077')
+    expect(result.current.data?.activeSessions?.[1].gameTitle).toBe('Elden Ring')
+    expect(result.current.data?.activeSession?.gameTitle).toBe('Cyberpunk 2077')
+    // 7200 past session + 600s cp2077 + ~300s elden ring >= 8000 total duration
+    expect(result.current.data?.totalDurationSeconds).toBeGreaterThan(8000)
+  })
 })

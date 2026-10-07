@@ -121,3 +121,45 @@ class GameServerClaimTests(TestCase):
         data = resp.json()
         self.assertTrue(data["reachable"])
         self.assertIsNotNone(data["latency_ms"])
+
+    def test_claim_node_direct_outbound(self):
+        """Direct outbound claim registers the node without requiring inbound reachability."""
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/v1/library/servers/claim-direct",
+            {
+                "server_name": "Living Room NAS",
+                "auth_token": "direct_token_123",
+                "port": 8090,
+                "local_endpoints": ["http://192.168.1.120:8090", "http://127.0.0.1:8090"],
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["name"], "Living Room NAS")
+        self.assertEqual(data["auth_token"], "direct_token_123")
+        self.assertTrue(data["is_online"])
+        self.assertTrue(data["created"])
+
+        # Also verify UserGameServer row in database
+        server = UserGameServer.objects.get(user=self.user, name="Living Room NAS")
+        self.assertEqual(server.auth_token, "direct_token_123")
+        self.assertTrue(server.is_online)
+        self.assertEqual(server.local_url, "http://192.168.1.120:8090")
+
+        # Also verify the alias endpoint /api/v1/servers/claim-direct updates the existing node
+        alias_resp = self.client.post(
+            "/api/v1/servers/claim-direct",
+            {
+                "server_name": "Living Room NAS",
+                "auth_token": "direct_token_123",
+                "port": 8090,
+                "local_endpoints": ["http://192.168.1.120:8090"],
+            },
+            format="json",
+        )
+        self.assertEqual(alias_resp.status_code, 200)
+        alias_data = alias_resp.json()
+        self.assertFalse(alias_data["created"])
+

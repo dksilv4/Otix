@@ -5,7 +5,8 @@ interface XPProgressRingProps {
   size: number
   strokeWidth?: number
   strokeColor?: string
-  children: React.ReactNode
+  className?: string
+  children?: React.ReactNode
 }
 
 export const XPProgressRing = ({
@@ -13,6 +14,7 @@ export const XPProgressRing = ({
   size,
   strokeWidth = 3,
   strokeColor = 'var(--primary)',
+  className,
   children,
 }: XPProgressRingProps) => {
   const [animProgress, setAnimProgress] = useState(0)
@@ -27,9 +29,9 @@ export const XPProgressRing = ({
   const offset = circumference * (1 - animProgress)
 
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div className={`relative shrink-0 ${className ?? ''}`} style={{ width: size, height: size }}>
       <svg
-        className="absolute inset-0 -rotate-90"
+        className="absolute inset-0 -rotate-90 pointer-events-none"
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
@@ -54,7 +56,10 @@ export const XPProgressRing = ({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }}
+          style={{
+            opacity: animProgress > 0 ? 1 : 0,
+            transition: 'stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease',
+          }}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">

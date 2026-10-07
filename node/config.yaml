@@ -1,14 +1,14 @@
 server:
-    name: Node ID:1
+    name: Local Node
     port: 8090
     host: 0.0.0.0
-    auth_token: 565a6b57f57005c85a027fb40a8bec58466d42e410cc2857
-    registry_url: ""
+    auth_token: ""
+    registry_url: https://otix.app/api
     enable_upnp: false
-    enable_heartbeat: false
+    enable_heartbeat: true
     downloads_path: ./storage/downloads
-    claimed: true
-    claimed_by: admin
+    claimed: false
+    claimed_by: ""
     write_otix_after_scan: true
     download_otix_images: false
 game_libraries:

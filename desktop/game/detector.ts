@@ -60,6 +60,47 @@ const NON_GAME_PROCESSES = new Set([
   'explorer.exe', 'svchost.exe', 'runtimebroker.exe',
 ]);
 
+const KNOWN_GAME_SIGNATURES: Record<string, string> = {
+  'brawlhalla.exe': 'Brawlhalla',
+  'valheim.exe': 'Valheim',
+  'cyberpunk2077.exe': 'Cyberpunk 2077',
+  'witcher3.exe': 'The Witcher 3: Wild Hunt',
+  'gta5.exe': 'Grand Theft Auto V',
+  'gtav.exe': 'Grand Theft Auto V',
+  'rdr2.exe': 'Red Dead Redemption 2',
+  'eldenring.exe': 'Elden Ring',
+  'starfield.exe': 'Starfield',
+  'bg3.exe': "Baldur's Gate 3",
+  'bg3_dx11.exe': "Baldur's Gate 3",
+  'baldursgate3.exe': "Baldur's Gate 3",
+  'hogwartslegacy.exe': 'Hogwarts Legacy',
+  'forzahorizon5.exe': 'Forza Horizon 5',
+  'monsterhunterworld.exe': 'Monster Hunter: World',
+  'monsterhunterrise.exe': 'Monster Hunter Rise',
+  'cs2.exe': 'Counter-Strike 2',
+  'palworld-win64-shipping.exe': 'Palworld',
+  'blackmythwukong.exe': 'Black Myth: Wukong',
+  'b1-win64-shipping.exe': 'Black Myth: Wukong',
+  'hades.exe': 'Hades',
+  'hades2.exe': 'Hades II',
+  'hollow_knight.exe': 'Hollow Knight',
+  'balatro.exe': 'Balatro',
+  'stardew valley.exe': 'Stardew Valley',
+  'stardewvalley.exe': 'Stardew Valley',
+  'deadcells.exe': 'Dead Cells',
+  'slaythespire.exe': 'Slay the Spire',
+  'factorio.exe': 'Factorio',
+  'satisfactory.exe': 'Satisfactory',
+  'factorygamesteam.exe': 'Satisfactory',
+  'pathofexile.exe': 'Path of Exile',
+  'pathofexilesteam.exe': 'Path of Exile 2',
+  'pathofexile2.exe': 'Path of Exile 2',
+  'tekken 8.exe': 'Tekken 8',
+  'tekken8.exe': 'Tekken 8',
+  'risk of rain 2.exe': 'Risk of Rain 2',
+  'riskofrain2.exe': 'Risk of Rain 2',
+};
+
 function normalizeTitle(title: string): string {
   return title
     .replace(/\s*[-–—:]\s*(Definitive|GOTY|Game of the Year|Remastered|Enhanced|Ultimate|Complete|Anniversary|Collectors|Digital Deluxe|Special|Legendary)\s*(Edition)?\s*$/i, '')
@@ -244,8 +285,6 @@ export class GameDetector extends EventEmitter {
   }
 
   async scanRunningProcesses(): Promise<RunningGame[]> {
-    if (this.library.length === 0) return [];
-
     try {
       const [processes, windowTitles] = await Promise.all([
         psList(),
@@ -329,6 +368,67 @@ export class GameDetector extends EventEmitter {
             if (oldPid) { this.trackedPids.delete(oldPid); }
             this.trackedPids.add(detectedPid);
             // FPS capture handled by fps-capture plugin via eventBus
+          }
+        }
+      }
+
+      // 4. Check known popular game executable signatures for unindexed games
+      const claimedPids = new Set<number>();
+      for (const entry of this.runningGames.values()) {
+        if (entry.pid) claimedPids.add(entry.pid);
+      }
+
+      for (const proc of processes) {
+        if (claimedPids.has(proc.pid)) continue;
+        const lower = proc.name.toLowerCase();
+        if (NON_GAME_PROCESSES.has(lower) || NON_GAME_PROCESSES.has(lower + '.exe')) continue;
+        const knownTitle = KNOWN_GAME_SIGNATURES[lower] || KNOWN_GAME_SIGNATURES[lower + '.exe'];
+        if (knownTitle) {
+          const gameId = knownTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+          if (
+            !currentlyRunning.has(gameId) &&
+            !this.library.some((g) => g.id === gameId || normalizeTitle(g.title) === normalizeTitle(knownTitle))
+          ) {
+            currentlyRunning.add(gameId);
+            claimedPids.add(proc.pid);
+            const existing = this.runningGames.get(gameId);
+            if (!existing) {
+              const hostMatch = getCachedHostNodeAndHardware();
+              const synthGame: LocalGame = {
+                id: gameId,
+                title: knownTitle,
+                platform: 'pc',
+                exePath: '',
+                installDir: '',
+              };
+              const entry: RunningGame = {
+                game: synthGame,
+                startTime: Date.now(),
+                launchedByOtix: false,
+                pid: proc.pid,
+                node: hostMatch.node,
+                hardware: hostMatch.hardware,
+                shareEligible: hostMatch.shareEligible,
+              };
+              this.runningGames.set(gameId, entry);
+              void getHostNodeAndHardware().then((fresh) => {
+                const current = this.runningGames.get(gameId);
+                if (current) {
+                  current.node = fresh.node;
+                  current.hardware = fresh.hardware;
+                  current.shareEligible = fresh.shareEligible;
+                }
+              });
+              this.trackedPids.add(proc.pid);
+              this.startProcessCheck();
+              this.startDeadCheck();
+              this.emit('game:started', entry);
+            } else if (existing.pid !== proc.pid) {
+              const oldPid = existing.pid;
+              existing.pid = proc.pid;
+              if (oldPid) { this.trackedPids.delete(oldPid); }
+              this.trackedPids.add(proc.pid);
+            }
           }
         }
       }

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -137,13 +138,15 @@ type GameTracker struct {
 	store        *SessionStore
 	fpsCollector FpsCollector
 	indexer      *indexer.StorageIndexer
-	running      *RunningGame
+	runningGames map[string]*RunningGame
+	activeGameID string
 	stopChan     chan struct{}
 	nodeName     string
 	nodePort     int
 
-	onGameStarted func(game *RunningGame)
-	onGameStopped func(session *PlaySession)
+	onGameStarted       func(game *RunningGame)
+	onGameStopped       func(session *PlaySession)
+	onActiveGameChanged func(game *RunningGame)
 }
 
 // NewGameTracker creates a GameTracker instance.
@@ -152,6 +155,7 @@ func NewGameTracker(store *SessionStore, fpsCollector FpsCollector, idx *indexer
 		store:        store,
 		fpsCollector: fpsCollector,
 		indexer:      idx,
+		runningGames: make(map[string]*RunningGame),
 		stopChan:     make(chan struct{}),
 	}
 }
@@ -172,18 +176,24 @@ func (gt *GameTracker) SetCallbacks(onStarted func(game *RunningGame), onStopped
 	gt.onGameStopped = onStopped
 }
 
-// Start begins periodic process scanning (every 3 seconds).
+// SetActiveGameCallback registers a hook called whenever the active/foreground game changes.
+func (gt *GameTracker) SetActiveGameCallback(onActiveChanged func(game *RunningGame)) {
+	gt.mu.Lock()
+	defer gt.mu.Unlock()
+	gt.onActiveGameChanged = onActiveChanged
+}
+
+// Start begins periodic process scanning (every 3 seconds) and foreground window focus tracking (every 300ms).
 func (gt *GameTracker) Start() {
 	go gt.scanLoop()
+	go gt.focusLoop()
 }
 
 // Stop terminates background scanning and stops active tracking cleanly.
 func (gt *GameTracker) Stop() {
 	close(gt.stopChan)
 	gt.mu.Lock()
-	if gt.running != nil {
-		gt.stopActiveSessionLocked()
-	}
+	gt.stopActiveSessionLocked()
 	gt.mu.Unlock()
 }
 
@@ -201,6 +211,84 @@ func (gt *GameTracker) scanLoop() {
 	}
 }
 
+func (gt *GameTracker) focusLoop() {
+	ticker := time.NewTicker(300 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-gt.stopChan:
+			return
+		case <-ticker.C:
+			gt.updateActiveGame()
+		}
+	}
+}
+
+func (gt *GameTracker) updateActiveGame() {
+	fgPid := getForegroundProcessPID()
+
+	gt.mu.Lock()
+	defer gt.mu.Unlock()
+
+	if len(gt.runningGames) == 0 {
+		gt.activeGameID = ""
+		return
+	}
+
+	// 1. Check if the foreground window directly belongs to one of our running games
+	var fgGame *RunningGame
+	if fgPid > 0 {
+		for _, g := range gt.runningGames {
+			if g.PID == fgPid {
+				fgGame = g
+				break
+			}
+		}
+	}
+
+	targetID := gt.activeGameID
+	if fgGame != nil {
+		targetID = fgGame.ID
+	} else {
+		// If current activeGameID is no longer running or empty, pick the newest running game
+		if _, exists := gt.runningGames[targetID]; !exists {
+			var latest *RunningGame
+			for _, g := range gt.runningGames {
+				if latest == nil || g.StartTime.After(latest.StartTime) {
+					latest = g
+				}
+			}
+			if latest != nil {
+				targetID = latest.ID
+			}
+		}
+	}
+
+	if targetID == "" {
+		return
+	}
+
+	activeGame := gt.runningGames[targetID]
+	if activeGame == nil {
+		return
+	}
+
+	switched := gt.activeGameID != targetID
+	gt.activeGameID = targetID
+
+	if switched {
+		if gt.fpsCollector != nil && activeGame.FpsAvailable {
+			_ = gt.fpsCollector.Start(activeGame.PID, activeGame.ProcessName, activeGame.ID)
+		}
+		cb := gt.onActiveGameChanged
+		if cb != nil {
+			cp := *activeGame
+			go cb(&cp)
+		}
+	}
+}
+
 func (gt *GameTracker) scanStep() {
 	procs, err := ListProcesses()
 	if err != nil {
@@ -210,34 +298,48 @@ func (gt *GameTracker) scanStep() {
 	gt.mu.Lock()
 	defer gt.mu.Unlock()
 
-	// If currently tracking a game, verify it is still alive
-	if gt.running != nil {
+	// 1. Verify all currently running games are still alive
+	for id, game := range gt.runningGames {
 		stillAlive := false
 		for _, p := range procs {
-			if p.PID == gt.running.PID && strings.EqualFold(p.Name, gt.running.ProcessName) {
+			if p.PID == game.PID && strings.EqualFold(p.Name, game.ProcessName) {
 				stillAlive = true
 				break
 			}
 		}
 
 		if stillAlive {
-			gt.running.CurrentDurationSec = int(time.Since(gt.running.StartTime).Seconds())
+			game.CurrentDurationSec = int(time.Since(game.StartTime).Seconds())
 			if gt.fpsCollector != nil {
-				gt.running.FpsSnapshot = gt.fpsCollector.GetSnapshot()
+				snap := gt.fpsCollector.GetSnapshot()
+				if snap != nil && (snap.GameID == game.ID || (snap.GameID == "" && id == gt.activeGameID)) {
+					game.FpsSnapshot = snap
+				} else {
+					game.FpsSnapshot = nil
+				}
 			}
-			return
+		} else {
+			// Game has exited!
+			gt.stopActiveSessionLocked(id)
 		}
-
-		// Game has exited!
-		gt.stopActiveSessionLocked()
 	}
 
-	// No active game running: scan processes to detect one
+	// 2. Scan processes to detect any games not yet tracked
+	runningPIDs := make(map[int]bool, len(gt.runningGames))
+	for _, g := range gt.runningGames {
+		runningPIDs[g.PID] = true
+	}
+
 	for _, p := range procs {
+		if runningPIDs[p.PID] {
+			continue
+		}
 		identified := gt.identifyGameFull(p.Name)
 		if identified != nil && identified.ID != "" {
-			gt.startActiveSessionLocked(p.PID, p.Name, p.Path, identified.ID, identified.Title, identified)
-			break
+			if _, exists := gt.runningGames[identified.ID]; !exists {
+				gt.startActiveSessionLocked(p.PID, p.Name, p.Path, identified.ID, identified.Title, identified)
+				runningPIDs[p.PID] = true
+			}
 		}
 	}
 }
@@ -352,8 +454,14 @@ func (gt *GameTracker) startActiveSessionLocked(pid int, procName, exePath, game
 		Overview:           overview,
 	}
 
-	gt.running = running
+	if gt.runningGames == nil {
+		gt.runningGames = make(map[string]*RunningGame)
+	}
+	gt.runningGames[gameID] = running
 
+	// When a game starts, activate it as the foreground game
+	prevActive := gt.activeGameID
+	gt.activeGameID = gameID
 	if gt.fpsCollector != nil && running.FpsAvailable {
 		_ = gt.fpsCollector.Start(pid, procName, gameID)
 	}
@@ -362,19 +470,48 @@ func (gt *GameTracker) startActiveSessionLocked(pid int, procName, exePath, game
 	if cb != nil {
 		go cb(running)
 	}
+	if prevActive != "" && prevActive != gameID {
+		if activeCb := gt.onActiveGameChanged; activeCb != nil {
+			cp := *running
+			go activeCb(&cp)
+		}
+	}
 }
 
-func (gt *GameTracker) stopActiveSessionLocked() {
-	if gt.running == nil {
-		return
+func (gt *GameTracker) stopSingleSessionLocked(game *RunningGame) {
+	delete(gt.runningGames, game.ID)
+
+	wasActive := gt.activeGameID == game.ID
+	if wasActive {
+		gt.activeGameID = ""
 	}
 
-	game := gt.running
-	gt.running = nil
-
 	var stats *FpsStatsData
-	if gt.fpsCollector != nil {
+	if wasActive && gt.fpsCollector != nil {
 		stats = gt.fpsCollector.Stop()
+	}
+
+	// If other games are still running, activate the newest remaining game!
+	var nextActive *RunningGame
+	if len(gt.runningGames) > 0 {
+		for _, g := range gt.runningGames {
+			if nextActive == nil || g.StartTime.After(nextActive.StartTime) {
+				nextActive = g
+			}
+		}
+		if nextActive != nil {
+			gt.activeGameID = nextActive.ID
+			if gt.fpsCollector != nil && nextActive.FpsAvailable {
+				_ = gt.fpsCollector.Start(nextActive.PID, nextActive.ProcessName, nextActive.ID)
+			}
+			cbActive := gt.onActiveGameChanged
+			if cbActive != nil {
+				cp := *nextActive
+				go cbActive(&cp)
+			}
+		}
+	} else if !wasActive && gt.fpsCollector != nil {
+		_ = gt.fpsCollector.Stop()
 	}
 
 	hw := hardware.GetMachineHardware(false)
@@ -435,18 +572,104 @@ func (gt *GameTracker) stopActiveSessionLocked() {
 	}
 }
 
-// GetRunningGame returns the currently active game session, or nil if none is running.
-func (gt *GameTracker) GetRunningGame() *RunningGame {
+func (gt *GameTracker) stopActiveSessionLocked(gameIDs ...string) {
+	if len(gt.runningGames) == 0 {
+		return
+	}
+	if len(gameIDs) > 0 && gameIDs[0] != "" {
+		if game, ok := gt.runningGames[gameIDs[0]]; ok {
+			gt.stopSingleSessionLocked(game)
+		}
+		return
+	}
+
+	toStop := make([]*RunningGame, 0, len(gt.runningGames))
+	for _, g := range gt.runningGames {
+		toStop = append(toStop, g)
+	}
+	for _, g := range toStop {
+		gt.stopSingleSessionLocked(g)
+	}
+}
+
+// GetActiveGame returns the currently active (foreground/focused) game session, or nil if none is running.
+func (gt *GameTracker) GetActiveGame() *RunningGame {
 	gt.mu.RLock()
 	defer gt.mu.RUnlock()
-	if gt.running == nil {
+	if len(gt.runningGames) == 0 {
 		return nil
 	}
-	cp := *gt.running
+
+	var active *RunningGame
+	if gt.activeGameID != "" {
+		active = gt.runningGames[gt.activeGameID]
+	}
+	if active == nil {
+		for _, g := range gt.runningGames {
+			if active == nil || g.StartTime.After(active.StartTime) {
+				active = g
+			}
+		}
+	}
+	if active == nil {
+		return nil
+	}
+	cp := *active
 	if gt.fpsCollector != nil {
-		cp.FpsSnapshot = gt.fpsCollector.GetSnapshot()
+		snap := gt.fpsCollector.GetSnapshot()
+		if snap != nil && (snap.GameID == active.ID || snap.GameID == "") {
+			cp.FpsSnapshot = snap
+		}
 	}
 	return &cp
+}
+
+// GetRunningGame returns the active running game session, or nil if none is running.
+func (gt *GameTracker) GetRunningGame() *RunningGame {
+	return gt.GetActiveGame()
+}
+
+// GetRunningGames returns all currently active game sessions with the active game first,
+// followed by remaining games sorted by start time (newest first).
+func (gt *GameTracker) GetRunningGames() []*RunningGame {
+	gt.mu.RLock()
+	defer gt.mu.RUnlock()
+	if len(gt.runningGames) == 0 {
+		return []*RunningGame{}
+	}
+
+	var active *RunningGame
+	if gt.activeGameID != "" {
+		active = gt.runningGames[gt.activeGameID]
+	}
+
+	others := make([]*RunningGame, 0, len(gt.runningGames))
+	for id, g := range gt.runningGames {
+		if active != nil && id == active.ID {
+			continue
+		}
+		cp := *g
+		cp.FpsSnapshot = nil
+		others = append(others, &cp)
+	}
+
+	sort.Slice(others, func(i, j int) bool {
+		return others[i].StartTime.After(others[j].StartTime)
+	})
+
+	list := make([]*RunningGame, 0, len(gt.runningGames))
+	if active != nil {
+		cp := *active
+		if gt.fpsCollector != nil {
+			snap := gt.fpsCollector.GetSnapshot()
+			if snap != nil && (snap.GameID == active.ID || snap.GameID == "") {
+				cp.FpsSnapshot = snap
+			}
+		}
+		list = append(list, &cp)
+	}
+	list = append(list, others...)
+	return list
 }
 
 // Launch programmatically spawns a game executable and immediately starts tracking it.
@@ -454,8 +677,16 @@ func (gt *GameTracker) Launch(exePath string, args []string, gameID, title strin
 	gt.mu.Lock()
 	defer gt.mu.Unlock()
 
-	if gt.running != nil {
-		gt.stopActiveSessionLocked()
+	procName := filepath.Base(exePath)
+	if gameID == "" {
+		gameID = strings.TrimSuffix(procName, filepath.Ext(procName))
+	}
+	if title == "" {
+		title = gameID
+	}
+
+	if existing, ok := gt.runningGames[gameID]; ok {
+		gt.stopActiveSessionLocked(existing.ID)
 	}
 
 	cmd := exec.Command(exePath, args...)
@@ -465,28 +696,19 @@ func (gt *GameTracker) Launch(exePath string, args []string, gameID, title strin
 	}
 
 	pid := cmd.Process.Pid
-	procName := filepath.Base(exePath)
-
-	if gameID == "" {
-		gameID = strings.TrimSuffix(procName, filepath.Ext(procName))
-	}
-	if title == "" {
-		title = gameID
-	}
-
 	gt.startActiveSessionLocked(pid, procName, exePath, gameID, title)
 
 	// Detach child process so it survives tracker restart
 	go func() {
 		_ = cmd.Wait()
 		gt.mu.Lock()
-		if gt.running != nil && gt.running.PID == pid {
-			gt.stopActiveSessionLocked()
+		if g, ok := gt.runningGames[gameID]; ok && g.PID == pid {
+			gt.stopActiveSessionLocked(gameID)
 		}
 		gt.mu.Unlock()
 	}()
 
-	return gt.running, nil
+	return gt.runningGames[gameID], nil
 }
 
 // StopTracking forcefully stops monitoring the active game.
@@ -494,7 +716,9 @@ func (gt *GameTracker) StopTracking(gameID string) {
 	gt.mu.Lock()
 	defer gt.mu.Unlock()
 
-	if gt.running != nil && (gameID == "" || gt.running.ID == gameID) {
+	if gameID != "" {
+		gt.stopActiveSessionLocked(gameID)
+	} else {
 		gt.stopActiveSessionLocked()
 	}
 }
