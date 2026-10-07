@@ -369,5 +369,44 @@ describe('apiClient', () => {
     await expect(apiClient.get('/third')).rejects.toThrow()
     expect(refreshCalls).toBe(2)
   })
+
+  it('normalizes Django REST Framework validation errors into detail string', async () => {
+    const { apiClient } = await import('./client')
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+      const err = new Error('Request failed with status code 400') as unknown as {
+        response: {
+          data: { avatar_url?: string[]; non_field_errors?: string[] }
+          status: number
+          statusText: string
+          headers: Record<string, string>
+          config: InternalAxiosRequestConfig
+        }
+        config: InternalAxiosRequestConfig
+      }
+      err.response = {
+        data: {
+          avatar_url: ['Disallowed URL scheme in avatar_url.'],
+          non_field_errors: ['Invalid credentials.'],
+        },
+        status: 400,
+        statusText: 'Bad Request',
+        headers: { 'content-type': 'application/json' },
+        config,
+      }
+      err.config = config
+      throw err
+    }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
+
+    try {
+      await apiClient.patch('/auth/me', { avatarUrl: 'javascript:alert(1)' })
+      expect.unreachable('Should have failed')
+    } catch (e: unknown) {
+      const detail = (e as { response: { data: { detail: string } } }).response.data.detail
+      expect(detail).toContain('avatarUrl: Disallowed URL scheme in avatar_url.')
+      expect(detail).toContain('Invalid credentials.')
+    }
+  })
 })
 

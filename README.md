@@ -29,12 +29,12 @@ The entire local stack runs via Docker Compose with volume-mounted hot reloading
 ### Running All Services
 Using PowerShell (Windows):
 ```powershell
-./run.ps1
+./scripts/run.ps1
 ```
 
 Using Bash (macOS/Linux):
 ```bash
-./run.sh
+./scripts/run.sh
 # or
 make dev
 ```
@@ -69,12 +69,13 @@ Otix/
 ├── extensions/
 │   └── plugins/           # Canonical community JS extensions
 ├── deploy/                # Deployment configurations and VM provisioning scripts
+│   ├── pgbouncer/         # PgBouncer connection pooler configs
 │   └── plugin-host/       # Systemd and Supervisor service units
 ├── docs/                  # Architecture specs and feature implementation plans
 │   ├── plans/
 │   └── specs/
 ├── sample_data/           # Provider mock JSON payloads (IGDB, TMDB, Steam, etc.)
-├── scripts/               # Developer environment setup scripts
+├── scripts/               # Dev runners and automation scripts (run, start_node, start_worker)
 ├── store-assets/          # App store listing assets and application icons
 ├── docker-compose.yml     # Local dev compose stack
 ├── docker-compose.prod.yml# Production compose stack (PgBouncer + Nginx)

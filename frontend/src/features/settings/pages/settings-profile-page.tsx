@@ -477,9 +477,9 @@ export const SettingsProfilePage = () => {
       const { data } = await apiClient.patch('/auth/me', {
         username: username || null,
         bio: bio || null,
-        avatar_url: avatarUrl || null,
-        background_url: backgroundUrl || null,
-        integration_visibility: integrationVisibility,
+        avatarUrl: avatarUrl || null,
+        backgroundUrl: backgroundUrl || null,
+        integrationVisibility: integrationVisibility,
         country: country || null,
       })
       setBio(data.bio ?? '')
@@ -565,7 +565,7 @@ export const SettingsProfilePage = () => {
   const applyCoverEditor = async (url: string) => {
     setBackgroundUrl(url)
     try {
-      await apiClient.patch('/auth/me', { background_url: url || null })
+      await apiClient.patch('/auth/me', { backgroundUrl: url || null })
       refreshUser()
       queryClient.invalidateQueries({ queryKey: ['user'] })
       toast({
@@ -575,7 +575,8 @@ export const SettingsProfilePage = () => {
       })
     } catch (err: unknown) {
       console.error('Failed to auto-save cover:', err)
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      const data = (err as { response?: { data?: { detail?: string; backgroundUrl?: string[] } } })?.response?.data
+      const msg = data?.detail || (Array.isArray(data?.backgroundUrl) ? data.backgroundUrl.join(', ') : undefined)
       toast({
         title: 'Failed to save cover',
         description: typeof msg === 'string' ? msg : 'An error occurred while saving.',
@@ -587,7 +588,7 @@ export const SettingsProfilePage = () => {
   const applyAvatarEditor = async (url: string) => {
     setAvatarUrl(url)
     try {
-      await apiClient.patch('/auth/me', { avatar_url: url || null })
+      await apiClient.patch('/auth/me', { avatarUrl: url || null })
       refreshUser()
       queryClient.invalidateQueries({ queryKey: ['user'] })
       toast({
@@ -597,7 +598,8 @@ export const SettingsProfilePage = () => {
       })
     } catch (err: unknown) {
       console.error('Failed to auto-save avatar:', err)
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      const data = (err as { response?: { data?: { detail?: string; avatarUrl?: string[] } } })?.response?.data
+      const msg = data?.detail || (Array.isArray(data?.avatarUrl) ? data.avatarUrl.join(', ') : undefined)
       toast({
         title: 'Failed to save avatar',
         description: typeof msg === 'string' ? msg : 'An error occurred while saving.',
@@ -609,7 +611,7 @@ export const SettingsProfilePage = () => {
   const removeCover = async () => {
     setBackgroundUrl('')
     try {
-      await apiClient.patch('/auth/me', { background_url: null })
+      await apiClient.patch('/auth/me', { backgroundUrl: null })
       refreshUser()
       queryClient.invalidateQueries({ queryKey: ['user'] })
       toast({
@@ -625,7 +627,7 @@ export const SettingsProfilePage = () => {
   const removeAvatar = async () => {
     setAvatarUrl('')
     try {
-      await apiClient.patch('/auth/me', { avatar_url: null })
+      await apiClient.patch('/auth/me', { avatarUrl: null })
       refreshUser()
       queryClient.invalidateQueries({ queryKey: ['user'] })
       toast({

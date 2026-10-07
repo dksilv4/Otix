@@ -8,6 +8,7 @@ grouped by audience (identity vs. self) rather than one fat serializer.
 from rest_framework import serializers
 
 from apps.accounts.models import User
+from apps.accounts.models.user import MAX_AVATAR_URL_LENGTH, MAX_BACKGROUND_URL_LENGTH
 
 
 class UserIdentitySerializer(serializers.ModelSerializer):
@@ -75,6 +76,18 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     """
 
     email = serializers.EmailField(required=False, allow_blank=True)
+    avatar_url = serializers.CharField(
+        max_length=MAX_AVATAR_URL_LENGTH,
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+    )
+    background_url = serializers.CharField(
+        max_length=MAX_BACKGROUND_URL_LENGTH,
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+    )
 
     class Meta:
         model = User
@@ -108,8 +121,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return self._validate_safe_profile_url(value, "background_url")
 
     def _validate_safe_profile_url(self, value: str | None, field_name: str) -> str | None:
-        if not value:
-            return value
+        if not value or not value.strip():
+            return None
         val = value.strip()
         if val.startswith("/uploads/") or val.startswith("/api/v1/uploads/"):
             return val

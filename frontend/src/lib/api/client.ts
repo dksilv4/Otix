@@ -173,6 +173,22 @@ apiClient.interceptors.response.use(
             return field ? `${field}: ${e.msg}` : e.msg
           })
           .join('; ')
+      } else if (!data.detail && typeof data === 'object') {
+        // Normalize Django REST Framework validation errors (e.g. { avatarUrl: ['...'] })
+        const messages: string[] = []
+        for (const [key, val] of Object.entries(data)) {
+          if (Array.isArray(val)) {
+            const list = val.filter((item): item is string => typeof item === 'string')
+            if (list.length > 0) {
+              messages.push(key === 'nonFieldErrors' ? list.join(', ') : `${key}: ${list.join(', ')}`)
+            }
+          } else if (typeof val === 'string') {
+            messages.push(key === 'nonFieldErrors' ? val : `${key}: ${val}`)
+          }
+        }
+        if (messages.length > 0) {
+          data.detail = messages.join('; ')
+        }
       }
     }
 

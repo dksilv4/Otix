@@ -2,9 +2,9 @@
   "name": "otix",
   "private": true,
   "scripts": {
-    "dev": "powershell -ExecutionPolicy Bypass -File ./run.ps1",
-    "dev:bash": "bash ./run.sh",
-    "start": "powershell -ExecutionPolicy Bypass -File ./run.ps1",
+    "dev": "powershell -ExecutionPolicy Bypass -File ./scripts/run.ps1",
+    "dev:bash": "bash ./scripts/run.sh",
+    "start": "powershell -ExecutionPolicy Bypass -File ./scripts/run.ps1",
     "build:frontend": "npm --prefix frontend run build",
     "package:frontend": "npm --prefix frontend run package:dist",
     "build:images": "make build-images",
@@ -12,8 +12,8 @@
     "prod:down": "make prod-down",
     "test:desktop": "npm test --prefix desktop",
     "test:frontend": "npm test --prefix frontend",
-    "node:local": "powershell -ExecutionPolicy Bypass -File ./start_node_local.ps1",
-    "node:prod": "powershell -ExecutionPolicy Bypass -File ./start_node_prod.ps1"
+    "node:local": "powershell -ExecutionPolicy Bypass -File ./scripts/start_node_local.ps1",
+    "node:prod": "powershell -ExecutionPolicy Bypass -File ./scripts/start_node_prod.ps1"
   },
   "dependencies": {
     "headroom-ai": "^0.22.4",

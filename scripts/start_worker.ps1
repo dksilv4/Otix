@@ -60,7 +60,8 @@ if (-not $pythonExe) {
     exit 1
 }
 
-$scriptPath = Join-Path $PSScriptRoot "backend\scripts\admin_worker.py"
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$scriptPath = Join-Path $repoRoot "backend\scripts\admin_worker.py"
 if (-not (Test-Path $scriptPath)) {
     Write-Host "Error: Worker script not found at $scriptPath" -ForegroundColor Red
     exit 1

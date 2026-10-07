@@ -10,6 +10,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$RepoRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $RepoRoot
+
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "         OTIX DOCKER DEV RUNNER (HOT RELOAD)              " -ForegroundColor Cyan

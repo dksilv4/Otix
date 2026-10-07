@@ -3,10 +3,11 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKER_SCRIPT="$SCRIPT_DIR/backend/scripts/admin_worker.py"
-PID_FILE="$SCRIPT_DIR/.worker.pid"
-LOG_FILE="$SCRIPT_DIR/worker.log"
-VENV_DIR="$SCRIPT_DIR/.venv-worker"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORKER_SCRIPT="$REPO_ROOT/backend/scripts/admin_worker.py"
+PID_FILE="$REPO_ROOT/.worker.pid"
+LOG_FILE="$REPO_ROOT/worker.log"
+VENV_DIR="$REPO_ROOT/.venv-worker"
 
 # Configuration
 SERVER="${SERVER:-http://84.8.154.67:8000}"

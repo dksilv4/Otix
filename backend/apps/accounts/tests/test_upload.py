@@ -240,6 +240,33 @@ class UploadSecurityTests(UploadTestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["avatar_url"], "https://example.com/avatar.png")
 
+    def test_avatar_url_validation_accepts_local_uploads_path(self):
+        resp = self.client.patch(
+            "/api/v1/auth/me",
+            {"avatar_url": "/uploads/custom_avatar.png"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["avatar_url"], "/uploads/custom_avatar.png")
+
+    def test_avatar_url_validation_accepts_local_hostname_without_tld(self):
+        resp = self.client.patch(
+            "/api/v1/auth/me",
+            {"avatar_url": "http://nas:8080/uploads/custom_avatar.png"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["avatar_url"], "http://nas:8080/uploads/custom_avatar.png")
+
+    def test_avatar_url_validation_clears_on_empty_string(self):
+        resp = self.client.patch(
+            "/api/v1/auth/me",
+            {"avatar_url": ""},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(resp.json()["avatar_url"])
+
 
 class UploadServingTests(UploadTestCase):
     def test_serve_uploaded_file(self):

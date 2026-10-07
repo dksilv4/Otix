@@ -19,12 +19,12 @@ help: ## List targets
 
 # ── Full dev lifecycle (one terminal) ────────────────────────────────────
 dev: ## Run all services (backend, arr, otix node, frontend) in one terminal
-	powershell -ExecutionPolicy Bypass -File ./run.ps1
+	powershell -ExecutionPolicy Bypass -File ./scripts/run.ps1
 
 run: dev
 
 worker: ## Run local distributed compute worker to help production
-	powershell -ExecutionPolicy Bypass -File ./start_worker.ps1
+	powershell -ExecutionPolicy Bypass -File ./scripts/start_worker.ps1
 
 node-local: ## Run local Otix node (port 8090 -> localhost:8000)
 	powershell -ExecutionPolicy Bypass -File ./scripts/start_node_local.ps1

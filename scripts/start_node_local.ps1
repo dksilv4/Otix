@@ -23,11 +23,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Split-Path -Parent $PSScriptRoot
+
 if (-not $Config) {
-    $Config = Join-Path $PSScriptRoot "node\config.yaml"
+    $Config = Join-Path $repoRoot "node\config.yaml"
 }
 
-$nodeExe = Join-Path $PSScriptRoot "node\otix-node.exe"
+$nodeExe = Join-Path $repoRoot "node\otix-node.exe"
 if (-not (Test-Path $nodeExe)) {
     Write-Host "Error: otix-node binary not found at $nodeExe" -ForegroundColor Red
     exit 1
