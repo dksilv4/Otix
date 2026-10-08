@@ -22,6 +22,7 @@ import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPlug
 import { registerInstallerIPC } from './ipc/installer';
 import { rehydrateActiveInstalls } from './installer';
 import { registerGameDetectorIPC } from './ipc/game-detector';
+import { Cs2GsiManager } from './game/cs2-gsi';
 import { registerWindowIPC, notifyMaximizedChange } from './ipc/window';
 import { registerDesktopSettingsIPC } from './ipc/settings';
 import { loadDesktopSettings, applyDesktopSettings, getSettings } from './desktop-settings';
@@ -50,6 +51,7 @@ setDefaultAutoSelectFamily(false);
 
 let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
+let cs2GsiManager: Cs2GsiManager | null = null;
 let pluginManager: PluginManager | null = null;
 let permissionManager: PermissionManager | null = null;
 let fetchBridge: FetchWorkerBridge | null = null;
@@ -674,7 +676,16 @@ app.on('ready', async () => {
     setPluginCaller((pluginId, method, args) => pluginManager!.callPluginData(pluginId, method, args));
     permissionManager.setWebContents(mainWindow!.webContents);
     registerPluginIPC(pluginManager, mainWindow!, permissionManager);
-    registerGameDetectorIPC(gameDetector, pluginManager);
+    cs2GsiManager = new Cs2GsiManager();
+    cs2GsiManager.start().catch((err) => {
+      console.warn('[main] Failed to start CS2 GSI listener:', err);
+    });
+    cs2GsiManager.on('update', (state) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('game:cs2-gsi-update', state);
+      }
+    });
+    registerGameDetectorIPC(gameDetector, pluginManager, cs2GsiManager);
 
     // ── Initialize GameScanOrchestrator ──
     const orchestrator = new GameScanOrchestrator(pluginManager);
@@ -819,6 +830,7 @@ app.on('ready', async () => {
     console.log('[main] before-quit fired');
     mainWindow?.webContents.send('app:clean-quit');
     pluginManager?.shutdown().catch(() => {});
+    cs2GsiManager?.stop().catch(() => {});
     fetchBridge?.stop();
     try { closeDb() } catch (err) {
       console.error('[main] Failed to close database connections:', err);
@@ -845,6 +857,7 @@ app.on('window-all-closed', () => {
   console.log('[main] window-all-closed fired');
   gameDetector?.stopAll();
   pluginManager?.shutdown().catch(() => {});
+  cs2GsiManager?.stop().catch(() => {});
   fetchBridge?.stop();
   try { closeDb() } catch (err) {
     console.error('[main] Failed to close database connections:', err);

@@ -2,12 +2,14 @@ import { ipcMain, shell } from 'electron';
 import { spawn } from 'child_process';
 import path from 'path';
 import { GameDetector } from '../game/detector';
+import type { Cs2GsiManager } from '../game/cs2-gsi';
 import type { PluginManager } from '../plugin-runtime/manager';
 import type { LocalGame } from '../preload-api';
 
 export function registerGameDetectorIPC(
   gameDetector: GameDetector | null,
   pluginManager?: PluginManager,
+  cs2GsiManager?: Cs2GsiManager,
 ): void {
   // Launch game — accepts full LocalGame for tracking
   ipcMain.handle('launcher:launch-game', async (_, game: LocalGame) => {
@@ -106,5 +108,13 @@ export function registerGameDetectorIPC(
 
   ipcMain.handle('game:get-library', () => {
     return gameDetector?.getLibrary() ?? [];
+  });
+
+  ipcMain.handle('game:get-cs2-state', () => {
+    return cs2GsiManager?.getState() ?? null;
+  });
+
+  ipcMain.handle('game:setup-cs2-gsi', () => {
+    return cs2GsiManager?.setupCs2GsiConfig() ?? { success: false, message: 'CS2 GSI manager not initialized' };
   });
 }

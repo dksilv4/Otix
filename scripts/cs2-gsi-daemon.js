@@ -1,0 +1,223 @@
+const http = require('http');
+
+let latestState = null;
+
+// Clean map name helper
+function cleanMapName(raw) {
+  if (!raw) return 'Unknown Map';
+  const lower = raw.toLowerCase().trim();
+  const mapDictionary = {
+    de_mirage: 'Mirage',
+    de_dust2: 'Dust II',
+    de_inferno: 'Inferno',
+    de_nuke: 'Nuke',
+    de_ancient: 'Ancient',
+    de_anubis: 'Anubis',
+    de_vertigo: 'Vertigo',
+    de_overpass: 'Overpass',
+    de_train: 'Train',
+    cs_office: 'Office',
+    cs_italy: 'Italy',
+  };
+  if (mapDictionary[lower]) return mapDictionary[lower];
+  return raw.replace(/^(de_|cs_|ar_)/i, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+let localPlayerCache = {
+  steamid: null,
+  name: '',
+  team: '',
+  kills: 0,
+  deaths: 0,
+  assists: 0,
+  mvps: 0,
+};
+
+function handlePayload(data) {
+  if (!data || typeof data !== 'object') return;
+
+  const provider = data.provider;
+  const player = data.player;
+  const round = data.round;
+  const map = data.map;
+
+  const localSteamId = provider?.steamid ? String(provider.steamid) : null;
+  const observedSteamId = player?.steamid ? String(player.steamid) : null;
+
+  // Determine if the local user is spectating another player
+  const isSpectatorTeam = player?.team === 'spectator' || player?.activity === 'spectating';
+  const isWatchingOther = Boolean(localSteamId && observedSteamId && localSteamId !== observedSteamId);
+  const isSpectating = isSpectatorTeam || isWatchingOther;
+
+  const activity = player?.activity || (map ? 'playing' : 'menu');
+  const isInGame = Boolean(map && map.name && activity !== 'menu');
+
+  if (!isInGame) {
+    // Reset or preserve menu state
+    latestState = {
+      activity,
+      isInGame: false,
+      playerName: localPlayerCache.name || player?.name || undefined,
+      rawMapName: map?.name || '',
+      mapName: map?.name ? cleanMapName(map.name) : '',
+      mode: map?.mode || '',
+      phase: 'menu',
+      round: 0,
+      scoreCt: 0,
+      scoreT: 0,
+      health: 0,
+      armor: 0,
+      helmet: false,
+      team: localPlayerCache.team || player?.team || '',
+      kills: 0,
+      deaths: 0,
+      assists: 0,
+      mvps: 0,
+      roundKills: 0,
+      bombState: null,
+      isSpectating: false,
+      timestamp: Date.now(),
+    };
+  } else {
+    // When playing as oneself, update the local cache
+    if (!isSpectating) {
+      if (observedSteamId) localPlayerCache.steamid = observedSteamId;
+      if (player?.name) localPlayerCache.name = player.name;
+      if (player?.team && player.team !== 'spectator') localPlayerCache.team = player.team;
+      if (player?.match_stats) {
+        localPlayerCache.kills = player.match_stats.kills ?? 0;
+        localPlayerCache.deaths = player.match_stats.deaths ?? 0;
+        localPlayerCache.assists = player.match_stats.assists ?? 0;
+        localPlayerCache.mvps = player.match_stats.mvps ?? 0;
+      }
+      if (player?.state?.money != null) {
+        localPlayerCache.money = player.state.money;
+      }
+    }
+
+    const rawMapName = map.name || '';
+    const mapName = cleanMapName(rawMapName);
+    const scoreCt = map.team_ct?.score ?? 0;
+    const scoreT = map.team_t?.score ?? 0;
+    const currentRound = map.round ?? 0;
+    const phase = map.phase || 'live';
+    const mode = map.mode || '';
+
+    // NEVER sync health & armor of the player being watched!
+    const health = isSpectating ? 0 : (player?.state?.health ?? 0);
+    const armor = isSpectating ? 0 : (player?.state?.armor ?? 0);
+    const helmet = isSpectating ? false : Boolean(player?.state?.helmet);
+
+    // Keep the local player's own stats instead of the spectated player's stats
+    const team = isSpectating ? (localPlayerCache.team || '') : (player?.team || '');
+    const kills = isSpectating ? localPlayerCache.kills : (player?.match_stats?.kills ?? 0);
+    const deaths = isSpectating ? localPlayerCache.deaths : (player?.match_stats?.deaths ?? 0);
+    const assists = isSpectating ? localPlayerCache.assists : (player?.match_stats?.assists ?? 0);
+    const mvps = isSpectating ? localPlayerCache.mvps : (player?.match_stats?.mvps ?? 0);
+    const roundKills = isSpectating ? 0 : (player?.state?.round_kills ?? 0);
+    const playerName = localPlayerCache.name || player?.name || undefined;
+    const bombState = round?.bomb || null;
+
+    // Extract live loadout from player.weapons if available
+    let loadout = undefined;
+    if (player?.weapons && typeof player.weapons === 'object') {
+      const weaponsList = Object.values(player.weapons);
+      let primary = undefined;
+      let secondary = undefined;
+      let knife = 'Knife';
+      let hasDefuser = Boolean(player?.state?.defusekit);
+      let hasBomb = false;
+
+      for (const w of weaponsList) {
+        const type = (w.type || '').toLowerCase();
+        const name = (w.name || '');
+        if (type === 'c4' || name === 'weapon_c4') {
+          hasBomb = true;
+        } else if (type === 'knife' || name.startsWith('weapon_knife')) {
+          knife = name.replace(/^weapon_knife_/i, '').replace(/^weapon_/i, '') || 'Knife';
+        } else if (type === 'pistol') {
+          secondary = name.replace(/^weapon_/i, '').replace(/_silencer$/i, '-S');
+        } else if (['rifle', 'sniperrifle', 'submachinegun', 'shotgun', 'machinegun'].includes(type)) {
+          primary = name.replace(/^weapon_/i, '').replace(/_silencer$/i, '-S');
+        }
+      }
+
+      loadout = {
+        primary,
+        secondary,
+        knife,
+        hasDefuser,
+        hasBomb,
+      };
+    }
+
+    latestState = {
+      activity: 'playing',
+      isInGame: true,
+      playerName,
+      isSpectating,
+      rawMapName,
+      mapName,
+      mode,
+      phase,
+      round: currentRound,
+      scoreCt,
+      scoreT,
+      health,
+      armor,
+      helmet,
+      team,
+      kills,
+      deaths,
+      assists,
+      mvps,
+      roundKills,
+      bombState,
+      money: isSpectating ? (localPlayerCache.money ?? 0) : (player?.state?.money ?? 0),
+      loadout,
+      timestamp: Date.now(),
+    };
+  }
+}
+
+const server = http.createServer((req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  if (req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > 2e6) req.destroy();
+    });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        handlePayload(data);
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end('OK');
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('Invalid JSON');
+      }
+    });
+  } else if (req.method === 'GET' && req.url === '/api/cs2-gsi/state') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(latestState));
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+});
+
+const PORT = 5000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`[CS2 GSI Daemon] Listening on http://0.0.0.0:${PORT} and exposing /api/cs2-gsi/state`);
+});

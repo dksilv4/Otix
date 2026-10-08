@@ -44,6 +44,7 @@ otix-frontend-dist.tar.gz
 .worktrees/
 
 # Node service local storage and caches
+/storage/
 /node/storage/
 /node/storage-prod/
 /storage-prod/

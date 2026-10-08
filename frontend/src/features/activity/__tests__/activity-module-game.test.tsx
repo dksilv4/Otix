@@ -6,10 +6,23 @@ import * as launcherHooks from '@/features/launcher'
 vi.mock('@/features/launcher', () => ({
   useMatchedRunningGame: vi.fn(),
   useGamingSessionXp: vi.fn().mockReturnValue({ sessionXp: 0, dailyXp: 0, isGaming: false }),
+  useCs2GameState: vi.fn().mockReturnValue({ gameState: null, isCs2Active: false }),
+  isCs2Game: vi.fn().mockReturnValue(false),
+  formatCs2Phase: vi.fn().mockReturnValue('Live'),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, params, className }: any) => (
+  Link: ({
+    children,
+    to,
+    params,
+    className,
+  }: {
+    children: React.ReactNode
+    to: string
+    params?: Record<string, unknown>
+    className?: string
+  }) => (
     <a href={to} data-params={JSON.stringify(params)} className={className}>
       {children}
     </a>
@@ -109,5 +122,55 @@ describe('ActivityModuleGame', () => {
 
     render(<ActivityModuleGame />)
     expect(screen.getByText('+30 XP')).toBeInTheDocument()
+  })
+
+  it('renders live CS2 telemetry card when game is CS2 and GSI data exists', () => {
+    vi.mocked(launcherHooks.isCs2Game).mockReturnValue(true)
+    vi.mocked(launcherHooks.useCs2GameState).mockReturnValue({
+      gameState: {
+        rawMapName: 'de_mirage',
+        mapName: 'Mirage',
+        activity: 'playing',
+        isInGame: true,
+        mode: 'competitive',
+        phase: 'live',
+        round: 14,
+        scoreCt: 8,
+        scoreT: 6,
+        health: 90,
+        armor: 100,
+        helmet: true,
+        team: 'CT',
+        kills: 17,
+        deaths: 7,
+        assists: 3,
+        mvps: 2,
+        roundKills: 1,
+        bombState: null,
+        timestamp: Date.now(),
+      },
+      isCs2Active: true,
+    })
+
+    vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
+      runningGame: {
+        game: { id: '730', title: 'Counter-Strike 2', platform: 'steam' },
+        startTime: Date.now() - 1200000,
+        launchedByOtix: false,
+      },
+      elapsedMs: 1200000,
+      matchedGame: {
+        id: '730',
+        title: 'Counter-Strike 2',
+      },
+      isMatching: false,
+    })
+
+    render(<ActivityModuleGame />)
+
+    expect(screen.getByTestId('cs2-live-telemetry')).toBeInTheDocument()
+    expect(screen.getByText('Mirage')).toBeInTheDocument()
+    expect(screen.getByText('CT 8 : 6 T')).toBeInTheDocument()
+    expect(screen.getByText('17K / 7D')).toBeInTheDocument()
   })
 })

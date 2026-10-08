@@ -82,7 +82,11 @@ from apps.social.services.user_stats import (
     get_user_stats,
 )
 from apps.social.services.xp import (
+    GAMING_COMPLETION_XP,
     GAMING_HEARTBEAT_INTERVAL_SECONDS,
+    GAMING_MAX_KDR_MULTIPLIER,
+    GAMING_MIN_KDR_MULTIPLIER,
+    GAMING_WIN_XP,
     GAMING_XP_PER_TICK,
     award_xp,
     calculate_level,
@@ -155,6 +159,10 @@ __all__ = [
     "upsert_rating",
     "vote_review",
     "record_gaming_heartbeat",
-    "GAMING_XP_PER_TICK",
+    "GAMING_COMPLETION_XP",
     "GAMING_HEARTBEAT_INTERVAL_SECONDS",
+    "GAMING_MAX_KDR_MULTIPLIER",
+    "GAMING_MIN_KDR_MULTIPLIER",
+    "GAMING_WIN_XP",
+    "GAMING_XP_PER_TICK",
 ]

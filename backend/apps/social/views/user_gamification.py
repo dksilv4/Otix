@@ -115,6 +115,20 @@ class GamingHeartbeatView(APIView):
 
         session_id = str(data.get("session_id", "")).strip() or None
         is_final = bool(data.get("is_final", False))
+        match_completed = bool(data.get("match_completed", False))
+        match_won = bool(data.get("match_won", False))
+        try:
+            kills = max(0, int(data.get("kills", 0)))
+        except (ValueError, TypeError):
+            kills = 0
+        try:
+            deaths = max(0, int(data.get("deaths", 0)))
+        except (ValueError, TypeError):
+            deaths = 0
+        try:
+            assists = max(0, int(data.get("assists", 0)))
+        except (ValueError, TypeError):
+            assists = 0
 
         if not game_id:
             return Response(
@@ -129,5 +143,10 @@ class GamingHeartbeatView(APIView):
             duration_seconds=duration_seconds,
             session_id=session_id,
             is_final=is_final,
+            match_completed=match_completed,
+            match_won=match_won,
+            kills=kills,
+            deaths=deaths,
+            assists=assists,
         )
         return Response(result, status=status.HTTP_200_OK)

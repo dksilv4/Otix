@@ -46,6 +46,9 @@
     --color-media-show: var(--media-show);
     --color-media-game: var(--media-game);
     --color-media-music: var(--media-music);
+
+    --color-cs2-ct: var(--cs2-ct);
+    --color-cs2-t: var(--cs2-t);
 }
 
 :root {
@@ -77,6 +80,9 @@
     --media-show: oklch(0.546 0.245 262.881);
     --media-game: oklch(0.548 0.21 303.937);
     --media-music: oklch(0.72 0.17 75);
+
+    --cs2-ct: #5d79ae;
+    --cs2-t: #de9b35;
 
     --sidebar: var(--dk-surface-raised);
     --sidebar-foreground: oklch(0.141 0.005 285.823);
@@ -118,6 +124,9 @@
     --media-show: oklch(0.623 0.214 259.815);
     --media-game: oklch(0.624 0.21 306.551);
     --media-music: oklch(0.78 0.16 75);
+
+    --cs2-ct: #87a2d4;
+    --cs2-t: #de9b35;
 
     --sidebar: var(--dk-surface-raised);
     --sidebar-foreground: oklch(0.985 0 0);

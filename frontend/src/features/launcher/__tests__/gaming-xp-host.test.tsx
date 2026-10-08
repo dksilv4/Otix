@@ -21,14 +21,24 @@ vi.mock('../hooks/use-running-game', () => ({
   useRunningGame: vi.fn(),
 }))
 
+vi.mock('../hooks/use-cs2-game-state', () => ({
+  useCs2GameState: vi.fn(),
+}))
+
 vi.mock('@/features/auth/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))
+
+import * as cs2Hooks from '../hooks/use-cs2-game-state'
 
 describe('GamingXpHost', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetGamingSessionState()
+    vi.mocked(cs2Hooks.useCs2GameState).mockReturnValue({
+      gameState: null,
+      isCs2Active: false,
+    })
     vi.mocked(authHooks.useAuth).mockReturnValue({
       user: { id: 1, username: 'alice', totalXp: 100 } as any,
     } as any)
@@ -146,7 +156,86 @@ describe('GamingXpHost', () => {
           isFinal: true,
         }),
       )
-      expect(xpToast.showXPToast).toHaveBeenCalledWith(10, 'Gaming: Elden Ring', 100)
+      expect(xpToast.showXPToast).toHaveBeenCalledWith(10, 'Elden Ring', 100)
+    })
+  })
+
+  it('rewards XP with win bonus and KDR multiplier on match completion (gameover)', async () => {
+    const game = { id: 'cs2', title: 'Counter-Strike 2', platform: 'pc' }
+    vi.mocked(runningHooks.useRunningGame).mockReturnValue({
+      runningGame: {
+        game,
+        startTime: 1000000,
+        launchedByOtix: true,
+      },
+      elapsedMs: 1200000, // 20 mins
+    })
+
+    vi.mocked(apiClient.post).mockResolvedValueOnce({
+      data: {
+        status: 'ok',
+        xpAwarded: 240,
+        totalXp: 340,
+        level: 2,
+        sessionXp: 20,
+        dailyXp: 240,
+        breakdown: {
+          baseXp: 20,
+          completionXp: 50,
+          winXp: 50,
+          kdr: 2.0,
+          kdrMultiplier: 2.0,
+          totalCalculated: 240,
+        },
+      },
+    })
+
+    // CS2 match completes: team CT won 13-9, player has 20 kills, 10 deaths (2.0 KDR)
+    vi.mocked(cs2Hooks.useCs2GameState).mockReturnValue({
+      gameState: {
+        activity: 'playing',
+        isInGame: true,
+        phase: 'gameover',
+        mapName: 'Mirage',
+        round: 22,
+        scoreCt: 13,
+        scoreT: 9,
+        team: 'CT',
+        kills: 20,
+        deaths: 10,
+        assists: 5,
+        mvps: 3,
+        health: 100,
+        armor: 100,
+        helmet: true,
+        rawMapName: 'de_mirage',
+        mode: 'competitive',
+        roundKills: 0,
+        timestamp: Date.now(),
+      },
+      isCs2Active: true,
+    })
+
+    render(<GamingXpHost />)
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/users/me/gaming-heartbeat',
+        expect.objectContaining({
+          gameId: 'cs2',
+          gameTitle: 'Counter-Strike 2',
+          isFinal: false,
+          matchCompleted: true,
+          matchWon: true,
+          kills: 20,
+          deaths: 10,
+        }),
+      )
+      expect(xpToast.showXPToast).toHaveBeenCalledWith(
+        240,
+        'Counter-Strike 2 · Victory · 2x KDR',
+        100,
+      )
     })
   })
 })

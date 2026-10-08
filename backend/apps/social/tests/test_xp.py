@@ -334,3 +334,96 @@ class XpSystemTests(TestCase):
         self.assertIn("xp_awarded", data)
         self.assertIn("session_xp", data)
         self.assertIn("total_xp", data)
+
+    def test_record_gaming_heartbeat_with_match_completion_and_win(self) -> None:
+        from apps.social.services import record_gaming_heartbeat
+
+        # 300 seconds = 5 base XP. +50 completion + 50 win = 105 XP awarded
+        res = record_gaming_heartbeat(
+            user_id=self.user1.id,
+            game_id="cs2",
+            game_title="Counter-Strike 2",
+            duration_seconds=300,
+            session_id="cs2-match-1",
+            is_final=True,
+            match_completed=True,
+            match_won=True,
+        )
+        self.assertEqual(res["status"], "ok")
+        self.assertEqual(res["xp_awarded"], 105)
+        self.assertEqual(res["breakdown"]["base_xp"], 5)
+        self.assertEqual(res["breakdown"]["completion_xp"], 50)
+        self.assertEqual(res["breakdown"]["win_xp"], 50)
+        self.assertEqual(res["breakdown"]["kdr_multiplier"], 1.0)
+
+    def test_record_gaming_heartbeat_with_kdr_multiplier(self) -> None:
+        from apps.social.services import record_gaming_heartbeat
+
+        # 300 seconds (5 base XP) + 50 completion + 50 win = 105 XP.
+        # 20 kills, 10 deaths -> KDR 2.0x -> 105 * 2.0 = 210 XP
+        res = record_gaming_heartbeat(
+            user_id=self.user1.id,
+            game_id="cs2",
+            game_title="Counter-Strike 2",
+            duration_seconds=300,
+            session_id="cs2-kdr-match",
+            is_final=True,
+            match_completed=True,
+            match_won=True,
+            kills=20,
+            deaths=10,
+        )
+        self.assertEqual(res["status"], "ok")
+        self.assertEqual(res["xp_awarded"], 210)
+        self.assertEqual(res["breakdown"]["kdr"], 2.0)
+        self.assertEqual(res["breakdown"]["kdr_multiplier"], 2.0)
+
+    def test_record_gaming_heartbeat_kdr_floor_protection(self) -> None:
+        from apps.social.services import record_gaming_heartbeat
+
+        # 300 seconds (5 base XP) + 50 completion + 0 win = 55 XP.
+        # 2 kills, 10 deaths -> KDR 0.2x. Floored at 1.0x so user is never penalized below baseline!
+        res = record_gaming_heartbeat(
+            user_id=self.user1.id,
+            game_id="cs2",
+            game_title="Counter-Strike 2",
+            duration_seconds=300,
+            session_id="cs2-floor-match",
+            is_final=True,
+            match_completed=True,
+            match_won=False,
+            kills=2,
+            deaths=10,
+        )
+        self.assertEqual(res["status"], "ok")
+        self.assertEqual(res["xp_awarded"], 55)
+        self.assertEqual(res["breakdown"]["kdr"], 0.2)
+        self.assertEqual(res["breakdown"]["kdr_multiplier"], 1.0)
+
+    def test_gaming_heartbeat_api_endpoint_with_match_stats(self) -> None:
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        client.force_authenticate(user=self.user1)
+
+        resp = client.post(
+            "/api/v1/users/me/gaming-heartbeat",
+            {
+                "game_id": "cs2",
+                "game_title": "Counter-Strike 2",
+                "duration_seconds": 600,
+                "session_id": "api-match-complete",
+                "is_final": True,
+                "match_completed": True,
+                "match_won": True,
+                "kills": 16,
+                "deaths": 8,
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], "ok")
+        # 10 base + 50 completion + 50 win = 110. 16/8 = 2.0 KDR -> 220 XP awarded!
+        self.assertEqual(data["xp_awarded"], 220)
+        self.assertEqual(data["breakdown"]["kdr_multiplier"], 2.0)

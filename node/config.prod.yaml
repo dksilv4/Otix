@@ -2,11 +2,13 @@ server:
     name: Node ID:1 (Prod)
     port: 8091
     host: 0.0.0.0
-    auth_token: ""
+    auth_token: a7445796848d046ba81f97568ce4d8adf45a80492eb1222a
     registry_url: https://otix.app/api
     enable_upnp: false
     enable_heartbeat: true
     downloads_path: ./storage-prod/downloads
+    claimed: true
+    claimed_by: admin
     write_otix_after_scan: true
     download_otix_images: false
 game_libraries:

@@ -105,6 +105,40 @@ export interface RunningGameData {
   shareEligible?: boolean
 }
 
+export interface Cs2LiveState {
+  activity: 'menu' | 'playing' | 'textinput' | string
+  isInGame: boolean
+  playerName?: string
+  rawMapName: string
+  mapName: string
+  mode: string
+  phase: string
+  round: number
+  scoreCt: number
+  scoreT: number
+  health: number
+  armor: number
+  helmet: boolean
+  team: string
+  kills: number
+  deaths: number
+  assists: number
+  mvps: number
+  roundKills: number
+  bombState?: 'planted' | 'defused' | 'exploded' | null
+  isSpectating?: boolean
+  spectatingPlayerName?: string
+  money?: number
+  loadout?: {
+    primary?: string
+    secondary?: string
+    knife?: string
+    hasDefuser?: boolean
+    hasBomb?: boolean
+  }
+  timestamp: number
+}
+
 export interface CloudSettings {
   gameId: string
   autoSync: boolean
@@ -239,6 +273,11 @@ export interface DesktopAPI {
   fixFpsPermissions: () => Promise<{ success: boolean; needRestart?: boolean; error?: string }>
   onFpsPermissionNeeded: (cb: () => void) => () => void
   onCleanQuit: (cb: () => void) => () => void
+
+  // CS2 Live Game State Integration
+  getCs2GameState?: () => Promise<Cs2LiveState | null>
+  onCs2StateUpdate?: (cb: (data: Cs2LiveState | null) => void) => () => void
+  setupCs2Gsi?: () => Promise<{ success: boolean; path?: string; message?: string }>
 
   // Save sync
   saveDiscoverForGame(gameId: string, title: string): Promise<SaveDiscoverResult>

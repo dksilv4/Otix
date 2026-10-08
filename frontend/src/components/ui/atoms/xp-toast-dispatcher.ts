@@ -3,6 +3,7 @@ import { getLevelTitle } from '@user/utils'
 export interface XPToast {
   id: number
   amount: number
+  reason?: string
   isLevelUp?: boolean
   level?: number
   levelTitle?: string
@@ -20,12 +21,13 @@ export const xpGainListeners: Set<(amount: number) => void> = new Set()
 
 export function addXPToast(
   amount: number,
-  options?: { isLevelUp?: boolean; level?: number; levelTitle?: string },
+  options?: { reason?: string; isLevelUp?: boolean; level?: number; levelTitle?: string },
 ) {
   const id = ++toastId
   const toast: XPToast = {
     id,
     amount,
+    reason: options?.reason,
     isLevelUp: options?.isLevelUp,
     level: options?.level,
     levelTitle: options?.levelTitle,
@@ -56,12 +58,19 @@ export function showLevelUpToast(level: number, title?: string) {
   })
 }
 
-export function showXPToast(amount: number, currentTotalXp?: number) {
-  addXPToast(amount)
+export function showXPToast(
+  amount: number,
+  reasonOrCurrentTotalXp?: string | number,
+  currentTotalXp?: number,
+) {
+  const reason = typeof reasonOrCurrentTotalXp === 'string' ? reasonOrCurrentTotalXp : undefined
+  const totalXp = typeof reasonOrCurrentTotalXp === 'number' ? reasonOrCurrentTotalXp : currentTotalXp
 
-  if (currentTotalXp !== undefined && currentTotalXp >= 0) {
-    const oldLevel = Math.floor(currentTotalXp / 300) + 1
-    const newLevel = Math.floor((currentTotalXp + amount) / 300) + 1
+  addXPToast(amount, { reason })
+
+  if (totalXp !== undefined && totalXp >= 0) {
+    const oldLevel = Math.floor(totalXp / 300) + 1
+    const newLevel = Math.floor((totalXp + amount) / 300) + 1
     if (newLevel > oldLevel) {
       showLevelUpToast(newLevel, getLevelTitle(newLevel))
     }

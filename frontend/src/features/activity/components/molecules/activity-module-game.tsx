@@ -1,8 +1,9 @@
 import { Gamepad2, Clock, Star, ExternalLink, Activity, Zap } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useMatchedRunningGame, useGamingSessionXp } from '@/features/launcher'
+import { useMatchedRunningGame, useGamingSessionXp, useCs2GameState } from '@/features/launcher'
 import { formatDuration } from '@/lib/utils'
 import { ActivityModuleSection } from './activity-module-section'
+import { ActivityModuleCs2Telemetry } from './activity-module-cs2-telemetry'
 
 interface ActivityModuleGameProps {
   onClose?: () => void
@@ -12,6 +13,7 @@ interface ActivityModuleGameProps {
 export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) => {
   const { runningGame, elapsedMs, matchedGame } = useMatchedRunningGame()
   const { sessionXp } = useGamingSessionXp()
+  const { gameState } = useCs2GameState()
 
   if (!runningGame) return null
 
@@ -57,15 +59,11 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
               <Gamepad2 size={24} className="text-white/30" />
             </div>
           )}
-          <div className="absolute top-1.5 right-1.5">
-            <span className="block w-2 h-2 rounded-full bg-emerald-400 shadow-sm" />
-          </div>
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-1 mb-1">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
               Now Playing
             </span>
             {matchedGame?.rating != null && (
@@ -123,6 +121,13 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
           </div>
         </div>
       </div>
+
+      {/* Live CS2 GSI Telemetry — Full-width dedicated section */}
+      {gameState && (
+        <div className="w-full mt-3">
+          <ActivityModuleCs2Telemetry state={gameState} />
+        </div>
+      )}
     </ActivityModuleSection>
   )
 };

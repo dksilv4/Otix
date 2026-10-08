@@ -35,6 +35,10 @@ GAMING_SECONDS_PER_XP = 60
 GAMING_XP_PER_MINUTE = 1
 GAMING_HEARTBEAT_INTERVAL_SECONDS = 300  # Periodic heartbeat ping interval
 GAMING_XP_PER_TICK = 5                   # Legacy alias (5 minutes = 5 XP)
+GAMING_COMPLETION_XP = 50                # Extra XP for completing a match/game while on Otix
+GAMING_WIN_XP = 50                       # Extra XP for match victory
+GAMING_MIN_KDR_MULTIPLIER = 1.0          # Minimum KDR multiplier floor
+GAMING_MAX_KDR_MULTIPLIER = 4.0          # Maximum KDR multiplier cap
 
 # Activities & Checks
 WORKOUT_COMPLETE = 100
@@ -133,8 +137,13 @@ def record_gaming_heartbeat(
     duration_seconds: int,
     session_id: str | None = None,
     is_final: bool = False,
+    match_completed: bool = False,
+    match_won: bool = False,
+    kills: int = 0,
+    deaths: int = 0,
+    assists: int = 0,
 ) -> dict:
-    """Record an active gaming heartbeat, award XP for qualified time chunks, and enforce caps."""
+    """Record an active gaming heartbeat, award XP for gameplay time, match completion, wins, and KDR multiplier."""
     user_model = get_user_model()
     user = user_model.objects.filter(pk=user_id).first()
     if not user:
@@ -147,6 +156,7 @@ def record_gaming_heartbeat(
             "level_title": "Novice",
             "session_xp": 0,
             "daily_xp": 0,
+            "breakdown": None,
         }
 
     duration_seconds = max(0, int(duration_seconds))
@@ -160,21 +170,51 @@ def record_gaming_heartbeat(
         "last_awarded_seconds": 0,
         "session_xp": 0,
         "awarded_xp": 0,
+        "time_xp_awarded": 0,
     }
+
     # 1 XP per minute (60 seconds)
-    session_xp = duration_seconds // GAMING_SECONDS_PER_XP
-    already_awarded_xp = int(sess_data.get("awarded_xp", 0))
+    total_time_xp = duration_seconds // GAMING_SECONDS_PER_XP
+    already_time_xp = int(sess_data.get("time_xp_awarded", sess_data.get("awarded_xp", 0)))
+    unawarded_time_xp = max(0, total_time_xp - already_time_xp)
+
+    # Compute KDR and KDR multiplier
+    kills = max(0, int(kills))
+    deaths = max(0, int(deaths))
+    assists = max(0, int(assists))
+    if kills > 0 or deaths > 0:
+        raw_kdr = round(kills / max(1, deaths), 2)
+        kdr_multiplier = round(
+            min(GAMING_MAX_KDR_MULTIPLIER, max(GAMING_MIN_KDR_MULTIPLIER, raw_kdr)), 2
+        )
+    else:
+        raw_kdr = 1.0
+        kdr_multiplier = 1.0
+
+    completion_xp = GAMING_COMPLETION_XP if match_completed else 0
+    win_xp = GAMING_WIN_XP if match_won else 0
 
     daily_xp = int(cache.get(cache_daily_key, 0))
     new_total_xp = user.total_xp
     xp_to_award = 0
 
-    # Only reward XP at the end of the session (is_final=True)
-    if is_final:
-        xp_to_award = max(0, session_xp - already_awarded_xp)
+    # Award XP when a match is completed or at the end of the session
+    if is_final or match_completed:
+        subtotal = unawarded_time_xp + completion_xp + win_xp
+        xp_to_award = int(round(subtotal * kdr_multiplier))
+
         if xp_to_award > 0:
-            new_total_xp = award_xp(user_id, xp_to_award, reason=f"gaming_{game_title[:30]}")
-            already_awarded_xp += xp_to_award
+            reason_parts = [f"gaming_{game_title[:20]}"]
+            if match_completed:
+                reason_parts.append("completed")
+            if match_won:
+                reason_parts.append("win")
+            if kdr_multiplier > 1.0:
+                reason_parts.append(f"{kdr_multiplier}kdr")
+
+            new_total_xp = award_xp(user_id, xp_to_award, reason="_".join(reason_parts))
+            sess_data["awarded_xp"] = int(sess_data.get("awarded_xp", 0)) + xp_to_award
+            sess_data["time_xp_awarded"] = total_time_xp
             daily_xp += xp_to_award
             cache.set(cache_daily_key, daily_xp, timeout=86400)
 
@@ -190,8 +230,9 @@ def record_gaming_heartbeat(
         cache_sess_key,
         {
             "last_awarded_seconds": duration_seconds,
-            "session_xp": session_xp,
-            "awarded_xp": already_awarded_xp,
+            "session_xp": total_time_xp,
+            "awarded_xp": sess_data.get("awarded_xp", 0),
+            "time_xp_awarded": sess_data.get("time_xp_awarded", 0),
         },
         timeout=86400,
     )
@@ -204,6 +245,14 @@ def record_gaming_heartbeat(
         "total_xp": new_total_xp,
         "level": new_level,
         "level_title": new_title,
-        "session_xp": session_xp,
+        "session_xp": total_time_xp,
         "daily_xp": daily_xp,
+        "breakdown": {
+            "base_xp": unawarded_time_xp if (is_final or match_completed) else total_time_xp,
+            "completion_xp": completion_xp,
+            "win_xp": win_xp,
+            "kdr": raw_kdr,
+            "kdr_multiplier": kdr_multiplier,
+            "total_calculated": xp_to_award,
+        },
     }

@@ -148,6 +148,13 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.on('game:sessions-updated', handler);
     return () => ipcRenderer.removeListener('game:sessions-updated', handler);
   },
+  getCs2GameState: () => ipcRenderer.invoke('game:get-cs2-state'),
+  setupCs2Gsi: () => ipcRenderer.invoke('game:setup-cs2-gsi'),
+  onCs2StateUpdate: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('game:cs2-gsi-update', handler);
+    return () => ipcRenderer.removeListener('game:cs2-gsi-update', handler);
+  },
   fixFpsPermissions: () => ipcRenderer.invoke('fps:fix-permissions'),
   onFpsPermissionNeeded: (callback: () => void) => {
     const handler = () => callback();

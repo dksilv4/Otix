@@ -7,6 +7,9 @@ import { RootLayout } from "@/features/_config/components/layout/root-layout"
 const LogoLoadingTestPage = lazy(() =>
   import("@/pages/logo-loading-test-page").then((m) => ({ default: m.LogoLoadingTestPage })),
 )
+const TelemetryTestPage = lazy(() =>
+  import("@/pages/telemetry-test-page").then((m) => ({ default: m.TelemetryTestPage })),
+)
 const TermsPage = lazy(() =>
   import("@/pages/terms-page").then((m) => ({ default: m.TermsPage })),
 )
@@ -42,6 +45,12 @@ const logoLoadingTestRoute = createRoute({
   component: LogoLoadingTestPage,
 })
 
+const telemetryTestRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/telemetry",
+  component: TelemetryTestPage,
+})
+
 const termsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/terms",
@@ -56,6 +65,7 @@ const privacyRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   logoLoadingTestRoute,
+  telemetryTestRoute,
   termsRoute,
   privacyRoute,
   ...createAuthRoutes(rootRoute),

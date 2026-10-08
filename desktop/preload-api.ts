@@ -140,6 +140,31 @@ export interface LauncherScanResult {
   error?: string;
 }
 
+export interface Cs2LiveState {
+  activity: 'menu' | 'playing' | 'textinput' | string;
+  isInGame: boolean;
+  playerName?: string;
+  rawMapName: string;
+  mapName: string;
+  mode: string;
+  phase: string;
+  round: number;
+  scoreCt: number;
+  scoreT: number;
+  health: number;
+  armor: number;
+  helmet: boolean;
+  team: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  mvps: number;
+  roundKills: number;
+  bombState?: 'planted' | 'defused' | 'exploded' | null;
+  money?: number;
+  timestamp: number;
+}
+
 // ── Download types ──
 
 export interface NZBResult {
@@ -485,6 +510,11 @@ export interface IDesktopAPI {
   onFpsUpdate: (callback: (data: LiveFpsSnapshot) => void) => () => void;
   onFpsStats: (callback: (data: { gameId: string; fpsStats: FpsStats | null }) => void) => () => void;
   onSessionsUpdated: (callback: (data?: any) => void) => () => void;
+
+  // CS2 Live Game State Integration
+  getCs2GameState: () => Promise<Cs2LiveState | null>;
+  onCs2StateUpdate: (callback: (data: Cs2LiveState | null) => void) => () => void;
+  setupCs2Gsi: () => Promise<{ success: boolean; path?: string; message?: string }>;
 
   // Downloads
   downloadsGetConfig: (userId: string) => Promise<DownloadConfig | null>;

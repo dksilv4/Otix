@@ -27,6 +27,7 @@ export const XPToastContainer = ({ className }: { className?: string }) => {
           <XPToastItem
             key={t.id}
             amount={t.amount}
+            reason={t.reason}
             onDone={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
           />
         ),
@@ -35,17 +36,30 @@ export const XPToastContainer = ({ className }: { className?: string }) => {
   )
 };
 
-const XPToastItem = ({ amount, onDone }: { amount: number; onDone: () => void }) => {
+const XPToastItem = ({
+  amount,
+  reason,
+  onDone,
+}: {
+  amount: number
+  reason?: string
+  onDone: () => void
+}) => {
   useEffect(() => {
-    const timer = setTimeout(onDone, 1200)
+    const timer = setTimeout(onDone, reason ? 1800 : 1200)
     return () => clearTimeout(timer)
-  }, [onDone])
+  }, [onDone, reason])
 
   return (
-    <div className="absolute left-1/2 top-1/3 -translate-x-1/2 animate-xp-float">
+    <div className="absolute left-1/2 top-1/3 -translate-x-1/2 animate-xp-float flex flex-col items-center gap-1.5">
       <span className="whitespace-nowrap text-lg font-extrabold tracking-tight text-primary drop-shadow-[0_0_8px_var(--primary)]">
         +{amount} XP
       </span>
+      {reason && (
+        <span className="whitespace-nowrap px-2.5 py-0.5 rounded-lg bg-[var(--dk-surface-ghost)] backdrop-blur-xl text-[11px] font-semibold text-foreground/85 shadow-sm">
+          {reason}
+        </span>
+      )}
     </div>
   )
 };

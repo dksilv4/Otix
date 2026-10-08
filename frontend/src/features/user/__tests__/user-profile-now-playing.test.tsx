@@ -6,6 +6,13 @@ import * as launcherHooks from '@/features/launcher'
 vi.mock('@/features/launcher', () => ({
   useMatchedRunningGame: vi.fn(),
   useGamingSessionXp: vi.fn().mockReturnValue({ sessionXp: 0, dailyXp: 0, isGaming: false }),
+  useCs2GameState: vi.fn().mockReturnValue({ gameState: null, isCs2Active: false }),
+  isCs2Game: vi.fn().mockReturnValue(false),
+  formatCs2Status: vi.fn((state?: { isInGame?: boolean; mapName?: string; scoreCt?: number; scoreT?: number } | null) =>
+    state?.isInGame
+      ? `${state.mapName} (CT ${state.scoreCt} : ${state.scoreT} T)`
+      : 'In Lobby (Waiting for match)'
+  ),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
@@ -116,5 +123,97 @@ describe('UserProfileNowPlaying', () => {
 
     render(<UserProfileNowPlaying />)
     expect(screen.getByText('+20 XP')).toBeInTheDocument()
+  })
+
+  it('renders CS2 live match details when playing CS2 with active GSI state', () => {
+    vi.mocked(launcherHooks.isCs2Game).mockReturnValue(true)
+    vi.mocked(launcherHooks.useCs2GameState).mockReturnValue({
+      gameState: {
+        rawMapName: 'de_inferno',
+        mapName: 'Inferno',
+        activity: 'playing',
+        isInGame: true,
+        mode: 'competitive',
+        phase: 'live',
+        round: 8,
+        scoreCt: 5,
+        scoreT: 3,
+        health: 100,
+        armor: 100,
+        helmet: true,
+        team: 'T',
+        kills: 8,
+        deaths: 3,
+        assists: 2,
+        mvps: 1,
+        roundKills: 0,
+        bombState: null,
+        timestamp: Date.now(),
+      },
+      isCs2Active: true,
+    })
+
+    vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
+      runningGame: {
+        game: { id: '730', title: 'Counter-Strike 2', platform: 'steam' },
+        startTime: Date.now() - 600000,
+        launchedByOtix: false,
+      },
+      elapsedMs: 600000,
+      matchedGame: {
+        id: '730',
+        title: 'Counter-Strike 2',
+      },
+      isMatching: false,
+    })
+
+    render(<UserProfileNowPlaying />)
+    expect(screen.getByText('Inferno (CT 5 : 3 T)')).toBeInTheDocument()
+  })
+
+  it('renders CS2 lobby status when in menu or waiting for match', () => {
+    vi.mocked(launcherHooks.isCs2Game).mockReturnValue(true)
+    vi.mocked(launcherHooks.useCs2GameState).mockReturnValue({
+      gameState: {
+        rawMapName: '',
+        mapName: '',
+        mode: '',
+        phase: 'menu',
+        round: 0,
+        scoreCt: 0,
+        scoreT: 0,
+        health: 0,
+        armor: 0,
+        helmet: false,
+        team: '',
+        kills: 0,
+        deaths: 0,
+        assists: 0,
+        mvps: 0,
+        roundKills: 0,
+        bombState: null,
+        activity: 'menu',
+        isInGame: false,
+        timestamp: Date.now(),
+      },
+      isCs2Active: true,
+    })
+
+    vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
+      runningGame: {
+        game: { id: '730', title: 'Counter-Strike 2', platform: 'steam' },
+        startTime: Date.now() - 300000,
+        launchedByOtix: false,
+      },
+      elapsedMs: 300000,
+      matchedGame: {
+        id: '730',
+        title: 'Counter-Strike 2',
+      },
+      isMatching: false,
+    })
+
+    render(<UserProfileNowPlaying />)
+    expect(screen.getByText('In Lobby (Waiting for match)')).toBeInTheDocument()
   })
 })

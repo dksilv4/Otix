@@ -1,6 +1,12 @@
 import { Gamepad2, Zap } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useMatchedRunningGame, useGamingSessionXp } from '@/features/launcher'
+import {
+  useMatchedRunningGame,
+  useGamingSessionXp,
+  useCs2GameState,
+  isCs2Game,
+  formatCs2Status,
+} from '@/features/launcher'
 import { formatDuration } from '@/lib/utils'
 
 /**
@@ -10,6 +16,7 @@ import { formatDuration } from '@/lib/utils'
 export const UserProfileNowPlaying = () => {
   const { runningGame, elapsedMs, matchedGame } = useMatchedRunningGame()
   const { sessionXp } = useGamingSessionXp()
+  const { gameState } = useCs2GameState()
 
   if (!runningGame) return null
 
@@ -51,6 +58,19 @@ export const UserProfileNowPlaying = () => {
           </span>
         )}
       </div>
+
+      {/* CS2 Live Match / Lobby Badge */}
+      {gameState &&
+        (isCs2Game(runningGame.game.title) ||
+          isCs2Game(runningGame.game.exePath) ||
+          isCs2Game(runningGame.game.processName)) && (
+          <>
+            <span className="text-white/20 select-none">·</span>
+            <span className="font-medium text-primary text-[11px] truncate">
+              {formatCs2Status(gameState)}
+            </span>
+          </>
+        )}
 
       {/* Elapsed time */}
       {elapsedMs > 0 && (

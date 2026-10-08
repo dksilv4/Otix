@@ -14,6 +14,14 @@ Use existing theme tokens and CSS variables instead (`bg-primary`, `text-primary
 
 If a needed colour role does not exist yet, ask the user for confirmation before introducing a new theme variable or token. Do not invent new colour tokens unilaterally.
 
+## UI/UX design language & borders
+
+Avoid harsh borders, high-contrast outlines, or heavy box strokes in UI components and cards. Otix UI/UX follows a borderless, soft glassmorphic visual language:
+- **No hard borders or outlines:** Do not place prominent `border`, `border-border`, or outline strokes around cards, tiles, or interior pods unless strictly required for accessibility or subtle divider separation.
+- **Surface & depth:** Use tonal surface layering (`var(--dk-surface-glass)`, `var(--dk-surface-ghost)`, `var(--dk-surface-base)`), subtle backdrop blurs (`backdrop-blur-xl` / `backdrop-blur-2xl`), ambient shadows, and gentle contrast differentials to establish hierarchy and structure instead of enclosing elements with borders.
+- **Micro-borders:** When visual separation is necessary on glass surfaces, use ultra-subtle micro-borders (`border-white/[0.04]` to `border-white/[0.06]`) or background opacity contrasts rather than prominent solid borders.
+- **No random bubbles or dots before text:** Do not add arbitrary circular dot indicators, pinging bubbles, or random decorative dots before text labels, headers, or status tags. Keep typography and labels clean, direct, and uncluttered.
+
 ## API casing
 
 Django and Otix Server speak **snake_case**. The web `apiClient` (`frontend/src/lib/api/client.ts`) converts automatically via axios interceptors:
