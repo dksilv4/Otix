@@ -40,6 +40,10 @@ export const useLiveFps = (gameId?: string): LiveFpsData => {
     let es: EventSource | null = null
     try {
       es = new EventSource('http://127.0.0.1:8090/api/v1/games/fps/live')
+      es.onerror = () => {
+        es?.close()
+        es = null
+      }
       es.onmessage = (e) => {
         try {
           const snap = JSON.parse(e.data)
