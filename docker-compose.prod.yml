@@ -37,6 +37,13 @@ x-otix-env: &otix-env
   STEAM_API_KEY: ${STEAM_API_KEY}
   STEAM_GRID_API_KEY: ${STEAM_GRID_API_KEY}   # SteamGridDB alias read by Django
   MUSICBRAINZ_GLOBAL_RPS_LIMIT: ${MUSICBRAINZ_RPS_LIMIT:-1}
+  # ── Google OAuth ──
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  # ── Plex ──
+  PLEX_CLIENT_IDENTIFIER: ${PLEX_CLIENT_IDENTIFIER:-otix-web}
+  PLEX_PRODUCT: ${PLEX_PRODUCT:-Otix}
+  PLEX_VERSION: ${PLEX_VERSION:-0.1.0}
   # ── Email (Django SMTP backend; unset EMAIL_HOST → localhost:25 like Django's
   # default). Registration/2FA links use FRONTEND_URL above. ──
   EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.smtp.EmailBackend}

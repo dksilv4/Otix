@@ -78,7 +78,7 @@ export const CallbackPage = () => {
         {error && cfg.errorNav && (
           <div className="mt-6">
             <button onClick={() => navigate(cfg.errorNav!)} className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-              {cfg.name === 'Steam' ? 'Back to Sign In' : 'Back to Settings'}
+              {cfg.isLogin ? 'Back to Sign In' : 'Back to Settings'}
             </button>
           </div>
         )}

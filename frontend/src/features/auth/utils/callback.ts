@@ -29,8 +29,8 @@ export const SERVICES: Record<string, ServiceCfg> = {
           ? 'Google did not return the expected authorization details.'
           : null,
     buildBody: (p) => ({ code: p.get('code'), state: p.get('state') }),
-    successNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
-    errorNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
+    successNav: { to: '/settings/connections', replace: true },
+    errorNav: { to: '/settings/connections', replace: true },
   },
   'google-drive': {
     name: 'Google Drive',
@@ -43,8 +43,8 @@ export const SERVICES: Record<string, ServiceCfg> = {
           ? 'Google did not return the expected authorization details.'
           : null,
     buildBody: (p) => ({ code: p.get('code'), state: p.get('state') }),
-    successNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
-    errorNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
+    successNav: { to: '/settings/connections', replace: true },
+    errorNav: { to: '/settings/connections', replace: true },
   },
   'plex-login': {
     name: 'Plex',
@@ -102,8 +102,8 @@ export const SERVICES: Record<string, ServiceCfg> = {
     name: 'Plex',
     endpoint: '/auth/oauth/plex/callback',
     buildBody: (p) => ({ state: p.get('state'), pinId: p.get('pinId') || undefined }),
-    successNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
-    errorNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
+    successNav: { to: '/settings/connections', replace: true },
+    errorNav: { to: '/settings/connections', replace: true },
   },
   tmdb: {
     name: 'TMDb',
@@ -120,8 +120,8 @@ export const SERVICES: Record<string, ServiceCfg> = {
       const requestToken = p.get('request_token')
       return state && requestToken ? { state, request_token: requestToken } : null
     },
-    successNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
-    errorNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
+    successNav: { to: '/settings/connections', replace: true },
+    errorNav: { to: '/settings/connections', replace: true },
   },
   steam: {
     name: 'Steam',
@@ -147,8 +147,8 @@ export const SERVICES: Record<string, ServiceCfg> = {
     onSuccess: () => {
       apiClient.post('/integrations/steam/scan').catch(() => {})
     },
-    successNav: { to: '/library/$tab', params: { tab: 'steam' }, replace: true },
-    errorNav: { to: '/settings', replace: true },
+    successNav: { to: '/library/steam', replace: true },
+    errorNav: { to: '/settings/connections', replace: true },
   },
 }
 

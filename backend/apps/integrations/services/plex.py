@@ -73,6 +73,43 @@ def _connections(resource: dict) -> list[dict]:
     return _as_list(resource.get("connections") or resource.get("Connection"))
 
 
+def _ordered_connections(resource: dict) -> list[str]:
+    """Return all distinct connection URIs for a resource in preferred order:
+    1. Local HTTPS (direct LAN with SSL)
+    2. Remote direct HTTPS (remote with SSL, non-relay)
+    3. Local HTTP (LAN without SSL)
+    4. Remote direct HTTP (remote without SSL, non-relay)
+    5. Relay HTTPS (Plex relay fallback)
+    6. Any other URI
+    """
+    connections = _connections(resource)
+    ordered: list[str] = []
+
+    def _add(condition):
+        for c in connections:
+            u = c.get("uri")
+            if not u:
+                continue
+            clean = str(u).rstrip("/")
+            if clean not in ordered and condition(c, clean):
+                ordered.append(clean)
+
+    # 1. Local HTTPS (direct LAN)
+    _add(lambda c, u: u.startswith("https://") and c.get("local") and not c.get("relay"))
+    # 2. Remote direct HTTPS (remote public IP or custom domain)
+    _add(lambda c, u: u.startswith("https://") and not c.get("local") and not c.get("relay"))
+    # 3. Local HTTP
+    _add(lambda c, u: u.startswith("http://") and c.get("local") and not c.get("relay"))
+    # 4. Remote direct HTTP
+    _add(lambda c, u: u.startswith("http://") and not c.get("local") and not c.get("relay"))
+    # 5. Relay connections
+    _add(lambda c, u: bool(c.get("relay")))
+    # 6. Any other URI
+    _add(lambda c, u: True)
+
+    return ordered
+
+
 def _with_token(url: str, token: str) -> str:
     """Embed ``token`` into ``url`` as an ``X-Plex-Token`` query param.
 
@@ -109,12 +146,7 @@ def _get_alternative_plex_urls(server: UserPlexServer, user) -> list[str]:
         client_id = str(resource.get("clientIdentifier") or resource.get("machineIdentifier") or "")
         if client_id != machine_id:
             continue
-        urls: list[str] = []
-        for conn in _connections(resource):
-            uri = conn.get("uri")
-            if uri and str(uri).rstrip("/") not in urls:
-                urls.append(str(uri).rstrip("/"))
-        return urls
+        return _ordered_connections(resource)
     return []
 
 
@@ -699,19 +731,12 @@ def get_plex_sessions(user) -> list[dict]:
     servers = UserPlexServer.objects.filter(user=user, selected=True, owned=True)
     all_sessions: list[dict] = []
     for server in servers:
-        if not server.base_url or not server.access_token:
+        if not server.access_token:
             continue
-        try:
-            status, raw = _request(
-                _with_token(f"{server.base_url}/status/sessions", server.access_token),
-                headers=_plex_headers(),
-                timeout=30.0,
-            )
-            if status != 200:
-                continue
-            data = json.loads(raw)
-        except Exception:
+        res = _plex_server_get(server, user, "/status/sessions")
+        if not res:
             continue
+        data, working_base = res
 
         container = data.get("MediaContainer", data)
         for item in _as_list(container.get("Metadata", [])):
@@ -738,7 +763,7 @@ def get_plex_sessions(user) -> list[dict]:
 
             # Bind per-iteration values as defaults (avoids late-binding the
             # loop variable, mirroring the legacy closure).
-            def _full_thumb(raw, base_url=server.base_url, token=server.access_token):
+            def _full_thumb(raw, base_url=working_base, token=server.access_token):
                 if not raw:
                     return None
                 url = str(raw)
@@ -1233,26 +1258,11 @@ class PlexDiscoveryConnectError(PlexDiscoveryError):
         super().__init__(_connect_detail(url))
 
 
-def _best_connection(resource: dict) -> str | None:
-    """Pick the best reachable URI for a plex.tv resource.
 
-    Prefer a local HTTPS connection (direct LAN), then any HTTPS, then any
-    URI — mirrors the legacy helper. Non-local/relay plex.direct links are slow.
-    """
-    connections = _connections(resource)
-    for conn in connections:
-        uri = conn.get("uri")
-        if uri and str(uri).startswith("https://") and conn.get("local"):
-            return str(uri).rstrip("/")
-    for conn in connections:
-        uri = conn.get("uri")
-        if uri and str(uri).startswith("https://"):
-            return str(uri).rstrip("/")
-    for conn in connections:
-        uri = conn.get("uri")
-        if uri:
-            return str(uri).rstrip("/")
-    return None
+def _best_connection(resource: dict) -> str | None:
+    """Pick the best reachable URI for a plex.tv resource."""
+    ordered = _ordered_connections(resource)
+    return ordered[0] if ordered else None
 
 
 def _discovery_json(status: int, raw: str, url: str) -> Any:
@@ -1322,7 +1332,17 @@ def discover_plex_servers(user) -> list[UserPlexServer]:
         server.name = str(resource.get("name") or server.name)
         server.product = resource.get("product")
         server.platform = resource.get("platform")
-        server.base_url = _best_connection(resource)
+
+        # Keep verified working base URL if cached or present in resource
+        cached_working = cache.get(f"plex_server_working_base:{server.pk}") if server.pk else None
+        all_ordered = _ordered_connections(resource)
+        if cached_working and cached_working in all_ordered:
+            server.base_url = cached_working
+        elif server.base_url and server.base_url in all_ordered:
+            pass  # keep existing working base URL
+        else:
+            server.base_url = _best_connection(resource)
+
         server.access_token = resource.get("accessToken") or user.plex_auth_token
         server.owned = bool(resource.get("owned"))
         server.save()
@@ -1342,13 +1362,56 @@ def discover_plex_libraries(user, server: UserPlexServer) -> list[UserPlexLibrar
     Returns ``[]`` without a network call when the server has no token or
     ``base_url``; otherwise raises a ``PlexDiscovery*`` network error on failure
     so the caller can mark the server unreachable.
+
+    Tries the primary base_url, then fails over across alternative connections
+    (remote direct HTTPS, custom URLs, local HTTP, or Plex relay) to ensure
+    discovery works seamlessly in all environments: local bare metal, Docker
+    containers, and remote production VMs.
     """
     token = server.access_token or user.plex_auth_token
     if not token or not server.base_url:
         return []
-    url = f"{server.base_url}/library/sections"
-    status, raw = _plex_discovery_get(url, token=token)
-    data = _discovery_json(status, raw, url)
+
+    working_cache_key = f"plex_server_working_base:{server.pk}"
+    cached_working = cache.get(working_cache_key)
+
+    alt_urls = _get_alternative_plex_urls(server, user)
+    candidate_urls: list[str] = []
+    if cached_working and (cached_working == server.base_url or cached_working in alt_urls):
+        candidate_urls.append(cached_working)
+    if server.base_url and server.base_url not in candidate_urls:
+        candidate_urls.append(server.base_url)
+    for url in alt_urls:
+        if url not in candidate_urls:
+            candidate_urls.append(url)
+
+    last_error: Exception | None = None
+    data = None
+    working_base: str | None = None
+
+    for candidate in candidate_urls:
+        url = f"{candidate}/library/sections"
+        try:
+            # Responsive timeout per candidate so unreachable LAN IPs
+            # in Docker or remote VMs fail over quickly to public/relay IPs.
+            status, raw = _plex_discovery_get(url, token=token, timeout=3.5)
+            data = _discovery_json(status, raw, url)
+            working_base = candidate
+            break
+        except (PlexDiscoveryHttpError, PlexDiscoveryTimeout, PlexDiscoveryConnectError) as exc:
+            last_error = exc
+            continue
+
+    if data is None or working_base is None:
+        if last_error is not None:
+            raise last_error
+        return []
+
+    # Update server.base_url in database and cache working base
+    if server.base_url != working_base:
+        server.base_url = working_base
+        server.save(update_fields=["base_url"])
+    cache.set(working_cache_key, working_base, timeout=3600)
 
     libraries: list[UserPlexLibrary] = []
     for item in _container_items(data):

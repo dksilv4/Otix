@@ -1050,6 +1050,28 @@ class PlexServersDiscoveryTests(_ApiTestBase):
         self.assertEqual(len(payload["libraries"]), 4)
         self.assertTrue(all(lib["server_id"] == server_ids["m1"] for lib in payload["libraries"]))
 
+    def test_local_unreachable_fails_over_to_remote_connection(self):
+        remote_srv = dict(DISC_RESOURCE_M1)
+        remote_srv["name"] = "Prod Server"
+        remote_srv["clientIdentifier"] = "m_prod"
+        remote_srv["connections"] = [
+            {"uri": "https://192-168-1-50.prod.plex.direct:32400", "local": True},
+            {"uri": "https://public.prod.plex.direct:32400", "local": False},
+        ]
+        with self._get(
+            resources=(200, json.dumps([remote_srv])),
+            raise_sections_host="192-168-1-50.prod.plex.direct",
+        ):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.json()
+        self.assertIsNone(payload["unreachable_servers"])
+        self.assertEqual(len(payload["servers"]), 1)
+        self.assertEqual(payload["servers"][0]["base_url"], "https://public.prod.plex.direct:32400")
+        db_server = UserPlexServer.objects.get(machine_identifier="m_prod")
+        self.assertEqual(db_server.base_url, "https://public.prod.plex.direct:32400")
+        self.assertEqual(len(payload["libraries"]), 4)
+
     def test_plex_tv_http_error_502(self):
         with self._get(resources=(500, "boom")):
             resp = self.client.get(self.URL)

@@ -35,6 +35,7 @@ import json
 import logging
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.db import transaction
 
 from apps.integrations.models import SyncJob, UserPlexItem, UserPlexLibrary
@@ -138,14 +139,66 @@ def _page_json(url: str, token: str, extra_headers: dict | None = None) -> dict 
 
 
 def _fetch_library_items(user, server, library, token: str) -> list[dict] | None:
-    """Fetch one library's movie/show/music items via paged section ``/all``."""
+    """Fetch one library's movie/show/music items via paged section ``/all``.
+
+    Tries the primary base_url, then fails over across alternative connections
+    if the first page fetch fails, updating the server base_url to the working one.
+    """
     if not token or not server.base_url:
         return None
-    prefix = f"{server.base_url}/library/sections/{library.section_key}/all"
+
+    working_cache_key = f"plex_server_working_base:{server.pk}"
+    cached_working = cache.get(working_cache_key)
+
+    alt_urls = _plex._get_alternative_plex_urls(server, user)
+    candidate_urls: list[str] = []
+    if cached_working and (cached_working == server.base_url or cached_working in alt_urls):
+        candidate_urls.append(cached_working)
+    if server.base_url and server.base_url not in candidate_urls:
+        candidate_urls.append(server.base_url)
+    for u in alt_urls:
+        if u not in candidate_urls:
+            candidate_urls.append(u)
+
+    working_base: str | None = None
+    data = None
     extra = "&type=9" if library.library_type == "artist" else ""
+
+    for base_url in candidate_urls:
+        prefix = f"{base_url}/library/sections/{library.section_key}/all"
+        first_url = (
+            f"{prefix}?includeGuids=1{extra}"
+            f"&X-Plex-Container-Start=0"
+            f"&X-Plex-Container-Size={_PLEX_PAGE_SIZE}"
+        )
+        data = _page_json(
+            first_url,
+            token,
+            extra_headers={
+                "X-Plex-Container-Start": "0",
+                "X-Plex-Container-Size": str(_PLEX_PAGE_SIZE),
+            },
+        )
+        if data is not None:
+            working_base = base_url
+            if server.base_url != working_base:
+                server.base_url = working_base
+                server.save(update_fields=["base_url"])
+            cache.set(working_cache_key, working_base, timeout=3600)
+            break
+
+    if data is None or working_base is None:
+        return None
+
+    prefix = f"{working_base}/library/sections/{library.section_key}/all"
     all_items: list[dict] = []
-    offset = 0
-    while True:
+    container = data.get("MediaContainer", data)
+    page = _plex._container_items(data)
+    all_items.extend(page)
+    total_size = int(container.get("totalSize", 0))
+    offset = _PLEX_PAGE_SIZE
+
+    while offset < total_size and page:
         url = (
             f"{prefix}?includeGuids=1{extra}"
             f"&X-Plex-Container-Start={offset}"
@@ -160,14 +213,12 @@ def _fetch_library_items(user, server, library, token: str) -> list[dict] | None
             },
         )
         if data is None:
-            return None
+            break
         container = data.get("MediaContainer", data)
         page = _plex._container_items(data)
         all_items.extend(page)
-        total_size = int(container.get("totalSize", 0))
         offset += _PLEX_PAGE_SIZE
-        if offset >= total_size or not page:
-            break
+
     return [
         item for item in all_items if _media_type(item, library.library_type) in {"movie", "show"}
     ]

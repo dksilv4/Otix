@@ -400,7 +400,13 @@ class TMDbLinkInitiateView(GenericAPIView):
             return Response(
                 {"detail": "TMDb account already linked"}, status=status.HTTP_400_BAD_REQUEST
             )
-        redirect_url = request.build_absolute_uri(reverse("accounts:oauth-tmdb-redirect"))
+        frontend_base = oauth_service.frontend_base()
+        redirect_path = reverse("accounts:oauth-tmdb-redirect")
+        redirect_url = (
+            f"{frontend_base}{redirect_path}"
+            if frontend_base
+            else request.build_absolute_uri(redirect_path)
+        )
         try:
             auth_url, state = oauth_service.build_tmdb_link_url(request.user.pk, redirect_url)
         except OAuthFlowError as exc:
@@ -417,7 +423,7 @@ class TMDbLinkRedirectView(GenericAPIView):
         query = {"tmdb_link": status_value}
         if message:
             query["message"] = message
-        target = f"{oauth_service.frontend_base()}/?{urllib.parse.urlencode(query)}"
+        target = f"{oauth_service.frontend_base()}/auth/callback/tmdb?{urllib.parse.urlencode(query)}"
         return HttpResponseRedirect(target, status=303)
 
     def get(self, request, *args, **kwargs):

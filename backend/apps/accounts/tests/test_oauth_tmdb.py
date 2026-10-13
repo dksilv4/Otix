@@ -167,7 +167,7 @@ class TMDbLinkRedirectTests(TestCase):
         self.assertEqual(response.status_code, 303)
         query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(response.url).query))
         self.assertEqual(query, {"tmdb_link": "success"})
-        self.assertTrue(response.url.startswith("http://localhost:5173/?"))
+        self.assertTrue(response.url.startswith("http://localhost:5173/auth/callback/tmdb?"))
         self.user.refresh_from_db()
         self.assertEqual(self.user.tmdb_session_id, SESSION_ID)
         self.assertEqual(self.user.tmdb_account_id, ACCOUNT_ID)
