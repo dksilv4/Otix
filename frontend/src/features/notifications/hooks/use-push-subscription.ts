@@ -27,15 +27,17 @@ function pushApiAvailable(): boolean {
 
 async function fetchVapidKey(): Promise<string> {
   if (VAPID_KEY_CACHE.key) return VAPID_KEY_CACHE.key
-  const { data } = await apiClient.get<{ publicKey: string }>('/push/vapid-public-key')
-  if (!data.publicKey) throw new Error('VAPID public key missing from server')
-  VAPID_KEY_CACHE.key = data.publicKey
-  return data.publicKey
+  const { data } = await apiClient.get<{ publicKey?: string; public_key?: string }>('/push/vapid-public-key')
+  const key = data?.publicKey || data?.public_key
+  if (!key) throw new Error('VAPID public key missing from server')
+  VAPID_KEY_CACHE.key = key.trim()
+  return VAPID_KEY_CACHE.key
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const clean = (base64String || '').trim()
+  const padding = '='.repeat((4 - (clean.length % 4)) % 4)
+  const base64 = (clean + padding).replace(/-/g, '+').replace(/_/g, '/')
   const rawData = atob(base64)
   const output = new Uint8Array(rawData.length)
   for (let i = 0; i < rawData.length; i += 1) {
@@ -44,10 +46,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return output
 }
 
-/** Chrome rejects a Uint8Array whose .buffer is larger than the view. */
-function applicationServerKeyFromVapid(vapidKey: string): ArrayBuffer {
-  const key = urlBase64ToUint8Array(vapidKey)
-  return key.buffer.slice(key.byteOffset, key.byteOffset + key.byteLength) as ArrayBuffer
+function applicationServerKeyFromVapid(vapidKey: string): Uint8Array {
+  return urlBase64ToUint8Array(vapidKey.trim())
 }
 
 function errorMessage(err: unknown): string {
@@ -58,7 +58,12 @@ function errorMessage(err: unknown): string {
     if (err.response?.status) return `Server error (${err.response.status})`
     return err.message || 'Network error'
   }
-  if (err instanceof Error && err.message) return err.message
+  if (err instanceof Error && err.message) {
+    if (err.message.toLowerCase().includes('push service error')) {
+      return 'Push service error. If you are using Brave Browser, enable "Use Google services for push messaging" in Settings > Privacy.'
+    }
+    return err.message
+  }
   return 'Failed to enable push'
 }
 
@@ -173,13 +178,19 @@ export function usePushSubscription() {
       await navigator.serviceWorker.ready
 
       let sub = await registration.pushManager.getSubscription()
-      if (!sub) {
-        const vapidKey = await fetchVapidKey()
-        sub = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: applicationServerKeyFromVapid(vapidKey),
-        })
+      const vapidKey = await fetchVapidKey()
+      const appKey = applicationServerKeyFromVapid(vapidKey)
+      if (sub) {
+        try {
+          await sub.unsubscribe()
+        } catch {
+          // ignore existing subscription unsubscribe errors
+        }
       }
+      sub = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: appKey,
+      })
 
       const subJSON = sub.toJSON()
       if (!subJSON.endpoint || !subJSON.keys?.p256dh || !subJSON.keys?.auth) {

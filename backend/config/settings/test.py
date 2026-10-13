@@ -33,6 +33,12 @@ DATABASES = {
     }
 }
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
 # Captures auth emails in ``django.core.mail.outbox`` instead of sending.
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 

@@ -181,6 +181,9 @@ def sse_response(
     The content is an async generator: ASGI servers stream it without pinning a
     worker thread, so idle/long-lived streams (notifications) stay cheap.
     """
+    from django.db import close_old_connections
+
+    close_old_connections()
     stream = sse_event_generator(
         channel=channel,
         terminal_events=terminal_events,

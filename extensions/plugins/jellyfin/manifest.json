@@ -90,13 +90,13 @@
       "default": ""
     },
     "password": {
-      "type": "password",
+      "type": "secret",
       "label": "Password",
       "description": "Your Jellyfin user password.",
       "default": ""
     },
     "apiKey": {
-      "type": "password",
+      "type": "secret",
       "label": "API Key",
       "description": "Server API key generated from Jellyfin Dashboard -> Advanced -> API Keys.",
       "default": ""

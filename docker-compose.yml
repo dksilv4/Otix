@@ -13,7 +13,9 @@ services:
     command: >
       postgres
       -c shared_preload_libraries=vector
-      -c max_connections=50
+      -c max_connections=200
+      -c idle_session_timeout=300000
+      -c idle_in_transaction_session_timeout=60000
       -c shared_buffers=256MB
       -c effective_cache_size=1GB
       -c maintenance_work_mem=64MB
