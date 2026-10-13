@@ -564,6 +564,7 @@ def list_plex_libraries(user) -> list[dict]:
     """
     item_count_subq = (
         UserPlexItem.objects.filter(user=user, library_id=OuterRef("pk"))
+        .order_by()
         .values("library_id")
         .annotate(item_count=Count("id"))
         .values("item_count")

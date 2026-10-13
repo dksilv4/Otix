@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { connectTaskSseStream, type SseEvent } from '@/lib/api/sse-client'
+import { libraryKeys } from '@library/library-keys'
 import { DkButton } from '@ui/atoms/button'
 import { DkDropdown } from '@ui/atoms/dropdown'
 import { DkSwitch } from '@ui/atoms/switch'
@@ -563,6 +565,7 @@ let activeIntegrationAbortController: AbortController | null = null
 export const SettingsIntegrationsPage = () => {
   const { openModal } = useModal()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const queryClient = useQueryClient()
   useSettingsHashScroll()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -956,6 +959,7 @@ export const SettingsIntegrationsPage = () => {
       }
       if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
       setEpicMessage(msg)
+      void queryClient.invalidateQueries({ queryKey: libraryKeys.all() })
     } catch (err) {
       setEpicError(extractIntegrationMessage(err))
     } finally {
@@ -1078,6 +1082,7 @@ export const SettingsIntegrationsPage = () => {
       } else {
         setGOGMessage(msg)
       }
+      void queryClient.invalidateQueries({ queryKey: libraryKeys.all() })
     } catch (err) {
       setGOGError(extractIntegrationMessage(err))
     } finally {
@@ -1418,21 +1423,35 @@ export const SettingsIntegrationsPage = () => {
               break
             }
             case 'library_complete': {
-              const key = progressKey(event.serverName as string, event.libraryName as string)
-              const total = (event.total as number) || 0
+              const serverName = event.serverName as string
+              const libraryName = event.libraryName as string
+              const key = progressKey(serverName, libraryName)
+              const total = (event.total as number) || (event.itemCount as number) || 0
               setPlexLibraryProgress((prev) => {
                 const lib = prev[key]
                 return {
                   ...prev,
                   [key]: {
                     ...lib,
-                    serverName: event.serverName as string,
-                    libraryName: event.libraryName as string,
+                    serverName,
+                    libraryName,
                     itemsProcessed: total,
                     itemsTotal: total,
                     phase: 'complete' as const,
                   },
                 }
+              })
+              const eventLibId = event.libraryId ? String(event.libraryId) : undefined
+              queryClient.setQueryData<PlexLibraryInfo[]>([...libraryKeys.tab('plex'), 'libraries'], (old) => {
+                if (!old) return old
+                return old.map((l) => {
+                  const isMatch = eventLibId
+                    ? String(l.id) === eventLibId
+                    : (l.serverName === serverName && l.title === libraryName)
+                  return isMatch
+                    ? { ...l, itemCount: total, lastSyncedAt: new Date().toISOString() }
+                    : l
+                })
               })
               break
             }
@@ -1441,7 +1460,8 @@ export const SettingsIntegrationsPage = () => {
               setPlexMessage(
                 `Synced ${event.total} Plex items from ${event.libraries} libraries on ${event.servers} server(s). Seeded ${event.seeded} new catalog items.`,
               )
-              refetchLibraries()
+              void refetchLibraries()
+              void queryClient.invalidateQueries({ queryKey: libraryKeys.all() })
               setTimeout(() => {
                 setPlexLibraryProgress({})
               }, 1500)
@@ -1587,6 +1607,15 @@ export const SettingsIntegrationsPage = () => {
         }
       })
       setPlexMessage(`Synced ${library.title}: ${result.matched} matched, ${result.seeded} seeded out of ${result.total} items.`)
+      queryClient.setQueryData<PlexLibraryInfo[]>([...libraryKeys.tab('plex'), 'libraries'], (old) => {
+        if (!old) return old
+        return old.map((l) =>
+          String(l.id) === libIdStr
+            ? { ...l, itemCount: result.total, lastSyncedAt: new Date().toISOString() }
+            : l,
+        )
+      })
+      void queryClient.invalidateQueries({ queryKey: libraryKeys.all() })
       await refetchLibraries()
     } catch (err) {
       const msg = extractIntegrationMessage(err)
@@ -2057,6 +2086,10 @@ export const SettingsIntegrationsPage = () => {
                 const isSyncing = syncingLibraryIds.has(lib.id) || (plexSyncing && libProgress?.phase === 'syncing')
                 const isComplete = libProgress?.phase === 'complete'
                 const libError = plexLibraryErrors[libIdStr]
+                const displayCount =
+                  isComplete && typeof libProgress?.itemsTotal === 'number'
+                    ? libProgress.itemsTotal
+                    : (lib.itemCount ?? 0)
 
                 return (
                   <div key={lib.id} className="flex flex-col gap-2 rounded-xl p-3 bg-white/[0.03]">
@@ -2072,7 +2105,7 @@ export const SettingsIntegrationsPage = () => {
                         <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
                           <span className="font-medium text-white/60">{lib.serverName}</span>
                           <span className="text-white/20">·</span>
-                          <span>{lib.itemCount} items</span>
+                          <span>{displayCount} items</span>
                           {lib.lastSyncedAt && (
                             <>
                               <span className="text-white/20">·</span>

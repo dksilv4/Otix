@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { SettingsIntegrationsPage } from '../pages/settings-integrations-page'
 
@@ -137,11 +138,16 @@ describe('Plex Library Sync and Error Isolation', () => {
   })
 
   const renderPage = () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
     return render(
-      <ModalProvider>
-        <SettingsIntegrationsPage />
-        <ModalRoot />
-      </ModalProvider>
+      <QueryClientProvider client={queryClient}>
+        <ModalProvider>
+          <SettingsIntegrationsPage />
+          <ModalRoot />
+        </ModalProvider>
+      </QueryClientProvider>,
     )
   }
 
@@ -229,5 +235,40 @@ describe('Plex Library Sync and Error Isolation', () => {
     const matchingErrors = within(dialog).getAllByText('Connection to server timed out')
     expect(matchingErrors).toHaveLength(1)
     expect(within(moviesCard).getByText('Connection to server timed out')).toBe(matchingErrors[0])
+  })
+
+  it('updates library item count immediately when sync completes', async () => {
+    mockStreamLibrarySyncImpl = vi.fn(async (_libId: string, onEvent: any) => {
+      onEvent?.({
+        type: 'library_complete',
+        total: 275,
+      })
+      return { total: 275, matched: 250, seeded: 10 }
+    })
+
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('Plex')).toBeInTheDocument()
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+    })
+    const plexHeader = screen.getByText('Plex').closest('[role="button"]') as HTMLElement
+    await user.click(plexHeader)
+
+    await waitFor(() => {
+      expect(screen.getByText('Main Movies')).toBeInTheDocument()
+    })
+
+    const moviesCard = screen.getByText('Main Movies').closest('.rounded-xl') as HTMLElement
+    expect(within(moviesCard).getByText('150 items')).toBeInTheDocument()
+
+    const syncMoviesBtn = within(moviesCard).getByRole('button', { name: /sync/i })
+    await user.click(syncMoviesBtn)
+
+    await waitFor(() => {
+      expect(within(moviesCard).getByText('275 items')).toBeInTheDocument()
+      expect(within(moviesCard).getByText('Sync complete')).toBeInTheDocument()
+    })
   })
 })

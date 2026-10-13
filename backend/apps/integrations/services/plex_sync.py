@@ -339,11 +339,13 @@ def _sync_library(user, server, library, token: str, emit) -> dict:
 
     emit(
         "library_complete",
+        library_id=str(library.id),
         server_name=server.name,
         library_name=library.title,
         total=total,
         matched=matched,
         seeded=seeded,
+        item_count=total,
     )
     return {"total": total, "matched": matched, "seeded": seeded}
 

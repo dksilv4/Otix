@@ -165,13 +165,17 @@ def _server_row(server) -> dict:
 
 
 def _library_row(library) -> dict:
+    last_item = library.items.filter(user=library.user).order_by("-updated_at").first()
     return {
         "id": library.id,
         "server_id": library.server_id,
+        "server_name": library.server.name if library.server else "",
         "section_key": library.section_key,
         "title": library.title,
         "library_type": library.library_type,
         "selected": library.selected,
+        "item_count": library.items.filter(user=library.user).count(),
+        "last_synced_at": last_item.updated_at.isoformat() if last_item else None,
     }
 
 

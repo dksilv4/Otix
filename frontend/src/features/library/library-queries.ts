@@ -159,6 +159,7 @@ export function usePlexLibraryScan() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKeys.tab("plex") })
       queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("plex"), "status"] })
+      queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("plex"), "libraries"] })
     },
   })
 }

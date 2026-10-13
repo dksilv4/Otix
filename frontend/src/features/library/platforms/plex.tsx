@@ -155,6 +155,7 @@ export const PlexTabContent = () => {
       setSyncProgress(null)
       queryClient.invalidateQueries({ queryKey: libraryKeys.tab("plex") })
       queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("plex"), "status"] })
+      queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("plex"), "libraries"] })
     } catch (err) {
       setScanError(err instanceof Error ? err : new Error("Sync failed"))
       setSyncProgress(null)
