@@ -34,10 +34,12 @@ import { createNotificationRoutes } from '@/features/notifications/router'
 import { createGenreRoutes } from '@genre/router'
 import { createWelcomeRoutes } from '@/features/welcome/router'
 import { RoutePending } from './route-pending'
+import { RouteError } from './route-error'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
   notFoundComponent: NotFoundPage,
+  errorComponent: RouteError,
 })
 
 const logoLoadingTestRoute = createRoute({
@@ -101,6 +103,7 @@ export const router = createRouter({
   defaultPendingComponent: RoutePending,
   defaultPendingMs: 200,
   defaultPendingMinMs: 0,
+  defaultErrorComponent: RouteError,
   scrollRestoration: true,
 })
 

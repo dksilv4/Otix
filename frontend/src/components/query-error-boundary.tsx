@@ -1,7 +1,7 @@
-// TODO: Review this file
 import { Component, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { showErrorToast } from '@ui/molecules/toast'
+import { isChunkLoadError, reloadForNewChunk } from '@/lib/utils/chunk-reload'
 import './query-error-boundary.scss'
 
 interface Props {
@@ -27,6 +27,10 @@ export class QueryErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error): void {
+    if (isChunkLoadError(error)) {
+      reloadForNewChunk()
+      return
+    }
     showErrorToast(error, 'Query Error')
   }
 
@@ -36,6 +40,32 @@ export class QueryErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      if (isChunkLoadError(this.state.error)) {
+        return (
+          <div className="dk-query-error-boundary">
+            <RefreshCw className="h-10 w-10 text-muted-foreground/40 mb-4 animate-spin" />
+            <h3 className="dk-query-error-boundary__heading">
+              Updating application...
+            </h3>
+            <p className="dk-query-error-boundary__description">
+              A newer version of Otix was deployed. Reloading page.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.location.reload()
+                }
+              }}
+              className="dk-query-error-boundary__retry-btn"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Reload now
+            </button>
+          </div>
+        )
+      }
+
       if (this.props.fallback) return this.props.fallback
 
       return (

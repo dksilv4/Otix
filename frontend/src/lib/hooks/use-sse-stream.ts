@@ -12,7 +12,8 @@
  */
 
 import { useRef, useEffect, useCallback } from 'react'
-import { createSseStream, type SseEvent } from '../api/sse-client'
+import { createSseStream, SseHttpError, type SseEvent } from '../api/sse-client'
+import { refreshAccessToken, clearAuthSession } from '../api/session-refresh'
 
 import { ACCESS_TOKEN_KEY } from '../config/config'
 const DEFAULT_RECONNECT_DELAYS = [3_000, 10_000, 30_000, 60_000]
@@ -30,7 +31,7 @@ export interface UseSseStreamOptions {
   initialDelayMs?: number
 }
 
-export function useSseStream(options: UseSseStreamOptions) {
+export const useSseStream = (options: UseSseStreamOptions) => {
   const { url, onMessage, enabled = true, reconnectDelays = DEFAULT_RECONNECT_DELAYS, initialDelayMs } = options
 
   const abortRef = useRef<AbortController | null>(null)
@@ -61,9 +62,8 @@ export function useSseStream(options: UseSseStreamOptions) {
 
     const token = localStorage.getItem(ACCESS_TOKEN_KEY)
     if (!token) {
-      // No token yet — try again after the first reconnect delay
-      const delay = reconnectDelays[0]
-      reconnectTimerRef.current = setTimeout(() => connect(), delay)
+      // Unauthenticated — do not reconnect until authenticated
+      isActiveRef.current = false
       return
     }
 
@@ -89,6 +89,26 @@ export function useSseStream(options: UseSseStreamOptions) {
           // Intentional abort — don't reconnect
           isActiveRef.current = false
           return
+        }
+
+        if (err instanceof SseHttpError) {
+          if (err.status === 401) {
+            isActiveRef.current = false
+            try {
+              await refreshAccessToken()
+              // Successfully refreshed token, reconnect if still active
+              if (abortRef.current === controller) {
+                connect()
+              }
+            } catch {
+              clearAuthSession()
+            }
+            return
+          }
+          if (err.status === 403) {
+            isActiveRef.current = false
+            return
+          }
         }
 
         // Connection error — schedule reconnect

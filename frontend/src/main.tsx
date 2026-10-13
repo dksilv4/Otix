@@ -26,14 +26,27 @@ import { ContextMenuProvider, ContextMenuPortal } from '@/features/_config/conte
 import { getDesktopPlatform } from '@/lib/desktop/platform'
 import './index.css'
 
+import { isChunkLoadError, reloadForNewChunk } from '@/lib/utils/chunk-reload'
+
 // Set desktop platform attribute for CSS targeting
 const plat = getDesktopPlatform()
 if (plat.isDesktop && plat.platform) {
   document.documentElement.setAttribute('data-desktop-platform', plat.platform)
 }
 
+// Vite preload error — fired when a dynamic import chunk fails to load after a deployment
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault()
+  reloadForNewChunk()
+})
+
 // Global unhandled promise rejection handler — displays error toast
 window.addEventListener('unhandledrejection', (event) => {
+  if (isChunkLoadError(event.reason)) {
+    event.preventDefault()
+    if (reloadForNewChunk()) return
+  }
+
   const msg = String(event.reason?.message || event.reason || '')
   if (
     msg.includes('EMEError') ||
@@ -52,6 +65,11 @@ window.addEventListener('unhandledrejection', (event) => {
 
 // Global unhandled script error handler — displays error toast
 window.addEventListener('error', (event) => {
+  if (isChunkLoadError(event.error) || isChunkLoadError(event.message)) {
+    event.preventDefault()
+    if (reloadForNewChunk()) return
+  }
+
   if (event.error) {
     showErrorToast(event.error, 'Application Error')
   } else if (event.message) {

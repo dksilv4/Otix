@@ -59,6 +59,19 @@ function convertSseEvent(event: Record<string, unknown>): SseEvent {
   return convertToCamelCase(event) as SseEvent
 }
 
+export class SseHttpError extends Error {
+  readonly status: number
+  readonly statusText: string
+
+  constructor(status: number, statusText: string) {
+    super(`SSE connection failed: ${status} ${statusText}`)
+    this.name = 'SseHttpError'
+    this.status = status
+    this.statusText = statusText
+    Object.setPrototypeOf(this, SseHttpError.prototype)
+  }
+}
+
 // ── Low-level SSE stream ───────────────────────────────────────────
 
 /**
@@ -83,9 +96,7 @@ export async function* createSseStream(
   })
 
   if (!response.ok) {
-    throw new Error(
-      `SSE connection failed: ${response.status} ${response.statusText}`,
-    )
+    throw new SseHttpError(response.status, response.statusText)
   }
 
   const reader = response.body!.getReader()
