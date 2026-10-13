@@ -1,4 +1,3 @@
-export { WelcomePage } from './pages/welcome-page'
 export { FeatureGuideModal, type FeatureGuideModalProps } from './components/organisms/feature-guide-modal'
 export { FeatureIntroCard, type FeatureIntroCardProps } from './components/molecules/feature-intro-card'
 export { WelcomeHero, type WelcomeHeroProps } from './components/molecules/welcome-hero'

@@ -10,7 +10,7 @@ import { CatalogStreamProvider } from "@/features/media/providers/catalog-stream
 import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permissions"
 import { useModal, ModalRoot } from "@/lib/modals"
 import { DecideWatchHost } from "@/features/discover/components/organisms/decide-watch-host"
-import { LevelUpHost } from "@/features/user"
+import { LevelUpHost } from "@user/components/organisms/level-up-host"
 import { GamingXpHost } from "@/features/launcher"
 import { IndexerSearchHost } from "@/features/downloads/molecules/indexer-search-host"
 import { CookieBanner } from "@/components/cookie-banner"

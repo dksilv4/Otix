@@ -1,4 +1,3 @@
-export { UserProfilePage } from './pages/user-profile-page'
 export { LevelUpModal } from './components/molecules/level-up-modal'
 export { LevelUpHost } from './components/organisms/level-up-host'
 export { XPProgressRing } from './components/atoms/user-xp-progress-ring'

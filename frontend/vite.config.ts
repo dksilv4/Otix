@@ -92,6 +92,7 @@ export default defineConfig({
           if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'react'
           if (id.includes('node_modules/@tanstack')) return 'tanstack'
           if (id.includes('node_modules/axios')) return 'axios'
+          if (id.includes('node_modules/lucide-react')) return 'lucide'
         },
       },
     },
