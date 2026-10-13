@@ -104,16 +104,14 @@ export const MediaHeroLibraryActions = () => {
       )}
 
       {hasPlayWidgets ? (
-        <div className="shadow-lg shadow-emerald-500/10">
-          <MediaDetailPluginButtons
-            widgets={[]}
-            playWidgets={pluginActions.playWidgets}
-            requesting={pluginActions.requesting}
-            onRequest={pluginActions.handleRequest}
-            onPlay={pluginActions.handlePlay}
-            variant="pill"
-          />
-        </div>
+        <MediaDetailPluginButtons
+          widgets={[]}
+          playWidgets={pluginActions.playWidgets}
+          requesting={pluginActions.requesting}
+          onRequest={pluginActions.handleRequest}
+          onPlay={pluginActions.handlePlay}
+          variant="pill"
+        />
       ) : null}
 
       {requestMedia.hidden && pluginActions.widgets.length > 0 && (

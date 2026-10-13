@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { router } from '@/lib/router'
+import { useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Ban, Dices, Loader2, RefreshCw, Sparkles } from 'lucide-react'
 import { cn, heroImage } from '@/lib/utils'
@@ -36,6 +36,7 @@ const TYPE_OPTIONS: Array<{ id: MediaTypeFilter; label: string }> = [
 import { yearOf } from '@/features/discover/utils/decide'
 
 export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) => {
+  const navigate = useNavigate()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [mediaTypes, setMediaTypes] = useState<MediaTypeFilter[]>(['movie', 'show'])
   const [runtime, setRuntime] = useState<DecideRuntime | 'any'>('any')
@@ -182,7 +183,7 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
     if (!item) return
     canDismissRef.current = true
     onClose()
-    void router.navigate({
+    void navigate({
       to: '/media/$mediaType/$mediaId',
       params: { mediaType: item.mediaType || 'movie', mediaId: String(item.id) },
     })
@@ -290,7 +291,7 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
               onClick={() => {
                 canDismissRef.current = true
                 onClose()
-                void router.navigate({ to: '/auth/login' })
+                void navigate({ to: '/auth/login' })
               }}
             >
               Sign in

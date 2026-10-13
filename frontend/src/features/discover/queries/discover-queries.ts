@@ -3,7 +3,7 @@ import { apiClient } from '@/lib/api/client'
 import { discoverKeys } from './discover-keys'
 import { freshUnlessEmpty, retainUnlessEmpty } from '@/lib/query/empty-cache'
 import type { MediaItemSummary, SeasonSummary } from '@media/queries/media-queries'
-import type { PersonalizedSection } from '../types'
+import type { PersonalizedSection, DiscoverContinueWatchingResponse } from '../types'
 import type { GenreOption } from '@/features/genre/types'
 
 const TWO_HOURS = 1000 * 60 * 60 * 2
@@ -134,6 +134,19 @@ export const discoverQueries = {
       },
       gcTime: discoverGcTime,
       refetchOnMount: 'always',
+    }),
+
+  continueWatching: () =>
+    queryOptions({
+      queryKey: discoverKeys.continueWatching(),
+      queryFn: async () => {
+        const { data } = await apiClient.get<DiscoverContinueWatchingResponse>(
+          '/integrations/plex/continue-watching',
+        )
+        return Array.isArray(data?.items) ? data.items : []
+      },
+      staleTime: 15000,
+      refetchInterval: (q) => (q.state.status === 'error' ? false : 30000),
     }),
 }
 

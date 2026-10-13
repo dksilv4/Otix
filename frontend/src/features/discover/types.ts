@@ -34,3 +34,31 @@ export interface RecordedMoodContext {
   feeling: string
 }
 
+export interface DiscoverContinueWatchingItem {
+  id: string
+  ratingKey: string
+  grandparentRatingKey?: string | null
+  mediaItemId?: number | string | null
+  mediaType: 'movie' | 'show'
+  title: string
+  showTitle?: string | null
+  episodeTitle?: string | null
+  seasonNumber?: number | null
+  episodeNumber?: number | null
+  subtitle?: string | null
+  thumb?: string | null
+  backdropUrl?: string | null
+  viewOffset?: number
+  duration?: number
+  progressPercent?: number
+  year?: number | null
+  summary?: string | null
+  serverId?: string
+  serverName?: string
+  serverUrl?: string
+}
+
+export interface DiscoverContinueWatchingResponse {
+  items: DiscoverContinueWatchingItem[]
+}
+

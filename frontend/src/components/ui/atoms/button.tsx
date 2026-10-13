@@ -10,10 +10,11 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]',
         destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
-        glass: 'hover:bg-[var(--dk-surface-glass-hover)]',
+        glass: 'bg-[var(--dk-surface-glass)] text-foreground hover:bg-[var(--dk-surface-glass-hover)]',
         outline: 'hover:bg-[var(--dk-surface-ghost-hover)]',
         link: 'text-primary underline-offset-4 hover:underline',
       },
@@ -69,7 +70,11 @@ const variantStyles: Record<string, React.CSSProperties> = {
   primary: {
     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
   },
+  default: {
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
+  },
   glass: {
+    backgroundColor: 'var(--dk-surface-glass)',
     backdropFilter: 'blur(12px)',
     boxShadow: 'var(--dk-shadow-glass)',
   },

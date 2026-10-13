@@ -32,6 +32,7 @@ import { createCharacterRoutes } from '@/features/character/router'
 import { createCompanyRoutes } from '@company/router'
 import { createNotificationRoutes } from '@/features/notifications/router'
 import { createGenreRoutes } from '@genre/router'
+import { createWelcomeRoutes } from '@/features/welcome/router'
 import { RoutePending } from './route-pending'
 
 const rootRoute = createRootRoute({
@@ -83,6 +84,7 @@ const routeTree = rootRoute.addChildren([
   ...createCharacterRoutes(rootRoute),
   ...createCompanyRoutes(rootRoute),
   ...createNotificationRoutes(rootRoute),
+  ...createWelcomeRoutes(rootRoute),
 ])
 
 export interface RouterContext {

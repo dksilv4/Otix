@@ -7,7 +7,71 @@ import {
   REQUESTABLE,
   getButtonState,
   getStreamPresentation,
+  getStreamButtonTheme,
 } from '../../utils/plugin-actions'
+import type { StreamPlaybackSession, AudioTrack, SubtitleTrack } from '../../types/stream-player'
+
+export interface RequestInstance {
+  id: string
+  name: string
+  status: 'downloaded' | 'requested' | 'not_exists' | 'error' | 'partially_available'
+  file?: {
+    name?: string | null
+    size?: number | null
+    quality?: string | null
+    video?: string | null
+    audio?: string | null
+  } | null
+}
+
+export interface RequestWidget {
+  pluginId: string
+  label: string
+  props: {
+    label?: string
+    mediaType: string
+    mediaId: string
+    instances: RequestInstance[]
+  }
+}
+
+export interface PlayInstance {
+  id: string
+  serverId: string
+  name: string
+  ratingKey: string
+  baseUrl?: string
+  token?: string
+  provider?: string
+  providerLabel?: string
+  serverName?: string
+  mediaType?: 'movie' | 'show' | 'episode'
+  seasonNumber?: number
+  episodeNumber?: number
+  episodeTitle?: string
+  viewOffset?: number
+  duration?: number
+  progressPercent?: number
+  viewed?: boolean
+  itemId?: string
+  title?: string
+  baseUrls?: string[]
+  directUrl?: string
+  hlsUrl?: string
+  audioTracks?: AudioTrack[]
+  subtitles?: SubtitleTrack[]
+  streamSession?: StreamPlaybackSession
+}
+
+export interface PlayWidget {
+  pluginId: string
+  label: string
+  props: {
+    mediaType: string
+    mediaId: string
+    instances: PlayInstance[]
+  }
+}
 
 const FileDetails = ({ file }: { file: NonNullable<RequestInstance['file']> }) => {
   return (
@@ -255,6 +319,7 @@ const StreamMediaButton = ({
   if (instances.length === 1) {
     const single = instances[0]
     const { isResume, isWatched, primaryText, subText, progressPercent } = getStreamPresentation(single)
+    const theme = getStreamButtonTheme(single, variant)
 
     return (
       <button
@@ -262,18 +327,15 @@ const StreamMediaButton = ({
         onClick={() => run(single)}
         disabled={busy != null}
         className={cn(
-          'relative overflow-hidden group/stream-btn transition-all duration-200',
+          'relative overflow-hidden group/stream-btn transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
           variant === 'pill'
             ? cn(
-                'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4',
-                isResume
-                  ? 'bg-amber-500/25 text-amber-200 ring-1 ring-amber-400/50 hover:bg-amber-500/35 hover:ring-amber-400/70 shadow-amber-500/10'
-                  : 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30 hover:ring-emerald-400/60 shadow-emerald-500/10',
+                'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] [&_svg]:h-4 [&_svg]:w-4',
+                theme.className,
               )
             : cn(
-                'dk-interaction__btn glass-inset',
-                'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold',
-                'text-white hover:text-white/90 transition-all cursor-pointer disabled:opacity-50',
+                'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold transition-all',
+                theme.className,
               ),
         )}
         title={subText ? `${primaryText} (${subText})` : primaryText}
@@ -281,9 +343,9 @@ const StreamMediaButton = ({
         {busy ? (
           <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
         ) : isWatched ? (
-          <RotateCcw className="h-4 w-4 text-current shrink-0" />
+          <RotateCcw className={cn('h-4 w-4 shrink-0', theme.iconClassName)} />
         ) : (
-          <Play className="h-4 w-4 fill-current text-current shrink-0" />
+          <Play className={cn('h-4 w-4 shrink-0', theme.iconClassName)} />
         )}
         <span className="font-semibold">{primaryText}</span>
         {subText && (
@@ -291,23 +353,12 @@ const StreamMediaButton = ({
             · {subText}
           </span>
         )}
-        {single.providerLabel && (
-          <span className="inline-flex items-center gap-1 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-white/80 hidden md:inline-flex ml-0.5">
-            <span
-              className={cn(
-                'w-1.5 h-1.5 rounded-full animate-pulse',
-                isResume ? 'bg-amber-400' : 'bg-emerald-400',
-              )}
-            />
-            {single.providerLabel}
-          </span>
-        )}
 
         {/* Illuminated Progress Bar Accent */}
         {isResume && progressPercent > 0 && (
           <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-white/20 rounded-full overflow-hidden">
             <span
-              className="block h-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)] transition-all duration-300"
+              className={cn('block h-full transition-all duration-300', theme.progressBarClassName)}
               style={{ width: `${progressPercent}%` }}
             />
           </span>
@@ -319,6 +370,8 @@ const StreamMediaButton = ({
   // Multi-server / Multi-provider dropdown
   const first = instances[0]
   const { isResume, primaryText, subText, progressPercent } = getStreamPresentation(first)
+  const theme = getStreamButtonTheme(first, variant)
+
   return (
     <>
       <button
@@ -328,37 +381,23 @@ const StreamMediaButton = ({
           setCoords({ top: rect.bottom + 6, left: rect.left, width: rect.width })
         }}
         className={cn(
-          'relative overflow-hidden group/stream-btn transition-all duration-200',
+          'relative overflow-hidden group/stream-btn transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
           variant === 'pill'
             ? cn(
                 'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] [&_svg]:h-4 [&_svg]:w-4',
-                isResume
-                  ? 'bg-amber-500/25 text-amber-200 ring-1 ring-amber-400/50 hover:bg-amber-500/35 hover:ring-amber-400/70 shadow-amber-500/10'
-                  : 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30 hover:ring-emerald-400/60 shadow-emerald-500/10',
+                theme.className,
               )
             : cn(
-                'dk-interaction__btn glass-inset',
-                'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold',
-                'text-white hover:text-white/90 transition-all cursor-pointer',
+                'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold transition-all',
+                theme.className,
               ),
         )}
       >
-        <Play className="h-4 w-4 fill-current shrink-0" />
+        <Play className={cn('h-4 w-4 shrink-0', theme.iconClassName)} />
         <span className="font-semibold">{primaryText}</span>
         {subText && (
           <span className="text-[11px] opacity-75 font-normal truncate max-w-[120px] hidden sm:inline">
             · {subText}
-          </span>
-        )}
-        {first.providerLabel && (
-          <span className="inline-flex items-center gap-1 text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-white/10 text-white/80 hidden md:inline-flex ml-0.5">
-            <span
-              className={cn(
-                'w-1.5 h-1.5 rounded-full animate-pulse',
-                isResume ? 'bg-amber-400' : 'bg-emerald-400',
-              )}
-            />
-            {first.providerLabel}
           </span>
         )}
         <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
@@ -366,7 +405,7 @@ const StreamMediaButton = ({
         {isResume && progressPercent > 0 && (
           <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-white/20 rounded-full overflow-hidden">
             <span
-              className="block h-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]"
+              className={cn('block h-full', theme.progressBarClassName)}
               style={{ width: `${progressPercent}%` }}
             />
           </span>
@@ -397,9 +436,9 @@ const StreamMediaButton = ({
                       {busy === inst.id ? (
                         <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
                       ) : pres.isWatched ? (
-                        <RotateCcw className="h-4 w-4 text-emerald-400 shrink-0" />
+                        <RotateCcw className={cn('h-4 w-4 shrink-0', pres.isPlex ? 'text-amber-400' : 'text-emerald-400')} />
                       ) : (
-                        <Play className="h-4 w-4 text-primary fill-current shrink-0" />
+                        <Play className={cn('h-4 w-4 fill-current shrink-0', pres.isPlex ? 'text-amber-400' : 'text-primary')} />
                       )}
                       <div className="min-w-0">
                         <div className="font-semibold truncate text-white">{inst.name}</div>
@@ -409,7 +448,14 @@ const StreamMediaButton = ({
                       </div>
                     </div>
                     {inst.providerLabel && (
-                      <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-white/10 text-white/60 shrink-0">
+                      <span
+                        className={cn(
+                          'text-[9px] uppercase font-bold px-1.5 py-0.5 rounded shrink-0',
+                          pres.isPlex
+                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
+                            : 'bg-white/10 text-white/60',
+                        )}
+                      >
                         {inst.providerLabel}
                       </span>
                     )}

@@ -12,12 +12,14 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import (
     Count,
     DateTimeField,
@@ -140,12 +142,18 @@ def get_plex_connect_info(
     media_identifier: str | int,
     season: str | int | None = None,
     episode: str | int | None = None,
+    tmdb_id: str | int | None = None,
+    title: str | None = None,
+    imdb_id: str | None = None,
+    tvdb_id: str | None = None,
 ) -> dict:
     """Return Plex connect details for the user's copy of a catalog media item.
 
     Mirrors the legacy response with expanded provider-agnostic playback metadata
-    including progress percentage, resume offset, episode context, and provider attributes.
+    including progress percentage, resume offset, episode context, pre-resolved stream
+    tracks, and performance timing statistics.
     """
+    t_start = time.perf_counter()
     ident = str(media_identifier)
     plex_item = None
     target_media_item = None
@@ -185,25 +193,25 @@ def get_plex_connect_info(
                 e.provider: e.external_id
                 for e in ExternalID.objects.filter(content_type=ct, object_id=target_media_item.id)
             }
-            tmdb_id = exts.get("tmdb")
-            imdb_id = exts.get("imdb")
-            tvdb_id = exts.get("tvdb")
+            tmdb_ext = exts.get("tmdb")
+            imdb_ext = exts.get("imdb")
+            tvdb_ext = exts.get("tvdb")
 
-            if tmdb_id:
+            if tmdb_ext:
                 plex_item = (
-                    UserPlexItem.objects.filter(user=user, guids__tmdb=str(tmdb_id))
+                    UserPlexItem.objects.filter(user=user, guids__tmdb=str(tmdb_ext))
                     .select_related("server")
                     .first()
                 )
-            if plex_item is None and tvdb_id:
+            if plex_item is None and tvdb_ext:
                 plex_item = (
-                    UserPlexItem.objects.filter(user=user, guids__tvdb=str(tvdb_id))
+                    UserPlexItem.objects.filter(user=user, guids__tvdb=str(tvdb_ext))
                     .select_related("server")
                     .first()
                 )
-            if plex_item is None and imdb_id:
+            if plex_item is None and imdb_ext:
                 plex_item = (
-                    UserPlexItem.objects.filter(user=user, guids__imdb=str(imdb_id))
+                    UserPlexItem.objects.filter(user=user, guids__imdb=str(imdb_ext))
                     .select_related("server")
                     .first()
                 )
@@ -217,6 +225,33 @@ def get_plex_connect_info(
                 plex_item.media_item = target_media_item
                 plex_item.save(update_fields=["media_item"])
 
+    # Query param fallbacks for unified single-roundtrip finding
+    if plex_item is None and tmdb_id:
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, guids__tmdb=str(tmdb_id))
+            .select_related("server")
+            .first()
+        )
+    if plex_item is None and tvdb_id:
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, guids__tvdb=str(tvdb_id))
+            .select_related("server")
+            .first()
+        )
+    if plex_item is None and imdb_id:
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, guids__imdb=str(imdb_id))
+            .select_related("server")
+            .first()
+        )
+    if plex_item is None and title:
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, title__iexact=str(title).strip())
+            .select_related("server")
+            .first()
+        )
+
+    # Ident fallbacks
     if plex_item is None:
         plex_item = (
             UserPlexItem.objects.filter(user=user, guids__tmdb=ident)
@@ -256,7 +291,12 @@ def get_plex_connect_info(
     if server is None:
         raise PlexConnectInfoNotFound(CONNECT_INFO_SERVER_NOT_FOUND)
 
+    db_match_ms = round((time.perf_counter() - t_start) * 1000, 2)
+
+    t_res_start = time.perf_counter()
     alt_urls = _get_alternative_plex_urls(server, user)
+    plex_resources_ms = round((time.perf_counter() - t_res_start) * 1000, 2)
+
     base_urls = [server.base_url] if server.base_url else []
     for url in alt_urls:
         if url not in base_urls:
@@ -280,11 +320,18 @@ def get_plex_connect_info(
     active_duration = int(plex_item.duration or 0)
     active_viewed = bool(plex_item.viewed)
 
+    target_leaf = None
+    t_meta_start = time.perf_counter()
+
     if plex_item.media_type == "show" or season is not None or episode is not None:
         try:
             leaves_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/allLeaves")
             if leaves_res:
-                leaves = leaves_res[0].get("MediaContainer", {}).get("Metadata", [])
+                leaves_data, working_base = leaves_res
+                if working_base in base_urls:
+                    base_urls.remove(working_base)
+                    base_urls.insert(0, working_base)
+                leaves = leaves_data.get("MediaContainer", {}).get("Metadata", [])
                 selected_leaf = None
 
                 if season is not None and episode is not None:
@@ -316,6 +363,7 @@ def get_plex_connect_info(
                         selected_leaf = leaves[0]
 
                 if selected_leaf:
+                    target_leaf = selected_leaf
                     active_rating_key = str(selected_leaf.get("ratingKey"))
                     active_ep_title = selected_leaf.get("title")
                     active_title = active_ep_title or active_title
@@ -333,7 +381,12 @@ def get_plex_connect_info(
         try:
             live_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}")
             if live_res:
-                meta = live_res[0].get("MediaContainer", {}).get("Metadata", [{}])[0]
+                meta_data, working_base = live_res
+                if working_base in base_urls:
+                    base_urls.remove(working_base)
+                    base_urls.insert(0, working_base)
+                meta = meta_data.get("MediaContainer", {}).get("Metadata", [{}])[0]
+                target_leaf = meta
                 if meta.get("viewOffset") is not None:
                     active_offset = int(meta.get("viewOffset"))
                 if meta.get("duration") is not None:
@@ -343,11 +396,99 @@ def get_plex_connect_info(
         except Exception as e:
             logger.debug("Failed to query live movie metadata for %s: %s", plex_item.rating_key, e)
 
+    metadata_ms = round((time.perf_counter() - t_meta_start) * 1000, 2)
+
     progress_percent = (
         round((active_offset / active_duration) * 100, 1)
         if active_duration and active_offset
         else 0.0
     )
+
+    # Pre-resolve stream specifications for direct browser playback
+    audio_tracks: list[dict] = []
+    subtitles: list[dict] = []
+    part_key: str | None = None
+    container: str = "mp4"
+    video_codec: str = "h264"
+    audio_codec: str = "aac"
+
+    if target_leaf is None and plex_item.raw:
+        target_leaf = plex_item.raw
+
+    if target_leaf:
+        media_list = _as_list(target_leaf.get("Media"))
+        if media_list:
+            m_obj = media_list[0]
+            container = m_obj.get("container") or "mp4"
+            video_codec = m_obj.get("videoCodec") or "h264"
+            audio_codec = m_obj.get("audioCodec") or "aac"
+            part_list = _as_list(m_obj.get("Part"))
+            if part_list:
+                part_obj = part_list[0]
+                part_key = part_obj.get("key")
+                for s in _as_list(part_obj.get("Stream")):
+                    stype = s.get("streamType")
+                    sid = str(s.get("id", ""))
+                    sidx = int(s.get("index", 0))
+                    codec = str(s.get("codec") or "")
+                    lang = s.get("languageCode") or s.get("language") or "und"
+                    disp = s.get("displayTitle") or s.get("title")
+                    if stype == 2:  # Audio
+                        audio_tracks.append({
+                            "id": sid,
+                            "index": sidx,
+                            "label": disp or f"{lang} ({codec})",
+                            "language": lang,
+                            "codec": codec,
+                            "channels": int(s.get("channels") or 2),
+                        })
+                    elif stype == 3:  # Subtitle
+                        sub_format = (
+                            "pgs" if codec == "pgs" else ("ass" if codec == "ass" else ("srt" if codec == "srt" else "vtt"))
+                        )
+                        sub_key = s.get("key")
+                        sub_url = (
+                            f"{base_urls[0]}{sub_key}?X-Plex-Token={token}"
+                            if (sub_key and base_urls and token)
+                            else None
+                        )
+                        subtitles.append({
+                            "id": sid,
+                            "index": sidx,
+                            "label": disp or lang or "Subtitles",
+                            "language": lang,
+                            "url": sub_url,
+                            "format": sub_format,
+                            "is_external": bool(sub_key),
+                            "requires_burn_in": codec in ("pgs", "ass"),
+                        })
+
+    primary_url = base_urls[0] if base_urls else None
+    direct_url = f"{primary_url}{part_key}?X-Plex-Token={token}" if (primary_url and part_key and token) else None
+    hls_url = None
+    if primary_url and token and active_rating_key:
+        encoded_path = urllib.parse.quote(f"/library/metadata/{active_rating_key}", safe="")
+        encoded_token = urllib.parse.quote(token, safe="")
+        hls_url = (
+            f"{primary_url}/video/:/transcode/universal/start.m3u8?"
+            f"path={encoded_path}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&"
+            f"X-Plex-Client-Identifier=otix-web&X-Plex-Product=Otix&X-Plex-Platform=Web&"
+            f"X-Plex-Token={encoded_token}"
+        )
+
+    total_ms = round((time.perf_counter() - t_start) * 1000, 2)
+    server_timings = (
+        f'db;dur={db_match_ms};desc="DB Match", '
+        f'res;dur={plex_resources_ms};desc="Plex Resources", '
+        f'meta;dur={metadata_ms};desc="PMS Metadata", '
+        f'total;dur={total_ms};desc="Total"'
+    )
+    stats = {
+        "db_match_ms": db_match_ms,
+        "plex_resources_ms": plex_resources_ms,
+        "metadata_resolve_ms": metadata_ms,
+        "total_ms": total_ms,
+    }
 
     return {
         "base_url": base_urls[0] if base_urls else None,
@@ -370,6 +511,15 @@ def get_plex_connect_info(
         "progress_percent": progress_percent,
         "viewed": active_viewed,
         "view_count": int(plex_item.view_count or 0),
+        "audio_tracks": audio_tracks,
+        "subtitles": subtitles,
+        "container": container,
+        "video_codec": video_codec,
+        "audio_codec": audio_codec,
+        "direct_url": direct_url,
+        "hls_url": hls_url,
+        "stats": stats,
+        "server_timings": server_timings,
     }
 
 
@@ -431,8 +581,16 @@ def _plex_server_get(server: UserPlexServer, user, path: str) -> tuple[dict, str
     if not token:
         return None
 
-    base_urls = [server.base_url] if server.base_url else []
-    for url in _get_alternative_plex_urls(server, user):
+    working_cache_key = f"plex_server_working_base:{server.pk}"
+    cached_working = cache.get(working_cache_key)
+
+    alt_urls = _get_alternative_plex_urls(server, user)
+    base_urls: list[str] = []
+    if cached_working and (cached_working == server.base_url or cached_working in alt_urls):
+        base_urls.append(cached_working)
+    if server.base_url and server.base_url not in base_urls:
+        base_urls.append(server.base_url)
+    for url in alt_urls:
         if url not in base_urls:
             base_urls.append(url)
 
@@ -441,10 +599,11 @@ def _plex_server_get(server: UserPlexServer, user, path: str) -> tuple[dict, str
             status, raw = _request(
                 _with_token(f"{base_url}{path}", token),
                 headers=_plex_headers(),
-                timeout=8.0,
+                timeout=3.0,
             )
             if status != 200:
                 continue
+            cache.set(working_cache_key, base_url, timeout=600)
             return json.loads(raw), base_url
         except Exception:
             continue
@@ -764,6 +923,242 @@ def is_plex_admin(user) -> bool:
     if not user.plex_auth_token:
         return False
     return UserPlexServer.objects.filter(user=user, selected=True, owned=True).exists()
+
+
+def get_plex_continue_watching(user) -> list[dict]:
+    """Return Continue Watching items across the user's Plex servers.
+
+    Queries PMS live Continue Watching / onDeck endpoints with fallback to stored
+    UserPlexItem rows. Items are deduplicated, enriched with catalog MediaItem links,
+    and formatted for discover playback.
+    """
+    if not getattr(user, "plex_auth_token", None) and not getattr(user, "plex_id", None):
+        return []
+
+    servers = list(UserPlexServer.objects.filter(user=user, selected=True))
+    if not servers:
+        servers = list(UserPlexServer.objects.filter(user=user))
+
+    items: list[dict] = []
+    seen_rating_keys: set[str] = set()
+
+    for server in servers:
+        token = server.access_token or user.plex_auth_token
+        if not token or not server.base_url:
+            continue
+
+        raw_items: list[dict] = []
+        working_base = server.base_url
+
+        for endpoint in (
+            "/hubs/continueWatching",
+            "/hubs/continueWatching/items",
+            "/hubs/home/continueWatching",
+            "/library/onDeck",
+        ):
+            res = _plex_server_get(server, user, endpoint)
+            if not res:
+                continue
+            data, base = res
+            working_base = base
+            container = data.get("MediaContainer", data)
+            leaf_list = []
+            if "Metadata" in container:
+                leaf_list = _as_list(container.get("Metadata", []))
+            elif "Hub" in container:
+                for hub in _as_list(container.get("Hub", [])):
+                    htype = str(hub.get("type", ""))
+                    hident = str(hub.get("hubIdentifier", "")).lower()
+                    if htype in ("continueWatching", "onDeck") or "continue" in hident:
+                        leaf_list = _as_list(hub.get("Metadata", []))
+                        if leaf_list:
+                            break
+
+            if leaf_list:
+                for leaf in leaf_list:
+                    rk = str(leaf.get("ratingKey", ""))
+                    if rk and rk not in seen_rating_keys:
+                        raw_items.append(leaf)
+                        seen_rating_keys.add(rk)
+                if raw_items:
+                    break
+
+        def _full_thumb(raw, base_url=working_base, tok=token):
+            if not raw:
+                return None
+            url = str(raw)
+            if url.startswith("/"):
+                url = f"{base_url}{url}"
+            if tok:
+                url = f"{url}{'&' if '?' in url else '?'}X-Plex-Token={tok}"
+            return url
+
+        for leaf in raw_items:
+            mtype = leaf.get("type", "")
+            if mtype not in ("movie", "episode", "show"):
+                continue
+
+            rk = str(leaf["ratingKey"])
+            is_episode = mtype == "episode"
+            grandparent_rk = (
+                str(leaf["grandparentRatingKey"]) if leaf.get("grandparentRatingKey") else None
+            )
+
+            title = leaf.get("title", "")
+            grandparent_title = leaf.get("grandparentTitle")
+            parent_idx = _to_int(leaf.get("parentIndex"))
+            ep_idx = _to_int(leaf.get("index"))
+            duration = _to_int(leaf.get("duration")) or 0
+            view_offset = _to_int(leaf.get("viewOffset")) or 0
+            progress_pct = (
+                round((view_offset / duration) * 100, 1)
+                if duration > 0 and view_offset > 0
+                else 0.0
+            )
+
+            display_title = grandparent_title if is_episode and grandparent_title else title
+            ep_title = title if is_episode else None
+
+            if is_episode:
+                if parent_idx is not None and ep_idx is not None:
+                    subtitle = (
+                        f"S{parent_idx}:E{ep_idx} · {ep_title}"
+                        if ep_title
+                        else f"S{parent_idx}:E{ep_idx}"
+                    )
+                else:
+                    subtitle = ep_title
+            else:
+                year_val = _to_int(leaf.get("year"))
+                subtitle = str(year_val) if year_val else None
+
+            thumb = _full_thumb(leaf.get("thumb") or leaf.get("grandparentThumb"))
+            backdrop = _full_thumb(leaf.get("art") or leaf.get("thumb"))
+
+            items.append(
+                {
+                    "id": rk,
+                    "rating_key": rk,
+                    "grandparent_rating_key": grandparent_rk,
+                    "media_item_id": None,
+                    "media_type": "show" if is_episode else "movie",
+                    "title": display_title,
+                    "show_title": grandparent_title
+                    or (title if mtype in ("show", "episode") else None),
+                    "episode_title": ep_title,
+                    "season_number": parent_idx,
+                    "episode_number": ep_idx,
+                    "subtitle": subtitle,
+                    "thumb": thumb,
+                    "backdrop_url": backdrop,
+                    "view_offset": view_offset,
+                    "duration": duration,
+                    "progress_percent": progress_pct,
+                    "year": _to_int(leaf.get("year")),
+                    "summary": leaf.get("summary"),
+                    "server_id": server.machine_identifier,
+                    "server_name": server.name,
+                    "server_url": working_base,
+                }
+            )
+
+    # Fallback to local UserPlexItem if live PMS queries returned nothing
+    if not items:
+        in_progress_qs = (
+            UserPlexItem.objects.filter(
+                user=user,
+                view_offset__gt=0,
+                viewed=False,
+            )
+            .select_related("server", "media_item")
+            .order_by("-last_viewed_at", "-updated_at")[:20]
+        )
+        for p_item in in_progress_qs:
+            dur = p_item.duration or 0
+            offset = p_item.view_offset or 0
+            pct = round((offset / dur) * 100, 1) if dur > 0 and offset > 0 else 0.0
+            srv = p_item.server
+            token = srv.access_token if srv else user.plex_auth_token
+            base_url = srv.base_url if srv else ""
+            t_url = p_item.thumb_url
+            if t_url and t_url.startswith("/") and base_url:
+                t_url = f"{base_url}{t_url}{'&' if '?' in t_url else '?'}X-Plex-Token={token}"
+
+            media_cat = p_item.media_item
+            catalog_backdrop = media_cat.backdrop_url if media_cat else None
+            catalog_poster = media_cat.poster_url if media_cat else None
+
+            items.append(
+                {
+                    "id": p_item.rating_key,
+                    "rating_key": p_item.rating_key,
+                    "grandparent_rating_key": None,
+                    "media_item_id": p_item.media_item_id,
+                    "media_type": p_item.media_type,
+                    "title": p_item.title,
+                    "show_title": p_item.title if p_item.media_type == "show" else None,
+                    "episode_title": None,
+                    "season_number": None,
+                    "episode_number": None,
+                    "subtitle": str(p_item.year) if p_item.year else None,
+                    "thumb": t_url or catalog_poster,
+                    "backdrop_url": catalog_backdrop or t_url,
+                    "view_offset": offset,
+                    "duration": dur,
+                    "progress_percent": pct,
+                    "year": p_item.year,
+                    "summary": None,
+                    "server_id": srv.machine_identifier if srv else "",
+                    "server_name": srv.name if srv else "",
+                    "server_url": base_url,
+                }
+            )
+
+    # Bulk-match catalog media_item_ids for all items
+    rating_keys = {i["rating_key"] for i in items if i.get("rating_key")} | {
+        i["grandparent_rating_key"] for i in items if i.get("grandparent_rating_key")
+    }
+    if rating_keys:
+        plex_item_map = {
+            row["rating_key"]: row["media_item_id"]
+            for row in UserPlexItem.objects.filter(
+                user=user, rating_key__in=rating_keys, media_item__isnull=False
+            ).values("rating_key", "media_item_id")
+        }
+        for item in items:
+            if item.get("media_item_id"):
+                continue
+            if item.get("rating_key") in plex_item_map:
+                item["media_item_id"] = plex_item_map[item["rating_key"]]
+            elif item.get("grandparent_rating_key") in plex_item_map:
+                item["media_item_id"] = plex_item_map[item["grandparent_rating_key"]]
+
+    # Also match remaining by title
+    for item in items:
+        if item.get("media_item_id"):
+            continue
+        m_title = item.get("title")
+        if not m_title:
+            continue
+        try:
+            from apps.media.models import MediaItem
+
+            m_type = item.get("media_type")
+            qs = MediaItem.objects.filter(media_type=m_type, title__iexact=m_title)
+            if item.get("year"):
+                matched = qs.filter(release_date__year=item["year"]).first() or qs.first()
+            else:
+                matched = qs.first()
+            if matched:
+                item["media_item_id"] = matched.id
+                if not item.get("backdrop_url") and matched.backdrop_url:
+                    item["backdrop_url"] = matched.backdrop_url
+                if not item.get("thumb") and matched.poster_url:
+                    item["thumb"] = matched.poster_url
+        except Exception:
+            pass
+
+    return items
 
 
 # ── Discovery (GET /integrations/plex/servers) ───────────────────────────

@@ -80,7 +80,7 @@ const RequestMediaButtonInner = ({
     }
   }, [menuOpen])
 
-  if (state.hidden || hideIfAvailable) return null
+  if (state.hidden || hideIfAvailable || state.loading) return null
 
   const openConfirm = (instanceId?: string) => {
     setTargetInstanceId(instanceId)
@@ -127,21 +127,6 @@ const RequestMediaButtonInner = ({
   const targets = requestableInstances(state.instances)
   const busy = state.requesting != null
 
-  if (state.loading && state.instances.length === 0) {
-    const loadingText = state.loadingLabel || 'Checking Library…'
-    return (
-      <button
-        type="button"
-        disabled
-        title={state.disabledReason || `Checking ${state.mediaType === 'movie' ? 'Radarr' : 'Sonarr'} library status…`}
-        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold text-white bg-blue-500/80 shadow-lg shadow-blue-500/15 opacity-80 cursor-not-allowed"
-      >
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span>{loadingText}</span>
-      </button>
-    )
-  }
-
   if (downloaded && targets.length === 0) {
     const downloadedInstances = state.instances
       .filter((item) => item.status === 'downloaded' || item.status === 'partially_available')
@@ -153,7 +138,7 @@ const RequestMediaButtonInner = ({
         <button
           type="button"
           onClick={onWatch}
-          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/40 hover:bg-emerald-500/30 hover:ring-emerald-400/60 shadow-lg shadow-emerald-500/10 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 hover:text-emerald-100 shadow-lg shadow-emerald-500/10 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           title={downloadedInstances ? `Available in library on: ${downloadedInstances}. Click to watch/stream.` : 'Available in library. Click to watch/stream.'}
         >
           <Play className="h-4 w-4 fill-current text-current" />
@@ -167,7 +152,7 @@ const RequestMediaButtonInner = ({
 
     return (
       <div
-        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/40 shadow-lg shadow-emerald-500/10"
+        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-emerald-500/20 text-emerald-300 shadow-lg shadow-emerald-500/10"
         title={downloadedInstances ? `Available in library on: ${downloadedInstances}` : 'Available in library'}
       >
         <Check className="h-4 w-4" />
@@ -183,7 +168,7 @@ const RequestMediaButtonInner = ({
       .join(', ')
     return (
       <div
-        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40 shadow-lg shadow-amber-500/10"
+        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-amber-500/20 text-amber-300 shadow-lg shadow-amber-500/10"
         title={requestedInstances ? `Requested on: ${requestedInstances}` : 'Already requested'}
       >
         <Clock className="h-4 w-4" />

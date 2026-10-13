@@ -290,4 +290,129 @@ describe('MediaManageModal', () => {
 
     await user.click(screen.getByRole('button', { name: /Close dialog/i }))
   })
+
+  it('renders "How this works" help without crashing', async () => {
+    const user = userEvent.setup()
+    render(
+      <MediaManageModal
+        open={true}
+        onClose={vi.fn()}
+        mediaType="movie"
+        mediaId="movie-1"
+      />
+    )
+
+    const helpBtn = screen.getByRole('button', { name: /How this works/i })
+    await user.click(helpBtn)
+
+    expect(screen.getByText(/fallback for Dark/i)).toBeInTheDocument()
+    expect(screen.getByText(/overrides General for that theme/i)).toBeInTheDocument()
+  })
+
+  it('allows clicking a candidate and pinning it via "Set as Poster"', async () => {
+    const user = userEvent.setup()
+    render(
+      <MediaManageModal
+        open={true}
+        onClose={vi.fn()}
+        mediaType="movie"
+        mediaId="movie-1"
+      />
+    )
+
+    // Initially asset-poster-1 is active (it has currentContexts: ['general'])
+    expect(screen.getByText('Active Default Poster')).toBeInTheDocument()
+
+    // Click candidate 2 (fanart)
+    const candidate2Btn = screen.getByRole('button', { name: /fanart/i })
+    await user.click(candidate2Btn)
+
+    // Preview switches to candidate 2
+    expect(screen.getByText('Previewing Candidate Poster')).toBeInTheDocument()
+    const setPosterBtn = screen.getByRole('button', { name: /Set as Poster/i })
+    expect(setPosterBtn).toBeInTheDocument()
+
+    // Click "Set as Poster"
+    await user.click(setPosterBtn)
+
+    expect(mockMutateSelection).toHaveBeenCalledWith({
+      assetId: 'asset-poster-2',
+      context: 'general',
+    })
+  })
+
+  it('allows double-clicking a candidate to directly set as artwork', async () => {
+    const user = userEvent.setup()
+    render(
+      <MediaManageModal
+        open={true}
+        onClose={vi.fn()}
+        mediaType="movie"
+        mediaId="movie-1"
+      />
+    )
+
+    const candidate2Btn = screen.getByRole('button', { name: /fanart/i })
+    await user.dblClick(candidate2Btn)
+
+    expect(mockMutateSelection).toHaveBeenCalledWith({
+      assetId: 'asset-poster-2',
+      context: 'general',
+    })
+  })
+
+  it('handles numeric IDs properly when selecting and pinning', async () => {
+    mockAssets = [
+      {
+        id: 101 as any,
+        assetType: 'poster',
+        url: 'https://example.com/poster1.jpg',
+        provider: 'tmdb',
+        lang: 'en',
+        score: 9.5,
+        width: 1000,
+        height: 1500,
+        selectedContext: null,
+        currentContexts: ['general'],
+        isTextless: false,
+        keepLocal: false,
+      } as unknown as MediaAsset,
+      {
+        id: 102 as any,
+        assetType: 'poster',
+        url: 'https://example.com/poster2.jpg',
+        provider: 'fanart',
+        lang: 'en',
+        score: 8.0,
+        width: 1000,
+        height: 1500,
+        selectedContext: null,
+        currentContexts: [],
+        isTextless: false,
+        keepLocal: false,
+      } as unknown as MediaAsset,
+    ]
+
+    const user = userEvent.setup()
+    render(
+      <MediaManageModal
+        open={true}
+        onClose={vi.fn()}
+        mediaType="movie"
+        mediaId="movie-1"
+      />
+    )
+
+    const candidate2Btn = screen.getByRole('button', { name: /fanart/i })
+    await user.click(candidate2Btn)
+
+    const setPosterBtn = screen.getByRole('button', { name: /Set as Poster/i })
+    await user.click(setPosterBtn)
+
+    expect(mockMutateSelection).toHaveBeenCalledWith({
+      assetId: '102',
+      context: 'general',
+    })
+  })
 })
+

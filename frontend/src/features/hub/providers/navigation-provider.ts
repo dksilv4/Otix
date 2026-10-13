@@ -4,7 +4,7 @@ import { router } from '@/lib/router'
 import { openDecideWatch } from '@/features/discover/open-decide-watch'
 import type { Command, CommandProvider } from '../types'
 
-type AppPath = '/' | '/search' | '/library' | '/calendar' | '/notifications' | '/settings'
+type AppPath = '/' | '/search' | '/library' | '/calendar' | '/notifications' | '/settings' | '/welcome'
 
 interface NavEntry {
   id: string
@@ -16,6 +16,7 @@ interface NavEntry {
 
 const NAV_ENTRIES: NavEntry[] = [
   { id: 'discover', title: 'Discover', to: '/', icon: Compass, keywords: ['home', 'feed'] },
+  { id: 'welcome', title: 'Welcome Guide', to: '/welcome', icon: Sparkles, keywords: ['welcome', 'guide', 'tour', 'help', 'intro', 'onboarding'] },
   { id: 'search', title: 'Search', to: '/search', icon: Search, keywords: ['find', 'lookup'] },
   { id: 'library', title: 'Library', to: '/library', icon: Library, keywords: ['collection'] },
   { id: 'calendar', title: 'Calendar', to: '/calendar', icon: Calendar, keywords: ['releases', 'schedule'] },

@@ -65,3 +65,21 @@ describe('getRailTitle', () => {
   })
 })
 
+describe('discoverQueries.continueWatching', () => {
+  it('fetches continue-watching items from backend', async () => {
+    const mockItems = [{ id: 'plex-1', title: 'Severance' }]
+    const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValueOnce({
+      data: { items: mockItems },
+    } as any)
+
+    const query = discoverQueries.continueWatching()
+    expect(query.queryKey).toEqual(['discover', 'continue-watching'])
+    const result = await (query as any).queryFn()
+
+    expect(getSpy).toHaveBeenCalledWith('/integrations/plex/continue-watching')
+    expect(result).toEqual(mockItems)
+    getSpy.mockRestore()
+  })
+})
+
+

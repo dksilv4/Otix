@@ -66,3 +66,7 @@ export const aspectRatioOf = (asset: MediaAsset): string | undefined => {
   if (width && height && width > 0 && height > 0) return `${width} / ${height}`
   return undefined
 }
+
+export const focusRing =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-0'
+

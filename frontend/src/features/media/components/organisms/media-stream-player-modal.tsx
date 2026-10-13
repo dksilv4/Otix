@@ -61,7 +61,10 @@ export const MediaStreamPlayerModal = () => {
     onBuffering,
     onError,
     fallbackToHls,
+    failoverToBaseUrl,
   } = useMediaStreamPlayer()
+
+  const triedBaseUrlsRef = useRef<Set<string>>(new Set())
 
   const [controlsVisible, setControlsVisible] = useState(true)
   const [showVolumeSlider, setShowVolumeSlider] = useState(false)
@@ -182,9 +185,12 @@ export const MediaStreamPlayerModal = () => {
   const initialSeekDoneRef = useRef(false)
   const targetSeekTime = (session?.startPositionMs || 0) / 1000
 
-  // Reset initial seek state when session changes
+  // Reset initial seek and failover state when session changes
   useEffect(() => {
     initialSeekDoneRef.current = false
+    if (session?.serverUrl) {
+      triedBaseUrlsRef.current = new Set([session.serverUrl])
+    }
   }, [session?.itemId])
 
   const applyInitialSeek = useCallback(() => {
@@ -245,15 +251,33 @@ export const MediaStreamPlayerModal = () => {
           if (isPlaying) {
             safePlay(video)
           }
+          if (typeof performance !== 'undefined' && performance.mark) {
+            try {
+              performance.mark('stream_manifest_parsed')
+              performance.measure('plex_manifest_ready', 'stream_player_open_start', 'stream_manifest_parsed')
+            } catch (_err) {
+              void _err
+            }
+          }
         })
 
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (data.fatal) {
             switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.warn('[StreamPlayer] HLS network error, recovering...', data)
-                hls.startLoad()
+              case Hls.ErrorTypes.NETWORK_ERROR: {
+                console.warn('[StreamPlayer] HLS network error:', data)
+                const candidateBaseUrls = session.baseUrls || []
+                const nextUrl = candidateBaseUrls.find((u) => !triedBaseUrlsRef.current.has(u))
+                if (nextUrl) {
+                  triedBaseUrlsRef.current.add(nextUrl)
+                  console.info(`[StreamPlayer] Attempting multi-connection failover to ${nextUrl}`)
+                  failoverToBaseUrl(nextUrl)
+                } else {
+                  console.warn('[StreamPlayer] Retrying current stream load...')
+                  hls.startLoad()
+                }
                 break
+              }
               case Hls.ErrorTypes.MEDIA_ERROR:
                 console.warn('[StreamPlayer] HLS media error, recovering...', data)
                 hls.recoverMediaError()
@@ -285,7 +309,7 @@ export const MediaStreamPlayerModal = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, session?.itemId, playbackMethod])
+  }, [isOpen, session?.itemId, session?.serverUrl, playbackMethod])
 
   // Sync isPlaying state with video element
   useEffect(() => {

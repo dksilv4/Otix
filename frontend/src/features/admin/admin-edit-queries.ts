@@ -25,7 +25,7 @@ export interface ImageOverrideItem {
 export type ArtworkContext = 'general' | 'dark' | 'light'
 
 export interface MediaAsset {
-  id: string
+  id: string | number
   assetType: string
   url: string
   width: number | null
@@ -91,7 +91,7 @@ export function useMediaAssets(mediaType: string, mediaId: string) {
 }
 
 export interface ArtworkSelectionResult {
-  assetId: string
+  assetId: string | number
   selectedContext: ArtworkContext | null
   mirrored: boolean
 }
@@ -104,7 +104,7 @@ export function useSetArtworkSelection(_mediaType: string, mediaId: string) {
       assetId,
       context,
     }: {
-      assetId: string
+      assetId: string | number
       context: ArtworkContext | null
     }): Promise<ArtworkSelectionResult> => {
       const url = `/media/admin/media-items/${mediaId}/assets/${assetId}/select`
@@ -117,14 +117,14 @@ export function useSetArtworkSelection(_mediaType: string, mediaId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminEditKeys.forMedia(mediaId) })
-      queryClient.removeQueries({ queryKey: ['media'] })
-      queryClient.removeQueries({ queryKey: ['discover'] })
+      queryClient.invalidateQueries({ queryKey: ['media'] })
+      queryClient.invalidateQueries({ queryKey: ['discover'] })
     },
   })
 }
 
 export interface TextlessPickResult {
-  assetId: string
+  assetId: string | number
   active: boolean
   mirrored: boolean
 }
@@ -142,7 +142,7 @@ export function useSetTextlessPick(_mediaType: string, mediaId: string) {
       assetId,
       active,
     }: {
-      assetId: string
+      assetId: string | number
       active: boolean
     }): Promise<TextlessPickResult> => {
       const url = `/media/admin/media-items/${mediaId}/assets/${assetId}/textless`
@@ -155,14 +155,14 @@ export function useSetTextlessPick(_mediaType: string, mediaId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminEditKeys.forMedia(mediaId) })
-      queryClient.removeQueries({ queryKey: ['media'] })
-      queryClient.removeQueries({ queryKey: ['discover'] })
+      queryClient.invalidateQueries({ queryKey: ['media'] })
+      queryClient.invalidateQueries({ queryKey: ['discover'] })
     },
   })
 }
 
 export interface ArtworkMirrorResult {
-  assetId: string
+  assetId: string | number
   kept: boolean
   mirrored: boolean
 }
@@ -175,7 +175,7 @@ export function useSetAssetMirrorKeep(_mediaType: string, mediaId: string) {
       assetId,
       keep,
     }: {
-      assetId: string
+      assetId: string | number
       keep: boolean
     }): Promise<ArtworkMirrorResult> => {
       const url = `/media/admin/media-items/${mediaId}/assets/${assetId}/mirror`
@@ -234,8 +234,8 @@ export function useApproveProposal(mediaType: string, mediaId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminEditKeys.forMedia(mediaId) })
       queryClient.invalidateQueries({ queryKey: adminEditKeys.pending() })
-      queryClient.removeQueries({ queryKey: ["media"] })
-      queryClient.removeQueries({ queryKey: ["discover"] })
+      queryClient.invalidateQueries({ queryKey: ["media"] })
+      queryClient.invalidateQueries({ queryKey: ["discover"] })
     },
   })
 }
@@ -252,8 +252,8 @@ export function useUndoApproval(mediaType: string, mediaId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminEditKeys.forMedia(mediaId) })
       queryClient.invalidateQueries({ queryKey: adminEditKeys.pending() })
-      queryClient.removeQueries({ queryKey: ["media"] })
-      queryClient.removeQueries({ queryKey: ["discover"] })
+      queryClient.invalidateQueries({ queryKey: ["media"] })
+      queryClient.invalidateQueries({ queryKey: ["discover"] })
     },
   })
 }
@@ -325,8 +325,8 @@ export function useApproveAnyProposal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminEditKeys.all() })
-      queryClient.removeQueries({ queryKey: ["media"] })
-      queryClient.removeQueries({ queryKey: ["discover"] })
+      queryClient.invalidateQueries({ queryKey: ["media"] })
+      queryClient.invalidateQueries({ queryKey: ["discover"] })
     },
   })
 }
@@ -368,8 +368,8 @@ export function useUndoAnyProposal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminEditKeys.all() })
-      queryClient.removeQueries({ queryKey: ["media"] })
-      queryClient.removeQueries({ queryKey: ["discover"] })
+      queryClient.invalidateQueries({ queryKey: ["media"] })
+      queryClient.invalidateQueries({ queryKey: ["discover"] })
     },
   })
 }

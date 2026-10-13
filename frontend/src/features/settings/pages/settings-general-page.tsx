@@ -15,6 +15,8 @@ import { useToast } from '@ui/molecules/toast'
 import { queryClient } from '@/lib/query/client'
 import { mediaKeys } from '@media/queries/media-keys'
 import { mediaQueries, useUnblockRecommendation } from '@media/queries/media-queries'
+import { useWelcomePreferences } from '@/features/welcome'
+import { router } from '@/lib/router'
 import {
   DEFAULT_LANDING_PAGE_KEY as STORAGE_KEY,
   LANDING_PAGE_OPTIONS,
@@ -32,6 +34,12 @@ export const SettingsGeneralPage = () => {
   const desktop = isDesktop()
   const { isAuthenticated, user, refreshUser } = useAuth()
   const { toast } = useToast()
+  const {
+    isWelcomeNavVisible,
+    isWelcomeBannerVisible,
+    setWelcomeNavVisible,
+    setWelcomeBannerVisible,
+  } = useWelcomePreferences()
 
   const { data: blockedData } = useQuery({
     ...mediaQueries.blockedRecommendations(),
@@ -304,6 +312,60 @@ export const SettingsGeneralPage = () => {
           </div>
         </DkDialog>
       )}
+
+      {/* Welcome & Feature Guide */}
+      <SettingsCard>
+        <SectionHeader
+          title="Welcome & Feature Guide"
+          description="Manage getting started guides, walkthroughs, and navigation shortcuts."
+        />
+
+        <div className="space-y-4">
+          <div
+            className="flex items-center justify-between rounded-2xl p-4 sm:p-5"
+            style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+          >
+            <div className="space-y-0.5 pr-4">
+              <span className="text-sm font-semibold text-white">Show in Navigation Menu</span>
+              <p className="text-xs text-white/50">
+                Display the Welcome Guide link in the floating navigation menu dropdown.
+              </p>
+            </div>
+            <DkSwitch
+              checked={isWelcomeNavVisible}
+              onCheckedChange={setWelcomeNavVisible}
+            />
+          </div>
+
+          <div
+            className="flex items-center justify-between rounded-2xl p-4 sm:p-5"
+            style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+          >
+            <div className="space-y-0.5 pr-4">
+              <span className="text-sm font-semibold text-white">Discover Greeting Banner</span>
+              <p className="text-xs text-white/50">
+                Display the introductory welcome card above the feed on Discover.
+              </p>
+            </div>
+            <DkSwitch
+              checked={isWelcomeBannerVisible}
+              onCheckedChange={setWelcomeBannerVisible}
+            />
+          </div>
+
+          <div className="pt-2 flex justify-start">
+            <DkButton
+              variant="secondary"
+              size="sm"
+              leftIcon={Sparkles}
+              onClick={() => router.navigate({ to: '/welcome' })}
+              className="rounded-xl px-4 text-xs font-semibold"
+            >
+              Open Welcome Guide
+            </DkButton>
+          </div>
+        </div>
+      </SettingsCard>
 
       {/* About Otix */}
       <SettingsCard>

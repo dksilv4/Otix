@@ -56,6 +56,7 @@ export interface StreamPlaybackSession {
   container?: string
   videoCodec?: string
   audioCodec?: string
+  baseUrls?: string[]
 }
 
 export type PlaybackMethod = 'direct-play' | 'direct-stream' | 'transcode'

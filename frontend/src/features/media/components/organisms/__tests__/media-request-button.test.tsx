@@ -35,7 +35,7 @@ describe('RequestMediaButton', () => {
     vi.clearAllMocks()
   })
 
-  it('renders loading state with dynamic label and explanatory title', () => {
+  it('does not render button while loading library status', () => {
     vi.spyOn(useRequestMediaModule, 'useRequestMedia').mockReturnValue({
       ...baseMockState,
       loading: true,
@@ -44,13 +44,11 @@ describe('RequestMediaButton', () => {
       instances: [],
     })
 
-    render(<RequestMediaButton />)
+    const { container } = render(<RequestMediaButton />)
 
-    const btn = screen.getByRole('button')
-    expect(btn).toBeDisabled()
-    expect(btn).toHaveTextContent('Checking Radarr…')
-    expect(btn).toHaveAttribute('title', 'Checking Radarr library status…')
-    expect(btn.className).toContain('cursor-not-allowed')
+    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByText('Checking Radarr…')).not.toBeInTheDocument()
   })
 
   it('renders disabled button with reason when unavailable (no targets)', () => {

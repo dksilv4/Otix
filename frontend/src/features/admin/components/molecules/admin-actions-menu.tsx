@@ -84,8 +84,8 @@ export const AdminActionsMenu = ({ mediaId, media, variant = 'default' }: Props)
         })
       }
       refreshMedia()
-      queryClient.removeQueries({ queryKey: ['media'] })
-      queryClient.removeQueries({ queryKey: ['discover'] })
+      queryClient.invalidateQueries({ queryKey: ['media'] })
+      queryClient.invalidateQueries({ queryKey: ['discover'] })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       toast({ title: 'Download failed', description: msg, variant: 'error' })

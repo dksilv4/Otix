@@ -413,4 +413,7 @@ export const MediaDetailPage = () => {
       </DeferredSection>
     </div>
   )
-};
+}
+
+export default MediaDetailPage
+

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { COMMAND_PALETTE_EVENT } from '../open-command-palette'
 
 /**
  * Global Cmd+K / Ctrl+K toggle for the command palette.
@@ -18,8 +19,14 @@ export function useCommandPalette() {
         toggle()
       }
     }
+    const onCustomOpen = () => setIsOpen(true)
+
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener(COMMAND_PALETTE_EVENT, onCustomOpen)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener(COMMAND_PALETTE_EVENT, onCustomOpen)
+    }
   }, [toggle])
 
   return { isOpen, open, close, toggle }

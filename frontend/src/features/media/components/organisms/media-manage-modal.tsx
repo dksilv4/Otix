@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@auth/hooks/use-auth'
-import { Bookmark, ImageOff, Info, Loader2, Scissors, ShieldAlert, X } from 'lucide-react'
+import { Bookmark, Check, ImageOff, Info, Loader2, Monitor, Moon, Scissors, ShieldAlert, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { mediaQueries } from '../../queries/media-queries'
 import { useToast } from '@ui/molecules/toast'
@@ -26,14 +26,8 @@ import {
   labelFor,
   isContextActive,
   aspectRatioOf,
+  focusRing,
 } from '../../utils/manage'
-
-const focusRing =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-0'
-
-const Dot = ({ className }: { className?: string }) => {
-  return <span aria-hidden="true" className={cn('inline-block h-1.5 w-1.5 rounded-full', className)} />
-};
 
 const PreviewImage = ({ asset }: { asset: MediaAsset }) => {
   const [isLoading, setIsLoading] = useState(true)
@@ -99,8 +93,16 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
   const { toast } = useToast()
   const mirroring = useMirroring(Boolean(user?.isAdmin))
   const setMirroring = useSetMirroring()
+
   const { data: detail } = useQuery(mediaQueries.detail(mediaType, mediaId))
-  const effectiveMediaId = detail?.id ? String(detail.id) : mediaId
+  const [resolvedMediaId, setResolvedMediaId] = useState<string | null>(detail?.id ? String(detail.id) : null)
+  useEffect(() => {
+    if (detail?.id) {
+      setResolvedMediaId(String(detail.id))
+    }
+  }, [detail?.id])
+  const effectiveMediaId = resolvedMediaId ?? mediaId
+
   const { data: assetData, isLoading } = useMediaAssets(mediaType, effectiveMediaId)
   const selection = useSetArtworkSelection(mediaType, effectiveMediaId)
   const mirrorKeep = useSetAssetMirrorKeep(mediaType, effectiveMediaId)
@@ -163,11 +165,15 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
   const visibleAssets = lang ? typeAssets.filter((a) => a.lang === lang) : typeAssets
 
   const autoActive = visibleAssets.find((a) => a.currentContexts.includes('general')) ?? visibleAssets[0]
-  const activeAsset = visibleAssets.find((a) => a.id === activeId) ?? autoActive ?? null
+  const activeAsset =
+    (activeId != null ? visibleAssets.find((a) => String(a.id) === String(activeId)) : null) ??
+    autoActive ??
+    null
 
   const chooseType = (value: string) => {
     setType(value)
     setLang(null)
+    setActiveId(null)
   }
 
   const toggleMirroring = async (next: boolean) => {
@@ -194,7 +200,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
     if (!activeAsset) return
     const clear = activeAsset.selectedContext === context
     try {
-      await selection.mutateAsync({ assetId: activeAsset.id, context: clear ? null : context })
+      await selection.mutateAsync({ assetId: String(activeAsset.id), context: clear ? null : context })
       toast({
         title: clear ? `${CONTEXT_META[context].label} pick cleared` : `Pinned for ${CONTEXT_META[context].label}`,
         description: clear
@@ -216,7 +222,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
     if (!activeAsset) return
     const active = !activeAsset.isTextless
     try {
-      await textlessPick.mutateAsync({ assetId: activeAsset.id, active })
+      await textlessPick.mutateAsync({ assetId: String(activeAsset.id), active })
       toast({
         title: active ? 'Set as the textless image' : 'Textless pick cleared',
         description: active
@@ -238,7 +244,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
     if (!activeAsset) return
     const keep = !activeAsset.keepLocal
     try {
-      await mirrorKeep.mutateAsync({ assetId: activeAsset.id, keep })
+      await mirrorKeep.mutateAsync({ assetId: String(activeAsset.id), keep })
       toast({
         title: keep ? 'Kept this variant mirrored' : 'Removed from the keep set',
         description: keep
@@ -257,13 +263,22 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
   }
 
   const busyPinCtx =
-    selection.isPending && selection.variables?.assetId === activeAsset?.id
+    selection.isPending && String(selection.variables?.assetId) === String(activeAsset?.id)
       ? (selection.variables.context ?? activeAsset?.selectedContext)
       : null
-  const pinBusyForActive = selection.isPending && selection.variables?.assetId === activeAsset?.id
+  const pinBusyForActive =
+    selection.isPending && String(selection.variables?.assetId) === String(activeAsset?.id)
   const textlessBusy =
-    activeAsset != null && textlessPick.isPending && textlessPick.variables?.assetId === activeAsset.id
-  const keepBusy = activeAsset != null && mirrorKeep.isPending && mirrorKeep.variables?.assetId === activeAsset.id
+    activeAsset != null &&
+    textlessPick.isPending &&
+    String(textlessPick.variables?.assetId) === String(activeAsset.id)
+  const keepBusy =
+    activeAsset != null &&
+    mirrorKeep.isPending &&
+    String(mirrorKeep.variables?.assetId) === String(activeAsset.id)
+
+  const isGeneralActive = activeAsset != null && isContextActive(activeAsset, 'general')
+  const isGeneralPinned = activeAsset?.selectedContext === 'general'
 
   return (
     <div
@@ -495,83 +510,138 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                     </div>
 
                     {/* Controls */}
-                    <div className="flex flex-col gap-2.5 shrink-0">
-                      <div>
-                        <p className="text-xs font-semibold text-white">Pin this image for</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {labelFor(activeAsset.assetType)} · {activeAsset.provider ?? 'unknown'}
-                          {activeAsset.lang ? ` · ${activeAsset.lang.toUpperCase()}` : ''}
-                          {activeAsset.score != null ? ` · ★${activeAsset.score}` : ''}
-                          {activeAsset.localName ? ' · downloaded' : ''}
-                        </p>
+                    <div className="flex flex-col gap-3 shrink-0">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-white">
+                            {isGeneralPinned
+                              ? `Pinned as Default ${selectedGroup.label}`
+                              : isGeneralActive
+                                ? `Active Default ${selectedGroup.label}`
+                                : `Previewing Candidate ${selectedGroup.label}`}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                            {labelFor(activeAsset.assetType)} · {activeAsset.provider ?? 'unknown'}
+                            {activeAsset.lang ? ` · ${activeAsset.lang.toUpperCase()}` : ''}
+                            {activeAsset.score != null ? ` · ★${activeAsset.score}` : ''}
+                            {activeAsset.localName ? ' · downloaded' : ''}
+                          </p>
+                        </div>
+
+                        {/* Direct Select / Pin Button */}
+                        {!isGeneralPinned ? (
+                          <button
+                            type="button"
+                            onClick={() => pinActive('general')}
+                            disabled={pinBusyForActive}
+                            aria-label={`Set as ${selectedGroup.label}`}
+                            className={cn(
+                              'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all',
+                              focusRing,
+                              isGeneralActive
+                                ? 'bg-primary/20 text-primary hover:bg-primary/30'
+                                : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm active:scale-95',
+                              pinBusyForActive && 'opacity-50 pointer-events-none',
+                            )}
+                          >
+                            {busyPinCtx === 'general' ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
+                            <span>{isGeneralActive ? 'Pin as Default' : `Set as ${selectedGroup.label}`}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => pinActive('general')}
+                            disabled={pinBusyForActive}
+                            aria-label="Clear pin and revert to automatic selection"
+                            className={cn(
+                              'inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-primary/40 bg-primary/20 px-3 py-1.5 text-xs font-semibold text-primary transition-all hover:bg-primary/30 active:scale-95',
+                              focusRing,
+                              pinBusyForActive && 'opacity-50 pointer-events-none',
+                            )}
+                          >
+                            {busyPinCtx === 'general' ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
+                            <span>Pinned</span>
+                          </button>
+                        )}
                       </div>
 
-                      <div
-                        className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-white/10 p-1"
-                        role="group"
-                        aria-label="Pin the selected image for a theme"
-                      >
-                        {CONTEXTS.map((c) => {
-                          const Icon = CONTEXT_META[c].icon
-                          const active = isContextActive(activeAsset, c)
-                          const busy = busyPinCtx === c
-                          return (
-                            <button
-                              key={c}
-                              type="button"
-                              title={CONTEXT_META[c].hint}
-                              aria-pressed={active}
-                              aria-label={`Show in ${CONTEXT_META[c].label} theme`}
-                              onClick={() => pinActive(c)}
-                              disabled={pinBusyForActive}
-                              className={cn(
-                                'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
-                                focusRing,
-                                busy || active
-                                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                                  : 'text-muted-foreground hover:bg-white/5 hover:text-white',
-                                pinBusyForActive && !busy && !active && 'opacity-50',
-                              )}
-                            >
-                              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
-                              {CONTEXT_META[c].label}
-                            </button>
-                          )
-                        })}
-                        {familyHasTextless && (
-                          <>
-                            <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-white/10" />
-                            <button
-                              type="button"
-                              onClick={() => toggleTextlessActive()}
-                              disabled={pinBusyForActive}
-                              title={
-                                activeAsset.isTextless
-                                  ? 'This image is the textless art used by General, Dark and Light — click to clear'
-                                  : 'Use this image as the family textless art'
-                              }
-                              aria-pressed={activeAsset.isTextless}
-                              aria-label={
-                                activeAsset.isTextless ? 'Clear the textless pick' : 'Use as the family textless image'
-                              }
-                              className={cn(
-                                'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
-                                focusRing,
-                                activeAsset.isTextless
-                                  ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-                                  : 'text-muted-foreground hover:bg-white/5 hover:text-white',
-                              )}
-                            >
-                              {textlessBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Scissors className="h-3.5 w-3.5" />}
-                              <span>Textless</span>
-                            </button>
-                          </>
-                        )}
+                      <div className="flex flex-col gap-1.5">
+                        <p className="text-[11px] font-medium text-muted-foreground">Pin for theme</p>
+                        <div
+                          className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-white/10 p-1"
+                          role="group"
+                          aria-label="Pin the selected image for a theme"
+                        >
+                          {CONTEXTS.map((c) => {
+                            const Icon = CONTEXT_META[c].icon
+                            const active = isContextActive(activeAsset, c)
+                            const busy = busyPinCtx === c
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                title={CONTEXT_META[c].hint}
+                                aria-pressed={active}
+                                aria-label={`Show in ${CONTEXT_META[c].label} theme`}
+                                onClick={() => pinActive(c)}
+                                disabled={pinBusyForActive}
+                                className={cn(
+                                  'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
+                                  focusRing,
+                                  busy || active
+                                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                    : 'text-muted-foreground hover:bg-white/5 hover:text-white',
+                                  pinBusyForActive && !busy && !active && 'opacity-50',
+                                )}
+                              >
+                                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
+                                {CONTEXT_META[c].label}
+                              </button>
+                            )
+                          })}
+                          {familyHasTextless && (
+                            <>
+                              <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-white/10" />
+                              <button
+                                type="button"
+                                onClick={() => toggleTextlessActive()}
+                                disabled={pinBusyForActive}
+                                title={
+                                  activeAsset.isTextless
+                                    ? 'This image is the textless art used by General, Dark and Light — click to clear'
+                                    : 'Use this image as the family textless art'
+                                }
+                                aria-pressed={activeAsset.isTextless}
+                                aria-label={
+                                  activeAsset.isTextless ? 'Clear the textless pick' : 'Use as the family textless image'
+                                }
+                                className={cn(
+                                  'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
+                                  focusRing,
+                                  activeAsset.isTextless
+                                    ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                                    : 'text-muted-foreground hover:bg-white/5 hover:text-white',
+                                )}
+                              >
+                                {textlessBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Scissors className="h-3.5 w-3.5" />}
+                                <span>Textless</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between gap-3 pt-0.5">
                         <p className="text-[11px] leading-tight text-muted-foreground max-w-sm">
-                          Tap a theme to pin this image; tap again to unpin. Unpinned themes use the automatic best image (marked with a dot).
+                          Double-click a candidate or use the button to set as default. Theme buttons pin for specific modes.
                         </p>
 
                         <button
@@ -610,13 +680,19 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                     </p>
                     <ul className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-1.5">
                       {visibleAssets.filter(Boolean).map((asset) => {
-                        const isActive = asset.id === activeAsset.id
+                        const isActive = activeAsset != null && String(asset.id) === String(activeAsset.id)
                         const portraitThumb = PORTRAIT.has(asset.assetType)
+                        const isPinned = asset.selectedContext != null
+                        const isCurrentActive = asset.currentContexts.length > 0
                         return (
-                          <li key={asset.id}>
+                          <li key={String(asset.id)}>
                             <button
                               type="button"
-                              onClick={() => setActiveId(asset.id)}
+                              onClick={() => setActiveId(String(asset.id))}
+                              onDoubleClick={() => {
+                                setActiveId(String(asset.id))
+                                void pinActive('general')
+                              }}
                               aria-pressed={isActive}
                               className={cn(
                                 'flex w-full items-center gap-2.5 rounded-lg border px-2 py-1.5 text-left transition-colors',
@@ -640,13 +716,15 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                                 <span className="flex items-center gap-1.5 text-xs font-medium text-white">
                                   <span className="truncate">{asset.provider ?? 'Unknown'}</span>
                                   {asset.lang ? <span className="uppercase text-[10px] text-muted-foreground">{asset.lang}</span> : null}
-                                  {asset.selectedContext ? (
-                                    <span className="rounded bg-primary/20 px-1 text-[10px] font-semibold text-primary">
-                                      {CONTEXT_META[asset.selectedContext].label}
+                                  {isPinned ? (
+                                    <span className="ml-auto rounded bg-primary/20 px-1 text-[10px] font-semibold text-primary">
+                                      {CONTEXT_META[asset.selectedContext!].label}
                                     </span>
-                                  ) : (
-                                    asset.currentContexts.length > 0 && <Dot className="ml-auto bg-primary" />
-                                  )}
+                                  ) : isCurrentActive ? (
+                                    <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
+                                      Active
+                                    </span>
+                                  ) : null}
                                 </span>
                                 <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                   <span>{labelFor(asset.assetType)}</span>

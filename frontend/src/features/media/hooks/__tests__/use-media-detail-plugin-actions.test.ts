@@ -90,8 +90,11 @@ describe('useMediaDetailPluginActions', () => {
       expect(result.current.loading).toBe(false)
     })
 
-    expect(apiClient.get).toHaveBeenCalledWith('/integrations/plex/connect-info/157336')
+    expect(apiClient.get).toHaveBeenCalledWith('/integrations/plex/connect-info/157336', {
+      params: { tmdbId: '157336' },
+    })
     expect(result.current.playWidgets.length).toBe(1)
     expect(result.current.playWidgets[0].label).toBe('Plex')
+    expect(result.current.playWidgets[0].props.instances[0].streamSession).toBeDefined()
   })
 })

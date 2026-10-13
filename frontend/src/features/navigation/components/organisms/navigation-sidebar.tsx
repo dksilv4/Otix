@@ -1,14 +1,16 @@
 import { useEffect, useRef, useCallback } from "react"
 import { useLocation } from "@tanstack/react-router"
 import { motion, AnimatePresence } from "framer-motion"
-import { Calendar, Compass, Search, Gamepad2, Settings, List } from "lucide-react"
+import { Calendar, Compass, Search, Gamepad2, Settings, List, Sparkles } from "lucide-react"
 import { useNavigation } from "@navigation/hooks/use-navigation"
 import { NavLink } from "@navigation/components/atoms/navigation-link"
 import { useDesktopPlatform } from "@/lib/desktop/platform"
+import { useWelcomePreferences } from "@/features/welcome"
 
 /** Animated floating dropdown menu for app navigation, positioned based on screen and route. */
 export const MenuDropdown = () => {
   const { isOpen, close } = useNavigation()
+  const { isWelcomeNavVisible } = useWelcomePreferences()
   const location = useLocation()
   const ref = useRef<HTMLDivElement>(null)
   const { isDesktop } = useDesktopPlatform()
@@ -59,6 +61,9 @@ export const MenuDropdown = () => {
           <NavLink to="/launcher" icon={<Gamepad2 className="h-4 w-4" />} label="Launcher" />
           <NavLink to="/library" icon={<List className="h-4 w-4" />} label="Library" />
           <NavLink to="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" />
+          {isWelcomeNavVisible && (
+            <NavLink to="/welcome" icon={<Sparkles className="h-4 w-4" />} label="Welcome Guide" />
+          )}
         </motion.div>
       )}
     </AnimatePresence>

@@ -208,6 +208,101 @@ class PlexConnectInfoTests(_ApiTestBase):
         )
         self.assertEqual(resp_slug.status_code, 404)
 
+    def test_connect_info_resolves_via_tmdb_id_query_param(self):
+        # A Plex item with a TMDB guid
+        UserPlexItem.objects.create(
+            user=self.user,
+            server=self.server,
+            library=self.library,
+            rating_key="99901",
+            media_type="movie",
+            title="Inception",
+            guids={"tmdb": "27205"},
+        )
+        # Frontend queries with unknown targetId but passes tmdbId parameter
+        resp = self.client.get(
+            f"{reverse('integrations:plex-connect-info', kwargs={'media_identifier': 'unknown-ulid'})}?tmdb_id=27205"
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["rating_key"], "99901")
+        self.assertEqual(body["title"], "Inception")
+
+    def test_connect_info_resolves_via_title_query_param(self):
+        UserPlexItem.objects.create(
+            user=self.user,
+            server=self.server,
+            library=self.library,
+            rating_key="99902",
+            media_type="movie",
+            title="The Matrix",
+        )
+        resp = self.client.get(
+            f"{reverse('integrations:plex-connect-info', kwargs={'media_identifier': 'random-id'})}?title=The%20Matrix"
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["rating_key"], "99902")
+        self.assertEqual(body["title"], "The Matrix")
+
+    def test_connect_info_includes_preresolved_streams_and_server_timing(self):
+        # Attach raw plex payload with media & streams
+        self.item.raw = {
+            "Media": [
+                {
+                    "container": "mkv",
+                    "videoCodec": "hevc",
+                    "audioCodec": "dca",
+                    "Part": [
+                        {
+                            "key": "/library/parts/555/file.mkv",
+                            "Stream": [
+                                {
+                                    "id": 1,
+                                    "streamType": 2,
+                                    "index": 1,
+                                    "codec": "dts",
+                                    "languageCode": "eng",
+                                    "displayTitle": "English DTS-HD",
+                                    "channels": 6,
+                                },
+                                {
+                                    "id": 2,
+                                    "streamType": 3,
+                                    "index": 2,
+                                    "codec": "srt",
+                                    "languageCode": "eng",
+                                    "key": "/library/streams/2",
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        self.item.save(update_fields=("raw",))
+
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertIn("audio_tracks", body)
+        self.assertIn("subtitles", body)
+        self.assertIn("hls_url", body)
+        self.assertIn("direct_url", body)
+        self.assertIn("stats", body)
+        self.assertEqual(body["container"], "mkv")
+        self.assertEqual(body["video_codec"], "hevc")
+        self.assertEqual(body["audio_codec"], "dca")
+        self.assertEqual(len(body["audio_tracks"]), 1)
+        self.assertEqual(body["audio_tracks"][0]["label"], "English DTS-HD")
+        self.assertEqual(len(body["subtitles"]), 1)
+        self.assertEqual(body["subtitles"][0]["format"], "srt")
+
+        # Verify Server-Timing HTTP header is present
+        self.assertIn("Server-Timing", resp.headers)
+        self.assertIn("db;dur=", resp.headers["Server-Timing"])
+        self.assertIn("total;dur=", resp.headers["Server-Timing"])
+
 
 class PlexAltUrlParsingTests(TestCase):
     """Unit coverage of the best-effort plex.tv resources parsing."""
@@ -560,6 +655,103 @@ class PlexSessionsTests(_ApiTestBase):
             resp = self.client.get(self.URL)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {"sessions": [], "is_admin": True})
+
+
+class PlexContinueWatchingTests(TestCase):
+    URL = "/api/v1/integrations/plex/continue-watching"
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="alice_cw", password="pw", plex_auth_token="alice-tok", plex_id="plex-alice"
+        )
+        self.server = _make_server(self.user, token="srv-tok", machine="srv-cw")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_unlinked_user_returns_empty_items(self):
+        bob = User.objects.create_user(username="bob_cw", password="pw")
+        client = APIClient()
+        client.force_authenticate(user=bob)
+        resp = client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"items": []})
+
+    def test_live_pms_continue_watching(self):
+        leaf_movie = {
+            "type": "movie",
+            "ratingKey": "201",
+            "title": "Interstellar",
+            "thumb": "/library/metadata/201/thumb/xyz",
+            "art": "/library/metadata/201/art/xyz",
+            "duration": 10000000,
+            "viewOffset": 4500000,
+            "year": "2014",
+        }
+        leaf_episode = {
+            "type": "episode",
+            "ratingKey": "301",
+            "grandparentRatingKey": "300",
+            "grandparentTitle": "Severance",
+            "title": "The You You Are",
+            "parentIndex": 1,
+            "index": 4,
+            "thumb": "/library/metadata/301/thumb/ep",
+            "art": "/library/metadata/300/art/show",
+            "duration": 3600000,
+            "viewOffset": 1800000,
+            "year": "2022",
+        }
+        payload = {"MediaContainer": {"Metadata": [leaf_movie, leaf_episode]}}
+
+        def _fake(url, *args, **kwargs):
+            return 200, json.dumps(payload)
+
+        with mock.patch.object(integrations_services.plex, "_request", side_effect=_fake):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        items = resp.json()["items"]
+        self.assertEqual(len(items), 2)
+        # Movie
+        self.assertEqual(items[0]["rating_key"], "201")
+        self.assertEqual(items[0]["media_type"], "movie")
+        self.assertEqual(items[0]["title"], "Interstellar")
+        self.assertEqual(items[0]["subtitle"], "2014")
+        self.assertEqual(items[0]["progress_percent"], 45.0)
+        self.assertTrue(items[0]["thumb"].startswith(self.server.base_url))
+        # Episode
+        self.assertEqual(items[1]["rating_key"], "301")
+        self.assertEqual(items[1]["media_type"], "show")
+        self.assertEqual(items[1]["title"], "Severance")
+        self.assertEqual(items[1]["subtitle"], "S1:E4 · The You You Are")
+        self.assertEqual(items[1]["season_number"], 1)
+        self.assertEqual(items[1]["episode_number"], 4)
+        self.assertEqual(items[1]["progress_percent"], 50.0)
+
+    def test_fallback_to_user_plex_item(self):
+        UserPlexItem.objects.create(
+            user=self.user,
+            server=self.server,
+            rating_key="999",
+            media_type="movie",
+            title="Dune",
+            view_offset=3000000,
+            duration=9000000,
+            viewed=False,
+            year=2021,
+            thumb_url="/library/metadata/999/thumb",
+        )
+
+        def _fake(url, *args, **kwargs):
+            return 500, "{}"
+
+        with mock.patch.object(integrations_services.plex, "_request", side_effect=_fake):
+            resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        items = resp.json()["items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["rating_key"], "999")
+        self.assertEqual(items[0]["title"], "Dune")
+        self.assertEqual(items[0]["progress_percent"], 33.3)
 
 
 class PlexWebhookTests(TestCase):

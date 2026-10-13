@@ -56,13 +56,28 @@ class PlexConnectInfoView(APIView):
     def get(self, request, media_identifier: str):
         season = request.query_params.get("season")
         episode = request.query_params.get("episode")
+        tmdb_id = request.query_params.get("tmdb_id") or request.query_params.get("tmdbId")
+        title = request.query_params.get("title")
+        imdb_id = request.query_params.get("imdb_id") or request.query_params.get("imdbId")
+        tvdb_id = request.query_params.get("tvdb_id") or request.query_params.get("tvdbId")
         try:
             data = integrations_services.get_plex_connect_info(
-                request.user, media_identifier, season=season, episode=episode
+                request.user,
+                media_identifier,
+                season=season,
+                episode=episode,
+                tmdb_id=tmdb_id,
+                title=title,
+                imdb_id=imdb_id,
+                tvdb_id=tvdb_id,
             )
         except integrations_services.PlexConnectInfoNotFound as exc:
             raise NotFound(exc.detail) from None
-        return Response(data)
+        response = Response(data)
+        server_timings = data.get("server_timings")
+        if server_timings:
+            response["Server-Timing"] = server_timings
+        return response
 
 
 class PlexSessionsView(APIView):
@@ -76,6 +91,19 @@ class PlexSessionsView(APIView):
                 "sessions": integrations_services.get_plex_sessions(request.user),
                 "is_admin": integrations_services.is_plex_admin(request.user),
             }
+        )
+
+
+class PlexContinueWatchingView(APIView):
+    """GET /integrations/plex/continue-watching"""
+
+    def get(self, request):
+        if not getattr(request.user, "plex_auth_token", None) and not getattr(
+            request.user, "plex_id", None
+        ):
+            return Response({"items": []})
+        return Response(
+            {"items": integrations_services.get_plex_continue_watching(request.user)}
         )
 
 

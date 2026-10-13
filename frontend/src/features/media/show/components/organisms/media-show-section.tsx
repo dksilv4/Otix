@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Play, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Play, Loader2, Check } from "lucide-react"
 import { Image } from "@ui/atoms/image"
 import { DkDialog } from "@ui/molecules/dialog"
 import { SeasonProgressBar } from "./media-show-season-progress-bar"
@@ -418,16 +418,27 @@ export const ShowSection = ({
  {onToggleEpisodeWatched && (
  <span
  data-watch-toggle
+ role="button"
+ tabIndex={0}
+ aria-label={isWatched ? "Mark episode as unwatched" : "Mark episode as watched"}
+ title={isWatched ? "Mark as unwatched" : "Mark as watched"}
  onClick={(e) => {
  e.stopPropagation()
  onToggleEpisodeWatched(episode.id, !isWatched)
  }}
- className={`glass-badge absolute top-1.5 left-1.5 rounded-full p-1 transition-all cursor-pointer hover:scale-110 z-10 ${isWatched
- ? "text-emerald-400 bg-emerald-500/10 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.2)]"
- : "text-muted-foreground hover:text-foreground"}`}
+ onKeyDown={(e) => {
+ if (e.key === "Enter" || e.key === " ") {
+ e.preventDefault()
+ e.stopPropagation()
+ onToggleEpisodeWatched(episode.id, !isWatched)
+ }
+ }}
+ className={`absolute top-1.5 left-1.5 rounded-full p-1 transition-all cursor-pointer hover:scale-110 z-10 ${isWatched
+ ? "bg-emerald-500 hover:bg-emerald-400 text-white shadow-md shadow-emerald-950/30"
+ : "glass-badge text-muted-foreground hover:text-foreground"}`}
  >
  {isWatched ? (
- <CheckCircle2 className="h-3.5 w-3.5" />
+ <Check className="h-3.5 w-3.5 stroke-[2.5]" />
  ) : (
  <Circle className="h-3.5 w-3.5" />
  )}

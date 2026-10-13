@@ -38,12 +38,21 @@ export const formatRemaining = (offsetMs: number, durationMs: number): string =>
   return `${hours}h ${mins > 0 ? `${mins}m ` : ''}left`
 }
 
+export const isPlexInstance = (inst?: PlayInstance | null): boolean => {
+  if (!inst) return false
+  const provider = inst.provider?.toLowerCase() || ''
+  const providerLabel = inst.providerLabel?.toLowerCase() || ''
+  const id = inst.id?.toLowerCase() || ''
+  return provider === 'plex' || providerLabel === 'plex' || id.startsWith('plex|')
+}
+
 export const getStreamPresentation = (inst: PlayInstance) => {
   const offset = inst.viewOffset || 0
   const duration = inst.duration || 0
   const isResume = Boolean(offset > 5000 && (!duration || offset < duration - 15000) && !inst.viewed)
   const isWatched = Boolean(inst.viewed) && !isResume
   const hasEpisode = inst.seasonNumber != null && inst.episodeNumber != null
+  const isPlex = isPlexInstance(inst)
 
   let primaryText: string
   let subText: string | null = null
@@ -67,7 +76,7 @@ export const getStreamPresentation = (inst: PlayInstance) => {
     } else if (isWatched) {
       primaryText = 'Watch Again'
     } else {
-      primaryText = inst.title || 'Stream'
+      primaryText = inst.title && inst.title !== inst.name && inst.title !== 'Stream' ? inst.title : 'Play'
     }
   }
 
@@ -75,5 +84,65 @@ export const getStreamPresentation = (inst: PlayInstance) => {
     inst.progressPercent ??
     (duration > 0 && offset > 0 ? Math.min(100, Math.round((offset / duration) * 100)) : 0)
 
-  return { isResume, isWatched, primaryText, subText, progressPercent }
+  return { isResume, isWatched, primaryText, subText, progressPercent, isPlex }
+}
+
+export interface StreamButtonTheme {
+  isPlex: boolean
+  className: string
+  iconClassName: string
+  progressBarClassName: string
+}
+
+export const getStreamButtonTheme = (
+  inst: PlayInstance,
+  variant: 'default' | 'pill' = 'default',
+): StreamButtonTheme => {
+  const isPlex = isPlexInstance(inst)
+  const { isResume } = getStreamPresentation(inst)
+
+  if (variant === 'pill') {
+    if (isPlex) {
+      return {
+        isPlex: true,
+        className:
+          'bg-gradient-to-r from-amber-500/25 via-amber-500/20 to-amber-600/25 text-amber-200 hover:from-amber-500/35 hover:via-amber-500/30 hover:to-amber-600/35 hover:text-amber-100 shadow-lg shadow-amber-500/15 backdrop-blur-xl',
+        iconClassName: 'fill-amber-400 text-amber-400',
+        progressBarClassName: 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]',
+      }
+    }
+    if (isResume) {
+      return {
+        isPlex: false,
+        className:
+          'bg-amber-500/25 text-amber-200 hover:bg-amber-500/35 hover:text-amber-100 shadow-lg shadow-amber-500/10 backdrop-blur-xl',
+        iconClassName: 'fill-amber-400 text-amber-400',
+        progressBarClassName: 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]',
+      }
+    }
+    return {
+      isPlex: false,
+      className:
+        'bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 hover:text-emerald-100 shadow-lg shadow-emerald-500/10 backdrop-blur-xl',
+      iconClassName: 'fill-emerald-400 text-emerald-400',
+      progressBarClassName: 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]',
+    }
+  }
+
+  // default / non-pill variant
+  if (isPlex) {
+    return {
+      isPlex: true,
+      className:
+        'dk-interaction__btn glass-inset text-amber-200 hover:text-amber-100 shadow-sm shadow-amber-500/10',
+      iconClassName: 'fill-amber-400 text-amber-400',
+      progressBarClassName: 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]',
+    }
+  }
+  return {
+    isPlex: false,
+    className: 'dk-interaction__btn glass-inset text-white hover:text-white/90',
+    iconClassName: 'fill-current text-current',
+    progressBarClassName: 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.9)]',
+  }
 }

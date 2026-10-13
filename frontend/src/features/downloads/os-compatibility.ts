@@ -17,10 +17,10 @@ export interface InstallCompatibility {
 }
 
 /**
- * Temporary: show scanned releases as installable on the current OS while
- * incompatible styling is designed.
+ * Whether to preview incompatible releases as installable.
+ * Kept false so unsupported platforms are not offered install/download options.
  */
-export const PREVIEW_INCOMPATIBLE_AS_AVAILABLE = true
+export const PREVIEW_INCOMPATIBLE_AS_AVAILABLE = false
 
 export function treatInstallAsAvailable(compatibility: InstallCompatibility): boolean {
   return PREVIEW_INCOMPATIBLE_AS_AVAILABLE || compatibility.compatible

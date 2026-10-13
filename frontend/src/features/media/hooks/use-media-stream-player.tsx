@@ -9,6 +9,7 @@ import { determinePlaybackMethod } from '../utils/stream-compatibility'
 import { loadPlayerSettings, savePlayerSettings } from '@/features/discover/utils/trailer'
 import { apiClient } from '@/lib/api/client'
 import { getPluginApi, getPlexClientId } from '../utils/player'
+import { switchPlexSessionServer } from '../utils/plex-stream'
 
 export interface MediaStreamPlayerContextValue {
   session: StreamPlaybackSession | null
@@ -31,6 +32,7 @@ export interface MediaStreamPlayerContextValue {
   // Session lifecycle
   openStream: (session: StreamPlaybackSession) => void
   closeStream: () => void
+  failoverToBaseUrl: (newBaseUrl: string) => void
 
   // Transport actions
   togglePlay: () => void
@@ -244,6 +246,14 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     setError(null)
   }, [sendProgressHeartbeat])
 
+  const failoverToBaseUrl = useCallback((newBaseUrl: string) => {
+    setSession((prev) => {
+      if (!prev) return null
+      console.warn(`[StreamPlayer] Failing over stream session from ${prev.serverUrl} to ${newBaseUrl}`)
+      return switchPlexSessionServer(prev, newBaseUrl)
+    })
+  }, [])
+
   // Transport actions
   const togglePlay = useCallback(() => {
     setIsPlaying((prev) => {
@@ -368,6 +378,7 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
 
     openStream,
     closeStream,
+    failoverToBaseUrl,
     togglePlay,
     play,
     pause,

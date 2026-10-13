@@ -17,6 +17,7 @@ from apps.integrations.views.gog import (
 )
 from apps.integrations.views.plex import (
     PlexConnectInfoView,
+    PlexContinueWatchingView,
     PlexLibrariesView,
     PlexServersView,
     PlexSessionsView,
@@ -50,6 +51,7 @@ __all__ = [
     "FetchRequestStreamView",
     "FetchResultView",
     "PlexConnectInfoView",
+    "PlexContinueWatchingView",
     "PlexLibrariesView",
     "PlexServersView",
     "PlexSessionsView",

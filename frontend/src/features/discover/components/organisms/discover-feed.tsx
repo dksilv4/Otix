@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { DiscoverHero } from './discover-hero'
+import { DiscoverWelcomeBanner } from '../molecules/discover-welcome-banner'
 import { MediaSection } from './discover-media-section'
 import { TrendingSeasonsSection } from './trending-seasons-section'
 import { DiscoverGenresSection } from './discover-genres-section'
 import { FreeGamesSection } from './free-games-section'
 import { DiscoverPlayerActivitySection } from './discover-player-activity-section'
+import { DiscoverContinueWatchingSection } from './discover-continue-watching-section'
 import { discoverQueries } from '../../queries/discover-queries'
 
 const PRIORITY_RAILS = [
@@ -48,7 +50,11 @@ export const DiscoverFeed = () => {
   return (
     <div id="discover-feed" className="space-y-16">
       <DiscoverHero />
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        <DiscoverWelcomeBanner />
+      </div>
       <DiscoverPlayerActivitySection />
+      <DiscoverContinueWatchingSection eager />
       {!catalogEmpty && (
         <>
           {PRIORITY_RAILS.map((rail) => (

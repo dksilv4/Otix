@@ -8,4 +8,5 @@ export const discoverKeys = {
   trailers: () => [...discoverKeys.all(), 'trailers'] as const,
   genres: (mediaType?: string) => [...discoverKeys.all(), 'genres', mediaType ?? 'all'] as const,
   freeGames: () => [...discoverKeys.all(), 'free-games', 'v2'] as const,
+  continueWatching: () => [...discoverKeys.all(), 'continue-watching'] as const,
 }

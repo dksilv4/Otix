@@ -15,6 +15,7 @@ from apps.integrations.views import (
     GOGResolveSteamGridView,
     GOGStatusView,
     PlexConnectInfoView,
+    PlexContinueWatchingView,
     PlexLibrariesView,
     PlexServersView,
     PlexSessionsView,
@@ -60,6 +61,11 @@ urlpatterns = [
         name="plex-connect-info",
     ),
     path("plex/sessions", PlexSessionsView.as_view(), name="plex-sessions"),
+    path(
+        "plex/continue-watching",
+        PlexContinueWatchingView.as_view(),
+        name="plex-continue-watching",
+    ),
     path("plex/timeline", PlexTimelineView.as_view(), name="plex-timeline"),
     path(
         "plex/watchlist/sync",

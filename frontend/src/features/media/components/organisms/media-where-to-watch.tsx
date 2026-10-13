@@ -125,7 +125,6 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-amber-300">In Your Library</span>
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
                 </div>
                 <p className="text-[11px] text-white/70 truncate">Ready to stream on your private server</p>
               </div>

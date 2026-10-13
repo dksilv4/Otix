@@ -96,6 +96,12 @@ class UserPlexItem(TimestampedModel):
         constraints = [
             models.UniqueConstraint(fields=["server", "rating_key"], name="uq_user_plex_item"),
         ]
+        indexes = [
+            models.Index(fields=["user", "media_item"], name="idx_user_plex_item_media"),
+            models.Index(fields=["user", "rating_key"], name="idx_user_plex_item_rkey"),
+            models.Index(fields=["user", "media_type"], name="idx_user_plex_item_type"),
+            models.Index(fields=["user", "title"], name="idx_user_plex_item_title"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.title} ({self.rating_key})"
