@@ -266,4 +266,93 @@ class GameSessionsProxyApiTests(TestCase):
         self.assertEqual(data[0]["game_title"], "Counter-Strike 2")
         self.assertEqual(data[0]["slug"], "counter-strike-2")
 
+    def test_anonymous_access_denied_running(self):
+        resp1 = self.client.get(f"/api/v1/library/servers/{self.server.id}/running")
+        self.assertEqual(resp1.status_code, 401)
+
+        resp2 = self.client.get("/api/v1/library/game-running")
+        self.assertEqual(resp2.status_code, 401)
+
+    @mock.patch("apps.library.views.nodes.node_get_running_games")
+    def test_get_server_running_game(self, mock_get_running):
+        self.client.force_authenticate(user=self.user)
+        mock_get_running.return_value = (
+            200,
+            {
+                "running": True,
+                "game": {
+                    "id": "steam_1091500",
+                    "title": "Cyberpunk 2077",
+                    "process_name": "Cyberpunk2077.exe",
+                    "pid": 1234,
+                },
+                "games": [
+                    {
+                        "id": "steam_1091500",
+                        "title": "Cyberpunk 2077",
+                        "process_name": "Cyberpunk2077.exe",
+                        "pid": 1234,
+                    }
+                ],
+            },
+        )
+
+        resp = self.client.get(f"/api/v1/library/servers/{self.server.id}/running")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data["running"])
+        self.assertEqual(data["game"]["title"], "Cyberpunk 2077")
+        self.assertEqual(len(data["games"]), 1)
+
+    @mock.patch("apps.library.views.nodes.node_get_running_games")
+    def test_get_user_game_running_aggregated(self, mock_get_running):
+        self.client.force_authenticate(user=self.user)
+        mock_get_running.return_value = (
+            200,
+            {
+                "running": True,
+                "game": {
+                    "id": "steam_1245620",
+                    "title": "Elden Ring",
+                    "process_name": "eldenring.exe",
+                    "pid": 5678,
+                },
+                "games": [
+                    {
+                        "id": "steam_1245620",
+                        "title": "Elden Ring",
+                        "process_name": "eldenring.exe",
+                        "pid": 5678,
+                    }
+                ],
+            },
+        )
+
+        resp = self.client.get("/api/v1/library/game-running")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data["running"])
+        self.assertIsNotNone(data["game"])
+        self.assertEqual(data["game"]["title"], "Elden Ring")
+        self.assertEqual(len(data["games"]), 1)
+
+    @mock.patch("apps.library.views.nodes.node_get_running_games")
+    def test_get_user_game_running_none(self, mock_get_running):
+        self.client.force_authenticate(user=self.user)
+        mock_get_running.return_value = (
+            200,
+            {
+                "running": False,
+                "game": None,
+                "games": [],
+            },
+        )
+
+        resp = self.client.get("/api/v1/library/game-running")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertFalse(data["running"])
+        self.assertIsNone(data["game"])
+        self.assertEqual(data["games"], [])
+
 

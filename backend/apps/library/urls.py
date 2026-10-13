@@ -54,6 +54,7 @@ from apps.library.views import (
     GameServerRadarrQueueView,
     GameServerRadarrRootFoldersView,
     GameServerRadarrTestView,
+    GameServerRunningView,
     GameServerSabnzbdQueueControlView,
     GameServerScanClearView,
     GameServerScanView,
@@ -89,6 +90,7 @@ from apps.library.views import (
     SteamStatusView,
     SteamUnmatchedView,
     SteamWishlistView,
+    UserGameRunningView,
     UserGameSessionsView,
     YoutubeLibraryView,
 )
@@ -106,6 +108,7 @@ urlpatterns = [
         name="library-node-connections-sync",
     ),
     path("game-sessions", UserGameSessionsView.as_view(), name="library-user-game-sessions"),
+    path("game-running", UserGameRunningView.as_view(), name="library-user-game-running"),
     path("nodes", GameServerListCreateView.as_view(), name="library-nodes"),
     path("nodes/claim", GameServerClaimView.as_view(), name="library-nodes-claim"),
     path(
@@ -131,6 +134,11 @@ urlpatterns = [
         "nodes/<sint:server_id>/sessions",
         GameServerSessionsView.as_view(),
         name="library-node-sessions",
+    ),
+    path(
+        "nodes/<sint:server_id>/running",
+        GameServerRunningView.as_view(),
+        name="library-node-running",
     ),
     path("servers", GameServerListCreateView.as_view(), name="library-servers"),
     path(
@@ -167,6 +175,11 @@ urlpatterns = [
         "servers/<sint:server_id>/sessions",
         GameServerSessionsView.as_view(),
         name="library-server-sessions",
+    ),
+    path(
+        "servers/<sint:server_id>/running",
+        GameServerRunningView.as_view(),
+        name="library-server-running",
     ),
     path(
         "servers/<sint:server_id>/connections/sync",

@@ -921,6 +921,11 @@ def node_get_sessions(
     return usenet_proxy_request(server, "GET", "/api/v1/games/sessions", params=params, timeout=6.0)
 
 
+def node_get_running_games(server: UserGameServer) -> tuple[int, dict | list]:
+    """Fetch currently running game(s) from the node."""
+    return usenet_proxy_request(server, "GET", "/api/v1/games/running", timeout=4.0)
+
+
 # ── Radarr Operations ───────────────────────────────────────────────────
 
 

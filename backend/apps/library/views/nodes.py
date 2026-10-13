@@ -59,6 +59,7 @@ from apps.library.services.node import (
     list_pending_nodes_for,
     node_execute_organize,
     node_get_organize,
+    node_get_running_games,
     node_get_sessions,
     node_list_libraries,
     node_preview_organize,
@@ -2048,6 +2049,93 @@ class UserGameSessionsView(APIView):
         return Response(enriched)
 
 
+class GameServerRunningView(APIView):
+    """GET /library/servers/{server_id}/running — proxy currently running game(s) from a specific node."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        code, body = node_get_running_games(server)
+        if code == 200 and isinstance(body, dict):
+            games = body.get("games")
+            if isinstance(games, list) and games:
+                items = [
+                    dict(g, game_id=g.get("id"), game_title=g.get("title"))
+                    for g in games
+                    if isinstance(g, dict)
+                ]
+                enriched = enrich_sessions_with_media(items)
+                for orig, enr in zip(games, enriched, strict=False):
+                    if isinstance(orig, dict):
+                        orig.setdefault("poster_url", enr.get("poster_url"))
+                        orig.setdefault("backdrop_url", enr.get("backdrop_url"))
+                        orig.setdefault("otix_media_id", enr.get("otix_media_id"))
+            elif body.get("game") and isinstance(body.get("game"), dict):
+                single = body["game"]
+                items = [dict(single, game_id=single.get("id"), game_title=single.get("title"))]
+                enriched = enrich_sessions_with_media(items)
+                if enriched:
+                    single.setdefault("poster_url", enriched[0].get("poster_url"))
+                    single.setdefault("backdrop_url", enriched[0].get("backdrop_url"))
+                    single.setdefault("otix_media_id", enriched[0].get("otix_media_id"))
+        return Response(body, status=code)
+
+
+class UserGameRunningView(APIView):
+    """GET /library/game-running — aggregate currently running games across user's active node(s)."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request: Request) -> Response:
+        user = request.user
+        servers = list(UserGameServer.objects.filter(user=user, is_online=True))
+        if not servers:
+            servers = list(UserGameServer.objects.filter(user=user)[:3])
+
+        all_running_games: list[dict] = []
+        seen_ids = set()
+
+        for server in servers:
+            try:
+                code, body = node_get_running_games(server)
+                if code == 200 and isinstance(body, dict):
+                    games = body.get("games")
+                    if isinstance(games, list):
+                        for g in games:
+                            if isinstance(g, dict):
+                                gid = g.get("id") or g.get("game_id") or g.get("exe_path")
+                                if gid and gid not in seen_ids:
+                                    seen_ids.add(gid)
+                                    all_running_games.append(g)
+                    elif body.get("running") and isinstance(body.get("game"), dict):
+                        g = body["game"]
+                        gid = g.get("id") or g.get("game_id") or g.get("exe_path")
+                        if gid and gid not in seen_ids:
+                            seen_ids.add(gid)
+                            all_running_games.append(g)
+            except Exception as exc:
+                logger.debug("Failed to fetch running games from server %s: %s", server.id, exc)
+
+        if all_running_games:
+            items = [
+                dict(g, game_id=g.get("id"), game_title=g.get("title"))
+                for g in all_running_games
+            ]
+            enriched = enrich_sessions_with_media(items)
+            for orig, enr in zip(all_running_games, enriched, strict=False):
+                orig.setdefault("poster_url", enr.get("poster_url"))
+                orig.setdefault("backdrop_url", enr.get("backdrop_url"))
+                orig.setdefault("otix_media_id", enr.get("otix_media_id"))
+
+        single = all_running_games[0] if all_running_games else None
+        return Response({
+            "running": len(all_running_games) > 0,
+            "game": single,
+            "games": all_running_games,
+        })
+
+
 # Modern Node view aliases
 NodeListCreateView = GameServerListCreateView
 NodeDetailView = GameServerDetailView
@@ -2073,3 +2161,5 @@ NodeOrganizeView = GameServerOrganizeView
 NodeScanView = GameServerScanView
 NodeScanClearView = GameServerScanClearView
 NodeSessionsView = GameServerSessionsView
+NodeRunningView = GameServerRunningView
+

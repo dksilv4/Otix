@@ -61,6 +61,7 @@ from apps.library.views.nodes import (
     GameServerRadarrQueueView,
     GameServerRadarrRootFoldersView,
     GameServerRadarrTestView,
+    GameServerRunningView,
     GameServerSabnzbdQueueControlView,
     GameServerScanClearView,
     GameServerScanCompleteView,
@@ -90,9 +91,11 @@ from apps.library.views.nodes import (
     NodePendingView,
     NodePingView,
     NodeProbeView,
+    NodeRunningView,
     NodeSessionsView,
     NodeShareDeleteView,
     NodeShareListCreateView,
+    UserGameRunningView,
     UserGameSessionsView,
 )
 
@@ -188,4 +191,7 @@ __all__ = [
     "GameServerSessionsView",
     "NodeSessionsView",
     "UserGameSessionsView",
+    "GameServerRunningView",
+    "NodeRunningView",
+    "UserGameRunningView",
 ]

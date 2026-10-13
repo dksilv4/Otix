@@ -8,6 +8,7 @@ import * as launcherHooks from '@/features/launcher'
 
 vi.mock('@/lib/desktop/api', () => ({
   getDesktopAPI: vi.fn(),
+  isDesktop: vi.fn(() => false),
 }))
 
 vi.mock('@/features/launcher', () => ({

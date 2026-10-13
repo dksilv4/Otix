@@ -178,7 +178,7 @@ export function normalizeSession(raw: Record<string, unknown>): NormalizedPlaySe
   }
 }
 
-export function useUserGameSessions(options?: { enabled?: boolean }) {
+export const useUserGameSessions = (options?: { enabled?: boolean }) => {
   const queryClient = useQueryClient()
   const { runningGame, runningGames = [], elapsedMs } = useRunningGame()
   const { data: localGames } = useLocalGames()
@@ -273,22 +273,7 @@ export function useUserGameSessions(options?: { enabled?: boolean }) {
         }
       }
 
-      // 2. Direct Node daemon probe if on localhost
-      if (rawSessions.length === 0) {
-        try {
-          const res = await fetch('http://127.0.0.1:8090/api/v1/games/sessions')
-          if (res.ok) {
-            const data = await res.json()
-            if (Array.isArray(data)) {
-              rawSessions.push(...data)
-            }
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      // 3. Central Backend Proxy
+      // 2. Central Backend Proxy
       if (rawSessions.length === 0) {
         try {
           const { data } = await apiClient.get<Record<string, unknown>[]>('/library/game-sessions')

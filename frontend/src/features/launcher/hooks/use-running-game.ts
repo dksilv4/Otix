@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { RunningGameData } from '@/lib/desktop/api'
+import { apiClient } from '@/lib/api/client'
+import { hasAccessToken } from '@/lib/config'
 
 // ── Web (browser) fallback: shared singleton poller with circuit breaker ──
 
@@ -19,29 +21,29 @@ const parseNodeGames = (data: any): RunningGameData[] => {
     : (data.game ? [data.game] : [])
 
   return rawList.map((g) => {
-    const rawStart = new Date(g.start_time).getTime()
-    const elapsedFallback = Date.now() - ((g.current_duration_seconds || 0) * 1000)
-    const startTime = rawStart || elapsedFallback
+    const rawStart = new Date(g.startTime).getTime()
+    const elapsedFallback = Date.now() - ((g.currentDurationSeconds || 0) * 1000)
+    const startTime = isNaN(rawStart) || rawStart <= 0 ? elapsedFallback : rawStart
     return {
       game: {
-        id: g.id,
-        title: g.title,
+        id: g.id || '',
+        title: g.title || '',
         platform: 'pc',
-        exePath: g.exe_path,
-        processName: g.process_name,
-        otixMediaId: g.otix_media_id,
-        posterUrl: g.poster_url,
-        backdropUrl: g.backdrop_url,
+        exePath: g.exePath || '',
+        processName: g.processName || '',
+        otixMediaId: g.otixMediaId,
+        posterUrl: g.posterUrl,
+        backdropUrl: g.backdropUrl,
       },
       startTime,
       launchedByOtix: false,
-      pid: g.pid,
-      fpsAvailable: g.fps_available,
-      fpsSnapshot: g.fps_snapshot ? {
-        currentFps: g.fps_snapshot.fps,
-        frameCount: g.fps_snapshot.frame_count || 0,
+      pid: g.pid || 0,
+      fpsAvailable: Boolean(g.fpsAvailable),
+      fpsSnapshot: g.fpsSnapshot ? {
+        currentFps: g.fpsSnapshot.fps ?? 0,
+        frameCount: g.fpsSnapshot.frameCount ?? 0,
         captureDurationMs: 0,
-        gameId: g.id,
+        gameId: g.id || '',
       } : null,
     }
   })
@@ -79,23 +81,21 @@ const scheduleNextPoll = () => {
 
 const executeWebCheck = async (force = false) => {
   if (!webIsActive && !force) return
+  if (!hasAccessToken()) {
+    if (webRunningGames.length > 0) {
+      webRunningGames = []
+      notifyWebSubscribers()
+    }
+    scheduleNextPoll()
+    return
+  }
+
   const now = Date.now()
   if (!force && now - webLastCheckTime < 2000) return
   webLastCheckTime = now
 
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 1500)
-    const res = await fetch('http://127.0.0.1:8090/api/v1/games/running', {
-      signal: controller.signal,
-    })
-    clearTimeout(timeoutId)
-
-    if (!res.ok) {
-      throw new Error(`Node HTTP ${res.status}`)
-    }
-
-    const data = await res.json()
+    const { data } = await apiClient.get('/library/game-running', { timeout: 3500 })
     webConsecutiveFailures = 0
     webRunningGames = parseNodeGames(data)
     notifyWebSubscribers()
