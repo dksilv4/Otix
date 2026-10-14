@@ -1,16 +1,28 @@
 import { useNavigate } from '@tanstack/react-router'
-import { Sparkles, Compass } from 'lucide-react'
+import { Sparkles, Compass, Wand2 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
-import { useWelcomePreferences } from '@/features/welcome/hooks/use-welcome-preferences'
+import { useWelcomePreferences, SetupWizardModal } from '@/features/welcome'
+import { useModal } from '@/lib/modals'
 
 export const DiscoverWelcomeBanner = () => {
   const navigate = useNavigate()
   const { isWelcomeBannerVisible, setWelcomeBannerVisible } = useWelcomePreferences()
+  const { openModal } = useModal()
 
   if (!isWelcomeBannerVisible) return null
 
   const handleOpenWelcome = () => {
     void navigate({ to: '/welcome' })
+  }
+
+  const handleOpenSetup = () => {
+    const close = openModal(
+      <SetupWizardModal
+        isOpen={true}
+        onClose={() => close()}
+        onCompleted={() => close()}
+      />,
+    )
   }
 
   const handleDismiss = () => {
@@ -39,18 +51,28 @@ export const DiscoverWelcomeBanner = () => {
             type="button"
             variant="primary"
             size="md"
-            onClick={handleOpenWelcome}
-            leftIcon={Compass}
+            onClick={handleOpenSetup}
+            leftIcon={Wand2}
             className="px-5 rounded-xl font-semibold"
           >
-            Explore Features
+            Setup Wizard
           </DkButton>
           <DkButton
             type="button"
             variant="secondary"
             size="md"
-            onClick={handleDismiss}
+            onClick={handleOpenWelcome}
+            leftIcon={Compass}
             className="px-4 rounded-xl text-xs font-medium"
+          >
+            Explore Features
+          </DkButton>
+          <DkButton
+            type="button"
+            variant="ghost"
+            size="md"
+            onClick={handleDismiss}
+            className="px-3 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground"
           >
             Dismiss
           </DkButton>

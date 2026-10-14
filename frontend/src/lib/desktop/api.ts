@@ -22,6 +22,18 @@ export interface DesktopSettingsData {
   overlayCorner?: string;
   overlayMonitor?: string;
   overlayHotkey?: string;
+  embeddedNodeEnabled?: boolean;
+  embeddedNodePort?: number;
+}
+
+export interface NodeDaemonStatus {
+  running: boolean;
+  embedded: boolean;
+  port: number;
+  url: string;
+  pid?: number | null;
+  error?: string | null;
+  version?: string | null;
 }
 
 export interface DetectedEmulator {
@@ -375,6 +387,15 @@ export interface DesktopAPI {
 
   // Plugin system (subset — full API has many more methods)
   plugin?: Record<string, (...args: unknown[]) => Promise<unknown>>
+
+  // Embedded Node Daemon
+  nodeDaemon?: {
+    getStatus: () => Promise<NodeDaemonStatus>
+    start: (port?: number) => Promise<NodeDaemonStatus>
+    stop: () => Promise<NodeDaemonStatus>
+    restart: (port?: number) => Promise<NodeDaemonStatus>
+    onStatusChanged: (callback: (status: NodeDaemonStatus) => void) => () => void
+  }
 
   // AI model management (IPC handlers removed — methods absent at runtime.
   // intelligence.tsx guards with null checks. Restore handlers to re-enable.)

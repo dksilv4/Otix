@@ -1,12 +1,13 @@
 import { useNavigate } from '@tanstack/react-router'
 import { DkButton } from '@ui/atoms/button'
-import { Sparkles, Compass } from 'lucide-react'
+import { Sparkles, Compass, Wand2 } from 'lucide-react'
 
 export interface WelcomeHeroProps {
   onStartTour: () => void
+  onStartSetup?: () => void
 }
 
-export const WelcomeHero = ({ onStartTour }: WelcomeHeroProps) => {
+export const WelcomeHero = ({ onStartTour, onStartSetup }: WelcomeHeroProps) => {
   const navigate = useNavigate()
 
   const handleGoToDiscover = () => {
@@ -37,9 +38,22 @@ export const WelcomeHero = ({ onStartTour }: WelcomeHeroProps) => {
 
         {/* Action CTAs */}
         <div className="flex flex-wrap items-center gap-3 pt-2">
+          {onStartSetup && (
+            <DkButton
+              type="button"
+              variant="primary"
+              size="md"
+              onClick={onStartSetup}
+              leftIcon={Wand2}
+              className="px-5 rounded-xl font-semibold shadow-[var(--dk-shadow-sm)]"
+            >
+              Launch Setup Wizard
+            </DkButton>
+          )}
+
           <DkButton
             type="button"
-            variant="primary"
+            variant={onStartSetup ? 'secondary' : 'primary'}
             size="md"
             onClick={onStartTour}
             leftIcon={Sparkles}

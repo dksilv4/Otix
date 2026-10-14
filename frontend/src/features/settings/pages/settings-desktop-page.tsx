@@ -48,6 +48,7 @@ import { NodesFeatureTags } from '../components/nodes-feature-tags'
 import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
 import { useSettingsNode } from '../context/settings-node-context'
 import { isLocalDesktopNode } from '../local-desktop-node'
+import { EmbeddedNodeCard } from '../components/molecules/embedded-node-card'
 import { nodeSettingsNavigateOptions } from '../node-settings'
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
 
@@ -338,6 +339,8 @@ export const SettingsNodesPage = () => {
           ) : undefined
         }
       />
+
+      <EmbeddedNodeCard />
 
       {unclaimedNodes.length > 0 && (
         <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

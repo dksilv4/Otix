@@ -336,13 +336,7 @@ export class SaveDaemon {
     try {
       const localGame = getGameById(gameId);
       if (localGame) {
-        isRom = isRomGame({
-          id: localGame.id,
-          title: localGame.title,
-          exePath: localGame.exePath,
-          installDir: localGame.installDir,
-          platform: localGame.platform,
-        });
+        isRom = isRomGame(localGame);
 
         if (isRom) {
           if (localGame.exePath) {

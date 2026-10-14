@@ -471,9 +471,13 @@ export function detectAllEmulators(
   return results;
 }
 
-// ── ROM & Ambiguity Helpers ────────────────────────────────────────────
+export interface RomGameLike {
+  platform: string;
+  gameType?: string;
+  exePath?: string;
+}
 
-export function isRomGame(game: LocalGame): boolean {
+export function isRomGame(game: RomGameLike): boolean {
   if (game.gameType === 'rom') return true;
   if (CONSOLE_PLATFORMS.has(game.platform)) return true;
 

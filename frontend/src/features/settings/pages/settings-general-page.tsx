@@ -4,7 +4,7 @@ import { DkDropdown } from '@ui/atoms/dropdown'
 import { DkButton } from '@ui/atoms/button'
 import { DkSwitch } from '@ui/atoms/switch'
 import { DkDialog } from '@ui/molecules/dialog'
-import { Trash2, CheckCircle2, Sparkles, RotateCcw, Ban } from 'lucide-react'
+import { Trash2, CheckCircle2, Sparkles, RotateCcw, Ban, Wand2 } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { useSteamFreePacksSetting, STEAM_FREE_PACKS_STORAGE_KEY } from '../hooks/use-steam-free-packs-setting'
@@ -15,7 +15,7 @@ import { useToast } from '@ui/molecules/toast'
 import { queryClient } from '@/lib/query/client'
 import { mediaKeys } from '@media/queries/media-keys'
 import { mediaQueries, useUnblockRecommendation } from '@media/queries/media-queries'
-import { useWelcomePreferences } from '@/features/welcome'
+import { useWelcomePreferences, SetupWizardModal } from '@/features/welcome'
 import { router } from '@/lib/router'
 import {
   DEFAULT_LANDING_PAGE_KEY as STORAGE_KEY,
@@ -31,6 +31,7 @@ export const SettingsGeneralPage = () => {
   const [confirmTasteReset, setConfirmTasteReset] = useState(false)
   const [tasteResetting, setTasteResetting] = useState(false)
   const [showBlockedModal, setShowBlockedModal] = useState(false)
+  const [showSetupWizard, setShowSetupWizard] = useState(false)
   const desktop = isDesktop()
   const { isAuthenticated, user, refreshUser } = useAuth()
   const { toast } = useToast()
@@ -353,7 +354,17 @@ export const SettingsGeneralPage = () => {
             />
           </div>
 
-          <div className="pt-2 flex justify-start">
+          <div className="pt-2 flex flex-wrap gap-2.5 justify-start">
+            <DkButton
+              variant="primary"
+              size="sm"
+              leftIcon={Wand2}
+              onClick={() => setShowSetupWizard(true)}
+              className="rounded-xl px-4 text-xs font-semibold"
+            >
+              Run Setup Wizard
+            </DkButton>
+
             <DkButton
               variant="secondary"
               size="sm"
@@ -397,6 +408,13 @@ export const SettingsGeneralPage = () => {
           </div>
         </div>
       </SettingsCard>
+
+      {showSetupWizard && (
+        <SetupWizardModal
+          isOpen={showSetupWizard}
+          onClose={() => setShowSetupWizard(false)}
+        />
+      )}
     </div>
   )
 };

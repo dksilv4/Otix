@@ -18,4 +18,15 @@ export {
   WELCOME_NAV_STORAGE_KEY,
   WELCOME_BANNER_STORAGE_KEY,
 } from './utils/welcome-preferences'
+export { SetupWizardModal, type SetupWizardModalProps } from './components/organisms/setup-wizard-modal'
+export { useSetupWizard, type UseSetupWizardReturn, type SetupWizardStep } from './hooks/use-setup-wizard'
+export {
+  checkLocalNode,
+  claimNodeWithPin,
+  selectLocalGameDirectory,
+  saveLibraryScanDirectory,
+  markOnboardingFinished,
+  hasSeenSetupWizard,
+  SETUP_WIZARD_SEEN_KEY,
+} from './utils/setup-wizard-utils'
 export { createWelcomeRoutes } from './router'

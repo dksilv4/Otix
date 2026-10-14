@@ -1,3 +1,5 @@
+import type { DetectedEmulator } from './game/emulators';
+
 export interface GameFilter {
   platform?: string[]
   matched?: boolean
@@ -638,6 +640,15 @@ export interface IDesktopAPI {
   getAmbiguousCandidates: (filePathOrGame: string | LocalGame) => Promise<string[]>;
   setGamePlatform: (gameId: string, platform: string) => Promise<boolean>;
 
+  // ── Embedded Node Daemon ──
+  nodeDaemon: {
+    getStatus: () => Promise<NodeDaemonStatus>;
+    start: (port?: number) => Promise<NodeDaemonStatus>;
+    stop: () => Promise<NodeDaemonStatus>;
+    restart: (port?: number) => Promise<NodeDaemonStatus>;
+    onStatusChanged: (callback: (status: NodeDaemonStatus) => void) => () => void;
+  };
+
   // ── Plugin game matching ──
   scanAllPlugins: () => Promise<unknown>;
   scanPlugin: (pluginId: string) => Promise<unknown>;
@@ -645,6 +656,16 @@ export interface IDesktopAPI {
   onMatchingProgress: (callback: (event: any) => void) => () => void;
   onMatchingComplete: (callback: (event: any) => void) => () => void;
   onMatchingCancelled: (callback: () => void) => () => void;
+}
+
+export interface NodeDaemonStatus {
+  running: boolean;
+  embedded: boolean;
+  port: number;
+  url: string;
+  pid?: number | null;
+  error?: string | null;
+  version?: string | null;
 }
 
 export type { DetectedEmulator, EmulatorDefinition } from './game/emulators';

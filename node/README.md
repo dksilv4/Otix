@@ -6,11 +6,12 @@ A lightweight, high-performance Go daemon for hosting game installer files (`.is
 
 ## Features
 - **Zero-Dependency Native Binary**: Single static executable in Go for macOS (Universal 2 DMG), Windows (`.zip`), Linux (x64 / ARM64), Docker, and Unraid.
-- **Plex-Style Web Claiming**: Double-clicking the app launches a local browser prompt displaying a 6-character claim PIN for instant 1-click binding to your Otix account.
+- **Embedded Desktop Companion**: Automatically bundled and supervised inside the Otix Desktop application for zero-configuration local usage.
+- **Web Claiming & Auto-Discovery**: Double-clicking the app launches a local browser prompt displaying a claim PIN for instant 1-click binding to your Otix account.
 - **Multi-Threaded HTTP/2 File Server**: Chunked range-request streaming with resume support for large ISO and installer images.
 - **Background LaunchAgent & Systemd**: Native background daemons on macOS (`com.otix.node.plist`) and Linux (`otix-node.service`).
 - **Cloud Save File Backups**: Versioned game save snapshots with automatic upload on game exit and cross-device restore.
-- **Automated Usenet & Arr Services**: Direct node-managed SABnzbd, Prowlarr, Radarr, Sonarr, and Epic Games library sync.
+- **Automated Usenet & Arr Services**: Direct node-managed downloaders, search indexers, and library sync.
 
 ---
 

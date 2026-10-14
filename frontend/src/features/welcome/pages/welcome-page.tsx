@@ -8,10 +8,29 @@ import { WelcomeGettingStartedSteps } from '../components/molecules/welcome-gett
 import { FeatureIntroCard } from '../components/molecules/feature-intro-card'
 import { WelcomeVisibilityControls } from '../components/molecules/welcome-visibility-controls'
 import { FeatureGuideModal } from '../components/organisms/feature-guide-modal'
+import { SetupWizardModal } from '../components/organisms/setup-wizard-modal'
 
 export const WelcomePage = () => {
   const { openModal } = useModal()
   const closeCurrentModalRef = useRef<(() => void) | null>(null)
+
+  const openSetupWizard = useCallback(() => {
+    closeCurrentModalRef.current?.()
+    const close = openModal(
+      <SetupWizardModal
+        isOpen={true}
+        onClose={() => {
+          close()
+          closeCurrentModalRef.current = null
+        }}
+        onCompleted={() => {
+          close()
+          closeCurrentModalRef.current = null
+        }}
+      />,
+    )
+    closeCurrentModalRef.current = close
+  }, [openModal])
 
   const openFeatureModal = useCallback(
     (feature: WelcomeFeature, tourIndex?: number) => {
@@ -63,7 +82,7 @@ export const WelcomePage = () => {
 
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         {/* Hero Greeting */}
-        <WelcomeHero onStartTour={handleStartTour} />
+        <WelcomeHero onStartTour={handleStartTour} onStartSetup={openSetupWizard} />
 
         {/* Command Palette Interactive Showcase */}
         <WelcomeCommandPaletteBar />

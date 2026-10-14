@@ -102,6 +102,7 @@ npm test --prefix frontend
 ---
 
 ## 📖 Further Documentation
+- [**`docs/SETUP_GUIDE.md`**](docs/SETUP_GUIDE.md) — Comprehensive guide to installing prebuilt binaries, running Otix Node, first-run onboarding setup, and packaging from source.
 - [**`PLUGINS.md`**](PLUGINS.md) — Explains the separation between plugin framework, runtime, and packages.
 - [**`backend/ARCHITECTURE.md`**](backend/ARCHITECTURE.md) — Canonical backend conventions, casing contracts, and database architecture.
 - [**`deploy/README.md`**](deploy/README.md) — Production deployment with Docker Compose, PgBouncer, or cloud VMs.

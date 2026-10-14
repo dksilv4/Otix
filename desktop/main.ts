@@ -43,6 +43,8 @@ import { wireOrchestratorEvents } from './ipc/plugins';
 import { GameScanOrchestrator } from './game/orchestrator'; import { FetchWorkerBridge } from './fetch/bridge';
 import { registerNotificationIPC } from './ipc/notifications';
 import { registerUpdaterIPC, checkForUpdatesOnStartup } from './ipc/updater';
+import { NodeDaemonManager } from './node-daemon';
+import { registerNodeDaemonIPC } from './ipc/node-daemon';
 import { setDefaultAutoSelectFamily } from 'node:net';
 
 // Node 24's happy-eyeballs (autoSelectFamily) intermittently ETIMEDOUTs
@@ -58,6 +60,7 @@ let saveDaemon: SaveDaemon | null = null;
 let currentAuthToken = '';
 let permissionManager: PermissionManager | null = null;
 let fetchBridge: FetchWorkerBridge | null = null;
+let nodeDaemon: NodeDaemonManager | null = null;
 let pendingDeepLink: string | null = null;
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -241,6 +244,7 @@ function createWindow() {
   // Wire game-storage-service change notifications to this window
   setNotifyTarget(mainWindow);
   setPluginMainWebContents(mainWindow.webContents);
+  nodeDaemon?.setWebContents(mainWindow.webContents);
 
   // Route renderer window.open() calls (e.g. Epic claim links) into a
   // nav-enabled standalone window so the user can go back naturally.
@@ -656,6 +660,8 @@ app.on('ready', async () => {
   registerDownloadsIPC();
   registerScannerIPC(gameDetector);
   registerInstallerIPC();
+  nodeDaemon = new NodeDaemonManager(app.getPath('userData'), process.resourcesPath);
+  registerNodeDaemonIPC(nodeDaemon);
   // game-detector IPC registered after pluginManager init (needs plugin ref for session queries)
 
   // Seed detector with previously-scanned games so it can detect
@@ -839,7 +845,7 @@ app.on('ready', async () => {
     applyDesktopSettings(settings, mainWindow, tray)
 
     // Register desktop settings IPC (needs window + tray references)
-    registerDesktopSettingsIPC(mainWindow, tray)
+    registerDesktopSettingsIPC(mainWindow, tray, nodeDaemon)
 
     // Register notification IPC
     registerNotificationIPC(mainWindow)
@@ -848,6 +854,13 @@ app.on('ready', async () => {
     if (settings.startMinimized && tray) {
       mainWindow.hide()
     }
+  }
+
+  // Launch embedded Otix Node companion daemon if enabled
+  if (settings.embeddedNodeEnabled !== false && nodeDaemon) {
+    nodeDaemon.start({ port: settings.embeddedNodePort || 8090 }).catch((err) => {
+      console.warn('[main] Failed to launch embedded node daemon on startup:', err);
+    });
   }
 
   // Check for auto-updates in the background (packaged release only)
@@ -863,6 +876,7 @@ app.on('ready', async () => {
   app.on('before-quit', () => {
     console.log('[main] before-quit fired');
     mainWindow?.webContents.send('app:clean-quit');
+    nodeDaemon?.dispose().catch(() => {});
     pluginManager?.shutdown().catch(() => {});
     cs2GsiManager?.stop().catch(() => {});
     fetchBridge?.stop();

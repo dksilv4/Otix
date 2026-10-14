@@ -17,6 +17,10 @@ export interface DesktopSettings {
   emulatorPaths?: Record<string, string>;
   /** Default emulator ID to use per platform (e.g. { ps2: 'pcsx2', snes: 'retroarch' }). */
   defaultPlatformEmulators?: Record<string, string>;
+  /** Run the embedded Otix Node companion daemon in the background (default: true). */
+  embeddedNodeEnabled?: boolean;
+  /** Port for the embedded node daemon (default: 8090). */
+  embeddedNodePort?: number;
 }
 
 const DEFAULT_SETTINGS: DesktopSettings = {
@@ -29,6 +33,8 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   gamesInstallPath: '',
   isoDownloadPath: '',
   scanOnLaunch: false,
+  embeddedNodeEnabled: true,
+  embeddedNodePort: 8090,
   emulatorPaths: {},
   defaultPlatformEmulators: {
     snes: 'retroarch',

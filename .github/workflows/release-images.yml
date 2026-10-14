@@ -239,3 +239,105 @@ jobs:
           labels: ${{ steps.meta-node.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  desktop-packages:
+    name: Build & Release Otix Desktop (${{ matrix.os }})
+    needs: [frontend]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: "--mac"
+            artifact_pattern: |
+              desktop/release/*.dmg
+              desktop/release/*.zip
+          - os: windows-latest
+            target: "--win"
+            artifact_pattern: |
+              desktop/release/*.exe
+          - os: ubuntu-latest
+            target: "--linux"
+            artifact_pattern: |
+              desktop/release/*.AppImage
+              desktop/release/*.deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Download Frontend dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: otix-frontend-dist
+          path: frontend-temp
+
+      - name: Unpack Frontend dist
+        shell: bash
+        run: |
+          mkdir -p frontend/dist
+          tar -xzf frontend-temp/otix-frontend-dist.tar.gz -C frontend/dist
+
+      - name: Install Desktop dependencies
+        working-directory: desktop
+        shell: bash
+        run: npm ci --legacy-peer-deps
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: node/go.sum
+
+      - name: Build Embedded Node Companion
+        shell: bash
+        run: |
+          mkdir -p desktop/bin
+          case "${{ matrix.os }}" in
+            windows-latest)
+              (cd node && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node.exe ./main.go)
+              ;;
+            macos-latest)
+              (cd node && CGO_ENABLED=0 go build -ldflags="-s -w" -o ../desktop/bin/otix-node ./main.go)
+              chmod +x desktop/bin/otix-node
+              ;;
+            ubuntu-latest)
+              (cd node && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node ./main.go)
+              chmod +x desktop/bin/otix-node
+              ;;
+          esac
+
+      - name: Build & Package Desktop Client
+        working-directory: desktop
+        shell: bash
+        run: |
+          npm run build
+          npx electron-builder ${{ matrix.target }} -c electron-builder.json5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Desktop Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: otix-desktop-${{ matrix.os }}
+          path: ${{ matrix.artifact_pattern }}
+          retention-days: 14
+
+      - name: Attach Desktop Binaries to GitHub Release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version_tag != '') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.version_tag }}
+          name: "Release ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.version_tag }}"
+          generate_release_notes: true
+          files: ${{ matrix.artifact_pattern }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

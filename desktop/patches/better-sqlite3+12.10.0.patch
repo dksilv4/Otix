@@ -24,3 +24,17 @@ index e75d537..a6d85b7 100644
  #define UseIsolate v8::Isolate* isolate = OnlyIsolate
  #define UseContext v8::Local<v8::Context> ctx = OnlyContext
  #define UseAddon Addon* addon = OnlyAddon
+diff --git a/node_modules/better-sqlite3/src/util/helpers.cpp b/node_modules/better-sqlite3/src/util/helpers.cpp
+index 728876c..b42e7f4 100644
+--- a/node_modules/better-sqlite3/src/util/helpers.cpp
++++ b/node_modules/better-sqlite3/src/util/helpers.cpp
+@@ -89,7 +89,7 @@ void SetPrototypeGetter(
+ 	recv->InstanceTemplate()->SetNativeDataProperty(
+ 		InternalizedFromLatin1(isolate, name),
+ 		func,
+-		0,
++		nullptr,
+ 		data
+ 	);
+ }
+

@@ -20,6 +20,8 @@ celerybeat-schedule
 /node_modules
 desktop/frontend/
 desktop/nul
+desktop/bin/otix-node
+desktop/bin/otix-node.exe
 
 # Plugin runtime data — never commit sqlite/db artifacts from the plugins dir.
 /extensions/**/data/

@@ -342,6 +342,19 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     refreshFreeGames: () => ipcRenderer.invoke('free-games:refresh'),
   },
 
+  // ── Embedded Node Daemon ──
+  nodeDaemon: {
+    getStatus: () => ipcRenderer.invoke('node-daemon:get-status'),
+    start: (port?: number) => ipcRenderer.invoke('node-daemon:start', port),
+    stop: () => ipcRenderer.invoke('node-daemon:stop'),
+    restart: (port?: number) => ipcRenderer.invoke('node-daemon:restart', port),
+    onStatusChanged: (callback: (status: any) => void) => {
+      const handler = (_event: any, status: any) => callback(status);
+      ipcRenderer.on('node-daemon:status-changed', handler);
+      return () => ipcRenderer.removeListener('node-daemon:status-changed', handler);
+    },
+  },
+
   // ── Plugin game matching ──
   scanAllPlugins: () => ipcRenderer.invoke('scanner:scan-all-plugins'),
   scanPlugin: (pluginId: string) => ipcRenderer.invoke('scanner:scan-plugin', pluginId),
