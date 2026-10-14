@@ -44,6 +44,7 @@ export interface StreamPlaybackSession {
   title: string
   subtitle?: string
   playSessionId: string
+  clientId?: string
   directUrl?: string
   hlsUrl: string
   audioTracks: AudioTrack[]

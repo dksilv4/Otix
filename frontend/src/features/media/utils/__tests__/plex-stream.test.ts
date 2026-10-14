@@ -8,17 +8,23 @@ import {
 
 describe('plex-stream utilities', () => {
   it('builds HLS URL with correct Plex client parameters', () => {
-    const url = buildPlexHlsUrl('http://192.168.1.100:32400', '12345', 'token-abc', 'session-1')
+    const url = buildPlexHlsUrl('http://192.168.1.100:32400', '12345', 'token-abc', 'session-1', 'client-xyz')
     expect(url).toContain('http://192.168.1.100:32400/video/:/transcode/universal/start.m3u8')
     expect(url).toContain('path=%2Flibrary%2Fmetadata%2F12345')
     expect(url).toContain('session=session-1')
+    expect(url).toContain('X-Plex-Session-Identifier=session-1')
+    expect(url).toContain('X-Plex-Playback-Session-Id=session-1')
+    expect(url).toContain('X-Plex-Client-Identifier=client-xyz')
     expect(url).toContain('X-Plex-Token=token-abc')
     expect(url).toContain('protocol=hls')
   })
 
   it('builds direct URL for media parts', () => {
-    const url = buildPlexDirectUrl('http://192.168.1.100:32400', '/library/parts/999/file.mp4', 'token-abc')
-    expect(url).toBe('http://192.168.1.100:32400/library/parts/999/file.mp4?X-Plex-Token=token-abc')
+    const url = buildPlexDirectUrl('http://192.168.1.100:32400', '/library/parts/999/file.mp4', 'token-abc', 'session-1', 'client-xyz')
+    expect(url).toContain('http://192.168.1.100:32400/library/parts/999/file.mp4?')
+    expect(url).toContain('X-Plex-Token=token-abc')
+    expect(url).toContain('X-Plex-Session-Identifier=session-1')
+    expect(url).toContain('X-Plex-Client-Identifier=client-xyz')
   })
 
   it('builds StreamPlaybackSession from pre-resolved connect-info payload', () => {
@@ -78,7 +84,9 @@ describe('plex-stream utilities', () => {
 
     const switched = switchPlexSessionServer(original, 'https://remote.plex.direct:32400')
     expect(switched.serverUrl).toBe('https://remote.plex.direct:32400')
-    expect(switched.directUrl).toBe('https://remote.plex.direct:32400/library/parts/1/file.mp4?X-Plex-Token=tok-123')
+    expect(switched.directUrl).toContain('https://remote.plex.direct:32400/library/parts/1/file.mp4?')
+    expect(switched.directUrl).toContain('X-Plex-Token=tok-123')
+    expect(switched.directUrl).toContain('X-Plex-Session-Identifier=')
     expect(switched.hlsUrl).toContain('https://remote.plex.direct:32400/video/:/transcode')
     expect(switched.subtitles[0].url).toBe('https://remote.plex.direct:32400/sub.vtt')
   })

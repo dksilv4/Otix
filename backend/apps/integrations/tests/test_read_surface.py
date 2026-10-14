@@ -1222,3 +1222,71 @@ class PlexStreamTests(_ApiTestBase):
                 "http://x:32400", "tok", "9"
             )
         self.assertIsNone(url)
+
+
+class PlexTimelineViewTests(_ApiTestBase):
+    def setUp(self):
+        super().setUp()
+        self.server = _make_server(self.user, base_url="http://plex.local:32400", token="tok-123")
+        self.item = UserPlexItem.objects.create(
+            user=self.user,
+            server=self.server,
+            rating_key="555",
+            media_type="movie",
+            title="Inception",
+            duration=120000,
+            view_offset=0,
+        )
+        self.url = reverse("integrations:plex-timeline")
+
+    def test_timeline_local_only_updates_view_offset_without_outbound_request(self):
+        with mock.patch("apps.integrations.services.plex._request") as mock_req:
+            resp = self.client.post(
+                self.url,
+                {
+                    "server_url": "http://plex.local:32400",
+                    "token": "tok-123",
+                    "rating_key": "555",
+                    "state": "playing",
+                    "time_ms": 35000,
+                    "duration_ms": 120000,
+                    "client_id": "otix-client-1",
+                    "session_id": "sess-abc",
+                    "local_only": True,
+                },
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()["success"])
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.view_offset, 35000)
+        # Crucial: Outbound HTTP request was NOT made to PMS, preventing duplicate streams
+        mock_req.assert_not_called()
+
+    def test_timeline_proxy_outbound_includes_session_and_client_identifiers(self):
+        with mock.patch("apps.integrations.services.plex._request", return_value=(200, "ok")) as mock_req:
+            resp = self.client.post(
+                self.url,
+                {
+                    "server_url": "http://plex.local:32400",
+                    "token": "tok-123",
+                    "rating_key": "555",
+                    "state": "playing",
+                    "time_ms": 60000,
+                    "duration_ms": 120000,
+                    "client_id": "otix-client-1",
+                    "session_id": "sess-xyz",
+                    "local_only": False,
+                },
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.view_offset, 60000)
+        mock_req.assert_called_once()
+        called_url, kwargs = mock_req.call_args[0][0], mock_req.call_args[1]
+        self.assertIn("X-Plex-Session-Identifier=sess-xyz", called_url)
+        self.assertIn("X-Plex-Playback-Session-Id=sess-xyz", called_url)
+        self.assertIn("X-Plex-Client-Identifier=otix-client-1", called_url)
+        self.assertEqual(kwargs["headers"]["X-Plex-Client-Identifier"], "otix-client-1")
+

@@ -102,7 +102,17 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
     const part = item.Media?.[0]?.Part?.[0]
     if (!part?.key) throw new Error("No streamable part found for track")
 
-    return `${baseUrl}${part.key}?X-Plex-Token=${encodeURIComponent(token)}`
+    const params = new URLSearchParams()
+    params.set("X-Plex-Token", token)
+    params.set("X-Plex-Client-Identifier", clientIdRef.current)
+    if (sessionIdRef.current) {
+      params.set("X-Plex-Session-Identifier", sessionIdRef.current)
+      params.set("X-Plex-Playback-Session-Id", sessionIdRef.current)
+    }
+    params.set("X-Plex-Product", "Otix")
+    params.set("X-Plex-Platform", "Web")
+
+    return `${baseUrl}${part.key}?${params.toString()}`
   }, [])
 
   // Stable refs for callbacks used by the audio event handlers.
@@ -130,20 +140,24 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
     params.set("duration", String(dur))
     params.set("type", "music")
     params.set("commandID", String(cmdId))
+    params.set("hasMDE", "1")
+    params.set("X-Plex-Token", track.plexToken)
+    params.set("X-Plex-Client-Identifier", clientIdRef.current)
+    if (sessionIdRef.current) {
+      params.set("X-Plex-Session-Identifier", sessionIdRef.current)
+      params.set("X-Plex-Playback-Session-Id", sessionIdRef.current)
+    }
+    params.set("X-Plex-Product", "Otix")
+    params.set("X-Plex-Version", "1.0.0")
+    params.set("X-Plex-Platform", "Web")
+    params.set("X-Plex-Device", "Browser")
 
     const url = `${track.plexBaseUrl}/:/timeline?${params.toString()}`
 
     fetch(url, {
-      headers: {
-        "X-Plex-Token": track.plexToken,
-        "X-Plex-Client-Identifier": clientIdRef.current,
-        "X-Plex-Product": "Otix",
-        "X-Plex-Version": "1.0.0",
-        "X-Plex-Platform": "Web",
-        "X-Plex-Device": "Browser",
-        "X-Plex-Session-Identifier": sessionIdRef.current,
-        "X-Plex-Playback-Session-Id": sessionIdRef.current,
-      },
+      method: "GET",
+      mode: "no-cors",
+      keepalive: state === "stopped",
     }).catch(() => {})
   }, [])
 
@@ -153,7 +167,10 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
 
   // Start periodic timeline reporting while playing.
   const startTimelineReporting = useCallback(() => {
-    stopTimelineReportingRef.current()
+    if (timelineIntervalRef.current) {
+      clearInterval(timelineIntervalRef.current)
+      timelineIntervalRef.current = null
+    }
     reportTimelineRef.current("buffering")
     setTimeout(() => reportTimelineRef.current("playing"), 500)
     timelineIntervalRef.current = setInterval(() => {
@@ -193,13 +210,12 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
     setError(null)
 
     try {
-      const streamUrl = await resolvePartUrl(track)
-
-      if (startNewSession) {
+      if (startNewSession || !sessionIdRef.current) {
         sessionIdRef.current = generateSessionId()
         commandIdRef.current = 0
       }
 
+      const streamUrl = await resolvePartUrl(track)
       audio.src = streamUrl
       await audio.play()
     } catch (e: unknown) {
@@ -292,6 +308,7 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
   }, [volume])
 
   const playTrack = useCallback(async (track: PlexTrackInfo) => {
+    stopTimelineReportingRef.current()
     queueRef.current = [track]
     setQueue([track])
     setError(null)
@@ -300,6 +317,7 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
 
   const playAlbum = useCallback(async (tracks: PlexTrackInfo[], startIndex = 0) => {
     if (tracks.length === 0) return
+    stopTimelineReportingRef.current()
     queueRef.current = tracks
     setQueue(tracks)
     setError(null)

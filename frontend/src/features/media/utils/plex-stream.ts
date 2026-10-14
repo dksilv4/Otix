@@ -4,6 +4,7 @@ import type {
   SubtitleTrack,
   EpisodeContext,
 } from '../types/stream-player'
+import { getPlexClientId } from './player'
 
 export interface PlexConnectInfoData {
   baseUrl?: string
@@ -57,6 +58,7 @@ export interface BuildPlexPlaybackOptions {
   subtitle?: string
   episodeContext?: EpisodeContext
   customSessionId?: string
+  clientId?: string
 }
 
 export const buildPlexHlsUrl = (
@@ -64,13 +66,21 @@ export const buildPlexHlsUrl = (
   ratingKey: string,
   token: string,
   playSessionId: string,
+  clientId?: string,
 ): string => {
   const cleanBase = baseUrl.replace(/\/$/, '')
+  const cid = clientId || getPlexClientId()
   return `${cleanBase}/video/:/transcode/universal/start.m3u8?path=${encodeURIComponent(
     '/library/metadata/' + ratingKey,
   )}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&session=${encodeURIComponent(
     playSessionId,
-  )}&X-Plex-Client-Identifier=otix-web&X-Plex-Product=Otix&X-Plex-Platform=Web&X-Plex-Token=${encodeURIComponent(
+  )}&X-Plex-Client-Identifier=${encodeURIComponent(
+    cid,
+  )}&X-Plex-Session-Identifier=${encodeURIComponent(
+    playSessionId,
+  )}&X-Plex-Playback-Session-Id=${encodeURIComponent(
+    playSessionId,
+  )}&X-Plex-Product=Otix&X-Plex-Platform=Web&X-Plex-Token=${encodeURIComponent(
     token,
   )}`
 }
@@ -79,15 +89,35 @@ export const buildPlexDirectUrl = (
   baseUrl: string,
   partKeyOrUrl: string,
   token: string,
+  playSessionId?: string,
+  clientId?: string,
 ): string => {
   const cleanBase = baseUrl.replace(/\/$/, '')
+  const cid = clientId || getPlexClientId()
+  const sid = playSessionId || ''
   if (partKeyOrUrl.startsWith('http://') || partKeyOrUrl.startsWith('https://')) {
     const url = new URL(partKeyOrUrl)
     url.searchParams.set('X-Plex-Token', token)
+    if (cid) url.searchParams.set('X-Plex-Client-Identifier', cid)
+    if (sid) {
+      url.searchParams.set('X-Plex-Session-Identifier', sid)
+      url.searchParams.set('X-Plex-Playback-Session-Id', sid)
+    }
+    url.searchParams.set('X-Plex-Product', 'Otix')
+    url.searchParams.set('X-Plex-Platform', 'Web')
     return url.toString()
   }
   const cleanPart = partKeyOrUrl.startsWith('/') ? partKeyOrUrl : `/${partKeyOrUrl}`
-  return `${cleanBase}${cleanPart}?X-Plex-Token=${encodeURIComponent(token)}`
+  const params = new URLSearchParams()
+  params.set('X-Plex-Token', token)
+  if (cid) params.set('X-Plex-Client-Identifier', cid)
+  if (sid) {
+    params.set('X-Plex-Session-Identifier', sid)
+    params.set('X-Plex-Playback-Session-Id', sid)
+  }
+  params.set('X-Plex-Product', 'Otix')
+  params.set('X-Plex-Platform', 'Web')
+  return `${cleanBase}${cleanPart}?${params.toString()}`
 }
 
 export const buildPlexPlaybackSession = (
@@ -98,6 +128,7 @@ export const buildPlexPlaybackSession = (
   const token = info.token || ''
   const ratingKey = String(info.ratingKey || info.rating_key || '')
   const playSessionId = options?.customSessionId || 'otix-plex-' + Date.now().toString(36)
+  const clientId = options?.clientId || getPlexClientId()
 
   const rawBaseUrls = info.baseUrls || info.base_urls || []
   const baseUrls = Array.from(
@@ -116,17 +147,14 @@ export const buildPlexPlaybackSession = (
     }
   }
 
-  const hlsUrl =
-    baseUrl === initialBaseUrl && (info.hlsUrl || info.hls_url)
-      ? info.hlsUrl || info.hls_url!
-      : buildPlexHlsUrl(baseUrl, ratingKey, token, playSessionId)
+  const hlsUrl = buildPlexHlsUrl(baseUrl, ratingKey, token, playSessionId, clientId)
 
-  const directUrl =
-    baseUrl === initialBaseUrl && (info.directUrl || info.direct_url)
-      ? info.directUrl || info.direct_url
-      : info.partKey || info.part_key
-        ? buildPlexDirectUrl(baseUrl, (info.partKey || info.part_key)!, token)
-        : undefined
+  const directPartKey = info.partKey || info.part_key
+  const directUrl = directPartKey
+    ? buildPlexDirectUrl(baseUrl, directPartKey, token, playSessionId, clientId)
+    : info.directUrl || info.direct_url
+      ? buildPlexDirectUrl(baseUrl, (info.directUrl || info.direct_url)!, token, playSessionId, clientId)
+      : undefined
 
   const audioTracks: AudioTrack[] = (info.audioTracks || info.audio_tracks || []).map((a) => ({
     id: String(a.id),
@@ -181,6 +209,7 @@ export const buildPlexPlaybackSession = (
           ? String(info.year)
           : undefined),
     playSessionId,
+    clientId,
     directUrl,
     hlsUrl,
     audioTracks,
@@ -204,9 +233,13 @@ export const switchPlexSessionServer = (
 
   if (oldBase === newBase) return session
 
-  const newHlsUrl = session.hlsUrl.startsWith(oldBase)
-    ? session.hlsUrl.replace(oldBase, newBase)
-    : buildPlexHlsUrl(newBase, session.itemId, session.token, session.playSessionId)
+  const newHlsUrl = buildPlexHlsUrl(
+    newBase,
+    session.itemId,
+    session.token,
+    session.playSessionId,
+    session.clientId,
+  )
 
   const newDirectUrl = session.directUrl
     ? session.directUrl.startsWith(oldBase)

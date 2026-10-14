@@ -661,35 +661,17 @@ def report_plex_timeline(
     time_ms: int = 0,
     duration_ms: int = 0,
     client_id: str = "otix-web-player",
+    session_id: str | None = None,
+    local_only: bool = False,
 ) -> bool:
     """Report playback progress to Plex Media Server timeline.
 
     Registers active playback in Plex dashboard, Tautulli, and Plex Dash under 'Now Playing',
     and keeps viewOffset / progress up to date.
+    When local_only=True, only updates Otix's stored UserPlexItem view offset locally
+    without proxying redundant timeline requests from backend to Plex.
     """
     clean_url = server_url.rstrip("/")
-    params = {
-        "ratingKey": str(rating_key),
-        "key": f"/library/metadata/{rating_key}",
-        "state": state,
-        "time": str(int(time_ms)),
-        "duration": str(int(duration_ms)),
-        "hasMDE": "1",
-        "X-Plex-Client-Identifier": client_id,
-        "X-Plex-Product": "Otix",
-        "X-Plex-Platform": "Web",
-        "X-Plex-Platform-Version": "1.0",
-        "X-Plex-Device": "Otix Web",
-        "X-Plex-Device-Name": "Otix Player",
-        "X-Plex-Version": "1.0.0",
-    }
-    if token:
-        params["X-Plex-Token"] = token
-
-    timeline_url = f"{clean_url}/:/timeline?{urllib.parse.urlencode(params)}"
-    progress_url = f"{clean_url}/:/progress?key={rating_key}&time={int(time_ms)}&identifier=com.plexapp.plugins.library"
-    if token:
-        progress_url += f"&X-Plex-Token={token}"
 
     # Also scrobble if stopped and >= 90% watched
     scrobble_url = None
@@ -707,11 +689,40 @@ def report_plex_timeline(
     except Exception:
         pass
 
+    if local_only:
+        return True
+
+    params = {
+        "ratingKey": str(rating_key),
+        "key": f"/library/metadata/{rating_key}",
+        "state": state,
+        "time": str(int(time_ms)),
+        "duration": str(int(duration_ms)),
+        "hasMDE": "1",
+        "X-Plex-Client-Identifier": client_id,
+        "X-Plex-Product": "Otix",
+        "X-Plex-Platform": "Web",
+        "X-Plex-Platform-Version": "1.0",
+        "X-Plex-Device": "Otix Web",
+        "X-Plex-Device-Name": "Otix Player",
+        "X-Plex-Version": "1.0.0",
+    }
+    if session_id:
+        params["X-Plex-Session-Identifier"] = str(session_id)
+        params["X-Plex-Playback-Session-Id"] = str(session_id)
+    if token:
+        params["X-Plex-Token"] = token
+
+    timeline_url = f"{clean_url}/:/timeline?{urllib.parse.urlencode(params)}"
+
+    headers = _plex_headers()
+    if client_id:
+        headers["X-Plex-Client-Identifier"] = client_id
+
     try:
-        status, _ = _request(timeline_url, headers=_plex_headers(), timeout=5.0)
-        _request(progress_url, headers=_plex_headers(), timeout=5.0)
+        status, _ = _request(timeline_url, headers=headers, timeout=5.0)
         if scrobble_url:
-            _request(scrobble_url, headers=_plex_headers(), timeout=5.0)
+            _request(scrobble_url, headers=headers, timeout=5.0)
         return status in (200, 201, 204)
     except Exception as exc:
         logger.debug("Failed to report Plex timeline to %s: %s", clean_url, exc)
