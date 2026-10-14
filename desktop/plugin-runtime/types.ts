@@ -75,8 +75,18 @@ export interface PluginConfigField {
 
 // ── Services ──
 export interface PluginService {
-  type: string        // 'downloader' | 'search-provider' | 'arr' | 'downloads-orchestrator'
+  type: string        // 'downloader' | 'search-provider' | 'arr' | 'downloads-orchestrator' | 'emulator'
   protocol?: string   // 'usenet' | 'torrent' | 'any'
+  emulatorId?: string
+  name?: string
+  platforms?: string[]
+  extensions?: string[]
+  defaultExecutable?: string
+  executableLookup?: string[]
+  launchTemplate?: string[]
+  cores?: Record<string, string>
+  saveLocations?: string[]
+  processNames?: string[]
 }
 
 export interface ServiceInfo {
@@ -84,6 +94,7 @@ export interface ServiceInfo {
   type: string
   protocol?: string
   methods: string[]
+  metadata?: Record<string, unknown>
 }
 
 export interface PluginSlot {

@@ -8,6 +8,10 @@ import * as path from 'path';
 import { createHash } from 'crypto';
 import * as os from 'os';
 import * as SaveService from './service';
+import { getGameById } from '../game/storage';
+import { isRomGame, getAllEmulatorDefinitions } from '../game/emulators';
+import { getSettings } from '../desktop-settings';
+import type { ServiceRegistry } from '../plugin-runtime/service-registry';
 
 let _knownLocationsCache: KnownSaveLocation[] | null = null;
 
@@ -176,19 +180,52 @@ export function normalizeSaveTitle(title: string): string {
     .trim();
 }
 
+export const KNOWN_SAVE_EXTENSIONS = new Set([
+  '.sav', '.srm', '.state', '.savestate', '.mcd', '.ps2', '.p2s',
+  '.gci', '.raw', '.dsv', '.mln', '.fls', '.eep', '.sra', '.mpk',
+  '.dat', '.nvram', '.st0', '.st1', '.st2', '.st3', '.st4', '.st5',
+  '.st6', '.st7', '.st8', '.st9',
+]);
+
+export function isEmulatorSaveFile(fileName: string, romBaseName?: string): boolean {
+  const ext = path.extname(fileName).toLowerCase();
+  const base = path.parse(fileName).name.toLowerCase();
+
+  const isSaveExt =
+    KNOWN_SAVE_EXTENSIONS.has(ext) ||
+    /^\.state\d*$/i.test(ext) ||
+    /^\.ss\d*$/i.test(ext) ||
+    /^\.st\d*$/i.test(ext);
+
+  if (!isSaveExt) return false;
+
+  // Shared console memory cards (PS1, PS2, GameCube)
+  if (['.ps2', '.mcd', '.raw'].includes(ext)) {
+    return true;
+  }
+
+  if (romBaseName) {
+    return base === romBaseName || base.startsWith(`${romBaseName}.`);
+  }
+
+  return true;
+}
+
 /** Recursively walk a directory and collect all files with relative paths. */
 async function walkDir(
   dir: string,
   baseDir: string,
   files: { originPath: string; relativePath: string }[] = [],
+  filter?: (fileName: string, fullPath: string) => boolean,
 ): Promise<{ originPath: string; relativePath: string }[]> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.name.startsWith('.')) continue;
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      await walkDir(fullPath, baseDir, files);
+      await walkDir(fullPath, baseDir, files, filter);
     } else if (entry.isFile()) {
+      if (filter && !filter(entry.name, fullPath)) continue;
       files.push({
         originPath: fullPath,
         relativePath: path.relative(baseDir, fullPath),
@@ -202,9 +239,15 @@ async function walkDir(
 
 export class SaveDaemon {
   private vaultRoot: string;
+  private serviceRegistry?: ServiceRegistry;
 
-  constructor(vaultRoot: string) {
+  constructor(vaultRoot: string, serviceRegistry?: ServiceRegistry) {
     this.vaultRoot = vaultRoot;
+    this.serviceRegistry = serviceRegistry;
+  }
+
+  setServiceRegistry(serviceRegistry: ServiceRegistry): void {
+    this.serviceRegistry = serviceRegistry;
   }
 
   getVaultRoot(): string {
@@ -287,6 +330,52 @@ export class SaveDaemon {
       }
     }
 
+    // Check if game is a console / emulator ROM
+    let romBaseName: string | undefined;
+    let isRom = false;
+    try {
+      const localGame = getGameById(gameId);
+      if (localGame) {
+        isRom = isRomGame({
+          id: localGame.id,
+          title: localGame.title,
+          exePath: localGame.exePath,
+          installDir: localGame.installDir,
+          platform: localGame.platform,
+        });
+
+        if (isRom) {
+          if (localGame.exePath) {
+            romBaseName = path.parse(localGame.exePath).name.toLowerCase();
+          }
+          const emus = getAllEmulatorDefinitions(this.serviceRegistry);
+          const settings = getSettings();
+          const defaultEmuId = settings.defaultPlatformEmulators?.[localGame.platform];
+
+          const relevantEmus = defaultEmuId
+            ? emus.filter((e) => e.id === defaultEmuId)
+            : emus.filter((e) => e.platforms.includes(localGame.platform));
+
+          for (const emu of relevantEmus) {
+            if (emu.saveLocations) {
+              for (const loc of emu.saveLocations) {
+                candidatePaths.push(expandEnvVars(loc));
+              }
+            }
+          }
+
+          if (localGame.exePath) {
+            const romDir = path.dirname(localGame.exePath);
+            candidatePaths.push(romDir);
+            candidatePaths.push(path.join(romDir, 'saves'));
+            candidatePaths.push(path.join(romDir, 'states'));
+          }
+        }
+      }
+    } catch {
+      /* ignore lookup errors */
+    }
+
     const detectedPaths: string[] = [];
     let filesFound = 0;
     const seen = new Set<string>();
@@ -299,7 +388,11 @@ export class SaveDaemon {
         detectedPaths.push(resolved);
         try {
           const entries = await fs.readdir(resolved);
-          filesFound += entries.filter((e) => !e.startsWith('.')).length;
+          if (isRom) {
+            filesFound += entries.filter((e) => !e.startsWith('.') && isEmulatorSaveFile(e, romBaseName)).length;
+          } else {
+            filesFound += entries.filter((e) => !e.startsWith('.')).length;
+          }
         } catch {
           // skip unreadable dirs
         }
@@ -363,11 +456,29 @@ export class SaveDaemon {
     const gameDir = path.join(this.vaultRoot, gameId, 'profiles', profileId);
     await ensureDir(gameDir);
 
+    let romBaseName: string | undefined;
+    let isRom = false;
+    try {
+      const localGame = getGameById(gameId);
+      if (localGame && isRomGame(localGame)) {
+        isRom = true;
+        if (localGame.exePath) {
+          romBaseName = path.parse(localGame.exePath).name.toLowerCase();
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const fileFilter = isRom
+      ? (fileName: string) => isEmulatorSaveFile(fileName, romBaseName)
+      : undefined;
+
     const allFiles: { originPath: string; relativePath: string }[] = [];
     for (const dirPath of originPaths) {
       if (!(await fileExists(dirPath))) continue;
       // Recursively collect all files under the save directory
-      await walkDir(dirPath, dirPath, allFiles);
+      await walkDir(dirPath, dirPath, allFiles, fileFilter);
     }
 
     console.log('[backupToVault] Found', allFiles.length, 'files to back up');

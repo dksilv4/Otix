@@ -13,6 +13,10 @@ export interface DesktopSettings {
   isoDownloadPath?: string;
   /** Rescan configured library folders when the desktop app starts. */
   scanOnLaunch?: boolean;
+  /** Custom executable path overrides per emulator ID (e.g. { pcsx2: 'D:/Emulators/PCSX2/pcsx2-qt.exe' }). */
+  emulatorPaths?: Record<string, string>;
+  /** Default emulator ID to use per platform (e.g. { ps2: 'pcsx2', snes: 'retroarch' }). */
+  defaultPlatformEmulators?: Record<string, string>;
 }
 
 const DEFAULT_SETTINGS: DesktopSettings = {
@@ -25,6 +29,32 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   gamesInstallPath: '',
   isoDownloadPath: '',
   scanOnLaunch: false,
+  emulatorPaths: {},
+  defaultPlatformEmulators: {
+    snes: 'retroarch',
+    nes: 'retroarch',
+    gba: 'retroarch',
+    gb: 'retroarch',
+    gbc: 'retroarch',
+    n64: 'retroarch',
+    genesis: 'retroarch',
+    mastersystem: 'retroarch',
+    gamegear: 'retroarch',
+    saturn: 'retroarch',
+    arcade: 'retroarch',
+    ps1: 'duckstation',
+    ps2: 'pcsx2',
+    ps3: 'rpcs3',
+    gamecube: 'dolphin',
+    wii: 'dolphin',
+    wiiu: 'cemu',
+    switch: 'ryujinx',
+    psp: 'ppsspp',
+    nds: 'melonds',
+    '3ds': 'citra',
+    xbox360: 'xenia',
+    dreamcast: 'flycast',
+  },
 };
 
 let cachedSettings: DesktopSettings | null = null;

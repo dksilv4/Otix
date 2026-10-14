@@ -8,6 +8,9 @@ import { matchServerGameFile } from "@/features/downloads/server-availability"
 import { PREVIEW_INCOMPATIBLE_AS_AVAILABLE } from "@/features/downloads/os-compatibility"
 import { formatBytes, osName } from "@/lib/utils"
 import type { LocalGame, DisplayGame } from "@/features/launcher/types"
+import { useLaunchGame } from "@/features/launcher/hooks/use-launch-game"
+import { ConsoleDisambiguationModal } from "@/features/launcher/components/molecules/console-disambiguation-modal"
+import { isConsolePlatform } from "@/features/launcher/utils/console-disambiguation"
 
 interface LauncherActionButtonsProps {
   game: LocalGame | DisplayGame
@@ -30,10 +33,11 @@ export const LauncherActionButtons = ({
   const { data: serverGamesData } = useServerGames()
   const { startDownload } = useRemoteDownloads()
   const [isLaunching, setIsLaunching] = useState(false)
+  const { launchGame, disambiguationModalProps, hasDisambiguationTarget } = useLaunchGame()
 
   const raw = ("rawGame" in game && game.rawGame ? game.rawGame : game) as LocalGame
-  const isInstalled = !!raw.exePath && raw.platform !== "iso" && !raw.exePath.toLowerCase().endsWith(".otix")
-  const isIso = raw.platform === "iso"
+  const isInstalled = !!raw.exePath && (raw.platform !== "iso" || isConsolePlatform(raw.platform)) && !raw.exePath.toLowerCase().endsWith(".otix")
+  const isIso = raw.platform === "iso" && !isConsolePlatform(raw.platform)
   const isIncompatible = isIso && osName !== "Windows" && !PREVIEW_INCOMPATIBLE_AS_AVAILABLE
   const mediaId = raw.otixMediaId || raw.data?.id
   const matchingServerFile = matchServerGameFile(serverGamesData?.files, mediaId, raw.title)
@@ -44,8 +48,7 @@ export const LauncherActionButtons = ({
 
   const handlePlay = async (e?: React.MouseEvent) => {
     e?.stopPropagation()
-    const api = getDesktopAPI()
-    if (!api?.launchGame || raw.exePath?.toLowerCase().endsWith(".otix")) {
+    if (raw.exePath?.toLowerCase().endsWith(".otix")) {
       toast({
         title: "Desktop App Required",
         description: "Download the Otix desktop client to launch local games natively.",
@@ -56,19 +59,7 @@ export const LauncherActionButtons = ({
 
     try {
       setIsLaunching(true)
-      await api.launchGame(raw)
-      toast({
-        title: "Launching Game",
-        description: `Starting ${game.title}...`,
-        variant: "success",
-      })
-    } catch (err) {
-      console.error(err)
-      toast({
-        title: "Launch Failed",
-        description: (err as Error)?.message || "Failed to launch executable.",
-        variant: "error",
-      })
+      await launchGame(raw)
     } finally {
       setTimeout(() => setIsLaunching(false), 2000)
     }
@@ -223,6 +214,8 @@ export const LauncherActionButtons = ({
           <Info size={size === "lg" ? 18 : 15} />
         </button>
       )}
+
+      {hasDisambiguationTarget && <ConsoleDisambiguationModal {...disambiguationModalProps} />}
     </div>
   )
 };

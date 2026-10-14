@@ -5,6 +5,14 @@ import { GameDetector } from '../game/detector';
 import type { Cs2GsiManager } from '../game/cs2-gsi';
 import type { PluginManager } from '../plugin-runtime/manager';
 import type { LocalGame } from '../preload-api';
+import {
+  isRomGame,
+  resolveEmulatorLaunch,
+  detectAllEmulators,
+  getAmbiguousCandidates,
+} from '../game/emulators';
+import { getSettings } from '../desktop-settings';
+import { updateGamePlatform } from '../game/storage';
 
 export function registerGameDetectorIPC(
   gameDetector: GameDetector | null,
@@ -14,7 +22,18 @@ export function registerGameDetectorIPC(
   // Launch game — accepts full LocalGame for tracking
   ipcMain.handle('launcher:launch-game', async (_, game: LocalGame) => {
     try {
-      if (game.exePath.includes('://')) {
+      if (isRomGame(game)) {
+        const settings = getSettings();
+        const launch = resolveEmulatorLaunch(game, pluginManager?.serviceRegistry, settings);
+        const child = spawn(launch.executablePath, launch.args, {
+          cwd: launch.workingDir,
+          detached: true,
+          stdio: 'ignore',
+        });
+        gameDetector?.startTracking(game, child.pid);
+        child.unref();
+        return true;
+      } else if (game.exePath.includes('://')) {
         await shell.openExternal(game.exePath);
         gameDetector?.startTracking(game); // no PID for protocol launches, scan will confirm
         return true;
@@ -35,6 +54,21 @@ export function registerGameDetectorIPC(
       console.error('Failed to launch game', game.exePath, err);
       throw err;
     }
+  });
+
+  // Emulator management IPC
+  ipcMain.handle('emulators:get-all', async () => {
+    const settings = getSettings();
+    return detectAllEmulators(pluginManager?.serviceRegistry, settings.emulatorPaths);
+  });
+
+  ipcMain.handle('emulators:get-ambiguous-candidates', async (_, filePathOrGame: string | LocalGame) => {
+    return getAmbiguousCandidates(filePathOrGame);
+  });
+
+  ipcMain.handle('emulators:set-game-platform', async (_, gameId: string, platform: string) => {
+    updateGamePlatform(gameId, platform);
+    return true;
   });
 
   ipcMain.handle('game:get-running', () => {

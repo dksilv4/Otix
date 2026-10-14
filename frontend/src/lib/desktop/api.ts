@@ -16,10 +16,35 @@ export interface DesktopSettingsData {
   gamesInstallPath?: string;
   isoDownloadPath?: string;
   scanOnLaunch?: boolean;
+  emulatorPaths?: Record<string, string>;
+  defaultPlatformEmulators?: Record<string, string>;
   overlayEnabled?: boolean;
   overlayCorner?: string;
   overlayMonitor?: string;
   overlayHotkey?: string;
+}
+
+export interface DetectedEmulator {
+  id: string;
+  name: string;
+  installed: boolean;
+  executablePath: string | null;
+  isCustomPath: boolean;
+  definition: {
+    id: string;
+    name: string;
+    description?: string;
+    platforms: string[];
+    extensions: string[];
+    defaultExecutable: string;
+    executableLookup: string[];
+    launchTemplate: string[];
+    cores?: Record<string, string>;
+    saveLocations?: string[];
+    processNames?: string[];
+    source?: 'builtin' | 'plugin';
+    pluginId?: string;
+  };
 }
 
 export interface DiskInfo {
@@ -247,6 +272,11 @@ export interface DesktopAPI {
   showItemInFolder(path: string): Promise<void>
   pickExecutable(dir?: string): Promise<string | null>
   updateGamePath(id: string, exePath: string, installDir?: string): Promise<void>
+
+  // Emulators
+  getEmulators?: () => Promise<DetectedEmulator[]>
+  getAmbiguousCandidates?: (filePathOrGame: string | LocalGame) => Promise<string[]>
+  setGamePlatform?: (gameId: string, platform: string) => Promise<boolean>
 
   // Disk
   getDiskSpace(): Promise<DiskInfo[]>

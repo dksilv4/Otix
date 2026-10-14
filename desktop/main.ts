@@ -32,6 +32,7 @@ import { setNotifyTarget, getAllGames } from './game/storage';
 import type { LocalGame } from './preload-api';
 import { purgeOldDeletedDownloads } from './downloads';
 import { SaveDaemon } from './saves';
+import * as SaveService from './saves/service';
 import { registerSaveIPC } from './ipc/saves';
 import { populateKnownLocations } from './saves/export';
 import { PermissionManager } from './plugin-runtime/permissions';
@@ -53,6 +54,8 @@ let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
 let cs2GsiManager: Cs2GsiManager | null = null;
 let pluginManager: PluginManager | null = null;
+let saveDaemon: SaveDaemon | null = null;
+let currentAuthToken = '';
 let permissionManager: PermissionManager | null = null;
 let fetchBridge: FetchWorkerBridge | null = null;
 let pendingDeepLink: string | null = null;
@@ -498,6 +501,35 @@ app.on('ready', async () => {
       hardware: session.hardware ?? null,
       shareEligible: session.shareEligible ?? false,
     });
+
+    // Auto-save backup or cloud sync on game session end
+    if (saveDaemon) {
+      (async () => {
+        try {
+          const cloudSettings = await saveDaemon!.getCloudSettings(session.gameId);
+          if (cloudSettings?.autoSync) {
+            const profile = SaveService.getActiveProfile(session.gameId);
+            const profileId = profile?.id || 'default';
+            if (currentAuthToken) {
+              await saveDaemon!.syncCloud(
+                session.gameId,
+                session.gameTitle,
+                profileId,
+                getApiBaseUrl(),
+                currentAuthToken,
+              );
+            } else {
+              const discovery = await saveDaemon!.discoverForGame(session.gameId, session.gameTitle);
+              if (discovery.detectedPaths.length > 0) {
+                await saveDaemon!.backupToVault(session.gameId, discovery.detectedPaths);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn(`[main] Auto-save backup for ${session.gameTitle} failed:`, err);
+        }
+      })();
+    }
   });
 
   // FPS data now comes from the fps-capture plugin via eventBus (not GameDetector).
@@ -651,7 +683,7 @@ app.on('ready', async () => {
   } catch {}
 
   // ── Initialize Save Daemon —────
-  const saveDaemon = new SaveDaemon(path.join(app.getPath('userData'), 'saves'));
+  saveDaemon = new SaveDaemon(path.join(app.getPath('userData'), 'saves'));
   registerSaveIPC(saveDaemon);
 
   // Populate known save locations from the built-in database (async, non-blocking)
@@ -673,6 +705,7 @@ app.on('ready', async () => {
     permissionManager = new PermissionManager();
     pluginManager = new PluginManager(extensionsDir, pluginsRepo, app.getPath('userData'), devExtensionsDir);
     pluginManager.setPermissionManager(permissionManager);
+    saveDaemon?.setServiceRegistry(pluginManager.serviceRegistry);
     setPluginCaller((pluginId, method, args) => pluginManager!.callPluginData(pluginId, method, args));
     permissionManager.setWebContents(mainWindow!.webContents);
     registerPluginIPC(pluginManager, mainWindow!, permissionManager);
@@ -703,6 +736,7 @@ app.on('ready', async () => {
     const origSetAuth = pluginManager.setAuthToken.bind(pluginManager);
     pluginManager.setAuthToken = (token: string) => {
       origSetAuth(token);
+      currentAuthToken = token;
       orchestrator.setAuthToken(token);
       fetchBridge?.setCredentials(getApiBaseUrl(), token);
     };
