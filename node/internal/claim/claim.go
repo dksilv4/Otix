@@ -30,8 +30,11 @@ type ClaimManager struct {
 
 func NewClaimManager(cfg *config.AppConfig) *ClaimManager {
 	// A server is considered claimed if server.auth_token is non-empty
-	// and not a generic default like "otix_secret_token"
-	isClaimed := cfg.Server.Claimed || (cfg.Server.AuthToken != "" && cfg.Server.AuthToken != "otix_secret_token")
+	// and not a generic default like "otix_secret_token", or if claimed boolean is true, or claimed_by is set
+	isClaimed := cfg.Server.Claimed || (cfg.Server.AuthToken != "" && cfg.Server.AuthToken != "otix_secret_token") || (cfg.Server.ClaimedBy != "")
+	if isClaimed {
+		cfg.Server.Claimed = true
+	}
 	cm := &ClaimManager{
 		cfg:       cfg,
 		claimed:   isClaimed,

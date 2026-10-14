@@ -152,7 +152,8 @@ def apply_node_heartbeat(payload: dict) -> dict:
     if token:
         query |= Q(auth_token=token)
     now = timezone.now()
-    for server in UserGameServer.objects.filter(query):
+    matched_servers = list(UserGameServer.objects.filter(query).select_related("user"))
+    for server in matched_servers:
         fields = ["is_online", "last_seen_at", "updated_at"]
         server.is_online = True
         server.last_seen_at = now
@@ -164,6 +165,13 @@ def apply_node_heartbeat(payload: dict) -> dict:
             server.name = name
             fields.append("name")
         server.save(update_fields=fields)
+
+        # If server is claimed in DB, reflect it on the returned node announcement
+        if server.auth_token:
+            node["claimed"] = True
+            node["claimed_by"] = getattr(server.user, "username", "admin")
+            node["auth_token"] = server.auth_token
+            node["server_name"] = server.name
     return node
 
 
@@ -190,6 +198,8 @@ def list_pending_nodes_for(user) -> list[dict]:
             claimed_tokens.add(server.auth_token)
     pending: list[dict] = []
     for node in nodes:
+        if node.get("claimed"):
+            continue
         token = node.get("auth_token") or ""
         if token and token in claimed_tokens:
             continue
@@ -408,7 +418,7 @@ def claim_node_direct(
             if claim_code and str(r.get("claim_code") or "").strip().upper() == claim_code:
                 continue
             r_eps = r.get("local_endpoints") or []
-            if local_url in r_eps:
+            if local_url in r_eps or local_url == r.get("local_url"):
                 continue
             new_pending.append(r)
         cache.set(PENDING_CACHE_KEY, new_pending, PENDING_TTL)

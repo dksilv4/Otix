@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -247,7 +249,114 @@ type AppConfig struct {
 	configPath string       `yaml:"-" json:"-"`
 }
 
+// DefaultStorageDir returns the OS-standard persistent data directory for Otix Node.
+// On Windows: %LOCALAPPDATA%\Otix\storage (or %APPDATA%\Otix\storage)
+// On macOS: ~/Library/Application Support/Otix/storage
+// On Linux: $XDG_DATA_HOME/otix/storage or ~/.local/share/otix/storage
+func DefaultStorageDir() string {
+	if env := os.Getenv("OTIX_STORAGE_DIR"); env != "" {
+		return env
+	}
+
+	// In Docker / container environments with mounted /storage or /app/storage
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		if _, errStorage := os.Stat("/storage"); errStorage == nil {
+			return "/storage"
+		}
+		return "/app/storage"
+	}
+
+	switch runtime.GOOS {
+	case "windows":
+		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+			return filepath.Join(localAppData, "Otix", "storage")
+		}
+		if appData := os.Getenv("APPDATA"); appData != "" {
+			return filepath.Join(appData, "Otix", "storage")
+		}
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			return filepath.Join(home, "AppData", "Local", "Otix", "storage")
+		}
+
+	case "darwin":
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			return filepath.Join(home, "Library", "Application Support", "Otix", "storage")
+		}
+
+	default: // Linux / Unix / BSD
+		if xdgData := os.Getenv("XDG_DATA_HOME"); xdgData != "" {
+			return filepath.Join(xdgData, "otix", "storage")
+		}
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			return filepath.Join(home, ".local", "share", "otix", "storage")
+		}
+	}
+
+	if userConfig, err := os.UserConfigDir(); err == nil && userConfig != "" {
+		return filepath.Join(userConfig, "otix", "storage")
+	}
+
+	return "./storage"
+}
+
+func isDefaultRelativeStorage(p string) bool {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return true
+	}
+	clean := filepath.Clean(p)
+	clean = strings.TrimPrefix(clean, "."+string(filepath.Separator))
+	clean = strings.TrimPrefix(clean, "./")
+	clean = strings.TrimPrefix(clean, ".\\")
+	return clean == "storage" || clean == "storage-prod" ||
+		strings.HasPrefix(clean, "storage/") || strings.HasPrefix(clean, "storage\\") ||
+		strings.HasPrefix(clean, "storage-prod/") || strings.HasPrefix(clean, "storage-prod\\")
+}
+
+func (c *AppConfig) ResolveStorageDir() string {
+	storageBase := DefaultStorageDir()
+	if c.Saves.StoragePath != "" {
+		if filepath.IsAbs(c.Saves.StoragePath) {
+			return filepath.Dir(c.Saves.StoragePath)
+		}
+		if isDefaultRelativeStorage(c.Saves.StoragePath) {
+			return storageBase
+		}
+		return filepath.Join(storageBase, filepath.Dir(c.Saves.StoragePath))
+	}
+	return storageBase
+}
+
+func (c *AppConfig) ResolveSavesPath() string {
+	storageBase := DefaultStorageDir()
+	if c.Saves.StoragePath != "" {
+		if filepath.IsAbs(c.Saves.StoragePath) {
+			return c.Saves.StoragePath
+		}
+		if isDefaultRelativeStorage(c.Saves.StoragePath) {
+			return filepath.Join(storageBase, "saves")
+		}
+		return filepath.Join(storageBase, c.Saves.StoragePath)
+	}
+	return filepath.Join(storageBase, "saves")
+}
+
+func (c *AppConfig) ResolveDownloadsPath() string {
+	storageBase := DefaultStorageDir()
+	if c.Server.DownloadsPath != "" {
+		if filepath.IsAbs(c.Server.DownloadsPath) {
+			return c.Server.DownloadsPath
+		}
+		if isDefaultRelativeStorage(c.Server.DownloadsPath) {
+			return filepath.Join(storageBase, "downloads")
+		}
+		return filepath.Join(storageBase, c.Server.DownloadsPath)
+	}
+	return filepath.Join(storageBase, "downloads")
+}
+
 func DefaultConfig() *AppConfig {
+	storageBase := DefaultStorageDir()
 	return &AppConfig{
 		Server: ServerSettings{
 			Name:               "Otix Node",
@@ -257,13 +366,13 @@ func DefaultConfig() *AppConfig {
 			RegistryURL:        "http://127.0.0.1:8000/api",
 			EnableUPnP:         false,
 			EnableHeartbeat:    true,
-			DownloadsPath:      "./storage/downloads",
+			DownloadsPath:      filepath.Join(storageBase, "downloads"),
 			WriteOtixAfterScan: true,
 			DownloadOtixImages: false,
 		},
 		GameLibraries: []LibraryConfig{},
 		Saves: SavesConfig{
-			StoragePath:         "./storage/saves",
+			StoragePath:         filepath.Join(storageBase, "saves"),
 			MaxSnapshotsPerGame: 10,
 			AutoBackupOnExit:    true,
 		},
@@ -300,29 +409,74 @@ func DefaultConfig() *AppConfig {
 	}
 }
 
+func isConfigClaimed(path string) bool {
+	if path == "" {
+		return false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	var probe struct {
+		Server struct {
+			Claimed   bool   `yaml:"claimed"`
+			AuthToken string `yaml:"auth_token"`
+			ClaimedBy string `yaml:"claimed_by"`
+		} `yaml:"server"`
+	}
+	if err := yaml.Unmarshal(data, &probe); err != nil {
+		return false
+	}
+	return probe.Server.Claimed || (probe.Server.AuthToken != "" && probe.Server.AuthToken != "otix_secret_token") || (probe.Server.ClaimedBy != "")
+}
+
 func FindDefaultConfigPath() string {
 	if env := os.Getenv("CONFIG_PATH"); env != "" {
 		return env
 	}
-	// 1. Current working directory (only if not root and config.yaml exists)
+
+	candidates := []string{}
+
+	// 1. User config directory (macOS: ~/Library/Application Support/otix/config.yaml, Linux: ~/.config/otix/config.yaml, Windows: %APPDATA%\otix\config.yaml)
+	if userConfig, err := os.UserConfigDir(); err == nil && userConfig != "" {
+		candidates = append(candidates, filepath.Join(userConfig, "otix", "config.yaml"))
+	}
+	if runtime.GOOS == "windows" {
+		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+			candidates = append(candidates, filepath.Join(localAppData, "Otix", "config.yaml"))
+		}
+	}
+
+	// 2. Directory containing current executable
+	if exe, err := os.Executable(); err == nil && exe != "" {
+		exeConfig := filepath.Join(filepath.Dir(exe), "config.yaml")
+		candidates = append(candidates, exeConfig)
+	}
+
+	// 3. Current working directory
 	if cwd, err := os.Getwd(); err == nil && cwd != "/" {
-		if _, err := os.Stat("config.yaml"); err == nil {
-			return "config.yaml"
+		candidates = append(candidates, "config.yaml")
+	}
+
+	// 4. System-wide /etc/otix/config.yaml
+	candidates = append(candidates, "/etc/otix/config.yaml")
+
+	// First pass: if an existing configuration is already CLAIMED, prioritize it!
+	for _, cand := range candidates {
+		if _, err := os.Stat(cand); err == nil && isConfigClaimed(cand) {
+			return cand
 		}
 	}
-	// 2. User config directory (macOS: ~/Library/Application Support/otix/config.yaml, Linux: ~/.config/otix/config.yaml)
-	if userConfig, err := os.UserConfigDir(); err == nil {
-		standardPath := filepath.Join(userConfig, "otix", "config.yaml")
-		if _, err := os.Stat(standardPath); err == nil {
-			return standardPath
+
+	// Second pass: return first existing configuration file
+	for _, cand := range candidates {
+		if _, err := os.Stat(cand); err == nil {
+			return cand
 		}
 	}
-	// 3. System-wide /etc/otix/config.yaml
-	if _, err := os.Stat("/etc/otix/config.yaml"); err == nil {
-		return "/etc/otix/config.yaml"
-	}
-	// 4. Fallback for newly created config: prefer user config directory so it is writable
-	if userConfig, err := os.UserConfigDir(); err == nil {
+
+	// Fallback for newly created config: prefer user config directory so it is writable
+	if userConfig, err := os.UserConfigDir(); err == nil && userConfig != "" {
 		return filepath.Join(userConfig, "otix", "config.yaml")
 	}
 	return "config.yaml"
@@ -334,17 +488,24 @@ func LoadConfig(customPath string) *AppConfig {
 		path = FindDefaultConfigPath()
 	}
 
+	if abs, err := filepath.Abs(path); err == nil {
+		path = abs
+	}
+
 	cfg := DefaultConfig()
 	cfg.configPath = path
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		// Try example file if available
+		// Try example file if available to seed defaults, but preserve destination path
 		examplePath := filepath.Join(filepath.Dir(path), "config.example.yaml")
 		if _, errEx := os.Stat(examplePath); errEx == nil {
-			path = examplePath
-		} else {
-			return cfg
+			if data, err := os.ReadFile(examplePath); err == nil {
+				_ = yaml.Unmarshal(data, cfg)
+			}
+		} else if data, err := os.ReadFile("config.example.yaml"); err == nil {
+			_ = yaml.Unmarshal(data, cfg)
 		}
+		return cfg
 	}
 
 	data, err := os.ReadFile(path)
@@ -356,6 +517,14 @@ func LoadConfig(customPath string) *AppConfig {
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		fmt.Printf("[Warning] Failed to parse config YAML: %v. Using defaults.\n", err)
 		return cfg
+	}
+
+	// If paths are empty or relative default storage paths, resolve them to OS-standard AppData location
+	if isDefaultRelativeStorage(cfg.Server.DownloadsPath) {
+		cfg.Server.DownloadsPath = cfg.ResolveDownloadsPath()
+	}
+	if isDefaultRelativeStorage(cfg.Saves.StoragePath) {
+		cfg.Saves.StoragePath = cfg.ResolveSavesPath()
 	}
 
 	cfg.configPath = path
@@ -392,6 +561,10 @@ func (c *AppConfig) Save(customPath string) error {
 				}
 			}
 		}
+	}
+
+	if abs, err := filepath.Abs(targetPath); err == nil {
+		targetPath = abs
 	}
 
 	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {

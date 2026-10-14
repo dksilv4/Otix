@@ -3,6 +3,7 @@
 package desktop
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -19,25 +20,31 @@ import (
 	"github.com/dksilv4/otix/node/internal/indexer"
 )
 
+//go:embed assets/tray-icon-white.png
+var embeddedWhiteTrayIconPNG []byte
+
 var (
 	modShell32 = syscall.NewLazyDLL("shell32.dll")
 	modUser32  = syscall.NewLazyDLL("user32.dll")
 	modGdi32   = syscall.NewLazyDLL("gdi32.dll")
 	modKernel32 = syscall.NewLazyDLL("kernel32.dll")
 
-	procShell_NotifyIconW       = modShell32.NewProc("Shell_NotifyIconW")
-	procExtractIconW            = modShell32.NewProc("ExtractIconW")
-	procCreatePopupMenu         = modUser32.NewProc("CreatePopupMenu")
-	procAppendMenuW             = modUser32.NewProc("AppendMenuW")
-	procTrackPopupMenu          = modUser32.NewProc("TrackPopupMenu")
-	procDestroyMenu             = modUser32.NewProc("DestroyMenu")
-	procSetForegroundWindow     = modUser32.NewProc("SetForegroundWindow")
-	procGetCursorPos            = modUser32.NewProc("GetCursorPos")
-	procRegisterWindowMessageW  = modUser32.NewProc("RegisterWindowMessageW")
-	procLoadIconW               = modUser32.NewProc("LoadIconW")
-	procCreateIconIndirect      = modUser32.NewProc("CreateIconIndirect")
-	procDestroyIcon             = modUser32.NewProc("DestroyIcon")
-	procDefWindowProcW          = modUser32.NewProc("DefWindowProcW")
+	procShell_NotifyIconW          = modShell32.NewProc("Shell_NotifyIconW")
+	procExtractIconW               = modShell32.NewProc("ExtractIconW")
+	procCreatePopupMenu            = modUser32.NewProc("CreatePopupMenu")
+	procAppendMenuW                = modUser32.NewProc("AppendMenuW")
+	procTrackPopupMenu             = modUser32.NewProc("TrackPopupMenu")
+	procDestroyMenu                = modUser32.NewProc("DestroyMenu")
+	procSetForegroundWindow        = modUser32.NewProc("SetForegroundWindow")
+	procGetCursorPos               = modUser32.NewProc("GetCursorPos")
+	procRegisterWindowMessageW     = modUser32.NewProc("RegisterWindowMessageW")
+	procLoadIconW                  = modUser32.NewProc("LoadIconW")
+	procCreateIconFromResourceEx   = modUser32.NewProc("CreateIconFromResourceEx")
+	procCreateIconIndirect         = modUser32.NewProc("CreateIconIndirect")
+	procDestroyIcon                = modUser32.NewProc("DestroyIcon")
+	procOpenDesktopW               = modUser32.NewProc("OpenDesktopW")
+	procSetThreadDesktop           = modUser32.NewProc("SetThreadDesktop")
+	procDefWindowProcW             = modUser32.NewProc("DefWindowProcW")
 	procRegisterClassExW        = modUser32.NewProc("RegisterClassExW")
 	procCreateWindowExW         = modUser32.NewProc("CreateWindowExW")
 	procDestroyWindow           = modUser32.NewProc("DestroyWindow")
@@ -239,6 +246,18 @@ func (tm *TrayManager) runTrayThread() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
+	// Ensure tray thread attaches to the interactive "Default" desktop
+	desktopDefault, _ := syscall.UTF16PtrFromString("Default")
+	hDefault, _, _ := procOpenDesktopW.Call(
+		uintptr(unsafe.Pointer(desktopDefault)),
+		0,
+		0,
+		0x01FF, // DESKTOP_ALL_ACCESS
+	)
+	if hDefault != 0 {
+		procSetThreadDesktop.Call(hDefault)
+	}
+
 	// Register TaskbarCreated message in case Windows Explorer restarts
 	tbMsg, _ := syscall.UTF16PtrFromString("TaskbarCreated")
 	retTb, _, _ := procRegisterWindowMessageW.Call(uintptr(unsafe.Pointer(tbMsg)))
@@ -293,7 +312,13 @@ func (tm *TrayManager) runTrayThread() {
 }
 
 func (tm *TrayManager) loadOrGenerateIcon(hInst uintptr) uintptr {
-	// 1. Try extracting embedded icon from current executable
+	// 1. Try loading icon resource ID 1 embedded via goversioninfo
+	hIconRes, _, _ := procLoadIconW.Call(hInst, uintptr(1))
+	if hIconRes != 0 {
+		return hIconRes
+	}
+
+	// 2. Try extracting embedded icon from current executable
 	var exePathBuf [1024]uint16
 	procGetModuleFileNameW.Call(0, uintptr(unsafe.Pointer(&exePathBuf[0])), uintptr(len(exePathBuf)))
 	hIconExt, _, _ := procExtractIconW.Call(hInst, uintptr(unsafe.Pointer(&exePathBuf[0])), 0)
@@ -301,7 +326,22 @@ func (tm *TrayManager) loadOrGenerateIcon(hInst uintptr) uintptr {
 		return hIconExt
 	}
 
-	// 2. Generate a sharp Otix purple brand icon in memory (16x16)
+	// 3. Try creating icon from embedded white tray PNG
+	if len(embeddedWhiteTrayIconPNG) > 0 {
+		hIconPng, _, _ := procCreateIconFromResourceEx.Call(
+			uintptr(unsafe.Pointer(&embeddedWhiteTrayIconPNG[0])),
+			uintptr(len(embeddedWhiteTrayIconPNG)),
+			1,          // fIcon = TRUE
+			0x00030000, // dwVersion (Windows standard icon format)
+			0, 0,       // cx, cy (0 = use source size)
+			0,          // LR_DEFAULTCOLOR
+		)
+		if hIconPng != 0 {
+			return hIconPng
+		}
+	}
+
+	// 4. Fallback: Generate a crisp white Otix mark in memory (16x16)
 	hdcScreen, _, _ := procCreateCompatibleDC.Call(0)
 	if hdcScreen != 0 {
 		hColorBmp, _, _ := procCreateCompatibleBitmap.Call(hdcScreen, 16, 16)
@@ -310,15 +350,9 @@ func (tm *TrayManager) loadOrGenerateIcon(hInst uintptr) uintptr {
 		if hColorBmp != 0 && hMaskBmp != 0 {
 			hOldBmp, _, _ := procSelectObject.Call(hdcScreen, hColorBmp)
 
-			// Fill with Otix Purple: RGB(168, 85, 247) -> BGR: 0x00F755A8
-			purpleBrush, _, _ := procCreateSolidBrush.Call(uintptr(0x00F755A8))
-			rFill := rect{0, 0, 16, 16}
-			procFillRect.Call(hdcScreen, uintptr(unsafe.Pointer(&rFill)), purpleBrush)
-			procDeleteObject.Call(purpleBrush)
-
-			// Center dot: White RGB(255, 255, 255)
+			// Clean white Otix mark (BGR: 0x00FFFFFF)
 			whiteBrush, _, _ := procCreateSolidBrush.Call(uintptr(0x00FFFFFF))
-			rDot := rect{5, 5, 11, 11}
+			rDot := rect{3, 3, 13, 13}
 			procFillRect.Call(hdcScreen, uintptr(unsafe.Pointer(&rDot)), whiteBrush)
 			procDeleteObject.Call(whiteBrush)
 
@@ -343,7 +377,7 @@ func (tm *TrayManager) loadOrGenerateIcon(hInst uintptr) uintptr {
 		}
 	}
 
-	// 3. Fallback: standard application icon
+	// 5. Fallback: standard application icon
 	hDefault, _, _ := procLoadIconW.Call(0, 32512) // IDI_APPLICATION
 	return hDefault
 }
@@ -380,7 +414,18 @@ func (tm *TrayManager) addTrayIcon() {
 	nid.hIcon = tm.hIcon
 	copy(nid.szTip[:], tipU16)
 
-	procShell_NotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(&nid)))
+	ret, _, _ := procShell_NotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(&nid)))
+	if ret == 0 {
+		// Fallback for shell versions expecting V3 or V2 size
+		nid.cbSize = 952
+		ret, _, _ = procShell_NotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(&nid)))
+		if ret == 0 {
+			nid.cbSize = 504
+			procShell_NotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(&nid)))
+		}
+	}
+	nid.uTimeoutOrVersion = 4
+	procShell_NotifyIconW.Call(nimSetVersion, uintptr(unsafe.Pointer(&nid)))
 }
 
 func (tm *TrayManager) modifyTrayIconTooltip() {
@@ -415,8 +460,13 @@ func (tm *TrayManager) removeTrayIcon() {
 func trayWndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 	switch uint32(msg) {
 	case wmTrayCallback:
-		switch uint32(lParam) {
-		case wmLButtonUp, wmLButtonDblClk:
+		const (
+			ninSelect    = 0x0400 // WM_USER
+			ninKeySelect = 0x0401 // WM_USER + 1
+		)
+		evt := uint32(lParam & 0xFFFF)
+		switch evt {
+		case wmLButtonUp, wmLButtonDblClk, ninSelect, ninKeySelect:
 			if globalTrayManager != nil {
 				globalTrayManager.openWebUI()
 			}
@@ -424,7 +474,9 @@ func trayWndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 
 		case wmRButtonUp, wmContextMenu:
 			if globalTrayManager != nil {
-				globalTrayManager.showContextMenu()
+				x := int32(int16(wParam & 0xFFFF))
+				y := int32(int16((wParam >> 16) & 0xFFFF))
+				globalTrayManager.showContextMenu(x, y)
 			}
 			return 0
 		}
@@ -450,10 +502,21 @@ func (tm *TrayManager) openWebUI(pathSuffix ...string) {
 	}
 	url := fmt.Sprintf("http://127.0.0.1:%d%s", tm.cfg.Server.Port, suffix)
 	cmd := exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	_ = cmd.Start()
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		CreationFlags: 0x08000000,
+		HideWindow:    true,
+	}
+	if err := cmd.Start(); err != nil {
+		expCmd := exec.Command("explorer.exe", url)
+		expCmd.SysProcAttr = &syscall.SysProcAttr{
+			CreationFlags: 0x08000000,
+			HideWindow:    true,
+		}
+		_ = expCmd.Start()
+	}
 }
 
-func (tm *TrayManager) showContextMenu() {
+func (tm *TrayManager) showContextMenu(cursorX, cursorY int32) {
 	tm.mu.Lock()
 	hwnd := tm.hwnd
 	cfg := tm.cfg
@@ -468,6 +531,10 @@ func (tm *TrayManager) showContextMenu() {
 
 	var pt point
 	procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
+	if pt.x == 0 && pt.y == 0 && (cursorX != 0 || cursorY != 0) {
+		pt.x = cursorX
+		pt.y = cursorY
+	}
 
 	// Crucial Win32 focus handling so popup closes on click away
 	procSetForegroundWindow.Call(hwnd)
@@ -600,8 +667,8 @@ func (tm *TrayManager) showContextMenu() {
 	// Separator
 	procAppendMenuW.Call(hMenu, uintptr(mfSeparator), 0, 0)
 
-	// 7. Exit Node
-	exitText, _ := syscall.UTF16FromString("Exit Node")
+	// 7. Close Otix Node
+	exitText, _ := syscall.UTF16FromString("Close Otix Node")
 	procAppendMenuW.Call(hMenu, uintptr(mfString), uintptr(idExit), uintptr(unsafe.Pointer(&exitText[0])))
 
 	// Track popup menu
@@ -614,6 +681,9 @@ func (tm *TrayManager) showContextMenu() {
 		hwnd,
 		0,
 	)
+
+	// Microsoft KB139526: Post WM_NULL to force task switch and ensure clean popup dismissal
+	procPostMessageW.Call(hwnd, 0, 0, 0)
 
 	// Handle selection
 	switch chosen {
@@ -654,14 +724,15 @@ func (tm *TrayManager) showContextMenu() {
 		}
 
 	case idStorageDir:
-		storagePath := "./storage"
-		if cfg.Saves.StoragePath != "" {
-			storagePath = filepath.Dir(cfg.Saves.StoragePath)
-		}
+		storagePath := cfg.ResolveStorageDir()
 		abs, err := filepath.Abs(storagePath)
 		if err == nil {
 			_ = os.MkdirAll(abs, 0755)
 			cmd := exec.Command("explorer.exe", abs)
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				CreationFlags: 0x08000000,
+				HideWindow:    true,
+			}
 			_ = cmd.Start()
 		}
 

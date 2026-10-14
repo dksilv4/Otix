@@ -60,12 +60,15 @@ func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
 	idx := indexer.NewStorageIndexer(cfg.GameLibraries)
 	go idx.ScanAll()
 
-	storageDir := filepath.Dir(cfg.Saves.StoragePath)
-	if storageDir == "" || storageDir == "." {
-		storageDir = "./storage"
-	}
+	storageDir := cfg.ResolveStorageDir()
+	_ = os.MkdirAll(storageDir, 0755)
 
-	savesMgr := saves.NewSaveCloudManager(cfg.Saves.StoragePath, cfg.Saves.MaxSnapshotsPerGame)
+	savesPath := cfg.ResolveSavesPath()
+	_ = os.MkdirAll(savesPath, 0755)
+
+	_ = os.MkdirAll(cfg.ResolveDownloadsPath(), 0755)
+
+	savesMgr := saves.NewSaveCloudManager(savesPath, cfg.Saves.MaxSnapshotsPerGame)
 	epicClient := epic.NewEpicClient(storageDir)
 	gogClient := gog.NewGOGClient(storageDir)
 	provMgr := providers.NewProviderManager(cfg)

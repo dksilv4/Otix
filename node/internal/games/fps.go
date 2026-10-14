@@ -99,6 +99,10 @@ func (c *PresentMonCollector) FindPresentMon() string {
 
 	// Standard workspace & relative locations
 	candidates = append(candidates,
+		filepath.Join(c.customBinDir, "PresentMon.exe"),
+		filepath.Join(c.customBinDir, "bin", "PresentMon.exe"),
+		"bin/PresentMon.exe",
+		"../bin/PresentMon.exe",
 		"./storage/bin/PresentMon.exe",
 		"../desktop/bin/PresentMon.exe",
 		"../../desktop/bin/PresentMon.exe",
@@ -167,6 +171,7 @@ func (c *PresentMonCollector) Start(pid int, processName string, gameID string) 
 	}
 
 	cmd := exec.Command(exe, args...)
+	configureCmdForProcess(cmd)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		c.mu.Unlock()

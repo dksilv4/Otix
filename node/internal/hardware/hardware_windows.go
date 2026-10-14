@@ -260,12 +260,22 @@ type cimVideo struct {
 	AdapterRAM    uint64 `json:"AdapterRAM"`
 }
 
+const createNoWindow = 0x08000000
+
+func hideWindowSysProcAttr() *syscall.SysProcAttr {
+	return &syscall.SysProcAttr{
+		CreationFlags: createNoWindow,
+		HideWindow:    true,
+	}
+}
+
 func detectGPUs() []GPUInfo {
 	gpus := make([]GPUInfo, 0)
 	seen := make(map[string]bool)
 
 	// 1. Try nvidia-smi for precise NVIDIA VRAM and driver
 	cmdNvidia := exec.Command("nvidia-smi", "--query-gpu=gpu_name,driver_version,memory.total", "--format=csv,noheader,nounits")
+	cmdNvidia.SysProcAttr = hideWindowSysProcAttr()
 	if out, err := cmdNvidia.Output(); err == nil {
 		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 		for _, line := range lines {
@@ -291,6 +301,7 @@ func detectGPUs() []GPUInfo {
 	// 2. Query Win32_VideoController via PowerShell for AMD/Intel/Integrated GPUs
 	psScript := "Get-CimInstance Win32_VideoController | Select-Object Name, DriverVersion, AdapterRAM | ConvertTo-Json -Compress"
 	cmdCim := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", psScript)
+	cmdCim.SysProcAttr = hideWindowSysProcAttr()
 	if out, err := cmdCim.Output(); err == nil {
 		outBytes := bytes.TrimSpace(out)
 		if len(outBytes) > 0 {
@@ -623,6 +634,7 @@ func queryWmiMonitorMap() map[string]wmiMonDetail {
 	result := make(map[string]wmiMonDetail)
 	psScript := "Get-CimInstance -Namespace root\\wmi -ClassName WmiMonitorID -ErrorAction SilentlyContinue | Select-Object InstanceName, ManufacturerName, UserFriendlyName, SerialNumberID | ConvertTo-Json -Compress"
 	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", psScript)
+	cmd.SysProcAttr = hideWindowSysProcAttr()
 	out, err := cmd.Output()
 	if err != nil {
 		return result

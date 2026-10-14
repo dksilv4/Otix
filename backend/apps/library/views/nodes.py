@@ -225,8 +225,14 @@ class GameServerHeartbeatView(APIView):
     permission_classes = (AllowAny,)
 
     def post(self, request: Request) -> Response:
-        apply_node_heartbeat(request.data if isinstance(request.data, dict) else {})
-        return Response({"status": "ok"})
+        result = apply_node_heartbeat(request.data if isinstance(request.data, dict) else {})
+        resp = {"status": "ok"}
+        if result and result.get("claimed"):
+            resp["claimed"] = True
+            resp["auth_token"] = result.get("auth_token", "")
+            resp["server_name"] = result.get("server_name", "")
+            resp["username"] = result.get("claimed_by", "")
+        return Response(resp)
 
 
 class GameServerScanCompleteView(APIView):
