@@ -113,15 +113,22 @@ describe('desktop/saves/emulator', () => {
       // Emulate that only ROM directory exists
       vi.mocked(fs.access).mockImplementation(async (p: any) => {
         const pathStr = String(p).replace(/\\/g, '/').toLowerCase();
-        if (pathStr === 'c:/roms/snes') {
+        if (pathStr === 'c:/roms/snes' || pathStr.endsWith('/c:/roms/snes')) {
           return undefined; // exists
         }
         throw new Error('ENOENT');
       });
 
-      vi.mocked(fs.readdir).mockImplementation(async (p: any) => {
+      vi.mocked(fs.readdir).mockImplementation(async (p: any, options: any) => {
         const pathStr = String(p).replace(/\\/g, '/');
-        if (pathStr.includes('C:/Roms/SNES')) {
+        if (pathStr.toLowerCase().includes('c:/roms/snes')) {
+          if (options?.withFileTypes) {
+            return [
+              { name: 'Super Mario World.sfc', isFile: () => true, isDirectory: () => false } as any,
+              { name: 'Super Mario World.srm', isFile: () => true, isDirectory: () => false } as any,
+              { name: 'Super Mario World.state1', isFile: () => true, isDirectory: () => false } as any,
+            ];
+          }
           return [
             'Super Mario World.sfc',
             'Super Mario World.srm',
