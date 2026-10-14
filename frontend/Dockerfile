@@ -19,8 +19,14 @@ FROM nginx:1.27-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Keep build in html_dist so entrypoint can sync into persistent volume
+COPY --from=builder /app/dist /usr/share/nginx/html_dist
 COPY --from=builder /app/dist /usr/share/nginx/html
+
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
 
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

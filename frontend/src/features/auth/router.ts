@@ -1,18 +1,18 @@
-import { lazy } from 'react'
 import { createRoute } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
+import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 
-const AuthPage = lazy(() => import('@auth/pages/auth-page').then(m => ({ default: m.AuthPage })))
-const RegisterPage = lazy(() => import('@auth/pages/auth-register-page').then(m => ({ default: m.RegisterPage })))
-const CallbackPage = lazy(() => import('@auth/pages/auth-callback-page').then(m => ({ default: m.CallbackPage })))
-const TwoFactorPage = lazy(() => import('@auth/pages/auth-two-factor-page').then(m => ({ default: m.TwoFactorPage })))
-const VerifyEmailPage = lazy(() => import('@auth/pages/auth-verify-email-page').then(m => ({ default: m.VerifyEmailPage })))
-const ForgotPasswordPage = lazy(() => import('@auth/pages/auth-forgot-password-page').then(m => ({ default: m.ForgotPasswordPage })))
-const ResetPasswordPage = lazy(() => import('@auth/pages/auth-reset-password-page').then(m => ({ default: m.ResetPasswordPage })))
+const AuthPage = safeLazy(() => import('@auth/pages/auth-page').then(m => ({ default: m.AuthPage })))
+const RegisterPage = safeLazy(() => import('@auth/pages/auth-register-page').then(m => ({ default: m.RegisterPage })))
+const CallbackPage = safeLazy(() => import('@auth/pages/auth-callback-page').then(m => ({ default: m.CallbackPage })))
+const TwoFactorPage = safeLazy(() => import('@auth/pages/auth-two-factor-page').then(m => ({ default: m.TwoFactorPage })))
+const VerifyEmailPage = safeLazy(() => import('@auth/pages/auth-verify-email-page').then(m => ({ default: m.VerifyEmailPage })))
+const ForgotPasswordPage = safeLazy(() => import('@auth/pages/auth-forgot-password-page').then(m => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = safeLazy(() => import('@auth/pages/auth-reset-password-page').then(m => ({ default: m.ResetPasswordPage })))
 
 function preload(load: () => Promise<unknown>) {
   return () => {
-    void load()
+    safePrefetchChunk(load)
   }
 }
 

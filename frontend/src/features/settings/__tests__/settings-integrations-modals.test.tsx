@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { SettingsIntegrationsPage } from '../pages/settings-integrations-page'
 import { apiClient } from '@/lib/api/client'
@@ -114,11 +115,16 @@ describe('Settings Integrations Modals Regression Tests', () => {
   })
 
   const renderPage = () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
     return render(
-      <ModalProvider>
-        <SettingsIntegrationsPage />
-        <ModalRoot />
-      </ModalProvider>
+      <QueryClientProvider client={queryClient}>
+        <ModalProvider>
+          <SettingsIntegrationsPage />
+          <ModalRoot />
+        </ModalProvider>
+      </QueryClientProvider>
     )
   }
 

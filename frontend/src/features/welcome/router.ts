@@ -1,8 +1,8 @@
-import { lazy } from 'react'
 import { createRoute } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
+import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 
-const WelcomePage = lazy(() =>
+const WelcomePage = safeLazy(() =>
   import('./pages/welcome-page').then((m) => ({ default: m.WelcomePage })),
 )
 
@@ -12,7 +12,7 @@ export function createWelcomeRoutes(rootRoute: AnyRoute) {
     path: '/welcome',
     component: WelcomePage,
     loader: () => {
-      void import('./pages/welcome-page')
+      safePrefetchChunk(() => import('./pages/welcome-page'))
     },
   })
 

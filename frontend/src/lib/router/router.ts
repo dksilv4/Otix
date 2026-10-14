@@ -1,19 +1,19 @@
-import { lazy } from "react"
 import { createRouter, createRootRoute, createRoute } from "@tanstack/react-router"
 import type { QueryClient } from "@tanstack/react-query"
 import { NotFoundPage } from "@/components/not-found"
 import { RootLayout } from "@/features/_config/components/layout/root-layout"
+import { safeLazy } from "@/lib/utils/chunk-reload"
 
-const LogoLoadingTestPage = lazy(() =>
+const LogoLoadingTestPage = safeLazy(() =>
   import("@/pages/logo-loading-test-page").then((m) => ({ default: m.LogoLoadingTestPage })),
 )
-const TelemetryTestPage = lazy(() =>
+const TelemetryTestPage = safeLazy(() =>
   import("@/pages/telemetry-test-page").then((m) => ({ default: m.TelemetryTestPage })),
 )
-const TermsPage = lazy(() =>
+const TermsPage = safeLazy(() =>
   import("@/pages/terms-page").then((m) => ({ default: m.TermsPage })),
 )
-const PrivacyPage = lazy(() =>
+const PrivacyPage = safeLazy(() =>
   import("@/pages/privacy-page").then((m) => ({ default: m.PrivacyPage })),
 )
 

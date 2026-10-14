@@ -1,59 +1,60 @@
-import { lazy, createElement } from 'react'
+import { createElement } from 'react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import type { PluginSettingsTab } from '@/features/_config/slots'
+import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 import { DEFAULT_SETTINGS_SECTION, getLastSettingsSection, NAV_ITEMS } from './constants'
 
-const SettingsLayout = lazy(() =>
+const SettingsLayout = safeLazy(() =>
   import('./pages/settings-layout').then((m) => ({ default: m.SettingsLayout })),
 )
-const PluginSettingsPage = lazy(() =>
+const PluginSettingsPage = safeLazy(() =>
   import('@/features/plugins/components/PluginSettingsPage').then((m) => ({ default: m.PluginSettingsPage })),
 )
-const PluginSettingsTabRoute = lazy(() =>
+const PluginSettingsTabRoute = safeLazy(() =>
   import('@/features/plugins/components/PluginSettingsTabRoute').then((m) => ({ default: m.PluginSettingsTabRoute })),
 )
 
-const SettingsProfilePage = lazy(() =>
+const SettingsProfilePage = safeLazy(() =>
   import('./pages/settings-profile-page').then((m) => ({ default: m.SettingsProfilePage })),
 )
-const SettingsAccountPage = lazy(() =>
+const SettingsAccountPage = safeLazy(() =>
   import('./pages/settings-account-page').then((m) => ({ default: m.SettingsAccountPage })),
 )
-const SettingsAppearancePage = lazy(() =>
+const SettingsAppearancePage = safeLazy(() =>
   import('./pages/settings-appearance-page').then((m) => ({ default: m.SettingsAppearancePage })),
 )
-const SettingsLauncherPage = lazy(() =>
+const SettingsLauncherPage = safeLazy(() =>
   import('./pages/settings-launcher-page').then((m) => ({ default: m.SettingsLauncherPage })),
 )
-const SettingsNodesPage = lazy(() =>
+const SettingsNodesPage = safeLazy(() =>
   import('./pages/settings-desktop-page').then((m) => ({ default: m.SettingsNodesPage })),
 )
-const SettingsNodeDetailPage = lazy(() =>
+const SettingsNodeDetailPage = safeLazy(() =>
   import('./pages/settings-node-detail-page').then((m) => ({ default: m.SettingsNodeDetailPage })),
 )
-const SettingsNotificationsPage = lazy(() =>
+const SettingsNotificationsPage = safeLazy(() =>
   import('./pages/settings-notifications-page').then((m) => ({ default: m.SettingsNotificationsPage })),
 )
-const SettingsIntegrationsPage = lazy(() =>
+const SettingsIntegrationsPage = safeLazy(() =>
   import('./pages/settings-integrations-page').then((m) => ({ default: m.SettingsIntegrationsPage })),
 )
-const SettingsStoragePage = lazy(() =>
+const SettingsStoragePage = safeLazy(() =>
   import('./pages/settings-storage-page').then((m) => ({ default: m.SettingsStoragePage })),
 )
-const SettingsLibraryPage = lazy(() =>
+const SettingsLibraryPage = safeLazy(() =>
   import('./pages/settings-library-page').then((m) => ({ default: m.SettingsLibraryPage })),
 )
-const SettingsGameServersPage = lazy(() =>
+const SettingsGameServersPage = safeLazy(() =>
   import('./pages/settings-game-servers-page').then((m) => ({ default: m.SettingsGameServersPage })),
 )
-const SettingsPluginsPage = lazy(() =>
+const SettingsPluginsPage = safeLazy(() =>
   import('@/features/plugins/pages/plugins-page').then((m) => ({ default: m.SettingsPluginsPage })),
 )
 
 function preload(load: () => Promise<unknown>) {
   return () => {
-    void load()
+    safePrefetchChunk(load)
   }
 }
 

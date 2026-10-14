@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useCallback, useEffect, useRef, Suspense } from 'react'
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '@auth/hooks/use-auth'
 import { useModal } from '@/lib/modals'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { MediaManageModal } from '../components/organisms/media-manage-modal'
+import { safeLazy } from '@/lib/utils/chunk-reload'
 
 import { MediaStickyHeader } from '../components/organisms/media-sticky-header'
 import { MediaHero } from '../components/organisms/media-hero'
@@ -19,52 +20,52 @@ import { SignInCTA } from '../components/organisms/media-signin-cta'
 
 import type { ParsedBlueprint } from '@media/game/components/organisms/media-game-blueprint-vault'
 
-const ShowSection = lazy(() =>
+const ShowSection = safeLazy(() =>
   import('@media/show/components/organisms/media-show-section').then((m) => ({ default: m.ShowSection })),
 )
-const MoreLikeThisSection = lazy(() =>
+const MoreLikeThisSection = safeLazy(() =>
   import('../components/organisms/media-more-like-this-section').then((m) => ({ default: m.MoreLikeThisSection })),
 )
-const CollectionSection = lazy(() =>
+const CollectionSection = safeLazy(() =>
   import('../components/organisms/media-collection-section').then((m) => ({ default: m.CollectionSection })),
 )
-const ReviewsListSection = lazy(() =>
+const ReviewsListSection = safeLazy(() =>
   import('@/features/review/organisms/reviews-list-section').then((m) => ({ default: m.ReviewsListSection })),
 )
-const MediaDetailLibraryPanel = lazy(() =>
+const MediaDetailLibraryPanel = safeLazy(() =>
   import('../components/organisms/media-detail-library-panel').then((m) => ({ default: m.MediaDetailLibraryPanel })),
 )
-const MediaGameUserStats = lazy(() =>
+const MediaGameUserStats = safeLazy(() =>
   import('@media/game/components/organisms/media-game-user-stats').then((m) => ({
     default: m.MediaGameUserStats,
   })),
 )
-const GameSection = lazy(() =>
+const GameSection = safeLazy(() =>
   import('@media/game/components/organisms/media-game-section').then((m) => ({ default: m.GameSection })),
 )
-const FreeGamePromotionBanner = lazy(() =>
+const FreeGamePromotionBanner = safeLazy(() =>
   import('@media/game/components/organisms/free-game-promotion-banner').then((m) => ({
     default: m.FreeGamePromotionBanner,
   })),
 )
-const GameTabBar = lazy(() =>
+const GameTabBar = safeLazy(() =>
   import('@media/game/components/molecules/media-game-tab-bar').then((m) => ({ default: m.GameTabBar })),
 )
-const BlueprintVault = lazy(() =>
+const BlueprintVault = safeLazy(() =>
   import('@media/game/components/organisms/media-game-blueprint-vault').then((m) => ({ default: m.BlueprintVault })),
 )
-const BlueprintCommunity = lazy(() =>
+const BlueprintCommunity = safeLazy(() =>
   import('@media/game/components/organisms/media-game-blueprint-community').then((m) => ({
     default: m.BlueprintCommunity,
   })),
 )
-const BlueprintDetail = lazy(() =>
+const BlueprintDetail = safeLazy(() =>
   import('@media/game/components/organisms/media-game-blueprint-detail').then((m) => ({ default: m.BlueprintDetail })),
 )
-const MusicSection = lazy(() =>
+const MusicSection = safeLazy(() =>
   import('@media/music/components/organisms/media-music-section').then((m) => ({ default: m.MusicSection })),
 )
-const ArtistAlbumsSection = lazy(() =>
+const ArtistAlbumsSection = safeLazy(() =>
   import('@media/music/components/organisms/media-artist-albums-section').then((m) => ({
     default: m.ArtistAlbumsSection,
   })),

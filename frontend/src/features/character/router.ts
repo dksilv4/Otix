@@ -1,9 +1,9 @@
-import { lazy } from 'react'
 import { createRoute } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import { characterQueries } from './queries/character-queries'
+import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 
-const CharacterDetailPage = lazy(() =>
+const CharacterDetailPage = safeLazy(() =>
   import('./pages/character-detail-page').then(m => ({ default: m.CharacterDetailPage })),
 )
 
@@ -13,7 +13,7 @@ export function createCharacterRoutes(rootRoute: AnyRoute) {
     path: '/character/$characterId',
     component: CharacterDetailPage,
     loader: ({ context, params }) => {
-      void import('./pages/character-detail-page')
+      safePrefetchChunk(() => import('./pages/character-detail-page'))
       void context.queryClient.prefetchQuery(characterQueries.detail(params.characterId))
     },
   })

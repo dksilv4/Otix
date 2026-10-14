@@ -1,12 +1,12 @@
-import { lazy } from 'react'
 import { createRoute } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { mediaQueries } from '@media/queries/media-queries'
 import { peopleQueries } from '@people/queries/people-queries'
 import { userQueries } from '@/features/user/user-queries'
+import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 
-const SearchPage = lazy(() => import('@search/pages/search-page').then(m => ({ default: m.SearchPage })))
+const SearchPage = safeLazy(() => import('@search/pages/search-page').then(m => ({ default: m.SearchPage })))
 
 interface SearchParams {
   q?: string
@@ -32,7 +32,7 @@ export function createSearchRoutes(rootRoute: AnyRoute) {
       sort: search?.sort,
     }),
     loader: ({ context, deps }: { context: { queryClient: QueryClient }; deps: SearchParams }) => {
-      void import('@search/pages/search-page')
+      safePrefetchChunk(() => import('@search/pages/search-page'))
       if (!deps?.q) return
       if (!deps.type) {
         void context.queryClient.prefetchQuery(mediaQueries.structuredSearch(deps.q))

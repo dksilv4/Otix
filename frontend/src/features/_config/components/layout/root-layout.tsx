@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react"
+import { useState, useCallback, useEffect, useRef, Suspense } from "react"
 import { Outlet, useLocation } from "@tanstack/react-router"
 import { NavShell } from "@navigation"
 import { TitleBar } from "./title-bar"
@@ -15,11 +15,12 @@ import { GamingXpHost } from "@/features/launcher"
 import { IndexerSearchHost } from "@/features/downloads/molecules/indexer-search-host"
 import { CookieBanner } from "@/components/cookie-banner"
 import { AppMicroFooter } from "@/components/app-micro-footer"
+import { safeLazy } from "@/lib/utils/chunk-reload"
 
-const ActivityModule = lazy(() =>
+const ActivityModule = safeLazy(() =>
   import("@activity/components/organisms/activity-panel").then((m) => ({ default: m.ActivityModule })),
 )
-const PluginPermissionModal = lazy(() =>
+const PluginPermissionModal = safeLazy(() =>
   import("@/features/plugins/components/organisms/plugin-permission-modal").then((m) => ({
     default: m.PluginPermissionModal,
   })),

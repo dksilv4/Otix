@@ -28,6 +28,13 @@ import './index.css'
 
 import { isChunkLoadError, reloadForNewChunk } from '@/lib/utils/chunk-reload'
 
+// Clean up cache-busting reload query param if present
+if (typeof window !== 'undefined' && window.location.search.includes('otix_reload=')) {
+  const cleanUrl = new URL(window.location.href)
+  cleanUrl.searchParams.delete('otix_reload')
+  window.history.replaceState({}, '', cleanUrl.pathname + (cleanUrl.search || '') + cleanUrl.hash)
+}
+
 // Set desktop platform attribute for CSS targeting
 const plat = getDesktopPlatform()
 if (plat.isDesktop && plat.platform) {
@@ -44,7 +51,8 @@ window.addEventListener('vite:preloadError', (event) => {
 window.addEventListener('unhandledrejection', (event) => {
   if (isChunkLoadError(event.reason)) {
     event.preventDefault()
-    if (reloadForNewChunk()) return
+    reloadForNewChunk()
+    return
   }
 
   const msg = String(event.reason?.message || event.reason || '')
@@ -67,7 +75,8 @@ window.addEventListener('unhandledrejection', (event) => {
 window.addEventListener('error', (event) => {
   if (isChunkLoadError(event.error) || isChunkLoadError(event.message)) {
     event.preventDefault()
-    if (reloadForNewChunk()) return
+    reloadForNewChunk()
+    return
   }
 
   if (event.error) {

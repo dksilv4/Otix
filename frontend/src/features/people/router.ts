@@ -1,9 +1,9 @@
-import { lazy } from 'react'
 import { createRoute } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import { peopleQueries } from '@people/queries/people-queries'
+import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 
-const PeopleDetailPage = lazy(() =>
+const PeopleDetailPage = safeLazy(() =>
   import('@people/pages/people-detail-page').then(m => ({ default: m.PeopleDetailPage })),
 )
 
@@ -13,7 +13,7 @@ export function createPeopleRoutes(rootRoute: AnyRoute) {
     path: '/person/$personId',
     component: PeopleDetailPage,
     loader: ({ context, params }) => {
-      void import('@people/pages/people-detail-page')
+      safePrefetchChunk(() => import('@people/pages/people-detail-page'))
       void context.queryClient.prefetchQuery(peopleQueries.detail(params.personId))
     },
     validateSearch: (search: Record<string, unknown>) => ({

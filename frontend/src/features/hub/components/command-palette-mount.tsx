@@ -1,11 +1,12 @@
-import { useEffect, useState, lazy, Suspense } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { useFeature } from '@/features/_config'
+import { safeLazy } from '@/lib/utils/chunk-reload'
 import { registerHubProvider } from '../registry'
 import { getDefaultHubProviders } from '../providers'
 import { useCommandPalette } from '../hooks/use-command-palette'
 
-const CommandPalette = lazy(() =>
+const CommandPalette = safeLazy(() =>
   import('./organisms/command-palette').then((m) => ({ default: m.CommandPalette })),
 )
 

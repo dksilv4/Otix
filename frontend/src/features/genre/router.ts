@@ -1,14 +1,14 @@
-import { lazy } from 'react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import { mediaQueries } from '@media/queries/media-queries'
+import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 import type { GenreSearchParams } from './types'
 
-const GenrePage = lazy(() =>
+const GenrePage = safeLazy(() =>
   import('./pages/genre-page').then((m) => ({ default: m.GenrePage })),
 )
 
-const GenresDirectoryPage = lazy(() =>
+const GenresDirectoryPage = safeLazy(() =>
   import('./pages/genres-directory-page').then((m) => ({
     default: m.GenresDirectoryPage,
   })),
@@ -21,7 +21,7 @@ export function createGenreRoutes(rootRoute: AnyRoute) {
     path: '/genres',
     component: GenresDirectoryPage,
     loader: () => {
-      void import('./pages/genres-directory-page')
+      safePrefetchChunk(() => import('./pages/genres-directory-page'))
     },
   })
 
@@ -49,7 +49,7 @@ export function createGenreRoutes(rootRoute: AnyRoute) {
       return result
     },
     loader: ({ context, params, location }) => {
-      void import('./pages/genre-page')
+      safePrefetchChunk(() => import('./pages/genre-page'))
       const search = location.search as GenreSearchParams
       const mediaType = search?.type
       const genreId = params.genreId || 'action'

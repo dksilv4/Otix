@@ -1,9 +1,9 @@
-import { lazy } from 'react'
 import { createRoute } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import { listDetailOptions } from './list-queries'
+import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 
-const ListDetailPage = lazy(() => import('./pages/list-detail-page').then(m => ({ default: m.ListDetailPage })))
+const ListDetailPage = safeLazy(() => import('./pages/list-detail-page').then(m => ({ default: m.ListDetailPage })))
 
 export function createListRoutes(rootRoute: AnyRoute) {
   const listDetailRoute = createRoute({
@@ -11,7 +11,7 @@ export function createListRoutes(rootRoute: AnyRoute) {
     path: '/library/$listId',
     component: ListDetailPage,
     loader: ({ context, params }) => {
-      void import('./pages/list-detail-page')
+      safePrefetchChunk(() => import('./pages/list-detail-page'))
       void context.queryClient.prefetchQuery(listDetailOptions(params.listId))
     },
   })

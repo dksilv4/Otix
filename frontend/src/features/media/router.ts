@@ -1,9 +1,9 @@
-import { lazy } from 'react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import { mediaQueries } from '@media/queries/media-queries'
+import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 
-const MediaDetailPage = lazy(() => import('./pages/media-detail-page').then(m => ({ default: m.MediaDetailPage })))
+const MediaDetailPage = safeLazy(() => import('./pages/media-detail-page').then(m => ({ default: m.MediaDetailPage })))
 
 export function createMediaRoutes(rootRoute: AnyRoute) {
   const mediaDetailRoute = createRoute({
@@ -11,7 +11,7 @@ export function createMediaRoutes(rootRoute: AnyRoute) {
     path: '/media/$mediaType/$mediaId',
     component: MediaDetailPage,
     loader: ({ context, params }) => {
-      void import('./pages/media-detail-page')
+      safePrefetchChunk(() => import('./pages/media-detail-page'))
       void context.queryClient.prefetchQuery(
         mediaQueries.detail(params.mediaType, params.mediaId),
       )

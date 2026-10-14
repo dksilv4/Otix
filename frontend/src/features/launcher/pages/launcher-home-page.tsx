@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async"
-import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react"
+import { Suspense, type ComponentType, type LazyExoticComponent } from "react"
+import { safeLazy } from "@/lib/utils/chunk-reload"
 import { QueryErrorBoundary } from "@/components/query-error-boundary"
 import { FpsPermissionDialog } from "@/features/launcher/components/molecules/launcher-fps-permission-dialog"
 import { useHydrateLocalGames } from "@/features/launcher/hooks/use-launcher-hydrate"
@@ -10,52 +11,52 @@ import {
 } from "@/features/launcher/themes/theme-context"
 
 const themeViews: Record<LauncherThemeId, LazyExoticComponent<ComponentType>> = {
-  classic: lazy(() =>
+  classic: safeLazy(() =>
     import("@/features/launcher/themes/classic/classic-launcher-view").then((m) => ({
       default: m.ClassicLauncherView,
     })),
   ),
-  modern: lazy(() =>
+  modern: safeLazy(() =>
     import("@/features/launcher/themes/modern/modern-launcher-view").then((m) => ({
       default: m.ModernLauncherView,
     })),
   ),
-  steam: lazy(() =>
+  steam: safeLazy(() =>
     import("@/features/launcher/themes/steam/steam-launcher-view").then((m) => ({
       default: m.SteamLauncherView,
     })),
   ),
-  playstation: lazy(() =>
+  playstation: safeLazy(() =>
     import("@/features/launcher/themes/playstation/playstation-launcher-view").then((m) => ({
       default: m.PlayStationLauncherView,
     })),
   ),
-  xbox: lazy(() =>
+  xbox: safeLazy(() =>
     import("@/features/launcher/themes/xbox/xbox-launcher-view").then((m) => ({
       default: m.XboxLauncherView,
     })),
   ),
-  switch: lazy(() =>
+  switch: safeLazy(() =>
     import("@/features/launcher/themes/switch/switch-launcher-view").then((m) => ({
       default: m.SwitchLauncherView,
     })),
   ),
-  retro: lazy(() =>
+  retro: safeLazy(() =>
     import("@/features/launcher/themes/retro/retro-launcher-view").then((m) => ({
       default: m.RetroLauncherView,
     })),
   ),
-  minimal: lazy(() =>
+  minimal: safeLazy(() =>
     import("@/features/launcher/themes/minimal/minimal-launcher-view").then((m) => ({
       default: m.MinimalLauncherView,
     })),
   ),
-  forge: lazy(() =>
+  forge: safeLazy(() =>
     import("@/features/launcher/themes/forge/forge-launcher-view").then((m) => ({
       default: m.ForgeLauncherView,
     })),
   ),
-  glass: lazy(() =>
+  glass: safeLazy(() =>
     import("@/features/launcher/themes/glass/glass-launcher-view").then((m) => ({
       default: m.GlassLauncherView,
     })),

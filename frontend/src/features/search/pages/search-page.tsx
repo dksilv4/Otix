@@ -1,12 +1,13 @@
-import { lazy, useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useSearch, useNavigate, Outlet } from '@tanstack/react-router'
 import { SearchInput } from '@search/components/molecules/search-chat-input'
 import { SearchResults } from '@search/components/organisms/search-results'
 import { SearchSortBar } from '@search/components/molecules/search-sort-bar'
+import { safeLazy } from '@/lib/utils/chunk-reload'
 import type { SortValue, TypeValue } from '@search/types'
 
-const AnimatedShaderBackground = lazy(() => import('@/components/animated-shader-background'))
+const AnimatedShaderBackground = safeLazy(() => import('@/components/animated-shader-background'))
 
 export const SearchPage = () => {
   const search = useSearch({ from: '/search' })

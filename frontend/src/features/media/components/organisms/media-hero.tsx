@@ -1,4 +1,5 @@
-import { lazy, Suspense, useRef, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
+import { safeLazy } from '@/lib/utils/chunk-reload'
 import { Badge } from '@ui/atoms/badge'
 import { MEDIA_TYPE_LABEL } from '@/constants/media'
 import {
@@ -40,7 +41,7 @@ import { useToggleInteraction, useUserInteractions } from '@/features/interactio
 import { showXPToast } from '@ui/atoms/xp-toast'
 import { cn } from '@/lib/utils'
 
-const MediaHeroLibraryActions = lazy(() =>
+const MediaHeroLibraryActions = safeLazy(() =>
   import('./media-hero-library-actions').then((m) => ({ default: m.MediaHeroLibraryActions })),
 )
 
