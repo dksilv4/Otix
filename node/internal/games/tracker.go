@@ -1,15 +1,11 @@
 package games
 
 import (
-	"bytes"
-	"encoding/csv"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -725,75 +721,5 @@ func (gt *GameTracker) StopTracking(gameID string) {
 
 // ListProcesses returns the currently running OS processes.
 func ListProcesses() ([]ProcessInfo, error) {
-	if runtime.GOOS == "windows" {
-		return listProcessesWindows()
-	}
-	return listProcessesUnix()
-}
-
-func listProcessesWindows() ([]ProcessInfo, error) {
-	cmd := exec.Command("tasklist", "/fo", "csv", "/nh")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		return nil, err
-	}
-
-	reader := csv.NewReader(&out)
-	records, err := reader.ReadAll()
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]ProcessInfo, 0, len(records))
-	seen := make(map[int]bool)
-
-	for _, rec := range records {
-		if len(rec) < 2 {
-			continue
-		}
-		name := strings.TrimSpace(rec[0])
-		pid, err := strconv.Atoi(strings.TrimSpace(rec[1]))
-		if err != nil || pid <= 0 || seen[pid] {
-			continue
-		}
-		seen[pid] = true
-		result = append(result, ProcessInfo{
-			PID:  pid,
-			Name: name,
-		})
-	}
-
-	return result, nil
-}
-
-func listProcessesUnix() ([]ProcessInfo, error) {
-	cmd := exec.Command("ps", "-eo", "pid,comm")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		return nil, err
-	}
-
-	lines := strings.Split(out.String(), "\n")
-	result := make([]ProcessInfo, 0, len(lines))
-
-	for _, line := range lines {
-		fields := strings.Fields(strings.TrimSpace(line))
-		if len(fields) < 2 {
-			continue
-		}
-		pid, err := strconv.Atoi(fields[0])
-		if err != nil || pid <= 0 {
-			continue
-		}
-		name := filepath.Base(fields[1])
-		result = append(result, ProcessInfo{
-			PID:  pid,
-			Name: name,
-			Path: fields[1],
-		})
-	}
-
-	return result, nil
+	return listProcessesOS()
 }

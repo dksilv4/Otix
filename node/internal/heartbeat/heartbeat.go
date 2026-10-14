@@ -137,10 +137,23 @@ func (h *HeartbeatRunner) SendOnce() (time.Duration, error) {
 		fmt.Printf("[Heartbeat] Failed to reach %s: %v\n", targetURL, err)
 		return 15 * time.Second, err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		fmt.Printf("[Heartbeat] Server heartbeat announced to %s (claimed=%t)\n", targetURL, payload.Claimed)
+		var hbResp struct {
+			Status     string `json:"status"`
+			Claimed    bool   `json:"claimed"`
+			AuthToken  string `json:"auth_token"`
+			ServerName string `json:"server_name"`
+			Username   string `json:"username"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&hbResp); err == nil {
+			if hbResp.Claimed && hbResp.AuthToken != "" && !h.claimMgr.IsClaimed() {
+				fmt.Printf("[Heartbeat] Node recognized by backend as claimed by %s (%s). Synchronizing local state...\n", hbResp.Username, hbResp.ServerName)
+				_ = h.claimMgr.ConfirmDirect(hbResp.AuthToken, hbResp.ServerName, hbResp.Username)
+			}
+		}
+		fmt.Printf("[Heartbeat] Server heartbeat announced to %s (claimed=%t)\n", targetURL, h.claimMgr.IsClaimed())
 		return 5 * time.Minute, nil
 	}
 	fmt.Printf("[Heartbeat] %s returned HTTP %d\n", targetURL, resp.StatusCode)

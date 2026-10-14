@@ -36,7 +36,9 @@ func openBrowser(targetURL string) {
 	default:
 		return
 	}
-	_ = cmd.Start()
+	if err := cmd.Start(); err != nil && runtime.GOOS == "windows" {
+		_ = exec.Command("explorer.exe", targetURL).Start()
+	}
 }
 
 func main() {

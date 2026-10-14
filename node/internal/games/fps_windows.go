@@ -3,6 +3,7 @@
 package games
 
 import (
+	"os/exec"
 	"syscall"
 	"unsafe"
 )
@@ -12,6 +13,17 @@ var (
 	procFpsGetForegroundWindow      = fpsUser32.NewProc("GetForegroundWindow")
 	procFpsGetWindowThreadProcessId = fpsUser32.NewProc("GetWindowThreadProcessId")
 )
+
+// configureCmdForProcess configures process attributes on Windows to prevent console window flashing.
+func configureCmdForProcess(cmd *exec.Cmd) {
+	if cmd == nil {
+		return
+	}
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		CreationFlags: 0x08000000, // CREATE_NO_WINDOW
+		HideWindow:    true,
+	}
+}
 
 // getForegroundProcessPID returns the PID of the process owning the current foreground window.
 func getForegroundProcessPID() int {

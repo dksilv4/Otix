@@ -49,3 +49,32 @@ docker run -d \
 ```
 Unraid users can also install using `node/unraid/my-otix-server.xml`.
 
+---
+
+## Local Development with Auto-Reload
+
+For hot-reloading development on Otix Node with automatic recompilation on file changes:
+
+### Windows (PowerShell)
+```powershell
+# From repo root:
+.\scripts\dev_node.ps1
+
+# Or from inside node/ directory:
+.\scripts\dev.ps1
+
+# Custom port or headless (no auto-browser popup):
+.\scripts\dev_node.ps1 -Port 8090 -Headless
+```
+
+### macOS / Linux (Bash)
+```bash
+# From repo root:
+./scripts/dev_node.sh
+
+# Or from inside node/ directory:
+./scripts/dev.sh
+```
+
+The auto-reloader detects changes to `.go`, `.yaml`, `.json`, and template files, recompiles incrementally (sub-second using native Go or cached Docker toolchain), and seamlessly restarts the node while streaming logs in real time.
+

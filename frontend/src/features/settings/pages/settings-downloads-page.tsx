@@ -29,7 +29,7 @@ import {
   usePendingGameServers,
   type ServerProbeResult,
 } from '@/features/downloads/use-server-downloads'
-import type { PendingNode } from '@/features/downloads/pending-nodes'
+import { pendingNodesToClaim, type PendingNode } from '@/features/downloads/pending-nodes'
 import { NodeFileExplorerModal } from '@/features/downloads/molecules/node-file-explorer-modal'
 import { DownloadNodeModal } from '@/features/downloads/molecules/download-node-modal'
 import { useToast } from '@ui/molecules/toast'
@@ -86,13 +86,7 @@ export const SettingsDownloadsPage = ({
   const [serverSubmitting, setServerSubmitting] = useState(false)
 
   const [nodeToDelete, setNodeToDelete] = useState<{ id: number; name: string } | null>(null)
-
-  const unclaimedNodes = pendingNodes.filter(
-    (p) =>
-      !p.claimed &&
-      Boolean(p.claimCode || p.localUrl) &&
-      !gameServers.some((s) => s.localUrl === p.localUrl || s.primaryUrl === p.localUrl),
-  )
+  const unclaimedNodes = pendingNodesToClaim(pendingNodes, gameServers)
 
   const openServerExplorer = (server: { id: number; name: string }) => {
     const close = openModal(
