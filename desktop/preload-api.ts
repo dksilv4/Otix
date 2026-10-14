@@ -16,7 +16,7 @@ export interface LocalGame {
   exePath: string;
   localExePath?: string;
   installDir: string;
-  platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'origin' | 'ea' | 'riot' | 'xbox' | 'itch' | 'server' | 'unknown';
+  platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'origin' | 'ea' | 'riot' | 'xbox' | 'itch' | 'server' | 'unknown' | string;
   localIconUrl?: string; // base64 data URL from .exe icon
   iconUrl?: string; // Icon URL from plugin enrichment
   posterUrl?: string; // Poster URL from plugin enrichment
@@ -633,6 +633,11 @@ export interface IDesktopAPI {
     openOAuthWindow: (url: string, redirectPattern: string, options?: { tokenExtraction?: { type: 'url-param' | 'web-request' | 'local-storage' | 'pin'; key?: string; poll?: { url: string; headers?: Record<string, string>; tokenPath?: string[]; intervalMs?: number; timeoutMs?: number } } }) => Promise<{ success: boolean; code?: string; redirectUrl?: string; error?: string }>;
   };
 
+  // ── Emulators ──
+  getEmulators: () => Promise<DetectedEmulator[]>;
+  getAmbiguousCandidates: (filePathOrGame: string | LocalGame) => Promise<string[]>;
+  setGamePlatform: (gameId: string, platform: string) => Promise<boolean>;
+
   // ── Plugin game matching ──
   scanAllPlugins: () => Promise<unknown>;
   scanPlugin: (pluginId: string) => Promise<unknown>;
@@ -641,6 +646,8 @@ export interface IDesktopAPI {
   onMatchingComplete: (callback: (event: any) => void) => () => void;
   onMatchingCancelled: (callback: () => void) => () => void;
 }
+
+export type { DetectedEmulator, EmulatorDefinition } from './game/emulators';
 
 declare global {
   interface Window {

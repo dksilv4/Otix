@@ -1,0 +1,37 @@
+{
+  "name": "shadPS4 Emulator",
+  "icon": "gamepad-2",
+  "version": "0.1.0",
+  "description": "PlayStation 4 emulator integration for Otix. Registers shadPS4 as an emulator service for .pkg ROMs.",
+  "author": "Otix Community",
+  "repository": "https://github.com/shadps4-emu/shadPS4",
+  "min_app_version": "0.3.0",
+  "permissions": [
+    "storage:local"
+  ],
+  "services": [
+    {
+      "type": "emulator",
+      "emulatorId": "shadps4",
+      "name": "shadPS4",
+      "platforms": ["ps4"],
+      "extensions": [".pkg"],
+      "defaultExecutable": "shadps4.exe",
+      "executableLookup": [
+        "%LOCALAPPDATA%/Programs/shadPS4/shadps4.exe",
+        "%PROGRAMFILES%/shadPS4/shadps4.exe",
+        "C:/shadPS4/shadps4.exe",
+        "/usr/bin/shadps4",
+        "/Applications/shadps4.app/Contents/MacOS/shadps4"
+      ],
+      "launchTemplate": ["-g", "{romPath}"],
+      "saveLocations": [
+        "%APPDATA%/shadPS4/user/home/00000001/savedata/"
+      ],
+      "processNames": ["shadps4.exe", "shadps4"]
+    }
+  ],
+  "entry": {
+    "main": "main.js"
+  }
+}

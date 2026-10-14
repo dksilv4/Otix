@@ -321,7 +321,14 @@ export class PluginManager {
       const manifestServices = info.manifest.services || []
       for (const svc of manifestServices) {
         const svcDecl = typeof svc === 'string' ? { type: svc } : svc
-        this.serviceRegistry.register(pluginId, svcDecl.type, ['*'], svcDecl.protocol)
+        const { type, protocol, ...metadata } = svcDecl as any
+        this.serviceRegistry.register(
+          pluginId,
+          type,
+          ['*'],
+          protocol,
+          Object.keys(metadata).length ? metadata : undefined,
+        )
       }
 
       // Register manifest slots

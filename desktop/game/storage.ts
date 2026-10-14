@@ -402,6 +402,13 @@ export function updateGamePath(id: string, exePath: string, installDir?: string)
   notifyGamesChanged();
 }
 
+export function updateGamePlatform(id: string, platform: string): void {
+  db().prepare(
+    "UPDATE scanned_games SET platform = ?, updated_at = datetime('now') WHERE id = ?"
+  ).run(platform, id);
+  notifyGamesChanged();
+}
+
 export function updateLastPlayedAt(id: string, playedAt: string): void {
   db().prepare(
     "UPDATE scanned_games SET last_played_at = ? WHERE id = ?"

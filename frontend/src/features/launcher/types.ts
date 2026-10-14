@@ -97,9 +97,15 @@ export interface LocalGame {
 export const LAUNCHER_PLATFORMS = [
   'steam', 'pc', 'iso', 'epic', 'gog', 'battlenet',
   'ubisoft', 'origin', 'ea', 'riot', 'xbox', 'itch', 'server', 'unknown',
+  // Consoles
+  'nes', 'snes', 'n64', 'gamecube', 'wii', 'wiiu', 'switch',
+  'gb', 'gbc', 'gba', 'nds', '3ds',
+  'ps1', 'ps2', 'ps3', 'psp', 'psvita',
+  'genesis', 'mastersystem', 'gamegear', 'saturn', 'dreamcast',
+  'xbox360', 'arcade',
 ] as const
 
-export type LauncherPlatform = typeof LAUNCHER_PLATFORMS[number]
+export type LauncherPlatform = typeof LAUNCHER_PLATFORMS[number] | string
 
 // ── Catalog game (from Otix backend API) ─────────────────────────────
 

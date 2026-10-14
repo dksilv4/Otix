@@ -21,6 +21,7 @@ import { LAUNCHER_THEMES, type LauncherThemeId } from '@/features/launcher/theme
 import { useToast } from '@ui/molecules/toast'
 import { cn } from '@/lib/utils'
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
+import { SettingsEmulatorsCard } from '../components/molecules/settings-emulators-card'
 import {
   type ThemeCategory,
   THEME_CATEGORIES,
@@ -314,6 +315,11 @@ export const SettingsLauncherPage = () => {
           />
         </div>
       </SettingsCard>
+
+      {/* ── Emulators & Consoles ── */}
+      <div id="emulators" className="scroll-mt-28">
+        <SettingsEmulatorsCard />
+      </div>
 
       {/* ── Overview Tip ── */}
       <SettingsCard>
