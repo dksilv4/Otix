@@ -40,14 +40,15 @@ export const getPluginApi = (): PluginApi | undefined => {
   return (window as Window & { desktopAPI?: { plugin?: PluginApi } }).desktopAPI?.plugin
 }
 
+export const PLEX_CLIENT_ID_KEY = 'otix_plex_client_id'
+
 export const getPlexClientId = (): string => {
   if (typeof window === 'undefined') return 'otix-web-player'
   try {
-    const key = 'otix_plex_client_id'
-    let id = localStorage.getItem(key)
+    let id = localStorage.getItem(PLEX_CLIENT_ID_KEY) || localStorage.getItem('plex-client-id')
     if (!id) {
       id = 'otix-web-' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36)
-      localStorage.setItem(key, id)
+      localStorage.setItem(PLEX_CLIENT_ID_KEY, id)
     }
     return id
   } catch {

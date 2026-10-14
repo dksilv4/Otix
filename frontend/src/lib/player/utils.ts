@@ -44,10 +44,13 @@ export const generateUuid = (): string => {
   )
 }
 
-export const PLEX_CLIENT_ID_KEY = 'plex-client-id'
+export const PLEX_CLIENT_ID_KEY = 'otix_plex_client_id'
 
 export const getPlexClientId = (): string => {
-  let id = typeof localStorage !== 'undefined' ? localStorage.getItem(PLEX_CLIENT_ID_KEY) : null
+  let id =
+    typeof localStorage !== 'undefined'
+      ? localStorage.getItem(PLEX_CLIENT_ID_KEY) || localStorage.getItem('plex-client-id')
+      : null
   if (!id) {
     id = generateUuid()
     if (typeof localStorage !== 'undefined') localStorage.setItem(PLEX_CLIENT_ID_KEY, id)

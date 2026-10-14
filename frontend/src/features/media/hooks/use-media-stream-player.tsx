@@ -98,7 +98,7 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
 
       // 1. Report to Plex Media Server timeline
       if (active.source === 'plex' && active.serverUrl && active.itemId) {
-        const clientId = getPlexClientId()
+        const clientId = active.clientId || getPlexClientId()
         const params = new URLSearchParams({
           ratingKey: String(active.itemId),
           key: `/library/metadata/${active.itemId}`,
@@ -107,6 +107,8 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
           duration: String(durationMs),
           hasMDE: '1',
           'X-Plex-Client-Identifier': clientId,
+          'X-Plex-Session-Identifier': active.playSessionId,
+          'X-Plex-Playback-Session-Id': active.playSessionId,
           'X-Plex-Product': 'Otix',
           'X-Plex-Platform': 'Web',
           'X-Plex-Platform-Version': '1.0',
@@ -119,47 +121,43 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
         }
 
         const directTimelineUrl = `${active.serverUrl.replace(/\/$/, '')}/:/timeline?${params.toString()}`
-        const progressParams = new URLSearchParams({
-          key: String(active.itemId),
-          time: String(positionMs),
-          identifier: 'com.plexapp.plugins.library',
-        })
-        if (active.token) progressParams.set('X-Plex-Token', active.token)
-        const directProgressUrl = `${active.serverUrl.replace(/\/$/, '')}/:/progress?${progressParams.toString()}`
 
         try {
-          if (isStopped && typeof navigator !== 'undefined' && navigator.sendBeacon) {
-            navigator.sendBeacon(directTimelineUrl)
-            navigator.sendBeacon(directProgressUrl)
-          } else {
-            await Promise.all([
-              fetch(directTimelineUrl, { method: 'GET', mode: 'no-cors', keepalive: isStopped }),
-              fetch(directProgressUrl, { method: 'GET', mode: 'no-cors', keepalive: isStopped }),
-            ])
-          }
+          // Use fetch with keepalive: isStopped instead of navigator.sendBeacon.
+          // sendBeacon sends an HTTP POST which Plex rejects on GET /:/timeline,
+          // preventing Plex from stopping active transcode sessions and leaving duplicate streams.
+          await fetch(directTimelineUrl, {
+            method: 'GET',
+            mode: 'no-cors',
+            keepalive: isStopped,
+          })
         } catch {
           // Direct fetch failed
         }
 
-        // Keep Otix backend UserPlexItem view_offset and server in sync
+        // Keep Otix backend UserPlexItem viewOffset in sync locally without proxying
+        // duplicate /:/timeline requests to the Plex server from backend.
         if (isStopped || state === 'paused' || Math.random() < 0.25) {
           apiClient
             .post('/integrations/plex/timeline', {
-              server_url: active.serverUrl,
+              serverUrl: active.serverUrl,
               token: active.token,
-              rating_key: active.itemId,
+              ratingKey: active.itemId,
               state,
-              time_ms: positionMs,
-              duration_ms: durationMs,
-              client_id: clientId,
+              timeMs: positionMs,
+              durationMs,
+              clientId,
+              sessionId: active.playSessionId,
+              localOnly: true,
             })
             .catch(() => {})
         }
       }
 
-      // 2. Also notify desktop plugin if running in Electron environment
+      // 2. Also notify desktop plugin if running in Electron environment (non-Plex sources)
+      // For Plex, timeline is already reported peer-to-peer with matching session/client identifiers.
       const api = getPluginApi()
-      if (api?.callData) {
+      if (api?.callData && active.source !== 'plex') {
         if (isStopped) {
           api.callData(active.source, 'session.stop', {
             playSessionId: active.playSessionId,

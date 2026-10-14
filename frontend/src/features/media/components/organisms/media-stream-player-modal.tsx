@@ -307,6 +307,11 @@ export const MediaStreamPlayerModal = () => {
         hlsRef.current.destroy()
         hlsRef.current = null
       }
+      if (video) {
+        safePause(video)
+        video.removeAttribute('src')
+        video.load()
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, session?.itemId, session?.serverUrl, playbackMethod])

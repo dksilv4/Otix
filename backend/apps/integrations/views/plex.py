@@ -118,6 +118,8 @@ class PlexTimelineView(APIView):
         time_ms = int(request.data.get("time_ms", 0))
         duration_ms = int(request.data.get("duration_ms", 0))
         client_id = request.data.get("client_id") or "otix-web-player"
+        session_id = request.data.get("session_id")
+        local_only = bool(request.data.get("local_only", False))
 
         if not server_url or not rating_key:
             return Response({"detail": "server_url and rating_key are required"}, status=400)
@@ -130,6 +132,8 @@ class PlexTimelineView(APIView):
             time_ms=time_ms,
             duration_ms=duration_ms,
             client_id=client_id,
+            session_id=session_id,
+            local_only=local_only,
         )
         return Response({"success": success})
 
