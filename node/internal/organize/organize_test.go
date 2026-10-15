@@ -16,6 +16,9 @@ func TestCleanGameTitle(t *testing.T) {
 		{"The.Witcher.3.Wild.Hunt.GOTY-GOG", "The Witcher 3 Wild Hunt GOTY"},
 		{"Baldurs.Gate.3.v4.1.1.REPACK-FITGIRL", "Baldurs Gate 3"},
 		{"Stellar.Blade.REPACK-DELUSION", "Stellar Blade"},
+		{"Cyberpunk.2077.Crack.Fix.v2-RUNE", "Cyberpunk 2077"},
+		{"Elden.Ring.v1.12.Crackfix.V2-RUNE", "Elden Ring"},
+		{"Hogwarts.Legacy.Crackfix.PROPER-EMPRESS", "Hogwarts Legacy"},
 	}
 
 	for _, tt := range tests {
@@ -154,5 +157,75 @@ func TestExecuteOrganization(t *testing.T) {
 
 	if _, err := os.Stat(dstFile); os.IsNotExist(err) {
 		t.Errorf("expected target file %s to exist", dstFile)
+	}
+}
+
+func TestExecuteOrganizationFolderPackage(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	srcDir := filepath.Join(tmpDir, "Game.Folder.REPACK")
+	if err := os.MkdirAll(srcDir, 0755); err != nil {
+		t.Fatalf("failed to create source folder: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "setup.exe"), []byte("setup"), 0755); err != nil {
+		t.Fatalf("failed to create setup.exe: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "data1.bin"), []byte("data"), 0644); err != nil {
+		t.Fatalf("failed to create data1.bin: %v", err)
+	}
+
+	dstDir := filepath.Join(tmpDir, "Games", "Game Folder")
+
+	results, err := ExecuteOrganization([]ExecuteItem{
+		{SourcePath: srcDir, TargetPath: dstDir},
+	})
+	if err != nil {
+		t.Fatalf("ExecuteOrganization failed: %v", err)
+	}
+
+	if len(results) != 1 || !results[0].Success {
+		t.Fatalf("expected successful execution, got %+v", results)
+	}
+
+	if _, err := os.Stat(filepath.Join(dstDir, "setup.exe")); os.IsNotExist(err) {
+		t.Errorf("expected target setup.exe to exist in %s", dstDir)
+	}
+	if _, err := os.Stat(filepath.Join(dstDir, "data1.bin")); os.IsNotExist(err) {
+		t.Errorf("expected target data1.bin to exist in %s", dstDir)
+	}
+	if _, err := os.Stat(srcDir); !os.IsNotExist(err) {
+		t.Errorf("expected source folder %s to be moved away", srcDir)
+	}
+}
+
+func TestPreviewOrganizationElAmigosAnomalies(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	srcDir := filepath.Join(tmpDir, "Elden.Ring.v1.12.REPACK-ELAMIGOS")
+	if err := os.MkdirAll(srcDir, 0755); err != nil {
+		t.Fatalf("failed to create source folder: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "setup.exe"), []byte("setup"), 0755); err != nil {
+		t.Fatalf("failed to create setup.exe: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "elamigos-1.bin"), []byte("bin1"), 0644); err != nil {
+		t.Fatalf("failed to create elamigos-1.bin: %v", err)
+	}
+	// Malformed bin missing elamigos prefix
+	if err := os.WriteFile(filepath.Join(srcDir, "data-2.bin"), []byte("bin2"), 0644); err != nil {
+		t.Fatalf("failed to create data-2.bin: %v", err)
+	}
+
+	items, err := PreviewOrganization(tmpDir, "{Title} [{Platform}]/{OriginalName}.{ext}", false)
+	if err != nil {
+		t.Fatalf("PreviewOrganization failed: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 package item, got %d", len(items))
+	}
+
+	if len(items[0].Anomalies) == 0 {
+		t.Errorf("expected ElAmigos anomalies to be detected for data-2.bin")
 	}
 }

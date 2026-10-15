@@ -106,6 +106,24 @@ export const TOKEN_COLOR_MAP: Record<string, TokenDef> = {
     bgClass: 'bg-zinc-500/15',
     borderClass: 'border-zinc-500/30',
   },
+  Region: {
+    token: '{Region}',
+    label: 'Region',
+    description: 'ROM region (USA, EUR, JPN, World)',
+    example: 'USA',
+    colorClass: 'text-amber-300',
+    bgClass: 'bg-amber-500/15',
+    borderClass: 'border-amber-500/30',
+  },
+  TitleId: {
+    token: '{TitleId}',
+    label: 'Title ID',
+    description: 'Console or platform title identifier',
+    example: '0100F2C0115B6000',
+    colorClass: 'text-fuchsia-300',
+    bgClass: 'bg-fuchsia-500/15',
+    borderClass: 'border-fuchsia-500/30',
+  },
 }
 
 export interface IsoFolderPreset {
@@ -151,6 +169,20 @@ export const ISO_FOLDER_PRESETS: IsoFolderPreset[] = [
     description: 'Organize games categorized first by release year',
     template: '{Year}/{Title}/{OriginalName}.{ext}',
     badge: 'Chronological',
+  },
+  {
+    id: 'platform_subfolder',
+    label: 'Platform Subfolders',
+    description: 'Sort library into top-level Platform folders with Title and Year',
+    template: '{Platform}/{Title} ({Year})/{Title}.{ext}',
+    badge: 'Consolidated',
+  },
+  {
+    id: 'rom_standard',
+    label: 'ROMs & Emulation',
+    description: 'Organize ROMs by Platform, Title, and Region',
+    template: '{Platform}/{Title} ({Region})/{Title}.{ext}',
+    badge: 'Emulation',
   },
 ]
 
@@ -217,6 +249,11 @@ export interface SampleReleaseData {
   originalName: string
   mediaType: string
   ext: string
+  region?: string
+  titleId?: string
+  category?: 'iso' | 'folder_package' | 'game_exe' | 'update' | 'dlc' | 'rom' | 'metadata'
+  isPackage?: boolean
+  childFiles?: string[]
 }
 
 export const SAMPLE_RELEASES: SampleReleaseData[] = [
@@ -230,6 +267,7 @@ export const SAMPLE_RELEASES: SampleReleaseData[] = [
     originalName: 'Cyberpunk.2077.v2.12.REPACK-ELAMIGOS',
     mediaType: 'ISO',
     ext: 'iso',
+    category: 'iso',
   },
   {
     title: 'Elden Ring',
@@ -241,6 +279,7 @@ export const SAMPLE_RELEASES: SampleReleaseData[] = [
     originalName: 'Elden.Ring.Shadow.of.the.Erdtree.REPACK-RUNE',
     mediaType: 'ISO',
     ext: 'iso',
+    category: 'iso',
   },
   {
     title: 'The Witcher 3',
@@ -252,6 +291,124 @@ export const SAMPLE_RELEASES: SampleReleaseData[] = [
     originalName: 'The.Witcher.3.Wild.Hunt.GOTY-GOG',
     mediaType: 'ISO',
     ext: 'iso',
+    category: 'iso',
+  },
+  {
+    title: 'Baldurs Gate 3',
+    year: '2023',
+    platform: 'PC',
+    group: 'FitGirl',
+    edition: '',
+    version: '4.1.1',
+    originalName: 'Baldurs.Gate.3.v4.1.1.REPACK-FITGIRL',
+    mediaType: 'Folder Package',
+    ext: '',
+    category: 'folder_package',
+    isPackage: true,
+    childFiles: ['setup.exe', 'setup-fitgirl-1.bin', 'setup-fitgirl-2.bin', 'quickSFV.exe'],
+  },
+  {
+    title: 'Hollow Knight',
+    year: '2017',
+    platform: 'PC',
+    group: 'Team Cherry',
+    edition: '',
+    version: '1.5.0',
+    originalName: 'Hollow Knight',
+    mediaType: 'Folder Package',
+    ext: '',
+    category: 'folder_package',
+    isPackage: true,
+    childFiles: ['HollowKnight.exe', 'UnityCrashHandler64.exe', 'hollow_knight_Data'],
+  },
+  {
+    title: 'Hades II',
+    year: '2024',
+    platform: 'PC',
+    group: 'Supergiant',
+    edition: 'Early Access',
+    version: '0.91024',
+    originalName: 'Hades.II.v0.91024-EarlyAccess',
+    mediaType: 'Game Exe',
+    ext: 'exe',
+    category: 'game_exe',
+  },
+  {
+    title: 'Cyberpunk 2077',
+    year: '2020',
+    platform: 'PC',
+    group: 'Scene',
+    edition: '',
+    version: '2.13',
+    originalName: 'Cyberpunk 2077 update 2.12 - 2.13',
+    mediaType: 'Update',
+    ext: 'exe',
+    category: 'update',
+  },
+  {
+    title: 'The Witcher 3',
+    year: '2015',
+    platform: 'PC',
+    group: 'GOG',
+    edition: 'Blood and Wine',
+    version: '1.32',
+    originalName: 'The.Witcher.3.Wild.Hunt.Blood.and.Wine.DLC-GOG',
+    mediaType: 'DLC',
+    ext: 'exe',
+    category: 'dlc',
+  },
+  {
+    title: 'The Legend of Zelda Tears of the Kingdom',
+    year: '2023',
+    platform: 'Switch',
+    group: 'Nintendo',
+    edition: '',
+    version: '1.0',
+    originalName: 'The Legend of Zelda Tears of the Kingdom [0100F2C0115B6000][v0]',
+    mediaType: 'ROM',
+    ext: 'nsp',
+    region: 'World',
+    titleId: '0100F2C0115B6000',
+    category: 'rom',
+  },
+  {
+    title: 'Super Mario 64',
+    year: '1996',
+    platform: 'N64',
+    group: 'Nintendo',
+    edition: '',
+    version: '1.0',
+    originalName: 'Super Mario 64 (USA)',
+    mediaType: 'ROM',
+    ext: 'z64',
+    region: 'USA',
+    category: 'rom',
+  },
+  {
+    title: 'God of War II',
+    year: '2007',
+    platform: 'PS2',
+    group: 'Sony',
+    edition: '',
+    version: '1.0',
+    originalName: 'God of War II (USA)',
+    mediaType: 'ROM',
+    ext: 'chd',
+    region: 'USA',
+    category: 'rom',
+  },
+  {
+    title: 'Pokemon - Emerald Version',
+    year: '2004',
+    platform: 'GBA',
+    group: 'Game Freak',
+    edition: '',
+    version: '1.0',
+    originalName: 'Pokemon - Emerald Version (USA, Europe)',
+    mediaType: 'ROM',
+    ext: 'gba',
+    region: 'USA',
+    category: 'rom',
   },
 ]
 
@@ -259,6 +416,48 @@ export const SAMPLE_RELEASES: SampleReleaseData[] = [
  * Preview how a template formats sample release metadata.
  */
 export function formatTemplateSample(template: string, sample: SampleReleaseData): string {
+  if (sample.category === 'update') {
+    const yearPart = sample.year ? ` (${sample.year})` : ''
+    const ext = sample.ext ? `.${sample.ext}` : ''
+    return `${sample.title}${yearPart} [${sample.platform}]/Updates/${sample.originalName}${ext}`
+  }
+
+  if (sample.category === 'dlc') {
+    const yearPart = sample.year ? ` (${sample.year})` : ''
+    const ext = sample.ext ? `.${sample.ext}` : ''
+    return `${sample.title}${yearPart} [${sample.platform}]/DLC/${sample.originalName}${ext}`
+  }
+
+  if (sample.isPackage) {
+    const folderTemplate = template.split(/[\\/]/).slice(0, -1).join('/') || '{Title} ({Year}) [{Platform}]'
+    const tokens: Record<string, string> = {
+      Title: sample.title,
+      CleanTitle: sample.title,
+      Year: sample.year,
+      Platform: sample.platform,
+      ReleaseGroup: sample.group,
+      Edition: sample.edition,
+      Version: sample.version,
+      Region: sample.region || '',
+      TitleId: sample.titleId || '',
+      OriginalName: sample.originalName,
+      MediaType: sample.mediaType,
+      ext: '',
+    }
+    let res = folderTemplate
+    for (const [key, value] of Object.entries(tokens)) {
+      res = res.replace(new RegExp(`\\{${key}\\}`, 'g'), value || '')
+    }
+    return res
+      .replace(/\(\s*\)/g, '')
+      .replace(/\[\s*\]/g, '')
+      .replace(/\{\s*\}/g, '')
+      .replace(/[\\/]+/g, '/')
+      .replace(/\/$/, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+  }
+
   const tokens: Record<string, string> = {
     Title: sample.title,
     CleanTitle: sample.title,
@@ -267,6 +466,8 @@ export function formatTemplateSample(template: string, sample: SampleReleaseData
     ReleaseGroup: sample.group,
     Edition: sample.edition,
     Version: sample.version,
+    Region: sample.region || '',
+    TitleId: sample.titleId || '',
     OriginalName: sample.originalName,
     MediaType: sample.mediaType,
     ext: sample.ext,
@@ -291,3 +492,4 @@ export function formatTemplateSample(template: string, sample: SampleReleaseData
 
   return result
 }
+

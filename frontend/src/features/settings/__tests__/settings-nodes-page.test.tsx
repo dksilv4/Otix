@@ -109,7 +109,7 @@ describe('SettingsNodesPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(screen.getByRole('button', { name: /^connect node$/i }))
+    await user.click(screen.getByRole('button', { name: /\+ otix node/i }))
 
     expect(screen.getByRole('heading', { name: 'Connect Otix Node' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /claim with pin/i })).toBeInTheDocument()
@@ -134,7 +134,8 @@ describe('SettingsNodesPage', () => {
     expect(screen.getByText(/unclaimed otix node detected/i)).toBeInTheDocument()
     expect(screen.getByText(/PIN: OTX-9999/i)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /claim node/i }))
+    const [claimBtn] = screen.getAllByRole('button', { name: /claim node/i })
+    await user.click(claimBtn)
 
     expect(mockClaimMutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -145,17 +146,28 @@ describe('SettingsNodesPage', () => {
     )
   })
 
-  it('opens Download Node modal when clicking Download button', async () => {
+  it('opens Server Machine modal when clicking + Server button', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(screen.getByRole('button', { name: /^download$/i }))
+    await user.click(screen.getByRole('button', { name: /\+ server/i }))
+    expect(screen.getByRole('heading', { name: 'Add Server Machine' })).toBeInTheDocument()
+  })
 
-    expect(screen.getByRole('heading', { name: 'Download Otix Node' })).toBeInTheDocument()
-    expect(screen.getByText('macOS')).toBeInTheDocument()
-    expect(screen.getByText('Windows')).toBeInTheDocument()
-    expect(screen.getByText('Otix-Node.dmg')).toBeInTheDocument()
-    expect(screen.getByText('Otix-Node-Windows-x64.zip')).toBeInTheDocument()
+  it('opens Home Environment modal when clicking + Home button', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: /\+ home/i }))
+    expect(screen.getByText('New Home Location')).toBeInTheDocument()
+  })
+
+  it('opens Samba Share modal when clicking + Samba Share button', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: /\+ samba share/i }))
+    expect(screen.getByText('Add Samba Share')).toBeInTheDocument()
   })
 
   it('allows renaming a node directly from the node card', async () => {

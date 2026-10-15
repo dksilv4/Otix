@@ -32,7 +32,9 @@ param(
     [string]$Template = "",
     [switch]$Sample,
     [switch]$Json,
-    [int]$Depth = 4
+    [int]$Depth = 4,
+    [string]$ResolveConflicts = "",
+    [int]$Scale = 0
 )
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -52,11 +54,17 @@ if ($Template) {
 if ($Sample) {
     $argsList += @("--sample")
 }
+if ($Scale -gt 0) {
+    $argsList += @("--scale", "$Scale")
+}
 if ($Json) {
     $argsList += @("--json")
 }
 if ($Depth -ne 4) {
     $argsList += @("--depth", "$Depth")
+}
+if ($ResolveConflicts) {
+    $argsList += @("--resolve-conflicts", "$ResolveConflicts")
 }
 
 node $argsList

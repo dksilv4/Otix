@@ -15,14 +15,19 @@ type ParsedRelease struct {
 	Platform     string `json:"platform,omitempty"`
 	ReleaseGroup string `json:"release_group,omitempty"`
 	Version      string `json:"version,omitempty"`
+	Region       string `json:"region,omitempty"`
+	TitleId      string `json:"title_id,omitempty"`
 	RawName      string `json:"raw_name"`
 	IsScene      bool   `json:"is_scene"`
 }
 
 var (
-	editionRegex = regexp.MustCompile(`(?i)(goty|game\s*of\s*the\s*year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors|special|legendary|anniversary)\s*edition`)
+	editionRegex = regexp.MustCompile(`(?i)(goty|game\s*of\s*the\s*year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors|special|legendary|anniversary|director['’]?s\s*cut)\s*(?:edition)?`)
 	yearRegex    = regexp.MustCompile(`\b((?:19|20)\d{2})\b`)
 	versionRegex = regexp.MustCompile(`(?i)\bv?(\d+(?:\.\d+)+)\b`)
+	regionRegex  = regexp.MustCompile(`(?i)\((USA|Europe|Japan|World|En,Ja|En,Fr,De|Asia|Australia|Germany|France)\)`)
+	switchIdRegex = regexp.MustCompile(`\[([0-9A-Fa-f]{16})\]`)
+	psIdRegex     = regexp.MustCompile(`\[([A-Z]{4}\d{5})\]`)
 
 	sceneRegex = regexp.MustCompile(`(?i)^([A-Za-z0-9._+\-]+?)(?:\.(?:v?(\d+(?:\.\d+)*)))?[._-]?(REPACK|PROPER|UPDATE|MULTI\d*|GOTY|DEF|ENHANCED)?[._-]([A-Za-z0-9]{2,12})$`)
 
@@ -53,7 +58,14 @@ var (
 		regexp.MustCompile(`(?i)\bincl\b`),
 		regexp.MustCompile(`(?i)\bgog\b`),
 		regexp.MustCompile(`(?i)\bdelusion\b`),
+		regexp.MustCompile(`(?i)\bempress\b`),
+		regexp.MustCompile(`(?i)\bcpy\b`),
+		regexp.MustCompile(`(?i)\breloaded\b`),
+		regexp.MustCompile(`(?i)\bcrack\s*fix(?:\s*v\d+)?\b`),
+		regexp.MustCompile(`(?i)\bcrackfix(?:\s*v\d+)?\b`),
+		regexp.MustCompile(`(?i)\bcrack\s*only\b`),
 		regexp.MustCompile(`(?i)\bcrack\b`),
+		regexp.MustCompile(`(?i)\bproper\b`),
 	}
 
 	coreSkipWords = map[string]bool{
@@ -69,9 +81,19 @@ func CleanGameTitle(filename string) string {
 	// Strip file extensions if recognized
 	ext := strings.ToLower(filepath.Ext(name))
 	switch ext {
-	case ".iso", ".bin", ".cue", ".img", ".zip", ".rar", ".7z", ".exe":
+	case ".iso", ".bin", ".cue", ".img", ".zip", ".rar", ".7z", ".exe",
+		".nsp", ".xci", ".nsz", ".xcz", ".3ds", ".cia", ".nds", ".z64",
+		".rvz", ".chd", ".gba", ".sfc", ".smc", ".nes", ".pkg":
 		name = strings.TrimSuffix(name, filepath.Ext(name))
 	}
+
+	// Strip Title IDs like [0100F2C0115B6000] or [BCUS98174]
+	name = switchIdRegex.ReplaceAllString(name, "")
+	name = psIdRegex.ReplaceAllString(name, "")
+
+	// Strip ROM update/DLC flags
+	updDlcRegex := regexp.MustCompile(`(?i)\[(?:UPD|DLC|v\d+)\]`)
+	name = updDlcRegex.ReplaceAllString(name, "")
 
 	// Strip version patterns
 	vStrip := regexp.MustCompile(`(?i)(?:^|[\s._-])v\d+(?:\.\d+)+(?:[a-zA-Z]\d*)?(?:[\s._-]|$)`)
@@ -146,6 +168,60 @@ func ParseReleaseName(rawName string) ParsedRelease {
 		res.Version = vMatch[1]
 	}
 
+	// Platform detection from extension or bracket
+	ext := strings.ToLower(filepath.Ext(rawName))
+	switch ext {
+	case ".nsp", ".xci", ".nsz", ".xcz":
+		res.Platform = "Switch"
+	case ".3ds", ".cia", ".cxi":
+		res.Platform = "3DS"
+	case ".nds":
+		res.Platform = "NDS"
+	case ".z64", ".n64", ".v64":
+		res.Platform = "N64"
+	case ".rvz", ".wbfs":
+		res.Platform = "Wii"
+	case ".gcz":
+		res.Platform = "GameCube"
+	case ".chd":
+		res.Platform = "PS2"
+	case ".pbp":
+		res.Platform = "PSP"
+	case ".vpk":
+		res.Platform = "PSVita"
+	case ".sfc", ".smc":
+		res.Platform = "SNES"
+	case ".nes":
+		res.Platform = "NES"
+	case ".gba":
+		res.Platform = "GBA"
+	case ".gbc":
+		res.Platform = "GBC"
+	case ".gb":
+		res.Platform = "GB"
+	case ".md", ".gen":
+		res.Platform = "Genesis"
+	case ".pkg":
+		res.Platform = "PS3"
+	default:
+		platRegex := regexp.MustCompile(`(?i)\[(PC|Switch|PS[1-5]|Xbox|Wii|GameCube|3DS|NDS|GBA|Genesis)\]`)
+		if m := platRegex.FindStringSubmatch(baseName); len(m) > 1 {
+			res.Platform = strings.ToUpper(m[1])
+		}
+	}
+
+	// Region extraction
+	if regMatch := regionRegex.FindStringSubmatch(baseName); len(regMatch) > 1 {
+		res.Region = regMatch[1]
+	}
+
+	// Title ID extraction
+	if sMatch := switchIdRegex.FindStringSubmatch(baseName); len(sMatch) > 1 {
+		res.TitleId = sMatch[1]
+	} else if pMatch := psIdRegex.FindStringSubmatch(baseName); len(pMatch) > 1 {
+		res.TitleId = pMatch[1]
+	}
+
 	// Strategy 1: Scene format match
 	if m := sceneRegex.FindStringSubmatch(baseName); len(m) > 4 {
 		title := strings.ReplaceAll(m[1], ".", " ")
@@ -193,8 +269,10 @@ func ApplyNamingTemplate(release ParsedRelease, template string, ext string, bas
 		"Platform":     release.Platform,
 		"ReleaseGroup": release.ReleaseGroup,
 		"Version":      release.Version,
+		"Region":       release.Region,
+		"TitleId":      release.TitleId,
 		"OriginalName": release.RawName,
-		"MediaType":    "ISO",
+		"MediaType":    release.Platform,
 		"ext":          extClean,
 	}
 

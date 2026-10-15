@@ -162,6 +162,30 @@ export const useNodeMap = ({ items, anchor }: UseNodeMapProps) => {
     setConnectingMousePos(null)
   }, [])
 
+  // Cancel connecting on Escape key or right-click anywhere
+  useEffect(() => {
+    if (!connectingFrom) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCancelConnecting()
+      }
+    }
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      handleCancelConnecting()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('contextmenu', handleContextMenu, { capture: true })
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('contextmenu', handleContextMenu, { capture: true })
+    }
+  }, [connectingFrom, handleCancelConnecting])
+
   // Wheel zoom
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {

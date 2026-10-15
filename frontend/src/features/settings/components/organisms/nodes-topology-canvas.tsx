@@ -18,6 +18,7 @@ import type {
   NodeMapConnectPrompt,
   NodeMapEdge,
   NodeMapItem,
+  SambaShareConfig,
 } from '../../types/node-map'
 import {
   buildNodeMapGraph,
@@ -40,6 +41,7 @@ interface NodesTopologyCanvasProps {
   serverMachines: UserServerMachine[]
   nodes: GameServer[]
   pendingNodes?: PendingNode[]
+  customSambaShares?: SambaShareConfig[]
   anchor?: { x: number; y: number }
   viewMode?: 'map' | 'cards'
   onViewModeChange?: (mode: 'map' | 'cards') => void
@@ -48,6 +50,9 @@ interface NodesTopologyCanvasProps {
   onAddHome: () => void
   onAddServer: () => void
   onAddNode: () => void
+  onAddSamba?: () => void
+  onOpenSambaSettings?: (samba: SambaShareConfig) => void
+  onDeleteSamba?: (sambaId: string) => void
   onEditHome: (home: UserHome) => void
   onDeleteHome: (home: UserHome) => void
   onEditServer: (server: UserServerMachine) => void
@@ -55,21 +60,26 @@ interface NodesTopologyCanvasProps {
   onDetectDrives: (server: UserServerMachine) => void
   onOpenNodeSettings: (server: GameServer) => void
   onRenameNode: (server: GameServer) => void
+  onPingNode?: (server: GameServer) => void
 }
 
 export const NodesTopologyCanvas = ({
   homes,
   serverMachines,
   nodes,
-  pendingNodes: _pendingNodes = [],
+  pendingNodes = [],
+  customSambaShares = [],
   anchor,
   viewMode: _viewMode = 'map',
   onViewModeChange: _onViewModeChange,
   onOpenDownloadModal: _onOpenDownloadModal,
-  onClaimPendingNode: _onClaimPendingNode,
+  onClaimPendingNode,
   onAddHome,
-  onAddServer: _onAddServer,
+  onAddServer,
   onAddNode,
+  onAddSamba,
+  onOpenSambaSettings,
+  onDeleteSamba: _onDeleteSamba,
   onEditHome,
   onDeleteHome,
   onEditServer,
@@ -77,14 +87,15 @@ export const NodesTopologyCanvas = ({
   onDetectDrives,
   onOpenNodeSettings,
   onRenameNode,
+  onPingNode,
 }: NodesTopologyCanvasProps) => {
   const { toast } = useToast()
   const assignHomeMutation = useAssignNodeHome()
   const updateServerMutation = useUpdateServerMachine()
 
   const { items, edges } = useMemo(
-    () => buildNodeMapGraph(homes, serverMachines, nodes),
-    [homes, serverMachines, nodes],
+    () => buildNodeMapGraph(homes, serverMachines, nodes, pendingNodes, customSambaShares),
+    [homes, serverMachines, nodes, pendingNodes, customSambaShares],
   )
 
   const {
@@ -158,15 +169,15 @@ export const NodesTopologyCanvas = ({
         const otherItem = source.type === 'home' ? target : target.type === 'home' ? source : null
 
         if (homeItem && otherItem) {
-          const homeId = homeItem.entityId
+          const homeId = Number(homeItem.entityId)
           if (otherItem.type === 'server') {
-            await updateServerMutation.mutateAsync({ id: otherItem.entityId, homeId })
+            await updateServerMutation.mutateAsync({ id: Number(otherItem.entityId), homeId })
             toast({
               title: 'Server Assigned',
               description: `"${otherItem.name}" assigned to home "${homeItem.name}".`,
             })
           } else if (otherItem.type === 'node') {
-            await assignHomeMutation.mutateAsync({ nodeId: otherItem.entityId, homeId })
+            await assignHomeMutation.mutateAsync({ nodeId: Number(otherItem.entityId), homeId })
             toast({
               title: 'Node Assigned',
               description: `"${otherItem.name}" assigned to home "${homeItem.name}".`,
@@ -176,10 +187,10 @@ export const NodesTopologyCanvas = ({
           // Both are nodes or servers: assign them to the default home (or first home)
           const defaultHome = homes.find((h) => h.isDefault) || homes[0]
           if (defaultHome) {
-            if (source.type === 'node') await assignHomeMutation.mutateAsync({ nodeId: source.entityId, homeId: defaultHome.id })
-            if (source.type === 'server') await updateServerMutation.mutateAsync({ id: source.entityId, homeId: defaultHome.id })
-            if (target.type === 'node') await assignHomeMutation.mutateAsync({ nodeId: target.entityId, homeId: defaultHome.id })
-            if (target.type === 'server') await updateServerMutation.mutateAsync({ id: target.entityId, homeId: defaultHome.id })
+            if (source.type === 'node') await assignHomeMutation.mutateAsync({ nodeId: Number(source.entityId), homeId: defaultHome.id })
+            if (source.type === 'server') await updateServerMutation.mutateAsync({ id: Number(source.entityId), homeId: defaultHome.id })
+            if (target.type === 'node') await assignHomeMutation.mutateAsync({ nodeId: Number(target.entityId), homeId: defaultHome.id })
+            if (target.type === 'server') await updateServerMutation.mutateAsync({ id: Number(target.entityId), homeId: defaultHome.id })
             toast({
               title: 'Linked via Home',
               description: `"${source.name}" and "${target.name}" linked under "${defaultHome.name}".`,
@@ -196,29 +207,51 @@ export const NodesTopologyCanvas = ({
         const serverItem = source.type === 'server' ? source : target
         const nodeItem = source.type === 'node' ? source : target
         await updateServerMutation.mutateAsync({
-          id: serverItem.entityId,
-          hostedNodeId: nodeItem.entityId,
+          id: Number(serverItem.entityId),
+          hostedNodeId: Number(nodeItem.entityId),
         })
         toast({
           title: 'Hosted Node Configured',
           description: `Node "${nodeItem.name}" is now marked as running on "${serverItem.name}".`,
         })
       } else if (type === 'smb') {
-        const serverItem = source.type === 'server' ? source : target
-        const nodeItem = source.type === 'node' ? source : target
-        const server = (serverItem.data as { machine: UserServerMachine }).machine
-        const currentSmbNodes = server.smbNodeIds || []
-        const nextSmbNodes = Array.from(new Set([...currentSmbNodes, nodeItem.entityId]))
+        const sambaItem = source.type === 'samba' ? source : target.type === 'samba' ? target : null
+        const serverItem = source.type === 'server' ? source : target.type === 'server' ? target : null
 
-        await updateServerMutation.mutateAsync({
-          id: serverItem.entityId,
-          smbNodeIds: nextSmbNodes,
-          smbEnabled: true,
-        })
-        toast({
-          title: 'SMB Connection Established',
-          description: `Node "${nodeItem.name}" linked to SMB share on "${serverItem.name}".`,
-        })
+        if (sambaItem && serverItem) {
+          const sambaConfig = (sambaItem.data as { samba: SambaShareConfig }).samba
+          await updateServerMutation.mutateAsync({
+            id: Number(serverItem.entityId),
+            smbEnabled: true,
+            smbShareName: sambaConfig.shareName || 'games',
+            smbHost: sambaConfig.host || '',
+            smbPort: sambaConfig.port || 445,
+            smbUsername: sambaConfig.username || '',
+            smbPassword: sambaConfig.password || '',
+            smbWorkgroup: sambaConfig.workgroup || 'WORKGROUP',
+            smbMountPath: sambaConfig.mountPath || '',
+          })
+          toast({
+            title: 'Samba Share Connected',
+            description: `Samba share "${sambaItem.name}" connected to server "${serverItem.name}".`,
+          })
+        } else {
+          const serverIt = source.type === 'server' ? source : target
+          const nodeItem = source.type === 'node' ? source : target
+          const server = (serverIt.data as { machine: UserServerMachine }).machine
+          const currentSmbNodes = server.smbNodeIds || []
+          const nextSmbNodes = Array.from(new Set([...currentSmbNodes, Number(nodeItem.entityId)]))
+
+          await updateServerMutation.mutateAsync({
+            id: Number(serverIt.entityId),
+            smbNodeIds: nextSmbNodes,
+            smbEnabled: true,
+          })
+          toast({
+            title: 'SMB Connection Established',
+            description: `Node "${nodeItem.name}" linked to SMB share on "${serverIt.name}".`,
+          })
+        }
       }
       setConnectPrompt(null)
     } catch {
@@ -249,6 +282,10 @@ export const NodesTopologyCanvas = ({
         const serverId = Number(edge.sourceId.replace('server-', ''))
         await updateServerMutation.mutateAsync({ id: serverId, hostedNodeId: null })
         toast({ title: 'Host Node Link Removed' })
+      } else if (edge.relation === 'samba_server_link') {
+        const serverId = Number(edge.sourceId.replace('server-', ''))
+        await updateServerMutation.mutateAsync({ id: serverId, smbEnabled: false })
+        toast({ title: 'Samba Share Disconnected' })
       } else if (edge.relation === 'smb_link') {
         const serverId = Number(edge.sourceId.replace('server-', ''))
         const nodeId = Number(edge.targetId.replace('node-', ''))
@@ -430,6 +467,7 @@ export const NodesTopologyCanvas = ({
                   onDragStart={handleNodeDragStart}
                   onStartConnecting={handleStartConnecting}
                   onConnectTarget={handleNodeClickInConnectMode}
+                  onCancelConnecting={handleCancelConnecting}
                   onEditHome={onEditHome}
                   onDeleteHome={onDeleteHome}
                   onEditServer={onEditServer}
@@ -437,6 +475,9 @@ export const NodesTopologyCanvas = ({
                   onDetectDrives={onDetectDrives}
                   onOpenNodeSettings={onOpenNodeSettings}
                   onRenameNode={onRenameNode}
+                  onPingNode={onPingNode}
+                  onClaimPendingNode={onClaimPendingNode}
+                  onOpenSambaSettings={onOpenSambaSettings}
                 />
               </div>
             )
@@ -452,16 +493,24 @@ export const NodesTopologyCanvas = ({
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">No nodes or servers in map</p>
               <p className="text-xs text-muted-foreground max-w-sm">
-                Add your home environment, worker node, or homelab server machine to build your topology.
+                Add your worker node, server machine, home environment, or Samba share to build your topology.
               </p>
             </div>
-            <div className="flex items-center gap-2 pt-1 pointer-events-auto">
-              <DkButton type="button" size="sm" variant="secondary" onClick={onAddHome}>
-                Add Home
-              </DkButton>
+            <div className="flex items-center gap-2 pt-1 pointer-events-auto flex-wrap justify-center">
               <DkButton type="button" size="sm" variant="primary" onClick={onAddNode}>
-                Connect Node
+                + Otix Node
               </DkButton>
+              <DkButton type="button" size="sm" variant="secondary" onClick={onAddServer}>
+                + Server
+              </DkButton>
+              <DkButton type="button" size="sm" variant="secondary" onClick={onAddHome}>
+                + Home
+              </DkButton>
+              {onAddSamba && (
+                <DkButton type="button" size="sm" variant="secondary" onClick={onAddSamba}>
+                  + Samba Share
+                </DkButton>
+              )}
             </div>
           </div>
         )}
@@ -476,7 +525,7 @@ export const NodesTopologyCanvas = ({
               Connecting from &quot;{connectingFrom.name}&quot;
             </span>
             <span className="text-muted-foreground hidden sm:inline">
-              — Click on another node in the map to establish a connection.
+              — Click on a node to connect, or right-click / Esc to cancel.
             </span>
           </div>
           <button

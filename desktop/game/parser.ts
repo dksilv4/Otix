@@ -51,7 +51,9 @@ export function cleanGameTitle(filename: string): string {
     /\bcodex\b/gi, /\bflt\b/gi, /\bplaza\b/gi, /\bskidrow\b/gi, /\brune\b/gi, /\btenoke\b/gi,
     /\bgoldberg\b/gi, /\brazor1911\b/gi, /\bfairlight\b/gi, /\bhoodlum\b/gi,
     /\bmulti\d+\b/gi, /\bvoices\d*\b/gi, /\bv\d+(\.\d+)*\b/gi, /\bbuild\s*\d+\b/gi, /\bupdate\s*\d*\b/gi,
-    /\bunleashed\b/gi, /\bh\d+\b/gi, /\bhbg\b/gi, /\bdlc\b/gi, /\bincl\b/gi, /\bgog\b/gi, /\bcrack\b/gi, /\brune\b/gi, /\bflt\b/gi, /\bplaza\b/gi,
+    /\bcrack\s*fix(?:\s*v\d+)?\b/gi, /\bcrackfix(?:\s*v\d+)?\b/gi,
+    /\bcrack\s*only\b/gi, /\bcrack\b/gi, /\bproper\b/gi, /\bearlyaccess\b/gi,
+    /\bempress\b/gi, /\bcpy\b/gi, /\brune\b/gi, /\bflt\b/gi, /\bplaza\b/gi,
     /\bexe\b/gi,
   ];
   for (const tag of tags) {
@@ -201,7 +203,7 @@ export function parseReleaseName(rawName: string): ParsedRelease {
 
 export const VALID_TOKENS = new Set([
   'Title', 'CleanTitle', 'Year', 'Edition', 'Platform',
-  'ReleaseGroup', 'Version', 'OriginalName', 'MediaType', 'ext',
+  'ReleaseGroup', 'Version', 'Region', 'TitleId', 'OriginalName', 'MediaType', 'ext',
 ]);
 
 export function applyNamingTemplate(
@@ -218,8 +220,10 @@ export function applyNamingTemplate(
     Platform: release.platform ?? 'PC',
     ReleaseGroup: release.group ?? '',
     Version: release.version ?? '',
+    Region: (release as any).region ?? '',
+    TitleId: (release as any).titleId ?? '',
     OriginalName: release.rawName,
-    MediaType: fileInfo.type === 'iso' ? 'ISO' : fileInfo.type === 'pc_game' ? 'PC' : 'Update',
+    MediaType: fileInfo.type === 'iso' ? 'ISO' : fileInfo.type === 'pc_game' ? 'PC' : fileInfo.type === 'rom' ? 'ROM' : 'Update',
     ext: fileInfo.ext,
   };
 
@@ -275,3 +279,194 @@ export function previewNamingTemplate(
   const target = applyNamingTemplate(release, template, fileInfo, '/');
   return { valid: true, result: target.replace(/^\//, '') };
 }
+
+// ── analyzeRepackArchiveIntegrity ───────────────────────────────────────────
+
+export interface RepackArchiveAnomaly {
+  file?: string;
+  type:
+    | 'INCOMPLETE_DOWNLOAD'
+    | 'DUPLICATE_NAME_COLLISION'
+    | 'NAMING_VARIATION'
+    | 'MISSING_ELAMIGOS_PREFIX'
+    | 'MISSING_FITGIRL_PREFIX'
+    | 'MISSING_SEQUENCE_CHUNK';
+  suggested?: string;
+  missing?: string;
+  message: string;
+}
+
+export interface RepackArchiveAnalysis {
+  isRepack: boolean;
+  archiveType?: 'ElAmigos' | 'FitGirl' | 'DODI' | 'InnoSetup';
+  health: 'HEALTHY' | 'CORRECTABLE_ANOMALY' | 'INCOMPLETE_DOWNLOAD' | 'GENERIC';
+  anomalies: RepackArchiveAnomaly[];
+  suggestedRenames: Record<string, string>;
+}
+
+export function analyzeRepackArchiveIntegrity(
+  childFiles: string[] = [],
+  folderName: string = '',
+  releaseGroup: string = '',
+): RepackArchiveAnalysis {
+  const anomalies: RepackArchiveAnomaly[] = [];
+  const suggestedRenames: Record<string, string> = {};
+  const lowerFolder = folderName.toLowerCase();
+  const lowerGroup = (releaseGroup || '').toLowerCase();
+
+  const isElAmigos =
+    lowerGroup.includes('elamigos') ||
+    lowerFolder.includes('elamigos') ||
+    childFiles.some((f) => f.toLowerCase().includes('elamigos'));
+  const isFitGirl =
+    lowerGroup.includes('fitgirl') ||
+    lowerFolder.includes('fitgirl') ||
+    childFiles.some((f) => f.toLowerCase().includes('fitgirl'));
+  const isDodi =
+    lowerGroup.includes('dodi') ||
+    lowerFolder.includes('dodi') ||
+    childFiles.some((f) => f.toLowerCase().includes('dodi'));
+
+  const archiveFiles = childFiles.filter((f) => {
+    const l = f.toLowerCase();
+    return (
+      l.endsWith('.bin') ||
+      l.endsWith('.cab') ||
+      l.endsWith('.doi') ||
+      /\.bin(?:\.part|\.tmp|\.crdownload|\.downloading|\.bak|\.orig|\s*\(\d+\))$/i.test(l) ||
+      /\b(?:setup|elamigos|data|game|archive)[-_0-9]+.*(?:\.bin|\.cab|\.doi)/i.test(l)
+    );
+  });
+
+  if (archiveFiles.length === 0) {
+    return { isRepack: false, anomalies, suggestedRenames, health: 'GENERIC' };
+  }
+
+  if (isElAmigos) {
+    archiveFiles.forEach((f, idx) => {
+      const lower = f.toLowerCase();
+
+      if (/\.(part|crdownload|tmp|downloading)$/i.test(lower)) {
+        anomalies.push({
+          file: f,
+          type: 'INCOMPLETE_DOWNLOAD',
+          message: `Incomplete download part detected: '${f}'. The ElAmigos installer will fail until downloaded completely.`,
+        });
+        return;
+      }
+
+      const dupMatch =
+        lower.match(/^(el[-_]?amigos[-_]?\d+)\s*\(\d+\)\.bin$/) ||
+        lower.match(/^(el[-_]?amigos[-_]?\d+)\s*-\s*copy\.bin$/);
+      if (dupMatch) {
+        const canonical = `${dupMatch[1].replace(/[-_]+/g, '-')}.bin`;
+        suggestedRenames[f] = canonical;
+        anomalies.push({
+          file: f,
+          type: 'DUPLICATE_NAME_COLLISION',
+          suggested: canonical,
+          message: `Improperly named duplicate: '${f}'. ElAmigos setup.exe will fail ('File not found: ${canonical}'). Renaming to '${canonical}' required.`,
+        });
+        return;
+      }
+
+      const varMatch =
+        lower.match(/^el[-_]amigos[-_](\d+)\.bin$/) || lower.match(/^elamigos_(\d+)\.bin$/);
+      if (varMatch) {
+        const canonical = `elamigos-${varMatch[1]}.bin`;
+        if (f !== canonical) {
+          suggestedRenames[f] = canonical;
+          anomalies.push({
+            file: f,
+            type: 'NAMING_VARIATION',
+            suggested: canonical,
+            message: `Non-canonical separator: '${f}'. ElAmigos installer expects '${canonical}'.`,
+          });
+        }
+        return;
+      }
+
+      if (!lower.startsWith('elamigos-') && !lower.startsWith('elamigos.')) {
+        const numMatch = lower.match(/(?:^|[-_.a-z])(\d+)\.bin$/i);
+        const chunkNum = numMatch ? numMatch[1] : archiveFiles.length === 1 ? '1' : String(idx + 1);
+        const canonical = `elamigos-${chunkNum}.bin`;
+
+        suggestedRenames[f] = canonical;
+        anomalies.push({
+          file: f,
+          type: 'MISSING_ELAMIGOS_PREFIX',
+          suggested: canonical,
+          message: `ElAmigos bin file missing prefix: '${f}' does not have 'elamigos-' in its name. The installer will fail to find it ('File not found: ${canonical}'). Renaming to '${canonical}' fixes the installer.`,
+        });
+      }
+    });
+
+    const foundIndices = new Set<number>();
+    archiveFiles.forEach((f) => {
+      const targetName = suggestedRenames[f] || f;
+      const m = targetName.toLowerCase().match(/^elamigos-(\d+)\.bin$/);
+      if (m) foundIndices.add(parseInt(m[1], 10));
+    });
+
+    if (foundIndices.size > 0) {
+      const maxIndex = Math.max(...foundIndices);
+      for (let i = 1; i <= maxIndex; i++) {
+        if (!foundIndices.has(i)) {
+          anomalies.push({
+            type: 'MISSING_SEQUENCE_CHUNK',
+            missing: `elamigos-${i}.bin`,
+            message: `Missing archive chunk: 'elamigos-${i}.bin' is missing from the package sequence (found up to chunk ${maxIndex}). The installer will stop midway.`,
+          });
+        }
+      }
+    }
+  } else if (isFitGirl) {
+    archiveFiles.forEach((f, idx) => {
+      const lower = f.toLowerCase();
+      if (!lower.startsWith('setup-fitgirl-') && !lower.startsWith('fg-') && lower.endsWith('.bin')) {
+        const numMatch = lower.match(/(\d+)\.bin$/);
+        const chunk = numMatch ? numMatch[1] : String(idx + 1);
+        const canonical = `setup-fitgirl-${chunk}.bin`;
+        suggestedRenames[f] = canonical;
+        anomalies.push({
+          file: f,
+          type: 'MISSING_FITGIRL_PREFIX',
+          suggested: canonical,
+          message: `FitGirl bin file missing prefix: '${f}'. Installer expects '${canonical}'.`,
+        });
+      }
+    });
+  } else {
+    archiveFiles.forEach((f) => {
+      const lower = f.toLowerCase();
+      const dupMatch = lower.match(/^(setup[-_]?\d+)\s*\(\d+\)\.bin$/);
+      if (dupMatch) {
+        const canonical = `${dupMatch[1].replace(/[-_]+/g, '-')}.bin`;
+        suggestedRenames[f] = canonical;
+        anomalies.push({
+          file: f,
+          type: 'DUPLICATE_NAME_COLLISION',
+          suggested: canonical,
+          message: `Improperly named duplicate: '${f}'. Installer expects '${canonical}'.`,
+        });
+      }
+    });
+  }
+
+  const hasIncomplete = anomalies.some((a) => a.type === 'INCOMPLETE_DOWNLOAD');
+  const hasRenames = Object.keys(suggestedRenames).length > 0;
+  const health = hasIncomplete
+    ? 'INCOMPLETE_DOWNLOAD'
+    : hasRenames
+    ? 'CORRECTABLE_ANOMALY'
+    : 'HEALTHY';
+
+  return {
+    isRepack: true,
+    archiveType: isElAmigos ? 'ElAmigos' : isFitGirl ? 'FitGirl' : isDodi ? 'DODI' : 'InnoSetup',
+    health,
+    anomalies,
+    suggestedRenames,
+  };
+}
+

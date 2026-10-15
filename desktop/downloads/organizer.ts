@@ -39,7 +39,7 @@ export interface DownloadedContent {
   /** Base name */
   name: string;
   /** Content type */
-  type: 'iso' | 'pc_game' | 'update' | 'unknown';
+  type: 'iso' | 'pc_game' | 'update' | 'dlc' | 'rom' | 'unknown';
   /** Size in bytes (for details) */
   size?: number;
 }
@@ -218,13 +218,24 @@ export function parseReleaseName(rawName: string): ParsedRelease {
   };
 }
 
+const ROM_EXTENSIONS = new Set([
+  '.nsp', '.xci', '.nsz', '.xcz', '.3ds', '.cia', '.cxi', '.nds',
+  '.z64', '.n64', '.v64', '.rvz', '.wbfs', '.gcz', '.chd', '.pbp',
+  '.vpk', '.sfc', '.smc', '.nes', '.gba', '.gbc', '.gb', '.md',
+  '.gen', '.pkg',
+]);
+
+const ISO_EXTENSIONS = new Set([
+  '.iso', '.img', '.bin', '.cue', '.mdf', '.mds', '.nrg',
+]);
+
 // ── Content discovery ────────────────────────────────────────────────────────
 
 /**
  * Recursively walk a download directory and find all downloadable content.
  *
- * Returns ISO files, PC game folders (directories containing .exe files),
- * and update/patch executable files.
+ * Returns ISO files, ROMs, PC game folders (directories containing .exe files),
+ * update/patch executables, and DLC files.
  */
 export async function findDownloadedContent(
   dirPath: string,
@@ -254,18 +265,29 @@ export async function findDownloadedContent(
           }
         } else if (entry.isFile()) {
           const nameLower = entry.name.toLowerCase();
+          const ext = path.extname(nameLower);
 
-          if (nameLower.endsWith('.iso')) {
+          if (ISO_EXTENSIONS.has(ext)) {
             results.push({ path: fullPath, name: entry.name, type: 'iso' });
+          } else if (ROM_EXTENSIONS.has(ext)) {
+            if (nameLower.includes('[upd]') || nameLower.includes('[v131072]')) {
+              results.push({ path: fullPath, name: entry.name, type: 'update' });
+            } else if (nameLower.includes('[dlc]')) {
+              results.push({ path: fullPath, name: entry.name, type: 'dlc' });
+            } else {
+              results.push({ path: fullPath, name: entry.name, type: 'rom' });
+            }
           } else if (
             nameLower.endsWith('.exe') &&
-            (nameLower.includes('update') || nameLower.includes('patch')) &&
+            (nameLower.includes('update') || nameLower.includes('patch') || nameLower.includes('hotfix')) &&
             !nameLower.includes('setup') &&
             !nameLower.includes('uninst') &&
             !nameLower.includes('crash') &&
             !nameLower.includes('helper')
           ) {
             results.push({ path: fullPath, name: entry.name, type: 'update' });
+          } else if (nameLower.endsWith('.exe') && nameLower.includes('dlc') && !nameLower.includes('setup')) {
+            results.push({ path: fullPath, name: entry.name, type: 'dlc' });
           } else if (nameLower.endsWith('.exe') && !nameLower.includes('setup') && !nameLower.includes('uninst') && !nameLower.includes('crash') && !nameLower.includes('helper') && !nameLower.includes('check') && !nameLower.includes('hash') && !nameLower.includes('redist')) {
             hasExe = true;
           }
@@ -273,7 +295,6 @@ export async function findDownloadedContent(
       }
 
       // If this directory contains executables, mark as PC game folder.
-      // Depth 1 IS the download folder, so any depth is valid.
       if (hasExe) {
         results.push({ path: currentDir, name: path.basename(currentDir), type: 'pc_game' });
       }
@@ -296,7 +317,6 @@ export async function findDownloadedContent(
 // Re-export naming template utilities from canonical game/parser
 export { applyNamingTemplate, validateNamingTemplate, VALID_TOKENS };
 
-
 /**
  * Smart-preview a directory using parseReleaseName + naming template.
  * Returns OrganizationPreviewItem[] compatible with executeOrganization.
@@ -317,7 +337,7 @@ export async function smartOrganizePreview(
     if (item.type === 'update') {
       title = title
         .replace(/\b(update|patch|hotfix)\b\s*\d*\.?\d*/gi, '')
-        .replace(/\b\d+(?:[\s.]\d+)+\b/g, '')  // version-like digit clusters
+        .replace(/\b\d+(?:[\s.]\d+)+\b/g, '') // version-like digit clusters
         .replace(/\s{2,}/g, ' ')
         .trim();
     }
@@ -334,14 +354,23 @@ export async function smartOrganizePreview(
       type: item.type,
     };
 
-    const targetRaw = applyNamingTemplate(
-      { ...release, title },
-      namingTemplate,
-      fileInfo,
-      directory,
-    );
+    let targetRaw = '';
+    if (item.type === 'update') {
+      const yearPart = release.year ? ` (${release.year})` : '';
+      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
+      targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, 'Updates', item.name);
+    } else if (item.type === 'dlc') {
+      const yearPart = release.year ? ` (${release.year})` : '';
+      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
+      targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, 'DLC', item.name);
+    } else if (item.type === 'pc_game') {
+      const folderTemplate = namingTemplate.split('/').slice(0, -1).join('/') || namingTemplate;
+      targetRaw = applyNamingTemplate({ ...release, title }, folderTemplate, fileInfo, directory);
+    } else {
+      targetRaw = applyNamingTemplate({ ...release, title }, namingTemplate, fileInfo, directory);
+    }
 
-    const mappedType: 'iso' | 'update' = item.type === 'pc_game' || item.type === 'unknown' ? 'iso' : item.type;
+    const mappedType: 'iso' | 'update' = item.type === 'update' ? 'update' : 'iso';
     items.push({
       sourcePath: item.path,
       sourceFilename: item.name,
@@ -430,6 +459,16 @@ export async function batchOrganizeDirectory(
       fileInfo = { name: item.name, ext: '', type: 'pc_game' };
       const folderTemplate = template.split('/').slice(0, -1).join('/') || template;
       target = applyNamingTemplate(release, folderTemplate, fileInfo, directory);
+      organizeItems.push({ sourcePath: item.path, targetPath: target });
+    } else if (item.type === 'update') {
+      const yearPart = release.year ? ` (${release.year})` : '';
+      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
+      target = path.join(directory, `${release.title}${yearPart}${platformPart}`, 'Updates', item.name);
+      organizeItems.push({ sourcePath: item.path, targetPath: target });
+    } else if (item.type === 'dlc') {
+      const yearPart = release.year ? ` (${release.year})` : '';
+      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
+      target = path.join(directory, `${release.title}${yearPart}${platformPart}`, 'DLC', item.name);
       organizeItems.push({ sourcePath: item.path, targetPath: target });
     } else {
       fileInfo = {
@@ -580,8 +619,18 @@ export async function autoOrganizeDownload(
       // For folder moves, target is the folder itself, not a file inside it
       targetDir = folderTarget;
       organizeItems.push({ sourcePath: content.path, targetPath: targetDir });
+    } else if (content.type === 'update') {
+      const yearPart = release.year ? ` (${release.year})` : '';
+      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
+      const target = path.join(effectiveDest, `${release.title}${yearPart}${platformPart}`, 'Updates', content.name);
+      organizeItems.push({ sourcePath: content.path, targetPath: target });
+    } else if (content.type === 'dlc') {
+      const yearPart = release.year ? ` (${release.year})` : '';
+      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
+      const target = path.join(effectiveDest, `${release.title}${yearPart}${platformPart}`, 'DLC', content.name);
+      organizeItems.push({ sourcePath: content.path, targetPath: target });
     } else {
-      // File-based (ISO, update)
+      // File-based (ISO, ROM, executable)
       fileInfo = {
         name: content.name,
         ext: path.extname(content.name).substring(1),

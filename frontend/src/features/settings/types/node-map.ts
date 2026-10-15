@@ -1,9 +1,24 @@
 import type { GameServer } from '@/features/downloads/types'
+import type { PendingNode } from '@/features/downloads/pending-nodes'
 import type { UserHome, UserServerMachine } from './server-machines'
 
-export type NodeMapItemType = 'home' | 'server' | 'node'
+export type NodeMapItemType = 'home' | 'server' | 'node' | 'unclaimed_node' | 'samba'
 
-export type NodeMapEdgeRelation = 'home_link' | 'hosted_link' | 'smb_link'
+export type NodeMapEdgeRelation = 'home_link' | 'hosted_link' | 'smb_link' | 'samba_server_link'
+
+export interface SambaShareConfig {
+  id: string
+  serverId?: number | null
+  serverName?: string | null
+  shareName: string
+  host?: string
+  port: number
+  username?: string
+  password?: string
+  workgroup?: string
+  mountPath?: string
+  isOnline?: boolean
+}
 
 export interface NodeMapPosition {
   x: number
@@ -13,7 +28,7 @@ export interface NodeMapPosition {
 export interface NodeMapItem {
   id: string
   type: NodeMapItemType
-  entityId: number
+  entityId: number | string
   name: string
   homeId?: number | null
   homeName?: string | null
@@ -21,6 +36,8 @@ export interface NodeMapItem {
     | { type: 'home'; home: UserHome }
     | { type: 'server'; machine: UserServerMachine }
     | { type: 'node'; server: GameServer }
+    | { type: 'unclaimed_node'; pending: PendingNode }
+    | { type: 'samba'; samba: SambaShareConfig }
 }
 
 export interface NodeMapEdge {

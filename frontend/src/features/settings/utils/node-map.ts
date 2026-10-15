@@ -1,9 +1,12 @@
 import type { GameServer } from '@/features/downloads/types'
+import type { PendingNode } from '@/features/downloads/pending-nodes'
+import { nodeUrlKey } from '@/features/downloads/pending-nodes'
 import type { UserHome, UserServerMachine } from '../types/server-machines'
 import type {
   NodeMapEdge,
   NodeMapItem,
   NodeMapPosition,
+  SambaShareConfig,
 } from '../types/node-map'
 
 const STORAGE_KEY = 'otix_node_map_positions_v1'
@@ -15,6 +18,8 @@ export const buildNodeMapGraph = (
   homes: UserHome[],
   serverMachines: UserServerMachine[],
   nodes: GameServer[],
+  pendingNodes: PendingNode[] = [],
+  customSambaShares: SambaShareConfig[] = [],
 ): { items: NodeMapItem[]; edges: NodeMapEdge[] } => {
   const items: NodeMapItem[] = []
   const edges: NodeMapEdge[] = []
@@ -68,23 +73,42 @@ export const buildNodeMapGraph = (
       })
     }
 
-    if (machine.smbNodeIds && machine.smbNodeIds.length > 0) {
-      for (const smbNodeId of machine.smbNodeIds) {
-        // avoid duplicate if also hosted
-        if (smbNodeId === machine.hostedNodeId) {
-          continue
-        }
-        edges.push({
-          id: `edge-server-${machine.id}-smb-node-${smbNodeId}`,
-          sourceId: `server-${machine.id}`,
-          sourceType: 'server',
-          targetId: `node-${smbNodeId}`,
-          targetType: 'node',
-          relation: 'smb_link',
-          label: `SMB /${machine.smbShareName || 'share'}`,
-          detail: `Port ${machine.smbPort || 445}`,
-        })
-      }
+    // If server has SMB share enabled, render a dedicated Samba Share node connected to this server
+    if (machine.smbEnabled) {
+      const sambaId = `samba-server-${machine.id}`
+      items.push({
+        id: sambaId,
+        type: 'samba',
+        entityId: `smb-${machine.id}`,
+        name: machine.smbShareName ? `/${machine.smbShareName}` : 'Samba Share',
+        data: {
+          type: 'samba',
+          samba: {
+            id: sambaId,
+            serverId: machine.id,
+            serverName: machine.name,
+            shareName: machine.smbShareName || 'share',
+            host: machine.smbHost || machine.host || '',
+            port: machine.smbPort || 445,
+            username: machine.smbUsername || '',
+            password: machine.smbPassword || '',
+            workgroup: machine.smbWorkgroup || 'WORKGROUP',
+            mountPath: machine.smbMountPath || '',
+            isOnline: machine.isOnline,
+          },
+        },
+      })
+
+      edges.push({
+        id: `edge-server-${machine.id}-samba-${machine.id}`,
+        sourceId: `server-${machine.id}`,
+        sourceType: 'server',
+        targetId: sambaId,
+        targetType: 'samba',
+        relation: 'samba_server_link',
+        label: `SMB /${machine.smbShareName || 'share'}`,
+        detail: `Port ${machine.smbPort || 445}`,
+      })
     }
   }
 
@@ -113,6 +137,52 @@ export const buildNodeMapGraph = (
     }
   }
 
+  // Include custom standalone Samba shares (not yet connected to a server or created manually)
+  for (const samba of customSambaShares) {
+    if (samba.serverId && serverMachines.some((m) => m.id === samba.serverId && m.smbEnabled)) {
+      continue
+    }
+    items.push({
+      id: samba.id,
+      type: 'samba',
+      entityId: samba.id,
+      name: samba.shareName ? `/${samba.shareName}` : 'Samba Share',
+      data: { type: 'samba', samba },
+    })
+
+    if (samba.serverId && serverMachines.some((m) => m.id === samba.serverId)) {
+      edges.push({
+        id: `edge-server-${samba.serverId}-${samba.id}`,
+        sourceId: `server-${samba.serverId}`,
+        sourceType: 'server',
+        targetId: samba.id,
+        targetType: 'samba',
+        relation: 'samba_server_link',
+        label: `SMB /${samba.shareName}`,
+        detail: `Port ${samba.port || 445}`,
+      })
+    }
+  }
+
+  // Include unclaimed/pending Otix nodes so they appear on the topology map
+  const unclaimed = pendingNodes.filter(
+    (p) =>
+      !p.claimed &&
+      Boolean(p.claimCode || p.localUrl) &&
+      !nodes.some((s) => s.localUrl === p.localUrl || s.primaryUrl === p.localUrl),
+  )
+
+  for (let i = 0; i < unclaimed.length; i++) {
+    const pending = unclaimed[i]
+    items.push({
+      id: `unclaimed-node-${i}-${nodeUrlKey(pending.localUrl || 'local')}`,
+      type: 'unclaimed_node',
+      entityId: -(i + 100),
+      name: pending.serverName || 'Otix Node',
+      data: { type: 'unclaimed_node', pending },
+    })
+  }
+
   return { items, edges }
 }
 
@@ -124,53 +194,59 @@ export const calculateAutoLayout = (
 
   const homes = items.filter((i) => i.type === 'home')
   const servers = items.filter((i) => i.type === 'server')
+  const sambas = items.filter((i) => i.type === 'samba')
   const nodes = items.filter((i) => i.type === 'node')
+  const unclaimed = items.filter((i) => i.type === 'unclaimed_node')
+  const allNodes = [...nodes, ...unclaimed]
 
   const startX = anchor?.x ?? 340
   const startY = anchor?.y ?? 240
   const columnWidth = 380
   const rowHeight = 240
 
-  if (homes.length === 0 && servers.length === 0) {
-    // Original nodes-only 2-column grid placement (identical to original cards view)
-    nodes.forEach((node, index) => {
-      const col = index % 2
-      const row = Math.floor(index / 2)
-      positions[node.id] = {
-        x: startX + col * columnWidth,
-        y: startY + row * rowHeight,
-      }
-    })
-  } else {
-    // When homes or servers exist, organize in columns starting in the original section
+  let currentColumn = 0
+
+  if (homes.length > 0) {
+    const colX = startX + currentColumn * columnWidth
     homes.forEach((home, index) => {
-      positions[home.id] = {
-        x: startX,
-        y: startY + index * rowHeight,
-      }
+      positions[home.id] = { x: colX, y: startY + index * rowHeight }
     })
+    currentColumn++
+  }
 
-    const serverX = homes.length > 0 ? startX + columnWidth : startX
+  if (servers.length > 0) {
+    const colX = startX + currentColumn * columnWidth
     servers.forEach((server, index) => {
-      positions[server.id] = {
-        x: serverX,
-        y: startY + index * rowHeight,
-      }
+      positions[server.id] = { x: colX, y: startY + index * rowHeight }
     })
+    currentColumn++
+  }
 
-    const nodeX =
-      homes.length > 0 && servers.length > 0
-        ? startX + columnWidth * 2
-        : homes.length > 0 || servers.length > 0
-          ? startX + columnWidth
-          : startX
-
-    nodes.forEach((node, index) => {
-      positions[node.id] = {
-        x: nodeX,
-        y: startY + index * rowHeight,
-      }
+  if (sambas.length > 0) {
+    const colX = startX + currentColumn * columnWidth
+    sambas.forEach((samba, index) => {
+      positions[samba.id] = { x: colX, y: startY + index * rowHeight }
     })
+    currentColumn++
+  }
+
+  if (allNodes.length > 0) {
+    if (currentColumn === 0) {
+      // 2-column grid for nodes only
+      allNodes.forEach((node, index) => {
+        const col = index % 2
+        const row = Math.floor(index / 2)
+        positions[node.id] = {
+          x: startX + col * columnWidth,
+          y: startY + row * rowHeight,
+        }
+      })
+    } else {
+      const colX = startX + currentColumn * columnWidth
+      allNodes.forEach((node, index) => {
+        positions[node.id] = { x: colX, y: startY + index * rowHeight }
+      })
+    }
   }
 
   return positions
@@ -195,6 +271,32 @@ export const saveStoredPositions = (positions: Record<string, NodeMapPosition>):
   try {
     if (typeof window === 'undefined') return
     localStorage.setItem(STORAGE_KEY, JSON.stringify(positions))
+  } catch {
+    // ignore
+  }
+}
+
+const SAMBA_STORAGE_KEY = 'otix_custom_samba_shares_v1'
+
+export const loadStoredSambaShares = (): SambaShareConfig[] => {
+  try {
+    if (typeof window === 'undefined') return []
+    const raw = localStorage.getItem(SAMBA_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      return parsed
+    }
+  } catch {
+    // ignore
+  }
+  return []
+}
+
+export const saveStoredSambaShares = (shares: SambaShareConfig[]): void => {
+  try {
+    if (typeof window === 'undefined') return
+    localStorage.setItem(SAMBA_STORAGE_KEY, JSON.stringify(shares))
   } catch {
     // ignore
   }
@@ -227,7 +329,24 @@ export const isCompatibleConnection = (
     return { compatible: false, reason: 'Cannot connect a node to itself', connectionTypes: [] }
   }
 
-  // Home to Server or WorkerNode
+  // Unclaimed nodes must be claimed before connecting
+  if (source.type === 'unclaimed_node' || target.type === 'unclaimed_node') {
+    return {
+      compatible: false,
+      reason: 'Claim this Otix Node first to enable network and home connections.',
+      connectionTypes: [],
+    }
+  }
+
+  // Samba Share to Server Machine
+  if (
+    (source.type === 'samba' && target.type === 'server') ||
+    (source.type === 'server' && target.type === 'samba')
+  ) {
+    return { compatible: true, connectionTypes: ['smb'] }
+  }
+
+  // Home to Server or WorkerNode (Otix Node)
   if (source.type === 'home' && (target.type === 'server' || target.type === 'node')) {
     return { compatible: true, connectionTypes: ['home'] }
   }
@@ -235,12 +354,12 @@ export const isCompatibleConnection = (
     return { compatible: true, connectionTypes: ['home'] }
   }
 
-  // Server to WorkerNode (Hosted daemon or SMB share access)
+  // Server to WorkerNode (Hosted daemon)
   if (source.type === 'server' && target.type === 'node') {
-    return { compatible: true, connectionTypes: ['host', 'smb'] }
+    return { compatible: true, connectionTypes: ['host'] }
   }
   if (source.type === 'node' && target.type === 'server') {
-    return { compatible: true, connectionTypes: ['host', 'smb'] }
+    return { compatible: true, connectionTypes: ['host'] }
   }
 
   // Node to Node or Server to Server (Group under same Home environment)
@@ -251,9 +370,72 @@ export const isCompatibleConnection = (
     return { compatible: true, connectionTypes: ['home'] }
   }
 
+  if (source.type === 'samba' || target.type === 'samba') {
+    return {
+      compatible: false,
+      reason: 'Samba shares can only be connected to a Server Machine.',
+      connectionTypes: [],
+    }
+  }
+
   return {
     compatible: false,
     reason: `Cannot connect ${source.type} directly to ${target.type}`,
     connectionTypes: [],
   }
 }
+
+export interface TopologyStats {
+  totalNodes: number
+  onlineNodes: number
+  offlineNodes: number
+  unclaimedNodes: number
+  serverCount: number
+  homeCount: number
+  sambaCount: number
+}
+
+export const computeTopologyStats = (
+  nodes: GameServer[],
+  serverMachines: UserServerMachine[],
+  homes: UserHome[],
+  pendingNodes: PendingNode[] = [],
+  customSambaShares: SambaShareConfig[] = [],
+): TopologyStats => {
+  const unclaimed = pendingNodes.filter(
+    (p) =>
+      !p.claimed &&
+      Boolean(p.claimCode || p.localUrl) &&
+      !nodes.some((s) => s.localUrl === p.localUrl || s.primaryUrl === p.localUrl),
+  )
+  const totalNodes = nodes.length
+  const onlineNodes = nodes.filter((n) => n.isOnline).length
+  const offlineNodes = totalNodes - onlineNodes
+  const smbServerCount = serverMachines.filter((m) => m.smbEnabled).length
+  const sambaCount = smbServerCount + customSambaShares.length
+
+  return {
+    totalNodes,
+    onlineNodes,
+    offlineNodes,
+    unclaimedNodes: unclaimed.length,
+    serverCount: serverMachines.length,
+    homeCount: homes.length,
+    sambaCount,
+  }
+}
+
+export const findOrphanedNodeMatch = (
+  server: GameServer,
+  pendingNodes: PendingNode[],
+): PendingNode | undefined => {
+  if (!pendingNodes.length) return undefined
+  const serverUrls = [server.primaryUrl, server.localUrl].filter(Boolean) as string[]
+  const keys = new Set(serverUrls.map(nodeUrlKey))
+  return pendingNodes.find((p) => {
+    if (!p.localUrl) return false
+    const k = nodeUrlKey(p.localUrl)
+    return keys.has(k) || (p.authToken && server.authToken && p.authToken !== server.authToken)
+  })
+}
+

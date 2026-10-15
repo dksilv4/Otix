@@ -625,7 +625,17 @@ export async function executeOrganization(
     try {
       const targetDir = path.dirname(item.targetPath);
       await fs.mkdir(targetDir, { recursive: true });
-      await fs.rename(item.sourcePath, item.targetPath);
+      try {
+        await fs.rename(item.sourcePath, item.targetPath);
+      } catch (renameErr: any) {
+        if (renameErr && (renameErr.code === 'EXDEV' || renameErr.code === 'EPERM')) {
+          // Cross-device fallback: copy then remove source
+          await fs.cp(item.sourcePath, item.targetPath, { recursive: true });
+          await fs.rm(item.sourcePath, { recursive: true, force: true });
+        } else {
+          throw renameErr;
+        }
+      }
       results.push({
         sourcePath: item.sourcePath,
         targetPath: item.targetPath,

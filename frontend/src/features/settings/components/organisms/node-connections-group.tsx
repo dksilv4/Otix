@@ -8,6 +8,7 @@ import {
   Server,
   Settings,
   Tv,
+  AlertTriangle,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkDropdown } from '@ui/atoms/dropdown'
@@ -279,11 +280,12 @@ export const NodeConnectionsGroup = ({
               {nodeDefs.filter((d) => d.isConnected).length} of {nodeDefs.length} connected
             </span>
             {server.isOnline ? (
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary">
                 Online
               </span>
             ) : (
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-white/[0.04] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                <AlertTriangle size={10} />
                 Offline
               </span>
             )}

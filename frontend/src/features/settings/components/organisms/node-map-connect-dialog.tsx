@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Server, Network, Home as HomeIcon, Cpu, ArrowRight, Loader2 } from 'lucide-react'
+import { Server, Network, Home as HomeIcon, Cpu, ArrowRight, Loader2, FolderTree } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import type { NodeMapConnectPrompt } from '../../types/node-map'
@@ -17,7 +17,9 @@ export const NodeMapConnectDialog = ({
   onConnect,
   isPending = false,
 }: NodeMapConnectDialogProps) => {
-  const [selectedType, setSelectedType] = useState<'home' | 'host' | 'smb'>('host')
+  const [selectedType, setSelectedType] = useState<'home' | 'host' | 'smb'>(
+    prompt?.allowedTypes[0] || 'host',
+  )
 
   if (!prompt) return null
 
@@ -44,10 +46,13 @@ export const NodeMapConnectDialog = ({
               {source.type === 'home' && <HomeIcon size={16} />}
               {source.type === 'server' && <Server size={16} />}
               {source.type === 'node' && <Cpu size={16} />}
+              {source.type === 'samba' && <FolderTree size={16} />}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold text-foreground truncate">{source.name}</p>
-              <p className="text-[10px] text-muted-foreground capitalize">{source.type}</p>
+              <p className="text-[10px] text-muted-foreground capitalize">
+                {source.type === 'samba' ? 'Samba Share' : source.type}
+              </p>
             </div>
           </div>
 
@@ -58,10 +63,13 @@ export const NodeMapConnectDialog = ({
               {target.type === 'home' && <HomeIcon size={16} />}
               {target.type === 'server' && <Server size={16} />}
               {target.type === 'node' && <Cpu size={16} />}
+              {target.type === 'samba' && <FolderTree size={16} />}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold text-foreground truncate">{target.name}</p>
-              <p className="text-[10px] text-muted-foreground capitalize">{target.type}</p>
+              <p className="text-[10px] text-muted-foreground capitalize">
+                {target.type === 'samba' ? 'Samba Share' : target.type}
+              </p>
             </div>
           </div>
         </div>
@@ -71,7 +79,8 @@ export const NodeMapConnectDialog = ({
           <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1">
             <p className="text-xs font-semibold text-foreground">Home Assignment</p>
             <p className="text-[11px] text-muted-foreground">
-              Assigns this instance to the home network environment. Nodes and server machines in the same home can automatically discover each other and organize shared storage.
+              Assigns this instance to the home network environment. Nodes and server machines
+              in the same home can automatically discover each other and organize shared storage.
             </p>
           </div>
         ) : (
@@ -97,7 +106,8 @@ export const NodeMapConnectDialog = ({
                   <div>
                     <p className="text-xs font-semibold text-foreground">Run Node on this Server (Hosted)</p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Specifies that the worker node daemon runs natively inside or as a container on this server machine.
+                      Specifies that the worker node daemon runs natively inside or as a
+                      container on this server machine.
                     </p>
                   </div>
                 </div>
@@ -118,12 +128,22 @@ export const NodeMapConnectDialog = ({
               >
                 <div className="flex items-start gap-3">
                   <div className="h-8 w-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                    <Network size={15} />
+                    {source.type === 'samba' || target.type === 'samba' ? (
+                      <FolderTree size={15} />
+                    ) : (
+                      <Network size={15} />
+                    )}
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-foreground">Connect via SMB Network Storage</p>
+                    <p className="text-xs font-semibold text-foreground">
+                      {source.type === 'samba' || target.type === 'samba'
+                        ? 'Attach Samba Share to Server'
+                        : 'Connect via SMB Network Storage'}
+                    </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Allows this worker node to access and store downloads directly on this server machine's SMB share.
+                      {source.type === 'samba' || target.type === 'samba'
+                        ? 'Configures this Samba share to be hosted and served by this server machine.'
+                        : "Allows this worker node to access and store downloads directly on this server machine's SMB share."}
                     </p>
                   </div>
                 </div>
