@@ -21,6 +21,10 @@ vi.mock('../utils/setup-wizard-utils', () => ({
   saveLibraryScanDirectory: vi.fn().mockResolvedValue(true),
   markOnboardingFinished: vi.fn().mockResolvedValue(undefined),
   hasSeenSetupWizard: vi.fn().mockReturnValue(false),
+  getDefaultPrimaryGamePath: vi.fn().mockReturnValue('C:\\Otix'),
+  getInitialGamePath: vi.fn().mockResolvedValue('C:\\Otix'),
+  unclaimNode: vi.fn().mockResolvedValue(true),
+  isNodeOrphaned: vi.fn().mockReturnValue(false),
   SETUP_WIZARD_SEEN_KEY: 'otix:setup-wizard-completed',
 }))
 

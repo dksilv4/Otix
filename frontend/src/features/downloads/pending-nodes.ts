@@ -4,6 +4,7 @@ export interface PendingNode {
   authToken?: string
   claimCode?: string
   claimed?: boolean
+  claimedBy?: string
 }
 
 function normalizeHost(host: string): string {
@@ -27,6 +28,23 @@ function knownKeys(servers: Array<{ primaryUrl?: string; localUrl?: string | nul
       [server.primaryUrl, server.localUrl].filter(Boolean).map((url) => nodeUrlKey(url as string)),
     ),
   )
+}
+
+export function isNodeOrphaned(
+  node: PendingNode,
+  servers: Array<{ primaryUrl?: string; localUrl?: string | null; authToken?: string | null }>,
+): boolean {
+  if (!node.claimed) return false
+  const known = knownKeys(servers)
+  const key = nodeUrlKey(node.localUrl)
+  if (known.has(key)) return false
+  if (node.authToken) {
+    const knownTokens = new Set(
+      servers.map((server) => server.authToken).filter((token): token is string => Boolean(token)),
+    )
+    if (knownTokens.has(node.authToken)) return false
+  }
+  return true
 }
 
 export function pendingNodesToClaim(
@@ -57,42 +75,138 @@ export function pendingNodesToRefresh(
   pending: PendingNode[],
   servers: Array<{
     id: number
+    name?: string
     primaryUrl?: string
     localUrl?: string | null
     authToken?: string | null
   }>,
 ): Array<{ id: number; node: PendingNode }> {
   return pending.flatMap((node) => {
-    if (!node.localUrl || !node.authToken) return []
+    if (!node.localUrl) return []
     const key = nodeUrlKey(node.localUrl)
     const match = servers.find((server) =>
       [server.primaryUrl, server.localUrl].filter(Boolean).some((url) => nodeUrlKey(url as string) === key),
     )
-    if (!match || match.authToken === node.authToken) return []
+    if (!match) return []
+    const tokenChanged = Boolean(node.authToken && match.authToken !== node.authToken)
+    const nameChanged = Boolean(
+      match.name &&
+      node.serverName &&
+      node.serverName !== 'Otix Game Server' &&
+      node.serverName !== 'Otix Node' &&
+      match.name !== node.serverName,
+    )
+    if (!tokenChanged && !nameChanged) return []
     return [{ id: match.id, node }]
   })
 }
 
+export async function unclaimLocalGameNode(fetcher: typeof fetch = fetch, authToken?: string): Promise<boolean> {
+  try {
+    let url = 'http://127.0.0.1:8090/api/v1/claim/unclaim'
+    const headers: Record<string, string> = {}
+    if (authToken) {
+      url += `?token=${encodeURIComponent(authToken)}`
+      headers['Authorization'] = `Bearer ${authToken}`
+    } else {
+      try {
+        const home = await fetcher('http://127.0.0.1:8090/', { signal: AbortSignal.timeout(1500) })
+        if (home.ok) {
+          const html = await home.text()
+          const match = html.match(/id="node-access-token"[^>]*value="([^"]*)"/) || html.match(/const TOKEN\s*=\s*"([^"]*)"/)
+          if (match?.[1]) {
+            url += `?token=${encodeURIComponent(match[1])}`
+            headers['Authorization'] = `Bearer ${match[1]}`
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const resp = await fetcher(url, {
+      method: 'POST',
+      headers,
+      signal: AbortSignal.timeout(3000),
+    })
+    return resp.ok
+  } catch {
+    return false
+  }
+}
+
 export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise<PendingNode | null> {
   try {
-    const statusResp = await fetcher('http://127.0.0.1:8090/api/v1/status', {
-      signal: AbortSignal.timeout(2000),
-    })
-    if (!statusResp.ok) return null
-    const data = await statusResp.json()
+    let serverName = 'Otix Game Server'
+    let claimCode = ''
+    let claimed = false
+    let claimedBy: string | undefined = undefined
     let authToken = ''
+    let reached = false
+
+    try {
+      const statusResp = await fetcher('http://127.0.0.1:8090/api/v1/status', {
+        signal: AbortSignal.timeout(2000),
+      })
+      if (statusResp.ok) {
+        reached = true
+        const data = await statusResp.json()
+        if (data.server_name || data.serverName) serverName = data.server_name || data.serverName
+        if (data.claim_code) claimCode = data.claim_code
+        if (data.claimed !== undefined) claimed = Boolean(data.claimed)
+        if (data.claimed_by) claimedBy = data.claimed_by
+      }
+    } catch {
+      // ignore
+    }
+
+    if (!reached) {
+      try {
+        const pingResp = await fetcher('http://127.0.0.1:8090/api/v1/ping', {
+          signal: AbortSignal.timeout(1500),
+        })
+        if (pingResp.ok) {
+          reached = true
+          const pingData = await pingResp.json()
+          if (pingData.server_name) serverName = pingData.server_name
+          if (pingData.claimed !== undefined) claimed = Boolean(pingData.claimed)
+          if (pingData.claimed_by) claimedBy = pingData.claimed_by
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!reached) {
+      try {
+        const claimResp = await fetcher('http://127.0.0.1:8090/api/v1/claim/status', {
+          signal: AbortSignal.timeout(1500),
+        })
+        if (claimResp.ok) {
+          reached = true
+          const claimData = await claimResp.json()
+          claimed = Boolean(claimData.claimed)
+          claimCode = claimData.claim_code || ''
+          if (claimData.server_name) serverName = claimData.server_name
+          if (claimData.username) claimedBy = claimData.username
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!reached) return null
+
     try {
       const home = await fetcher('http://127.0.0.1:8090/', { signal: AbortSignal.timeout(2000) })
       if (home.ok) {
         const html = await home.text()
-        const match = html.match(/id="node-access-token"[^>]*value="([^"]*)"/)
+        const match = html.match(/id="node-access-token"[^>]*value="([^"]*)"/) || html.match(/const TOKEN\s*=\s*"([^"]*)"/)
         if (match?.[1]) authToken = match[1]
       }
     } catch {
-      // Token comes from heartbeat when the homepage cannot be read.
+      // ignore
     }
-    let claimCode = data.claim_code || ''
-    let claimed = Boolean(data.claimed)
+
     if (!claimed && !claimCode) {
       try {
         const claimResp = await fetcher('http://127.0.0.1:8090/api/v1/claim/status', {
@@ -102,18 +216,24 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
           const claimData = await claimResp.json()
           claimCode = claimData.claim_code || ''
           claimed = Boolean(claimData.claimed)
+          if (claimData.username) claimedBy = claimData.username
         }
       } catch {
         // ignore
       }
     }
-    return {
-      serverName: data.server_name || data.serverName || 'Otix Game Server',
+
+    const res: PendingNode = {
+      serverName,
       localUrl: 'http://127.0.0.1:8090',
       authToken,
       claimCode,
       claimed,
     }
+    if (claimedBy) {
+      res.claimedBy = claimedBy
+    }
+    return res
   } catch {
     return null
   }

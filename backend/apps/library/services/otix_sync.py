@@ -114,6 +114,7 @@ def sync_otix_sidecars(
     *,
     download_images: bool | None = None,
     write_otix: bool | None = None,
+    ensure_scan: bool = False,
 ) -> tuple[int, dict]:
     """Fetch node files, match/hydrate, and write `.otix` sidecars."""
     settings_status, settings_data = node_get_otix_settings(server)
@@ -132,8 +133,9 @@ def sync_otix_sidecars(
             "failed": [],
         }
 
-    # Ensure the in-memory index is fresh before matching.
-    usenet_proxy_request(server, "POST", "/api/v1/scan", params={"wait": "1"}, timeout=300.0)
+    if ensure_scan:
+        # Ensure the in-memory index is fresh before matching.
+        usenet_proxy_request(server, "POST", "/api/v1/scan", params={"wait": "1", "skip_sync": "1"}, timeout=300.0)
 
     files_status, files_data = usenet_proxy_request(server, "GET", "/api/v1/files", timeout=30.0)
     if files_status >= 400:

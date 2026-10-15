@@ -6,6 +6,9 @@ import {
   claimNodeWithPin,
   selectLocalGameDirectory,
   saveLibraryScanDirectory,
+  getDefaultPrimaryGamePath,
+  getInitialGamePath,
+  unclaimNode,
   SETUP_WIZARD_SEEN_KEY,
 } from '../utils/setup-wizard-utils'
 import { apiClient } from '@/lib/api/client'
@@ -27,6 +30,38 @@ describe('setup-wizard-utils', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.clearAllMocks()
+  })
+
+  describe('getDefaultPrimaryGamePath & getInitialGamePath', () => {
+    it('returns C:\\Otix on Windows platform', () => {
+      vi.spyOn(desktopApi, 'getDesktopAPI').mockReturnValue({ platform: 'win32' } as any)
+      expect(getDefaultPrimaryGamePath()).toBe('C:\\Otix')
+    })
+
+    it('returns /Otix on non-Windows platforms', () => {
+      vi.spyOn(desktopApi, 'getDesktopAPI').mockReturnValue({ platform: 'darwin' } as any)
+      expect(getDefaultPrimaryGamePath()).toBe('/Otix')
+    })
+
+    it('reads configured gamesInstallPath from desktop settings if available', async () => {
+      vi.spyOn(desktopApi, 'getDesktopAPI').mockReturnValue({
+        platform: 'win32',
+        getDesktopSettings: vi.fn().mockResolvedValue({ gamesInstallPath: 'D:\\Games\\Library' }),
+      } as any)
+
+      const path = await getInitialGamePath()
+      expect(path).toBe('D:\\Games\\Library')
+    })
+
+    it('falls back to default path if desktop settings lacks gamesInstallPath', async () => {
+      vi.spyOn(desktopApi, 'getDesktopAPI').mockReturnValue({
+        platform: 'win32',
+        getDesktopSettings: vi.fn().mockResolvedValue({ gamesInstallPath: '' }),
+      } as any)
+
+      const path = await getInitialGamePath()
+      expect(path).toBe('C:\\Otix')
+    })
   })
 
   describe('hasSeenSetupWizard', () => {
@@ -79,7 +114,7 @@ describe('setup-wizard-utils', () => {
   })
 
   describe('claimNodeWithPin', () => {
-    it('calls /downloads/servers/claim with formatted body', async () => {
+    it('calls /library/servers/claim with formatted body', async () => {
       vi.mocked(apiClient.post).mockResolvedValueOnce({
         data: { message: 'Node claimed successfully' },
       } as any)
@@ -87,10 +122,10 @@ describe('setup-wizard-utils', () => {
       const result = await claimNodeWithPin('http://127.0.0.1:8090', '7X9K2P', 'My Gaming Rig')
       expect(result.success).toBe(true)
       expect(result.message).toBe('Node claimed successfully')
-      expect(apiClient.post).toHaveBeenCalledWith('/downloads/servers/claim', {
+      expect(apiClient.post).toHaveBeenCalledWith('/library/servers/claim', {
         nodeUrl: 'http://127.0.0.1:8090',
-        claimPin: '7X9K2P',
-        name: 'My Gaming Rig',
+        claimCode: '7X9K2P',
+        serverName: 'My Gaming Rig',
       })
     })
 
@@ -138,6 +173,15 @@ describe('setup-wizard-utils', () => {
       expect(saved).toBe(true)
       expect(setDesktopSettings).toHaveBeenCalledWith({ gamesInstallPath: '/New/Games' })
       expect(saveScanPaths).toHaveBeenCalledWith(['/Old/Games', '/New/Games'])
+    })
+  })
+
+  describe('unclaimNode', () => {
+    it('delegates to unclaimLocalGameNode with authToken', async () => {
+      const spy = vi.spyOn(pendingNodes, 'unclaimLocalGameNode').mockResolvedValue(true)
+      const res = await unclaimNode('test-token')
+      expect(res).toBe(true)
+      expect(spy).toHaveBeenCalledWith(fetch, 'test-token')
     })
   })
 })

@@ -135,11 +135,11 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
     <div className="space-y-6">
       {/* Otix Friends */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Users size={16} className="text-primary" />
           <span>Share with Otix Friends</span>
         </div>
-        <p className="text-xs text-white/50">
+        <p className="text-xs text-muted-foreground">
           Give Otix friends permission to browse and download game installers and ROMs hosted on this node.
         </p>
 
@@ -147,7 +147,7 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
           <select
             value={selectedFriendId ?? ''}
             onChange={(e) => setSelectedFriendId(e.target.value ? Number(e.target.value) : null)}
-            className="flex-1 h-10 px-3 rounded-xl bg-white/5 text-sm text-white focus:outline-none focus:bg-white/10 cursor-pointer"
+            className="flex-1 h-10 px-3 rounded-xl bg-white/5 text-sm text-foreground focus:outline-none focus:bg-white/10 cursor-pointer"
             disabled={isLoadingFriends || unsharedFriends.length === 0}
           >
             <option value="" className="bg-neutral-900">
@@ -178,16 +178,16 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
 
         {/* List of current friend shares */}
         <div className="rounded-2xl bg-white/[0.03] overflow-hidden">
-          <div className="px-3.5 py-2 text-[11px] font-semibold text-white/50 uppercase tracking-wider">
+          <div className="px-3.5 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             Shared with Friends ({shares.filter((s) => s.sharedWith != null).length})
           </div>
           {isLoadingShares ? (
-            <div className="p-4 flex items-center justify-center text-white/40 gap-2 text-xs">
+            <div className="p-4 flex items-center justify-center text-muted-foreground gap-2 text-xs">
               <Loader2 size={14} className="animate-spin" />
               <span>Loading shares...</span>
             </div>
           ) : shares.filter((s) => s.sharedWith != null).length === 0 ? (
-            <div className="p-4 text-center text-xs text-white/40">
+            <div className="p-4 text-center text-xs text-muted-foreground">
               Not shared with any friends yet.
             </div>
           ) : (
@@ -200,22 +200,22 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
                       {(sh.sharedWith!.displayName || sh.sharedWith!.username)[0].toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold text-white truncate">
+                      <div className="text-xs font-semibold text-foreground truncate">
                         {sh.sharedWith!.displayName || sh.sharedWith!.username}
                       </div>
-                      <div className="text-[10px] text-white/40">@{sh.sharedWith!.username}</div>
+                      <div className="text-[10px] text-muted-foreground">@{sh.sharedWith!.username}</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-white/10 text-[10px] font-medium text-white/70 uppercase">
+                    <span className="px-2 py-0.5 rounded-md bg-white/10 text-[10px] font-medium text-muted-foreground uppercase">
                       {sh.permission}
                     </span>
                     <button
                       type="button"
                       onClick={() => removeShareMutation.mutate(sh.id)}
                       title="Revoke access"
-                      className="p-1 rounded-lg text-white/40 hover:text-red-400 hover:bg-white/5 transition-colors cursor-pointer"
+                      className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -229,7 +229,7 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
       {/* Anyone with the Link */}
       <div className="pt-4 space-y-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <LinkIcon size={16} className="text-primary" />
             <span>Anyone with the Link</span>
           </div>
@@ -244,7 +244,7 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
           </DkButton>
         </div>
 
-        <p className="text-xs text-white/50">
+        <p className="text-xs text-muted-foreground">
           Generate a shareable link that grants read-only game download access to anyone who holds the URL.
         </p>
 
@@ -254,7 +254,7 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
               type="text"
               readOnly
               value={shareableUrl}
-              className="flex-1 bg-transparent text-xs text-white/80 focus:outline-none px-2 select-all font-mono"
+              className="flex-1 bg-transparent text-xs text-foreground/90 focus:outline-none px-2 select-all font-mono"
             />
             <DkButton
               type="button"

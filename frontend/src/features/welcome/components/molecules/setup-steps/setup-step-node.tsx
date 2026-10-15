@@ -1,4 +1,4 @@
-import { Server, RefreshCw, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react'
+import { Server, RefreshCw, CheckCircle2, AlertCircle, ArrowRight, RotateCcw, ExternalLink } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkInput } from '@ui/atoms/input'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
@@ -7,6 +7,9 @@ export interface SetupStepNodeProps {
   node: PendingNode | null
   isProbing: boolean
   onProbe: () => void
+  isOrphaned?: boolean
+  isUnclaiming?: boolean
+  onUnclaim?: () => void
   claimPin: string
   onChangePin: (pin: string) => void
   claimStatus: 'idle' | 'claiming' | 'success' | 'error'
@@ -19,6 +22,9 @@ export const SetupStepNode = ({
   node,
   isProbing,
   onProbe,
+  isOrphaned = false,
+  isUnclaiming = false,
+  onUnclaim,
   claimPin,
   onChangePin,
   claimStatus,
@@ -89,8 +95,44 @@ export const SetupStepNode = ({
           </DkButton>
         </div>
 
-        {/* If node is detected: Claim form */}
-        {isOnline && !isSuccess && (
+        {/* If node is detected: Claim form or Orphaned Reset */}
+        {isOnline && !isSuccess && isOrphaned && (
+          <div className="pt-3 border-t border-white/[0.04] space-y-3">
+            <div className="rounded-xl p-3.5 bg-destructive/10 border border-white/[0.04] space-y-2">
+              <div className="flex items-center gap-2 text-destructive font-semibold text-xs">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>Node is linked to a deleted or different account</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                A running Otix Node was detected ({node?.serverName || 'GAMING PC'}), but its authorization token is associated with a different or removed account. Reset it below to generate a new PIN and link it to this account.
+              </p>
+              <DkButton
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={onUnclaim}
+                loading={isUnclaiming}
+                leftIcon={RotateCcw}
+                className="text-xs font-semibold mt-1"
+              >
+                Reset &amp; Claim to This Account
+              </DkButton>
+            </div>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1 flex-wrap">
+              <span>Or sign in with your account credentials directly at</span>
+              <a
+                href={node?.localUrl || 'http://127.0.0.1:8090'}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary hover:underline font-mono inline-flex items-center gap-0.5"
+              >
+                {node?.localUrl || 'http://127.0.0.1:8090'} <ExternalLink size={10} />
+              </a>
+            </p>
+          </div>
+        )}
+
+        {isOnline && !isSuccess && !isOrphaned && (
           <div className="pt-3 border-t border-white/[0.04] space-y-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground">
@@ -126,8 +168,16 @@ export const SetupStepNode = ({
               </div>
             )}
 
-            <p className="text-[11px] text-muted-foreground">
-              You can find your claim PIN by opening <span className="font-mono text-foreground/80">http://127.0.0.1:8090/</span> in your browser.
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1 flex-wrap">
+              <span>You can find your claim PIN or log in with your account at</span>
+              <a
+                href={node?.localUrl || 'http://127.0.0.1:8090'}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary hover:underline font-mono inline-flex items-center gap-0.5"
+              >
+                {node?.localUrl || 'http://127.0.0.1:8090'} <ExternalLink size={10} />
+              </a>
             </p>
           </div>
         )}

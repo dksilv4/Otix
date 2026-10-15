@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { SettingsNodesPage } from '../pages/settings-desktop-page'
 import { SettingsSaveProvider } from '../context/settings-save-context'
@@ -58,6 +59,8 @@ vi.mock('@/features/downloads/use-server-downloads', () => ({
   useClaimGameServer: () => ({ mutateAsync: mockClaimMutateAsync, isPending: false }),
   useProbeGameServer: () => ({ mutateAsync: mockProbeMutateAsync, isPending: false }),
   usePendingGameServers: () => ({ data: mockPendingNodes, isLoading: false }),
+  useUnclaimLocalNode: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnclaimGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 describe('SettingsNodesPage', () => {
@@ -71,15 +74,22 @@ describe('SettingsNodesPage', () => {
     ]
   })
 
-  it('renders page header with beta and under development tags', () => {
-    render(
-      <SettingsSaveProvider>
-        <ModalProvider>
-          <SettingsNodesPage />
-          <ModalRoot />
-        </ModalProvider>
-      </SettingsSaveProvider>,
+  const renderPage = () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsSaveProvider>
+          <ModalProvider>
+            <SettingsNodesPage />
+            <ModalRoot />
+          </ModalProvider>
+        </SettingsSaveProvider>
+      </QueryClientProvider>,
     )
+  }
+
+  it('renders page header with beta and under development tags', () => {
+    renderPage()
     expect(screen.getByRole('heading', { name: 'Nodes' })).toBeInTheDocument()
     expect(screen.getByText('Beta')).toBeInTheDocument()
     expect(screen.getByText('Under development')).toBeInTheDocument()
@@ -88,14 +98,7 @@ describe('SettingsNodesPage', () => {
 
   it('opens node settings modal via Open button', async () => {
     const user = userEvent.setup()
-    render(
-      <SettingsSaveProvider>
-        <ModalProvider>
-          <SettingsNodesPage />
-          <ModalRoot />
-        </ModalProvider>
-      </SettingsSaveProvider>,
-    )
+    renderPage()
 
     await user.click(screen.getByRole('button', { name: /^open$/i }))
     expect(screen.getByRole('tab', { name: 'Paths' })).toBeInTheDocument()
@@ -104,14 +107,7 @@ describe('SettingsNodesPage', () => {
 
   it('renders claim with PIN tab when opening Connect node modal', async () => {
     const user = userEvent.setup()
-    render(
-      <SettingsSaveProvider>
-        <ModalProvider>
-          <SettingsNodesPage />
-          <ModalRoot />
-        </ModalProvider>
-      </SettingsSaveProvider>,
-    )
+    renderPage()
 
     await user.click(screen.getByRole('button', { name: /^connect node$/i }))
 
@@ -133,14 +129,7 @@ describe('SettingsNodesPage', () => {
     ]
 
     const user = userEvent.setup()
-    render(
-      <SettingsSaveProvider>
-        <ModalProvider>
-          <SettingsNodesPage />
-          <ModalRoot />
-        </ModalProvider>
-      </SettingsSaveProvider>,
-    )
+    renderPage()
 
     expect(screen.getByText(/unclaimed otix node detected/i)).toBeInTheDocument()
     expect(screen.getByText(/PIN: OTX-9999/i)).toBeInTheDocument()
@@ -158,14 +147,7 @@ describe('SettingsNodesPage', () => {
 
   it('opens Download Node modal when clicking Download button', async () => {
     const user = userEvent.setup()
-    render(
-      <SettingsSaveProvider>
-        <ModalProvider>
-          <SettingsNodesPage />
-          <ModalRoot />
-        </ModalProvider>
-      </SettingsSaveProvider>,
-    )
+    renderPage()
 
     await user.click(screen.getByRole('button', { name: /^download$/i }))
 
@@ -178,14 +160,7 @@ describe('SettingsNodesPage', () => {
 
   it('allows renaming a node directly from the node card', async () => {
     const user = userEvent.setup()
-    render(
-      <SettingsSaveProvider>
-        <ModalProvider>
-          <SettingsNodesPage />
-          <ModalRoot />
-        </ModalProvider>
-      </SettingsSaveProvider>,
-    )
+    renderPage()
 
     const renameButtons = screen.getAllByRole('button', { name: /rename home server/i })
     await user.click(renameButtons[0])

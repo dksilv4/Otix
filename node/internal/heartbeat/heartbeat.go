@@ -34,6 +34,8 @@ func GetLocalIP() string {
 	return localAddr.IP.String()
 }
 
+const DefaultRegistryURL = "https://otix.app/api"
+
 func ResolveRegistryURL(cfg *config.AppConfig) string {
 	override := strings.TrimSpace(os.Getenv("OTIX_REGISTRY_URL"))
 	if override != "" {
@@ -42,7 +44,7 @@ func ResolveRegistryURL(cfg *config.AppConfig) string {
 
 	registry := strings.TrimRight(strings.TrimSpace(cfg.Server.RegistryURL), "/")
 	if registry == "" {
-		return ""
+		registry = DefaultRegistryURL
 	}
 
 	u, err := url.Parse(registry)
@@ -98,6 +100,13 @@ func (h *HeartbeatRunner) Stop() {
 	close(h.stopChan)
 }
 
+// TriggerNow forces an immediate heartbeat dispatch in a background goroutine.
+func (h *HeartbeatRunner) TriggerNow() {
+	go func() {
+		_, _ = h.SendOnce()
+	}()
+}
+
 func (h *HeartbeatRunner) SendOnce() (time.Duration, error) {
 	if !h.cfg.Server.EnableHeartbeat {
 		return 30 * time.Second, nil
@@ -148,20 +157,23 @@ func (h *HeartbeatRunner) SendOnce() (time.Duration, error) {
 			Username   string `json:"username"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&hbResp); err == nil {
-			if hbResp.Claimed && hbResp.AuthToken != "" && !h.claimMgr.IsClaimed() {
+			if !payload.Claimed && payload.AuthToken == "" && hbResp.Claimed && hbResp.AuthToken != "" && !h.claimMgr.IsClaimed() {
 				fmt.Printf("[Heartbeat] Node recognized by backend as claimed by %s (%s). Synchronizing local state...\n", hbResp.Username, hbResp.ServerName)
 				_ = h.claimMgr.ConfirmDirect(hbResp.AuthToken, hbResp.ServerName, hbResp.Username)
 			}
 		}
 		fmt.Printf("[Heartbeat] Server heartbeat announced to %s (claimed=%t)\n", targetURL, h.claimMgr.IsClaimed())
-		return 5 * time.Minute, nil
+		if !h.claimMgr.IsClaimed() {
+			return 5 * time.Second, nil
+		}
+		return 30 * time.Second, nil
 	}
 	fmt.Printf("[Heartbeat] %s returned HTTP %d\n", targetURL, resp.StatusCode)
-	return 15 * time.Second, fmt.Errorf("HTTP %d", resp.StatusCode)
+	return 10 * time.Second, fmt.Errorf("HTTP %d", resp.StatusCode)
 }
 
 func (h *HeartbeatRunner) loop() {
-	delay := 5 * time.Second
+	delay := 2 * time.Second
 
 	for {
 		select {

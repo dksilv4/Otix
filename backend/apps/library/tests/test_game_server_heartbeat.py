@@ -6,7 +6,11 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.library.models import UserGameServer
-from apps.library.services.game_server import apply_node_heartbeat, record_node_heartbeat
+from apps.library.services.game_server import (
+    PENDING_CACHE_KEY,
+    apply_node_heartbeat,
+    record_node_heartbeat,
+)
 
 User = get_user_model()
 
@@ -118,3 +122,60 @@ class GameServerHeartbeatTests(TestCase):
         server.refresh_from_db()
         self.assertTrue(server.is_online)
         self.assertEqual(server.name, "Relinked")
+
+    def test_unclaimed_heartbeat_does_not_resurrect_claimed_status(self):
+        """When a node explicitly heartbeats as unclaimed, matching database URLs must NOT force it claimed."""
+        server = UserGameServer.objects.create(
+            user=self.user,
+            name="Claimed Node",
+            local_url="http://127.0.0.1:8090",
+            auth_token="previous_claimed_token",
+            is_online=True,
+        )
+
+        resp = self.client.post(
+            "/api/v1/servers/heartbeat",
+            {
+                "server_name": "Claimed Node",
+                "local_endpoints": ["http://127.0.0.1:8090"],
+                "port": 8090,
+                "auth_token": "",
+                "claim_code": "OTX-9988",
+                "claimed": False,
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertFalse(data.get("claimed", False))
+        self.assertFalse(data.get("auth_token"))
+
+        server.refresh_from_db()
+        self.assertFalse(server.is_online)
+
+    def test_unclaim_node_endpoint_deletes_server_and_cache(self):
+        """POST /api/v1/servers/unclaim removes the server and cleans pending cache."""
+        token = "unclaim_target_token_123"
+        server = UserGameServer.objects.create(
+            user=self.user,
+            name="Node To Unclaim",
+            local_url="http://127.0.0.1:8090",
+            auth_token=token,
+            is_online=True,
+        )
+
+        cache.set(PENDING_CACHE_KEY, [{"auth_token": token, "claimed": True}], 300)
+
+        resp = self.client.post(
+            "/api/v1/servers/unclaim",
+            {"auth_token": token},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["status"], "ok")
+        self.assertEqual(resp.json()["unclaimed"], 1)
+
+        self.assertFalse(UserGameServer.objects.filter(id=server.id).exists())
+        cached = cache.get(PENDING_CACHE_KEY) or []
+        self.assertFalse(any(r.get("auth_token") == token for r in cached))
+

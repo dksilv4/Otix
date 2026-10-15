@@ -1,4 +1,5 @@
 export { SettingsLayout } from './pages/settings-layout'
+export { SettingsSectionPending } from './components/molecules/settings-section-pending'
 export { SettingsProfilePage } from './pages/settings-profile-page'
 export { SettingsAccountPage } from './pages/settings-account-page'
 export { SettingsAppearancePage } from './pages/settings-appearance-page'

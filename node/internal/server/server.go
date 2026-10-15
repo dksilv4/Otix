@@ -7,11 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -41,6 +43,7 @@ import (
 type Server struct {
 	cfg          *config.AppConfig
 	claimMgr     *claim.ClaimManager
+	hbRunner     *heartbeat.HeartbeatRunner
 	indexer      *indexer.StorageIndexer
 	savesMgr     *saves.SaveCloudManager
 	epicClient   *epic.EpicClient
@@ -137,6 +140,28 @@ func (s *Server) Router() http.Handler {
 // Indexer exposes the storage indexer for tests and internal tooling.
 func (s *Server) Indexer() *indexer.StorageIndexer {
 	return s.indexer
+}
+
+func (s *Server) SetHeartbeatRunner(hb *heartbeat.HeartbeatRunner) {
+	s.hbRunner = hb
+}
+
+func (s *Server) announceHeartbeat() {
+	if s.hbRunner != nil {
+		s.hbRunner.TriggerNow()
+	}
+}
+
+func isLoopback(r *http.Request) bool {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(host)
+	if ip != nil && ip.IsLoopback() {
+		return true
+	}
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
 func (s *Server) verifyToken(next http.Handler) http.Handler {
@@ -242,14 +267,19 @@ func (s *Server) setupRoutes() {
 
 	r.Post("/api/v1/claim/confirm", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			ClaimCode  string `json:"claim_code"`
-			AuthToken  string `json:"auth_token"`
-			ServerName string `json:"server_name"`
-			Username   string `json:"username"`
+			ClaimCode   string `json:"claim_code"`
+			AuthToken   string `json:"auth_token"`
+			ServerName  string `json:"server_name"`
+			Username    string `json:"username"`
+			RegistryURL string `json:"registry_url"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
 			return
+		}
+
+		if strings.TrimSpace(req.RegistryURL) != "" {
+			s.cfg.Server.RegistryURL = strings.TrimSpace(req.RegistryURL)
 		}
 
 		err := s.claimMgr.Confirm(req.ClaimCode, req.AuthToken, req.ServerName, req.Username)
@@ -258,9 +288,103 @@ func (s *Server) setupRoutes() {
 			return
 		}
 
+		s.announceHeartbeat()
+		s.triggerBackendSync()
+
 		jsonResponse(w, http.StatusOK, map[string]interface{}{
 			"status":  "claimed",
 			"message": "Node successfully claimed and assigned to account",
+		})
+	})
+
+	r.Post("/api/v1/claim/unclaim", func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopback(r) && !s.isTokenValid(r) {
+			http.Error(w, `{"error":"Unauthorized: unclaim must be called from loopback or with a valid token"}`, http.StatusUnauthorized)
+			return
+		}
+		tokenToUnclaim := s.cfg.Server.AuthToken
+		registryURL := heartbeat.ResolveRegistryURL(s.cfg)
+
+		if err := s.claimMgr.Unclaim(); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		if tokenToUnclaim != "" && registryURL != "" {
+			go func() {
+				client := &http.Client{Timeout: 5 * time.Second}
+				targetURL := fmt.Sprintf("%s/v1/servers/unclaim", registryURL)
+				localIP := heartbeat.GetLocalIP()
+				payload := map[string]any{
+					"auth_token": tokenToUnclaim,
+					"local_url":  fmt.Sprintf("http://127.0.0.1:%d", s.cfg.Server.Port),
+					"local_endpoints": []string{
+						fmt.Sprintf("http://%s:%d", localIP, s.cfg.Server.Port),
+						fmt.Sprintf("http://127.0.0.1:%d", s.cfg.Server.Port),
+					},
+				}
+				data, err := json.Marshal(payload)
+				if err == nil {
+					req, err := http.NewRequest("POST", targetURL, bytes.NewReader(data))
+					if err == nil {
+						req.Header.Set("Content-Type", "application/json")
+						req.Header.Set("Authorization", "Bearer "+tokenToUnclaim)
+						resp, err := client.Do(req)
+						if err == nil {
+							_ = resp.Body.Close()
+						}
+					}
+				}
+				s.announceHeartbeat()
+			}()
+		} else {
+			s.announceHeartbeat()
+		}
+
+		jsonResponse(w, http.StatusOK, map[string]interface{}{
+			"status":  "unclaimed",
+			"message": "Node successfully unclaimed and reset",
+		})
+	})
+
+	r.Post("/api/v1/claim/backend", func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopback(r) && !s.isTokenValid(r) {
+			http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+		var req struct {
+			RegistryURL string `json:"registry_url"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+			return
+		}
+		reg := strings.TrimSpace(req.RegistryURL)
+		if reg == "" {
+			reg = heartbeat.DefaultRegistryURL
+		}
+		reg = strings.TrimRight(reg, "/")
+		if !strings.HasPrefix(reg, "http://") && !strings.HasPrefix(reg, "https://") {
+			if strings.HasPrefix(reg, "localhost") || strings.HasPrefix(reg, "127.0.0.1") {
+				reg = "http://" + reg
+			} else {
+				reg = "https://" + reg
+			}
+		}
+		if strings.HasSuffix(reg, "/api/v1") {
+			reg = strings.TrimSuffix(reg, "/v1")
+		} else if !strings.HasSuffix(reg, "/api") {
+			reg = reg + "/api"
+		}
+		s.cfg.Server.RegistryURL = reg
+		if err := s.cfg.Save(""); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"Failed to save config: %s"}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		s.announceHeartbeat()
+		jsonResponse(w, http.StatusOK, map[string]interface{}{
+			"status":       "ok",
+			"registry_url": reg,
 		})
 	})
 
@@ -425,10 +549,8 @@ func (s *Server) setupRoutes() {
 			return
 		}
 
-		// Update registry URL if user explicitly supplied one
-		if strings.TrimSpace(req.RegistryURL) != "" {
-			s.cfg.Server.RegistryURL = strings.TrimSpace(req.RegistryURL)
-		}
+		// Update registry URL to the normalized baseAPI
+		s.cfg.Server.RegistryURL = baseAPI
 
 		// 4. Confirm direct claim locally and save config
 		if err := s.claimMgr.ConfirmDirect(authToken, s.cfg.Server.Name, req.Username); err != nil {
@@ -436,14 +558,16 @@ func (s *Server) setupRoutes() {
 			return
 		}
 
-		// Trigger background synchronization
+		// Trigger background synchronization and heartbeat
+		s.announceHeartbeat()
 		s.triggerBackendSync()
 
 		jsonResponse(w, http.StatusOK, map[string]any{
-			"status":      "claimed",
-			"username":    req.Username,
-			"server_name": s.cfg.Server.Name,
-			"message":     "Successfully logged in and claimed Otix node",
+			"status":       "claimed",
+			"username":     req.Username,
+			"server_name":  s.cfg.Server.Name,
+			"registry_url": s.cfg.Server.RegistryURL,
+			"message":      "Successfully logged in and claimed Otix node",
 		})
 	})
 
@@ -685,17 +809,6 @@ func (s *Server) setupRoutes() {
 	r.Group(func(authed chi.Router) {
 		authed.Use(s.verifyToken)
 
-		authed.Post("/api/v1/claim/unclaim", func(w http.ResponseWriter, r *http.Request) {
-			if err := s.claimMgr.Unclaim(); err != nil {
-				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
-				return
-			}
-			jsonResponse(w, http.StatusOK, map[string]interface{}{
-				"status":  "unclaimed",
-				"message": "Node successfully unclaimed and reset",
-			})
-		})
-
 		// ── Libraries ────────────────────────────────────────────────────────
 		authed.Get("/api/v1/libraries", func(w http.ResponseWriter, r *http.Request) {
 			jsonResponse(w, http.StatusOK, s.indexer.GetLibraries())
@@ -741,9 +854,12 @@ func (s *Server) setupRoutes() {
 
 		authed.Post("/api/v1/scan", func(w http.ResponseWriter, r *http.Request) {
 			wait := r.URL.Query().Get("wait") == "1" || r.URL.Query().Get("wait") == "true"
+			skipSync := r.URL.Query().Get("skip_sync") == "1" || r.Header.Get("X-Otix-Skip-Sync") == "true"
 			if wait {
 				files := s.indexer.ScanAll()
-				s.triggerBackendSync()
+				if !skipSync {
+					s.triggerBackendSync()
+				}
 				jsonResponse(w, http.StatusOK, map[string]any{
 					"status": "scanned",
 					"count":  len(files),
@@ -752,7 +868,9 @@ func (s *Server) setupRoutes() {
 			}
 			go func() {
 				s.indexer.ScanAll()
-				s.triggerBackendSync()
+				if !skipSync {
+					s.triggerBackendSync()
+				}
 			}()
 			jsonResponse(w, http.StatusOK, map[string]string{"status": "scanning_started"})
 		})
@@ -1993,6 +2111,8 @@ func (s *Server) setupRoutes() {
 			if s.trayMgr != nil {
 				s.trayMgr.UpdateTooltip()
 			}
+			s.announceHeartbeat()
+			s.triggerBackendSync()
 			jsonResponse(w, http.StatusOK, resp)
 		})
 
@@ -2076,10 +2196,23 @@ func (s *Server) setupRoutes() {
 	})
 }
 
+var (
+	lastSyncMu   sync.Mutex
+	lastSyncTime time.Time
+)
+
 func (s *Server) triggerBackendSync() {
 	if !s.cfg.Server.WriteOtixAfterScan {
 		return
 	}
+	lastSyncMu.Lock()
+	if time.Since(lastSyncTime) < 30*time.Second {
+		lastSyncMu.Unlock()
+		return
+	}
+	lastSyncTime = time.Now()
+	lastSyncMu.Unlock()
+
 	registryURL := heartbeat.ResolveRegistryURL(s.cfg)
 	if registryURL == "" {
 		return

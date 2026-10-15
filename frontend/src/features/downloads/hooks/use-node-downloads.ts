@@ -8,6 +8,7 @@ import {
   pendingNodesToClaim,
   pendingNodesToRefresh,
   probeLocalGameNode,
+  unclaimLocalGameNode,
   type PendingNode,
 } from '../pending-nodes'
 
@@ -107,7 +108,8 @@ export function useNodes(options?: { enabled?: boolean; refetchInterval?: number
       const cached = getCachedNodes()
       return cached.length > 0 ? cached : undefined
     },
-    staleTime: 15_000,
+    initialDataUpdatedAt: 0,
+    staleTime: 5_000,
     refetchInterval: options?.refetchInterval,
     enabled: options?.enabled ?? true,
   })
@@ -408,18 +410,32 @@ export function usePendingNodes(options?: { enabled?: boolean }) {
   return useQuery<PendingNode[]>({
     queryKey: [...nodeKeys.all, 'pending'],
     queryFn: async () => {
-      const { data } = await apiClient.get<Array<{
-        serverName?: string
-        server_name?: string
-        localUrl?: string
-        local_url?: string
-        authToken?: string
-        auth_token?: string
-        claimCode?: string
-        claim_code?: string
-        claimed?: boolean
-      }>>('/library/servers/pending')
-      return (data || []).map(mapPendingRow)
+      const remotePendingPromise = apiClient
+        .get<Array<{
+          serverName?: string
+          server_name?: string
+          localUrl?: string
+          local_url?: string
+          authToken?: string
+          auth_token?: string
+          claimCode?: string
+          claim_code?: string
+          claimed?: boolean
+        }>>('/library/servers/pending')
+        .catch(() => ({ data: [] }))
+
+      const localPromise = probeLocalGameNode().catch(() => null)
+      const [remoteResp, localNode] = await Promise.all([remotePendingPromise, localPromise])
+      const remoteList = (remoteResp.data || []).map(mapPendingRow)
+      if (localNode) {
+        const filtered = remoteList.filter(
+          (r) =>
+            !(r.localUrl && nodeUrlKey(r.localUrl) === nodeUrlKey(localNode.localUrl)) &&
+            !(localNode.authToken && r.authToken && r.authToken === localNode.authToken),
+        )
+        return [localNode, ...filtered]
+      }
+      return remoteList
     },
     enabled: options?.enabled ?? true,
     refetchInterval: 10_000,
@@ -427,6 +443,27 @@ export function usePendingNodes(options?: { enabled?: boolean }) {
 }
 
 export const usePendingGameServers = usePendingNodes
+
+export function useUnclaimLocalNode() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (authToken?: string) => {
+      const ok = await unclaimLocalGameNode(fetch, authToken)
+      if (!ok) throw new Error('Failed to unclaim local node')
+      try {
+        await apiClient.post('/api/v1/servers/unclaim', { authToken })
+      } catch {
+        // Backend record may have already been cleaned or unreachable
+      }
+      return ok
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: nodeKeys.all })
+    },
+  })
+}
+
+export const useUnclaimGameServer = useUnclaimLocalNode
 
 // ── Store: Remote Downloads Management ──
 

@@ -149,11 +149,23 @@ case "${1:-start}" in
     status)
         status
         ;;
+    stats)
+        "$PYTHON_EXEC" "$WORKER_SCRIPT" stats
+        ;;
+    benchmark|bench)
+        "$PYTHON_EXEC" "$WORKER_SCRIPT" benchmark
+        ;;
+    hydrate)
+        "$PYTHON_EXEC" "$WORKER_SCRIPT" hydrate
+        ;;
+    interactive|ui|menu)
+        "$PYTHON_EXEC" "$WORKER_SCRIPT" interactive
+        ;;
     logs)
         logs
         ;;
     *)
-        echo "Usage: $0 {start|stop|restart|status|logs}"
-        exit 1
+        # Forward any custom command directly to the worker script
+        "$PYTHON_EXEC" "$WORKER_SCRIPT" "$@"
         ;;
 esac

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -10,8 +10,10 @@ import {
   ExternalLink,
   Globe,
   HardDrive,
+  Home as HomeIcon,
   KeyRound,
   Monitor,
+  Network,
   Pencil,
   Plus,
   Radio,
@@ -20,6 +22,12 @@ import {
   Sparkles,
   Star,
   Trash2,
+  RotateCcw,
+  AlertCircle,
+  RefreshCw,
+  Loader2,
+  ChevronDown,
+  LayoutGrid,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { DkButton } from '@ui/atoms/button'
@@ -35,10 +43,11 @@ import {
   usePendingGameServers,
   useProbeGameServer,
   useUpdateGameServer,
+  useUnclaimLocalNode,
   type ServerProbeResult,
 } from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/types'
-import type { PendingNode } from '@/features/downloads/pending-nodes'
+import { isNodeOrphaned, type PendingNode } from '@/features/downloads/pending-nodes'
 import { ConnectNodeModal } from '@/features/downloads/molecules/connect-node-modal'
 import { DownloadNodeModal } from '@/features/downloads/molecules/download-node-modal'
 import { NodeFileExplorerModal } from '@/features/downloads/molecules/node-file-explorer-modal'
@@ -48,9 +57,24 @@ import { NodesFeatureTags } from '../components/nodes-feature-tags'
 import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
 import { useSettingsNode } from '../context/settings-node-context'
 import { isLocalDesktopNode } from '../local-desktop-node'
+import { isDesktop } from '@/lib/desktop/api'
 import { EmbeddedNodeCard } from '../components/molecules/embedded-node-card'
 import { nodeSettingsNavigateOptions } from '../node-settings'
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
+import {
+  useUserHomes,
+  useServerMachines,
+  useAssignNodeHome,
+  useDeleteServerMachine,
+  useDetectServerDrives,
+  useDeleteHome,
+} from '../hooks/use-server-machines'
+import { ServerMachineModal } from '../components/organisms/server-machine-modal'
+import { HomeManageModal } from '../components/organisms/home-manage-modal'
+import { NodeConnectionsGroup } from '../components/organisms/node-connections-group'
+import { NodesTopologyCanvas } from '../components/organisms/nodes-topology-canvas'
+import type { UserHome, UserServerMachine } from '../types/server-machines'
+import { getOSLabel } from '../utils/server-machines'
 
 export const SettingsNodesPage = () => {
   useSettingsHashScroll()
@@ -63,7 +87,56 @@ export const SettingsNodesPage = () => {
   const updateServerMutation = useUpdateGameServer()
   const claimServerMutation = useClaimGameServer()
   const probeServerMutation = useProbeGameServer()
+  const unclaimLocalMutation = useUnclaimLocalNode()
   const { data: pendingNodes = [] } = usePendingGameServers()
+
+  const { data: homes = [], isLoading: loadingHomes } = useUserHomes()
+  const { data: serverMachines = [], isLoading: loadingMachines } = useServerMachines()
+  const assignHomeMutation = useAssignNodeHome()
+  const deleteMachineMutation = useDeleteServerMachine()
+  const detectDrivesMutation = useDetectServerDrives()
+  const deleteHomeMutation = useDeleteHome()
+
+  const [viewMode, setViewMode] = useState<'map' | 'cards'>('map')
+  const [activeTab, setActiveTab] = useState<'nodes' | 'servers' | 'homes'>('nodes')
+  const [serverMachineModalOpen, setServerMachineModalOpen] = useState(false)
+  const [editingServerMachine, setEditingServerMachine] = useState<UserServerMachine | null>(null)
+  const [homeModalOpen, setHomeModalOpen] = useState(false)
+  const [editingHome, setEditingHome] = useState<UserHome | null>(null)
+  const [detectingMachineId, setDetectingMachineId] = useState<number | null>(null)
+  const [expandedServicesNodeId, setExpandedServicesNodeId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = (window.location.hash || '').replace(/^#/, '').toLowerCase()
+      if (hash === 'servers' || hash === 'server-machines') {
+        setViewMode('cards')
+        setActiveTab('servers')
+      } else if (hash === 'homes') {
+        setViewMode('cards')
+        setActiveTab('homes')
+      } else if (hash === 'cards') {
+        setViewMode('cards')
+        setActiveTab('nodes')
+      } else if (hash === 'map') {
+        setViewMode('map')
+      }
+    }
+  }, [])
+
+  const handleTabChange = (tab: 'nodes' | 'servers' | 'homes') => {
+    setActiveTab(tab)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `#${tab}`)
+    }
+  }
+
+  const handleViewModeChange = (mode: 'map' | 'cards') => {
+    setViewMode(mode)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `#${mode}`)
+    }
+  }
 
   const [search, setSearch] = useState('')
   const [connectModalOpen, setConnectModalOpen] = useState(false)
@@ -72,10 +145,15 @@ export const SettingsNodesPage = () => {
   const [nodeToRename, setNodeToRename] = useState<GameServer | null>(null)
   const [renameInput, setRenameInput] = useState('')
   const [isSavingRename, setIsSavingRename] = useState(false)
+  const [isUnclaimingQuick, setIsUnclaimingQuick] = useState(false)
   const [selectedNodeForModal, setSelectedNodeForModal] = useState<GameServer | null>(null)
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [probeResults, setProbeResults] = useState<Record<number, ServerProbeResult>>({})
   const [probingServerId, setProbingServerId] = useState<number | null>(null)
+
+  const desktop = isDesktop()
+  const sectionContainerRef = useRef<HTMLDivElement>(null)
+  const [anchorPos, setAnchorPos] = useState<{ x: number; y: number } | undefined>(undefined)
 
   const defaultAutoName = `Node ID:${(gameServers?.length || 0) + 1}`
 
@@ -85,6 +163,8 @@ export const SettingsNodesPage = () => {
       Boolean(p.claimCode || p.localUrl) &&
       !gameServers.some((s) => s.localUrl === p.localUrl || s.primaryUrl === p.localUrl),
   )
+
+  const orphanedNodes = pendingNodes.filter((p) => isNodeOrphaned(p, gameServers))
 
   const filteredServers = useMemo(() => {
     if (!search.trim()) return gameServers
@@ -96,6 +176,24 @@ export const SettingsNodesPage = () => {
         (s.localUrl || '').toLowerCase().includes(q),
     )
   }, [gameServers, search])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const updateAnchor = () => {
+      if (sectionContainerRef.current) {
+        const rect = sectionContainerRef.current.getBoundingClientRect()
+        if (rect.left > 0) {
+          setAnchorPos({
+            x: Math.round(rect.left),
+            y: Math.round(rect.top + (unclaimedNodes.length > 0 ? 170 : 104)),
+          })
+        }
+      }
+    }
+    updateAnchor()
+    window.addEventListener('resize', updateAnchor)
+    return () => window.removeEventListener('resize', updateAnchor)
+  }, [desktop, unclaimedNodes.length])
 
   const openDownloadNodeModal = () => {
     const close = openModal(<DownloadNodeModal onClose={() => close()} />)
@@ -247,25 +345,21 @@ export const SettingsNodesPage = () => {
       setProbeResults((prev) => ({ ...prev, [id]: result }))
       const isReachable = Boolean(
         result.remote_accessible ||
-        result.remoteAccessible ||
-        result.reachable ||
         result.status === 'online',
       )
       if (isReachable) {
         toast({
           title: 'Remote Access Verified',
-          description: `${name} is accessible from the internet (${result.latency_ms ?? result.latencyMs}ms).`,
-          variant: 'success',
+          description: `${name} is accessible from the internet (${result.latency_ms}ms).`,
+          variant: 'default',
         })
       } else {
         toast({
           title: 'Remote Access Not Reachable',
           description:
             result.message ||
-            result.error ||
-            result.suggestion ||
             'Could not reach node via WAN IP. Check router port forwarding (8090).',
-          variant: 'error',
+          variant: 'destructive',
         })
       }
     } catch (err: unknown) {
@@ -282,11 +376,15 @@ export const SettingsNodesPage = () => {
 
   const handleClaimQuickNode = async (node: PendingNode) => {
     if (!node.claimCode) return
+    const effectiveQuickName =
+      node.serverName && node.serverName !== 'Otix Game Server' && node.serverName !== 'Otix Node'
+        ? node.serverName
+        : defaultAutoName
     try {
       const server = await claimServerMutation.mutateAsync({
         claim_code: node.claimCode,
         node_url: node.localUrl || undefined,
-        server_name: node.serverName || defaultAutoName,
+        server_name: effectiveQuickName,
         is_local: true,
       })
       toast({
@@ -304,91 +402,370 @@ export const SettingsNodesPage = () => {
     }
   }
 
+  const handleUnclaimQuickNode = async (node: PendingNode) => {
+    setIsUnclaimingQuick(true)
+    try {
+      await unclaimLocalMutation.mutateAsync(node.authToken)
+      toast({
+        title: 'Node Reset',
+        description: `Reset ${node.serverName || 'local node'}. Generating fresh PIN...`,
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Reset Failed',
+        description: 'Failed to reset local node.',
+        variant: 'error',
+      })
+    } finally {
+      setIsUnclaimingQuick(false)
+    }
+  }
+
+  const openRenameModal = (server: GameServer) => {
+    setNodeToRename(server)
+    setRenameInput(server.name)
+  }
+
+  const handleDetectDrivesForMachine = async (machine: UserServerMachine) => {
+    setDetectingMachineId(machine.id)
+    try {
+      const res = await detectDrivesMutation.mutateAsync({
+        serverId: machine.id,
+        nodeId: machine.hostedNodeId ?? undefined,
+      })
+      toast({
+        title: 'Hard Drives Detected',
+        description: `Detected ${res.detectedDrives?.length ?? 0} physical drive(s).`,
+        variant: 'default',
+      })
+    } catch (err: unknown) {
+      toast({
+        title: 'Detection Failed',
+        description: (err as { message?: string }).message || 'Could not auto-detect drives.',
+        variant: 'destructive',
+      })
+    } finally {
+      setDetectingMachineId(null)
+    }
+  }
+
+  const handleDeleteMachine = async (machine: UserServerMachine) => {
+    if (!window.confirm(`Are you sure you want to remove "${machine.name}"?`)) return
+    try {
+      await deleteMachineMutation.mutateAsync(machine.id)
+      toast({
+        title: 'Server Machine Removed',
+        description: `Removed "${machine.name}".`,
+        variant: 'default',
+      })
+    } catch {
+      toast({
+        title: 'Failed to delete server machine',
+        variant: 'error',
+      })
+    }
+  }
+
+  const handleDeleteHome = async (home: UserHome) => {
+    if (!window.confirm(`Are you sure you want to remove the home "${home.name}"?`)) return
+    try {
+      await deleteHomeMutation.mutateAsync(home.id)
+      toast({
+        title: 'Home Removed',
+        description: `Removed "${home.name}".`,
+        variant: 'default',
+      })
+    } catch {
+      toast({
+        title: 'Failed to delete home',
+        variant: 'error',
+      })
+    }
+  }
+
+  const handleAssignNodeHome = async (nodeId: number, homeId: number | null) => {
+    try {
+      await assignHomeMutation.mutateAsync({ nodeId, homeId })
+      toast({
+        title: 'Home Assigned',
+        description: 'Updated home assignment for node.',
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Failed to assign home',
+        variant: 'error',
+      })
+    }
+  }
+
   return (
-    <div id="settings-nodes-section" className="space-y-6">
-      <SectionHeader
-        variant="page"
-        icon={Server}
-        title="Nodes"
-        badges={<NodesFeatureTags />}
-        description="Manage, monitor, and connect Otix worker nodes that host folders, downloads, and your library."
-        action={
-          gameServers.length > 0 ? (
-            <div className="flex items-center gap-2">
-              <DkButton
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={openDownloadNodeModal}
-                className="gap-1.5"
-              >
-                <DownloadCloud size={14} />
-                <span>Download</span>
-              </DkButton>
-              <DkButton
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => openConnectModal()}
-                className="gap-1.5"
-              >
-                <Plus size={14} />
-                <span>Connect Node</span>
-              </DkButton>
-            </div>
-          ) : undefined
-        }
-      />
+    <div id="settings-nodes-section" className="relative w-full h-full overflow-hidden">
+      {/* Edge-to-Edge Canvas Background across the entire page behind sidebar & header */}
+      {viewMode === 'map' && (
+        <NodesTopologyCanvas
+          homes={homes}
+          serverMachines={serverMachines}
+          nodes={gameServers}
+          pendingNodes={pendingNodes}
+          anchor={anchorPos}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
+          onOpenDownloadModal={openDownloadNodeModal}
+          onClaimPendingNode={handleClaimQuickNode}
+          onAddHome={() => {
+            setEditingHome(null)
+            setHomeModalOpen(true)
+          }}
+          onAddServer={() => {
+            setEditingServerMachine(null)
+            setServerMachineModalOpen(true)
+          }}
+          onAddNode={() => openConnectModal()}
+          onEditHome={(home) => {
+            setEditingHome(home)
+            setHomeModalOpen(true)
+          }}
+          onDeleteHome={handleDeleteHome}
+          onEditServer={(server) => {
+            setEditingServerMachine(server)
+            setServerMachineModalOpen(true)
+          }}
+          onDeleteServer={handleDeleteMachine}
+          onDetectDrives={handleDetectDrivesForMachine}
+          onOpenNodeSettings={(node) => setSelectedNodeForModal(node)}
+          onRenameNode={(node) => openRenameModal(node)}
+        />
+      )}
 
-      <EmbeddedNodeCard />
+      {/* Foreground Container in the exact same spot as all settings pages */}
+      <div
+        className={cn(
+          'absolute inset-0 z-10 pointer-events-none',
+          viewMode === 'cards' ? 'overflow-y-auto' : 'overflow-hidden',
+        )}
+      >
+        <div
+          ref={sectionContainerRef}
+          className={cn(
+            'min-h-full w-full max-w-5xl xl:max-w-6xl mx-auto px-1 sm:px-3 lg:px-4 pb-28',
+            desktop ? 'pt-24 sm:pt-28 lg:pt-32' : 'pt-16 sm:pt-20 lg:pt-24',
+          )}
+        >
+          {/* Header in the exact same spot across all views */}
+          <div className="pointer-events-auto space-y-4">
+            <SectionHeader
+              variant="page"
+              icon={Server}
+              title="Nodes"
+              badges={<NodesFeatureTags />}
+              description="Interactive homelab topology map. Connect worker nodes, server machines, and household environments."
+              action={
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => handleViewModeChange('map')}
+                      title="Node Map topology view"
+                      className={cn(
+                        'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all',
+                        viewMode === 'map'
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      <Network size={13} />
+                      <span>Node Map</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleViewModeChange('cards')}
+                      title="Cards list view"
+                      className={cn(
+                        'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all',
+                        viewMode === 'cards'
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      <LayoutGrid size={13} />
+                      <span>Cards</span>
+                    </button>
+                  </div>
 
-      {unclaimedNodes.length > 0 && (
-        <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-xs font-bold text-foreground">
-                  Unclaimed Otix Node Detected:{' '}
-                  <span className="text-primary">{unclaimedNodes[0].serverName}</span>
-                </p>
-                {unclaimedNodes[0].claimCode && (
-                  <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-white/10 text-foreground/90">
-                    PIN: {unclaimedNodes[0].claimCode}
-                  </span>
-                )}
+                  <DkButton
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={openDownloadNodeModal}
+                    className="gap-1.5"
+                  >
+                    <DownloadCloud size={14} />
+                    <span>Download</span>
+                  </DkButton>
+                  <DkButton
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => openConnectModal()}
+                    className="gap-1.5 font-semibold"
+                  >
+                    <Plus size={14} />
+                    <span>Connect Node</span>
+                  </DkButton>
+                </div>
+              }
+            />
+
+            {orphanedNodes.length > 0 && (
+              <div className="p-4 rounded-2xl bg-destructive/[0.08] backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-destructive/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-4 h-4 text-destructive" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-bold text-foreground">
+                        Node Needs Re-linking: <span className="text-destructive font-bold">{orphanedNodes[0].serverName}</span>
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      Running at {orphanedNodes[0].localUrl}, but linked to a deleted or different account. Reset to generate a new PIN and link to this account.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <DkButton
+                    size="sm"
+                    variant="primary"
+                    onClick={() => handleUnclaimQuickNode(orphanedNodes[0])}
+                    loading={isUnclaimingQuick}
+                    className="text-xs font-bold"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                    Reset &amp; Claim Node
+                  </DkButton>
+                </div>
               </div>
-              <p className="text-[11px] text-muted-foreground truncate">
-                Available at {unclaimedNodes[0].localUrl}. Claim this node to link it to your account.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-            {unclaimedNodes[0].claimCode ? (
-              <DkButton
-                size="sm"
-                variant="primary"
-                onClick={() => handleClaimQuickNode(unclaimedNodes[0])}
-                className="text-xs font-bold"
-              >
-                <KeyRound className="w-3.5 h-3.5 mr-1" />
-                Claim Node
-              </DkButton>
-            ) : (
-              <DkButton
-                size="sm"
-                variant="primary"
-                onClick={() => openConnectModal(unclaimedNodes[0].localUrl)}
-                className="text-xs font-bold"
-              >
-                Claim with PIN
-              </DkButton>
+            )}
+
+            {unclaimedNodes.length > 0 && (
+              <div className="p-4 rounded-2xl bg-primary/[0.08] backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-primary/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-bold text-foreground">
+                        Unclaimed Otix Node Detected:{' '}
+                        <span className="text-primary">{unclaimedNodes[0].serverName}</span>
+                      </p>
+                      {unclaimedNodes[0].claimCode && (
+                        <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-white/[0.08] text-foreground/90">
+                          PIN: {unclaimedNodes[0].claimCode}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      Available at {unclaimedNodes[0].localUrl}. Claim this node to link it to your account.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  {unclaimedNodes[0].claimCode ? (
+                    <DkButton
+                      size="sm"
+                      variant="primary"
+                      onClick={() => handleClaimQuickNode(unclaimedNodes[0])}
+                      className="text-xs font-bold"
+                    >
+                      <KeyRound className="w-3.5 h-3.5 mr-1" />
+                      Claim Node
+                    </DkButton>
+                  ) : (
+                    <DkButton
+                      size="sm"
+                      variant="primary"
+                      onClick={() => openConnectModal(unclaimedNodes[0].localUrl)}
+                      className="text-xs font-bold"
+                    >
+                      Claim with PIN
+                    </DkButton>
+                  )}
+                </div>
+              </div>
             )}
           </div>
-        </div>
-      )}
+
+          {/* Cards View when active */}
+          {viewMode === 'cards' && (
+            <div className="pointer-events-auto space-y-4 mt-6">
+              <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] pb-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <DkButton
+                    type="button"
+                    size="sm"
+                    variant={activeTab === 'nodes' ? 'primary' : 'ghost'}
+                    onClick={() => handleTabChange('nodes')}
+                    className="gap-1.5"
+                  >
+                    <Server size={14} />
+                    <span>Nodes</span>
+                    <span
+                      className={cn(
+                        'text-[10px] px-1.5 py-0.2 rounded-full font-bold',
+                        activeTab === 'nodes' ? 'bg-white/20' : 'bg-white/10',
+                      )}
+                    >
+                      {gameServers.length}
+                    </span>
+                  </DkButton>
+
+                  <DkButton
+                    type="button"
+                    size="sm"
+                    variant={activeTab === 'servers' ? 'primary' : 'ghost'}
+                    onClick={() => handleTabChange('servers')}
+                    className="gap-1.5"
+                  >
+                    <HardDrive size={14} />
+                    <span>Server Machines</span>
+                    <span
+                      className={cn(
+                        'text-[10px] px-1.5 py-0.2 rounded-full font-bold',
+                        activeTab === 'servers' ? 'bg-white/20' : 'bg-white/10',
+                      )}
+                    >
+                      {serverMachines.length}
+                    </span>
+                  </DkButton>
+
+                  <DkButton
+                    type="button"
+                    size="sm"
+                    variant={activeTab === 'homes' ? 'primary' : 'ghost'}
+                    onClick={() => handleTabChange('homes')}
+                    className="gap-1.5"
+                  >
+                    <HomeIcon size={14} />
+                    <span>Homes</span>
+                    <span
+                      className={cn(
+                        'text-[10px] px-1.5 py-0.2 rounded-full font-bold',
+                        activeTab === 'homes' ? 'bg-white/20' : 'bg-white/10',
+                      )}
+                    >
+                      {homes.length}
+                    </span>
+                  </DkButton>
+                </div>
+              </div>
+
+              {activeTab === 'nodes' && (
+                <>
+                  <EmbeddedNodeCard />
 
       {gameServers.length > 0 && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -399,7 +776,7 @@ export const SettingsNodesPage = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by node name or address..."
-              className="w-full h-9 pl-9 pr-3 rounded-xl bg-white/5 border border-white/10 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
+              className="w-full h-9 pl-9 pr-3 rounded-xl bg-white/[0.04] text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
             />
           </div>
           <div className="text-xs text-muted-foreground self-end sm:self-center font-medium">
@@ -414,7 +791,7 @@ export const SettingsNodesPage = () => {
         </SettingsCard>
       ) : gameServers.length === 0 ? (
         <SettingsCard className="p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-4">
-          <div className="w-14 h-14 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+          <div className="w-14 h-14 rounded-3xl bg-primary/10 flex items-center justify-center text-primary shadow-inner shadow-primary/10">
             <Server size={28} />
           </div>
           <div className="space-y-1.5 max-w-md">
@@ -467,25 +844,29 @@ export const SettingsNodesPage = () => {
             const ramSummary = cachedNode.hardware?.memory?.totalBytes
               ? formatRAM(cachedNode.hardware.memory.totalBytes)
               : null
+            const hostedMachine = serverMachines.find((m) => m.hostedNodeId === server.id)
+            const smbMachines = serverMachines.filter((m) => m.smbEnabled && m.smbNodeIds?.includes(server.id))
 
             return (
               <SettingsCard
                 key={server.id}
-                className="p-5 flex flex-col justify-between gap-4 border border-white/[0.08] hover:border-white/15 transition-all group"
+                tone="raised"
+                className="p-5 flex flex-col justify-between gap-4 transition-all duration-200 group"
               >
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
+                    <div className="flex items-start gap-3.5 min-w-0">
+                      <div
                         className={cn(
-                          'w-2.5 h-2.5 rounded-full shrink-0',
+                          'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-colors',
                           isOnline
-                            ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
-                            : 'bg-red-500/80',
+                            ? 'bg-primary/15 text-primary shadow-sm shadow-primary/10'
+                            : 'bg-white/[0.04] text-muted-foreground',
                         )}
-                        title={isOnline ? 'Online' : 'Offline'}
-                      />
-                      <div className="min-w-0">
+                      >
+                        <Server className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-1.5 group/rename">
                           <h4 className="text-sm font-bold text-foreground truncate" title={server.name}>
                             {server.name}
@@ -506,19 +887,34 @@ export const SettingsNodesPage = () => {
                             </button>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={cn(
+                              'text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider',
+                              isOnline
+                                ? 'bg-primary/15 text-primary'
+                                : 'bg-white/[0.05] text-muted-foreground',
+                            )}
+                          >
+                            {isOnline ? 'Online' : 'Offline'}
+                          </span>
+                          {server.homeName && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
+                              {server.homeName}
+                            </span>
+                          )}
                           {local && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-semibold uppercase tracking-wider">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold uppercase tracking-wider">
                               Otix app
                             </span>
                           )}
                           {server.isActive && !local && (
-                            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-primary/15 text-primary font-semibold uppercase tracking-wider">
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold uppercase tracking-wider">
                               <Star size={9} />
                               Primary
                             </span>
                           )}
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/10 text-muted-foreground">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] text-muted-foreground font-medium">
                             {local ? 'This computer' : server.isLocal ? 'Local' : 'Remote'}
                           </span>
                         </div>
@@ -533,32 +929,16 @@ export const SettingsNodesPage = () => {
                             onClick={(e) => handlePingServer(server.id, e)}
                             title="Test connection"
                             disabled={pingServerMutation.isPending}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors cursor-pointer"
                           >
                             <Radio
-                              size={13}
+                              size={14}
                               className={
                                 pingServerMutation.isPending && pingServerMutation.variables === server.id
                                   ? 'animate-pulse text-primary'
                                   : ''
                               }
                             />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleProbeServer(server.id, server.name, e)}
-                            title="Test remote access"
-                            disabled={probingServerId === server.id}
-                            className={cn(
-                              'p-1.5 rounded-lg transition-colors cursor-pointer',
-                              probeResults[server.id]?.remote_accessible
-                                ? 'text-emerald-400 hover:bg-emerald-500/10'
-                                : probeResults[server.id]?.remote_accessible === false
-                                  ? 'text-amber-400 hover:bg-amber-500/10'
-                                  : 'text-muted-foreground hover:text-foreground hover:bg-white/10',
-                            )}
-                          >
-                            <Globe size={13} className={probingServerId === server.id ? 'animate-spin' : ''} />
                           </button>
                           {server.localUrl && (
                             <a
@@ -567,35 +947,11 @@ export const SettingsNodesPage = () => {
                               rel="noreferrer"
                               title="Open node WebUI"
                               onClick={(e) => e.stopPropagation()}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors"
                             >
-                              <ExternalLink size={13} />
+                              <ExternalLink size={14} />
                             </a>
                           )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openServerExplorer(server)
-                            }}
-                            title="Explore node storage"
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
-                          >
-                            <HardDrive size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setNodeToRename(server)
-                              setRenameInput(server.name)
-                            }}
-                            title="Rename node"
-                            aria-label={`Rename ${server.name}`}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
-                          >
-                            <Pencil size={13} />
-                          </button>
                           <button
                             type="button"
                             onClick={(e) => {
@@ -603,96 +959,145 @@ export const SettingsNodesPage = () => {
                               setNodeToDelete(server)
                             }}
                             title="Disconnect node"
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-white/10 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={14} />
                           </button>
                         </>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    {address ? (
-                      <button
-                        type="button"
-                        onClick={(e) => handleCopyAddress(server, e)}
-                        title="Click to copy address"
-                        className="flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-foreground/80 transition-colors cursor-pointer"
-                      >
-                        <Globe size={11} className="text-primary" />
-                        <span className="truncate max-w-[180px]">{address}</span>
-                        {isCopied ? (
-                          <Check size={11} className="text-emerald-400 ml-1" />
-                        ) : (
-                          <Copy size={11} className="text-muted-foreground ml-1" />
-                        )}
-                      </button>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">Otix app on this computer</span>
-                    )}
+                  <div className="rounded-xl bg-black/20 p-3 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      {address ? (
+                        <button
+                          type="button"
+                          onClick={(e) => handleCopyAddress(server, e)}
+                          title="Click to copy address"
+                          className="flex items-center gap-1.5 font-mono text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-foreground/80 transition-colors cursor-pointer"
+                        >
+                          <Globe size={11} className="text-primary shrink-0" />
+                          <span className="truncate max-w-[200px]">{address}</span>
+                          {isCopied ? (
+                            <Check size={11} className="text-primary ml-1 shrink-0" />
+                          ) : (
+                            <Copy size={11} className="text-muted-foreground ml-1 shrink-0" />
+                          )}
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">Otix desktop local daemon</span>
+                      )}
 
-                    {server.totalFiles > 0 && (
-                      <span className="font-semibold text-foreground/80">{server.totalFiles} games</span>
-                    )}
-
-                    {server.storageFreeBytes > 0 && (
-                      <span>{formatBytes(server.storageFreeBytes)} free</span>
-                    )}
-
-                    {cpuSummary && (
-                      <span
-                        className="inline-flex items-center gap-1 text-[11px] text-cyan-300/90 bg-cyan-500/10 px-2 py-0.5 rounded-md font-medium"
-                        title={`CPU: ${cpuSummary}`}
-                      >
-                        <Cpu size={11} className="text-cyan-400 shrink-0" />
-                        <span className="truncate max-w-[130px]">
-                          {cpuSummary
-                            .replace(
-                              /(Processor|8-Core|16-Core|12-Core|6-Core|32-Core|24-Core|\(R\)|\(TM\))/gi,
-                              '',
-                            )
-                            .trim()}
+                      {server.totalFiles > 0 && (
+                        <span className="text-xs font-semibold text-foreground/90">
+                          {server.totalFiles} {server.totalFiles === 1 ? 'game' : 'games'}
                         </span>
-                      </span>
-                    )}
+                      )}
+                    </div>
 
-                    {gpuSummary && (
-                      <span
-                        className="inline-flex items-center gap-1 text-[11px] text-purple-300/90 bg-purple-500/10 px-2 py-0.5 rounded-md font-medium"
-                        title={`GPU: ${gpuSummary}`}
-                      >
-                        <Monitor size={11} className="text-purple-400 shrink-0" />
-                        <span className="truncate max-w-[130px]">
-                          {gpuSummary
-                            .replace(/(NVIDIA|AMD|Radeon|GeForce|\(R\)|\(TM\))/gi, '')
-                            .trim()}
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      {server.storageFreeBytes > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-foreground/75 bg-white/[0.04] px-2 py-0.5 rounded-md font-medium">
+                          <HardDrive size={11} className="text-primary shrink-0" />
+                          <span>{formatBytes(server.storageFreeBytes)} free</span>
                         </span>
-                      </span>
-                    )}
+                      )}
 
-                    {ramSummary && (
-                      <span
-                        className="inline-flex items-center gap-1 text-[11px] text-emerald-300/90 bg-emerald-500/10 px-2 py-0.5 rounded-md font-medium"
-                        title={`RAM: ${ramSummary}`}
+                      {cpuSummary && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[11px] text-foreground/75 bg-white/[0.04] px-2 py-0.5 rounded-md font-medium"
+                          title={`CPU: ${cpuSummary}`}
+                        >
+                          <Cpu size={11} className="text-primary shrink-0" />
+                          <span className="truncate max-w-[130px]">
+                            {cpuSummary
+                              .replace(
+                                /(Processor|8-Core|16-Core|12-Core|6-Core|32-Core|24-Core|\(R\)|\(TM\))/gi,
+                                '',
+                              )
+                              .trim()}
+                          </span>
+                        </span>
+                      )}
+
+                      {gpuSummary && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[11px] text-foreground/75 bg-white/[0.04] px-2 py-0.5 rounded-md font-medium"
+                          title={`GPU: ${gpuSummary}`}
+                        >
+                          <Monitor size={11} className="text-primary shrink-0" />
+                          <span className="truncate max-w-[130px]">
+                            {gpuSummary
+                              .replace(/(NVIDIA|AMD|Radeon|GeForce|\(R\)|\(TM\))/gi, '')
+                              .trim()}
+                          </span>
+                        </span>
+                      )}
+
+                      {ramSummary && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[11px] text-foreground/75 bg-white/[0.04] px-2 py-0.5 rounded-md font-medium"
+                          title={`RAM: ${ramSummary}`}
+                        >
+                          <Activity size={11} className="text-primary shrink-0" />
+                          <span>{ramSummary}</span>
+                        </span>
+                      )}
+
+                      {probeResults[server.id]?.remote_accessible && (
+                        <span className="inline-flex items-center gap-1 text-primary text-[11px] bg-primary/10 px-2 py-0.5 rounded-md font-medium">
+                          <Globe size={11} />
+                          Remote OK ({probeResults[server.id].latency_ms}ms)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Home assignment & Server machine relationships */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs pt-1 border-t border-white/[0.04]">
+                    <div className="flex items-center gap-1.5">
+                      <HomeIcon size={12} className="text-muted-foreground" />
+                      <span className="text-[11px] text-muted-foreground">Home:</span>
+                      <select
+                        value={server.homeId ?? ''}
+                        onChange={(e) =>
+                          handleAssignNodeHome(
+                            server.id,
+                            e.target.value ? Number(e.target.value) : null,
+                          )
+                        }
+                        className="rounded-lg bg-white/[0.05] hover:bg-white/[0.08] px-2 py-0.5 text-foreground text-[11px] outline-none border-none cursor-pointer"
                       >
-                        <Activity size={11} className="text-emerald-400 shrink-0" />
-                        <span>{ramSummary}</span>
+                        <option value="" className="bg-[#18181b] text-foreground">
+                          None (Unassigned)
+                        </option>
+                        {homes.map((h) => (
+                          <option key={h.id} value={h.id} className="bg-[#18181b] text-foreground">
+                            {h.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {hostedMachine && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] text-[11px] text-foreground/80">
+                        <Server size={11} className="text-primary" />
+                        <span>Hosted on: {hostedMachine.name}</span>
+                        <span className="text-muted-foreground">({getOSLabel(hostedMachine.os)})</span>
                       </span>
                     )}
 
-                    {(probeResults[server.id]?.remote_accessible ||
-                      probeResults[server.id]?.remoteAccessible ||
-                      probeResults[server.id]?.reachable) && (
-                      <span className="inline-flex items-center gap-1 text-emerald-400 text-[11px]">
-                        <Globe size={11} />
-                        Remote OK ({probeResults[server.id].latency_ms ?? probeResults[server.id].latencyMs}ms)
+                    {smbMachines.length > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] text-[11px] text-foreground/80">
+                        <Network size={11} className="text-primary" />
+                        <span>SMB link: {smbMachines.map((m) => m.name).join(', ')}</span>
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+                <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-2">
                     <Link
                       {...nodeSettingsNavigateOptions(server.id)}
@@ -705,35 +1110,446 @@ export const SettingsNodesPage = () => {
                       <button
                         type="button"
                         onClick={(e) => handleSetPrimary(server.id, e)}
-                        className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                       >
-                        <Star size={11} />
-                        Set primary
+                        <Star size={12} />
+                        <span>Set as primary</span>
                       </button>
                     )}
                     {(reserved || server.isActive) && (
-                      <span className="text-[11px] text-muted-foreground">
-                        {local ? 'Desktop app' : server.isActive ? 'Primary node' : 'Worker node'}
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {local ? 'Desktop companion' : server.isActive ? 'Primary library node' : 'Worker node'}
                       </span>
                     )}
                   </div>
 
-                  <DkButton
+                  <div className="flex items-center gap-2">
+                    {!reserved && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => handleProbeServer(server.id, server.name, e)}
+                          disabled={probingServerId === server.id}
+                          title="Probe remote reachability"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors cursor-pointer"
+                        >
+                          {probingServerId === server.id ? (
+                            <Loader2 size={14} className="animate-spin text-primary" />
+                          ) : (
+                            <Globe size={14} />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openServerExplorer(server)
+                          }}
+                          title="Explore node storage"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors cursor-pointer"
+                        >
+                          <HardDrive size={14} />
+                        </button>
+                      </>
+                    )}
+                    <DkButton
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setSelectedNodeForModal(server)}
+                      className="gap-1.5 h-8 px-3.5 text-xs font-semibold cursor-pointer"
+                    >
+                      <span>Open</span>
+                      <ChevronRight size={13} />
+                    </DkButton>
+                  </div>
+                </div>
+
+                {/* Downloader & Arr Services Collapsible Group */}
+                <div className="pt-2 border-t border-white/[0.04]">
+                  <button
                     type="button"
-                    variant="primary"
-                    size="sm"
-                    onClick={() => setSelectedNodeForModal(server)}
-                    className="gap-1.5 h-8 px-3 text-xs cursor-pointer"
+                    onClick={() =>
+                      setExpandedServicesNodeId(
+                        expandedServicesNodeId === server.id ? null : server.id,
+                      )
+                    }
+                    className="flex items-center justify-between w-full text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors py-1 cursor-pointer"
                   >
-                    <span>Open</span>
-                    <ChevronRight size={12} />
-                  </DkButton>
+                    <div className="flex items-center gap-2">
+                      <DownloadCloud size={13} className="text-primary" />
+                      <span>Downloader Services (SABnzbd, Prowlarr, Radarr, Sonarr)</span>
+                    </div>
+                    <ChevronDown
+                      size={14}
+                      className={cn(
+                        'transition-transform duration-200',
+                        expandedServicesNodeId === server.id ? 'rotate-180' : '',
+                      )}
+                    />
+                  </button>
+                  {expandedServicesNodeId === server.id && (
+                    <div className="mt-3">
+                      <NodeConnectionsGroup
+                        server={server}
+                        searchQuery={search}
+                        onOpenSettings={setSelectedNodeForModal}
+                      />
+                    </div>
+                  )}
                 </div>
               </SettingsCard>
             )
           })}
         </div>
       )}
+        </>
+      )}
+
+      {/* TAB 2: SERVER MACHINES */}
+      {activeTab === 'servers' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Homelab &amp; NAS Server Machines</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Physical or virtual hosts running Unraid, TrueNAS, Ubuntu, Debian, Proxmox VE, or Windows Server.
+              </p>
+            </div>
+            <DkButton
+              type="button"
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                setEditingServerMachine(null)
+                setServerMachineModalOpen(true)
+              }}
+              className="gap-1.5 self-start sm:self-auto shrink-0"
+            >
+              <Plus size={14} />
+              <span>Add Server Machine</span>
+            </DkButton>
+          </div>
+
+          {loadingMachines ? (
+            <SettingsCard className="p-12 text-center text-xs text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2 text-primary" />
+              Loading server machines...
+            </SettingsCard>
+          ) : serverMachines.length === 0 ? (
+            <SettingsCard className="p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-4">
+              <div className="w-14 h-14 rounded-3xl bg-primary/10 flex items-center justify-center text-primary shadow-inner shadow-primary/10">
+                <Server size={28} />
+              </div>
+              <div className="space-y-1.5 max-w-md">
+                <h3 className="text-base font-bold text-foreground tracking-tight">No server machines added</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Add your Unraid tower, TrueNAS SCALE vault, or Proxmox homelab host to manage hard drives, OS features, and SMB network access for nodes.
+                </p>
+              </div>
+              <DkButton
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setEditingServerMachine(null)
+                  setServerMachineModalOpen(true)
+                }}
+                className="gap-1.5 mt-2"
+              >
+                <Plus size={14} />
+                <span>Add Your First Server Machine</span>
+              </DkButton>
+            </SettingsCard>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {serverMachines.map((machine) => {
+                const isDetecting = detectingMachineId === machine.id
+                const usedBytes = Math.max(0, machine.totalStorageBytes - machine.freeStorageBytes)
+                const percentUsed =
+                  machine.totalStorageBytes > 0
+                    ? Math.min(100, Math.round((usedBytes / machine.totalStorageBytes) * 100))
+                    : 0
+
+                return (
+                  <SettingsCard
+                    key={machine.id}
+                    tone="raised"
+                    className="p-5 flex flex-col justify-between gap-4 transition-all duration-200"
+                  >
+                    <div className="space-y-3.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3.5 min-w-0">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-sm shadow-primary/10">
+                            <Server className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-sm font-bold text-foreground truncate" title={machine.name}>
+                                {machine.name}
+                              </h4>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-foreground/80 font-medium">
+                                {getOSLabel(machine.os)}
+                              </span>
+                              {machine.homeName && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
+                                  {machine.homeName}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {machine.host || 'No IP / Hostname'}
+                              {machine.osVersion ? ` • ${machine.osVersion}` : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <DkButton
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDetectDrivesForMachine(machine)}
+                            disabled={isDetecting || (!machine.hostedNodeId && gameServers.length === 0)}
+                            title="Auto-detect hard drives from node"
+                            className="p-1.5 h-8 text-muted-foreground hover:text-foreground"
+                          >
+                            <RefreshCw size={13} className={cn(isDetecting && 'animate-spin text-primary')} />
+                          </DkButton>
+                          <DkButton
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingServerMachine(machine)
+                              setServerMachineModalOpen(true)
+                            }}
+                            title="Edit server machine"
+                            className="p-1.5 h-8 text-muted-foreground hover:text-foreground"
+                          >
+                            <Pencil size={13} />
+                          </DkButton>
+                          <DkButton
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteMachine(machine)}
+                            title="Delete server machine"
+                            className="p-1.5 h-8 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 size={13} />
+                          </DkButton>
+                        </div>
+                      </div>
+
+                      {/* Hard Drive Storage Capacity Bar */}
+                      {machine.totalStorageBytes > 0 && (
+                        <div className="rounded-xl bg-black/20 p-3 space-y-2">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1.5 font-medium text-foreground/80">
+                              <HardDrive size={13} className="text-primary" />
+                              <span>{formatBytes(usedBytes)} used of {formatBytes(machine.totalStorageBytes)}</span>
+                            </span>
+                            <span className="font-semibold text-foreground/90">
+                              {formatBytes(machine.freeStorageBytes)} free ({percentUsed}%)
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full transition-all duration-300"
+                              style={{ width: `${percentUsed}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Machine Details / Relationships */}
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] pt-1 border-t border-white/[0.04]">
+                        {machine.hostedNodeName ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/15 text-primary font-medium">
+                            <Cpu size={11} />
+                            <span>Node running on server: {machine.hostedNodeName}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] text-muted-foreground">
+                            No node hosted on this machine
+                          </span>
+                        )}
+
+                        {machine.smbEnabled ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium">
+                            <Network size={11} />
+                            <span>SMB: /{machine.smbShareName || 'share'} ({machine.smbPort || 445})</span>
+                            {machine.smbNodeIds?.length ? (
+                              <span className="text-muted-foreground">
+                                • {machine.smbNodeIds.length} client node(s)
+                              </span>
+                            ) : null}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] text-muted-foreground">
+                            SMB Disabled
+                          </span>
+                        )}
+
+                        {machine.drivesConfig?.length ? (
+                          <span className="text-muted-foreground ml-auto text-[10px]">
+                            {machine.drivesConfig.length} drive volume(s)
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </SettingsCard>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: HOMES */}
+      {activeTab === 'homes' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04]">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Household &amp; Homelab Environments</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Organize your nodes and server machines by physical home or network environment.
+              </p>
+            </div>
+            <DkButton
+              type="button"
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                setEditingHome(null)
+                setHomeModalOpen(true)
+              }}
+              className="gap-1.5 self-start sm:self-auto shrink-0"
+            >
+              <Plus size={14} />
+              <span>New Home</span>
+            </DkButton>
+          </div>
+
+          {loadingHomes ? (
+            <SettingsCard className="p-12 text-center text-xs text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2 text-primary" />
+              Loading homes...
+            </SettingsCard>
+          ) : homes.length === 0 ? (
+            <SettingsCard className="p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-4">
+              <div className="w-14 h-14 rounded-3xl bg-primary/10 flex items-center justify-center text-primary shadow-inner shadow-primary/10">
+                <HomeIcon size={28} />
+              </div>
+              <div className="space-y-1.5 max-w-md">
+                <h3 className="text-base font-bold text-foreground tracking-tight">No homes configured</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Create a home to group your Otix nodes, storage servers, and homelab machines under a single location.
+                </p>
+              </div>
+              <DkButton
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setEditingHome(null)
+                  setHomeModalOpen(true)
+                }}
+                className="gap-1.5 mt-2"
+              >
+                <Plus size={14} />
+                <span>Create Your First Home</span>
+              </DkButton>
+            </SettingsCard>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {homes.map((home) => (
+                <SettingsCard
+                  key={home.id}
+                  tone="raised"
+                  className="p-5 flex flex-col justify-between gap-4 transition-all duration-200"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3.5 min-w-0">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-sm shadow-primary/10">
+                          <HomeIcon className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-sm font-bold text-foreground truncate" title={home.name}>
+                              {home.name}
+                            </h4>
+                            {home.isDefault && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold uppercase tracking-wider">
+                                Default Home
+                              </span>
+                            )}
+                            {home.subnetCidr && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-muted-foreground font-mono">
+                                {home.subnetCidr}
+                              </span>
+                            )}
+                          </div>
+                          {home.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {home.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <DkButton
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingHome(home)
+                            setHomeModalOpen(true)
+                          }}
+                          title="Edit home"
+                          className="p-1.5 h-8 text-muted-foreground hover:text-foreground"
+                        >
+                          <Pencil size={13} />
+                        </DkButton>
+                        {!home.isDefault && (
+                          <DkButton
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteHome(home)}
+                            title="Delete home"
+                            className="p-1.5 h-8 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 size={13} />
+                          </DkButton>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground pt-1 border-t border-white/[0.04]">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] text-foreground/80 font-medium">
+                        <Server size={11} className="text-primary" />
+                        <span>{home.nodesCount ?? 0} node(s)</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] text-foreground/80 font-medium">
+                        <HardDrive size={11} className="text-primary" />
+                        <span>{home.serverMachinesCount ?? 0} server machine(s)</span>
+                      </span>
+                    </div>
+                  </div>
+                </SettingsCard>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )}
+</div>
+</div>
 
       {nodeToDelete && (
         <DkDialog
@@ -744,8 +1560,8 @@ export const SettingsNodesPage = () => {
           className="max-w-md"
         >
           <div className="space-y-4 pt-2">
-            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-200 flex items-start gap-2.5">
-              <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-foreground/90 flex items-start gap-2.5">
+              <AlertTriangle size={16} className="text-destructive shrink-0 mt-0.5" />
               <span>
                 Disconnecting <strong>{nodeToDelete.name}</strong> removes it from your account. Active
                 downloads on this node will stop.
@@ -835,7 +1651,13 @@ export const SettingsNodesPage = () => {
             setConnectModalOpen(false)
             setConnectInitialUrl('')
           }}
-          defaultName={defaultAutoName}
+          defaultName={
+            unclaimedNodes[0]?.serverName &&
+            unclaimedNodes[0].serverName !== 'Otix Game Server' &&
+            unclaimedNodes[0].serverName !== 'Otix Node'
+              ? unclaimedNodes[0].serverName
+              : defaultAutoName
+          }
           initialNodeUrl={connectInitialUrl}
         />
       )}
@@ -847,6 +1669,31 @@ export const SettingsNodesPage = () => {
           if (!open) setSelectedNodeForModal(null)
         }}
       />
+
+      {serverMachineModalOpen && (
+        <ServerMachineModal
+          open={serverMachineModalOpen}
+          onOpenChange={(open) => {
+            setServerMachineModalOpen(open)
+            if (!open) setEditingServerMachine(null)
+          }}
+          server={editingServerMachine}
+          homes={homes}
+          nodes={gameServers}
+          defaultHomeId={homes.find((h) => h.isDefault)?.id || homes[0]?.id}
+        />
+      )}
+
+      {homeModalOpen && (
+        <HomeManageModal
+          open={homeModalOpen}
+          onOpenChange={(open) => {
+            setHomeModalOpen(open)
+            if (!open) setEditingHome(null)
+          }}
+          home={editingHome}
+        />
+      )}
     </div>
   )
 };

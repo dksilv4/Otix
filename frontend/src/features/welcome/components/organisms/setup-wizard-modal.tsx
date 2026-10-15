@@ -29,6 +29,9 @@ export const SetupWizardModal = ({
     node,
     isProbingNode,
     probeNode,
+    isOrphaned,
+    isUnclaiming,
+    handleUnclaimNode,
     claimPin,
     setClaimPin,
     claimStatus,
@@ -114,6 +117,9 @@ export const SetupWizardModal = ({
               node={node}
               isProbing={isProbingNode}
               onProbe={probeNode}
+              isOrphaned={isOrphaned}
+              isUnclaiming={isUnclaiming}
+              onUnclaim={handleUnclaimNode}
               claimPin={claimPin}
               onChangePin={setClaimPin}
               claimStatus={claimStatus}

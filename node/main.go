@@ -72,6 +72,7 @@ func main() {
 	claimMgr := claim.NewClaimManager(cfg)
 	hbRunner := heartbeat.NewHeartbeatRunner(cfg, claimMgr)
 	srv := server.NewServer(cfg, claimMgr)
+	srv.SetHeartbeatRunner(hbRunner)
 	hbRunner.SetRunningGameProvider(func() interface{} {
 		return srv.GamesTracker().GetRunningGame()
 	})

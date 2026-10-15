@@ -92,7 +92,7 @@ export const NAV_ITEMS: NavItem[] = [
     requiresAuth: false,
     group: 'library',
     badges: ['Beta', 'WIP'],
-    keywords: 'desktop tray startup minimize close always on top window node native servers nas share remote worker machine paths folders organize downloaders sabnzbd scan epic games store egs',
+    keywords: 'otix nodes desktop tray startup minimize close always on top window node native servers nas share remote worker machine paths folders organize downloaders sabnzbd scan epic games store egs homelab server machines hard drives drives storage homes smb',
   },
   {
     id: 'game-servers',
@@ -112,7 +112,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: false,
     requiresAuth: false,
     group: 'connections',
-    keywords: 'integrations steam plex tmdb youtube sabnzbd prowlarr radarr sonarr usenet oauth otix nodes connection nodes accounts',
+    keywords: 'integrations steam plex tmdb youtube accounts oauth google google drive',
   },
   {
     id: 'plugins',

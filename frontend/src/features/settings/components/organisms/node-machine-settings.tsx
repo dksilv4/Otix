@@ -316,7 +316,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
               size="sm"
               onClick={handleRefreshHardware}
               disabled={refreshingHardware || loading}
-              className="gap-1.5 h-8 px-2.5 text-xs text-white/70 hover:text-white border border-white/10 hover:bg-white/5 cursor-pointer"
+              className="gap-1.5 h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground border border-white/[0.06] hover:bg-white/[0.04] cursor-pointer"
             >
               <RefreshCw size={13} className={refreshingHardware ? 'animate-spin text-primary' : ''} />
               <span>{refreshingHardware ? 'Scanning...' : 'Re-scan Hardware'}</span>
@@ -339,11 +339,11 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-white tracking-tight">
+                      <span className="text-sm font-bold text-foreground tracking-tight">
                         {hw?.system?.hostname || settings.hostname || server.name}
                       </span>
                       {hw?.os?.platform && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-white/10 text-white/70 uppercase">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-white/[0.06] text-muted-foreground uppercase">
                           {hw.os.platform}
                         </span>
                       )}
@@ -358,12 +358,11 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap text-xs">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-300 font-medium">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Online & Ready</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.04] text-white/60">
-                    <Clock size={12} className="text-white/40" />
+                  <span className="px-2.5 py-1 rounded-xl bg-primary/15 text-primary font-semibold text-xs">
+                    Online & Ready
+                  </span>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.04] text-muted-foreground">
+                    <Clock size={12} className="text-muted-foreground" />
                     <span>Uptime: {formatUptime(settings.uptimeSeconds)}</span>
                   </div>
                 </div>
@@ -372,35 +371,35 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
               {/* OS & Runtime identity sub-row */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 <div>
-                  <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block">Operating System</span>
-                  <span className="font-semibold text-white truncate block mt-0.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Operating System</span>
+                  <span className="font-semibold text-foreground truncate block mt-0.5">
                     {hw?.os?.name || displayPlatform} {hw?.os?.version || ''}
                   </span>
-                  {hw?.os?.build && <span className="text-[10px] text-white/40">Build {hw.os.build}</span>}
+                  {hw?.os?.build && <span className="text-[10px] text-muted-foreground">Build {hw.os.build}</span>}
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block">Architecture</span>
-                  <span className="font-semibold text-white truncate block mt-0.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Architecture</span>
+                  <span className="font-semibold text-foreground truncate block mt-0.5">
                     {hw?.os?.architecture || settings.arch || 'amd64'}
                   </span>
-                  <span className="text-[10px] text-white/40">{settings.goVersion || 'Daemon Runtime'}</span>
+                  <span className="text-[10px] text-muted-foreground">{settings.goVersion || 'Daemon Runtime'}</span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block">Total Memory</span>
-                  <span className="font-semibold text-emerald-300 truncate block mt-0.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Total Memory</span>
+                  <span className="font-semibold text-foreground truncate block mt-0.5">
                     {hw?.memory?.totalBytes ? formatRAM(hw.memory.totalBytes) : 'N/A'}
                   </span>
-                  <span className="text-[10px] text-white/40">Physical Capacity</span>
+                  <span className="text-[10px] text-muted-foreground">Physical Capacity</span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block">Last Hardware Probe</span>
-                  <span className="font-semibold text-cyan-300 truncate block mt-0.5">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">Last Hardware Probe</span>
+                  <span className="font-semibold text-primary truncate block mt-0.5">
                     {hw?.probedAt ? formatTimeAgo(hw.probedAt) : 'Live Cached'}
                   </span>
-                  <span className="text-[10px] text-white/40">45s dynamic refresh</span>
+                  <span className="text-[10px] text-muted-foreground">45s dynamic refresh</span>
                 </div>
               </div>
             </div>
@@ -409,57 +408,57 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
             {hw ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 {/* 1. CPU / Processor Card */}
-                <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.06] space-y-3">
+                <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.04] space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-cyan-500/15 text-cyan-400">
+                      <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                         <Cpu size={16} />
                       </div>
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">Processor (CPU)</span>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider">Processor (CPU)</span>
                     </div>
                     {hw.cpu?.vendor && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
                         {hw.cpu.vendor}
                       </span>
                     )}
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold text-white leading-snug">
+                    <h4 className="text-sm font-semibold text-foreground leading-snug">
                       {hw.cpu?.modelName || 'Host Processor'}
                     </h4>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/[0.05] text-xs">
                     <div>
-                      <span className="text-[10px] text-white/40 block">Cores / Threads</span>
-                      <span className="font-semibold text-white/90">
+                      <span className="text-[10px] text-muted-foreground block">Cores / Threads</span>
+                      <span className="font-semibold text-foreground/90">
                         {hw.cpu?.cores || 0}C / {hw.cpu?.threads || settings.numCpu || 0}T
                       </span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-white/40 block">Base Clock</span>
-                      <span className="font-semibold text-white/90">
+                      <span className="text-[10px] text-muted-foreground block">Base Clock</span>
+                      <span className="font-semibold text-foreground/90">
                         {hw.cpu?.baseClockMhz ? `${(hw.cpu.baseClockMhz / 1000).toFixed(2)} GHz` : 'Dynamic'}
                       </span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-white/40 block">Architecture</span>
-                      <span className="font-semibold text-white/90 uppercase">{hw.cpu?.architecture || 'amd64'}</span>
+                      <span className="text-[10px] text-muted-foreground block">Architecture</span>
+                      <span className="font-semibold text-foreground/90 uppercase">{hw.cpu?.architecture || 'amd64'}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* 2. Graphics (GPU) Card */}
-                <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.06] space-y-3">
+                <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.04] space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-purple-500/15 text-purple-400">
+                      <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                         <Monitor size={16} />
                       </div>
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">Graphics (GPU)</span>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider">Graphics (GPU)</span>
                     </div>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
                       {hw.gpus?.length || 0} Adapter{hw.gpus?.length === 1 ? '' : 's'}
                     </span>
                   </div>
@@ -472,28 +471,28 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                           className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1.5"
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-xs font-semibold text-white leading-tight">
+                            <span className="text-xs font-semibold text-foreground leading-tight">
                               {gpu.name}
                             </span>
                             <div className="flex items-center gap-1 shrink-0">
                               {gpu.isDiscrete ? (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">
                                   Discrete
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/10 text-white/60">
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/10 text-muted-foreground">
                                   Integrated
                                 </span>
                               )}
                               {gpu.isPrimary && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/20 text-primary">
                                   Primary
                                 </span>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between text-[11px] text-white/50">
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                             <span>
                               {gpu.vramBytes && gpu.vramBytes > 0
                                 ? `${formatBytes(gpu.vramBytes)} Dedicated VRAM`
@@ -506,7 +505,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-white/50 italic py-2">
+                      <p className="text-xs text-muted-foreground italic py-2">
                         Standard or integrated display adapter detected.
                       </p>
                     )}
@@ -514,34 +513,34 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                 </div>
 
                 {/* 3. System Memory (RAM) Card — Static Physical Memory Spec Only */}
-                <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.06] space-y-3">
+                <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.04] space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-400">
+                      <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                         <Activity size={16} />
                       </div>
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">System Memory (RAM)</span>
+                      <span className="text-xs font-bold text-foreground uppercase tracking-wider">System Memory (RAM)</span>
                     </div>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
                       Physical Memory
                     </span>
                   </div>
 
                   <div>
                     <div className="flex items-baseline justify-between mb-1">
-                      <span className="text-xl font-black text-white font-mono">
+                      <span className="text-xl font-black text-foreground font-mono">
                         {formatRAM(hw.memory?.totalBytes || 0)}
                       </span>
-                      <span className="text-xs text-white/50">Installed Physical RAM</span>
+                      <span className="text-xs text-muted-foreground">Installed Physical RAM</span>
                     </div>
-                    <p className="text-[11px] text-white/40">
+                    <p className="text-[11px] text-muted-foreground">
                       Total physical RAM capacity installed on host machine.
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.05] text-[11px] text-white/50">
+                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.05] text-[11px] text-muted-foreground">
                     <span>Hardware Spec</span>
-                    <span className="font-semibold text-white/90">
+                    <span className="font-semibold text-foreground/90">
                       {formatRAM(hw.memory?.totalBytes || 0)} Total
                     </span>
                   </div>
@@ -558,15 +557,15 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                   )
 
                   return (
-                    <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.06] space-y-3">
+                    <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.04] space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-400">
+                          <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                             <HardDrive size={16} />
                           </div>
-                          <span className="text-xs font-bold text-white uppercase tracking-wider">Fixed Disks</span>
+                          <span className="text-xs font-bold text-foreground uppercase tracking-wider">Fixed Disks</span>
                         </div>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
                           {internalDisks.length} Internal Drive{internalDisks.length === 1 ? '' : 's'}
                         </span>
                       </div>
@@ -580,19 +579,19 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                             >
                               <div className="flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-mono font-bold text-white">{disk.drive}</span>
+                                  <span className="font-mono font-bold text-foreground">{disk.drive}</span>
                                   {disk.label && (
-                                    <span className="text-[11px] text-white/60 truncate max-w-[120px]">
+                                    <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">
                                       ({disk.label})
                                     </span>
                                   )}
                                   {disk.fileSystem && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-white/10 text-white/50">
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-white/10 text-muted-foreground">
                                       {disk.fileSystem}
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-[11px] font-medium text-white/70">
+                                <span className="text-[11px] font-medium text-foreground/80">
                                   {disk.usagePercent.toFixed(1)}% used
                                 </span>
                               </div>
@@ -602,23 +601,23 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                   className={cn(
                                     'h-full rounded-full transition-all duration-500',
                                     disk.usagePercent > 90
-                                      ? 'bg-rose-500'
+                                      ? 'bg-destructive'
                                       : disk.usagePercent > 75
-                                        ? 'bg-amber-400'
+                                        ? 'bg-primary/80'
                                         : 'bg-primary',
                                   )}
                                   style={{ width: `${Math.min(100, Math.max(0, disk.usagePercent))}%` }}
                                 />
                               </div>
 
-                              <div className="flex items-center justify-between text-[10px] text-white/50">
+                              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                                 <span>{formatBytes(disk.freeBytes)} free</span>
                                 <span>{formatBytes(disk.totalBytes)} total</span>
                               </div>
                             </div>
                           ))
                         ) : (
-                          <p className="text-xs text-white/50 italic py-2">No fixed internal storage reported.</p>
+                          <p className="text-xs text-muted-foreground italic py-2">No fixed internal storage reported.</p>
                         )}
                       </div>
                     </div>
@@ -627,22 +626,22 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
 
                 {/* 5. Connected Displays & Monitor Arrangement Card */}
                 {hw.displays && hw.displays.length > 0 && (
-                  <div className="md:col-span-2 p-4 rounded-2xl bg-white/[0.025] border border-white/[0.06] space-y-4">
+                  <div className="md:col-span-2 p-4 rounded-2xl bg-white/[0.025] border border-white/[0.04] space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-sky-500/15 text-sky-400">
+                        <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
                           <Monitor size={16} />
                         </div>
                         <div>
-                          <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                          <span className="text-xs font-bold text-foreground uppercase tracking-wider block">
                             Connected Displays & Desktop Arrangement
                           </span>
-                          <span className="text-[11px] text-white/50">
+                          <span className="text-[11px] text-muted-foreground">
                             Physical display layout, resolutions, refresh rates, and spatial orientation.
                           </span>
                         </div>
                       </div>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
                         {hw.displays.length} Attached Monitor{hw.displays.length === 1 ? '' : 's'}
                       </span>
                     </div>
@@ -659,7 +658,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
 
                       return (
                         <div className="space-y-3">
-                          <div className="relative w-full h-48 sm:h-56 rounded-xl bg-black/40 border border-white/[0.08] p-4 flex items-center justify-center overflow-hidden">
+                          <div className="relative w-full h-48 sm:h-56 rounded-xl bg-black/40 border border-white/[0.04] p-4 flex items-center justify-center overflow-hidden">
                             {/* Desktop canvas grid background */}
                             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
 
@@ -684,8 +683,8 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                     className={cn(
                                       'absolute rounded-lg p-2 flex flex-col justify-between transition-all select-none border',
                                       d.isPrimary
-                                        ? 'bg-cyan-500/15 border-cyan-400/80 shadow-[0_0_15px_rgba(6,182,212,0.25)]'
-                                        : 'bg-white/[0.04] border-white/20 hover:border-white/40',
+                                        ? 'bg-primary/15 border-primary/50'
+                                        : 'bg-white/[0.04] border-white/10 hover:border-white/20',
                                     )}
                                     style={{
                                       left: `${leftPct}%`,
@@ -699,30 +698,30 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                         className={cn(
                                           'text-[10px] font-bold px-1.5 py-0.5 rounded font-mono',
                                           d.isPrimary
-                                            ? 'bg-cyan-400 text-black'
-                                            : 'bg-white/10 text-white/80',
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'bg-white/10 text-foreground/80',
                                         )}
                                       >
                                         {d.index}
                                       </span>
                                       {d.isPrimary && (
-                                        <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 uppercase tracking-wider">
+                                        <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-primary/20 text-primary uppercase tracking-wider">
                                           Primary
                                         </span>
                                       )}
                                     </div>
 
                                     <div className="min-w-0 py-0.5">
-                                      <p className="text-[11px] font-semibold text-white truncate leading-tight">
+                                      <p className="text-[11px] font-semibold text-foreground truncate leading-tight">
                                         {d.name || d.model || `Display ${d.index}`}
                                       </p>
-                                      <p className="text-[10px] text-white/60 truncate font-mono">
+                                      <p className="text-[10px] text-muted-foreground truncate font-mono">
                                         {d.resolution}
                                         {d.refreshRate ? ` @ ${d.refreshRate}Hz` : ''}
                                       </p>
                                     </div>
 
-                                    <div className="flex items-center justify-between text-[9px] text-white/40 pt-0.5 border-t border-white/[0.05]">
+                                    <div className="flex items-center justify-between text-[9px] text-muted-foreground pt-0.5 border-t border-white/[0.05]">
                                       <span className="truncate">{d.orientation || 'Landscape'}</span>
                                       <span className="font-mono">{d.positionX},{d.positionY}</span>
                                     </div>
@@ -740,8 +739,8 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                 className={cn(
                                   'p-3 rounded-xl border space-y-1.5',
                                   d.isPrimary
-                                    ? 'bg-cyan-500/[0.04] border-cyan-500/30'
-                                    : 'bg-white/[0.02] border-white/[0.05]',
+                                    ? 'bg-primary/[0.05] border-primary/20'
+                                    : 'bg-white/[0.02] border-white/[0.04]',
                                 )}
                               >
                                 <div className="flex items-center justify-between gap-2">
@@ -749,28 +748,28 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                     <span
                                       className={cn(
                                         'text-[10px] font-bold px-1.5 py-0.2 rounded font-mono shrink-0',
-                                        d.isPrimary ? 'bg-cyan-400 text-black' : 'bg-white/10 text-white/70',
+                                        d.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-muted-foreground',
                                       )}
                                     >
                                       {d.index}
                                     </span>
-                                    <span className="text-xs font-semibold text-white truncate">
+                                    <span className="text-xs font-semibold text-foreground truncate">
                                       {d.name}
                                     </span>
                                   </div>
                                   {d.isPrimary && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 uppercase tracking-wider shrink-0">
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/20 text-primary uppercase tracking-wider shrink-0">
                                       Primary
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/5 text-white/70 font-mono">
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/5 text-foreground/80 font-mono">
                                     {d.resolution}{d.refreshRate ? ` @ ${d.refreshRate}Hz` : ''}
                                   </span>
                                   {d.orientation && (
-                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/5 text-white/50">
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground">
                                       {d.orientation}
                                     </span>
                                   )}
@@ -778,8 +777,8 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
 
                                 {d.arrangement && (
                                   <div className="pt-1 border-t border-white/[0.04] flex items-center justify-between text-[10px]">
-                                    <span className="text-white/40">Arrangement</span>
-                                    <span className="font-medium text-sky-300">{d.arrangement}</span>
+                                    <span className="text-muted-foreground">Arrangement</span>
+                                    <span className="font-medium text-primary">{d.arrangement}</span>
                                   </div>
                                 )}
                               </div>
@@ -795,32 +794,32 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
 
             {/* Capability Feature Pills */}
             <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.04] space-y-2">
-              <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider block">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
                 Identified Capabilities & Supported Features
               </span>
               <div className="flex flex-wrap gap-2 pt-0.5">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-cyan-500/15 text-cyan-300">
-                  <Gamepad2 size={13} />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-white/[0.04] text-foreground/85 border border-white/[0.04]">
+                  <Gamepad2 size={13} className="text-primary" />
                   Game Process Tracking ({caps.game_tracking !== false ? 'Active' : 'Unsupported'})
                 </span>
 
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-purple-500/15 text-purple-300">
-                  <Sparkles size={13} />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-white/[0.04] text-foreground/85 border border-white/[0.04]">
+                  <Sparkles size={13} className="text-primary" />
                   {isWindows ? 'Win32 Native In-Game Overlay' : 'OBS / Web HUD Overlay'}
                 </span>
 
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-emerald-500/15 text-emerald-300">
-                  <HardDrive size={13} />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-white/[0.04] text-foreground/85 border border-white/[0.04]">
+                  <HardDrive size={13} className="text-primary" />
                   Save State Backups (Automated)
                 </span>
 
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-amber-500/15 text-amber-300">
-                  <Download size={13} />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-white/[0.04] text-foreground/85 border border-white/[0.04]">
+                  <Download size={13} className="text-primary" />
                   Downloader Provider ({caps.downloader_provider ? 'Ready' : 'Standby'})
                 </span>
 
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-rose-500/15 text-rose-300">
-                  <FolderOpen size={13} />
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-white/[0.04] text-foreground/85 border border-white/[0.04]">
+                  <FolderOpen size={13} className="text-primary" />
                   {isWindows ? 'Silent Game Installer (NSIS / Inno)' : 'Proton / Wine Runner'}
                 </span>
               </div>
@@ -937,18 +936,18 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                           disabled={saving === 'overlayMonitor'}
                           className="h-9 text-xs py-0 w-48 sm:w-64"
                         >
-                          <option value="auto" className="bg-[#18181b] text-white">Auto (Follow Active Game)</option>
+                          <option value="auto" className="bg-card text-card-foreground">Auto (Follow Active Game)</option>
                           {settings.overlayMonitors && settings.overlayMonitors.length > 0 ? (
                             settings.overlayMonitors.map((m) => (
-                              <option key={m.id} value={m.id} className="bg-[#18181b] text-white">
+                              <option key={m.id} value={m.id} className="bg-card text-card-foreground">
                                 {m.name}{m.width && m.height ? ` (${m.width}x${m.height})` : ''}{m.is_primary || m.isPrimary ? ' - Primary' : ''}
                               </option>
                             ))
                           ) : (
                             <>
-                              <option value="1" className="bg-[#18181b] text-white">Monitor 1 (Primary)</option>
-                              <option value="2" className="bg-[#18181b] text-white">Monitor 2</option>
-                              <option value="3" className="bg-[#18181b] text-white">Monitor 3</option>
+                              <option value="1" className="bg-card text-card-foreground">Monitor 1 (Primary)</option>
+                              <option value="2" className="bg-card text-card-foreground">Monitor 2</option>
+                              <option value="3" className="bg-card text-card-foreground">Monitor 3</option>
                             </>
                           )}
                         </DkSelect>
@@ -966,12 +965,12 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                           disabled={saving === 'overlayCorner'}
                           className="h-9 text-xs py-0 w-48 sm:w-64"
                         >
-                          <option value="top-wide" className="bg-[#18181b] text-white">Top Edge (Monitor-Wide Bar)</option>
-                          <option value="bottom-wide" className="bg-[#18181b] text-white">Bottom Edge (Monitor-Wide Bar)</option>
-                          <option value="top-right" className="bg-[#18181b] text-white">Top Right Pill</option>
-                          <option value="top-left" className="bg-[#18181b] text-white">Top Left Pill</option>
-                          <option value="bottom-right" className="bg-[#18181b] text-white">Bottom Right Pill</option>
-                          <option value="bottom-left" className="bg-[#18181b] text-white">Bottom Left Pill</option>
+                          <option value="top-wide" className="bg-card text-card-foreground">Top Edge (Monitor-Wide Bar)</option>
+                          <option value="bottom-wide" className="bg-card text-card-foreground">Bottom Edge (Monitor-Wide Bar)</option>
+                          <option value="top-right" className="bg-card text-card-foreground">Top Right Pill</option>
+                          <option value="top-left" className="bg-card text-card-foreground">Top Left Pill</option>
+                          <option value="bottom-right" className="bg-card text-card-foreground">Bottom Right Pill</option>
+                          <option value="bottom-left" className="bg-card text-card-foreground">Bottom Left Pill</option>
                         </DkSelect>
                       }
                     />

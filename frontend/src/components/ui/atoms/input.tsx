@@ -6,17 +6,18 @@ interface DkInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
   hint?: string
   error?: string
+  wrapperClassName?: string
 }
 
 const DkInput = forwardRef<HTMLInputElement, DkInputProps>(
-  ({ className, label, hint, error, id, required, ...props }, ref) => {
+  ({ className, wrapperClassName, label, hint, error, id, required, ...props }, ref) => {
     const autoId = useId()
     const inputId = id || autoId
     const errorId = `${inputId}-error`
     const hintId = `${inputId}-hint`
 
     return (
-      <div className="space-y-1">
+      <div className={cn('space-y-1', wrapperClassName)}>
         {label && (
           <label htmlFor={inputId} className="block pl-4 text-sm font-medium text-foreground">
             {label}

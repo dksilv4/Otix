@@ -8,6 +8,7 @@ import {
   isLocalDesktopNodeId,
   mergeLocalDesktopNode,
   pickSettingsNode,
+  syncServersWithPendingNodes,
 } from '../local-desktop-node'
 
 function remote(id: number, extra: Partial<GameServer> = {}): GameServer {
@@ -66,4 +67,28 @@ describe('local desktop node', () => {
     expect(pickSettingsNode([primary, other], null)?.id).toBe(7)
     expect(pickSettingsNode([other], null)?.id).toBe(8)
   })
+
+  it('syncs servers with pending nodes when server name differs', () => {
+    const servers = [
+      remote(9, { name: 'Gaming Battlestation', localUrl: 'http://127.0.0.1:8090', authToken: 'abc123' }),
+    ]
+    const pending = [
+      { serverName: 'DK PC', localUrl: 'http://127.0.0.1:8090', authToken: 'abc123', claimed: true },
+    ]
+    const synced = syncServersWithPendingNodes(servers, pending)
+    expect(synced[0].name).toBe('DK PC')
+    expect(synced[0].isOnline).toBe(true)
+  })
+
+  it('ignores generic names when syncing servers with pending nodes', () => {
+    const servers = [
+      remote(9, { name: 'DK PC', localUrl: 'http://127.0.0.1:8090', authToken: 'abc123' }),
+    ]
+    const pending = [
+      { serverName: 'Otix Game Server', localUrl: 'http://127.0.0.1:8090', authToken: 'abc123', claimed: true },
+    ]
+    const synced = syncServersWithPendingNodes(servers, pending)
+    expect(synced[0].name).toBe('DK PC')
+  })
 })
+

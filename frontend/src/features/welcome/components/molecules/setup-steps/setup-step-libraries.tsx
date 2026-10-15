@@ -43,13 +43,14 @@ export const SetupStepLibraries = ({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-1 items-start sm:items-center">
             <DkInput
               type="text"
               value={gamePath || ''}
               onChange={(e) => onChangePath(e.target.value)}
-              placeholder="e.g. /Applications/Games or C:\Games"
-              className="text-xs font-mono flex-1"
+              placeholder="e.g. C:\Otix or /Applications/Games"
+              wrapperClassName="flex-1 w-full min-w-0"
+              className="text-xs font-mono h-10 w-full"
             />
             <DkButton
               type="button"
@@ -58,7 +59,7 @@ export const SetupStepLibraries = ({
               onClick={() => void onSelectPath()}
               loading={isSelecting}
               leftIcon={FolderPlus}
-              className="text-xs font-semibold shrink-0"
+              className="text-xs font-semibold shrink-0 h-10"
             >
               Browse Folder
             </DkButton>

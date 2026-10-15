@@ -67,6 +67,7 @@ from apps.library.views import (
     GameServerSonarrRootFoldersView,
     GameServerSonarrSeriesView,
     GameServerSonarrTestView,
+    GameServerUnclaimView,
     GameServerUsenetConfigView,
     GameServerUsenetDownloadView,
     GameServerUsenetHistoryView,
@@ -92,6 +93,11 @@ from apps.library.views import (
     SteamWishlistView,
     UserGameRunningView,
     UserGameSessionsView,
+    UserHomeDetailView,
+    UserHomeListCreateView,
+    UserServerMachineDetailView,
+    UserServerMachineDetectDrivesView,
+    UserServerMachineListCreateView,
     YoutubeLibraryView,
 )
 
@@ -101,6 +107,24 @@ app_name = "library"
 
 urlpatterns = [
     path("installed", InstalledGamesView.as_view(), name="library-installed"),
+    path("homes", UserHomeListCreateView.as_view(), name="library-homes"),
+    path("homes/<int:home_id>", UserHomeDetailView.as_view(), name="library-home-detail"),
+    path("server-machines", UserServerMachineListCreateView.as_view(), name="library-server-machines"),
+    path(
+        "server-machines/detect-drives",
+        UserServerMachineDetectDrivesView.as_view(),
+        name="library-server-machine-detect-drives-direct",
+    ),
+    path(
+        "server-machines/<int:server_id>",
+        UserServerMachineDetailView.as_view(),
+        name="library-server-machine-detail",
+    ),
+    path(
+        "server-machines/<int:server_id>/detect-drives",
+        UserServerMachineDetectDrivesView.as_view(),
+        name="library-server-machine-detect-drives",
+    ),
     path("node-connections", NodeConnectionsView.as_view(), name="library-node-connections"),
     path(
         "node-connections/sync",
@@ -157,6 +181,8 @@ urlpatterns = [
         GameServerClaimDirectView.as_view(),
         name="library-servers-claim-direct",
     ),
+    path("servers/unclaim", GameServerUnclaimView.as_view(), name="library-servers-unclaim"),
+    path("nodes/unclaim", GameServerUnclaimView.as_view(), name="library-nodes-unclaim"),
     path("servers/pending", GameServerPendingView.as_view(), name="library-servers-pending"),
     path(
         "servers/downloads", GameServerDownloadsListView.as_view(), name="library-servers-downloads"

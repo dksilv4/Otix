@@ -1,10 +1,17 @@
 import { useState } from 'react'
-import { ExternalLink, KeyRound, Server } from 'lucide-react'
+import { ExternalLink, KeyRound, Server, AlertCircle, RotateCcw, Sparkles } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import { useToast } from '@ui/molecules/toast'
 import { cn } from '@/lib/utils'
-import { useClaimGameServer, useCreateGameServer } from '@/features/downloads/use-server-downloads'
+import {
+  useClaimGameServer,
+  useCreateGameServer,
+  useGameServers,
+  usePendingGameServers,
+  useUnclaimLocalNode,
+} from '@/features/downloads/use-server-downloads'
+import { isNodeOrphaned, type PendingNode } from '@/features/downloads/pending-nodes'
 import { NodesFeatureTags } from '@/features/settings/components/nodes-feature-tags'
 
 interface ConnectNodeModalProps {
@@ -25,6 +32,9 @@ export const ConnectNodeModal = ({
   const { toast } = useToast()
   const claimServerMutation = useClaimGameServer()
   const createServerMutation = useCreateGameServer()
+  const { data: servers = [] } = useGameServers()
+  const { data: pendingNodes = [] } = usePendingGameServers({ enabled: isOpen })
+  const unclaimMutation = useUnclaimLocalNode()
 
   const [connectTab, setConnectTab] = useState<'claim' | 'manual'>(initialTab)
   const [claimPin, setClaimPin] = useState('')
@@ -32,6 +42,37 @@ export const ConnectNodeModal = ({
   const [claimServerName, setClaimServerName] = useState('')
   const [claimIsLocal, setClaimIsLocal] = useState(true)
   const [claimingPin, setClaimingPin] = useState(false)
+
+  const unclaimedNodes = pendingNodes.filter(
+    (p) =>
+      !p.claimed &&
+      Boolean(p.claimCode || p.localUrl) &&
+      !servers.some((s) => s.localUrl === p.localUrl || s.primaryUrl === p.localUrl),
+  )
+  const orphanedNodes = pendingNodes.filter((p) => isNodeOrphaned(p, servers))
+
+  const handleUnclaim = async (node: PendingNode) => {
+    try {
+      await unclaimMutation.mutateAsync(node.authToken)
+      toast({
+        title: 'Node Reset',
+        description: `Reset ${node.serverName || 'local node'}. Generating fresh PIN...`,
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Reset Failed',
+        description: 'Could not reset the node daemon. Check that it is running.',
+        variant: 'error',
+      })
+    }
+  }
+
+  const handleUseDetectedPin = (node: PendingNode) => {
+    if (node.claimCode) setClaimPin(node.claimCode)
+    if (node.localUrl) setClaimNodeUrl(node.localUrl)
+    if (node.serverName) setClaimServerName(node.serverName)
+  }
 
   const [serverName, setServerName] = useState('')
   const [serverUrl, setServerUrl] = useState(initialNodeUrl || 'http://127.0.0.1:8090')
@@ -56,7 +97,18 @@ export const ConnectNodeModal = ({
     e.preventDefault()
     const pin = claimPin.trim().toUpperCase()
     if (!pin) return
-    const effectiveName = claimServerName.trim() || defaultName
+    const matchedPending = pendingNodes.find(
+      (p) =>
+        (pin && p.claimCode === pin) ||
+        (claimNodeUrl && (p.localUrl === claimNodeUrl.trim() || p.localUrl === `${claimNodeUrl.trim()}/`)),
+    )
+    const fallbackDetectedName =
+      matchedPending?.serverName &&
+      matchedPending.serverName !== 'Otix Game Server' &&
+      matchedPending.serverName !== 'Otix Node'
+        ? matchedPending.serverName
+        : undefined
+    const effectiveName = claimServerName.trim() || fallbackDetectedName || defaultName
     const targetUrl = claimNodeUrl.trim() || (claimIsLocal ? 'http://127.0.0.1:8090' : undefined)
     setClaimingPin(true)
     try {
@@ -208,6 +260,55 @@ export const ConnectNodeModal = ({
               </div>
             </div>
 
+            {/* Auto-detected node banners */}
+            {orphanedNodes.length > 0 && (
+              <div className="rounded-xl p-3 bg-destructive/10 border border-white/[0.04] flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-destructive font-semibold text-xs">
+                    <AlertCircle size={14} className="shrink-0" />
+                    <span>Local node linked to deleted or different account</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                    {orphanedNodes[0].serverName} ({orphanedNodes[0].localUrl}) is running. Reset to link it here.
+                  </p>
+                </div>
+                <DkButton
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleUnclaim(orphanedNodes[0])}
+                  loading={unclaimMutation.isPending}
+                  className="text-xs shrink-0"
+                >
+                  <RotateCcw size={12} className="mr-1" />
+                  Reset Node
+                </DkButton>
+              </div>
+            )}
+
+            {unclaimedNodes.length > 0 && unclaimedNodes[0].claimCode && (
+              <div className="rounded-xl p-3 bg-primary/10 border border-white/[0.04] flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-primary font-semibold text-xs">
+                    <Sparkles size={14} className="shrink-0" />
+                    <span>Detected Node: {unclaimedNodes[0].serverName}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    PIN code: <span className="font-mono font-bold text-foreground">{unclaimedNodes[0].claimCode}</span>
+                  </p>
+                </div>
+                <DkButton
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleUseDetectedPin(unclaimedNodes[0])}
+                  className="text-xs shrink-0"
+                >
+                  Use PIN
+                </DkButton>
+              </div>
+            )}
+
             <div>
               <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
                 6-Character Claim PIN
@@ -219,7 +320,7 @@ export const ConnectNodeModal = ({
                 placeholder="OTX-XXXX"
                 value={claimPin}
                 onChange={(e) => setClaimPin(e.target.value.toUpperCase())}
-                className="w-full px-3 py-2 rounded-lg bg-black/40 text-base font-mono tracking-widest font-bold text-primary placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/40 uppercase"
+                className="w-full px-3 py-2 rounded-lg bg-black/40 text-base font-mono tracking-widest font-bold text-primary placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40 uppercase"
               />
               <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
                 Run <span className="font-mono text-foreground/80">otix-node</span> and open its dashboard at{' '}
@@ -231,7 +332,7 @@ export const ConnectNodeModal = ({
               <div>
                 <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
                   Node URL{' '}
-                  <span className="normal-case font-normal text-white/30">
+                  <span className="normal-case font-normal text-muted-foreground/60">
                     ({claimIsLocal ? 'defaults to localhost' : 'required for remote'})
                   </span>
                 </label>
@@ -240,22 +341,39 @@ export const ConnectNodeModal = ({
                   placeholder={claimIsLocal ? 'http://127.0.0.1:8090' : 'https://node.example.com:8090'}
                   value={claimNodeUrl}
                   onChange={(e) => setClaimNodeUrl(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-foreground placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
               <div>
                 <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
                   Node Name{' '}
-                  <span className="normal-case font-normal text-white/30">(defaults to {defaultName})</span>
+                  <span className="normal-case font-normal text-muted-foreground/60">(defaults to {defaultName})</span>
                 </label>
                 <input
                   type="text"
                   placeholder={defaultName}
                   value={claimServerName}
                   onChange={(e) => setClaimServerName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-foreground placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
+            </div>
+
+            <div className="rounded-xl p-3 bg-white/[0.03] border border-white/[0.04] space-y-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-foreground">Want direct account login instead?</span>
+                <a
+                  href={claimNodeUrl.trim() || 'http://127.0.0.1:8090'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                >
+                  Open Web UI <ExternalLink size={11} />
+                </a>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Log in directly with your Otix account credentials on the node dashboard. Works locally, over LAN, and on self-hosted instances without router port-forwarding.
+              </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, Suspense } from 'react'
 import { Link, Outlet, useLocation } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { ChevronDown, Shield, X, Lock, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
@@ -18,6 +18,7 @@ import { FeatureStatusTag, type FeatureStatusKind } from '@ui/atoms/feature-stat
 import { SettingsSaveProvider } from '../context/settings-save-context'
 import { SettingsNodeProvider } from '../context/settings-node-context'
 import { SettingsSaveBar } from '../components/molecules/settings-save-bar'
+import { SettingsSectionPending } from '../components/molecules/settings-section-pending'
 import { usePluginTabs } from '@/features/_config/slots'
 import { QueryErrorBoundary } from '@/components/query-error-boundary'
 import {
@@ -232,103 +233,121 @@ const SettingsLayoutInner = () => {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 px-2 sm:px-4 lg:px-6 h-full">
-        <aside
-          id="settings-sidebar"
-          className={cn(
-            'hidden sm:flex flex-col shrink-0 h-full pb-6 transition-all duration-300 ease-in-out',
-            collapsed ? 'w-16 lg:w-20' : 'w-56 lg:w-64',
-            desktop ? 'pt-24 sm:pt-28' : 'pt-16 sm:pt-20',
-          )}
-        >
-          <div
-            className={cn(
-              'flex flex-col h-full pt-6 pb-5 transition-all duration-300 rounded-3xl shadow-xl shadow-black/30 backdrop-blur-xl',
-              collapsed ? 'px-2 items-center' : 'px-5',
-            )}
-            style={{ backgroundColor: 'var(--dk-surface-base)' }}
-          >
-            <div className={cn('flex items-center mb-5 w-full', collapsed ? 'justify-center' : 'justify-between')}>
-              {!collapsed && <h1 className="text-lg font-bold">Settings</h1>}
-              <button
-                type="button"
-                onClick={toggleCollapsed}
-                title={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
-                aria-label={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-              >
-                {collapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
-              </button>
-            </div>
-
-            {!collapsed && (
-              <div className="relative mb-4 w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..."
-                  className="w-full rounded-xl bg-white/5 pl-9 pr-3 py-2 text-xs text-white placeholder-white/40 outline-none"
-                />
-              </div>
-            )}
-
-            <nav
-              ref={navRef}
-              className={cn('flex flex-col gap-1 flex-1 overflow-y-auto pr-1 w-full', collapsed && 'items-center')}
+      {(() => {
+        const isNodesPage = activeSection === 'nodes'
+        return (
+          <div className="flex flex-col sm:flex-row h-full gap-4 sm:gap-6 px-2 sm:px-4 lg:px-6 relative">
+            <aside
+              id="settings-sidebar"
+              className={cn(
+                'hidden sm:flex flex-col shrink-0 h-full pb-6 transition-all duration-300 ease-in-out relative z-20',
+                collapsed ? 'w-16 lg:w-20' : 'w-56 lg:w-64',
+                desktop ? 'pt-24 sm:pt-28' : 'pt-16 sm:pt-20',
+              )}
             >
-              <SettingsNavGroups items={searchedNav} activeSection={activeSection} collapsed={collapsed} user={user} />
-            </nav>
+              <div
+                className={cn(
+                  'flex flex-col h-full pt-6 pb-5 transition-all duration-300 rounded-3xl shadow-2xl backdrop-blur-2xl border border-white/[0.06]',
+                  collapsed ? 'px-2 items-center' : 'px-5',
+                )}
+                style={{
+                  backgroundColor: isNodesPage
+                    ? 'color-mix(in srgb, var(--dk-surface-base) 75%, transparent)'
+                    : 'var(--dk-surface-base)',
+                }}
+              >
+                <div className={cn('flex items-center mb-5 w-full', collapsed ? 'justify-center' : 'justify-between')}>
+                  {!collapsed && <h1 className="text-lg font-bold">Settings</h1>}
+                  <button
+                    type="button"
+                    onClick={toggleCollapsed}
+                    title={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
+                    aria-label={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
+                    className="flex h-8 w-8 items-center justify-center rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                  >
+                    {collapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
+                  </button>
+                </div>
 
-            {user && (
-              <div className={cn('mt-auto pt-4 w-full', collapsed && 'flex justify-center')}>
-                {!collapsed ? (
-                  <div className="flex items-center gap-3 px-1 py-2">
-                    <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {user.username}
-                        {user.isAdmin && <Shield className="h-3 w-3 inline-block ml-1 text-amber-400/80" />}
-                      </p>
-                      <p className="text-xs text-white/40 truncate">{user.email}</p>
-                    </div>
+                {!collapsed && (
+                  <div className="relative mb-4 w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+                    <input
+                      type="search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search..."
+                      className="w-full rounded-xl bg-white/5 pl-9 pr-3 py-2 text-xs text-white placeholder-white/40 outline-none"
+                    />
                   </div>
-                ) : (
-                  <div title={`${user.username} (${user.email})`} className="p-1">
-                    <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
+                )}
+
+                <nav
+                  ref={navRef}
+                  className={cn('flex flex-col gap-1 flex-1 overflow-y-auto pr-1 w-full', collapsed && 'items-center')}
+                >
+                  <SettingsNavGroups items={searchedNav} activeSection={activeSection} collapsed={collapsed} user={user} />
+                </nav>
+
+                {user && (
+                  <div className={cn('mt-auto pt-4 w-full', collapsed && 'flex justify-center')}>
+                    {!collapsed ? (
+                      <div className="flex items-center gap-3 px-1 py-2">
+                        <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {user.username}
+                            {user.isAdmin && <Shield className="h-3 w-3 inline-block ml-1 text-amber-400/80" />}
+                          </p>
+                          <p className="text-xs text-white/40 truncate">{user.email}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div title={`${user.username} (${user.email})`} className="p-1">
+                        <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </aside>
+            </aside>
 
-        <div className="flex flex-col flex-1 min-w-0 min-h-0 h-full">
-          <main id="settings-content" className="flex-1 min-w-0 overflow-y-auto scroll-smooth">
-            <div
-              key={location.pathname}
-              className={cn(
-                'min-h-full w-full max-w-5xl xl:max-w-6xl mx-auto px-1 sm:px-3 lg:px-4 pb-28',
-                desktop ? 'pt-24 sm:pt-28 lg:pt-32' : 'pt-16 sm:pt-20 lg:pt-24',
-              )}
-              style={{ animation: 'settings-enter 0.2s ease-out' }}
-            >
-              <button
-                type="button"
-                onClick={() => setMobileOpen(true)}
-                className="sm:hidden flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors self-start mb-4 px-2 py-1"
+            <div className="flex flex-col flex-1 min-w-0 min-h-0 h-full relative z-10">
+              <main
+                id="settings-content"
+                className={cn('flex-1 min-w-0 scroll-smooth', isNodesPage ? 'h-full w-full overflow-hidden' : 'overflow-y-auto')}
               >
-                <ChevronDown className="h-4 w-4 rotate-90" />
-                {activeLabel}
-              </button>
-              <QueryErrorBoundary label="settings page">
-                <Outlet />
-              </QueryErrorBoundary>
+                <div
+                  key={location.pathname}
+                  className={cn(
+                    isNodesPage
+                      ? 'h-full w-full p-0 m-0 max-w-none'
+                      : cn(
+                          'min-h-full w-full max-w-5xl xl:max-w-6xl mx-auto px-1 sm:px-3 lg:px-4 pb-28',
+                          desktop ? 'pt-24 sm:pt-28 lg:pt-32' : 'pt-16 sm:pt-20 lg:pt-24',
+                        ),
+                  )}
+                  style={!isNodesPage ? { animation: 'settings-enter 0.2s ease-out' } : undefined}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setMobileOpen(true)}
+                    className="sm:hidden flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors self-start mb-4 px-2 py-1"
+                  >
+                    <ChevronDown className="h-4 w-4 rotate-90" />
+                    {activeLabel}
+                  </button>
+                  <QueryErrorBoundary label="settings page">
+                    <Suspense fallback={<SettingsSectionPending />}>
+                      <Outlet />
+                    </Suspense>
+                  </QueryErrorBoundary>
+                </div>
+              </main>
             </div>
-          </main>
-        </div>
-      </div>
+          </div>
+        )
+      })()}
 
       <SettingsSaveBar />
     </div>

@@ -142,8 +142,13 @@ func (cm *ClaimManager) Confirm(code string, authToken string, serverName string
 
 	// Update config
 	cm.cfg.Server.AuthToken = strings.TrimSpace(authToken)
-	if strings.TrimSpace(serverName) != "" {
-		cm.cfg.Server.Name = strings.TrimSpace(serverName)
+	incomingName := strings.TrimSpace(serverName)
+	if incomingName != "" && incomingName != "Otix Game Server" && incomingName != "Otix Node" {
+		isGenericIncoming := strings.HasPrefix(incomingName, "Node ID:") || incomingName == "Node"
+		currentHasCustom := cm.cfg.Server.Name != "" && cm.cfg.Server.Name != "Otix Game Server" && cm.cfg.Server.Name != "Otix Node" && !strings.HasPrefix(cm.cfg.Server.Name, "Node ID:")
+		if !isGenericIncoming || !currentHasCustom {
+			cm.cfg.Server.Name = incomingName
+		}
 	}
 	cm.cfg.Server.Claimed = true
 	cm.cfg.Server.ClaimedBy = strings.TrimSpace(username)
@@ -177,8 +182,13 @@ func (cm *ClaimManager) ConfirmDirect(authToken string, serverName string, usern
 	prevClaimedBy := cm.cfg.Server.ClaimedBy
 
 	cm.cfg.Server.AuthToken = strings.TrimSpace(authToken)
-	if strings.TrimSpace(serverName) != "" {
-		cm.cfg.Server.Name = strings.TrimSpace(serverName)
+	incomingDirectName := strings.TrimSpace(serverName)
+	if incomingDirectName != "" && incomingDirectName != "Otix Game Server" && incomingDirectName != "Otix Node" {
+		isGenericIncoming := strings.HasPrefix(incomingDirectName, "Node ID:") || incomingDirectName == "Node"
+		currentHasCustom := cm.cfg.Server.Name != "" && cm.cfg.Server.Name != "Otix Game Server" && cm.cfg.Server.Name != "Otix Node" && !strings.HasPrefix(cm.cfg.Server.Name, "Node ID:")
+		if !isGenericIncoming || !currentHasCustom {
+			cm.cfg.Server.Name = incomingDirectName
+		}
 	}
 	cm.cfg.Server.Claimed = true
 	cm.cfg.Server.ClaimedBy = strings.TrimSpace(username)

@@ -75,6 +75,7 @@ from apps.library.views.nodes import (
     GameServerSonarrRootFoldersView,
     GameServerSonarrSeriesView,
     GameServerSonarrTestView,
+    GameServerUnclaimView,
     GameServerUsenetConfigView,
     GameServerUsenetDownloadView,
     GameServerUsenetHistoryView,
@@ -95,15 +96,25 @@ from apps.library.views.nodes import (
     NodeSessionsView,
     NodeShareDeleteView,
     NodeShareListCreateView,
+    NodeUnclaimView,
     UserGameRunningView,
     UserGameSessionsView,
+)
+from apps.library.views.server_machines import (
+    UserHomeDetailView,
+    UserHomeListCreateView,
+    UserServerMachineDetailView,
+    UserServerMachineDetectDrivesView,
+    UserServerMachineListCreateView,
 )
 
 __all__ = [
     "GameServerClaimView",
     "GameServerClaimDirectView",
+    "GameServerUnclaimView",
     "NodeClaimView",
     "NodeClaimDirectView",
+    "NodeUnclaimView",
     "NodeListCreateView",
     "NodeDetailView",
     "NodePingView",
@@ -194,4 +205,9 @@ __all__ = [
     "GameServerRunningView",
     "NodeRunningView",
     "UserGameRunningView",
+    "UserHomeListCreateView",
+    "UserHomeDetailView",
+    "UserServerMachineListCreateView",
+    "UserServerMachineDetailView",
+    "UserServerMachineDetectDrivesView",
 ]

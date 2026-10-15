@@ -47,11 +47,13 @@ func TestDesktopSettings(t *testing.T) {
 		"gamesDownloadPath": "/custom/downloads",
 		"gamesInstallPath":  "/custom/games",
 		"scanOnLaunch":      true,
+		"serverName":        "My Awesome Rig",
 	})
 
 	if !res1.LaunchOnStartup || !res1.MinimizeToTray || !res1.CloseToTray ||
 		!res1.AlwaysOnTop || !res1.StartMinimized || !res1.ScanOnLaunch ||
-		res1.GamesDownloadPath != "/custom/downloads" || res1.GamesInstallPath != "/custom/games" {
+		res1.GamesDownloadPath != "/custom/downloads" || res1.GamesInstallPath != "/custom/games" ||
+		res1.ServerName != "My Awesome Rig" {
 		t.Errorf("ApplyDesktopSettings camelCase failed: %+v", res1)
 	}
 
@@ -65,11 +67,13 @@ func TestDesktopSettings(t *testing.T) {
 		"games_download_path": "/new/downloads",
 		"games_install_path":  "/new/games",
 		"scan_on_launch":      false,
+		"server_name":         "My Snake Rig",
 	})
 
 	if res2.LaunchOnStartup || res2.MinimizeToTray || res2.CloseToTray ||
 		res2.AlwaysOnTop || res2.StartMinimized || res2.ScanOnLaunch ||
-		res2.GamesDownloadPath != "/new/downloads" || res2.GamesInstallPath != "/new/games" {
+		res2.GamesDownloadPath != "/new/downloads" || res2.GamesInstallPath != "/new/games" ||
+		res2.ServerName != "My Snake Rig" {
 		t.Errorf("ApplyDesktopSettings snake_case failed: %+v", res2)
 	}
 }

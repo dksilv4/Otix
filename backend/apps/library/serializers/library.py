@@ -156,12 +156,16 @@ class UserNodeSerializer(serializers.ModelSerializer):
     primary_url = serializers.CharField(read_only=True)
     is_shared = serializers.SerializerMethodField()
     shared_by = serializers.SerializerMethodField()
+    home_id = serializers.IntegerField(source="home.id", read_only=True, allow_null=True)
+    home_name = serializers.CharField(source="home.name", read_only=True, allow_null=True)
 
     class Meta:
         model = UserGameServer
         fields = [
             "id",
             "name",
+            "home_id",
+            "home_name",
             "local_url",
             "remote_url",
             "primary_url",
@@ -180,6 +184,8 @@ class UserNodeSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "home_id",
+            "home_name",
             "is_online",
             "last_seen_at",
             "total_files",
@@ -213,11 +219,13 @@ class UserNodeCreateSerializer(serializers.ModelSerializer):
     """Payload to register or update an Otix node."""
 
     name = serializers.CharField(required=False, allow_blank=True, default="")
+    home_id = serializers.IntegerField(required=False, allow_null=True)
 
     class Meta:
         model = UserGameServer
         fields = [
             "name",
+            "home_id",
             "local_url",
             "remote_url",
             "auth_token",

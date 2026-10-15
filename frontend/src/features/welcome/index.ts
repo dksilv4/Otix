@@ -27,6 +27,8 @@ export {
   saveLibraryScanDirectory,
   markOnboardingFinished,
   hasSeenSetupWizard,
+  getDefaultPrimaryGamePath,
+  getInitialGamePath,
   SETUP_WIZARD_SEEN_KEY,
 } from './utils/setup-wizard-utils'
 export { createWelcomeRoutes } from './router'

@@ -23,8 +23,17 @@ dev: ## Run all services (backend, arr, otix node, frontend) in one terminal
 
 run: dev
 
-worker: ## Run local distributed compute worker to help production
+worker: ## Run local distributed compute worker CLI
 	powershell -ExecutionPolicy Bypass -File ./scripts/start_worker.ps1
+
+worker-stats: ## View live production catalog & storage telemetry
+	powershell -ExecutionPolicy Bypass -File ./scripts/start_worker.ps1 -Stats
+
+worker-benchmark: ## Benchmark local GPU embedding throughput and catalog ETA
+	powershell -ExecutionPolicy Bypass -File ./scripts/start_worker.ps1 -Benchmark
+
+worker-hydrate: ## Trigger catalog discovery and sync drain
+	powershell -ExecutionPolicy Bypass -File ./scripts/start_worker.ps1 -Hydrate
 
 node-local: ## Run local Otix node (port 8090 -> localhost:8000)
 	powershell -ExecutionPolicy Bypass -File ./scripts/start_node_local.ps1

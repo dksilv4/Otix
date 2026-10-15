@@ -23,6 +23,18 @@ export interface DesktopSettings {
   embeddedNodePort?: number;
 }
 
+export function getDefaultGamesInstallPath(): string {
+  if (process.platform === 'win32') {
+    const drive = process.env.SystemDrive || 'C:';
+    return `${drive}\\Otix`;
+  }
+  try {
+    return path.join(app.getPath('home'), 'Otix');
+  } catch {
+    return '/Otix';
+  }
+}
+
 const DEFAULT_SETTINGS: DesktopSettings = {
   launchOnStartup: false,
   minimizeToTray: false,
@@ -30,7 +42,7 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   alwaysOnTop: false,
   startMinimized: false,
   gamesDownloadPath: '',
-  gamesInstallPath: '',
+  gamesInstallPath: getDefaultGamesInstallPath(),
   isoDownloadPath: '',
   scanOnLaunch: false,
   embeddedNodeEnabled: true,
@@ -76,6 +88,9 @@ export function loadDesktopSettings(): DesktopSettings {
     const raw = fs.readFileSync(settingsPath(), 'utf-8');
     const parsed = JSON.parse(raw) as Partial<DesktopSettings>;
     cachedSettings = { ...DEFAULT_SETTINGS, ...parsed };
+    if (!cachedSettings.gamesInstallPath) {
+      cachedSettings.gamesInstallPath = getDefaultGamesInstallPath();
+    }
     return cachedSettings;
   } catch {
     cachedSettings = { ...DEFAULT_SETTINGS };

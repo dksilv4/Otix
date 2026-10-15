@@ -14,6 +14,8 @@ import {
   Globe,
   KeyRound,
   Sparkles,
+  RotateCcw,
+  AlertCircle,
 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
 import { useModal } from '@/lib/modals'
@@ -27,9 +29,10 @@ import {
   useClaimGameServer,
   useProbeGameServer,
   usePendingGameServers,
+  useUnclaimLocalNode,
   type ServerProbeResult,
 } from '@/features/downloads/use-server-downloads'
-import { pendingNodesToClaim, type PendingNode } from '@/features/downloads/pending-nodes'
+import { pendingNodesToClaim, isNodeOrphaned, type PendingNode } from '@/features/downloads/pending-nodes'
 import { NodeFileExplorerModal } from '@/features/downloads/molecules/node-file-explorer-modal'
 import { DownloadNodeModal } from '@/features/downloads/molecules/download-node-modal'
 import { useToast } from '@ui/molecules/toast'
@@ -63,6 +66,7 @@ export const SettingsDownloadsPage = ({
   const updateServerMutation = useUpdateGameServer()
   const claimServerMutation = useClaimGameServer()
   const probeServerMutation = useProbeGameServer()
+  const unclaimLocalMutation = useUnclaimLocalNode()
   const { data: pendingNodes = [] } = usePendingGameServers({ enabled: showNodes })
 
   const [showAddServer, setShowAddServer] = useState(false)
@@ -72,6 +76,7 @@ export const SettingsDownloadsPage = ({
   const [claimServerName, setClaimServerName] = useState('')
   const [claimIsLocal, setClaimIsLocal] = useState(true)
   const [claimingPin, setClaimingPin] = useState(false)
+  const [isUnclaimingQuick, setIsUnclaimingQuick] = useState(false)
 
   const [probeResults, setProbeResults] = useState<Record<number, ServerProbeResult>>({})
   const [probingServerId, setProbingServerId] = useState<number | null>(null)
@@ -87,6 +92,7 @@ export const SettingsDownloadsPage = ({
 
   const [nodeToDelete, setNodeToDelete] = useState<{ id: number; name: string } | null>(null)
   const unclaimedNodes = pendingNodesToClaim(pendingNodes, gameServers)
+  const orphanedNodes = pendingNodes.filter((p) => isNodeOrphaned(p, gameServers))
 
   const openServerExplorer = (server: { id: number; name: string }) => {
     const close = openModal(
@@ -254,11 +260,15 @@ export const SettingsDownloadsPage = ({
 
   const handleClaimQuickNode = async (node: PendingNode) => {
     if (!node.claimCode) return
+    const effectiveQuickName =
+      node.serverName && node.serverName !== 'Otix Game Server' && node.serverName !== 'Otix Node'
+        ? node.serverName
+        : defaultAutoName
     try {
       const server = await claimServerMutation.mutateAsync({
         claim_code: node.claimCode,
         node_url: node.localUrl || undefined,
-        server_name: node.serverName || defaultAutoName,
+        server_name: effectiveQuickName,
         is_local: true,
       })
       toast({
@@ -272,6 +282,26 @@ export const SettingsDownloadsPage = ({
         description: err.response?.data?.error || err.message || 'Failed to claim node.',
         variant: 'error',
       })
+    }
+  }
+
+  const handleUnclaimQuickNode = async (node: PendingNode) => {
+    setIsUnclaimingQuick(true)
+    try {
+      await unclaimLocalMutation.mutateAsync(node.authToken)
+      toast({
+        title: 'Node Reset',
+        description: `Reset ${node.serverName || 'local node'}. Fresh PIN generated.`,
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Reset Failed',
+        description: 'Failed to reset local node.',
+        variant: 'error',
+      })
+    } finally {
+      setIsUnclaimingQuick(false)
     }
   }
 
@@ -646,6 +676,38 @@ export const SettingsDownloadsPage = ({
                 </div>
               </form>
             )}
+          </div>
+        )}
+
+        {orphanedNodes.length > 0 && (
+          <div className="p-3.5 rounded-xl border border-white/[0.04] bg-destructive/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-4 h-4 text-destructive" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xs font-bold text-foreground">
+                    Node Needs Re-linking: <span className="text-destructive font-bold">{orphanedNodes[0].serverName}</span>
+                  </p>
+                </div>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  Running at {orphanedNodes[0].localUrl}, but linked to a deleted or different account. Reset to generate a new PIN and link to this account.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <DkButton
+                size="sm"
+                variant="primary"
+                onClick={() => handleUnclaimQuickNode(orphanedNodes[0])}
+                loading={isUnclaimingQuick}
+                className="text-xs font-bold"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Reset &amp; Claim Node
+              </DkButton>
+            </div>
           </div>
         )}
 

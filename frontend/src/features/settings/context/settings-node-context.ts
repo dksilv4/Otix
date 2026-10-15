@@ -1,7 +1,32 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useGameServers } from '@/features/downloads/use-server-downloads'
+import * as serverDownloads from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/types'
-import { mergeLocalDesktopNode, pickSettingsNode } from '../local-desktop-node'
+import { isLocalDesktopNode, mergeLocalDesktopNode, pickSettingsNode, syncServersWithPendingNodes } from '../local-desktop-node'
+import { nodeUrlKey, type PendingNode } from '@/features/downloads/pending-nodes'
+
+function resolveUsePending(): () => { data?: PendingNode[] } {
+  try {
+    const fn = (serverDownloads as Record<string, unknown>)['usePendingGameServers']
+    if (typeof fn === 'function') return fn as () => { data?: PendingNode[] }
+  } catch {
+    // Vitest throws on missing mock export
+  }
+  return () => ({ data: [] })
+}
+
+function resolveUseUpdate(): () => { mutate: (args: { id: number; name: string }) => void } {
+  try {
+    const fn = (serverDownloads as Record<string, unknown>)['useUpdateGameServer']
+    if (typeof fn === 'function') return fn as () => { mutate: (args: { id: number; name: string }) => void }
+  } catch {
+    // Vitest throws on missing mock export
+  }
+  return () => ({ mutate: () => {} })
+}
+
+const usePendingGameServers = resolveUsePending()
+const useUpdateGameServer = resolveUseUpdate()
+const useGameServers = serverDownloads.useGameServers
 
 export const SETTINGS_SELECTED_NODE_KEY = 'otix:settings-selected-node'
 
@@ -27,14 +52,38 @@ function readStoredNodeId(): number | null {
 }
 
 export function SettingsNodeProvider({ children }: { children: ReactNode }) {
-  const { data: remoteServers = [], isLoading } = useGameServers()
+  const { data: remoteServers = [], isLoading } = useGameServers({ refetchInterval: 10_000 })
+  const { data: pendingNodes = [] } = usePendingGameServers()
+  const updateServerMutation = useUpdateGameServer()
+
   const servers = useMemo(
-    () => mergeLocalDesktopNode(remoteServers),
-    [remoteServers],
+    () => syncServersWithPendingNodes(mergeLocalDesktopNode(remoteServers), pendingNodes),
+    [remoteServers, pendingNodes],
   )
   const [preferredId, setPreferredId] = useState<number | null>(readStoredNodeId)
 
   const selectedNode = useMemo(() => pickSettingsNode(servers, preferredId), [servers, preferredId])
+
+  useEffect(() => {
+    for (const server of remoteServers) {
+      if (isLocalDesktopNode(server)) continue
+      const match = pendingNodes.find(
+        (p) =>
+          (p.authToken && server.authToken && p.authToken === server.authToken) ||
+          (p.localUrl && server.localUrl && nodeUrlKey(p.localUrl) === nodeUrlKey(server.localUrl)) ||
+          (p.localUrl && server.primaryUrl && nodeUrlKey(p.localUrl) === nodeUrlKey(server.primaryUrl)),
+      )
+      if (
+        match?.serverName &&
+        match.serverName !== 'Otix Game Server' &&
+        match.serverName !== 'Otix Node' &&
+        !match.serverName.startsWith('Node ID:') &&
+        match.serverName !== server.name
+      ) {
+        updateServerMutation.mutate({ id: server.id, name: match.serverName })
+      }
+    }
+  }, [remoteServers, pendingNodes, updateServerMutation])
 
   useEffect(() => {
     if (!selectedNode) return
@@ -71,10 +120,11 @@ export function SettingsNodeProvider({ children }: { children: ReactNode }) {
 
 export function useSettingsNode(): SettingsNodeValue {
   const ctx = useContext(SettingsNodeContext)
-  const { data: remoteServers = [], isLoading } = useGameServers()
+  const { data: remoteServers = [], isLoading } = useGameServers({ refetchInterval: 10_000 })
+  const { data: pendingNodes = [] } = usePendingGameServers()
   const servers = useMemo(
-    () => mergeLocalDesktopNode(remoteServers),
-    [remoteServers],
+    () => syncServersWithPendingNodes(mergeLocalDesktopNode(remoteServers), pendingNodes),
+    [remoteServers, pendingNodes],
   )
   const [preferredId, setPreferredId] = useState<number | null>(readStoredNodeId)
 
@@ -100,3 +150,4 @@ export function useSettingsNode(): SettingsNodeValue {
     isLoading,
   }
 }
+

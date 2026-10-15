@@ -163,3 +163,61 @@ class GameServerClaimTests(TestCase):
         alias_data = alias_resp.json()
         self.assertFalse(alias_data["created"])
 
+    @patch("httpx.Client.post")
+    def test_claim_node_by_pin_heartbeat_rendezvous(self, mock_post):
+        """When node is behind NAT and direct HTTP fails, PIN claim succeeds via heartbeat rendezvous."""
+        # 1. Unclaimed node sends heartbeat announcement
+        hb_resp = self.client.post(
+            "/api/v1/servers/heartbeat",
+            {
+                "server_name": "Home Desktop Rig",
+                "local_endpoints": ["http://192.168.1.150:8090"],
+                "port": 8090,
+                "auth_token": "",
+                "claim_code": "OTX-8822",
+                "claimed": False,
+            },
+            format="json",
+        )
+        self.assertEqual(hb_resp.status_code, 200)
+        self.assertFalse(hb_resp.json().get("claimed", False))
+
+        # 2. Inbound HTTP connection from backend to node fails (NAT / no port forward)
+        mock_post.side_effect = Exception("Connection refused / NAT blocked")
+
+        # 3. User claims via PIN on backend
+        self.client.force_authenticate(user=self.user)
+        claim_resp = self.client.post(
+            "/api/v1/library/servers/claim",
+            {
+                "claim_code": "OTX-8822",
+            },
+            format="json",
+        )
+        self.assertEqual(claim_resp.status_code, 201)
+        data = claim_resp.json()
+        self.assertEqual(data["name"], "Home Desktop Rig")
+        self.assertTrue(data["is_online"])
+        assigned_token = data["auth_token"]
+        self.assertTrue(assigned_token)
+
+        # 4. Node sends subsequent heartbeat and gets claimed status and auth token back
+        next_hb = self.client.post(
+            "/api/v1/servers/heartbeat",
+            {
+                "server_name": "Home Desktop Rig",
+                "local_endpoints": ["http://192.168.1.150:8090"],
+                "port": 8090,
+                "auth_token": "",
+                "claim_code": "OTX-8822",
+                "claimed": False,
+            },
+            format="json",
+        )
+        self.assertEqual(next_hb.status_code, 200)
+        next_data = next_hb.json()
+        self.assertTrue(next_data.get("claimed"))
+        self.assertEqual(next_data.get("auth_token"), assigned_token)
+        self.assertEqual(next_data.get("username"), "owner")
+
+

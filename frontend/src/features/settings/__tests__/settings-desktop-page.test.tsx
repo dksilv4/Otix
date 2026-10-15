@@ -37,6 +37,8 @@ vi.mock('@/features/downloads/use-server-downloads', () => ({
   useClaimGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useProbeGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   usePendingGameServers: () => ({ data: [], isLoading: false }),
+  useUnclaimLocalNode: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnclaimGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 const mockNavigate = vi.fn()

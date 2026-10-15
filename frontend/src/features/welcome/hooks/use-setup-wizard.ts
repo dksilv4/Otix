@@ -1,12 +1,17 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
+import { apiClient } from '@/lib/api/client'
 import {
   checkLocalNode,
   claimNodeWithPin,
   selectLocalGameDirectory,
   saveLibraryScanDirectory,
   markOnboardingFinished,
+  getDefaultPrimaryGamePath,
+  getInitialGamePath,
+  unclaimNode,
+  isNodeOrphaned,
 } from '../utils/setup-wizard-utils'
 
 export type SetupWizardStep = 1 | 2 | 3 | 4 | 5
@@ -19,6 +24,9 @@ export interface UseSetupWizardReturn {
   node: PendingNode | null
   isProbingNode: boolean
   probeNode: () => Promise<void>
+  isOrphaned: boolean
+  isUnclaiming: boolean
+  handleUnclaimNode: () => Promise<boolean>
   claimPin: string
   setClaimPin: (pin: string) => void
   claimStatus: 'idle' | 'claiming' | 'success' | 'error'
@@ -47,16 +55,31 @@ export const useSetupWizard = (initialStep: SetupWizardStep = 1): UseSetupWizard
   // Node detection & claim state
   const [node, setNode] = useState<PendingNode | null>(null)
   const [isProbingNode, setIsProbingNode] = useState(false)
+  const [isOrphaned, setIsOrphaned] = useState(false)
+  const [isUnclaiming, setIsUnclaiming] = useState(false)
   const [claimPin, setClaimPin] = useState('')
   const [claimStatus, setClaimStatus] = useState<'idle' | 'claiming' | 'success' | 'error'>('idle')
   const [claimError, setClaimError] = useState<string | null>(null)
 
-  // Library & settings state
-  const [gamePath, setGamePath] = useState<string | null>(null)
+  // Library & settings state (defaults to primary drive Otix folder)
+  const [gamePath, setGamePath] = useState<string | null>(() => getDefaultPrimaryGamePath())
   const [isSelectingPath, setIsSelectingPath] = useState(false)
   const [telemetryEnabled, setTelemetryEnabled] = useState(true)
   const [freeGamesAlerts, setFreeGamesAlerts] = useState(true)
   const [isFinishing, setIsFinishing] = useState(false)
+
+  // Check if existing desktop settings already define a games install path
+  useEffect(() => {
+    let active = true
+    void getInitialGamePath().then((path) => {
+      if (active && path) {
+        setGamePath(path)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const probeNode = useCallback(async () => {
     setIsProbingNode(true)
@@ -64,16 +87,49 @@ export const useSetupWizard = (initialStep: SetupWizardStep = 1): UseSetupWizard
       const found = await checkLocalNode()
       setNode(found)
       if (found?.claimed) {
-        setClaimStatus('success')
-      } else if (found?.claimCode) {
-        setClaimPin(found.claimCode)
+        let orphaned = true
+        if (isAuthenticated) {
+          try {
+            const { data } = await apiClient.get<Array<{ primaryUrl?: string; localUrl?: string | null; authToken?: string | null }>>('/library/servers')
+            const list = Array.isArray(data) ? data : []
+            orphaned = isNodeOrphaned(found, list)
+          } catch {
+            orphaned = true
+          }
+        }
+        setIsOrphaned(orphaned)
+        if (orphaned) {
+          setClaimStatus('idle')
+        } else {
+          setClaimStatus('success')
+        }
+      } else {
+        setIsOrphaned(false)
+        if (found?.claimCode) {
+          setClaimPin(found.claimCode)
+        }
       }
     } catch {
       setNode(null)
+      setIsOrphaned(false)
     } finally {
       setIsProbingNode(false)
     }
-  }, [])
+  }, [isAuthenticated])
+
+  const handleUnclaimNode = useCallback(async (): Promise<boolean> => {
+    setIsUnclaiming(true)
+    try {
+      const ok = await unclaimNode(node?.authToken)
+      if (ok) {
+        await probeNode()
+        return true
+      }
+      return false
+    } finally {
+      setIsUnclaiming(false)
+    }
+  }, [node, probeNode])
 
   // Auto-probe when entering node step
   useEffect(() => {
@@ -113,8 +169,11 @@ export const useSetupWizard = (initialStep: SetupWizardStep = 1): UseSetupWizard
   }, [])
 
   const nextStep = useCallback(() => {
+    if (step === 3 && gamePath) {
+      void saveLibraryScanDirectory(gamePath)
+    }
     setStep((prev) => (Math.min(prev + 1, 5) as SetupWizardStep))
-  }, [])
+  }, [step, gamePath])
 
   const prevStep = useCallback(() => {
     setStep((prev) => (Math.max(prev - 1, 1) as SetupWizardStep))
@@ -128,6 +187,9 @@ export const useSetupWizard = (initialStep: SetupWizardStep = 1): UseSetupWizard
     async (onDone?: () => void) => {
       setIsFinishing(true)
       try {
+        if (gamePath) {
+          await saveLibraryScanDirectory(gamePath)
+        }
         await markOnboardingFinished(isAuthenticated)
         if (isAuthenticated) {
           void refreshUser()
@@ -137,7 +199,7 @@ export const useSetupWizard = (initialStep: SetupWizardStep = 1): UseSetupWizard
         setIsFinishing(false)
       }
     },
-    [isAuthenticated, refreshUser],
+    [isAuthenticated, refreshUser, gamePath],
   )
 
   return {
@@ -148,6 +210,9 @@ export const useSetupWizard = (initialStep: SetupWizardStep = 1): UseSetupWizard
     node,
     isProbingNode,
     probeNode,
+    isOrphaned,
+    isUnclaiming,
+    handleUnclaimNode,
     claimPin,
     setClaimPin,
     claimStatus,

@@ -216,7 +216,11 @@ func ApplyDesktopSettings(cfg *config.AppConfig, payload map[string]interface{})
 		}
 	}
 
-	if v, ok := payload["server_name"]; ok {
+	if v, ok := payload["serverName"]; ok {
+		if s, okS := v.(string); okS && strings.TrimSpace(s) != "" {
+			cfg.Server.Name = strings.TrimSpace(s)
+		}
+	} else if v, ok := payload["server_name"]; ok {
 		if s, okS := v.(string); okS && strings.TrimSpace(s) != "" {
 			cfg.Server.Name = strings.TrimSpace(s)
 		}

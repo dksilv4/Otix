@@ -5,9 +5,8 @@ import type { PluginSettingsTab } from '@/features/_config/slots'
 import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 import { DEFAULT_SETTINGS_SECTION, getLastSettingsSection, NAV_ITEMS } from './constants'
 
-const SettingsLayout = safeLazy(() =>
-  import('./pages/settings-layout').then((m) => ({ default: m.SettingsLayout })),
-)
+import { SettingsLayout } from './pages/settings-layout'
+import { SettingsSectionPending } from './components/molecules/settings-section-pending'
 const PluginSettingsPage = safeLazy(() =>
   import('@/features/plugins/components/PluginSettingsPage').then((m) => ({ default: m.PluginSettingsPage })),
 )
@@ -71,7 +70,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => rootRoute,
     path: '/settings',
     component: SettingsLayout,
-    loader: preload(() => import('./pages/settings-layout')),
+    pendingComponent: SettingsSectionPending,
     beforeLoad: ({ location }) => {
       const rest = location.pathname.replace(/^\/settings\/?/, '')
       if (!rest) {
@@ -116,6 +115,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/nodes',
     component: SettingsNodesPage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-desktop-page')),
   })
 
@@ -123,6 +123,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/nodes/$nodeId',
     component: SettingsNodeDetailPage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-node-detail-page')),
   })
 
@@ -130,6 +131,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/launcher',
     component: SettingsLauncherPage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-launcher-page')),
   })
 
@@ -161,6 +163,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/profile',
     component: SettingsProfilePage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-profile-page')),
   })
 
@@ -168,6 +171,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/account',
     component: SettingsAccountPage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-account-page')),
   })
 
@@ -175,6 +179,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/appearance',
     component: SettingsAppearancePage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-appearance-page')),
   })
 
@@ -182,6 +187,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/notifications',
     component: SettingsNotificationsPage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-notifications-page')),
   })
 
@@ -189,6 +195,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/connections',
     component: SettingsIntegrationsPage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-integrations-page')),
   })
 
@@ -196,6 +203,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/library',
     component: SettingsLibraryPage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-library-page')),
   })
 
@@ -203,6 +211,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/game-servers',
     component: SettingsGameServersPage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-game-servers-page')),
   })
 
@@ -210,6 +219,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/plugins',
     component: SettingsPluginsPage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('@/features/plugins/pages/plugins-page')),
   })
 
@@ -217,6 +227,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/storage',
     component: SettingsStoragePage,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('./pages/settings-storage-page')),
   })
 
@@ -233,6 +244,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       getParentRoute: () => settingsRoute,
       path: tab.path.replace('/settings/', ''),
       component: () => createElement(PluginSettingsPage, { tab }),
+      pendingComponent: SettingsSectionPending,
       loader: preload(() => import('@/features/plugins/components/PluginSettingsPage')),
     }),
   )
@@ -241,6 +253,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '$tabId',
     component: PluginSettingsTabRoute,
+    pendingComponent: SettingsSectionPending,
     loader: preload(() => import('@/features/plugins/components/PluginSettingsTabRoute')),
   })
 

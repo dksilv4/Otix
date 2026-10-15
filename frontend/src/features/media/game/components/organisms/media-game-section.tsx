@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { mediaQueries, formatNumber, formatPlaytime, formatMinutesToHours, formatDaysAgo, useMediaParams } from '@media'
 import { Badge } from '@ui/atoms/badge'
 import { PlatformIcon } from './media-game-platform-icon'
+import { isPS5Slug, isPS4Slug } from '@/features/media/game/utils/platform-icons'
 import { MediaGameServersSection } from '@/features/gameservers'
 
 interface GameSectionProps {
@@ -40,18 +41,37 @@ export const GameSection = ({ className }: GameSectionProps = {}) => {
           <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Platforms
           </h3>
-          <div className="flex flex-wrap gap-2">
-            {platforms.map((p) => (
-              <div
-                key={p.id}
-                className="glass-inset flex items-center gap-2 rounded-xl px-3 py-2"
-              >
-                <PlatformIcon slug={p.platform.slug} />
-                <span className="text-xs font-medium text-muted-foreground">
-                  {p.platform.name}
-                </span>
-              </div>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            {platforms.map((p) => {
+              const isPs = isPS5Slug(p.platform.slug) || isPS4Slug(p.platform.slug)
+
+              if (isPs) {
+                return (
+                  <div
+                    key={p.id}
+                    title={p.platform.name}
+                    aria-label={p.platform.name}
+                    className="flex items-center justify-center transition-transform hover:scale-105"
+                  >
+                    <PlatformIcon
+                      slug={p.platform.slug}
+                      className="h-8 px-2.5 text-xs rounded-[4px]"
+                    />
+                  </div>
+                )
+              }
+
+              return (
+                <div
+                  key={p.id}
+                  title={p.platform.name}
+                  aria-label={p.platform.name}
+                  className="glass-inset flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-all hover:scale-105 hover:bg-white/[0.06] hover:text-foreground"
+                >
+                  <PlatformIcon slug={p.platform.slug} className="h-4 w-4" />
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

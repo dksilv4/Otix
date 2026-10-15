@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  isNodeOrphaned,
   nodeUrlKey,
   pendingNodesToClaim,
   pendingNodesToRefresh,
   probeLocalGameNode,
+  unclaimLocalGameNode,
 } from '../pending-nodes'
 
 describe('pendingNodesToClaim', () => {
@@ -82,13 +84,27 @@ describe('pendingNodesToRefresh', () => {
     ])
   })
 
-  it('skips servers that already have the same token', () => {
+  it('skips servers that already have the same token and name', () => {
     expect(
       pendingNodesToRefresh(
         [{ serverName: 'DK Game Storage Server', localUrl: 'http://127.0.0.1:8090', authToken: 'tok' }],
-        [{ id: 7, primaryUrl: 'http://127.0.0.1:8090', authToken: 'tok' }],
+        [{ id: 7, name: 'DK Game Storage Server', primaryUrl: 'http://127.0.0.1:8090', authToken: 'tok' }],
       ),
     ).toEqual([])
+  })
+
+  it('updates a saved server when node was renamed in node settings', () => {
+    expect(
+      pendingNodesToRefresh(
+        [{ serverName: 'GAMING PC', localUrl: 'http://127.0.0.1:8090', authToken: 'tok' }],
+        [{ id: 7, name: 'Node ID:1', primaryUrl: 'http://127.0.0.1:8090', authToken: 'tok' }],
+      ),
+    ).toEqual([
+      {
+        id: 7,
+        node: { serverName: 'GAMING PC', localUrl: 'http://127.0.0.1:8090', authToken: 'tok' },
+      },
+    ])
   })
 })
 
@@ -126,5 +142,79 @@ describe('probeLocalGameNode', () => {
       throw new TypeError('Failed to fetch')
     })
     await expect(probeLocalGameNode(fetcher as unknown as typeof fetch)).resolves.toBeNull()
+  })
+})
+
+describe('isNodeOrphaned', () => {
+  it('returns false if node is not claimed', () => {
+    expect(
+      isNodeOrphaned(
+        { serverName: 'Node', localUrl: 'http://127.0.0.1:8090', claimed: false },
+        [],
+      ),
+    ).toBe(false)
+  })
+
+  it('returns true if node is claimed but not in user servers', () => {
+    expect(
+      isNodeOrphaned(
+        { serverName: 'Node', localUrl: 'http://127.0.0.1:8090', claimed: true, authToken: 'old_tok' },
+        [{ primaryUrl: 'http://192.168.1.100:8090', authToken: 'other_tok' }],
+      ),
+    ).toBe(true)
+  })
+
+  it('returns false if node matches a user server by URL or token', () => {
+    expect(
+      isNodeOrphaned(
+        { serverName: 'Node', localUrl: 'http://127.0.0.1:8090', claimed: true, authToken: 'my_tok' },
+        [{ primaryUrl: 'http://127.0.0.1:8090', authToken: 'my_tok' }],
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('unclaimLocalGameNode', () => {
+  it('calls POST /api/v1/claim/unclaim on local node', async () => {
+    const fetcher = vi.fn(async () => ({ ok: true }))
+    const res = await unclaimLocalGameNode(fetcher as unknown as typeof fetch)
+    expect(res).toBe(true)
+    expect(fetcher).toHaveBeenCalledWith('http://127.0.0.1:8090/api/v1/claim/unclaim', expect.objectContaining({
+      method: 'POST',
+    }))
+  })
+
+  it('passes authToken in url query and header when provided', async () => {
+    const fetcher = vi.fn(async () => ({ ok: true }))
+    const res = await unclaimLocalGameNode(fetcher as unknown as typeof fetch, 'my_secret_token')
+    expect(res).toBe(true)
+    expect(fetcher).toHaveBeenCalledWith('http://127.0.0.1:8090/api/v1/claim/unclaim?token=my_secret_token', expect.objectContaining({
+      method: 'POST',
+      headers: { Authorization: 'Bearer my_secret_token' },
+    }))
+  })
+
+  it('extracts token from home page if not provided', async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      if (url === 'http://127.0.0.1:8090/') {
+        return {
+          ok: true,
+          text: async () => '<script>const TOKEN = "extracted_token_123";</script>',
+        }
+      }
+      return { ok: true }
+    })
+    const res = await unclaimLocalGameNode(fetcher as unknown as typeof fetch)
+    expect(res).toBe(true)
+    expect(fetcher).toHaveBeenCalledWith('http://127.0.0.1:8090/api/v1/claim/unclaim?token=extracted_token_123', expect.objectContaining({
+      method: 'POST',
+      headers: { Authorization: 'Bearer extracted_token_123' },
+    }))
+  })
+
+  it('returns false on network error', async () => {
+    const fetcher = vi.fn(async () => { throw new Error('Network error') })
+    const res = await unclaimLocalGameNode(fetcher as unknown as typeof fetch)
+    expect(res).toBe(false)
   })
 })

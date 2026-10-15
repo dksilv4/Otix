@@ -1,4 +1,9 @@
-import { probeLocalGameNode, type PendingNode } from '@/features/downloads/pending-nodes'
+import {
+  probeLocalGameNode,
+  unclaimLocalGameNode,
+  isNodeOrphaned,
+  type PendingNode,
+} from '@/features/downloads/pending-nodes'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
 import { addXPToast } from '@ui/atoms/xp-toast-dispatcher'
@@ -18,16 +23,22 @@ export const checkLocalNode = async (): Promise<PendingNode | null> => {
   return await probeLocalGameNode()
 }
 
+export const unclaimNode = async (authToken?: string): Promise<boolean> => {
+  return await unclaimLocalGameNode(fetch, authToken)
+}
+
+export { isNodeOrphaned }
+
 export const claimNodeWithPin = async (
   nodeUrl: string,
   pin: string,
   serverName?: string,
 ): Promise<{ success: boolean; message?: string }> => {
   try {
-    const resp = await apiClient.post('/downloads/servers/claim', {
+    const resp = await apiClient.post('/library/servers/claim', {
       nodeUrl,
-      claimPin: pin,
-      name: serverName || 'Local Otix Node',
+      claimCode: pin,
+      serverName: serverName || 'Local Otix Node',
     })
     return { success: true, message: (resp.data as { message?: string })?.message }
   } catch (err: unknown) {
@@ -37,6 +48,30 @@ export const claimNodeWithPin = async (
       'Failed to claim Otix Node. Check PIN and try again.'
     return { success: false, message: errorMsg }
   }
+}
+
+export const getDefaultPrimaryGamePath = (): string => {
+  const desktop = getDesktopAPI()
+  const isWin =
+    desktop?.platform !== undefined
+      ? desktop.platform === 'win32'
+      : typeof navigator !== 'undefined' && /win/i.test(navigator.userAgent || navigator.platform || '')
+  return isWin ? 'C:\\Otix' : '/Otix'
+}
+
+export const getInitialGamePath = async (): Promise<string> => {
+  const desktop = getDesktopAPI()
+  if (desktop?.getDesktopSettings) {
+    try {
+      const settings = await desktop.getDesktopSettings()
+      if (settings?.gamesInstallPath) {
+        return settings.gamesInstallPath
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return getDefaultPrimaryGamePath()
 }
 
 export const selectLocalGameDirectory = async (): Promise<string | null> => {

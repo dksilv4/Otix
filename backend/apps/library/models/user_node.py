@@ -18,6 +18,13 @@ class UserNode(TimestampedModel):
         on_delete=models.CASCADE,
         related_name="game_servers",
     )
+    home = models.ForeignKey(
+        "library.UserHome",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="nodes",
+    )
     name = models.CharField(max_length=255)
     local_url = models.CharField(max_length=2048, null=True, blank=True)
     remote_url = models.CharField(max_length=2048, null=True, blank=True)

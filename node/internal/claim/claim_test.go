@@ -66,3 +66,23 @@ func TestClaimCodeFormat(t *testing.T) {
 		t.Fatalf("unexpected code format: %s", code)
 	}
 }
+
+func TestClaimPreservesCustomServerName(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.SetConfigPath(filepath.Join(t.TempDir(), "config.yaml"))
+	cfg.Server.Name = "GAMING PC"
+	cfg.Server.AuthToken = ""
+	cfg.Server.Claimed = false
+
+	cm := claim.NewClaimManager(cfg)
+	code := cm.CurrentCode()
+
+	// Claiming with generic fallback "Node ID:1" should not overwrite "GAMING PC"
+	err := cm.Confirm(code, "token_123", "Node ID:1", "admin")
+	if err != nil {
+		t.Fatalf("confirm failed: %v", err)
+	}
+	if cfg.Server.Name != "GAMING PC" {
+		t.Fatalf("expected server name GAMING PC to be preserved, got: %s", cfg.Server.Name)
+	}
+}

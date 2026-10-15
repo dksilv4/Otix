@@ -18,6 +18,7 @@ from apps.library.views import (
     GameServerClaimView,
     GameServerHeartbeatView,
     GameServerScanCompleteView,
+    GameServerUnclaimView,
 )
 from apps.lists.views import ListRootView
 from apps.media.views import AssetFileView, MediaListView
@@ -70,6 +71,11 @@ urlpatterns = [
         "api/v1/servers/claim-direct",
         GameServerClaimDirectView.as_view(),
         name="game-server-claim-direct",
+    ),
+    path(
+        "api/v1/servers/unclaim",
+        GameServerUnclaimView.as_view(),
+        name="game-server-unclaim",
     ),
     path("api/v1/library/", include("apps.library.urls")),
     path("api/v1/game-servers", GameServerListCreateView.as_view(), name="game-server-root"),

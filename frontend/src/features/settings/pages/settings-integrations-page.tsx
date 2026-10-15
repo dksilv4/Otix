@@ -21,22 +21,16 @@ import {
   Loader2,
   RefreshCw,
   Download,
-  DownloadCloud,
   Link2,
   Film,
   Tv,
   Music,
   FolderOpen,
   Search,
-  Pause,
-  Play,
   Check,
   HardDrive,
-  Server,
-  ChevronDown,
   Sparkles,
   ShieldCheck,
-  Settings,
 } from 'lucide-react'
 import { EpicCodeModal } from '../components/organisms/epic-code-modal'
 import { GOGCodeModal } from '../components/organisms/gog-code-modal'
@@ -53,41 +47,7 @@ import {
 } from '../components/organisms/settings-integration-card'
 import { usePlexLibraries, streamPlexLibrarySync } from '@library/library-queries'
 import type { PlexLibraryInfo } from '@library/library-queries'
-import type { GameServer } from '@/features/downloads/use-server-downloads'
-import {
-  remoteConnectionNodes,
-} from '@/features/downloads/molecules/use-integration-target-server'
-import { useSettingsNode } from '../context/settings-node-context'
 import { useModal } from '@/lib/modals'
-import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
-import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/server-prowlarr-settings-modal'
-import { ProwlarrIndexersPanel } from '@/features/downloads/molecules/prowlarr-indexers-panel'
-import { ServerRadarrSettingsModal } from '@/features/downloads/molecules/server-radarr-settings-modal'
-import { ServerSonarrSettingsModal } from '@/features/downloads/molecules/server-sonarr-settings-modal'
-import {
-  useServerRadarrConfig,
-  useServerRadarrMovies,
-  useServerRadarrQueue,
-  useServerSonarrConfig,
-  useServerSonarrSeries,
-  useServerSonarrQueue,
-} from '@/features/downloads/use-server-arr'
-import {
-  useServerUsenetConfig,
-  useServerUsenetQueue,
-  usePauseSabnzbdQueue,
-  useResumeSabnzbdQueue,
-  useProwlarrIndexers,
-  useSyncProwlarrIndexers,
-} from '@/features/downloads/use-server-usenet'
-import {
-  normalizeProwlarrIndexers,
-  isProwlarrConfigured as checkProwlarrConfigured,
-  isSabnzbdConfigured as checkSabnzbdConfigured,
-} from '@/features/downloads/usenet-utils'
-import { useServerProviders } from '@/features/downloads/use-server-providers'
-import type { ProwlarrIndexerItem } from '@/features/downloads/usenet-types'
-import { cn } from '@/lib/utils'
 
 type SteamProfile = {
   personaname: string | null
@@ -142,10 +102,6 @@ const BRAND_COLORS: Record<string, string> = {
   tmdb: '#01b4e4',
   google: '#4285F4',
   youtube: '#FF0000',
-  sabnzbd: '#f59e0b',
-  prowlarr: '#e05338',
-  radarr: '#ffc107',
-  sonarr: '#00c4df',
 }
 
 const BRAND_BG: Record<string, string> = {
@@ -156,409 +112,7 @@ const BRAND_BG: Record<string, string> = {
   tmdb: 'bg-[#01b4e4]/10',
   google: 'bg-[#4285F4]/10',
   youtube: 'bg-[#FF0000]/10',
-  sabnzbd: 'bg-[#f59e0b]/10',
-  prowlarr: 'bg-[#e05338]/10',
-  radarr: 'bg-[#ffc107]/10',
-  sonarr: 'bg-[#00c4df]/10',
 }
-
-const NODE_KEYWORDS = 'sabnzbd prowlarr radarr sonarr usenet torrent arr downloader server node'
-
-/** Renders SABnzbd, Prowlarr, Radarr, and Sonarr cards scoped to a single Otix worker node. */
-const NodeConnectionsGroup = ({
-  server,
-  searchQuery,
-}: {
-  server: GameServer
-  searchQuery: string
-}) => {
-  const { openModal } = useModal()
-  const hasQuery = Boolean(searchQuery && searchQuery.trim().length > 0)
-  const [nodeOpen, setNodeOpen] = useState(hasQuery)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [prowlarrSyncProtocol, setProwlarrSyncProtocol] = useState<'all' | 'torrent' | 'usenet'>('all')
-  const [prowlarrSyncMessage, setProwlarrSyncMessage] = useState<string | null>(null)
-  const [syncedProwlarrIndexers, setSyncedProwlarrIndexers] = useState<ProwlarrIndexerItem[]>([])
-
-  const sabnzbdLiveId = expandedId === 'sabnzbd' ? server.id : undefined
-  const prowlarrLiveId = expandedId === 'prowlarr' ? server.id : undefined
-  const radarrLiveId = expandedId === 'radarr' ? server.id : undefined
-  const sonarrLiveId = expandedId === 'sonarr' ? server.id : undefined
-
-  const { data: usenetConfig } = useServerUsenetConfig(server.id)
-  const { data: providers } = useServerProviders(server.id)
-  const { data: radarrConfig } = useServerRadarrConfig(server.id)
-  const { data: sonarrConfig } = useServerSonarrConfig(server.id)
-  const { data: radarrMovies = [] } = useServerRadarrMovies(radarrLiveId)
-  const { data: sonarrSeries = [] } = useServerSonarrSeries(sonarrLiveId)
-  const { data: radarrQueue } = useServerRadarrQueue(radarrLiveId, 1, 50, 4000)
-  const { data: sonarrQueue } = useServerSonarrQueue(sonarrLiveId, 1, 50, 4000)
-  const { data: sabnzbdQueue, refetch: refetchQueue } = useServerUsenetQueue(sabnzbdLiveId, 3000)
-  const pauseSabnzbdMutation = usePauseSabnzbdQueue(server.id)
-  const resumeSabnzbdMutation = useResumeSabnzbdQueue(server.id)
-  const isQueuePaused = Boolean(sabnzbdQueue?.status?.toLowerCase().includes('paused'))
-  const { data: fetchedProwlarrIndexers = [], refetch: refetchProwlarrIndexers } = useProwlarrIndexers(prowlarrLiveId)
-  const syncProwlarrMutation = useSyncProwlarrIndexers(server.id)
-  const prowlarrIndexers = fetchedProwlarrIndexers.length > 0 ? fetchedProwlarrIndexers : syncedProwlarrIndexers
-
-  const isSabnzbdConfigured =
-    Boolean(
-      providers?.downloaders?.some(
-        (p) => p.name?.toLowerCase() === 'sabnzbd' && (p.connected || p.configured)
-      )
-    ) || checkSabnzbdConfigured(usenetConfig?.sabnzbd)
-
-  const isProwlarrConfigured =
-    Boolean(
-      providers?.indexers?.some(
-        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
-      ) ||
-      providers?.indexer_providers?.some(
-        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
-      ) ||
-      providers?.search_providers?.some(
-        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
-      )
-    ) || checkProwlarrConfigured(usenetConfig?.prowlarr)
-  const isRadarrConfigured = Boolean(
-    radarrConfig?.host &&
-    Boolean(radarrConfig?.apiKey || radarrConfig?.api_key || radarrConfig?.configured)
-  )
-  const isSonarrConfigured = Boolean(
-    sonarrConfig?.host &&
-    Boolean(sonarrConfig?.apiKey || sonarrConfig?.api_key || sonarrConfig?.configured)
-  )
-
-  const openSabnzbdModal = () => {
-    openBoundModal(openModal, (onClose) => (
-      <ServerSabnzbdSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
-    ))
-  }
-  const openProwlarrModal = () => {
-    openBoundModal(openModal, (onClose) => (
-      <ServerProwlarrSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
-    ))
-  }
-  const openRadarrModal = () => {
-    openBoundModal(openModal, (onClose) => (
-      <ServerRadarrSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
-    ))
-  }
-  const openSonarrModal = () => {
-    openBoundModal(openModal, (onClose) => (
-      <ServerSonarrSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
-    ))
-  }
-
-  const handleToggleQueuePause = async () => {
-    try {
-      if (isQueuePaused) {
-        await resumeSabnzbdMutation.mutateAsync()
-      } else {
-        await pauseSabnzbdMutation.mutateAsync()
-      }
-      refetchQueue()
-    } catch (err) {
-      console.error('Failed to toggle queue pause:', err)
-    }
-  }
-
-  const handleProwlarrSync = async () => {
-    try {
-      const res = await syncProwlarrMutation.mutateAsync(prowlarrSyncProtocol)
-      setSyncedProwlarrIndexers(normalizeProwlarrIndexers(res))
-      setProwlarrSyncMessage(res.message)
-      await refetchProwlarrIndexers()
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      setProwlarrSyncMessage(`Sync failed: ${message}`)
-    }
-  }
-
-  const toggleExpand = (id: string) => setExpandedId(expandedId === id ? null : id)
-
-  const query = searchQuery.toLowerCase().trim()
-
-  const nodeDefs = [
-    {
-      id: 'sabnzbd',
-      name: 'SABnzbd',
-      keywords: 'sabnzbd usenet nzb download downloader provider queue client',
-      isConnected: isSabnzbdConfigured,
-      description: isSabnzbdConfigured
-        ? `Configured on ${server.name} (Downloader Provider)`
-        : 'Connect SABnzbd as your downloader provider to automate Usenet downloads on this node.',
-      brandColor: BRAND_COLORS.sabnzbd,
-      brandBg: BRAND_BG.sabnzbd,
-      icon: DownloadCloud,
-      onConnect: openSabnzbdModal,
-    },
-    {
-      id: 'prowlarr',
-      name: 'Prowlarr',
-      keywords: 'prowlarr indexer provider search usenet torrent sync tracker',
-      isConnected: isProwlarrConfigured,
-      description: isProwlarrConfigured
-        ? `Configured on ${server.name} (Indexer Provider)`
-        : 'Connect Prowlarr as your indexer provider for Usenet and Torrent game releases.',
-      brandColor: BRAND_COLORS.prowlarr,
-      brandBg: BRAND_BG.prowlarr,
-      icon: Search,
-      onConnect: openProwlarrModal,
-    },
-    {
-      id: 'radarr',
-      name: 'Radarr',
-      keywords: 'radarr movie movies watchlist automated download arr',
-      isConnected: isRadarrConfigured,
-      description: isRadarrConfigured
-        ? `Configured on ${server.name}`
-        : 'Connect Radarr to manage movie libraries and automate movie downloads.',
-      brandColor: BRAND_COLORS.radarr,
-      brandBg: BRAND_BG.radarr,
-      icon: Film,
-      onConnect: openRadarrModal,
-    },
-    {
-      id: 'sonarr',
-      name: 'Sonarr',
-      keywords: 'sonarr tv shows series automated download arr',
-      isConnected: isSonarrConfigured,
-      description: isSonarrConfigured
-        ? `Configured on ${server.name}`
-        : 'Connect Sonarr to manage TV series and automate episode downloads.',
-      brandColor: BRAND_COLORS.sonarr,
-      brandBg: BRAND_BG.sonarr,
-      icon: Tv,
-      onConnect: openSonarrModal,
-    },
-  ]
-
-  const filteredDefs = (query
-    ? nodeDefs.filter(
-        (i) =>
-          i.name.toLowerCase().includes(query) ||
-          i.keywords.includes(query) ||
-          server.name.toLowerCase().includes(query) ||
-          NODE_KEYWORDS.includes(query)
-      )
-    : nodeDefs).slice().sort((a, b) => (b.isConnected ? 1 : 0) - (a.isConnected ? 1 : 0))
-
-  if (filteredDefs.length === 0) return null
-
-  return (
-    <div
-      className="rounded-2xl sm:rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-200"
-      style={{
-        backgroundColor: 'var(--dk-surface-raised)',
-        boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 4px 20px -4px rgba(0, 0, 0, 0.3)',
-      }}
-    >
-      {/* Collapsible node header */}
-      <button
-        type="button"
-        onClick={() => setNodeOpen((o) => !o)}
-        className="w-full flex items-center gap-3 px-5 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-      >
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <div className="flex shrink-0 items-center justify-center h-7 w-7 rounded-lg bg-primary/10 text-primary">
-            <Server className="h-3.5 w-3.5" />
-          </div>
-          <span className="text-sm font-semibold truncate">{server.name}</span>
-          <span
-            className={cn(
-              'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0',
-              server.isOnline ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400',
-            )}
-          >
-            <span
-              className={cn(
-                'w-1.5 h-1.5 rounded-full',
-                server.isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400',
-              )}
-            />
-            {server.isOnline ? 'Online' : 'Offline'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            to="/settings/nodes/$nodeId"
-            params={{ nodeId: String(server.id) }}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-white/70 bg-white/5 hover:bg-white/10 hover:text-white transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Settings className="h-3.5 w-3.5 text-white/50" />
-            <span>Settings</span>
-          </Link>
-          <ChevronDown
-            className={cn(
-              'h-4 w-4 text-white/40 transition-transform duration-200',
-              nodeOpen ? 'rotate-0' : '-rotate-90',
-            )}
-          />
-        </div>
-      </button>
-
-      {/* Per-node integration cards */}
-      {nodeOpen && (
-        <div className="px-5 pb-5 pt-1 space-y-3">
-          {filteredDefs.map((i) => (
-
-        <IntegrationCard
-          key={i.id}
-          name={i.name}
-          description={i.description}
-          brandColor={i.brandColor}
-          brandBg={i.brandBg}
-          icon={i.icon}
-          isConnected={i.isConnected}
-          expanded={expandedId === i.id}
-          onToggle={() => toggleExpand(i.id)}
-          onConnect={i.onConnect}
-          connecting={false}
-          onDisconnect={undefined}
-          disconnecting={false}
-          style={{
-            backgroundColor: 'var(--dk-surface-overlay)',
-            boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 6px 24px -4px rgba(0, 0, 0, 0.35)',
-          }}
-        >
-          {/* SABnzbd content */}
-          {i.id === 'sabnzbd' && (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs">
-                <span className="text-white/60">
-                  Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}
-                </span>
-                <Link
-                  to="/downloads"
-                  className="text-amber-400 hover:text-amber-300 font-medium transition-colors duration-150 inline-flex items-center gap-1"
-                >
-                  View Downloads Queue &rarr;
-                </Link>
-              </div>
-              {sabnzbdQueue && (
-                <IntegrationStats items={[
-                  { label: 'queue status', value: sabnzbdQueue.status || 'Idle' },
-                  { label: 'download speed', value: sabnzbdQueue.speed || '0 B/s' },
-                  { label: 'queued items', value: String(sabnzbdQueue.items?.length ?? 0) },
-                  ...(sabnzbdQueue.time_left ? [{ label: 'time left', value: sabnzbdQueue.time_left }] : []),
-                ]} />
-              )}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 bg-white/[0.03]">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Queue Controls</p>
-                  <p className="text-xs text-white/70 mt-0.5">
-                    {isQueuePaused ? 'Download queue is paused.' : 'Download queue is currently active.'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleToggleQueuePause}
-                    loading={pauseSabnzbdMutation.isPending || resumeSabnzbdMutation.isPending}
-                    leftIcon={isQueuePaused ? Play : Pause}
-                    className="bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                  >
-                    {isQueuePaused ? 'Resume Queue' : 'Pause Queue'}
-                  </DkButton>
-                </div>
-              </div>
-              <IntegrationAction
-                label="SABnzbd Settings"
-                description="Configure host, port, API key, and download category"
-                buttonLabel="Configure SABnzbd"
-                buttonIcon={DownloadCloud}
-                onPress={openSabnzbdModal}
-              />
-            </>
-          )}
-
-          {/* Prowlarr content */}
-          {i.id === 'prowlarr' && (
-            <>
-              <div className="flex items-center justify-between px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
-                <span>
-                  Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}
-                </span>
-              </div>
-              <div className="px-5 py-4 space-y-3">
-                <ProwlarrIndexersPanel
-                  protocol={prowlarrSyncProtocol}
-                  onProtocolChange={setProwlarrSyncProtocol}
-                  onSync={() => void handleProwlarrSync()}
-                  isSyncing={syncProwlarrMutation.isPending}
-                  indexers={prowlarrIndexers}
-                  syncMessage={prowlarrSyncMessage}
-                />
-              </div>
-              <IntegrationAction
-                label="Prowlarr Settings"
-                description="Configure host, port, API key, and search categories"
-                buttonLabel="Configure Prowlarr"
-                buttonIcon={Search}
-                onPress={openProwlarrModal}
-              />
-            </>
-          )}
-
-          {/* Radarr content */}
-          {i.id === 'radarr' && (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
-                <span>
-                  Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}
-                </span>
-              </div>
-              {isRadarrConfigured && (
-                <IntegrationStats items={[
-                  { label: 'indexed movies', value: String(radarrMovies.length) },
-                  { label: 'monitored', value: String(radarrMovies.filter((m) => m.monitored).length) },
-                  { label: 'queued downloads', value: String(radarrQueue?.totalRecords ?? radarrQueue?.records?.length ?? 0) },
-                ]} />
-              )}
-              <IntegrationAction
-                label="Radarr Settings"
-                description="Configure host, port, API key, quality profile, and root folder"
-                buttonLabel="Configure Radarr"
-                buttonIcon={Film}
-                onPress={openRadarrModal}
-              />
-            </>
-          )}
-
-          {/* Sonarr content */}
-          {i.id === 'sonarr' && (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-white/[0.03] text-xs text-white/60">
-                <span>
-                  Managed by <span className="text-white/90 font-medium">{server.name}</span>{server.primaryUrl ? ` (${server.primaryUrl})` : ''}
-                </span>
-              </div>
-              {isSonarrConfigured && (
-                <IntegrationStats items={[
-                  { label: 'indexed series', value: String(sonarrSeries.length) },
-                  { label: 'monitored', value: String(sonarrSeries.filter((s) => s.monitored).length) },
-                  { label: 'queued downloads', value: String(sonarrQueue?.totalRecords ?? sonarrQueue?.records?.length ?? 0) },
-                ]} />
-              )}
-              <IntegrationAction
-                label="Sonarr Settings"
-                description="Configure host, port, API key, quality profile, and series options"
-                buttonLabel="Configure Sonarr"
-                buttonIcon={Tv}
-                onPress={openSonarrModal}
-              />
-            </>
-          )}
-        </IntegrationCard>
-        ))}
-      </div>
-      )}
-    </div>
-  )
-};
 
 let activeIntegrationAbortController: AbortController | null = null
 
@@ -671,6 +225,7 @@ export const SettingsIntegrationsPage = () => {
   const [plex, setPlex] = useState<PlexIntegration | null>(null)
   const [plexWatchHistoryEnabled, setPlexWatchHistoryEnabled] = useState(user?.plexWatchHistoryEnabled ?? false)
   const [plexStorageModalOpen, setPlexStorageModalOpen] = useState(false)
+
   const [tmdbConnected, setTmdbConnected] = useState(Boolean(user?.tmdbUsername))
   const [tmdbUsername, setTmdbUsername] = useState<string | null>(user?.tmdbUsername ?? null)
   const [tmdbAvatarUrl, setTmdbAvatarUrl] = useState<string | null>(user?.tmdbAvatarUrl ?? null)
@@ -719,9 +274,7 @@ export const SettingsIntegrationsPage = () => {
   const { data: plexLibraries, isLoading: plexLibrariesLoading, refetch: refetchLibraries } =
     usePlexLibraries({ enabled: isPlexConnected })
 
-  const { servers: allNodes } = useSettingsNode()
-  // Remote connection nodes include real Otix worker nodes
-  const workerNodes = remoteConnectionNodes(allNodes)
+
 
   const fetchIntegrations = async () => {
 
@@ -2316,10 +1869,6 @@ export const SettingsIntegrationsPage = () => {
     </IntegrationCard>
   )
 
-  const nodesVisible = !query ||
-    NODE_KEYWORDS.includes(query) ||
-    workerNodes.some((n) => n.name.toLowerCase().includes(query))
-
   return (
     <div id="settings-connections-section" className="space-y-6">
       <SectionHeader
@@ -2343,7 +1892,7 @@ export const SettingsIntegrationsPage = () => {
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading integrations...
         </div>
-      ) : filteredIntegrations.length === 0 && !nodesVisible ? (
+      ) : filteredIntegrations.length === 0 ? (
         <div className="rounded-2xl p-8 text-center bg-white/5">
           <p className="text-sm text-white/60">No integrations match &quot;{searchQuery}&quot;</p>
         </div>
@@ -2371,38 +1920,6 @@ export const SettingsIntegrationsPage = () => {
                   description="Manage media sync and cloud storage connections (YouTube, Google Drive)."
                 />
                 {serviceIntegrations.map(renderIntegrationItem)}
-              </SettingsCard>
-            </div>
-          )}
-
-          {nodesVisible && (
-            <div id="nodes" className="scroll-mt-28">
-              <SettingsCard className="space-y-3">
-                <SectionHeader
-                  icon={Server}
-                  title="Nodes"
-                  description="Manage connected services and background instances per node."
-                />
-                {workerNodes.length > 0 ? (
-                  workerNodes.map((node) => (
-                    <NodeConnectionsGroup key={node.id} server={node} searchQuery={searchQuery} />
-                  ))
-                ) : (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-white/[0.03]">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-white/80">No nodes connected</p>
-                      <p className="text-xs text-white/50 mt-0.5">
-                        Connect an Otix node to configure SABnzbd, Prowlarr, Radarr, and Sonarr.
-                      </p>
-                    </div>
-                    <Link
-                      to="/settings/nodes"
-                      className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
-                    >
-                      Go to Nodes →
-                    </Link>
-                  </div>
-                )}
               </SettingsCard>
             </div>
           )}

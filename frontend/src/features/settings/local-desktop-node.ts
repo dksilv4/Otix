@@ -1,6 +1,7 @@
 import { isDesktop } from '@/lib/desktop/api'
 import { getDesktopPlatform } from '@/lib/desktop/platform'
 import type { GameServer } from '@/features/downloads/types'
+import { nodeUrlKey, type PendingNode } from '@/features/downloads/pending-nodes'
 
 /** Sentinel id for the Otix desktop app when it is treated as a node. */
 export const LOCAL_DESKTOP_NODE_ID = -1
@@ -49,6 +50,36 @@ export function mergeLocalDesktopNode(servers: GameServer[]): GameServer[] {
   return [local, ...servers]
 }
 
+export function syncServersWithPendingNodes(servers: GameServer[], pendingNodes: PendingNode[]): GameServer[] {
+  if (!pendingNodes.length || !servers.length) return servers
+  return servers.map((server) => {
+    if (isLocalDesktopNode(server)) return server
+    const match = pendingNodes.find(
+      (p) =>
+        (p.authToken && server.authToken && p.authToken === server.authToken) ||
+        (p.localUrl && server.localUrl && nodeUrlKey(p.localUrl) === nodeUrlKey(server.localUrl)) ||
+        (p.localUrl && server.primaryUrl && nodeUrlKey(p.localUrl) === nodeUrlKey(server.primaryUrl)),
+    )
+    if (!match) return server
+    const effectiveName =
+      match.serverName &&
+      match.serverName !== 'Otix Game Server' &&
+      match.serverName !== 'Otix Node' &&
+      !match.serverName.startsWith('Node ID:')
+        ? match.serverName
+        : server.name
+
+    if (effectiveName !== server.name || (!server.isOnline && match.claimed)) {
+      return {
+        ...server,
+        name: effectiveName,
+        isOnline: server.isOnline || Boolean(match.claimed),
+      }
+    }
+    return server
+  })
+}
+
 export function pickSettingsNode(servers: GameServer[], preferredId: number | null): GameServer | null {
   if (!servers.length) return null
   const workers = servers.filter((server) => !isLocalDesktopNode(server))
@@ -61,3 +92,4 @@ export function pickSettingsNode(servers: GameServer[], preferredId: number | nu
     servers[0]
   )
 }
+

@@ -124,10 +124,20 @@ def record_node_heartbeat(payload: dict) -> dict:
         "claim_code": payload.get("claim_code") or "",
         "claimed": bool(payload.get("claimed", False)),
     }
+
+    def _is_same_node(row: dict, current: dict) -> bool:
+        if current.get("auth_token") and row.get("auth_token") == current.get("auth_token"):
+            return True
+        if current.get("claim_code") and row.get("claim_code") == current.get("claim_code"):
+            return True
+        if row.get("local_url") and current.get("local_url") and row.get("local_url") == current.get("local_url"):
+            return True
+        return False
+
     nodes = [
         row
         for row in (cache.get(PENDING_CACHE_KEY) or [])
-        if row.get("local_url") != node["local_url"]
+        if not _is_same_node(row, node)
     ]
     nodes.append(node)
     cache.set(PENDING_CACHE_KEY, nodes, PENDING_TTL)
@@ -141,9 +151,53 @@ def apply_node_heartbeat(payload: dict) -> dict:
     matching saved servers online and fills in the access token, including when
     the user added ``http://127.0.0.1:8090`` and the node advertised a LAN IP.
     """
+    claim_code = (payload.get("claim_code") or "").strip().upper()
+    cached_claim = None
+    if claim_code:
+        for cached in (cache.get(PENDING_CACHE_KEY) or []):
+            if (
+                str(cached.get("claim_code") or "").strip().upper() == claim_code
+                and cached.get("claimed")
+                and cached.get("auth_token")
+            ):
+                cached_claim = cached
+                break
+
     node = record_node_heartbeat(payload)
+    if cached_claim:
+        node["claimed"] = True
+        node["auth_token"] = cached_claim.get("auth_token")
+        node["claimed_by"] = cached_claim.get("claimed_by", "")
+        if not node.get("server_name") or node.get("server_name") in ("Otix Game Server", "Otix Node"):
+            node["server_name"] = cached_claim.get("server_name", node.get("server_name"))
+        # Rendezvous claim delivered: prune from pending cache
+        remaining = [
+            r
+            for r in (cache.get(PENDING_CACHE_KEY) or [])
+            if str(r.get("claim_code") or "").strip().upper() != claim_code
+        ]
+        cache.set(PENDING_CACHE_KEY, remaining, PENDING_TTL)
     urls = heartbeat_identity_urls(node)
     token = node.get("auth_token") or ""
+    is_claimed = bool(node.get("claimed") or token)
+
+    if not is_claimed:
+        # Node explicitly announced itself as UNCLAIMED (or lacks auth_token).
+        # It must NEVER be forced into a claimed state by database URL matching!
+        node["claimed"] = False
+        node["auth_token"] = ""
+        node["claimed_by"] = ""
+
+        # Any existing DB server rows with these URLs cannot be online with this unclaimed node.
+        query = Q()
+        for url in urls:
+            query |= (
+                Q(local_url=url) | Q(local_url=f"{url}/") | Q(remote_url=url) | Q(remote_url=f"{url}/")
+            )
+        UserGameServer.objects.filter(query, is_online=True).update(is_online=False, updated_at=timezone.now())
+        return node
+
+    # Genuinely claimed node: match existing servers by token or URL and update state
     query = Q()
     for url in urls:
         query |= (
@@ -166,12 +220,11 @@ def apply_node_heartbeat(payload: dict) -> dict:
             fields.append("name")
         server.save(update_fields=fields)
 
-        # If server is claimed in DB, reflect it on the returned node announcement
-        if server.auth_token:
-            node["claimed"] = True
-            node["claimed_by"] = getattr(server.user, "username", "admin")
-            node["auth_token"] = server.auth_token
-            node["server_name"] = server.name
+        # Reflect server user & name on the returned node announcement
+        node["claimed"] = True
+        node["claimed_by"] = getattr(server.user, "username", node.get("claimed_by", "admin"))
+        node["auth_token"] = server.auth_token or token
+        node["server_name"] = server.name
     return node
 
 
@@ -247,10 +300,12 @@ def claim_node_by_pin(
     user_nodes_count = UserNode.objects.filter(user=user).count() + 1
     raw_name = (server_name or "").strip()
     announced_name = (target_node.get("server_name") if target_node else None) or ""
-    if raw_name and raw_name not in ("Otix Game Server", "Otix Node"):
+    if raw_name and raw_name not in ("Otix Game Server", "Otix Node") and not raw_name.startswith("Node ID:"):
         resolved_name = raw_name
-    elif announced_name and announced_name not in ("Otix Game Server", "Otix Node"):
+    elif announced_name and announced_name not in ("Otix Game Server", "Otix Node") and not announced_name.startswith("Node ID:"):
         resolved_name = announced_name
+    elif raw_name:
+        resolved_name = raw_name
     else:
         resolved_name = f"Node ID:{user_nodes_count}"
 
@@ -288,8 +343,25 @@ def claim_node_by_pin(
         except Exception as exc:
             last_error = str(exc)
 
+    confirmed_directly = confirmed
     if not confirmed:
-        raise ValueError(f"Failed to claim node: {last_error}")
+        if target_node:
+            # Backend could not reach node directly (e.g. node is behind NAT/firewall),
+            # but node actively announced this claim PIN to this backend via heartbeat.
+            confirmed = True
+            target_node["claimed"] = True
+            target_node["claimed_by"] = getattr(user, "username", "user")
+            target_node["auth_token"] = auth_token
+            target_node["server_name"] = resolved_name
+            nodes = [
+                r
+                for r in (cache.get(PENDING_CACHE_KEY) or [])
+                if str(r.get("claim_code") or "").strip().upper() != code
+            ]
+            nodes.append(target_node)
+            cache.set(PENDING_CACHE_KEY, nodes, PENDING_TTL)
+        else:
+            raise ValueError(f"Failed to claim node: {last_error}")
 
     # Determine is_local
     node_is_local = is_local
@@ -315,22 +387,28 @@ def claim_node_by_pin(
         server_data["remote_url"] = f"http://{target_node['wan_ip']}:{wan_port}"
 
     server, created = link_or_create_node(user, server_data)
-    result = ping_server_sync(server)
-    if not result.get("online"):
-        if created:
-            server.delete()
-        raise ValueError(
-            f"Could not connect to node at {target_url} ({result.get('error') or 'unreachable'}). Ensure the node is online."
-        )
-    server.refresh_from_db()
+    if target_node:
+        server.is_online = True
+        server.last_seen_at = timezone.now()
+        server.save(update_fields=["is_online", "last_seen_at", "updated_at"])
+    else:
+        result = ping_server_sync(server)
+        if not result.get("online"):
+            if created:
+                server.delete()
+            raise ValueError(
+                f"Could not connect to node at {target_url} ({result.get('error') or 'unreachable'}). Ensure the node is online."
+            )
+        server.refresh_from_db()
 
-    # Prune from pending cache
-    remaining = [
-        r
-        for r in (cache.get(PENDING_CACHE_KEY) or [])
-        if str(r.get("claim_code") or "").strip().upper() != code
-    ]
-    cache.set(PENDING_CACHE_KEY, remaining, PENDING_TTL)
+    # Prune from pending cache if directly confirmed
+    if confirmed_directly:
+        remaining = [
+            r
+            for r in (cache.get(PENDING_CACHE_KEY) or [])
+            if str(r.get("claim_code") or "").strip().upper() != code
+        ]
+        cache.set(PENDING_CACHE_KEY, remaining, PENDING_TTL)
 
     return server, created
 
@@ -354,12 +432,6 @@ def claim_node_direct(
         or ""
     ).strip()
 
-    user_nodes_count = UserNode.objects.filter(user=user).count() + 1
-    if not server_name or server_name in ("Otix Game Server", "Otix Node"):
-        resolved_name = f"Node ID:{user_nodes_count}"
-    else:
-        resolved_name = server_name
-
     auth_token = (
         payload.get("auth_token")
         or payload.get("authToken")
@@ -368,6 +440,24 @@ def claim_node_direct(
 
     port = int(payload.get("port") or 8090)
     endpoints = payload.get("local_endpoints") or payload.get("localEndpoints") or []
+
+    user_nodes_count = UserNode.objects.filter(user=user).count() + 1
+    if not server_name or server_name in ("Otix Game Server", "Otix Node") or server_name.startswith("Node ID:"):
+        pending_matches = [
+            n
+            for n in list_pending_nodes()
+            if (auth_token and n.get("auth_token") == auth_token)
+            or any(ep and n.get("local_url") == ep for ep in endpoints)
+        ]
+        announced = pending_matches[0].get("server_name") if pending_matches else ""
+        if announced and announced not in ("Otix Game Server", "Otix Node") and not announced.startswith("Node ID:"):
+            resolved_name = announced
+        elif server_name:
+            resolved_name = server_name
+        else:
+            resolved_name = f"Node ID:{user_nodes_count}"
+    else:
+        resolved_name = server_name
 
     local_url = ""
     if isinstance(endpoints, list):
@@ -424,6 +514,59 @@ def claim_node_direct(
         cache.set(PENDING_CACHE_KEY, new_pending, PENDING_TTL)
 
     return server, created
+
+
+def unclaim_node(token: str = "", urls: list[str] | None = None, user=None) -> int:
+    """Unclaim and delete UserGameServer record(s) matching token or URLs, and purge pending cache."""
+    query = Q()
+    clean_token = (token or "").strip()
+    if clean_token:
+        query |= Q(auth_token=clean_token)
+    if urls:
+        for url in urls:
+            cleaned = _strip_url(url)
+            if cleaned:
+                query |= (
+                    Q(local_url=cleaned)
+                    | Q(local_url=f"{cleaned}/")
+                    | Q(remote_url=cleaned)
+                    | Q(remote_url=f"{cleaned}/")
+                )
+    if user and getattr(user, "is_authenticated", False):
+        query &= Q(user=user)
+
+    if not query:
+        return 0
+
+    servers = list(UserGameServer.objects.filter(query))
+    count = len(servers)
+    deleted_urls: set[str] = set()
+    deleted_tokens: set[str] = set()
+    if clean_token:
+        deleted_tokens.add(clean_token)
+    for s in servers:
+        if s.auth_token:
+            deleted_tokens.add(s.auth_token)
+        if s.local_url:
+            deleted_urls.add(_strip_url(s.local_url))
+        if s.remote_url:
+            deleted_urls.add(_strip_url(s.remote_url))
+        s.delete()
+
+    # Clean pending cache of matching claimed records
+    remaining: list[dict] = []
+    for r in cache.get(PENDING_CACHE_KEY) or []:
+        r_token = r.get("auth_token") or ""
+        if r_token and r_token in deleted_tokens:
+            continue
+        r_urls = {_strip_url(u) for u in heartbeat_identity_urls(r)}
+        if r_urls & deleted_urls and r.get("claimed"):
+            continue
+        remaining.append(r)
+    cache.set(PENDING_CACHE_KEY, remaining, PENDING_TTL)
+
+    return count
+
 
 
 

@@ -121,7 +121,7 @@ export const NodeSettingsModal = ({
         onOpenChange={onOpenChange}
         className="max-w-md p-8"
       >
-        <div className="flex items-center justify-center py-10 text-white/50 gap-3">
+        <div className="flex items-center justify-center py-10 text-muted-foreground gap-3">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
           <span>Loading node...</span>
         </div>
@@ -181,7 +181,7 @@ export const NodeSettingsModal = ({
               <DkButton
                 size="sm"
                 variant="ghost"
-                className="text-xs text-white/70 hover:text-white cursor-pointer"
+                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                 onClick={() => {
                   setRenameInput(server.name)
                   setRenameDialogOpen(true)
@@ -194,7 +194,7 @@ export const NodeSettingsModal = ({
                 <DkButton
                   size="sm"
                   variant="ghost"
-                  className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer text-xs"
+                  className="text-destructive hover:bg-destructive/10 cursor-pointer text-xs"
                   onClick={() => setConfirmDisconnect(true)}
                 >
                   <Trash2 className="h-3.5 w-3.5 mr-1" />
@@ -205,7 +205,7 @@ export const NodeSettingsModal = ({
                 size="sm"
                 variant="ghost"
                 onClick={() => onOpenChange(false)}
-                className="text-xs text-white/60 hover:text-white cursor-pointer"
+                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <ArrowLeft className="h-3.5 w-3.5 mr-1" />
                 Nodes
@@ -239,7 +239,7 @@ export const NodeSettingsModal = ({
           className="max-w-md"
         >
           <div className="space-y-4 pt-2">
-            <p className="text-xs text-white/70 leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               This node will be removed from your account. Any active downloads
               will be stopped and you will need to re-claim or add the node again to reconnect.
             </p>
@@ -285,7 +285,7 @@ export const NodeSettingsModal = ({
             className="space-y-4 pt-2"
           >
             <div className="space-y-1.5">
-              <label htmlFor="modal-rename-node-input" className="text-xs font-semibold text-white/70">
+              <label htmlFor="modal-rename-node-input" className="text-xs font-semibold text-muted-foreground">
                 Node Name
               </label>
               <input

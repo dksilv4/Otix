@@ -79,6 +79,8 @@ export interface OtixNode {
   storageFreeBytes: number;
   storageTotalBytes: number;
   isActive: boolean;
+  homeId?: number | null;
+  homeName?: string | null;
   createdAt: string;
   updatedAt: string;
   connectError?: string | null;

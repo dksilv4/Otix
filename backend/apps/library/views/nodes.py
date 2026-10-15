@@ -56,6 +56,7 @@ from apps.library.services.node import (
     explorer_request_permission,
     explorer_set_download_path,
     link_or_create_game_server,
+    list_pending_nodes,
     list_pending_nodes_for,
     node_execute_organize,
     node_get_organize,
@@ -139,7 +140,11 @@ def _resolve_user(request: Request):
         return user
     from django.contrib.auth import get_user_model
 
-    return get_user_model().objects.filter(is_active=True).first()
+    User = get_user_model()
+    return (
+        User.objects.filter(is_superuser=True, is_active=True).order_by("id").first()
+        or User.objects.filter(is_active=True).order_by("id").first()
+    )
 
 
 def _get_server_or_404(request: Request, server_id: int) -> UserGameServer:
@@ -176,9 +181,10 @@ class GameServerListCreateView(APIView):
         user = _resolve_user(request)
         if user:
             collapse_duplicate_game_servers(user)
-            servers = UserGameServer.objects.filter(user=user)
+            servers = list(UserGameServer.objects.filter(user=user))
         else:
-            servers = UserGameServer.objects.all()
+            servers = list(UserGameServer.objects.all())
+
         return Response(UserGameServerSerializer(servers, many=True).data)
 
     def post(self, request: Request) -> Response:
@@ -189,11 +195,23 @@ class GameServerListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data)
 
-        # Auto-naming fallback: Node ID:<X>
+        # Auto-naming fallback: prefer announced node name over generic Node ID:<X>
         raw_name = (data.get("name") or "").strip()
-        if not raw_name or raw_name in ("Otix Game Server", "Otix Node"):
-            node_count = UserNode.objects.filter(user=user).count() + 1
-            data["name"] = f"Node ID:{node_count}"
+        if not raw_name or raw_name in ("Otix Game Server", "Otix Node") or raw_name.startswith("Node ID:"):
+            pending_matches = [
+                n
+                for n in list_pending_nodes()
+                if (data.get("local_url") and n.get("local_url") == data.get("local_url"))
+                or (data.get("auth_token") and n.get("auth_token") == data.get("auth_token"))
+            ]
+            announced = pending_matches[0].get("server_name") if pending_matches else ""
+            if announced and announced not in ("Otix Game Server", "Otix Node") and not announced.startswith("Node ID:"):
+                data["name"] = announced
+            elif raw_name:
+                data["name"] = raw_name
+            else:
+                node_count = UserNode.objects.filter(user=user).count() + 1
+                data["name"] = f"Node ID:{node_count}"
 
         server, created = link_or_create_game_server(user, data)
         result = ping_server_sync(server)
@@ -272,6 +290,7 @@ class GameServerScanCompleteView(APIView):
                 server,
                 download_images=bool(download_images),
                 write_otix=bool(write_otix),
+                ensure_scan=False,
             )
             results.append({"server_id": server.id, "status": status_code, "data": sync_data})
 
@@ -357,6 +376,50 @@ class GameServerClaimDirectView(APIView):
                 {"error": f"Failed to claim node directly: {exc}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class GameServerUnclaimView(APIView):
+    """``POST /api/v1/servers/unclaim`` — unclaim and detach an otix node."""
+
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
+    def post(self, request: Request) -> Response:
+        payload = request.data if isinstance(request.data, dict) else {}
+        token = payload.get("auth_token") or payload.get("authToken") or ""
+        if not token:
+            auth_header = request.headers.get("Authorization") or ""
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:].strip()
+        urls: list[str] = []
+        if payload.get("local_url"):
+            urls.append(str(payload.get("local_url")))
+        if payload.get("localUrl"):
+            urls.append(str(payload.get("localUrl")))
+        if payload.get("local_endpoints") and isinstance(payload.get("local_endpoints"), list):
+            urls.extend(str(u) for u in payload.get("local_endpoints") if u)
+        if payload.get("localEndpoints") and isinstance(payload.get("localEndpoints"), list):
+            urls.extend(str(u) for u in payload.get("localEndpoints") if u)
+
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            user = None
+
+        if not token and not urls:
+            return Response(
+                {"error": "auth_token or local_url is required to unclaim"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        deleted_count = node_service.unclaim_node(token=token, urls=urls, user=user)
+        return Response(
+            {
+                "status": "ok",
+                "message": f"Successfully unclaimed {deleted_count} node(s)",
+                "unclaimed": deleted_count,
+            }
+        )
+
 
 
 
@@ -2168,4 +2231,5 @@ NodeScanView = GameServerScanView
 NodeScanClearView = GameServerScanClearView
 NodeSessionsView = GameServerSessionsView
 NodeRunningView = GameServerRunningView
+NodeUnclaimView = GameServerUnclaimView
 

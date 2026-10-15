@@ -18,30 +18,29 @@ describe('settings navigation IA', () => {
     expect(NAV_GROUPS.map((g) => g.id)).toEqual(['preferences', 'library', 'connections', 'account', 'admin'])
     expect(NAV_ITEMS.find((i) => i.id === 'appearance')?.group).toBe('preferences')
     expect(NAV_ITEMS.find((i) => i.id === 'launcher')?.group).toBe('preferences')
-    expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.group).toBe('library')
-    expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.desktop).toBe(false)
     expect(NAV_ITEMS.find((i) => i.id === 'library')?.group).toBe('library')
     expect(NAV_ITEMS.find((i) => i.id === 'library')?.desktop).toBe(false)
     expect(NAV_ITEMS.find((i) => i.id === 'connections')?.label).toBe('Connections')
+    expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.label).toBe('Nodes')
     expect(NAV_ITEMS.some((i) => i.id === 'overview' || i.id === 'integrations' || i.id === 'general' || i.id === 'downloads' || i.id === 'desktop')).toBe(false)
   })
 
   it('matches sidebar search against labels and keywords', () => {
     const connections = NAV_ITEMS.find((i) => i.id === 'connections')!
     expect(matchNavItem(connections, 'plex')).toBe(true)
-    expect(matchNavItem(connections, 'otix nodes')).toBe(true)
-    expect(matchNavItem(connections, 'connection nodes')).toBe(true)
+    expect(matchNavItem(connections, 'steam')).toBe(true)
     expect(matchNavItem(connections, 'xyzzy')).toBe(false)
+    const nodes = NAV_ITEMS.find((i) => i.id === 'nodes')!
+    expect(matchNavItem(nodes, 'otix nodes')).toBe(true)
+    expect(matchNavItem(nodes, 'homelab')).toBe(true)
+    expect(matchNavItem(nodes, 'servers')).toBe(true)
+    expect(matchNavItem(nodes, 'xyzzy')).toBe(false)
     const library = NAV_ITEMS.find((i) => i.id === 'library')!
     expect(matchNavItem(library, 'matching')).toBe(true)
     expect(matchNavItem(library, 'xyzzy')).toBe(false)
     const launcher = NAV_ITEMS.find((i) => i.id === 'launcher')!
     expect(matchNavItem(launcher, 'xbox')).toBe(true)
     expect(matchNavItem(launcher, 'layout')).toBe(true)
-    const nodes = NAV_ITEMS.find((i) => i.id === 'nodes')!
-    expect(matchNavItem(nodes, 'tray')).toBe(true)
-    expect(matchNavItem(nodes, 'startup')).toBe(true)
-    expect(matchNavItem(nodes, 'sabnzbd')).toBe(true)
   })
 
   it('remembers the last valid section and ignores retired paths', () => {
@@ -49,8 +48,6 @@ describe('settings navigation IA', () => {
     expect(localStorage.getItem(SETTINGS_LAST_SECTION_KEY)).toBe('connections')
     rememberSettingsSection('launcher')
     expect(localStorage.getItem(SETTINGS_LAST_SECTION_KEY)).toBe('launcher')
-    rememberSettingsSection('desktop')
-    expect(localStorage.getItem(SETTINGS_LAST_SECTION_KEY)).toBe('nodes')
     rememberSettingsSection('nodes')
     expect(localStorage.getItem(SETTINGS_LAST_SECTION_KEY)).toBe('nodes')
     rememberSettingsSection('desktop')

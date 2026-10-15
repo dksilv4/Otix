@@ -92,7 +92,7 @@ vi.mock('@/features/downloads/use-server-usenet', () => ({
   useTestProwlarr: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
-let mockProviders: Record<string, unknown> | null = null
+const mockProviders: Record<string, unknown> | null = null
 vi.mock('@/features/downloads/use-server-providers', () => ({
   useServerProviders: () => ({ data: mockProviders, isLoading: false }),
   useNodeProviders: () => ({ data: mockProviders, isLoading: false }),
@@ -128,22 +128,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     )
   }
 
-  it('renders integration cards including SABnzbd, Prowlarr, Radarr, and Sonarr', async () => {
-    const user = userEvent.setup()
-    renderPage()
 
-    await waitFor(() => {
-      expect(screen.getByText('Home Server')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Home Server'))
-
-    await waitFor(() => {
-      expect(screen.getByText('SABnzbd')).toBeInTheDocument()
-      expect(screen.getByText('Prowlarr')).toBeInTheDocument()
-      expect(screen.getByText('Radarr')).toBeInTheDocument()
-      expect(screen.getByText('Sonarr')).toBeInTheDocument()
-    })
-  })
 
   it('renders connection cards immediately even if oauth status never returns', () => {
     vi.mocked(apiClient.get).mockReturnValue(new Promise(() => {}))
@@ -155,290 +140,19 @@ describe('Settings Integrations Modals Regression Tests', () => {
     expect(screen.getByText('Plex')).toBeInTheDocument()
   })
 
-  it('puts Otix nodes in a separate section from accounts', async () => {
-    const user = userEvent.setup()
+  it('renders accounts and services sections', async () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Nodes' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Accounts' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Services & Storage' })).toBeInTheDocument()
     })
-    expect(screen.getByRole('heading', { name: 'Accounts' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Services & Storage' })).toBeInTheDocument()
     expect(document.getElementById('accounts')).toBeTruthy()
     expect(document.getElementById('services')).toBeTruthy()
-    expect(document.getElementById('nodes')).toBeTruthy()
-    await user.click(screen.getByText('Home Server'))
-    await waitFor(() => {
-      expect(document.getElementById('nodes')!.contains(screen.getByText('SABnzbd'))).toBe(true)
-    })
     expect(document.getElementById('accounts')!.contains(screen.getByText('Steam'))).toBe(true)
     expect(document.getElementById('accounts')!.contains(screen.getByText('Google'))).toBe(true)
     expect(document.getElementById('services')!.contains(screen.getByText('YouTube'))).toBe(true)
     expect(document.getElementById('services')!.contains(screen.getByText('Google Drive'))).toBe(true)
-  })
-
-  it('renders no nodes connected state when no worker nodes exist', async () => {
-    mockGameServers = []
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Nodes' })).toBeInTheDocument()
-      expect(screen.getByText('No nodes connected')).toBeInTheDocument()
-    })
-  })
-
-  it('opens SABnzbd modal via modal framework for connected node', async () => {
-    const user = userEvent.setup()
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Home Server')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Home Server'))
-
-    await waitFor(() => {
-      expect(screen.getByText('SABnzbd')).toBeInTheDocument()
-    })
-
-    const card = screen.getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
-    const connectBtn = within(card).getByRole('button', { name: /connect/i })
-    await user.click(connectBtn)
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'SABnzbd' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Home Server/i)).toBeInTheDocument()
-    })
-  })
-
-  it('opens Prowlarr modal via modal framework for connected node', async () => {
-    const user = userEvent.setup()
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Home Server')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Home Server'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Prowlarr')).toBeInTheDocument()
-    })
-
-    const card = screen.getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
-    const connectBtn = within(card).getByRole('button', { name: /connect/i })
-    await user.click(connectBtn)
-
-    await waitFor(() => {
-      expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Prowlarr' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Home Server/i)).toBeInTheDocument()
-    })
-  })
-
-  it('opens Radarr modal via modal framework for connected node', async () => {
-    const user = userEvent.setup()
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Home Server')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Home Server'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Radarr')).toBeInTheDocument()
-    })
-
-    const card = screen.getByText('Radarr').closest('.rounded-2xl') as HTMLElement
-    const connectBtn = within(card).getByRole('button', { name: /connect/i })
-    await user.click(connectBtn)
-
-    await waitFor(() => {
-      expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Radarr' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Home Server/i)).toBeInTheDocument()
-    })
-  })
-
-  it('opens Sonarr modal via modal framework for connected node', async () => {
-    const user = userEvent.setup()
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Home Server')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Home Server'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Sonarr')).toBeInTheDocument()
-    })
-
-    const card = screen.getByText('Sonarr').closest('.rounded-2xl') as HTMLElement
-    const connectBtn = within(card).getByRole('button', { name: /connect/i })
-    await user.click(connectBtn)
-
-    await waitFor(() => {
-      expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Sonarr' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Home Server/i)).toBeInTheDocument()
-    })
-  })
-
-  it('passes server details to the modal when an active server is connected', async () => {
-    mockGameServers = [
-      { id: 99, name: 'Homelab Alpha', primaryUrl: 'http://192.168.1.50:8000', isOnline: true },
-    ]
-    const user = userEvent.setup()
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Homelab Alpha')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Homelab Alpha'))
-
-    const serverSection = screen.getByText('Homelab Alpha').closest('.overflow-hidden') as HTMLElement
-    const card = within(serverSection).getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
-    const connectBtn = within(card).getByRole('button', { name: /connect/i })
-    await user.click(connectBtn)
-
-    await waitFor(() => {
-      const dialog = screen.getByRole('dialog')
-      expect(within(dialog).getByRole('heading', { name: 'SABnzbd' })).toBeInTheDocument()
-      expect(within(dialog).getByText(/On Homelab Alpha/i)).toBeInTheDocument()
-      expect(within(dialog).getByLabelText(/URL Base/i)).toBeInTheDocument()
-      expect(within(dialog).queryByText('Advanced')).not.toBeInTheDocument()
-    })
-  })
-
-  it('opens modals from configured detail view via Configure buttons', async () => {
-    mockGameServers = [
-      { id: 42, name: 'Main Server', primaryUrl: 'http://10.0.0.5:8000', isOnline: true },
-    ]
-    mockUsenetConfig = {
-      sabnzbd: { host: 'localhost', port: 8080, apiKey: 'test-key', configured: true },
-      prowlarr: { host: 'localhost', port: 9696, apiKey: 'test-key', configured: true },
-    }
-    mockRadarrConfig = { host: 'localhost', port: 7878, apiKey: 'test-key', configured: true }
-    mockSonarrConfig = { host: 'localhost', port: 8989, apiKey: 'test-key', configured: true }
-
-    const user = userEvent.setup()
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Main Server')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Main Server'))
-
-    const serverSection = screen.getByText('Main Server').closest('.overflow-hidden') as HTMLElement
-    const sabnzbdCard = within(serverSection).getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
-    const sabHeader = within(sabnzbdCard).getByRole('button')
-    await user.click(sabHeader)
-
-    // In detail modal, click "Configure SABnzbd"
-    const sabDialog = await screen.findByRole('dialog')
-    const configureSabBtn = await within(sabDialog).findByRole('button', { name: /Configure SABnzbd/i })
-    await user.click(configureSabBtn)
-
-    await waitFor(() => {
-      const dialogs = screen.getAllByRole('dialog')
-      const targetDialog = dialogs.find((d) => within(d).queryByRole('heading', { name: 'SABnzbd' }))
-      expect(targetDialog).toBeDefined()
-      expect(within(targetDialog!).getByText(/On Main Server/i)).toBeInTheDocument()
-    })
-  })
-
-  it('shows the redesigned Prowlarr indexers panel on the expanded Integrations card', async () => {
-    mockGameServers = [
-      { id: 42, name: 'Main Server', primaryUrl: 'http://10.0.0.5:8000', isOnline: true },
-    ]
-    mockUsenetConfig = {
-      prowlarr: { host: 'localhost', port: 9696, apiKey: 'test-key', configured: true },
-    }
-
-    const user = userEvent.setup()
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Main Server')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Main Server'))
-
-    const serverSection = screen.getByText('Main Server').closest('.overflow-hidden') as HTMLElement
-    const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
-    await user.click(within(prowlarrCard).getByRole('button'))
-
-    const prowlarrDialog = await screen.findByRole('dialog')
-    const protocolGroup = await within(prowlarrDialog).findByRole('group', { name: /Protocol/i }) as HTMLElement
-    expect(within(protocolGroup).queryByRole('button', { name: /^Sync$/i })).not.toBeInTheDocument()
-    const syncBtn = within(prowlarrDialog).getByRole('button', { name: /^Sync$/i })
-    expect(syncBtn.className).toMatch(/bg-rose-500/)
-    expect(within(prowlarrDialog).getByText('No indexers yet')).toBeInTheDocument()
-    expect(within(prowlarrDialog).getByText(/Press Sync to pull indexers from Prowlarr/i)).toBeInTheDocument()
-    expect(within(prowlarrDialog).getByRole('list', { name: /Indexer list/i })).toBeInTheDocument()
-    expect(within(prowlarrDialog).queryByRole('button', { name: /^Console$/i })).not.toBeInTheDocument()
-
-    await user.click(within(prowlarrDialog).getByRole('button', { name: /Configure Prowlarr/i }))
-    await waitFor(() => {
-      const dialogs = screen.getAllByRole('dialog')
-      const targetDialog = dialogs.find((d) => within(d).queryByRole('heading', { name: 'Prowlarr' }))
-      expect(targetDialog).toBeDefined()
-      expect(within(targetDialog!).getByRole('button', { name: /^Console$/i, pressed: true })).toBeInTheDocument()
-      expect(within(targetDialog!).getByRole('button', { name: /^PC$/i, pressed: true })).toBeInTheDocument()
-      expect(within(targetDialog!).getByRole('button', { name: /^Test connection$/i })).toBeInTheDocument()
-    })
-  })
-
-  it('displays active server details across Prowlarr, Radarr, and Sonarr modals', async () => {
-    mockGameServers = [
-      { id: 77, name: 'Otix Node One', primaryUrl: 'http://192.168.1.100:8000', isOnline: true },
-    ]
-    const user = userEvent.setup()
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Otix Node One')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Otix Node One'))
-
-    const serverSection = screen.getByText('Otix Node One').closest('.overflow-hidden') as HTMLElement
-
-    // Test Radarr modal with server connected
-    const radarrCard = within(serverSection).getByText('Radarr').closest('.rounded-2xl') as HTMLElement
-    const radarrConnectBtn = within(radarrCard).getByRole('button', { name: /connect/i })
-    await user.click(radarrConnectBtn)
-
-    await waitFor(() => {
-      expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Radarr' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Otix Node One/i)).toBeInTheDocument()
-    })
-
-    // Dismiss with Escape key
-    await user.keyboard('{Escape}')
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
-
-    // Test Sonarr modal with server connected
-    const sonarrCard = within(serverSection).getByText('Sonarr').closest('.rounded-2xl') as HTMLElement
-    const sonarrConnectBtn = within(sonarrCard).getByRole('button', { name: /connect/i })
-    await user.click(sonarrConnectBtn)
-
-    await waitFor(() => {
-      expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Sonarr' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Otix Node One/i)).toBeInTheDocument()
-    })
-
-    // Dismiss with Escape key
-    await user.keyboard('{Escape}')
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
-
-    // Test Prowlarr modal with server connected
-    const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
-    const prowlarrConnectBtn = within(prowlarrCard).getByRole('button', { name: /connect/i })
-    await user.click(prowlarrConnectBtn)
-
-    await waitFor(() => {
-      expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Prowlarr' })).toBeInTheDocument()
-      expect(within(screen.getByRole('dialog')).getByText(/On Otix Node One/i)).toBeInTheDocument()
-    })
   })
 
   it('renders Epic Games as a first-class connection card under accounts', async () => {
@@ -496,82 +210,7 @@ describe('Settings Integrations Modals Regression Tests', () => {
     await waitFor(() => {
       expect(within(dialog).getByText('Account ID: epic-acc-999')).toBeInTheDocument()
       expect(within(dialog).getByRole('button', { name: /scan library/i })).toBeInTheDocument()
-      expect(within(dialog).getByRole('button', { name: /resolve with steamgrid/i })).toBeInTheDocument()
     })
-  })
-
-  it('renders Prowlarr and SABnzbd as Connected when configured with camelCase apiKey and configured flag', async () => {
-    mockGameServers = [
-      { id: 8, name: 'Node ID:1', primaryUrl: 'http://127.0.0.1:8090', isOnline: true },
-    ]
-    mockUsenetConfig = {
-      prowlarr: {
-        host: 'server.diogodasilva.com',
-        port: 443,
-        urlBase: '/prowlarr',
-        apiKey: '4e03935ffed34d0a887df2f938dd724e',
-        useSsl: true,
-        configured: true,
-      },
-      sabnzbd: {
-        host: 'server.diogodasilva.com',
-        port: 8080,
-        urlBase: '/sabnzbd',
-        apiKey: 'some-sabnzbd-key',
-        useSsl: false,
-        configured: true,
-      },
-    }
-
-    const user = userEvent.setup()
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Node ID:1')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Node ID:1'))
-
-    const serverSection = screen.getByText('Node ID:1').closest('.overflow-hidden') as HTMLElement
-    const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
-    const sabnzbdCard = within(serverSection).getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
-
-    expect(within(prowlarrCard).getByText('Connected')).toBeInTheDocument()
-    expect(within(prowlarrCard).getByText(/Configured on Node ID:1 \(Indexer Provider\)/i)).toBeInTheDocument()
-    expect(within(prowlarrCard).queryByRole('button', { name: /^connect$/i })).not.toBeInTheDocument()
-
-    expect(within(sabnzbdCard).getByText('Connected')).toBeInTheDocument()
-    expect(within(sabnzbdCard).getByText(/Configured on Node ID:1/i)).toBeInTheDocument()
-    expect(within(sabnzbdCard).queryByRole('button', { name: /^connect$/i })).not.toBeInTheDocument()
-  })
-
-  it('renders Prowlarr and SABnzbd as Connected when reported as connected by node providers', async () => {
-    mockGameServers = [
-      { id: 8, name: 'Node ID:1', primaryUrl: 'http://127.0.0.1:8090', isOnline: true },
-    ]
-    mockUsenetConfig = null
-    mockProviders = {
-      downloaders: [
-        { name: 'sabnzbd', display_name: 'SABnzbd', type: 'downloader', configured: true, connected: true },
-      ],
-      indexers: [
-        { name: 'prowlarr', display_name: 'Prowlarr', type: 'indexer', configured: true, connected: true },
-      ],
-    }
-
-    const user = userEvent.setup()
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('Node ID:1')).toBeInTheDocument()
-    })
-    await user.click(screen.getByText('Node ID:1'))
-
-    const serverSection = screen.getByText('Node ID:1').closest('.overflow-hidden') as HTMLElement
-    const prowlarrCard = within(serverSection).getByText('Prowlarr').closest('.rounded-2xl') as HTMLElement
-    const sabnzbdCard = within(serverSection).getByText('SABnzbd').closest('.rounded-2xl') as HTMLElement
-
-    expect(within(prowlarrCard).getByText('Connected')).toBeInTheDocument()
-    expect(within(sabnzbdCard).getByText('Connected')).toBeInTheDocument()
   })
 })
 
