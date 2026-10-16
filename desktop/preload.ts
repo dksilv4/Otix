@@ -73,6 +73,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   launchSetup: (setupPath: string) => ipcRenderer.invoke('installer:launch-setup', setupPath),
   batchOrganize: (directory: string, namingTemplate?: string) => ipcRenderer.invoke('installer:batch-organize', directory, namingTemplate),
   smartOrganizePreview: (directory: string, namingTemplate: string, separator?: string) => ipcRenderer.invoke('installer:smart-preview', directory, namingTemplate, separator),
+  diagnoseRepack: (directory: string) => ipcRenderer.invoke('installer:diagnose-repack', directory),
+  healRepack: (directory: string) => ipcRenderer.invoke('installer:heal-repack', directory),
   onScannerProgress: (callback: (data: any) => void) => {
     const subscription = (_event: any, data: any) => callback(data);
     ipcRenderer.on('scanner:progress', subscription);

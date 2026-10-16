@@ -49,6 +49,24 @@ const parseNodeGames = (data: any): RunningGameData[] => {
   })
 }
 
+const areRunningGamesEqual = (a: RunningGameData[], b: RunningGameData[]): boolean => {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    const gA = a[i]
+    const gB = b[i]
+    if (
+      gA.game.id !== gB.game.id ||
+      gA.pid !== gB.pid ||
+      gA.startTime !== gB.startTime ||
+      gA.fpsSnapshot?.currentFps !== gB.fpsSnapshot?.currentFps
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
 const notifyWebSubscribers = () => {
   webSubscribers.forEach((fn) => fn())
 }
@@ -61,11 +79,11 @@ const scheduleNextPoll = () => {
   if (!webIsActive || webSubscribers.size === 0) return
 
   // Adaptive backoff:
-  // Node online (0 failures): poll every 3s
+  // Node online (0 failures): poll every 3s when game active, 15s when idle
   // 1 failure: retry in 15s
   // 2 failures: retry in 60s
   // 3+ failures: stop continuous polling timer; only re-check on tab focus
-  let delayMs = 3000
+  let delayMs = webRunningGames.length > 0 ? 3000 : 15000
   if (webConsecutiveFailures === 1) {
     delayMs = 15000
   } else if (webConsecutiveFailures === 2) {
@@ -97,8 +115,11 @@ const executeWebCheck = async (force = false) => {
   try {
     const { data } = await apiClient.get('/library/game-running', { timeout: 3500 })
     webConsecutiveFailures = 0
-    webRunningGames = parseNodeGames(data)
-    notifyWebSubscribers()
+    const nextGames = parseNodeGames(data)
+    if (!areRunningGamesEqual(webRunningGames, nextGames)) {
+      webRunningGames = nextGames
+      notifyWebSubscribers()
+    }
   } catch {
     webConsecutiveFailures += 1
     if (webRunningGames.length > 0) {
@@ -246,7 +267,7 @@ export const useRunningGame = () => {
 
     // Web fallback: subscribe to shared singleton poller
     const unsubscribe = subscribeWeb(() => {
-      setRunningGames([...webRunningGames])
+      setRunningGames((prev) => (areRunningGamesEqual(prev, webRunningGames) ? prev : [...webRunningGames]))
     })
 
     return () => {

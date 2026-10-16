@@ -139,29 +139,42 @@ class UserServerMachineCreateUpdateSerializer(serializers.ModelSerializer):
             "notes",
         ]
 
+    def _get_context_user(self):
+        user = self.context.get("user")
+        if user and getattr(user, "is_authenticated", False):
+            return user
+        request = self.context.get("request")
+        if request:
+            from apps.library.views.nodes import _resolve_user
+
+            return _resolve_user(request)
+        return user
+
     def validate_home_id(self, value):
         if value is None:
             return None
-        request = self.context.get("request")
-        user = request.user if request else None
-        if not UserHome.objects.filter(id=value, user=user).exists():
+        user = self._get_context_user()
+        if user and not UserHome.objects.filter(id=value, user=user).exists():
             raise serializers.ValidationError("Home does not exist or does not belong to you.")
+        elif not user and not UserHome.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Home does not exist.")
         return value
 
     def validate_hosted_node_id(self, value):
         if value is None:
             return None
-        request = self.context.get("request")
-        user = request.user if request else None
-        if not UserNode.objects.filter(id=value, user=user).exists():
+        user = self._get_context_user()
+        if user and not UserNode.objects.filter(id=value, user=user).exists():
             raise serializers.ValidationError("Node does not exist or does not belong to you.")
+        elif not user and not UserNode.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Node does not exist.")
         return value
 
     def create(self, validated_data):
         home_id = validated_data.pop("home_id", None)
         hosted_node_id = validated_data.pop("hosted_node_id", None)
         smb_node_ids = validated_data.pop("smb_node_ids", [])
-        user = self.context["request"].user
+        user = self._get_context_user()
 
         server = UserServerMachine.objects.create(
             user=user,
@@ -170,7 +183,7 @@ class UserServerMachineCreateUpdateSerializer(serializers.ModelSerializer):
             **validated_data,
         )
         if smb_node_ids:
-            nodes = UserNode.objects.filter(id__in=smb_node_ids, user=user)
+            nodes = UserNode.objects.filter(id__in=smb_node_ids, user=user) if user else UserNode.objects.none()
             server.smb_nodes.set(nodes)
 
         server.recalculate_storage()
@@ -181,7 +194,7 @@ class UserServerMachineCreateUpdateSerializer(serializers.ModelSerializer):
         home_id = validated_data.pop("home_id", ... )
         hosted_node_id = validated_data.pop("hosted_node_id", ... )
         smb_node_ids = validated_data.pop("smb_node_ids", ... )
-        user = self.context["request"].user
+        user = self._get_context_user()
 
         if home_id is not ...:
             instance.home_id = home_id
@@ -192,7 +205,7 @@ class UserServerMachineCreateUpdateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
 
         if smb_node_ids is not ...:
-            nodes = UserNode.objects.filter(id__in=smb_node_ids, user=user)
+            nodes = UserNode.objects.filter(id__in=smb_node_ids, user=user) if user else UserNode.objects.none()
             instance.smb_nodes.set(nodes)
 
         instance.recalculate_storage()

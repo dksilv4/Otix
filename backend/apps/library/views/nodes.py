@@ -138,22 +138,14 @@ def _resolve_user(request: Request):
     user = getattr(request, "user", None)
     if user and getattr(user, "is_authenticated", False):
         return user
-    from django.contrib.auth import get_user_model
-
-    User = get_user_model()
-    return (
-        User.objects.filter(is_superuser=True, is_active=True).order_by("id").first()
-        or User.objects.filter(is_active=True).order_by("id").first()
-    )
+    return None
 
 
 def _get_server_or_404(request: Request, server_id: int) -> UserGameServer:
     resolved_user = _resolve_user(request)
-    server = None
-    if resolved_user:
-        server = UserGameServer.objects.filter(id=server_id, user=resolved_user).first()
-    if not server:
-        server = UserGameServer.objects.filter(id=server_id).first()
+    if not resolved_user:
+        raise NotAuthenticated("User authentication required")
+    server = UserGameServer.objects.filter(id=server_id, user=resolved_user).first()
     if not server:
         raise NotFound("Otix node not found")
     return server
@@ -175,16 +167,14 @@ class GameServerListCreateView(APIView):
     ``POST /api/v1/library/servers`` — register a new game server node.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
         user = _resolve_user(request)
-        if user:
-            collapse_duplicate_game_servers(user)
-            servers = list(UserGameServer.objects.filter(user=user))
-        else:
-            servers = list(UserGameServer.objects.all())
-
+        if not user:
+            return Response([])
+        collapse_duplicate_game_servers(user)
+        servers = list(UserGameServer.objects.filter(user=user))
         return Response(UserGameServerSerializer(servers, many=True).data)
 
     def post(self, request: Request) -> Response:
@@ -300,7 +290,7 @@ class GameServerScanCompleteView(APIView):
 class GameServerPendingView(APIView):
     """``GET /api/v1/library/servers/pending`` — nodes that heartbeated but are not claimed."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
         user = _resolve_user(request)
@@ -310,7 +300,7 @@ class GameServerPendingView(APIView):
 class GameServerClaimView(APIView):
     """``POST /api/v1/library/servers/claim`` — Plex-style claim of an Otix node by PIN."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request) -> Response:
         user = _resolve_user(request)
@@ -426,7 +416,7 @@ class GameServerUnclaimView(APIView):
 class GameServerProbeView(APIView):
     """``POST /api/v1/library/servers/{server_id}/probe`` — test remote access reachability."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -525,19 +515,16 @@ class GameServerDetailView(APIView):
     ``DELETE /api/v1/library/servers/{server_id}`` — remove connected server.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def _get_server(self, request: Request, server_id: int) -> UserGameServer:
         user = _resolve_user(request)
-        if user:
-            try:
-                return UserGameServer.objects.get(id=server_id, user=user)
-            except UserGameServer.DoesNotExist:
-                pass
-        try:
-            return UserGameServer.objects.get(id=server_id)
-        except UserGameServer.DoesNotExist:
-            raise NotFound("Otix node not found") from None
+        if not user:
+            raise NotAuthenticated("User authentication required")
+        server = UserGameServer.objects.filter(id=server_id, user=user).first()
+        if not server:
+            raise NotFound("Otix node not found")
+        return server
 
     def patch(self, request: Request, server_id: int) -> Response:
         server = self._get_server(request, server_id)
@@ -574,7 +561,7 @@ class GameServerDetailView(APIView):
 class GameServerPingView(APIView):
     """``POST /api/v1/library/servers/{server_id}/ping`` — test server connectivity."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -598,7 +585,7 @@ class GameServerFilesView(APIView):
         own_servers = list(
             UserGameServer.objects.filter(user=user, is_active=True).select_related("user")
             if user
-            else UserGameServer.objects.filter(is_active=True).select_related("user")
+            else []
         )
         server_map = {s.id: s for s in own_servers}
         node_shares_map = {}
@@ -812,7 +799,7 @@ class NodeShareDeleteView(APIView):
 class GameServerExplorerBrowseView(APIView):
     """``GET /api/v1/library/servers/{server_id}/explorer`` — browse server filesystem."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -825,7 +812,7 @@ class GameServerExplorerBrowseView(APIView):
 class GameServerExplorerSetPathView(APIView):
     """Assign the server download folder via explorer/set-download-path."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -849,7 +836,7 @@ class GameServerExplorerSetPathView(APIView):
 class GameServerExplorerCreateFolderView(APIView):
     """Create a subfolder on the server via explorer/create-folder."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -869,7 +856,7 @@ class GameServerExplorerCreateFolderView(APIView):
 class GameServerExplorerRequestPermissionView(APIView):
     """``POST /api/v1/library/servers/{server_id}/explorer/request-permission`` — request macOS folder access."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -886,7 +873,7 @@ class GameServerUsenetConfigView(APIView):
     ``POST /api/v1/library/servers/{server_id}/usenet/config`` — save usenet config
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -902,7 +889,7 @@ class GameServerUsenetConfigView(APIView):
 class GameServerUsenetTestSabnzbdView(APIView):
     """Test the server's SABnzbd connection."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -913,7 +900,7 @@ class GameServerUsenetTestSabnzbdView(APIView):
 class GameServerUsenetTestProwlarrView(APIView):
     """Test the server's Prowlarr connection."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -924,7 +911,7 @@ class GameServerUsenetTestProwlarrView(APIView):
 class GameServerUsenetSearchView(APIView):
     """Search Prowlarr indexers for games."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -938,7 +925,7 @@ class GameServerUsenetSearchView(APIView):
 class GameServerUsenetDownloadView(APIView):
     """``POST /api/v1/library/servers/{server_id}/usenet/download`` — send NZB to server SABnzbd."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -954,7 +941,7 @@ class GameServerUsenetDownloadView(APIView):
 class GameServerUsenetQueueView(APIView):
     """``GET /api/v1/library/servers/{server_id}/usenet/queue`` — get active SABnzbd queue."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -974,7 +961,7 @@ class GameServerUsenetQueueView(APIView):
 class GameServerUsenetHistoryView(APIView):
     """``GET /api/v1/library/servers/{server_id}/usenet/history`` — persisted + SABnzbd history."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -992,7 +979,7 @@ class GameServerUsenetHistoryView(APIView):
 class GameServerProvidersView(APIView):
     """List registered providers and the active selection."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1003,7 +990,7 @@ class GameServerProvidersView(APIView):
 class GameServerProviderTestView(APIView):
     """Test connectivity for a named provider."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int, provider_type: str, name: str) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1014,7 +1001,7 @@ class GameServerProviderTestView(APIView):
 class GameServerDownloadsSearchView(APIView):
     """Search across the server's active download providers."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1029,7 +1016,7 @@ class GameServerDownloadsSearchView(APIView):
 class GameServerDownloadsAddView(APIView):
     """Send a release download to the active downloader."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1048,7 +1035,7 @@ class GameServerDownloadsAddView(APIView):
 class GameServerDownloadsQueueView(APIView):
     """Get or cancel items in the server download queue."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1070,7 +1057,7 @@ class GameServerDownloadsQueueView(APIView):
 class GameServerDownloadsHistoryView(APIView):
     """Return persisted download history for the server."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1089,7 +1076,7 @@ class GameServerDownloadsHistoryView(APIView):
 class GameServerProwlarrIndexersView(APIView):
     """``GET /api/v1/library/servers/{server_id}/prowlarr/indexers`` — get Prowlarr indexers."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1101,7 +1088,7 @@ class GameServerProwlarrIndexersView(APIView):
 class GameServerProwlarrSyncView(APIView):
     """Trigger a Prowlarr indexer sync on the server."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1115,7 +1102,7 @@ class GameServerProwlarrSyncView(APIView):
 class GameServerSabnzbdQueueControlView(APIView):
     """Pause or resume the SABnzbd download queue."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int, action: str) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1133,7 +1120,7 @@ class GameServerSabnzbdQueueControlView(APIView):
 class GameServerScanView(APIView):
     """``POST /api/v1/library/servers/{server_id}/scan`` — re-index hosted installer files."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1144,7 +1131,7 @@ class GameServerScanView(APIView):
 class GameServerScanClearView(APIView):
     """``POST /api/v1/library/servers/{server_id}/scan/clear`` — clear indexed hosted files."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1155,7 +1142,7 @@ class GameServerScanClearView(APIView):
 class GameServerOtixSettingsView(APIView):
     """``GET/POST /api/v1/library/servers/{server_id}/otix/settings`` — node `.otix` prefs."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         from apps.library.services.otix_sync import node_get_otix_settings
@@ -1175,7 +1162,7 @@ class GameServerOtixSettingsView(APIView):
 class GameServerOtixSyncView(APIView):
     """``POST /api/v1/library/servers/{server_id}/otix/sync`` — match, hydrate, write `.otix`."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         from apps.library.services.otix_sync import sync_otix_sidecars
@@ -1198,7 +1185,7 @@ class GameServerOtixSyncView(APIView):
 class GameServerOtixMatchView(APIView):
     """``POST /api/v1/library/servers/{server_id}/otix/match`` — manually match a game file and write `.otix`."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         from apps.library.services.otix_sync import node_match_and_write_otix
@@ -1232,7 +1219,7 @@ class GameServerOtixMatchView(APIView):
 class GameServerOtixAssetView(APIView):
     """``GET …/files/{file_id}/otix/asset/{role}`` — proxy local sidecar image from the node."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int, file_id: str, role: str) -> Response:
         from django.http import HttpResponse
@@ -1272,7 +1259,7 @@ class GameServerRadarrConfigView(APIView):
     ``POST /api/v1/library/servers/{server_id}/radarr/config`` — save Radarr config.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1288,7 +1275,7 @@ class GameServerRadarrConfigView(APIView):
 class GameServerRadarrTestView(APIView):
     """``POST /api/v1/library/servers/{server_id}/radarr/test`` — test Radarr connection."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1299,7 +1286,7 @@ class GameServerRadarrTestView(APIView):
 class GameServerRadarrRootFoldersView(APIView):
     """``GET /api/v1/library/servers/{server_id}/radarr/rootfolders`` — list root folders."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1310,7 +1297,7 @@ class GameServerRadarrRootFoldersView(APIView):
 class GameServerRadarrQualityProfilesView(APIView):
     """List Radarr quality profiles for the server."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1325,7 +1312,7 @@ class GameServerRadarrMoviesView(APIView):
     ``POST /api/v1/library/servers/{server_id}/radarr/movies`` — add movie.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1341,7 +1328,7 @@ class GameServerRadarrMoviesView(APIView):
 class GameServerRadarrLookupView(APIView):
     """``GET /api/v1/library/servers/{server_id}/radarr/lookup`` — lookup movies."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1357,7 +1344,7 @@ class GameServerRadarrQueueView(APIView):
     ``DELETE /api/v1/library/servers/{server_id}/radarr/queue/{queue_id}`` — delete item from queue.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1387,7 +1374,7 @@ class GameServerRadarrQueueView(APIView):
 class GameServerRadarrHistoryView(APIView):
     """``GET /api/v1/library/servers/{server_id}/radarr/history`` — get history."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1407,7 +1394,7 @@ class GameServerSonarrConfigView(APIView):
     ``POST /api/v1/library/servers/{server_id}/sonarr/config`` — save Sonarr config.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1423,7 +1410,7 @@ class GameServerSonarrConfigView(APIView):
 class GameServerSonarrTestView(APIView):
     """``POST /api/v1/library/servers/{server_id}/sonarr/test`` — test Sonarr connection."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1434,7 +1421,7 @@ class GameServerSonarrTestView(APIView):
 class GameServerSonarrRootFoldersView(APIView):
     """``GET /api/v1/library/servers/{server_id}/sonarr/rootfolders`` — list root folders."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1445,7 +1432,7 @@ class GameServerSonarrRootFoldersView(APIView):
 class GameServerSonarrQualityProfilesView(APIView):
     """List Sonarr quality profiles for the server."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1460,7 +1447,7 @@ class GameServerSonarrSeriesView(APIView):
     ``POST /api/v1/library/servers/{server_id}/sonarr/series`` — add series.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1476,7 +1463,7 @@ class GameServerSonarrSeriesView(APIView):
 class GameServerSonarrLookupView(APIView):
     """``GET /api/v1/library/servers/{server_id}/sonarr/lookup`` — lookup series."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1492,7 +1479,7 @@ class GameServerSonarrQueueView(APIView):
     ``DELETE /api/v1/library/servers/{server_id}/sonarr/queue/{queue_id}`` — delete item from queue.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1522,7 +1509,7 @@ class GameServerSonarrQueueView(APIView):
 class GameServerSonarrHistoryView(APIView):
     """``GET /api/v1/library/servers/{server_id}/sonarr/history`` — get history."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1539,7 +1526,7 @@ class GameServerDesktopView(APIView):
     ``POST /api/v1/library/servers/{server_id}/desktop`` — update node desktop settings.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1560,7 +1547,7 @@ class GameServerLibrariesView(APIView):
     ``PUT /api/v1/library/servers/{server_id}/libraries`` — replace node scan folders.
     """
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1579,7 +1566,7 @@ class GameServerLibrariesView(APIView):
 class GameServerOrganizeView(APIView):
     """``GET/POST /api/v1/library/servers/{server_id}/organize`` — node organize settings."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1595,7 +1582,7 @@ class GameServerOrganizeView(APIView):
 class GameServerOrganizePreviewView(APIView):
     """``POST /api/v1/library/servers/{server_id}/organize/preview`` — dry-run organization preview."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1606,7 +1593,7 @@ class GameServerOrganizePreviewView(APIView):
 class GameServerOrganizeExecuteView(APIView):
     """``POST /api/v1/library/servers/{server_id}/organize/execute`` — execute organization movements."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1637,7 +1624,7 @@ def _requested_server_ids(payload: dict) -> list[int] | None:
 class NodeConnectionsView(APIView):
     """Account-level SABnzbd / *arr connections. Nodes receive a copy only when synced."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
         user = _resolve_user(request)
@@ -1658,7 +1645,7 @@ class NodeConnectionsView(APIView):
 class NodeConnectionsSyncView(APIView):
     """Push stored connections onto chosen Otix nodes (or every node)."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request) -> Response:
         user = _resolve_user(request)
@@ -1672,7 +1659,7 @@ class NodeConnectionsSyncView(APIView):
 class GameServerConnectionsSyncView(APIView):
     """Push stored connections onto one Otix node."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1686,7 +1673,7 @@ class GameServerConnectionsSyncView(APIView):
 class GameServerInstancesImportView(APIView):
     """Copy SABnzbd / *arr instances from another node onto this one."""
 
-    permission_classes = (AllowAny,)
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
         dest = _get_server_or_404(request, server_id)

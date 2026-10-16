@@ -53,7 +53,7 @@ vi.mock('@ui/molecules/toast', () => ({
 }))
 
 vi.mock('@/lib/providers/auth', () => ({
-  useAuth: () => ({ user: { id: 1 }, isAuthenticated: true, isLoading: false }),
+  useAuth: () => ({ user: { id: 1, isAdmin: true }, isAuthenticated: true, isLoading: false }),
 }))
 
 vi.mock('@/features/downloads/use-downloads', () => ({

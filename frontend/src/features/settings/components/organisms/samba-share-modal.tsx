@@ -104,6 +104,7 @@ export const SambaShareModal = ({
         workgroup: workgroup.trim() || 'WORKGROUP',
         mountPath: mountPath.trim(),
         isOnline: targetServer?.isOnline ?? true,
+        nodeIds: samba?.nodeIds || [],
       }
 
       // If attached to a server, update the server machine's SMB settings in database

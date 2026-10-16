@@ -86,10 +86,26 @@ export const HomeManageModal = ({
       onOpenChange(false)
       onSuccess?.()
     } catch (err: unknown) {
+      const axiosErr = err as {
+        response?: { data?: { detail?: string; error?: string; [key: string]: unknown } }
+        message?: string
+      }
+      const data = axiosErr.response?.data
+      let serverMsg: string | undefined
+      if (typeof data === 'string') {
+        serverMsg = data
+      } else if (data && typeof data === 'object') {
+        serverMsg =
+          data.detail ||
+          data.error ||
+          Object.entries(data)
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+            .join('; ')
+      }
       toast({
-        title: 'Error',
-        description: (err as { message?: string })?.message || 'Failed to save Home.',
-        variant: 'error',
+        title: 'Error saving Home',
+        description: serverMsg || axiosErr.message || 'Failed to save Home.',
+        variant: 'destructive',
       })
     }
   }

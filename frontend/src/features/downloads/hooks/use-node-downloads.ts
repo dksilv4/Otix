@@ -28,10 +28,12 @@ export const serverKeys = nodeKeys
 export const CACHED_SERVERS_KEY = 'otix:cached-servers'
 export const CACHED_NODES_KEY = CACHED_SERVERS_KEY
 
+import { hasAccessToken } from '@/lib/config'
 import { LOCAL_DESKTOP_NODE_ID } from '@/features/settings/local-desktop-node'
 
 export function getCachedNodes(): OtixNode[] {
   if (typeof window === 'undefined') return []
+  if (!hasAccessToken()) return []
   try {
     const raw = localStorage.getItem(CACHED_NODES_KEY)
     if (!raw) return []

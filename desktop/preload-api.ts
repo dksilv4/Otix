@@ -55,10 +55,40 @@ export interface MountResult {
 export interface OrganizationPreviewItem {
   sourcePath: string;
   sourceFilename: string;
-  type: 'iso' | 'update';
+  type: string;
   matched: boolean;
   extracted: Record<string, string>;
   targetPath: string;
+  status?: string;
+  foldersToCreate?: string[];
+  anomalies?: string[];
+  suggestedRenames?: Record<string, string>;
+  health?: string;
+}
+
+export interface ArchiveAnomaly {
+  file?: string;
+  type: string;
+  suggested?: string;
+  missing?: string;
+  message: string;
+}
+
+export interface ArchiveDiagnosis {
+  isRepack: boolean;
+  archiveType: string;
+  health: 'HEALTHY' | 'CORRECTABLE_ANOMALY' | 'INCOMPLETE_DOWNLOAD' | 'GENERIC';
+  anomalies: ArchiveAnomaly[];
+  suggestedRenames: Record<string, string>;
+}
+
+export interface ArchiveHealingResult {
+  directory: string;
+  isRepack: boolean;
+  archiveType: string;
+  health: string;
+  renamed: { from: string; to: string; success: boolean; error?: string }[];
+  anomalies: ArchiveAnomaly[];
 }
 
 export interface DetectedProcess {
@@ -475,6 +505,8 @@ export interface IDesktopAPI {
   launchSetup: (setupPath: string) => Promise<boolean>;
   batchOrganize: (directory: string, namingTemplate?: string) => Promise<AutoOrganizeResult>;
   smartOrganizePreview: (directory: string, namingTemplate: string, separator?: string) => Promise<OrganizationPreviewItem[]>;
+  diagnoseRepack: (directory: string) => Promise<ArchiveDiagnosis>;
+  healRepack: (directory: string) => Promise<ArchiveHealingResult>;
   onScannerProgress: (callback: (data: { currentDir: string; progress: number }) => void) => () => void;
   onGamesUpdated: (callback: () => void) => () => void;
   getLocalGames: (filter?: GameFilter) => Promise<LocalGame[]>;

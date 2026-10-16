@@ -3,11 +3,13 @@ import {
   RotateCcw,
   ZoomIn,
   ZoomOut,
+  Maximize2,
   Server,
   Home as HomeIcon,
   Cpu,
   X,
   Network,
+  Plus,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { useToast } from '@ui/molecules/toast'
@@ -22,15 +24,15 @@ import type {
 } from '../../types/node-map'
 import {
   buildNodeMapGraph,
-  generateSmoothBezierPath,
-  getEdgeCenterPoint,
+  getNodeCardBorderAnchor,
+  generateSmartNodeConnectionPath,
+  SIDE_NORMALS,
   isCompatibleConnection,
-  NODE_CARD_WIDTH,
-  NODE_CARD_HEIGHT,
 } from '../../utils/node-map'
 import { useNodeMap } from '../../hooks/use-node-map'
 import { NodeMapCardItem } from '../molecules/node-map-card-item'
 import { NodeMapConnectDialog } from './node-map-connect-dialog'
+import { ConnectNodePickerModal } from './connect-node-picker-modal'
 import {
   useAssignNodeHome,
   useUpdateServerMachine,
@@ -48,10 +50,11 @@ interface NodesTopologyCanvasProps {
   onOpenDownloadModal?: () => void
   onClaimPendingNode?: (pending: PendingNode) => void
   onAddHome: () => void
-  onAddServer: () => void
+  onAddServer: (homeId?: number) => void
   onAddNode: () => void
-  onAddSamba?: () => void
+  onAddSamba?: (preset?: Partial<SambaShareConfig>) => void
   onOpenSambaSettings?: (samba: SambaShareConfig) => void
+  onSaveCustomSamba?: (samba: SambaShareConfig) => void
   onDeleteSamba?: (sambaId: string) => void
   onEditHome: (home: UserHome) => void
   onDeleteHome: (home: UserHome) => void
@@ -79,6 +82,7 @@ export const NodesTopologyCanvas = ({
   onAddNode,
   onAddSamba,
   onOpenSambaSettings,
+  onSaveCustomSamba,
   onDeleteSamba: _onDeleteSamba,
   onEditHome,
   onDeleteHome,
@@ -93,76 +97,23 @@ export const NodesTopologyCanvas = ({
   const assignHomeMutation = useAssignNodeHome()
   const updateServerMutation = useUpdateServerMachine()
 
+  const [connectPickerItem, setConnectPickerItem] = useState<NodeMapItem | null>(null)
+  const [connectPrompt, setConnectPrompt] = useState<NodeMapConnectPrompt | null>(null)
+  const [isConnectingPending, setIsConnectingPending] = useState(false)
+  const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
+
   const { items, edges } = useMemo(
     () => buildNodeMapGraph(homes, serverMachines, nodes, pendingNodes, customSambaShares),
     [homes, serverMachines, nodes, pendingNodes, customSambaShares],
   )
 
-  const {
-    positions,
-    viewport,
-    selectedItem,
-    setSelectedItem,
-    searchQuery,
-    connectingFrom,
-    connectingMousePos,
-    handleAutoLayout,
-    zoomIn,
-    zoomOut,
-    resetView,
-    handleCanvasPointerDown,
-    handleCanvasPointerMove,
-    handleCanvasPointerUp,
-    handleNodeDragStart,
-    handleStartConnecting,
-    handleCancelConnecting,
-    handleWheel,
-  } = useNodeMap({ items, edges, anchor })
-
-  const [connectPrompt, setConnectPrompt] = useState<NodeMapConnectPrompt | null>(null)
-  const [isConnectingPending, setIsConnectingPending] = useState(false)
-  const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
-
-  // Filter items matching search
-  const filteredItemIds = useMemo(() => {
-    if (!searchQuery.trim()) return null
-    const q = searchQuery.toLowerCase().trim()
-    return new Set(
-      items
-        .filter((item) => item.name.toLowerCase().includes(q) || item.type.includes(q))
-        .map((i) => i.id),
-    )
-  }, [items, searchQuery])
-
-  // Click on a node when in connection mode
-  const handleNodeClickInConnectMode = (targetItem: NodeMapItem) => {
-    if (!connectingFrom) return
-
-    const check = isCompatibleConnection(connectingFrom, targetItem)
-    if (!check.compatible) {
-      toast({
-        title: 'Incompatible Connection',
-        description: check.reason || 'These nodes cannot be linked directly.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    // Open connection confirmation / choice dialog
-    setConnectPrompt({
-      source: connectingFrom,
-      target: targetItem,
-      allowedTypes: check.connectionTypes,
-    })
-    handleCancelConnecting()
-  }
-
-  // Execute connection
-  const handleExecuteConnect = async (type: 'home' | 'host' | 'smb') => {
-    if (!connectPrompt) return
+  // Execute connection between two nodes
+  const executeConnection = async (
+    source: NodeMapItem,
+    target: NodeMapItem,
+    type: 'home' | 'host' | 'smb',
+  ) => {
     setIsConnectingPending(true)
-    const { source, target } = connectPrompt
-
     try {
       if (type === 'home') {
         const homeItem = source.type === 'home' ? source : target.type === 'home' ? target : null
@@ -217,6 +168,7 @@ export const NodesTopologyCanvas = ({
       } else if (type === 'smb') {
         const sambaItem = source.type === 'samba' ? source : target.type === 'samba' ? target : null
         const serverItem = source.type === 'server' ? source : target.type === 'server' ? target : null
+        const nodeItem = source.type === 'node' ? source : target.type === 'node' ? target : null
 
         if (sambaItem && serverItem) {
           const sambaConfig = (sambaItem.data as { samba: SambaShareConfig }).samba
@@ -235,25 +187,43 @@ export const NodesTopologyCanvas = ({
             title: 'Samba Share Connected',
             description: `Samba share "${sambaItem.name}" connected to server "${serverItem.name}".`,
           })
-        } else {
-          const serverIt = source.type === 'server' ? source : target
-          const nodeItem = source.type === 'node' ? source : target
-          const server = (serverIt.data as { machine: UserServerMachine }).machine
+        } else if (sambaItem && nodeItem) {
+          const sambaConfig = (sambaItem.data as { samba: SambaShareConfig }).samba
+          const targetNodeId = Number(nodeItem.entityId)
+          if (sambaConfig.serverId) {
+            const server = serverMachines.find((m) => m.id === sambaConfig.serverId)
+            const currentSmbNodes = server?.smbNodeIds || []
+            const nextSmbNodes = Array.from(new Set([...currentSmbNodes, targetNodeId]))
+            await updateServerMutation.mutateAsync({
+              id: sambaConfig.serverId,
+              smbNodeIds: nextSmbNodes,
+              smbEnabled: true,
+            })
+          } else if (onSaveCustomSamba) {
+            const currentNodes = sambaConfig.nodeIds || []
+            const nextNodes = Array.from(new Set([...currentNodes, targetNodeId]))
+            onSaveCustomSamba({ ...sambaConfig, nodeIds: nextNodes })
+          }
+          toast({
+            title: 'Samba Share Linked',
+            description: `Node "${nodeItem.name}" now connected to Samba share "${sambaItem.name}".`,
+          })
+        } else if (serverItem && nodeItem) {
+          const server = (serverItem.data as { machine: UserServerMachine }).machine
           const currentSmbNodes = server.smbNodeIds || []
           const nextSmbNodes = Array.from(new Set([...currentSmbNodes, Number(nodeItem.entityId)]))
 
           await updateServerMutation.mutateAsync({
-            id: Number(serverIt.entityId),
+            id: Number(serverItem.entityId),
             smbNodeIds: nextSmbNodes,
             smbEnabled: true,
           })
           toast({
             title: 'SMB Connection Established',
-            description: `Node "${nodeItem.name}" linked to SMB share on "${serverIt.name}".`,
+            description: `Node "${nodeItem.name}" linked to SMB share on "${serverItem.name}".`,
           })
         }
       }
-      setConnectPrompt(null)
     } catch {
       toast({
         title: 'Connection Failed',
@@ -263,6 +233,103 @@ export const NodesTopologyCanvas = ({
     } finally {
       setIsConnectingPending(false)
     }
+  }
+
+  // Handle dragging a card and dropping it directly on another card to link
+  const handleCardDropConnect = (source: NodeMapItem, target: NodeMapItem) => {
+    const check = isCompatibleConnection(source, target)
+    if (!check.compatible) {
+      toast({
+        title: 'Incompatible Connection',
+        description: check.reason || 'These nodes cannot be linked directly.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (check.connectionTypes.length === 1) {
+      void executeConnection(source, target, check.connectionTypes[0])
+      return
+    }
+
+    setConnectPrompt({
+      source,
+      target,
+      allowedTypes: check.connectionTypes,
+    })
+  }
+
+  const {
+    positions,
+    viewport,
+    selectedItem,
+    setSelectedItem,
+    searchQuery,
+    hoveredDropTargetId,
+    connectingFrom,
+    connectingMousePos,
+    handleAutoLayout,
+    zoomIn,
+    zoomOut,
+    resetView,
+    fitView,
+    handleCanvasPointerDown,
+    handleCanvasPointerMove,
+    handleCanvasPointerUp,
+    handleNodeDragStart,
+    handleStartConnecting,
+    handleCancelConnecting,
+    handleWheel,
+  } = useNodeMap({ items, edges, anchor, onCardDropConnect: handleCardDropConnect })
+
+  // Filter items matching search
+  const filteredItemIds = useMemo(() => {
+    if (!searchQuery.trim()) return null
+    const q = searchQuery.toLowerCase().trim()
+    return new Set(
+      items
+        .filter((item) => item.name.toLowerCase().includes(q) || item.type.includes(q))
+        .map((i) => i.id),
+    )
+  }, [items, searchQuery])
+
+  // Click on a node when in connection mode
+  const handleNodeClickInConnectMode = (targetItem: NodeMapItem) => {
+    if (!connectingFrom) return
+
+    const check = isCompatibleConnection(connectingFrom, targetItem)
+    if (!check.compatible) {
+      toast({
+        title: 'Incompatible Connection',
+        description: check.reason || 'These nodes cannot be linked directly.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const source = connectingFrom
+    handleCancelConnecting()
+
+    // If only one relationship type exists, connect immediately without prompting
+    if (check.connectionTypes.length === 1) {
+      void executeConnection(source, targetItem, check.connectionTypes[0])
+      return
+    }
+
+    // Multiple possible relation types (e.g. host node vs smb client)
+    setConnectPrompt({
+      source,
+      target: targetItem,
+      allowedTypes: check.connectionTypes,
+    })
+  }
+
+  // Execute connection from dialog prompt
+  const handleExecuteConnect = async (type: 'home' | 'host' | 'smb') => {
+    if (!connectPrompt) return
+    const { source, target } = connectPrompt
+    setConnectPrompt(null)
+    await executeConnection(source, target, type)
   }
 
   // Disconnect Edge
@@ -287,13 +354,31 @@ export const NodesTopologyCanvas = ({
         await updateServerMutation.mutateAsync({ id: serverId, smbEnabled: false })
         toast({ title: 'Samba Share Disconnected' })
       } else if (edge.relation === 'smb_link') {
-        const serverId = Number(edge.sourceId.replace('server-', ''))
         const nodeId = Number(edge.targetId.replace('node-', ''))
-        const machine = serverMachines.find((m) => m.id === serverId)
-        if (machine) {
-          const filtered = (machine.smbNodeIds || []).filter((id) => id !== nodeId)
-          await updateServerMutation.mutateAsync({ id: serverId, smbNodeIds: filtered })
-          toast({ title: 'SMB Link Removed' })
+        if (edge.sourceId.startsWith('samba-server-')) {
+          const serverId = Number(edge.sourceId.replace('samba-server-', ''))
+          const machine = serverMachines.find((m) => m.id === serverId)
+          if (machine) {
+            const filtered = (machine.smbNodeIds || []).filter((id) => id !== nodeId)
+            await updateServerMutation.mutateAsync({ id: serverId, smbNodeIds: filtered })
+            toast({ title: 'SMB Link Removed' })
+          }
+        } else if (edge.sourceId.startsWith('server-')) {
+          const serverId = Number(edge.sourceId.replace('server-', ''))
+          const machine = serverMachines.find((m) => m.id === serverId)
+          if (machine) {
+            const filtered = (machine.smbNodeIds || []).filter((id) => id !== nodeId)
+            await updateServerMutation.mutateAsync({ id: serverId, smbNodeIds: filtered })
+            toast({ title: 'SMB Link Removed' })
+          }
+        } else {
+          // Custom standalone Samba share
+          const samba = customSambaShares.find((s) => s.id === edge.sourceId)
+          if (samba && onSaveCustomSamba) {
+            const nextNodeIds = (samba.nodeIds || []).filter((id) => id !== nodeId)
+            onSaveCustomSamba({ ...samba, nodeIds: nextNodeIds })
+            toast({ title: 'SMB Link Removed' })
+          }
         }
       }
     } catch {
@@ -311,6 +396,7 @@ export const NodesTopologyCanvas = ({
         onPointerDown={handleCanvasPointerDown}
         onPointerMove={handleCanvasPointerMove}
         onPointerUp={handleCanvasPointerUp}
+        onClick={() => setSelectedItem(null)}
         onWheel={handleWheel}
         className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing bg-background select-none z-0"
         style={{
@@ -329,17 +415,15 @@ export const NodesTopologyCanvas = ({
               const targetPos = positions[edge.targetId]
               if (!sourcePos || !targetPos) return null
 
-              const p1 = {
-                x: sourcePos.x + NODE_CARD_WIDTH,
-                y: sourcePos.y + NODE_CARD_HEIGHT / 2,
-              }
-              const p2 = {
-                x: targetPos.x,
-                y: targetPos.y + NODE_CARD_HEIGHT / 2,
-              }
+              const anchor1 = getNodeCardBorderAnchor(sourcePos, targetPos, true)
+              const anchor2 = getNodeCardBorderAnchor(targetPos, sourcePos, true)
 
-              const pathData = generateSmoothBezierPath(p1, p2)
-              const mid = getEdgeCenterPoint(p1, p2)
+              const { path: pathData, mid, p1, p2 } = generateSmartNodeConnectionPath(
+                anchor1.point,
+                anchor1.side,
+                anchor2.point,
+                anchor2.side,
+              )
               const isHovered = hoveredEdgeId === edge.id
 
               return (
@@ -371,6 +455,28 @@ export const NodesTopologyCanvas = ({
                     opacity={isHovered ? 1 : 0.65}
                   />
 
+                  {/* Connection terminal pins on card borders */}
+                  <circle
+                    cx={p1.x}
+                    cy={p1.y}
+                    r={2.5}
+                    fill={
+                      edge.relation === 'hosted_link' || edge.relation === 'smb_link'
+                        ? 'var(--primary)'
+                        : 'rgba(255, 255, 255, 0.5)'
+                    }
+                  />
+                  <circle
+                    cx={p2.x}
+                    cy={p2.y}
+                    r={2.5}
+                    fill={
+                      edge.relation === 'hosted_link' || edge.relation === 'smb_link'
+                        ? 'var(--primary)'
+                        : 'rgba(255, 255, 255, 0.5)'
+                    }
+                  />
+
                   {/* Midpoint Label & Unlink Button */}
                   <foreignObject
                     x={mid.x - 60}
@@ -388,7 +494,11 @@ export const NodesTopologyCanvas = ({
                             ? 'bg-destructive text-destructive-foreground cursor-pointer'
                             : 'bg-[#181a20]/90 text-foreground/80 border border-white/[0.08]'
                         }`}
-                        onClick={() => handleDisconnectEdge(edge)}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDisconnectEdge(edge)
+                        }}
                         title={isHovered ? 'Click to disconnect' : edge.label}
                       >
                         {isHovered ? (
@@ -412,22 +522,34 @@ export const NodesTopologyCanvas = ({
             })}
 
             {/* Dynamic line while user is dragging connection */}
-            {connectingFrom && connectingMousePos && (
-              <path
-                d={generateSmoothBezierPath(
-                  {
-                    x: (positions[connectingFrom.id]?.x || 0) + NODE_CARD_WIDTH,
-                    y: (positions[connectingFrom.id]?.y || 0) + NODE_CARD_HEIGHT / 2,
-                  },
-                  connectingMousePos,
-                )}
-                fill="none"
-                stroke="var(--primary)"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                className="animate-pulse"
-              />
-            )}
+            {connectingFrom && connectingMousePos && (() => {
+              const sourcePos = positions[connectingFrom.id] || { x: 0, y: 0 }
+              const anchor1 = getNodeCardBorderAnchor(sourcePos, connectingMousePos, false)
+              const dist = Math.hypot(connectingMousePos.x - anchor1.point.x, connectingMousePos.y - anchor1.point.y)
+              const d = Math.min(Math.max(dist * 0.45, 30), 120)
+              const n1 = SIDE_NORMALS[anchor1.side]
+              const cp1 = { x: anchor1.point.x + n1.x * d, y: anchor1.point.y + n1.y * d }
+              const path = `M ${anchor1.point.x} ${anchor1.point.y} Q ${cp1.x} ${cp1.y} ${connectingMousePos.x} ${connectingMousePos.y}`
+
+              return (
+                <g>
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    className="animate-pulse"
+                  />
+                  <circle
+                    cx={anchor1.point.x}
+                    cy={anchor1.point.y}
+                    r={3}
+                    fill="var(--primary)"
+                  />
+                </g>
+              )
+            })()}
           </g>
         </svg>
 
@@ -442,6 +564,12 @@ export const NodesTopologyCanvas = ({
           {items.map((item) => {
             const pos = positions[item.id] || { x: 80, y: 80 }
             const isMatch = filteredItemIds ? filteredItemIds.has(item.id) : true
+            const isDropTarget = hoveredDropTargetId === item.id
+            const isCompatible = connectingFrom && connectingFrom.id !== item.id
+              ? isCompatibleConnection(connectingFrom, item).compatible
+              : false
+            const isTargetCandidate = isDropTarget || Boolean(connectingFrom && connectingFrom.id !== item.id && isCompatible)
+            const isConnectingDimmed = !hoveredDropTargetId && Boolean(connectingFrom && connectingFrom.id !== item.id && !isCompatible)
 
             return (
               <div
@@ -449,8 +577,10 @@ export const NodesTopologyCanvas = ({
                 className={`pointer-events-auto transition-opacity duration-200 ${
                   isMatch ? 'opacity-100' : 'opacity-25'
                 }`}
-                onClick={() => {
-                  if (connectingFrom && connectingFrom.id !== item.id) {
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isTargetCandidate) {
                     handleNodeClickInConnectMode(item)
                   }
                 }}
@@ -460,14 +590,14 @@ export const NodesTopologyCanvas = ({
                   position={pos}
                   isSelected={selectedItem?.id === item.id}
                   isConnectingSource={connectingFrom?.id === item.id}
-                  isConnectingTargetCandidate={
-                    Boolean(connectingFrom && connectingFrom.id !== item.id)
-                  }
+                  isConnectingTargetCandidate={isTargetCandidate}
+                  isConnectingDimmed={isConnectingDimmed}
                   onSelect={setSelectedItem}
                   onDragStart={handleNodeDragStart}
                   onStartConnecting={handleStartConnecting}
                   onConnectTarget={handleNodeClickInConnectMode}
                   onCancelConnecting={handleCancelConnecting}
+                  onOpenConnectPicker={setConnectPickerItem}
                   onEditHome={onEditHome}
                   onDeleteHome={onDeleteHome}
                   onEditServer={onEditServer}
@@ -497,20 +627,10 @@ export const NodesTopologyCanvas = ({
               </p>
             </div>
             <div className="flex items-center gap-2 pt-1 pointer-events-auto flex-wrap justify-center">
-              <DkButton type="button" size="sm" variant="primary" onClick={onAddNode}>
-                + Otix Node
+              <DkButton type="button" size="sm" variant="primary" onClick={onAddNode} className="gap-1.5 font-semibold shadow-md shadow-primary/20">
+                <Plus size={14} />
+                <span>Add Node</span>
               </DkButton>
-              <DkButton type="button" size="sm" variant="secondary" onClick={onAddServer}>
-                + Server
-              </DkButton>
-              <DkButton type="button" size="sm" variant="secondary" onClick={onAddHome}>
-                + Home
-              </DkButton>
-              {onAddSamba && (
-                <DkButton type="button" size="sm" variant="secondary" onClick={onAddSamba}>
-                  + Samba Share
-                </DkButton>
-              )}
             </div>
           </div>
         )}
@@ -539,8 +659,13 @@ export const NodesTopologyCanvas = ({
         </div>
       )}
 
+
       {/* Floating HUD in bottom-right corner for Canvas Navigation Controls */}
-      <div className="absolute bottom-6 right-6 z-20 pointer-events-auto flex items-center gap-1 p-1.5 rounded-2xl bg-black/60 backdrop-blur-2xl border border-white/[0.06] shadow-2xl">
+      <div
+        className="absolute bottom-6 right-6 z-20 pointer-events-auto flex items-center gap-1 p-1.5 rounded-2xl bg-black/60 backdrop-blur-2xl border border-white/[0.06] shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <DkButton
           type="button"
           size="sm"
@@ -550,6 +675,17 @@ export const NodesTopologyCanvas = ({
           className="h-7 px-2 text-muted-foreground hover:text-foreground"
         >
           <RotateCcw size={13} />
+        </DkButton>
+
+        <DkButton
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => fitView()}
+          title="Fit to screen"
+          className="h-7 px-2 text-muted-foreground hover:text-foreground"
+        >
+          <Maximize2 size={13} />
         </DkButton>
 
         <div className="h-3.5 w-px bg-white/10 mx-0.5" />
@@ -592,6 +728,34 @@ export const NodesTopologyCanvas = ({
         onClose={() => setConnectPrompt(null)}
         onConnect={handleExecuteConnect}
         isPending={isConnectingPending}
+      />
+
+      {/* 1-Click Connect Node Picker Modal */}
+      <ConnectNodePickerModal
+        open={Boolean(connectPickerItem)}
+        onOpenChange={(open) => !open && setConnectPickerItem(null)}
+        sourceItem={connectPickerItem}
+        allItems={items}
+        edges={edges}
+        onConnect={(source, target, type) => executeConnection(source, target, type)}
+        onDisconnect={handleDisconnectEdge}
+        onAddSamba={(machine) => {
+          onAddSamba?.(
+            machine
+              ? {
+                  id: '',
+                  serverId: machine.id,
+                  serverName: machine.name,
+                  host: machine.host || '',
+                  port: 445,
+                  shareName: 'games',
+                }
+              : undefined,
+          )
+        }}
+        onAddServer={onAddServer}
+        onAddNode={onAddNode}
+        onAddHome={onAddHome}
       />
     </div>
   )

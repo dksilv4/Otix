@@ -45,6 +45,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null)
       setCachedUser(null)
       localStorage.removeItem(ACCESS_TOKEN_KEY)
+      localStorage.removeItem('otix:cached-servers')
+      localStorage.removeItem('otix:settings-selected-node')
       window.desktopAPI?.plugin?.setAuthToken(null)
       queryClient.clear()
     }
@@ -150,6 +152,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // ignore errors during logout
     }
     localStorage.removeItem(ACCESS_TOKEN_KEY)
+    localStorage.removeItem('otix:cached-servers')
+    localStorage.removeItem('otix:settings-selected-node')
     setCachedUser(null)
     window.desktopAPI?.plugin?.setAuthToken(null)
     setUser(null)

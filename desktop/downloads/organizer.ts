@@ -22,6 +22,11 @@ import {
   type FileInfo,
 } from '../game/parser';
 import { executeOrganization, OrganizationPreviewItem } from '../installer';
+import {
+  diagnoseArchiveIntegrity,
+  healRepackArchive,
+  type ArchiveDiagnosis,
+} from './healing';
 import { getDb } from '../db';
 import type Database from 'better-sqlite3';
 
@@ -39,9 +44,11 @@ export interface DownloadedContent {
   /** Base name */
   name: string;
   /** Content type */
-  type: 'iso' | 'pc_game' | 'update' | 'dlc' | 'rom' | 'unknown';
+  type: 'iso' | 'pc_game' | 'update' | 'dlc' | 'rom' | 'crack' | 'unknown';
   /** Size in bytes (for details) */
   size?: number;
+  /** Archive integrity analysis for repack packages */
+  integrity?: ArchiveDiagnosis;
 }
 
 export interface AutoOrganizeResult {
@@ -250,6 +257,31 @@ export async function findDownloadedContent(
       const entries = await fs.readdir(currentDir, { withFileTypes: true });
       let hasExe = false;
       const childDirs: string[] = [];
+      const childFiles = entries.filter((e) => e.isFile()).map((e) => e.name);
+
+      // Check if currentDir itself is a container package
+      const folderLower = path.basename(currentDir).toLowerCase();
+      const hasSetup = childFiles.some((f) => /^(?:setup|installer)\.exe$/i.test(f));
+      const hasBins = childFiles.some((f) => /\.(bin|cab|doi)$/i.test(f));
+      const hasCrackDll = childFiles.some((f) => /^(?:steam_api64?\.dll|steam_emu\.ini)$/i.test(f));
+      const isCrackFolder =
+        hasCrackDll ||
+        /crack(?:fix|\.fix|-fix|\s*only)?/i.test(folderLower) ||
+        /^(?:codex|rune|flt|skidrow|empress|goldberg)$/i.test(folderLower);
+
+      if (depth > 1 && (isCrackFolder || (hasSetup && hasBins))) {
+        let integrity: ArchiveDiagnosis | undefined;
+        if (hasBins || folderLower.includes('elamigos') || folderLower.includes('fitgirl')) {
+          integrity = await diagnoseArchiveIntegrity(currentDir);
+        }
+        results.push({
+          path: currentDir,
+          name: path.basename(currentDir),
+          type: isCrackFolder ? 'crack' : 'pc_game',
+          integrity,
+        });
+        return;
+      }
 
       for (const entry of entries) {
         const fullPath = path.join(currentDir, entry.name);
@@ -259,6 +291,33 @@ export async function findDownloadedContent(
         if (entry.isDirectory()) {
           const nameLower = entry.name.toLowerCase();
           if (nameLower.startsWith('$') || SKIP_DIRS.has(nameLower)) continue;
+
+          // Check if direct child directory is a container package
+          try {
+            const subEntries = await fs.readdir(fullPath, { withFileTypes: true });
+            const subFiles = subEntries.filter((e) => e.isFile()).map((e) => e.name);
+            const subSetup = subFiles.some((f) => /^(?:setup|installer)\.exe$/i.test(f));
+            const subBins = subFiles.some((f) => /\.(bin|cab|doi)$/i.test(f));
+            const subCrackDll = subFiles.some((f) => /^(?:steam_api64?\.dll|steam_emu\.ini)$/i.test(f));
+            const subIsCrack =
+              subCrackDll ||
+              /crack(?:fix|\.fix|-fix|\s*only)?/i.test(nameLower) ||
+              /^(?:codex|rune|flt|skidrow|empress|goldberg)$/i.test(nameLower);
+
+            if (subIsCrack || (subSetup && subBins)) {
+              let integrity: ArchiveDiagnosis | undefined;
+              if (subBins || nameLower.includes('elamigos') || nameLower.includes('fitgirl')) {
+                integrity = await diagnoseArchiveIntegrity(fullPath);
+              }
+              results.push({
+                path: fullPath,
+                name: entry.name,
+                type: subIsCrack ? 'crack' : 'pc_game',
+                integrity,
+              });
+              continue;
+            }
+          } catch {}
 
           if (depth < maxDepth) {
             childDirs.push(fullPath);
@@ -278,6 +337,12 @@ export async function findDownloadedContent(
               results.push({ path: fullPath, name: entry.name, type: 'rom' });
             }
           } else if (
+            nameLower.includes('crackfix') ||
+            nameLower.includes('crack.fix') ||
+            nameLower.includes('crack only')
+          ) {
+            results.push({ path: fullPath, name: entry.name, type: 'crack' });
+          } else if (
             nameLower.endsWith('.exe') &&
             (nameLower.includes('update') || nameLower.includes('patch') || nameLower.includes('hotfix')) &&
             !nameLower.includes('setup') &&
@@ -288,14 +353,23 @@ export async function findDownloadedContent(
             results.push({ path: fullPath, name: entry.name, type: 'update' });
           } else if (nameLower.endsWith('.exe') && nameLower.includes('dlc') && !nameLower.includes('setup')) {
             results.push({ path: fullPath, name: entry.name, type: 'dlc' });
-          } else if (nameLower.endsWith('.exe') && !nameLower.includes('setup') && !nameLower.includes('uninst') && !nameLower.includes('crash') && !nameLower.includes('helper') && !nameLower.includes('check') && !nameLower.includes('hash') && !nameLower.includes('redist')) {
+          } else if (
+            nameLower.endsWith('.exe') &&
+            !nameLower.includes('setup') &&
+            !nameLower.includes('uninst') &&
+            !nameLower.includes('crash') &&
+            !nameLower.includes('helper') &&
+            !nameLower.includes('check') &&
+            !nameLower.includes('hash') &&
+            !nameLower.includes('redist')
+          ) {
             hasExe = true;
           }
         }
       }
 
-      // If this directory contains executables, mark as PC game folder.
-      if (hasExe) {
+      // If this directory contains game executables, mark as PC game folder if not already captured
+      if (hasExe && !results.some((r) => r.path === currentDir)) {
         results.push({ path: currentDir, name: path.basename(currentDir), type: 'pc_game' });
       }
 
@@ -363,6 +437,10 @@ export async function smartOrganizePreview(
       const yearPart = release.year ? ` (${release.year})` : '';
       const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
       targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, 'DLC', item.name);
+    } else if (item.type === 'crack') {
+      const yearPart = release.year ? ` (${release.year})` : '';
+      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
+      targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, 'Crack', item.name);
     } else if (item.type === 'pc_game') {
       const folderTemplate = namingTemplate.split('/').slice(0, -1).join('/') || namingTemplate;
       targetRaw = applyNamingTemplate({ ...release, title }, folderTemplate, fileInfo, directory);
@@ -370,20 +448,54 @@ export async function smartOrganizePreview(
       targetRaw = applyNamingTemplate({ ...release, title }, namingTemplate, fileInfo, directory);
     }
 
-    const mappedType: 'iso' | 'update' = item.type === 'update' ? 'update' : 'iso';
+    const mappedType: string =
+      item.type === 'update'
+        ? 'update'
+        : item.type === 'dlc'
+          ? 'dlc'
+          : item.type === 'crack'
+            ? 'crack'
+            : item.type === 'rom'
+              ? 'rom'
+              : item.type === 'pc_game'
+                ? 'container_package'
+                : 'iso';
+
+    let status = 'rename_and_move';
+    if (mappedType === 'container_package') status = 'container_package';
+    else if (mappedType === 'update') status = 'secondary_update';
+    else if (mappedType === 'dlc') status = 'secondary_dlc';
+    else if (mappedType === 'crack') status = 'secondary_crack';
+
+    if (item.path === targetRaw) {
+      status = 'already_organized';
+    }
+
+    const foldersToCreate: string[] = [];
+    const targetDir = path.dirname(targetRaw);
+    if (targetDir && targetDir !== directory) {
+      foldersToCreate.push(path.relative(directory, targetDir));
+    }
+
     items.push({
       sourcePath: item.path,
       sourceFilename: item.name,
       type: mappedType,
       matched: true,
       extracted: {
-        title: release.title,
-        year: release.year ?? '',
-        edition: release.edition ?? '',
-        group: release.group ?? '',
-        version: release.version ?? '',
+        Title: release.title,
+        Year: release.year ?? '',
+        Platform: release.platform ?? (mappedType === 'rom' ? '' : 'PC'),
+        ReleaseGroup: release.group ?? '',
+        Edition: release.edition ?? '',
+        Version: release.version ?? '',
       },
       targetPath: targetRaw,
+      status,
+      foldersToCreate,
+      anomalies: item.integrity?.anomalies.map((a) => a.message),
+      suggestedRenames: item.integrity?.suggestedRenames,
+      health: item.integrity?.health,
     });
   }
 
@@ -456,9 +568,21 @@ export async function batchOrganizeDirectory(
     let target: string;
 
     if (item.type === 'pc_game') {
+      if (item.integrity && Object.keys(item.integrity.suggestedRenames).length > 0) {
+        try {
+          await healRepackArchive(item.path);
+        } catch (healErr) {
+          console.warn(`[batchOrganizeDirectory] Auto-heal warning for ${item.path}:`, healErr);
+        }
+      }
       fileInfo = { name: item.name, ext: '', type: 'pc_game' };
       const folderTemplate = template.split('/').slice(0, -1).join('/') || template;
       target = applyNamingTemplate(release, folderTemplate, fileInfo, directory);
+      organizeItems.push({ sourcePath: item.path, targetPath: target });
+    } else if (item.type === 'crack') {
+      const yearPart = release.year ? ` (${release.year})` : '';
+      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
+      target = path.join(directory, `${release.title}${yearPart}${platformPart}`, 'Crack', item.name);
       organizeItems.push({ sourcePath: item.path, targetPath: target });
     } else if (item.type === 'update') {
       const yearPart = release.year ? ` (${release.year})` : '';
@@ -662,3 +786,5 @@ export async function autoOrganizeDownload(
   result.success = result.errors.length === 0;
   return result;
 }
+
+export { diagnoseArchiveIntegrity, healRepackArchive };

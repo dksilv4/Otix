@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Server, Network, Home as HomeIcon, Cpu, ArrowRight, Loader2, FolderTree } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
@@ -20,6 +20,12 @@ export const NodeMapConnectDialog = ({
   const [selectedType, setSelectedType] = useState<'home' | 'host' | 'smb'>(
     prompt?.allowedTypes[0] || 'host',
   )
+
+  useEffect(() => {
+    if (prompt?.allowedTypes?.length) {
+      setSelectedType(prompt.allowedTypes[0])
+    }
+  }, [prompt])
 
   if (!prompt) return null
 
@@ -137,12 +143,16 @@ export const NodeMapConnectDialog = ({
                   <div>
                     <p className="text-xs font-semibold text-foreground">
                       {source.type === 'samba' || target.type === 'samba'
-                        ? 'Attach Samba Share to Server'
+                        ? source.type === 'node' || target.type === 'node'
+                          ? 'Connect Samba Share to Worker Node'
+                          : 'Attach Samba Share to Server'
                         : 'Connect via SMB Network Storage'}
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {source.type === 'samba' || target.type === 'samba'
-                        ? 'Configures this Samba share to be hosted and served by this server machine.'
+                        ? source.type === 'node' || target.type === 'node'
+                          ? 'Allows this worker node to access games and media directly from this Samba network share.'
+                          : 'Configures this Samba share to be hosted and served by this server machine.'
                         : "Allows this worker node to access and store downloads directly on this server machine's SMB share."}
                     </p>
                   </div>

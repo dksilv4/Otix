@@ -1,6 +1,6 @@
 import { Gamepad2, Clock, Star, ExternalLink, Activity, Zap } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useMatchedRunningGame, useGamingSessionXp, useCs2GameState } from '@/features/launcher'
+import { useMatchedRunningGame, useGamingSessionXp, useCs2GameState, isCs2Game } from '@/features/launcher'
 import { formatDuration } from '@/lib/utils'
 import { ActivityModuleSection } from './activity-module-section'
 import { ActivityModuleCs2Telemetry } from './activity-module-cs2-telemetry'
@@ -13,7 +13,11 @@ interface ActivityModuleGameProps {
 export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) => {
   const { runningGame, elapsedMs, matchedGame } = useMatchedRunningGame()
   const { sessionXp } = useGamingSessionXp()
-  const { gameState } = useCs2GameState()
+  const isCs2 = Boolean(
+    runningGame &&
+      isCs2Game(runningGame.game.title || runningGame.game.exePath || runningGame.game.processName),
+  )
+  const { gameState } = useCs2GameState({ enabled: isCs2 })
 
   if (!runningGame) return null
 

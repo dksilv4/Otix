@@ -444,10 +444,15 @@ export async function applyCrack(crackPath: string, targetDir: string): Promise<
 export interface OrganizationPreviewItem {
   sourcePath: string;
   sourceFilename: string;
-  type: 'iso' | 'update';
+  type: string;
   matched: boolean;
   extracted: Record<string, string>;
   targetPath: string;
+  status?: string;
+  foldersToCreate?: string[];
+  anomalies?: string[];
+  suggestedRenames?: Record<string, string>;
+  health?: string;
 }
 
 const ORG_IGNORED_DIRS = new Set([

@@ -8,6 +8,7 @@ import {
   Play,
   RefreshCw,
   Sparkles,
+  Wrench,
 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
@@ -20,6 +21,7 @@ import {
   generateSamplePreviewItems,
   calculatePreviewMetrics,
   getStatusBadgeInfo,
+  getHealthBadgeInfo,
 } from '../../utils/organize-test-run'
 
 export type { PreviewItem }
@@ -49,10 +51,12 @@ export const OrganizeTestRunModal = ({
     return generateSamplePreviewItems(isoDirectory, template)
   }, [isoDirectory, template])
 
-  const fetchRealPreview = useCallback(async () => {
+  const fetchRealPreview = useCallback(async (preserveExecuted = false) => {
     if (!open) return
     setLoading(true)
-    setExecutedCount(null)
+    if (!preserveExecuted) {
+      setExecutedCount(null)
+    }
 
     try {
       if (nodeId && nodeId > 0) {
@@ -65,6 +69,14 @@ export const OrganizeTestRunModal = ({
         )
         if (Array.isArray(res?.data) && res.data.length > 0) {
           setItems(res.data)
+        } else {
+          setItems([])
+          setUseSamples(true)
+        }
+      } else if (typeof window !== 'undefined' && window.electronAPI?.smartOrganizePreview && isoDirectory) {
+        const desktopItems = await window.electronAPI.smartOrganizePreview(isoDirectory, template)
+        if (Array.isArray(desktopItems) && desktopItems.length > 0) {
+          setItems(desktopItems as PreviewItem[])
         } else {
           setItems([])
           setUseSamples(true)
@@ -100,23 +112,39 @@ export const OrganizeTestRunModal = ({
         i.status === 'rename_and_move' ||
         i.status === 'container_package' ||
         i.status === 'secondary_update' ||
-        i.status === 'secondary_dlc',
+        i.status === 'secondary_dlc' ||
+        i.status === 'secondary_crack',
     )
   }, [activeList])
 
+  const canExecute =
+    !useSamples &&
+    actionableItems.length > 0 &&
+    (Boolean(nodeId && nodeId > 0) || Boolean(typeof window !== 'undefined' && window.electronAPI?.executeOrganization))
+
   const handleExecute = useCallback(async () => {
-    if (!nodeId || actionableItems.length === 0) return
+    if (actionableItems.length === 0) return
     setExecuting(true)
     try {
-      const payload = {
-        items: actionableItems.map((i) => ({
+      if (nodeId && nodeId > 0) {
+        const payload = {
+          items: actionableItems.map((i) => ({
+            sourcePath: i.sourcePath,
+            targetPath: i.targetPath,
+          })),
+        }
+        await apiClient.post(`/library/servers/${nodeId}/organize/execute`, payload)
+        setExecutedCount(actionableItems.length)
+        void fetchRealPreview(true)
+      } else if (typeof window !== 'undefined' && window.electronAPI?.executeOrganization) {
+        const payloadItems = actionableItems.map((i) => ({
           sourcePath: i.sourcePath,
           targetPath: i.targetPath,
-        })),
+        }))
+        await window.electronAPI.executeOrganization(payloadItems)
+        setExecutedCount(actionableItems.length)
+        void fetchRealPreview(true)
       }
-      await apiClient.post(`/library/servers/${nodeId}/organize/execute`, payload)
-      setExecutedCount(actionableItems.length)
-      void fetchRealPreview()
     } catch {
       // Benign fallback
     } finally {
@@ -169,7 +197,7 @@ export const OrganizeTestRunModal = ({
         </div>
 
         {/* Metrics Overview Pill Bar */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className={cn('grid gap-3', metrics.healable > 0 ? 'grid-cols-5' : 'grid-cols-4')}>
           <div className="p-3 rounded-xl bg-white/[0.02] text-center">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Items Scanned</p>
             <p className="text-lg font-bold text-foreground mt-0.5">{metrics.total}</p>
@@ -186,6 +214,12 @@ export const OrganizeTestRunModal = ({
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Packages</p>
             <p className="text-lg font-bold text-foreground mt-0.5">{metrics.packages}</p>
           </div>
+          {metrics.healable > 0 && (
+            <div className="p-3 rounded-xl bg-primary/15 text-center">
+              <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Healable</p>
+              <p className="text-lg font-bold text-primary mt-0.5">{metrics.healable}</p>
+            </div>
+          )}
         </div>
 
         {executedCount !== null && (
@@ -220,6 +254,7 @@ export const OrganizeTestRunModal = ({
           ) : (
             activeList.map((item, idx) => {
               const badge = getStatusBadgeInfo(item.status)
+              const healthBadge = getHealthBadgeInfo(item.health)
               return (
                 <div
                   key={`${item.sourceFilename}-${idx}`}
@@ -230,15 +265,57 @@ export const OrganizeTestRunModal = ({
                     <span className="text-xs font-semibold text-foreground truncate">
                       {item.sourceFilename}
                     </span>
-                    <span
-                      className={cn(
-                        'text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border',
-                        badge.className,
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {healthBadge && (
+                        <span
+                          className={cn(
+                            'text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border',
+                            healthBadge.className,
+                          )}
+                        >
+                          {healthBadge.label}
+                        </span>
                       )}
-                    >
-                      {badge.label}
-                    </span>
+                      <span
+                        className={cn(
+                          'text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border',
+                          badge.className,
+                        )}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Archive Diagnostics & Healing Details */}
+                  {item.anomalies && item.anomalies.length > 0 && (
+                    <div className="p-2.5 rounded-xl bg-white/[0.02] space-y-1.5 border border-white/[0.04]">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary">
+                        <Wrench size={12} className="shrink-0" />
+                        <span>Archive Integrity Diagnostic</span>
+                      </div>
+                      <div className="space-y-1 pl-4">
+                        {item.anomalies.map((msg, aIdx) => (
+                          <p key={aIdx} className="text-[10px] font-mono text-muted-foreground leading-relaxed">
+                            • {msg}
+                          </p>
+                        ))}
+                      </div>
+                      {item.suggestedRenames && Object.keys(item.suggestedRenames).length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-4">
+                          <span className="text-[10px] font-semibold text-muted-foreground">Fixes on move:</span>
+                          {Object.entries(item.suggestedRenames).map(([from, to]) => (
+                            <span
+                              key={from}
+                              className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-primary/10 text-primary border border-primary/20"
+                            >
+                              {from} → {to}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Source -> Target Comparison */}
                   <div className="space-y-2">
@@ -314,7 +391,7 @@ export const OrganizeTestRunModal = ({
             <span>Read-only dry run. No files or folders on disk have been altered.</span>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-            {!useSamples && nodeId && actionableItems.length > 0 && (
+            {canExecute && (
               <DkButton
                 size="sm"
                 variant="primary"

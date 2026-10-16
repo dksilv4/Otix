@@ -3,7 +3,7 @@
 import logging
 
 import httpx
-from django.shortcuts import get_object_or_404
+from django.http import Http404
 from rest_framework import permissions, status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -16,6 +16,7 @@ from apps.library.serializers.server_machines import (
     UserServerMachineCreateUpdateSerializer,
     UserServerMachineSerializer,
 )
+from apps.library.views.nodes import _resolve_user
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +24,17 @@ logger = logging.getLogger(__name__)
 class UserHomeListCreateView(APIView):
     """List or create homes for the authenticated user."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
-        homes = UserHome.objects.filter(user=request.user)
+        user = _resolve_user(request)
+        if not user:
+            return Response([], status=status.HTTP_401_UNAUTHORIZED)
+        homes = UserHome.objects.filter(user=user)
         # If user has no homes yet, create a default "Home"
         if not homes.exists():
             default_home = UserHome.objects.create(
-                user=request.user,
+                user=user,
                 name="Home",
                 description="Default home network & homelab environment",
                 is_default=True,
@@ -41,44 +45,55 @@ class UserHomeListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request: Request) -> Response:
-        serializer = UserHomeCreateUpdateSerializer(data=request.data, context={"request": request})
+        user = _resolve_user(request)
+        if not user:
+            return Response({"error": "User not found"}, status=status.HTTP_401_UNAUTHORIZED)
+        serializer = UserHomeCreateUpdateSerializer(data=request.data, context={"request": request, "user": user})
         serializer.is_valid(raise_exception=True)
 
         is_default = serializer.validated_data.get("is_default", False)
         if is_default:
-            UserHome.objects.filter(user=request.user).update(is_default=False)
+            UserHome.objects.filter(user=user).update(is_default=False)
 
-        home = serializer.save(user=request.user)
+        home = serializer.save(user=user)
         return Response(UserHomeSerializer(home).data, status=status.HTTP_201_CREATED)
 
 
 class UserHomeDetailView(APIView):
     """Retrieve, update, or delete a specific Home."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get_object(self, user, home_id: int) -> UserHome:
-        return get_object_or_404(UserHome, id=home_id, user=user)
+        if not user:
+            raise Http404("Home not found")
+        home = UserHome.objects.filter(id=home_id, user=user).first()
+        if not home:
+            raise Http404("Home not found")
+        return home
 
     def get(self, request: Request, home_id: int) -> Response:
-        home = self.get_object(request.user, home_id)
+        user = _resolve_user(request)
+        home = self.get_object(user, home_id)
         return Response(UserHomeSerializer(home).data, status=status.HTTP_200_OK)
 
     def patch(self, request: Request, home_id: int) -> Response:
-        home = self.get_object(request.user, home_id)
+        user = _resolve_user(request)
+        home = self.get_object(user, home_id)
         serializer = UserHomeCreateUpdateSerializer(
-            home, data=request.data, partial=True, context={"request": request}
+            home, data=request.data, partial=True, context={"request": request, "user": user}
         )
         serializer.is_valid(raise_exception=True)
 
-        if serializer.validated_data.get("is_default"):
-            UserHome.objects.filter(user=request.user).exclude(id=home.id).update(is_default=False)
+        if serializer.validated_data.get("is_default") and user:
+            UserHome.objects.filter(user=user).exclude(id=home.id).update(is_default=False)
 
         updated_home = serializer.save()
         return Response(UserHomeSerializer(updated_home).data, status=status.HTTP_200_OK)
 
     def delete(self, request: Request, home_id: int) -> Response:
-        home = self.get_object(request.user, home_id)
+        user = _resolve_user(request)
+        home = self.get_object(user, home_id)
         home.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -86,10 +101,14 @@ class UserHomeDetailView(APIView):
 class UserServerMachineListCreateView(APIView):
     """List or create homelab server machines."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
-        queryset = UserServerMachine.objects.filter(user=request.user).prefetch_related(
+        user = _resolve_user(request)
+        if not user:
+            return Response([], status=status.HTTP_401_UNAUTHORIZED)
+
+        queryset = UserServerMachine.objects.filter(user=user).prefetch_related(
             "smb_nodes"
         ).select_related("home", "hosted_node")
 
@@ -104,8 +123,11 @@ class UserServerMachineListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request: Request) -> Response:
+        user = _resolve_user(request)
+        if not user:
+            return Response({"error": "User not found"}, status=status.HTTP_401_UNAUTHORIZED)
         serializer = UserServerMachineCreateUpdateSerializer(
-            data=request.data, context={"request": request}
+            data=request.data, context={"request": request, "user": user}
         )
         serializer.is_valid(raise_exception=True)
         server = serializer.save()
@@ -115,32 +137,37 @@ class UserServerMachineListCreateView(APIView):
 class UserServerMachineDetailView(APIView):
     """Retrieve, update, or delete a homelab server machine."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = (permissions.IsAuthenticated,)
 
     def get_object(self, user, server_id: int) -> UserServerMachine:
-        return get_object_or_404(
-            UserServerMachine.objects.prefetch_related("smb_nodes").select_related(
-                "home", "hosted_node"
-            ),
-            id=server_id,
-            user=user,
+        if not user:
+            raise Http404("Server machine not found")
+        qs = UserServerMachine.objects.prefetch_related("smb_nodes").select_related(
+            "home", "hosted_node"
         )
+        obj = qs.filter(id=server_id, user=user).first()
+        if not obj:
+            raise Http404("Server machine not found")
+        return obj
 
     def get(self, request: Request, server_id: int) -> Response:
-        server = self.get_object(request.user, server_id)
+        user = _resolve_user(request)
+        server = self.get_object(user, server_id)
         return Response(UserServerMachineSerializer(server).data, status=status.HTTP_200_OK)
 
     def patch(self, request: Request, server_id: int) -> Response:
-        server = self.get_object(request.user, server_id)
+        user = _resolve_user(request)
+        server = self.get_object(user, server_id)
         serializer = UserServerMachineCreateUpdateSerializer(
-            server, data=request.data, partial=True, context={"request": request}
+            server, data=request.data, partial=True, context={"request": request, "user": user}
         )
         serializer.is_valid(raise_exception=True)
         updated_server = serializer.save()
         return Response(UserServerMachineSerializer(updated_server).data, status=status.HTTP_200_OK)
 
     def delete(self, request: Request, server_id: int) -> Response:
-        server = self.get_object(request.user, server_id)
+        user = _resolve_user(request)
+        server = self.get_object(user, server_id)
         server.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -148,13 +175,17 @@ class UserServerMachineDetailView(APIView):
 class UserServerMachineDetectDrivesView(APIView):
     """Detect hard drive configuration for a server machine by probing a node daemon."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int | None = None) -> Response:
-        user = request.user
+        user = _resolve_user(request)
+        if not user:
+            return Response({"error": "User authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
         server: UserServerMachine | None = None
         if server_id is not None:
-            server = get_object_or_404(UserServerMachine, id=server_id, user=user)
+            server = UserServerMachine.objects.filter(id=server_id, user=user).first()
+            if not server:
+                return Response({"error": "Server machine not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Target node: from query param, request body, or server.hosted_node
         node_id = (

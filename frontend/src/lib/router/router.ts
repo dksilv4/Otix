@@ -99,7 +99,7 @@ export const router = createRouter({
   routeTree,
   context: {} as RouterContext,
   defaultPreload: "intent",
-  defaultPreloadDelay: 300,
+  defaultPreloadDelay: 50,
   defaultPendingComponent: RoutePending,
   defaultPendingMs: 200,
   defaultPendingMinMs: 0,

@@ -3,7 +3,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
 import path from 'node:path'
-import http from 'node:http'
 
 export default defineConfig({
   base: '/',
@@ -37,6 +36,19 @@ export default defineConfig({
       '@desktop': path.resolve(__dirname, '../desktop'),
     },
   },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react/jsx-runtime',
+      '@tanstack/react-query',
+      '@tanstack/react-router',
+      'axios',
+      'lucide-react',
+      'clsx',
+      'tailwind-merge',
+    ],
+  },
   server: {
     host: process.env.VITE_HOST || '0.0.0.0',
     port: 5173,
@@ -64,7 +76,6 @@ export default defineConfig({
         xfwd: true,
         timeout: 0,
         proxyTimeout: 0,
-        agent: new http.Agent({ keepAlive: true, maxSockets: 50 }),
       },
       '/uploads': {
         target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',

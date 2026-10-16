@@ -1,12 +1,12 @@
 server:
-    name: Node ID:1 (Prod)
+    name: GAMING PC
     port: 8091
     host: 0.0.0.0
-    auth_token: a7445796848d046ba81f97568ce4d8adf45a80492eb1222a
+    auth_token: b4cacd924fbbdf090423f5fed9f2e469a176deedb1742e1a
     registry_url: https://otix.app/api
     enable_upnp: false
     enable_heartbeat: true
-    downloads_path: ./storage-prod/downloads
+    downloads_path: C:\Users\diogo\AppData\Local\Otix\storage\downloads
     claimed: true
     claimed_by: admin
     write_otix_after_scan: true
@@ -62,7 +62,7 @@ game_libraries:
         - .nsp
         - .xci
 saves:
-    storage_path: ./storage-prod/saves
+    storage_path: C:\Users\diogo\AppData\Local\Otix\storage\saves
     max_snapshots_per_game: 10
     auto_backup_on_exit: true
 usenet:
@@ -143,7 +143,7 @@ desktop:
     close_to_tray: false
     always_on_top: false
     start_minimized: false
-    games_download_path: ""
+    games_download_path: C:\Users\diogo\AppData\Local\Otix\storage\downloads
     games_install_path: D:\Games
     scan_on_launch: true
 organize:

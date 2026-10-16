@@ -4,6 +4,7 @@ import { showXPToast } from '@/components/ui/atoms/xp-toast'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { useRunningGame } from '../../hooks/use-running-game'
 import { useCs2GameState } from '../../hooks/use-cs2-game-state'
+import { isCs2Game } from '../../utils/cs2-gsi'
 import {
   setGamingSessionState,
   resetGamingSessionState,
@@ -33,7 +34,11 @@ interface HeartbeatResponse {
 /** Headless host component that tracks active gaming duration, match outcomes, and awards session XP. */
 export const GamingXpHost = () => {
   const { runningGame, elapsedMs } = useRunningGame()
-  const { gameState } = useCs2GameState()
+  const isCs2 = Boolean(
+    runningGame &&
+      isCs2Game(runningGame.game.title || runningGame.game.exePath || runningGame.game.processName),
+  )
+  const { gameState } = useCs2GameState({ enabled: isCs2 })
   const { user } = useAuth()
 
   const userRef = useRef(user)

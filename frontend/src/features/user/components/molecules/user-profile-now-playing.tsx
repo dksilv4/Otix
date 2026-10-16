@@ -16,7 +16,11 @@ import { formatDuration } from '@/lib/utils'
 export const UserProfileNowPlaying = () => {
   const { runningGame, elapsedMs, matchedGame } = useMatchedRunningGame()
   const { sessionXp } = useGamingSessionXp()
-  const { gameState } = useCs2GameState()
+  const isCs2 = Boolean(
+    runningGame &&
+      isCs2Game(runningGame.game.title || runningGame.game.exePath || runningGame.game.processName),
+  )
+  const { gameState } = useCs2GameState({ enabled: isCs2 })
 
   if (!runningGame) return null
 

@@ -56,7 +56,7 @@ export const createDefaultServerInput = (defaultHomeId?: number | null): ServerM
   osVersion: '',
   host: '',
   hostedNodeId: null,
-  smbEnabled: true,
+  smbEnabled: false,
   smbHost: '',
   smbPort: 445,
   smbShareName: 'games',

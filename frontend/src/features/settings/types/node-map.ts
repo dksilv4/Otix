@@ -18,6 +18,7 @@ export interface SambaShareConfig {
   workgroup?: string
   mountPath?: string
   isOnline?: boolean
+  nodeIds?: number[]
 }
 
 export interface NodeMapPosition {

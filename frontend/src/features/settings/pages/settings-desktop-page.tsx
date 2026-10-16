@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import {
   AlertTriangle,
   FolderTree,
@@ -6,6 +6,7 @@ import {
   Home as HomeIcon,
   KeyRound,
   Plus,
+  ShieldAlert,
   Sparkles,
   Trash2,
 } from 'lucide-react'
@@ -13,6 +14,8 @@ import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useToast } from '@ui/molecules/toast'
 import { useModal } from '@/lib/modals'
+import { useAuth } from '@/lib/providers/auth'
+import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { cn } from '@/lib/utils'
 import {
   useClaimGameServer,
@@ -40,6 +43,7 @@ import {
 import { ServerMachineModal } from '../components/organisms/server-machine-modal'
 import { HomeManageModal } from '../components/organisms/home-manage-modal'
 import { SambaShareModal } from '../components/organisms/samba-share-modal'
+import { AddNodeModal } from '../components/organisms/add-node-modal'
 import { NodesTopologyCanvas } from '../components/organisms/nodes-topology-canvas'
 import type { UserHome, UserServerMachine } from '../types/server-machines'
 import type { SambaShareConfig } from '../types/node-map'
@@ -51,6 +55,7 @@ import {
 
 export const SettingsNodesPage = () => {
   useSettingsHashScroll()
+  const { user, isAuthenticated } = useAuth()
   const { toast } = useToast()
   const { openModal } = useModal()
 
@@ -75,6 +80,7 @@ export const SettingsNodesPage = () => {
   const [selectedSambaForModal, setSelectedSambaForModal] = useState<SambaShareConfig | null>(null)
   const [customSambaShares, setCustomSambaShares] = useState<SambaShareConfig[]>(loadStoredSambaShares)
 
+  const [addNodeModalOpen, setAddNodeModalOpen] = useState(false)
   const [connectModalOpen, setConnectModalOpen] = useState(false)
   const [connectInitialUrl, setConnectInitialUrl] = useState('')
   const [nodeToDelete, setNodeToDelete] = useState<GameServer | null>(null)
@@ -82,6 +88,21 @@ export const SettingsNodesPage = () => {
   const [renameInput, setRenameInput] = useState('')
   const [isSavingRename, setIsSavingRename] = useState(false)
   const [selectedNodeForModal, setSelectedNodeForModal] = useState<GameServer | null>(null)
+
+  const handleSelectNodeType = (type: 'worker' | 'server' | 'home' | 'samba') => {
+    if (type === 'worker') {
+      openConnectModal()
+    } else if (type === 'server') {
+      setEditingServerMachine(null)
+      setServerMachineModalOpen(true)
+    } else if (type === 'home') {
+      setEditingHome(null)
+      setHomeModalOpen(true)
+    } else if (type === 'samba') {
+      setSelectedSambaForModal(null)
+      setSambaModalOpen(true)
+    }
+  }
 
   const desktop = isDesktop()
   const sectionContainerRef = useRef<HTMLDivElement>(null)
@@ -333,6 +354,17 @@ export const SettingsNodesPage = () => {
     }
   }
 
+  if (!isAuthenticated || !user?.isAdmin) {
+    return (
+      <SettingsLockedState
+        title="Admin access required"
+        description="Only server admins can configure Otix nodes, homes, and homelab server machines."
+        icon={ShieldAlert}
+        action={<span />}
+      />
+    )
+  }
+
   return (
     <div id="settings-nodes-section" className="relative w-full h-full overflow-hidden">
       {/* Edge-to-Edge Canvas Background across the entire page behind sidebar & header */}
@@ -340,7 +372,7 @@ export const SettingsNodesPage = () => {
         homes={homes}
         serverMachines={serverMachines}
         nodes={gameServers}
-        pendingNodes={pendingNodes}
+        pendingNodes={[]}
         customSambaShares={customSambaShares}
         anchor={anchorPos}
         onOpenDownloadModal={openDownloadNodeModal}
@@ -349,19 +381,31 @@ export const SettingsNodesPage = () => {
           setEditingHome(null)
           setHomeModalOpen(true)
         }}
-        onAddServer={() => {
-          setEditingServerMachine(null)
+        onAddServer={(homeId) => {
+          setEditingServerMachine(homeId ? ({ homeId } as any) : null)
           setServerMachineModalOpen(true)
         }}
-        onAddNode={() => openConnectModal()}
-        onAddSamba={() => {
-          setSelectedSambaForModal(null)
+        onAddNode={() => setAddNodeModalOpen(true)}
+        onAddSamba={(preset) => {
+          if (preset) {
+            setSelectedSambaForModal({
+              id: '',
+              shareName: preset.shareName || 'games',
+              serverId: preset.serverId || null,
+              serverName: preset.serverName || null,
+              host: preset.host || '',
+              port: preset.port || 445,
+            })
+          } else {
+            setSelectedSambaForModal(null)
+          }
           setSambaModalOpen(true)
         }}
         onOpenSambaSettings={(samba) => {
           setSelectedSambaForModal(samba)
           setSambaModalOpen(true)
         }}
+        onSaveCustomSamba={handleSaveCustomSamba}
         onDeleteSamba={handleDeleteCustomSamba}
         onEditHome={(home) => {
           setEditingHome(home)
@@ -450,59 +494,22 @@ export const SettingsNodesPage = () => {
                 </div>
               </div>
 
-              {/* Right: Node Type Action Buttons */}
+              {/* Right: Add Node Action Button */}
               <div className="flex items-center gap-2 flex-wrap shrink-0 self-start lg:self-center">
                 <DkButton
                   type="button"
                   variant="primary"
                   size="sm"
-                  onClick={() => openConnectModal()}
-                  className="gap-1.5 font-semibold"
+                  onClick={() => setAddNodeModalOpen(true)}
+                  className="gap-1.5 font-semibold shadow-md shadow-primary/20"
                 >
                   <Plus size={14} />
-                  <span>+ Otix Node</span>
-                </DkButton>
-
-                <DkButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setEditingServerMachine(null)
-                    setServerMachineModalOpen(true)
-                  }}
-                  className="gap-1.5"
-                >
-                  <HardDrive size={14} />
-                  <span>+ Server</span>
-                </DkButton>
-
-                <DkButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setEditingHome(null)
-                    setHomeModalOpen(true)
-                  }}
-                  className="gap-1.5"
-                >
-                  <HomeIcon size={14} />
-                  <span>+ Home</span>
-                </DkButton>
-
-                <DkButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedSambaForModal(null)
-                    setSambaModalOpen(true)
-                  }}
-                  className="gap-1.5"
-                >
-                  <FolderTree size={14} />
-                  <span>+ Samba Share</span>
+                  <span>Add Node</span>
+                  {unclaimedNodes.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white/20 text-primary-foreground">
+                      {unclaimedNodes.length}
+                    </span>
+                  )}
                 </DkButton>
               </div>
             </div>
@@ -713,6 +720,14 @@ export const SettingsNodesPage = () => {
         serverMachines={serverMachines}
         onSaveCustom={handleSaveCustomSamba}
         onDeleteCustom={handleDeleteCustomSamba}
+      />
+
+      <AddNodeModal
+        open={addNodeModalOpen}
+        onOpenChange={setAddNodeModalOpen}
+        unclaimedNodes={unclaimedNodes}
+        onSelectType={handleSelectNodeType}
+        onClaimNode={handleClaimQuickNode}
       />
     </div>
   )

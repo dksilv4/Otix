@@ -1,4 +1,4 @@
-import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as serverDownloads from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/types'
 import { isLocalDesktopNode, mergeLocalDesktopNode, pickSettingsNode, syncServersWithPendingNodes } from '../local-desktop-node'
@@ -64,6 +64,8 @@ export function SettingsNodeProvider({ children }: { children: ReactNode }) {
 
   const selectedNode = useMemo(() => pickSettingsNode(servers, preferredId), [servers, preferredId])
 
+  const attemptedRenamesRef = useRef<Set<string>>(new Set())
+
   useEffect(() => {
     for (const server of remoteServers) {
       if (isLocalDesktopNode(server)) continue
@@ -80,7 +82,11 @@ export function SettingsNodeProvider({ children }: { children: ReactNode }) {
         !match.serverName.startsWith('Node ID:') &&
         match.serverName !== server.name
       ) {
-        updateServerMutation.mutate({ id: server.id, name: match.serverName })
+        const renameKey = `${server.id}:${match.serverName}`
+        if (!attemptedRenamesRef.current.has(renameKey)) {
+          attemptedRenamesRef.current.add(renameKey)
+          updateServerMutation.mutate({ id: server.id, name: match.serverName })
+        }
       }
     }
   }, [remoteServers, pendingNodes, updateServerMutation])

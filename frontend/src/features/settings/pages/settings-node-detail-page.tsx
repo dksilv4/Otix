@@ -1,5 +1,8 @@
 import { useCallback, useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router'
+import { ShieldAlert } from 'lucide-react'
+import { useAuth } from '@/lib/providers/auth'
+import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { isLocalDesktopNodeId, getLocalDesktopNodeFallback } from '../local-desktop-node'
 import { useSettingsNode } from '../context/settings-node-context'
 import {
@@ -12,6 +15,7 @@ import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
 export const SettingsNodeDetailPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, isAuthenticated } = useAuth()
   const params = useParams({ strict: false }) as { nodeId?: string }
   const nodeId = parseNodeIdParam(params.nodeId)
   const { servers, isLoading, setSelectedNodeId } = useSettingsNode()
@@ -44,6 +48,17 @@ export const SettingsNodeDetailPage = () => {
   const handleClose = useCallback(() => {
     void navigate({ to: '/settings/nodes' })
   }, [navigate])
+
+  if (!isAuthenticated || !user?.isAdmin) {
+    return (
+      <SettingsLockedState
+        title="Admin access required"
+        description="Only server admins can inspect and configure individual node details."
+        icon={ShieldAlert}
+        action={<span />}
+      />
+    )
+  }
 
   return (
     <NodeSettingsModal

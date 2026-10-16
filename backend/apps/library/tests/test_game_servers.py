@@ -862,3 +862,29 @@ class NonExistentNodeApiTests(TestCase):
         res = self.client.get("/api/v1/library/nodes")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.json()), 1)
+
+    def test_unauthenticated_and_cross_user_node_isolation(self):
+        node = UserGameServer.objects.create(
+            user=self.user,
+            name="Private Node",
+            local_url="http://127.0.0.1:8090",
+            auth_token="token123",
+        )
+        # Unauthenticated request cannot see or modify nodes
+        self.client.logout()
+        res_unauthed = self.client.get("/api/v1/library/servers")
+        self.assertIn(res_unauthed.status_code, (401, 403))
+        self.assertIn(self.client.get(f"/api/v1/library/servers/{node.id}").status_code, (401, 403))
+
+        # Different user cannot see or modify this user's node
+        other = User.objects.create_user(username="other_dev", email="dev@example.com", password="pass")
+        self.client.force_authenticate(user=other)
+        res_other = self.client.get("/api/v1/library/servers")
+        self.assertEqual(res_other.status_code, 200)
+        self.assertEqual(len(res_other.json()), 0)
+
+        # Other user cannot PATCH, DELETE, or ping the private node
+        self.assertEqual(self.client.patch(f"/api/v1/library/servers/{node.id}", {"name": "Hacked"}).status_code, 404)
+        self.assertEqual(self.client.delete(f"/api/v1/library/servers/{node.id}").status_code, 404)
+        self.assertEqual(self.client.post(f"/api/v1/library/servers/{node.id}/ping").status_code, 404)
+

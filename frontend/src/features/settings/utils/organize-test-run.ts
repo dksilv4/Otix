@@ -15,7 +15,11 @@ export interface PreviewItem {
     | 'sample'
     | 'secondary_update'
     | 'secondary_dlc'
+    | 'secondary_crack'
     | 'container_package'
+  anomalies?: string[]
+  suggestedRenames?: Record<string, string>
+  health?: 'HEALTHY' | 'CORRECTABLE_ANOMALY' | 'INCOMPLETE_DOWNLOAD' | 'GENERIC' | string
 }
 
 export const generateSamplePreviewItems = (
@@ -49,6 +53,22 @@ export const generateSamplePreviewItems = (
     else if (sample.category === 'update') status = 'secondary_update'
     else if (sample.category === 'dlc') status = 'secondary_dlc'
 
+    let anomalies: string[] | undefined
+    let suggestedRenames: Record<string, string> | undefined
+    let health: string | undefined
+
+    if (sample.isPackage && sample.originalName.toLowerCase().includes('baldurs')) {
+      anomalies = [
+        "Missing 'elamigos-' prefix: data-2.bin (installer expects elamigos-2.bin)",
+        'Duplicate name collision: elamigos-1 (1).bin',
+      ]
+      suggestedRenames = {
+        'data-2.bin': 'elamigos-2.bin',
+        'elamigos-1 (1).bin': 'elamigos-1.bin',
+      }
+      health = 'CORRECTABLE_ANOMALY'
+    }
+
     return {
       sourcePath,
       sourceFilename: `${sample.originalName}${extPart}`,
@@ -67,6 +87,9 @@ export const generateSamplePreviewItems = (
       targetPath,
       foldersToCreate,
       status,
+      anomalies,
+      suggestedRenames,
+      health,
     }
   })
 }
@@ -76,6 +99,11 @@ export const calculatePreviewMetrics = (items: PreviewItem[]) => {
   const matched = items.filter((i) => i.matched).length
   const conflicts = items.filter((i) => i.status === 'conflict').length
   const packages = items.filter((i) => i.status === 'container_package').length
+  const healable = items.filter(
+    (i) =>
+      i.health === 'CORRECTABLE_ANOMALY' ||
+      (i.suggestedRenames && Object.keys(i.suggestedRenames).length > 0),
+  ).length
   const folderSet = new Set<string>()
   items.forEach((i) => {
     i.foldersToCreate?.forEach((f) => folderSet.add(f))
@@ -85,6 +113,7 @@ export const calculatePreviewMetrics = (items: PreviewItem[]) => {
     matched,
     conflicts,
     packages,
+    healable,
     foldersCount: folderSet.size,
   }
 }
@@ -94,17 +123,32 @@ export const getStatusBadgeInfo = (status: PreviewItem['status']) => {
     case 'container_package':
       return { label: 'Folder Package', className: 'text-primary bg-primary/10 border-primary/20' }
     case 'secondary_update':
-      return { label: 'Update', className: 'text-amber-400 bg-amber-500/10 border-amber-500/20' }
+      return { label: 'Update', className: 'text-foreground/90 bg-white/10 border-white/15' }
     case 'secondary_dlc':
-      return { label: 'DLC', className: 'text-purple-400 bg-purple-500/10 border-purple-500/20' }
+      return { label: 'DLC', className: 'text-foreground/90 bg-white/10 border-white/15' }
+    case 'secondary_crack':
+      return { label: 'Crack Supplement', className: 'text-primary bg-primary/15 border-primary/25' }
     case 'already_organized':
-      return { label: 'Organized', className: 'text-sky-400 bg-sky-500/10 border-sky-500/20' }
+      return { label: 'Organized', className: 'text-muted-foreground bg-white/5 border-white/10' }
     case 'conflict':
-      return { label: 'Collision', className: 'text-rose-400 bg-rose-500/10 border-rose-500/20' }
+      return { label: 'Collision', className: 'text-destructive bg-destructive/10 border-destructive/20' }
     case 'sample':
       return { label: 'Sample', className: 'text-muted-foreground bg-white/5 border-white/10' }
     case 'rename_and_move':
     default:
-      return { label: 'Move & Rename', className: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' }
+      return { label: 'Move & Rename', className: 'text-primary bg-primary/15 border-primary/25' }
+  }
+}
+
+export const getHealthBadgeInfo = (health?: string) => {
+  switch (health) {
+    case 'CORRECTABLE_ANOMALY':
+      return { label: 'Auto-Healable', className: 'text-primary bg-primary/15 border-primary/25' }
+    case 'INCOMPLETE_DOWNLOAD':
+      return { label: 'Incomplete Part', className: 'text-destructive bg-destructive/10 border-destructive/20' }
+    case 'HEALTHY':
+      return { label: 'Healthy Archive', className: 'text-foreground/80 bg-white/5 border-white/10' }
+    default:
+      return null
   }
 }

@@ -14,7 +14,7 @@ export const serverMachineQueryKeys = {
   homes: ['homes'] as const,
 }
 
-export const useUserHomes = () => {
+export const useUserHomes = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: serverMachineQueryKeys.homes,
     queryFn: async (): Promise<UserHome[]> => {
@@ -22,6 +22,7 @@ export const useUserHomes = () => {
       return res?.data ?? []
     },
     staleTime: 30_000,
+    enabled: options?.enabled ?? true,
   })
 }
 
@@ -64,7 +65,7 @@ export const useDeleteHome = () => {
   })
 }
 
-export const useServerMachines = (homeId?: number | null) => {
+export const useServerMachines = (homeId?: number | null, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: serverMachineQueryKeys.list(homeId),
     queryFn: async (): Promise<UserServerMachine[]> => {
@@ -73,6 +74,7 @@ export const useServerMachines = (homeId?: number | null) => {
       return res?.data ?? []
     },
     staleTime: 15_000,
+    enabled: options?.enabled ?? true,
   })
 }
 

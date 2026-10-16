@@ -5,8 +5,11 @@ import type { UserHome, UserServerMachine } from '../types/server-machines'
 import {
   buildNodeMapGraph,
   calculateAutoLayout,
+  calculateFitViewport,
   isCompatibleConnection,
   computeTopologyStats,
+  getNodeCardBorderAnchor,
+  generateSmartNodeConnectionPath,
 } from '../utils/node-map'
 
 describe('buildNodeMapGraph', () => {
@@ -121,7 +124,7 @@ describe('calculateAutoLayout', () => {
     expect(positions['node-1']).toBeDefined()
     expect(positions['unclaimed-node-0']).toBeDefined()
     expect(positions['node-1'].x).toBe(100)
-    expect(positions['unclaimed-node-0'].x).toBe(480) // 2nd column in nodes grid
+    expect(positions['unclaimed-node-0'].x).toBe(420) // 2nd column in nodes grid (100 + 320)
   })
 })
 
@@ -187,7 +190,7 @@ describe('Samba Share Topology & Connections', () => {
     expect(edges.some((e) => e.relation === 'samba_server_link')).toBe(true)
   })
 
-  it('allows connecting Samba Share to Server Machine and disallows connecting Samba to Home', () => {
+  it('allows connecting Samba Share to Server Machine and Worker Node, but disallows connecting Samba to Home', () => {
     const sambaItem = {
       id: 'samba-custom-1',
       type: 'samba' as const,
@@ -202,6 +205,13 @@ describe('Samba Share Topology & Connections', () => {
       name: 'Server',
       data: { type: 'server' as const, machine: {} as UserServerMachine },
     }
+    const nodeItem = {
+      id: 'node-100',
+      type: 'node' as const,
+      entityId: 100,
+      name: 'Worker Node',
+      data: { type: 'node' as const, server: {} as GameServer },
+    }
     const homeItem = {
       id: 'home-1',
       type: 'home' as const,
@@ -214,8 +224,170 @@ describe('Samba Share Topology & Connections', () => {
     expect(smbToServer.compatible).toBe(true)
     expect(smbToServer.connectionTypes).toContain('smb')
 
+    const smbToNode = isCompatibleConnection(sambaItem, nodeItem)
+    expect(smbToNode.compatible).toBe(true)
+    expect(smbToNode.connectionTypes).toContain('smb')
+
+    const serverToNode = isCompatibleConnection(serverItem, nodeItem)
+    expect(serverToNode.compatible).toBe(true)
+    expect(serverToNode.connectionTypes).toContain('host')
+    expect(serverToNode.connectionTypes).toContain('smb')
+
     const smbToHome = isCompatibleConnection(sambaItem, homeItem)
     expect(smbToHome.compatible).toBe(false)
-    expect(smbToHome.reason).toContain('Samba shares can only be connected to a Server Machine')
+    expect(smbToHome.reason).toContain('Samba shares can only be connected to a Server Machine or Worker Node')
+  })
+
+  it('builds smb_link edges connecting Samba share to worker nodes when smbNodeIds are defined', () => {
+    const server: UserServerMachine = {
+      id: 20,
+      name: 'Unraid NAS',
+      homeId: 1,
+      smbEnabled: true,
+      smbShareName: 'games',
+      smbNodeIds: [100],
+      createdAt: '',
+      updatedAt: '',
+    }
+    const node: GameServer = {
+      id: 100,
+      name: 'Worker Node',
+      primaryUrl: 'http://localhost:8090',
+      isOnline: true,
+      isActive: true,
+      totalFiles: 0,
+      storageFreeBytes: 0,
+      storageTotalBytes: 0,
+      createdAt: '',
+      updatedAt: '',
+    }
+
+    const { edges } = buildNodeMapGraph([], [server], [node])
+    const smbEdge = edges.find((e) => e.relation === 'smb_link')
+    expect(smbEdge).toBeDefined()
+    expect(smbEdge?.sourceId).toBe('samba-server-20')
+    expect(smbEdge?.targetId).toBe('node-100')
+    expect(smbEdge?.label).toBe('SMB Access')
+  })
+
+  it('builds smb_link edges for standalone Samba shares with nodeIds', () => {
+    const customSamba = {
+      id: 'samba-custom-99',
+      shareName: 'nas_games',
+      port: 445,
+      nodeIds: [200],
+    }
+    const node: GameServer = {
+      id: 200,
+      name: 'Secondary Worker',
+      primaryUrl: 'http://localhost:8091',
+      isOnline: true,
+      isActive: true,
+      totalFiles: 0,
+      storageFreeBytes: 0,
+      storageTotalBytes: 0,
+      createdAt: '',
+      updatedAt: '',
+    }
+
+    const { edges } = buildNodeMapGraph([], [], [node], [], [customSamba])
+    const smbEdge = edges.find((e) => e.relation === 'smb_link')
+    expect(smbEdge).toBeDefined()
+    expect(smbEdge?.sourceId).toBe('samba-custom-99')
+    expect(smbEdge?.targetId).toBe('node-200')
   })
 })
+
+describe('calculateFitViewport', () => {
+  it('computes a centered viewport and zoom factor covering all items', () => {
+    const items = [
+      { id: 'item-1', type: 'node' as const, entityId: 1, name: '1', data: {} as any },
+      { id: 'item-2', type: 'node' as const, entityId: 2, name: '2', data: {} as any },
+    ]
+    const positions = {
+      'item-1': { x: 100, y: 100 },
+      'item-2': { x: 500, y: 300 },
+    }
+
+    const vp = calculateFitViewport(items, positions, 1200, 800)
+    expect(vp.zoom).toBeGreaterThan(0)
+    expect(vp.zoom).toBeLessThanOrEqual(1.2)
+    expect(typeof vp.x).toBe('number')
+    expect(typeof vp.y).toBe('number')
+  })
+
+  it('returns default viewport when items array is empty', () => {
+    const vp = calculateFitViewport([], {}, 1200, 800)
+    expect(vp).toEqual({ x: 0, y: 0, zoom: 1 })
+  })
+})
+
+describe('getNodeCardBorderAnchor', () => {
+  const p1 = { x: 100, y: 100 }
+
+  it('anchors to the middle of the right border when target is to the right', () => {
+    const target = { x: 400, y: 100 }
+    const anchor = getNodeCardBorderAnchor(p1, target, true)
+    expect(anchor.side).toBe('right')
+    expect(anchor.point.x).toBe(340) // 100 + 240
+    expect(anchor.point.y).toBe(124) // 100 + 48/2
+  })
+
+  it('anchors to the middle of the left border when target is to the left', () => {
+    const target = { x: -200, y: 100 }
+    const anchor = getNodeCardBorderAnchor(p1, target, true)
+    expect(anchor.side).toBe('left')
+    expect(anchor.point.x).toBe(100)
+    expect(anchor.point.y).toBe(124)
+  })
+
+  it('anchors to the middle of the bottom border when target is below', () => {
+    const target = { x: 100, y: 300 }
+    const anchor = getNodeCardBorderAnchor(p1, target, true)
+    expect(anchor.side).toBe('bottom')
+    expect(anchor.point.x).toBe(220) // 100 + 240/2
+    expect(anchor.point.y).toBe(148) // 100 + 48
+  })
+
+  it('anchors to the middle of the top border when target is above', () => {
+    const target = { x: 100, y: -100 }
+    const anchor = getNodeCardBorderAnchor(p1, target, true)
+    expect(anchor.side).toBe('top')
+    expect(anchor.point.x).toBe(220)
+    expect(anchor.point.y).toBe(100)
+  })
+
+  it('slides along the border when target is at an angle', () => {
+    const target = { x: 300, y: 220 }
+    const anchor = getNodeCardBorderAnchor(p1, target, true)
+    expect(['bottom', 'right']).toContain(anchor.side)
+    // Anchor remains within valid card border bounds
+    expect(anchor.point.x).toBeGreaterThanOrEqual(100)
+    expect(anchor.point.x).toBeLessThanOrEqual(340)
+    expect(anchor.point.y).toBeGreaterThanOrEqual(100)
+    expect(anchor.point.y).toBeLessThanOrEqual(148)
+  })
+})
+
+describe('generateSmartNodeConnectionPath', () => {
+  it('generates a smooth path and accurate midpoint between two anchors', () => {
+    const p1 = { x: 340, y: 124 }
+    const p2 = { x: 500, y: 124 }
+    const res = generateSmartNodeConnectionPath(p1, 'right', p2, 'left')
+
+    expect(res.path).toContain('M 340 124 C')
+    expect(res.mid.x).toBeCloseTo(420, 0)
+    expect(res.mid.y).toBeCloseTo(124, 0)
+  })
+
+  it('supports vertical bottom-to-top curves', () => {
+    const p1 = { x: 220, y: 148 }
+    const p2 = { x: 220, y: 300 }
+    const res = generateSmartNodeConnectionPath(p1, 'bottom', p2, 'top')
+
+    expect(res.path).toContain('M 220 148 C')
+    expect(res.mid.x).toBeCloseTo(220, 0)
+    expect(res.mid.y).toBeCloseTo(224, 0)
+  })
+})
+

@@ -7,6 +7,7 @@ import type {
 } from '../types/node-map'
 import {
   calculateAutoLayout,
+  calculateFitViewport,
   loadStoredPositions,
   saveStoredPositions,
   NODE_CARD_WIDTH,
@@ -17,9 +18,10 @@ interface UseNodeMapProps {
   items: NodeMapItem[]
   edges: NodeMapEdge[]
   anchor?: { x: number; y: number }
+  onCardDropConnect?: (sourceItem: NodeMapItem, targetItem: NodeMapItem) => void
 }
 
-export const useNodeMap = ({ items, anchor }: UseNodeMapProps) => {
+export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps) => {
   const [positions, setPositions] = useState<Record<string, NodeMapPosition>>({})
   const [viewport, setViewport] = useState<NodeMapViewport>({ x: 0, y: 0, zoom: 1 })
   const [selectedItem, setSelectedItem] = useState<NodeMapItem | null>(null)
@@ -28,7 +30,6 @@ export const useNodeMap = ({ items, anchor }: UseNodeMapProps) => {
   const [panStart, setPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
 
   const [draggingItemId, setDraggingItemId] = useState<string | null>(null)
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
 
   const [connectingFrom, setConnectingFrom] = useState<NodeMapItem | null>(null)
   const [connectingMousePos, setConnectingMousePos] = useState<{ x: number; y: number } | null>(null)
@@ -83,13 +84,30 @@ export const useNodeMap = ({ items, anchor }: UseNodeMapProps) => {
     setViewport({ x: 0, y: 0, zoom: 1 })
   }, [])
 
+  const fitView = useCallback((containerWidth?: number, containerHeight?: number) => {
+    const w = containerWidth ?? (typeof window !== 'undefined' ? window.innerWidth : 1200)
+    const h = containerHeight ?? (typeof window !== 'undefined' ? window.innerHeight : 800)
+    const nextVp = calculateFitViewport(items, positionsRef.current, w, h)
+    setViewport(nextVp)
+  }, [items])
+
   // Canvas Panning handlers
   const handleCanvasPointerDown = useCallback((e: React.PointerEvent) => {
     // Only left click on canvas background
     if (e.button !== 0) return
+    if (connectingFrom) {
+      setConnectingFrom(null)
+      setConnectingMousePos(null)
+      return
+    }
+    setSelectedItem(null)
     setIsPanning(true)
     setPanStart({ x: e.clientX - viewport.x, y: e.clientY - viewport.y })
-  }, [viewport.x, viewport.y])
+  }, [viewport.x, viewport.y, connectingFrom])
+
+  const [hoveredDropTargetId, setHoveredDropTargetId] = useState<string | null>(null)
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null)
+  const activeDragRef = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null)
 
   const handleCanvasPointerMove = useCallback((e: React.PointerEvent) => {
     if (isPanning) {
@@ -98,16 +116,36 @@ export const useNodeMap = ({ items, anchor }: UseNodeMapProps) => {
         x: e.clientX - panStart.x,
         y: e.clientY - panStart.y,
       }))
-    } else if (draggingItemId) {
-      const currentPos = positionsRef.current[draggingItemId] || { x: 0, y: 0 }
-      const newX = Math.max(0, (e.clientX - viewport.x) / viewport.zoom - dragOffset.x)
-      const newY = Math.max(0, (e.clientY - viewport.y) / viewport.zoom - dragOffset.y)
+    } else if (activeDragRef.current) {
+      const { id: itemId, offsetX, offsetY } = activeDragRef.current
+      const currentPos = positionsRef.current[itemId] || { x: 0, y: 0 }
+      const newX = Math.max(0, (e.clientX - viewport.x) / viewport.zoom - offsetX)
+      const newY = Math.max(0, (e.clientY - viewport.y) / viewport.zoom - offsetY)
 
-      if (Math.abs(newX - currentPos.x) > 1 || Math.abs(newY - currentPos.y) > 1) {
+      const roundX = Math.round(newX)
+      const roundY = Math.round(newY)
+
+      if (roundX !== currentPos.x || roundY !== currentPos.y) {
+        positionsRef.current[itemId] = { x: roundX, y: roundY }
         setPositions((prev) => ({
           ...prev,
-          [draggingItemId]: { x: Math.round(newX), y: Math.round(newY) },
+          [itemId]: { x: roundX, y: roundY },
         }))
+
+        // Check if dragged card is overlapping any other node
+        let targetId: string | null = null
+        for (const item of items) {
+          if (item.id === itemId) continue
+          const tPos = positionsRef.current[item.id]
+          if (!tPos) continue
+          const dx = Math.abs(roundX - tPos.x)
+          const dy = Math.abs(roundY - tPos.y)
+          if (dx < NODE_CARD_WIDTH * 0.75 && dy < NODE_CARD_HEIGHT * 0.9) {
+            targetId = item.id
+            break
+          }
+        }
+        setHoveredDropTargetId(targetId)
       }
     }
 
@@ -117,20 +155,40 @@ export const useNodeMap = ({ items, anchor }: UseNodeMapProps) => {
         y: (e.clientY - viewport.y) / viewport.zoom,
       })
     }
-  }, [isPanning, panStart, draggingItemId, dragOffset, viewport, connectingFrom])
+  }, [isPanning, panStart, viewport, connectingFrom, items])
 
   const handleCanvasPointerUp = useCallback(() => {
     if (isPanning) {
       setIsPanning(false)
     }
-    if (draggingItemId) {
+    const active = activeDragRef.current
+    if (active) {
+      const activeId = active.id
+      activeDragRef.current = null
+
+      if (hoveredDropTargetId && onCardDropConnect) {
+        const sourceItem = items.find((i) => i.id === activeId)
+        const targetItem = items.find((i) => i.id === hoveredDropTargetId)
+        if (sourceItem && targetItem) {
+          // Revert position so dragged card doesn't get stuck overlapping target card
+          if (dragStartPosRef.current) {
+            const revert = dragStartPosRef.current
+            positionsRef.current[activeId] = revert
+            setPositions((prev) => ({ ...prev, [activeId]: revert }))
+          }
+          onCardDropConnect(sourceItem, targetItem)
+        }
+      } else {
+        saveStoredPositions(positionsRef.current)
+      }
       setDraggingItemId(null)
-      saveStoredPositions(positionsRef.current)
+      setHoveredDropTargetId(null)
+      dragStartPosRef.current = null
     }
     if (connectingFrom && !connectingMousePos) {
       setConnectingFrom(null)
     }
-  }, [isPanning, draggingItemId, connectingFrom, connectingMousePos])
+  }, [isPanning, hoveredDropTargetId, onCardDropConnect, items, connectingFrom, connectingMousePos])
 
   // Node Dragging handlers
   const handleNodeDragStart = useCallback((e: React.PointerEvent, itemId: string) => {
@@ -139,11 +197,13 @@ export const useNodeMap = ({ items, anchor }: UseNodeMapProps) => {
     const canvasMouseX = (e.clientX - viewport.x) / viewport.zoom
     const canvasMouseY = (e.clientY - viewport.y) / viewport.zoom
 
+    const offsetX = canvasMouseX - pos.x
+    const offsetY = canvasMouseY - pos.y
+
+    activeDragRef.current = { id: itemId, offsetX, offsetY }
+    dragStartPosRef.current = { ...pos }
     setDraggingItemId(itemId)
-    setDragOffset({
-      x: canvasMouseX - pos.x,
-      y: canvasMouseY - pos.y,
-    })
+    setHoveredDropTargetId(null)
   }, [viewport])
 
   // Connection Dragging
@@ -207,12 +267,14 @@ export const useNodeMap = ({ items, anchor }: UseNodeMapProps) => {
     setSearchQuery,
     isPanning,
     draggingItemId,
+    hoveredDropTargetId,
     connectingFrom,
     connectingMousePos,
     handleAutoLayout,
     zoomIn,
     zoomOut,
     resetView,
+    fitView,
     handleCanvasPointerDown,
     handleCanvasPointerMove,
     handleCanvasPointerUp,

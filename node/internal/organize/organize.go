@@ -10,15 +10,17 @@ import (
 )
 
 type PreviewItem struct {
-	SourcePath      string            `json:"sourcePath"`
-	SourceFilename  string            `json:"sourceFilename"`
-	Type            string            `json:"type"`
-	Matched         bool              `json:"matched"`
-	Extracted       map[string]string `json:"extracted"`
-	TargetPath      string            `json:"targetPath"`
-	FoldersToCreate []string          `json:"foldersToCreate"`
-	Status          string            `json:"status"` // "rename_and_move", "already_organized", "conflict", "sample", "secondary_update", "secondary_dlc", "secondary_crack", "container_package"
-	Anomalies       []string          `json:"anomalies,omitempty"`
+	SourcePath       string            `json:"sourcePath"`
+	SourceFilename   string            `json:"sourceFilename"`
+	Type             string            `json:"type"`
+	Matched          bool              `json:"matched"`
+	Extracted        map[string]string `json:"extracted"`
+	TargetPath       string            `json:"targetPath"`
+	FoldersToCreate  []string          `json:"foldersToCreate"`
+	Status           string            `json:"status"` // "rename_and_move", "already_organized", "conflict", "sample", "secondary_update", "secondary_dlc", "secondary_crack", "container_package"
+	Anomalies        []string          `json:"anomalies,omitempty"`
+	SuggestedRenames map[string]string `json:"suggestedRenames,omitempty"`
+	Health           string            `json:"health,omitempty"`
 }
 
 type ExecuteItem struct {
@@ -166,6 +168,9 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 					folderLower := strings.ToLower(d.Name())
 					isElAmigos := strings.Contains(folderLower, "elamigos")
 
+					suggestedRenames := make(map[string]string)
+					health := "HEALTHY"
+
 					for _, c := range children {
 						cName := strings.ToLower(c.Name())
 						if cName == "setup.exe" || cName == "installer.exe" || strings.HasSuffix(cName, "setup.exe") {
@@ -182,15 +187,35 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 						}
 
 						if isElAmigos {
-							if (strings.HasSuffix(cName, ".bin") || strings.Contains(cName, ".bin")) && !strings.HasPrefix(cName, "elamigos-") && !strings.HasPrefix(cName, "elamigos.") {
-								anomalies = append(anomalies, fmt.Sprintf("Missing 'elamigos-' prefix: %s (installer will fail until renamed)", c.Name()))
-							}
 							if strings.Contains(cName, " (1).bin") {
-								anomalies = append(anomalies, fmt.Sprintf("Duplicate name collision: %s (installer will fail until renamed)", c.Name()))
+								canonical := strings.ReplaceAll(c.Name(), " (1).bin", ".bin")
+								suggestedRenames[c.Name()] = canonical
+								anomalies = append(anomalies, fmt.Sprintf("Duplicate name collision: %s (installer will fail until renamed to %s)", c.Name(), canonical))
+							} else if (strings.HasSuffix(cName, ".bin") || strings.Contains(cName, ".bin")) && !strings.HasPrefix(cName, "elamigos-") && !strings.HasPrefix(cName, "elamigos.") {
+								chunk := "1"
+								for i := 1; i <= 99; i++ {
+									if strings.Contains(cName, fmt.Sprintf("%d", i)) {
+										chunk = fmt.Sprintf("%d", i)
+										break
+									}
+								}
+								canonical := fmt.Sprintf("elamigos-%s.bin", chunk)
+								suggestedRenames[c.Name()] = canonical
+								anomalies = append(anomalies, fmt.Sprintf("Missing 'elamigos-' prefix: %s (installer will fail until renamed to %s)", c.Name(), canonical))
 							}
 							if strings.HasSuffix(cName, ".part") || strings.HasSuffix(cName, ".tmp") {
 								anomalies = append(anomalies, fmt.Sprintf("Incomplete download part: %s (installer will fail)", c.Name()))
 							}
+						}
+					}
+
+					for _, a := range anomalies {
+						if strings.Contains(a, "Incomplete download part") {
+							health = "INCOMPLETE_DOWNLOAD"
+							break
+						}
+						if len(suggestedRenames) > 0 {
+							health = "CORRECTABLE_ANOMALY"
 						}
 					}
 
@@ -228,10 +253,12 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 								"Edition":      release.Edition,
 								"Version":      release.Version,
 							},
-							TargetPath:      target,
-							FoldersToCreate: computeFoldersToCreate(target, cleanDir),
-							Status:          status,
-							Anomalies:       anomalies,
+							TargetPath:       target,
+							FoldersToCreate:  computeFoldersToCreate(target, cleanDir),
+							Status:           status,
+							Anomalies:        anomalies,
+							SuggestedRenames: suggestedRenames,
+							Health:           health,
 						})
 
 						return filepath.SkipDir
@@ -479,6 +506,11 @@ func ExecuteOrganization(items []ExecuteItem) ([]ExecuteResult, error) {
 			continue
 		}
 
+		// If moved directory, check and heal any repack filename anomalies
+		if fi, statErr := os.Stat(dst); statErr == nil && fi.IsDir() {
+			healRepackDir(dst)
+		}
+
 		results = append(results, ExecuteResult{
 			SourcePath: src,
 			TargetPath: dst,
@@ -487,6 +519,42 @@ func ExecuteOrganization(items []ExecuteItem) ([]ExecuteResult, error) {
 	}
 
 	return results, nil
+}
+
+func healRepackDir(dir string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	folderLower := strings.ToLower(filepath.Base(dir))
+	isElAmigos := strings.Contains(folderLower, "elamigos")
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		nameLower := strings.ToLower(name)
+		var canonical string
+		if strings.Contains(nameLower, " (1).bin") {
+			canonical = strings.ReplaceAll(name, " (1).bin", ".bin")
+		} else if isElAmigos && (strings.HasSuffix(nameLower, ".bin") || strings.Contains(nameLower, ".bin")) && !strings.HasPrefix(nameLower, "elamigos-") && !strings.HasPrefix(nameLower, "elamigos.") {
+			chunk := "1"
+			for i := 1; i <= 99; i++ {
+				if strings.Contains(nameLower, fmt.Sprintf("%d", i)) {
+					chunk = fmt.Sprintf("%d", i)
+					break
+				}
+			}
+			canonical = fmt.Sprintf("elamigos-%s.bin", chunk)
+		}
+		if canonical != "" && canonical != name {
+			srcFile := filepath.Join(dir, name)
+			dstFile := filepath.Join(dir, canonical)
+			if _, existsErr := os.Stat(dstFile); os.IsNotExist(existsErr) {
+				_ = os.Rename(srcFile, dstFile)
+			}
+		}
+	}
 }
 
 func movePath(src, dst string) error {

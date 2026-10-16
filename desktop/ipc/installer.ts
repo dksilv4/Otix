@@ -16,7 +16,12 @@ import {
   type InstallProgress,
 } from '../installer';
 import { findUpdateFilesForIso } from '../game/scan-utils';
-import { batchOrganizeDirectory, smartOrganizePreview } from '../downloads/organizer';
+import {
+  batchOrganizeDirectory,
+  smartOrganizePreview,
+  diagnoseArchiveIntegrity,
+  healRepackArchive,
+} from '../downloads/organizer';
 import { updateGamePathInDb, getScanPathsFromDb } from '../downloads';
 
 export function registerInstallerIPC(): void {
@@ -83,6 +88,16 @@ export function registerInstallerIPC(): void {
   // Smart preview using parseReleaseName + naming template (arr-style)
   ipcMain.handle('installer:smart-preview', async (_, directory: string, namingTemplate: string, separator?: string) => {
     return await smartOrganizePreview(directory, namingTemplate, separator as 'space' | 'dot' | 'underscore' | 'dash');
+  });
+
+  // Diagnose Repack Archive
+  ipcMain.handle('installer:diagnose-repack', async (_, directory: string) => {
+    return await diagnoseArchiveIntegrity(directory);
+  });
+
+  // Heal Repack Archive
+  ipcMain.handle('installer:heal-repack', async (_, directory: string) => {
+    return await healRepackArchive(directory);
   });
 
   ipcMain.handle('installer:launch-setup', async (_, setupPath: string) => {
