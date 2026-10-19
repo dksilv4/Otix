@@ -1,6 +1,7 @@
 from unittest import mock
 
 from django.test import TestCase
+from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.library.models import UserGameServer
@@ -122,15 +123,16 @@ class OtixSyncTests(TestCase):
         )
         mock_write.return_value = (200, {"written": 1, "failed": []})
 
-        self.client.force_login(self.user)
-        resp = self.client.post(
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+        resp = client.post(
             f"/api/v1/library/servers/{self.server.id}/otix/match",
             {
                 "media_id": self.media.id,
                 "file_id": "file_hl2",
                 "filepath": "/Volumes/Games/Half-Life 2/hl2.exe",
             },
-            content_type="application/json",
+            format="json",
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["status"], "ok")

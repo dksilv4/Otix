@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
 import httpx
+from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone
@@ -45,7 +46,8 @@ def contact_urls(stored_url: str) -> list[str]:
     docker_host = (os.environ.get("OTIX_SERVER_DOCKER_HOST") or "").strip()
     if docker_host:
         extras.append(docker_host)
-    if docker_host or Path("/.dockerenv").exists():
+    is_docker = Path("/.dockerenv").exists() and not getattr(settings, "TESTING", False)
+    if docker_host or is_docker:
         extras.append("host.docker.internal")
     rewritten: list[str] = []
     for extra in extras:

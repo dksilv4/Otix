@@ -1,0 +1,16 @@
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+# Install dependencies first for efficient layer caching
+COPY package.json package-lock.json* ./
+RUN npm ci --legacy-peer-deps
+
+# Copy frontend source
+COPY . .
+
+# Replicate GitHub CI steps:
+# 1. Type check: npx tsc --noEmit
+# 2. Lint: npm run lint
+# 3. Unit tests: npm test
+CMD ["sh", "-c", "npx tsc --noEmit && npm run lint && npm test"]

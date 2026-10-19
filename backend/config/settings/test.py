@@ -14,6 +14,7 @@ from django.test import SimpleTestCase
 from config.settings.base import *  # noqa: F403  (inherited shared settings)
 
 DEBUG = False
+TESTING = True
 
 # Neutralize external service API keys so unit tests run hermetically isolated
 TMDB_API_KEY = ""

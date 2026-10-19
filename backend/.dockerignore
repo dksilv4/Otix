@@ -27,5 +27,4 @@ staticfiles/
 /.gitignore
 /plugin-root/
 /deploy/
-/bundled_plugins/
 /tests/

@@ -241,7 +241,13 @@ class DedicatedGameServerTests(TestCase):
         self.assertEqual(resp.data["status"], "online")
         self.assertEqual(resp.data["ping_ms"], 42)
         self.assertIn("Reachable over TCP", resp.data["query_warning"])
-        mock_a2s.assert_called_once()
+        self.assertEqual(mock_a2s.call_count, 2)
+        mock_a2s.assert_has_calls(
+            [
+                mock.call("192.168.1.50", 8211, timeout=5.0),
+                mock.call("192.168.1.50", 8212, timeout=5.0),
+            ]
+        )
         mock_generic.assert_called_once_with("192.168.1.50", 8211, timeout=5.0)
 
     @mock.patch("apps.gameservers.services.query.query_generic")
