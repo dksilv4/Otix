@@ -4,5 +4,8 @@
 # Python files — LF
 *.py text eol=lf
 
+# Patch files — LF (patch-package fails on CRLF)
+*.patch text eol=lf
+
 # Keep auto-detected for everything else
 * text=auto
