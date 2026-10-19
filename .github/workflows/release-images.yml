@@ -226,9 +226,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       GYP_MSVS_VERSION: "2022"
+      npm_config_msvs_version: "2022"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup MSVC developer environment (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
