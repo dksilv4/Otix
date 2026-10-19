@@ -110,6 +110,7 @@
         "arch": ["x64"]
       }
     ],
+    "maintainer": "Otix <support@otix.app>",
     "icon": "assets/icon.png",
     "category": "Game",
     "artifactName": "${productName}-${version}-${arch}.${ext}"

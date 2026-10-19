@@ -2,6 +2,8 @@
   "name": "desktop",
   "private": true,
   "version": "0.1.22",
+  "author": "Otix <support@otix.app>",
+  "homepage": "https://github.com/dksilv4/Otix",
   "main": "dist/main.js",
   "scripts": {
     "postinstall": "patch-package",
@@ -23,6 +25,7 @@
     "electron-updater": "^6.8.9"
   },
   "devDependencies": {
+    "@electron/rebuild": "3.7.2",
     "@types/better-sqlite3": "^7.6.13",
     "concurrently": "^10.0.1",
     "cross-env": "^10.1.0",
@@ -32,5 +35,8 @@
     "typescript": "~6.0.2",
     "vitest": "^4.1.8",
     "wait-on": "^9.0.10"
+  },
+  "overrides": {
+    "@electron/rebuild": "3.7.2"
   }
 }

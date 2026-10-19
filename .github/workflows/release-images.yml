@@ -224,6 +224,8 @@ jobs:
               desktop/release/*.deb
               desktop/release/latest-linux.yml
     runs-on: ${{ matrix.os }}
+    env:
+      GYP_MSVS_VERSION: "2022"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -286,7 +288,7 @@ jobs:
         shell: bash
         run: |
           npm run build
-          npx electron-builder ${{ matrix.target }} -c electron-builder.json5
+          npx electron-builder ${{ matrix.target }} -c electron-builder.json5 --publish never
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
