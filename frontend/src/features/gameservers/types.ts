@@ -96,6 +96,27 @@ export interface VerifyServerResult {
   version?: string | null
   name?: string | null
   error?: string | null
+  /** Suggested query port if probe auto-discovered an alternative port (e.g. port + 1 for Valheim/Steam) */
+  suggestedQueryPort?: number | null
   /** Present when TCP reachability succeeded but protocol query (A2S/MC) failed. */
   queryWarning?: string | null
 }
+
+export interface GameServerPreset {
+  id: string
+  name: string
+  gameTitle: string
+  otixGameId?: string
+  steamAppId?: string
+  iconUrl?: string
+  category?: string
+  serverType: GameServerType
+  defaultPort: number
+  defaultQueryPort?: number | null
+  queryPortOffset?: number | null
+  forwardRange: string
+  notes?: string
+}
+
+
+

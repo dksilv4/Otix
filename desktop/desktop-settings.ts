@@ -21,6 +21,10 @@ export interface DesktopSettings {
   embeddedNodeEnabled?: boolean;
   /** Port for the embedded node daemon (default: 8090). */
   embeddedNodePort?: number;
+  /** Automatically check for updates on startup (default: true). */
+  autoCheckUpdates?: boolean;
+  /** Automatically download update packages when available (default: true). */
+  autoDownloadUpdates?: boolean;
 }
 
 export function getDefaultGamesInstallPath(): string {
@@ -47,6 +51,8 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   scanOnLaunch: false,
   embeddedNodeEnabled: true,
   embeddedNodePort: 8090,
+  autoCheckUpdates: true,
+  autoDownloadUpdates: true,
   emulatorPaths: {},
   defaultPlatformEmulators: {
     snes: 'retroarch',

@@ -13,6 +13,7 @@ import {
   Copy,
   Check,
   AlertTriangle,
+  Pencil,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
@@ -27,6 +28,7 @@ import {
   useDeleteGameServer,
   useQueryGameServer,
   CreateGameServerModal,
+  EditGameServerModal,
   ShareGameServerModal,
   JoinGameServerModal,
   GameServersFeatureTags,
@@ -46,6 +48,7 @@ export const SettingsGameServersPage = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [selectedShareServer, setSelectedShareServer] = useState<DedicatedGameServer | null>(null)
   const [selectedJoinServer, setSelectedJoinServer] = useState<DedicatedGameServer | null>(null)
+  const [selectedEditServer, setSelectedEditServer] = useState<DedicatedGameServer | null>(null)
   const [serverToDelete, setServerToDelete] = useState<DedicatedGameServer | null>(null)
   const [copiedId, setCopiedId] = useState<number | null>(null)
 
@@ -250,6 +253,16 @@ export const SettingsGameServersPage = () => {
                       >
                         <Share2 size={13} />
                       </button>
+                      {(server.isOwner || server.userPermission === 'admin') && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedEditServer(server)}
+                          title="Edit server settings"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
                       {server.isOwner && (
                         <button
                           type="button"
@@ -274,7 +287,7 @@ export const SettingsGameServersPage = () => {
                       <Globe size={11} className="text-primary" />
                       <span>{server.connectionAddress}</span>
                       {isCopied ? (
-                        <Check size={11} className="text-emerald-500 dark:text-emerald-400 ml-1" />
+                        <Check size={11} className="text-primary ml-1" />
                       ) : (
                         <Copy size={11} className="text-muted-foreground ml-1" />
                       )}
@@ -282,7 +295,7 @@ export const SettingsGameServersPage = () => {
 
                     {server.pingMs != null && (
                       <div className="flex items-center gap-1">
-                        <Wifi size={12} className="text-emerald-500 dark:text-emerald-400" />
+                        <Wifi size={12} className="text-primary" />
                         <span>{server.pingMs}ms</span>
                       </div>
                     )}
@@ -396,6 +409,16 @@ export const SettingsGameServersPage = () => {
           onClose={() => setSelectedJoinServer(null)}
         />
       )}
+
+      {/* Edit Modal */}
+      {selectedEditServer && (
+        <EditGameServerModal
+          server={selectedEditServer}
+          isOpen={Boolean(selectedEditServer)}
+          onClose={() => setSelectedEditServer(null)}
+        />
+      )}
     </div>
   )
-};
+}
+

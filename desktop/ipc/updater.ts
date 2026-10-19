@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
+import { getSettings } from '../desktop-settings';
 
 export type UpdateStatus =
   | 'idle'
@@ -44,6 +45,10 @@ function notifyRenderer(payload: Partial<UpdateStatePayload> & { status: UpdateS
   }
 }
 
+export function setAutoDownloadUpdates(enabled: boolean): void {
+  autoUpdater.autoDownload = enabled;
+}
+
 export function registerUpdaterIPC(win: BrowserWindow | null): void {
   mainWindowRef = win;
 
@@ -51,6 +56,8 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
     return;
   }
   isInitialized = true;
+
+  const settings = getSettings();
 
   // Configure autoUpdater logger
   autoUpdater.logger = {
@@ -61,7 +68,7 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
   };
 
   // Configure autoUpdater defaults
-  autoUpdater.autoDownload = true;
+  autoUpdater.autoDownload = settings.autoDownloadUpdates !== false;
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('checking-for-update', () => {
@@ -181,6 +188,11 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
 }
 
 export function checkForUpdatesOnStartup(): void {
+  const settings = getSettings();
+  if (settings.autoCheckUpdates === false) {
+    console.log('[updater] Automatic startup update check disabled in settings.');
+    return;
+  }
   if (app.isPackaged) {
     // Delay check slightly to let app initialize smoothly
     setTimeout(() => {

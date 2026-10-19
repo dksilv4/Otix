@@ -1,8 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getDesktopAPI, isDesktop, type UpdateStatus, type UpdateProgress, type UpdateStatePayload } from '@/lib/desktop/api'
 import type { AppUpdaterState } from '../types'
+import {
+  readAutoCheckPreference,
+  saveAutoCheckPreference,
+  readAutoDownloadPreference,
+  saveAutoDownloadPreference,
+} from '../utils/updater-utils'
 
-const FALLBACK_VERSION = '0.1.20'
+const FALLBACK_VERSION = '0.1.22'
+
+let globalIsModalOpen = false
+const modalSubscribers = new Set<(open: boolean) => void>()
+
+export const resetUpdateModalStateForTesting = (): void => {
+  globalIsModalOpen = false
+  modalSubscribers.clear()
+}
 
 export const useAppUpdater = (): AppUpdaterState => {
   const desktop = isDesktop()
@@ -13,23 +27,52 @@ export const useAppUpdater = (): AppUpdaterState => {
   const [progress, setProgress] = useState<UpdateProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isDismissed, setIsDismissed] = useState<boolean>(false)
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(globalIsModalOpen)
+  const [autoCheck, setAutoCheckState] = useState<boolean>(readAutoCheckPreference)
+  const [autoDownload, setAutoDownloadState] = useState<boolean>(readAutoDownloadPreference)
 
   const apiRef = useRef(getDesktopAPI()?.updater)
 
   useEffect(() => {
-    const api = getDesktopAPI()?.updater
-    apiRef.current = api
-    if (!api) return
+    const handler = (open: boolean) => setIsModalOpen(open)
+    modalSubscribers.add(handler)
+    return () => {
+      modalSubscribers.delete(handler)
+    }
+  }, [])
+
+  useEffect(() => {
+    const api = getDesktopAPI()
+    const updaterApi = api?.updater
+    apiRef.current = updaterApi
+
+    // Sync desktop settings if available
+    if (api?.getDesktopSettings) {
+      api.getDesktopSettings()
+        .then((s) => {
+          if (s?.autoCheckUpdates !== undefined) {
+            setAutoCheckState(s.autoCheckUpdates)
+            saveAutoCheckPreference(s.autoCheckUpdates)
+          }
+          if (s?.autoDownloadUpdates !== undefined) {
+            setAutoDownloadState(s.autoDownloadUpdates)
+            saveAutoDownloadPreference(s.autoDownloadUpdates)
+          }
+        })
+        .catch(() => {})
+    }
+
+    if (!updaterApi) return
 
     // 1. Fetch current app version
-    api.getVersion()
+    updaterApi.getVersion()
       .then((ver) => {
         if (ver) setCurrentVersion(ver)
       })
       .catch(() => {})
 
     // 2. Fetch current updater state
-    api.getStatus()
+    updaterApi.getStatus()
       .then((initialState: UpdateStatePayload) => {
         if (!initialState) return
         setStatus(initialState.status)
@@ -41,7 +84,7 @@ export const useAppUpdater = (): AppUpdaterState => {
       .catch(() => {})
 
     // 3. Listen to live updates
-    const unsubscribe = api.onStatusChanged((payload: UpdateStatePayload) => {
+    const unsubscribe = updaterApi.onStatusChanged((payload: UpdateStatePayload) => {
       setStatus(payload.status)
       if (payload.version) setAvailableVersion(payload.version)
       if (payload.releaseNotes !== undefined) setReleaseNotes(payload.releaseNotes ?? null)
@@ -110,6 +153,34 @@ export const useAppUpdater = (): AppUpdaterState => {
     setIsDismissed(true)
   }, [])
 
+  const openUpdateModal = useCallback(() => {
+    globalIsModalOpen = true
+    modalSubscribers.forEach((fn) => fn(true))
+  }, [])
+
+  const closeUpdateModal = useCallback(() => {
+    globalIsModalOpen = false
+    modalSubscribers.forEach((fn) => fn(false))
+  }, [])
+
+  const setAutoCheck = useCallback((enabled: boolean) => {
+    setAutoCheckState(enabled)
+    saveAutoCheckPreference(enabled)
+    const api = getDesktopAPI()
+    if (api?.setDesktopSettings) {
+      api.setDesktopSettings({ autoCheckUpdates: enabled }).catch(() => {})
+    }
+  }, [])
+
+  const setAutoDownload = useCallback((enabled: boolean) => {
+    setAutoDownloadState(enabled)
+    saveAutoDownloadPreference(enabled)
+    const api = getDesktopAPI()
+    if (api?.setDesktopSettings) {
+      api.setDesktopSettings({ autoDownloadUpdates: enabled }).catch(() => {})
+    }
+  }, [])
+
   return {
     status,
     currentVersion,
@@ -123,9 +194,17 @@ export const useAppUpdater = (): AppUpdaterState => {
     isUpdateAvailable: status === 'available' || status === 'downloading' || status === 'downloaded',
     isDesktop: desktop,
     isDismissed,
+    isModalOpen,
+    autoCheck,
+    autoDownload,
     checkForUpdates,
     downloadUpdate,
     installUpdate,
     dismissNotification,
+    openUpdateModal,
+    closeUpdateModal,
+    setAutoCheck,
+    setAutoDownload,
   }
 }
+

@@ -1,6 +1,7 @@
 // TODO: Review this file
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { ACCESS_TOKEN_KEY, API_BASE_URL } from '@/lib/config/config'
+import { getInitialTheme, resolveTheme } from '@/lib/theme/theme-utils'
 import { refreshAccessToken } from './session-refresh'
 
 export const CLIENT_API_BASE_URL = API_BASE_URL
@@ -113,9 +114,7 @@ export const apiClient = axios.create({
 // Viewer's resolved UI theme so the backend can pick logos that contrast with it.
 export function getResolvedTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'dark'
-  const stored = localStorage.getItem('otix-theme')
-  if (stored === 'light' || stored === 'dark') return stored
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return resolveTheme(getInitialTheme())
 }
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {

@@ -72,4 +72,79 @@ describe('UpdateNotificationToast', () => {
     fireEvent.click(dismissBtn)
     expect(dismissMock).toHaveBeenCalled()
   })
+
+  it('triggers openUpdateModal when Details button is clicked', () => {
+    const openModalMock = vi.fn()
+
+    vi.spyOn(useAppUpdaterModule, 'useAppUpdater').mockReturnValue({
+      status: 'downloaded',
+      currentVersion: '0.1.0',
+      availableVersion: '0.2.0',
+      releaseNotes: null,
+      progress: null,
+      error: null,
+      isChecking: false,
+      isDownloading: false,
+      isDownloaded: true,
+      isUpdateAvailable: true,
+      isDesktop: true,
+      isDismissed: false,
+      isModalOpen: false,
+      autoCheck: true,
+      autoDownload: true,
+      checkForUpdates: vi.fn(),
+      downloadUpdate: vi.fn(),
+      installUpdate: vi.fn(),
+      dismissNotification: vi.fn(),
+      openUpdateModal: openModalMock,
+      closeUpdateModal: vi.fn(),
+      setAutoCheck: vi.fn(),
+      setAutoDownload: vi.fn(),
+    })
+
+    render(<UpdateNotificationToast />)
+
+    const detailsBtn = screen.getByRole('button', { name: /details/i })
+    fireEvent.click(detailsBtn)
+    expect(openModalMock).toHaveBeenCalled()
+  })
+
+  it('renders available state and allows triggering download', () => {
+    const downloadMock = vi.fn().mockResolvedValue(undefined)
+
+    vi.spyOn(useAppUpdaterModule, 'useAppUpdater').mockReturnValue({
+      status: 'available',
+      currentVersion: '0.1.0',
+      availableVersion: '0.2.0',
+      releaseNotes: null,
+      progress: null,
+      error: null,
+      isChecking: false,
+      isDownloading: false,
+      isDownloaded: false,
+      isUpdateAvailable: true,
+      isDesktop: true,
+      isDismissed: false,
+      isModalOpen: false,
+      autoCheck: true,
+      autoDownload: false,
+      checkForUpdates: vi.fn(),
+      downloadUpdate: downloadMock,
+      installUpdate: vi.fn(),
+      dismissNotification: vi.fn(),
+      openUpdateModal: vi.fn(),
+      closeUpdateModal: vi.fn(),
+      setAutoCheck: vi.fn(),
+      setAutoDownload: vi.fn(),
+    })
+
+    render(<UpdateNotificationToast />)
+
+    expect(screen.getByText('Otix v0.2.0 Available')).toBeDefined()
+    expect(screen.getByText('A newer version of Otix is ready to download.')).toBeDefined()
+
+    const downloadBtn = screen.getByRole('button', { name: /download/i })
+    fireEvent.click(downloadBtn)
+    expect(downloadMock).toHaveBeenCalled()
+  })
 })

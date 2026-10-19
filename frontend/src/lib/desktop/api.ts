@@ -58,6 +58,8 @@ export interface DesktopSettingsData {
   overlayHotkey?: string;
   embeddedNodeEnabled?: boolean;
   embeddedNodePort?: number;
+  autoCheckUpdates?: boolean;
+  autoDownloadUpdates?: boolean;
 }
 
 export interface NodeDaemonStatus {

@@ -299,6 +299,23 @@ def probe_server_connection(
         return _run_protocol_query(host, port, effective_query_port, server_type, timeout)
     except Exception as err:
         logger.debug("Transient probe failed for %s:%s: %s", host, port, err)
+
+        # Smart fallback for Steam/Source games:
+        # If query_port was not explicitly specified and probe on game_port timed out,
+        # test port + 1 (standard for Valheim, V Rising, Enshrouded, Unturned, Arma 3, etc.).
+        if server_type == "steam_source" and query_port is None and port < 65535:
+            try:
+                alt_res = _run_protocol_query(host, port, port + 1, server_type, timeout)
+                if alt_res.get("status") == "online":
+                    alt_res["suggested_query_port"] = port + 1
+                    alt_res["query_warning"] = (
+                        f"Detected Valve A2S response on query port {port + 1} (game port + 1). "
+                        f"Query port {port + 1} will be configured automatically."
+                    )
+                    return alt_res
+            except Exception as alt_err:
+                logger.debug("Transient probe port+1 failed for %s:%s: %s", host, port + 1, alt_err)
+
         fallback = _tcp_fallback_result(host, port, server_type, effective_query_port, err, timeout)
         if fallback is not None:
             return fallback
@@ -337,8 +354,21 @@ def query_game_server(server: Any) -> dict[str, Any]:
         result = _run_protocol_query(host, port, query_port, server_type, timeout=5.0)
     except Exception as err:
         logger.debug("Query failed for %s (%s:%s): %s", server.name, host, port, err)
-        fallback = _tcp_fallback_result(host, port, server_type, query_port, err, timeout=5.0)
-        result = fallback if fallback is not None else {"status": "offline", "ping_ms": None}
+
+        # If server was saved without query_port and query failed, test port + 1
+        if server_type == "steam_source" and server.query_port is None and port < 65535:
+            try:
+                alt_res = _run_protocol_query(host, port, port + 1, server_type, timeout=5.0)
+                if alt_res.get("status") == "online":
+                    server.query_port = port + 1
+                    query_port = port + 1
+                    result = alt_res
+            except Exception:
+                pass
+
+        if result.get("status") != "online":
+            fallback = _tcp_fallback_result(host, port, server_type, query_port, err, timeout=5.0)
+            result = fallback if fallback is not None else {"status": "offline", "ping_ms": None}
 
     # Update server model fields
     server.status = result.get("status", "offline")

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Server, Plus, RefreshCw, Share2, Users, Wifi, Play, Globe } from 'lucide-react'
+import { Server, Plus, RefreshCw, Share2, Users, Wifi, Play, Globe, Pencil } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { useGameServersByGame, useQueryGameServer } from '../queries/gameservers-queries'
 import { CreateGameServerModal } from './create-game-server-modal'
+import { EditGameServerModal } from './edit-game-server-modal'
 import { ShareGameServerModal } from './share-game-server-modal'
 import { JoinGameServerModal } from './join-game-server-modal'
 import { GameServersFeatureTags } from './game-servers-feature-tags'
@@ -25,6 +26,7 @@ export const MediaGameServersSection = ({
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [selectedShareServer, setSelectedShareServer] = useState<DedicatedGameServer | null>(null)
   const [selectedJoinServer, setSelectedJoinServer] = useState<DedicatedGameServer | null>(null)
+  const [selectedEditServer, setSelectedEditServer] = useState<DedicatedGameServer | null>(null)
 
   const handleRefresh = (serverId: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -74,7 +76,7 @@ export const MediaGameServersSection = ({
                       <span
                         className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                           isOnline
-                            ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                            ? 'bg-primary shadow-[0_0_8px_var(--primary)]'
                             : 'bg-destructive/80'
                         }`}
                       />
@@ -108,6 +110,16 @@ export const MediaGameServersSection = ({
                       >
                         <Share2 size={13} />
                       </button>
+                      {(server.isOwner || server.userPermission === 'admin') && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedEditServer(server)}
+                          title="Edit server settings"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -119,7 +131,7 @@ export const MediaGameServersSection = ({
 
                     {server.pingMs != null && (
                       <div className="flex items-center gap-1">
-                        <Wifi size={12} className="text-emerald-500 dark:text-emerald-400" />
+                        <Wifi size={12} className="text-primary" />
                         <span>{server.pingMs}ms</span>
                       </div>
                     )}
@@ -183,6 +195,15 @@ export const MediaGameServersSection = ({
           onClose={() => setSelectedJoinServer(null)}
         />
       )}
+
+      {selectedEditServer && (
+        <EditGameServerModal
+          server={selectedEditServer}
+          isOpen={Boolean(selectedEditServer)}
+          onClose={() => setSelectedEditServer(null)}
+        />
+      )}
     </div>
   )
-};
+}
+

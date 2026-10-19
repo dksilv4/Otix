@@ -19,7 +19,7 @@ describe('useAppUpdater', () => {
 
     expect(result.current.isDesktop).toBe(false)
     expect(result.current.status).toBe('idle')
-    expect(result.current.currentVersion).toBe('0.1.20')
+    expect(result.current.currentVersion).toBe('0.1.22')
     expect(result.current.isChecking).toBe(false)
     expect(result.current.isDownloading).toBe(false)
     expect(result.current.isDownloaded).toBe(false)
@@ -112,6 +112,28 @@ describe('useAppUpdater', () => {
     })
 
     expect(result.current.isDismissed).toBe(true)
+
+    // Test modal open / close
+    expect(result.current.isModalOpen).toBe(false)
+    act(() => {
+      result.current.openUpdateModal()
+    })
+    expect(result.current.isModalOpen).toBe(true)
+    act(() => {
+      result.current.closeUpdateModal()
+    })
+    expect(result.current.isModalOpen).toBe(false)
+
+    // Test auto-check and auto-download
+    act(() => {
+      result.current.setAutoCheck(false)
+    })
+    expect(result.current.autoCheck).toBe(false)
+
+    act(() => {
+      result.current.setAutoDownload(false)
+    })
+    expect(result.current.autoDownload).toBe(false)
 
     // Test installUpdate action
     await act(async () => {

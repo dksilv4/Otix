@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { applyAccentColor } from '@/lib/theme/accent'
+import { ENV } from '@/lib/config/env'
 import {
   type Theme,
   type ThemeSetting,
@@ -19,7 +20,7 @@ const ThemeContext = createContext<{
   layoutTheme: string
   setLayoutTheme: (id: string) => void
 }>({
-  theme: 'system',
+  theme: 'dark',
   resolvedTheme: 'dark',
   setTheme: () => {},
   layoutTheme: 'default',
@@ -31,7 +32,7 @@ export const useTheme = () => {
 }
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setTheme] = useState<ThemeSetting>(getInitialTheme)
+  const [theme, setThemeState] = useState<ThemeSetting>(getInitialTheme)
   const [resolvedTheme, setResolvedTheme] = useState<Theme>(() => resolveTheme(theme))
   const [layoutTheme, setLayoutThemeState] = useState<string>(getInitialLayoutTheme)
 
@@ -49,13 +50,22 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     setResolvedTheme(resolveTheme(theme))
 
-    if (theme !== 'system') return
+    if (theme !== 'system' || ENV.FORCE_DARK_MODE) return
 
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const handler = () => setResolvedTheme(resolveTheme('system'))
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [theme])
+
+  const setTheme = (newTheme: ThemeSetting) => {
+    if (ENV.FORCE_DARK_MODE) {
+      setThemeState('dark')
+      return
+    }
+    setThemeState(newTheme)
+  }
+
 
   /* ── Layout theme (dual-axis theming) ── */
 

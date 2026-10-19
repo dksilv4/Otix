@@ -42,3 +42,53 @@ export const getUpdateStatusLabel = (status: UpdateStatus, version?: string): st
       return 'Up to date'
   }
 }
+
+/**
+ * Split and clean raw release notes into individual bullet points
+ */
+export const parseReleaseNotes = (raw: string | null | undefined): string[] => {
+  if (!raw || typeof raw !== 'string') return []
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^([*\-•]|\d+\.)\s+/, '').trim())
+    .filter(Boolean)
+}
+
+export const STORAGE_KEY_AUTO_CHECK = 'otix:updater:auto-check'
+export const STORAGE_KEY_AUTO_DOWNLOAD = 'otix:updater:auto-download'
+
+export const readAutoCheckPreference = (): boolean => {
+  try {
+    const val = localStorage.getItem(STORAGE_KEY_AUTO_CHECK)
+    return val === null ? true : val === 'true'
+  } catch {
+    return true
+  }
+}
+
+export const saveAutoCheckPreference = (enabled: boolean): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY_AUTO_CHECK, String(enabled))
+  } catch {
+    // ignore
+  }
+}
+
+export const readAutoDownloadPreference = (): boolean => {
+  try {
+    const val = localStorage.getItem(STORAGE_KEY_AUTO_DOWNLOAD)
+    return val === null ? true : val === 'true'
+  } catch {
+    return true
+  }
+}
+
+export const saveAutoDownloadPreference = (enabled: boolean): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY_AUTO_DOWNLOAD, String(enabled))
+  } catch {
+    // ignore
+  }
+}

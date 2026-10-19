@@ -26,9 +26,16 @@
     <script>
       (function() {
         try {
+          var isProd = '%PROD%' === 'true';
           var saved = localStorage.getItem('otix-theme');
-          var isDark = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches) || !saved;
-          if (saved === 'light') isDark = false;
+          var isDark = true;
+          if (!isProd) {
+            if (saved === 'light') {
+              isDark = false;
+            } else if (saved === 'system') {
+              isDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)').matches : true;
+            }
+          }
           document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
         } catch (e) {}
       })();

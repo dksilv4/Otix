@@ -86,10 +86,50 @@ describe('SettingsGeneralPage - About & Updates', () => {
     render(<SettingsGeneralPage />)
 
     expect(screen.getByText('Version v0.2.0 ready to install')).toBeDefined()
-    expect(screen.getByText('Performance improvements and bug fixes')).toBeDefined()
-
     const restartBtn = screen.getByRole('button', { name: /restart & install/i })
     fireEvent.click(restartBtn)
     expect(installUpdateMock).toHaveBeenCalled()
+  })
+
+  it('renders View Details button and toggles auto-update preferences', () => {
+    const openModalMock = vi.fn()
+    const setAutoCheckMock = vi.fn()
+    const setAutoDownloadMock = vi.fn()
+
+    vi.spyOn(updaterModule, 'useAppUpdater').mockReturnValue({
+      status: 'idle',
+      currentVersion: '0.1.0',
+      availableVersion: null,
+      releaseNotes: null,
+      progress: null,
+      error: null,
+      isChecking: false,
+      isDownloading: false,
+      isDownloaded: false,
+      isUpdateAvailable: false,
+      isDesktop: true,
+      isDismissed: false,
+      isModalOpen: false,
+      autoCheck: true,
+      autoDownload: true,
+      checkForUpdates: vi.fn(),
+      downloadUpdate: vi.fn(),
+      installUpdate: vi.fn(),
+      dismissNotification: vi.fn(),
+      openUpdateModal: openModalMock,
+      closeUpdateModal: vi.fn(),
+      setAutoCheck: setAutoCheckMock,
+      setAutoDownload: setAutoDownloadMock,
+    })
+
+    render(<SettingsGeneralPage />)
+
+    const viewDetailsBtn = screen.getByRole('button', { name: /view details/i })
+    expect(viewDetailsBtn).toBeDefined()
+    fireEvent.click(viewDetailsBtn)
+    expect(openModalMock).toHaveBeenCalled()
+
+    expect(screen.getByText('Automatically check for updates')).toBeDefined()
+    expect(screen.getByText('Automatically download updates')).toBeDefined()
   })
 })

@@ -54,6 +54,11 @@ export const SettingsGeneralPage = () => {
     isChecking: isUpdateChecking,
     isDownloading: isUpdateDownloading,
     isDownloaded: isUpdateDownloaded,
+    autoCheck,
+    autoDownload,
+    setAutoCheck,
+    setAutoDownload,
+    openUpdateModal,
     checkForUpdates,
     downloadUpdate,
     installUpdate,
@@ -243,7 +248,7 @@ export const SettingsGeneralPage = () => {
             </div>
 
             {desktop && (
-              <div className="mt-4 pt-4 border-t border-[var(--dk-separator)] space-y-3">
+              <div className="mt-4 pt-4 border-t border-[var(--dk-separator)] space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-0.5">
                     <span className="text-xs font-semibold text-foreground">
@@ -255,6 +260,15 @@ export const SettingsGeneralPage = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <DkButton
+                      size="sm"
+                      variant="ghost"
+                      onClick={openUpdateModal}
+                      className="rounded-xl px-3 text-xs font-semibold"
+                    >
+                      View Details
+                    </DkButton>
+
                     {isUpdateDownloaded ? (
                       <DkButton
                         size="sm"
@@ -288,6 +302,44 @@ export const SettingsGeneralPage = () => {
                         Check for Updates
                       </DkButton>
                     )}
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  <div
+                    className="flex items-center justify-between rounded-xl p-3 sm:p-3.5"
+                    style={{ backgroundColor: 'var(--dk-surface-ghost)' }}
+                  >
+                    <div className="space-y-0.5 pr-4">
+                      <span className="text-xs font-semibold text-foreground">
+                        Automatically check for updates
+                      </span>
+                      <p className="text-[11px] text-muted-foreground">
+                        Query GitHub releases on startup and notify when updates are released.
+                      </p>
+                    </div>
+                    <DkSwitch
+                      checked={autoCheck}
+                      onCheckedChange={setAutoCheck}
+                    />
+                  </div>
+
+                  <div
+                    className="flex items-center justify-between rounded-xl p-3 sm:p-3.5"
+                    style={{ backgroundColor: 'var(--dk-surface-ghost)' }}
+                  >
+                    <div className="space-y-0.5 pr-4">
+                      <span className="text-xs font-semibold text-foreground">
+                        Automatically download updates
+                      </span>
+                      <p className="text-[11px] text-muted-foreground">
+                        Download new packages in the background so restarts are instantaneous.
+                      </p>
+                    </div>
+                    <DkSwitch
+                      checked={autoDownload}
+                      onCheckedChange={setAutoDownload}
+                    />
                   </div>
                 </div>
 

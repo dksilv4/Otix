@@ -18,8 +18,15 @@ export interface AppUpdaterState {
   isUpdateAvailable: boolean
   isDesktop: boolean
   isDismissed: boolean
+  isModalOpen: boolean
+  autoCheck: boolean
+  autoDownload: boolean
   checkForUpdates: () => Promise<void>
   downloadUpdate: () => Promise<void>
   installUpdate: () => Promise<void>
   dismissNotification: () => void
+  openUpdateModal: () => void
+  closeUpdateModal: () => void
+  setAutoCheck: (enabled: boolean) => void
+  setAutoDownload: (enabled: boolean) => void
 }

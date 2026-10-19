@@ -3,6 +3,11 @@ import {
   formatBytes,
   formatSpeed,
   getUpdateStatusLabel,
+  parseReleaseNotes,
+  readAutoCheckPreference,
+  saveAutoCheckPreference,
+  readAutoDownloadPreference,
+  saveAutoDownloadPreference,
 } from '../utils/updater-utils'
 
 describe('updater-utils', () => {
@@ -43,6 +48,55 @@ describe('updater-utils', () => {
       expect(getUpdateStatusLabel('not-available')).toBe('Otix is up to date')
       expect(getUpdateStatusLabel('error')).toBe('Update check failed')
       expect(getUpdateStatusLabel('idle')).toBe('Up to date')
+    })
+  })
+
+  describe('parseReleaseNotes', () => {
+    it('returns empty array when given null, undefined, or empty string', () => {
+      expect(parseReleaseNotes(null)).toEqual([])
+      expect(parseReleaseNotes(undefined)).toEqual([])
+      expect(parseReleaseNotes('')).toEqual([])
+      expect(parseReleaseNotes('   ')).toEqual([])
+    })
+
+    it('cleans markdown bullet symbols and trims lines', () => {
+      const raw = `
+        * Feature 1: In-app updater
+        - Feature 2: Progress dialog
+        • Feature 3: Setting toggles
+        1. Feature 4: Numbered item
+        Plain text line without prefix
+      `
+      const parsed = parseReleaseNotes(raw)
+      expect(parsed).toEqual([
+        'Feature 1: In-app updater',
+        'Feature 2: Progress dialog',
+        'Feature 3: Setting toggles',
+        'Feature 4: Numbered item',
+        'Plain text line without prefix',
+      ])
+    })
+  })
+
+  describe('preferences storage', () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    it('reads and saves autoCheck preference correctly', () => {
+      expect(readAutoCheckPreference()).toBe(true)
+      saveAutoCheckPreference(false)
+      expect(readAutoCheckPreference()).toBe(false)
+      saveAutoCheckPreference(true)
+      expect(readAutoCheckPreference()).toBe(true)
+    })
+
+    it('reads and saves autoDownload preference correctly', () => {
+      expect(readAutoDownloadPreference()).toBe(true)
+      saveAutoDownloadPreference(false)
+      expect(readAutoDownloadPreference()).toBe(false)
+      saveAutoDownloadPreference(true)
+      expect(readAutoDownloadPreference()).toBe(true)
     })
   })
 })

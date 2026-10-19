@@ -15,7 +15,7 @@ import { GamingXpHost } from "@/features/launcher"
 import { IndexerSearchHost } from "@/features/downloads/molecules/indexer-search-host"
 import { CookieBanner } from "@/components/cookie-banner"
 import { AppMicroFooter } from "@/components/app-micro-footer"
-import { UpdateNotificationToast } from "@/features/updater"
+import { UpdateNotificationToast, UpdateModal } from "@/features/updater"
 import { safeLazy } from "@/lib/utils/chunk-reload"
 
 const PluginPermissionModal = safeLazy(() =>
@@ -109,6 +109,7 @@ export const RootLayout = () => {
       <ModalRoot />
       <CookieBanner />
       <UpdateNotificationToast />
+      <UpdateModal />
     </div>
   )
 };

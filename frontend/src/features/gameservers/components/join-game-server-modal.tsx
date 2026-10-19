@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Copy, Check, Play, Key, Users, Wifi } from 'lucide-react'
+import { Copy, Check, Play, Key, Users, Wifi, Eye, EyeOff, Globe } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import { useToast } from '@ui/molecules/toast'
+import { openExternal } from '@/lib/utils/open-external'
+import { findPresetById, findPresetByGameTitle } from '../utils/presets'
 import type { DedicatedGameServer } from '../types'
 
 interface JoinGameServerModalProps {
@@ -15,12 +17,41 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
   const { toast } = useToast()
   const [copiedAddress, setCopiedAddress] = useState(false)
   const [copiedPassword, setCopiedPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const isOnline = server.status === 'online'
   const isSteam = server.serverType === 'steam_source'
-  const steamConnectUrl = `steam://connect/${server.connectionAddress}${
+
+  const matchedPreset =
+    (server.mediaItemId ? findPresetById(server.mediaItemId) : undefined) ??
+    (server.gameTitle ? findPresetByGameTitle(server.gameTitle) : undefined)
+
+  const steamAppId = matchedPreset?.steamAppId
+
+  const steamPort =
+    server.queryPort ??
+    (matchedPreset?.queryPortOffset != null
+      ? server.port + matchedPreset.queryPortOffset
+      : (matchedPreset?.defaultQueryPort ?? server.port))
+
+  const steamConnectAddress = `${server.host}:${steamPort}`
+
+  // Steam's steam://connect/ protocol triggers Steam's internal server browser dialog, which throws
+  // "Invalid App ID" on dedicated servers (like Valheim, Palworld, Enshrouded) because the dedicated
+  // server tool App ID differs from the game client App ID.
+  // Using steam://run/<appId>//+connect <host>:<port> tells Steam to launch the actual game client
+  // directly with the +connect parameter, bypassing the server browser App ID validation entirely.
+  const steamRunUrl = steamAppId
+    ? `steam://run/${steamAppId}//+connect%20${server.host}:${server.port}${
+        server.password ? `%20+password%20${encodeURIComponent(server.password)}` : ''
+      }`
+    : null
+
+  const steamBrowserUrl = `steam://connect/${steamConnectAddress}${
     server.password ? `/${encodeURIComponent(server.password)}` : ''
   }`
+
+  const steamJoinUrl = steamRunUrl ?? steamBrowserUrl
 
   const handleCopyAddress = () => {
     void navigator.clipboard.writeText(server.connectionAddress)
@@ -45,6 +76,19 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
     setTimeout(() => setCopiedPassword(false), 2000)
   }
 
+  const handleSteamJoin = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (server.password) {
+      void navigator.clipboard.writeText(server.password)
+      toast({
+        title: 'Launching Game via Steam',
+        description: `Server password copied to clipboard. Press Ctrl+V when prompted in-game!`,
+        variant: 'success',
+      })
+    }
+    openExternal(steamJoinUrl)
+  }
+
   return (
     <DkDialog
       open={isOpen}
@@ -53,19 +97,19 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
       description={server.description || 'Connection details and direct join link.'}
       className="max-w-md"
     >
-      <div className="space-y-5 pt-2">
+      <div className="space-y-4 pt-2">
         {/* Status card */}
-        <div className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] flex items-center justify-between">
+        <div className="p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span
-              className={`w-3 h-3 rounded-full ${
-                isOnline ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-destructive'
+              className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                isOnline ? 'bg-primary shadow-[0_0_8px_var(--primary)]' : 'bg-destructive/80'
               }`}
             />
             <div>
               <div className="text-sm font-semibold text-foreground capitalize">{server.status}</div>
               <div className="text-xs text-muted-foreground">
-                {server.currentMap ? `Map: ${server.currentMap}` : server.serverType}
+                {server.currentMap ? `Map: ${server.currentMap}` : server.gameTitle || server.serverType}
               </div>
             </div>
           </div>
@@ -86,10 +130,16 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
           </div>
         </div>
 
-        {/* Server Address */}
+        {/* Server Address for In-Game Connect */}
         <div>
-          <label className="text-xs font-semibold text-foreground block mb-1.5">Server Address (IP:Port)</label>
-          <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Globe size={13} className="text-primary" />
+              <span>In-Game Direct Connect (IP:Port)</span>
+            </label>
+            <span className="text-[11px] text-muted-foreground">For in-game &ldquo;Join by IP&rdquo;</span>
+          </div>
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04]">
             <span className="flex-1 px-2 font-mono text-sm text-foreground select-all">
               {server.connectionAddress}
             </span>
@@ -106,17 +156,39 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
           </div>
         </div>
 
-        {/* Server Password (if any) */}
+        {/* Server Password (if any) with show/hide toggle */}
         {server.password && (
           <div>
-            <label className="text-xs font-semibold text-foreground block mb-1.5 flex items-center gap-1">
-              <Key size={13} className="text-amber-500 dark:text-amber-400" />
-              <span>Server Password</span>
-            </label>
-            <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
-              <span className="flex-1 px-2 font-mono text-sm text-foreground select-all">
-                {server.password}
-              </span>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Key size={13} className="text-primary" />
+                <span>Server Password</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                {showPassword ? <EyeOff size={12} /> : <Eye size={12} />}
+                <span>{showPassword ? 'Hide' : 'Show'}</span>
+              </button>
+            </div>
+            <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04]">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                readOnly
+                value={server.password}
+                className="flex-1 px-2 font-mono text-sm text-foreground bg-transparent border-0 focus:outline-none select-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer shrink-0"
+              >
+                {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
               <DkButton
                 type="button"
                 variant="secondary"
@@ -128,6 +200,9 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
                 <span>{copiedPassword ? 'Copied' : 'Copy'}</span>
               </DkButton>
             </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
+              Password is copied automatically on 1-Click Join. Since game clients prompt for passwords in-game for security, just press <kbd className="px-1 py-0.5 rounded bg-[var(--dk-surface-raised)] border border-white/[0.06] text-foreground font-mono text-[10px]">Ctrl+V</kbd> when prompted.
+            </p>
           </div>
         )}
 
@@ -137,11 +212,11 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
             <label className="text-xs font-semibold text-foreground block mb-1.5">
               Online Players ({server.playerList.length})
             </label>
-            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04]">
               {server.playerList.map((player, idx) => (
                 <span
                   key={idx}
-                  className="px-2 py-0.5 rounded-md bg-[var(--dk-surface-raised)] text-xs font-medium text-foreground border border-[var(--dk-separator)]"
+                  className="px-2 py-0.5 rounded-md bg-[var(--dk-surface-raised)] text-xs font-medium text-foreground border border-white/[0.04]"
                 >
                   {player}
                 </span>
@@ -151,22 +226,33 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--dk-separator)]">
-          <DkButton type="button" variant="ghost" onClick={onClose}>
-            Close
-          </DkButton>
+        <div className="flex flex-col items-end gap-1.5 pt-3 border-t border-white/[0.04]">
+          <div className="flex items-center justify-end gap-3 w-full">
+            <DkButton type="button" variant="ghost" onClick={onClose}>
+              Close
+            </DkButton>
 
+            {isSteam && (
+              <a
+                href={steamJoinUrl}
+                onClick={handleSteamJoin}
+                title={steamAppId ? `Launch ${server.gameTitle || 'game'} via Steam` : 'Join via Steam'}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition-all shadow-md active:scale-95"
+              >
+                <Play size={14} fill="currentColor" />
+                <span>1-Click Steam Join</span>
+              </a>
+            )}
+          </div>
           {isSteam && (
-            <a
-              href={steamConnectUrl}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition-all shadow-md active:scale-95"
-            >
-              <Play size={14} fill="currentColor" />
-              <span>1-Click Steam Join</span>
-            </a>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {steamAppId
+                ? `Launches ${server.gameTitle || 'Game'} (+connect ${server.connectionAddress})`
+                : `Steam A2S Query: ${steamConnectAddress}`}
+            </span>
           )}
         </div>
       </div>
     </DkDialog>
   )
-};
+}

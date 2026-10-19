@@ -12,16 +12,26 @@ const toastAnimation = {
 export const UpdateNotificationToast = () => {
   const {
     isDesktop,
+    status,
     isDownloaded,
     availableVersion,
     isDismissed,
     installUpdate,
+    downloadUpdate,
+    openUpdateModal,
     dismissNotification,
   } = useAppUpdater()
 
-  if (!isDesktop || !isDownloaded || isDismissed) {
+  const shouldShow =
+    isDesktop &&
+    !isDismissed &&
+    (isDownloaded || status === 'available')
+
+  if (!shouldShow) {
     return null
   }
+
+  const isReady = isDownloaded
 
   return (
     <AnimatePresence>
@@ -31,7 +41,7 @@ export const UpdateNotificationToast = () => {
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           role="status"
           aria-live="polite"
-          className="pointer-events-auto flex items-center gap-4 rounded-2xl p-4 max-w-md backdrop-blur-2xl shadow-2xl border border-[var(--dk-separator)]"
+          className="pointer-events-auto flex items-center gap-3.5 rounded-2xl p-4 max-w-md backdrop-blur-2xl shadow-2xl border border-[var(--dk-separator)]"
           style={{
             backgroundColor: 'var(--dk-surface-raised)',
             boxShadow: 'var(--dk-shadow-dialog)',
@@ -48,24 +58,50 @@ export const UpdateNotificationToast = () => {
           </div>
 
           <div className="min-w-0 flex-1 space-y-0.5">
-            <h4 className="text-sm font-semibold text-foreground">
-              {availableVersion ? `Otix v${availableVersion} Ready` : 'Update Downloaded'}
+            <h4 className="text-sm font-semibold text-foreground truncate">
+              {availableVersion
+                ? `Otix v${availableVersion} ${isReady ? 'Ready' : 'Available'}`
+                : isReady
+                  ? 'Update Ready'
+                  : 'Update Available'}
             </h4>
-            <p className="text-xs text-muted-foreground">
-              Restart to apply the latest improvements and features.
+            <p className="text-xs text-muted-foreground truncate">
+              {isReady
+                ? 'Restart to apply the latest improvements and features.'
+                : 'A newer version of Otix is ready to download.'}
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <DkButton
               size="sm"
-              variant="primary"
-              onClick={() => void installUpdate()}
-              className="gap-1.5 rounded-xl px-3 text-xs font-semibold"
+              variant="ghost"
+              onClick={openUpdateModal}
+              className="rounded-xl px-2.5 text-xs font-semibold"
             >
-              <span>Restart</span>
-              <ArrowRight className="h-3 w-3" />
+              Details
             </DkButton>
+
+            {isReady ? (
+              <DkButton
+                size="sm"
+                variant="primary"
+                onClick={() => void installUpdate()}
+                className="gap-1.5 rounded-xl px-3 text-xs font-semibold"
+              >
+                <span>Restart</span>
+                <ArrowRight className="h-3 w-3" />
+              </DkButton>
+            ) : (
+              <DkButton
+                size="sm"
+                variant="primary"
+                onClick={() => void downloadUpdate()}
+                className="gap-1.5 rounded-xl px-3 text-xs font-semibold"
+              >
+                <span>Download</span>
+              </DkButton>
+            )}
 
             <button
               type="button"

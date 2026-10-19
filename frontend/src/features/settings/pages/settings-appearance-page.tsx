@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 import { useTheme } from '@/lib/providers/theme'
+import { ENV } from '@/lib/config/env'
 import { useShaderQuality, SHADER_QUALITY_OPTIONS } from '@/lib/providers/shader-quality'
 import { useMotionPreference, MOTION_OPTIONS } from '@/lib/providers/motion-preference'
 import { cn } from '@/lib/utils'
@@ -61,54 +62,60 @@ export const SettingsAppearancePage = () => {
         variant="page"
         icon={Palette}
         title="Appearance"
-        description="Theme mode, accent colors, interface animations, and background quality."
+        description={
+          ENV.HIDE_THEME_CHOICE
+            ? 'Accent colors, interface animations, and background quality.'
+            : 'Theme mode, accent colors, interface animations, and background quality.'
+        }
       />
 
       <div id="appearance" className="space-y-5 scroll-mt-28">
       {/* Theme card */}
-      <SettingsCard>
-        <SectionHeader title="Theme" description="Choose how Otix looks on your device." />
+      {!ENV.HIDE_THEME_CHOICE && (
+        <SettingsCard>
+          <SectionHeader title="Theme" description="Choose how Otix looks on your device." />
 
-        <div
-          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl p-4 sm:p-5"
-          style={{ backgroundColor: 'var(--dk-surface-raised)' }}
-        >
-          <div className="flex items-center gap-3.5">
-            <div
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}
-            >
-              {theme === 'dark' ? <Moon className="h-5.5 w-5.5" /> : theme === 'light' ? <Sun className="h-5.5 w-5.5" /> : <Monitor className="h-5.5 w-5.5" />}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'} mode
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {theme === 'dark' ? 'Easier on the eyes at night' : theme === 'light' ? 'Bright and crisp for daytime' : 'Follows your device settings'}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 w-full sm:w-auto rounded-xl p-1 gap-1 bg-[var(--dk-surface-ghost)]">
-            {(['system', 'light', 'dark'] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTheme(t)}
-                className={cn(
-                  'rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150 text-center cursor-pointer',
-                  theme === t
-                    ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
-                )}
+          <div
+            className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl p-4 sm:p-5"
+            style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+          >
+            <div className="flex items-center gap-3.5">
+              <div
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}
               >
-                {t === 'system' ? 'System' : t === 'light' ? 'Light' : 'Dark'}
-              </button>
-            ))}
+                {theme === 'dark' ? <Moon className="h-5.5 w-5.5" /> : theme === 'light' ? <Sun className="h-5.5 w-5.5" /> : <Monitor className="h-5.5 w-5.5" />}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'} mode
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {theme === 'dark' ? 'Easier on the eyes at night' : theme === 'light' ? 'Bright and crisp for daytime' : 'Follows your device settings'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 w-full sm:w-auto rounded-xl p-1 gap-1 bg-[var(--dk-surface-ghost)]">
+              {(['system', 'light', 'dark'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTheme(t)}
+                  className={cn(
+                    'rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150 text-center cursor-pointer',
+                    theme === t
+                      ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
+                  )}
+                >
+                  {t === 'system' ? 'System' : t === 'light' ? 'Light' : 'Dark'}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      </SettingsCard>
+        </SettingsCard>
+      )}
 
       {/* Accent color card */}
       <SettingsCard>

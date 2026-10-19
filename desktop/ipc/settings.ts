@@ -5,6 +5,7 @@ import {
   applyDesktopSettings,
   type DesktopSettings,
 } from '../desktop-settings';
+import { setAutoDownloadUpdates } from './updater';
 
 import type { NodeDaemonManager } from '../node-daemon';
 
@@ -24,6 +25,10 @@ export function registerDesktopSettingsIPC(
       const merged: DesktopSettings = { ...current, ...partial };
       saveDesktopSettings(merged);
       applyDesktopSettings(merged, mainWindow, tray);
+
+      if (partial.autoDownloadUpdates !== undefined) {
+        setAutoDownloadUpdates(partial.autoDownloadUpdates);
+      }
 
       if (nodeDaemon && partial.embeddedNodeEnabled !== undefined) {
         if (partial.embeddedNodeEnabled) {
