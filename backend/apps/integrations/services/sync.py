@@ -132,9 +132,15 @@ def execute_sync_job(job_pk: int) -> dict[str, Any]:
     provider context but not ``task_id`` (the client already holds it from the
     channel); the stored result adds ``task_id`` so a replay is self-describing.
     """
+    from django.conf import settings
+    from django.db import close_old_connections
+
+    if not getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+        close_old_connections()
     job = claim_job(job_pk)
     if job is None:
         return {"status": "skipped", "task_id": str(job_pk)}
+
 
     task_id = str(job.pk)
     progress = progress_lib.RedisProgress(f"{job.provider}:sync")

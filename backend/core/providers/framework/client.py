@@ -269,16 +269,28 @@ def resolve_shared_http_client(
     Safely resets on event-loop changes (e.g. Celery prefork child processes).
     """
     try:
-        active_loop_id = id(asyncio.get_running_loop())
+        active_loop = asyncio.get_running_loop()
+        active_loop_id = id(active_loop)
     except RuntimeError:
+        active_loop = None
         active_loop_id = None
 
-    if current_client is not None and current_loop_id != active_loop_id:
-        try:
-            loop = asyncio.new_event_loop()
-            loop.run_until_complete(current_client.aclose())
-        except Exception:
-            pass
+    if current_client is not None and (current_loop_id != active_loop_id or current_client.is_closed):
+        if not current_client.is_closed:
+            if active_loop is not None and active_loop.is_running():
+                try:
+                    active_loop.create_task(current_client.aclose())
+                except Exception:
+                    pass
+            else:
+                try:
+                    temp_loop = asyncio.new_event_loop()
+                    try:
+                        temp_loop.run_until_complete(current_client.aclose())
+                    finally:
+                        temp_loop.close()
+                except Exception:
+                    pass
         current_client = None
 
     if current_client is None or current_client.is_closed:
@@ -293,3 +305,4 @@ def resolve_shared_http_client(
         current_loop_id = active_loop_id
 
     return current_client, current_loop_id
+

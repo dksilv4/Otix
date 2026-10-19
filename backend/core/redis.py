@@ -9,17 +9,38 @@ fake.
 
 from __future__ import annotations
 
+import asyncio
+import weakref
 from typing import Any
 
 from django.conf import settings
 
+_sync_client: Any | None = None
+_sync_client_url: str | None = None
+_async_clients: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, Any]] = (
+    weakref.WeakKeyDictionary()
+)
+
 
 def get_client() -> Any:
     """Return a sync ``redis.Redis`` client bound to ``settings.REDIS_URL``."""
+    global _sync_client, _sync_client_url
+    url = getattr(settings, "REDIS_URL", "") or "redis://127.0.0.1:6379/0"
+    if _sync_client is not None and _sync_client_url == url:
+        return _sync_client
+
+    if _sync_client is not None:
+        try:
+            _sync_client.close()
+        except Exception:
+            pass
+        _sync_client = None
+
     from redis import Redis  # local import: only pay the dep when realtime is used
 
-    url = getattr(settings, "REDIS_URL", "") or "redis://127.0.0.1:6379/0"
-    return Redis.from_url(url)
+    _sync_client = Redis.from_url(url)
+    _sync_client_url = url
+    return _sync_client
 
 
 def get_async_client() -> Any:
@@ -31,4 +52,32 @@ def get_async_client() -> Any:
     from redis.asyncio import Redis
 
     url = getattr(settings, "REDIS_URL", "") or "redis://127.0.0.1:6379/0"
-    return Redis.from_url(url)
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return Redis.from_url(url)
+
+    loop_clients = _async_clients.get(loop)
+    if loop_clients is not None and url in loop_clients:
+        return loop_clients[url]
+
+    client = Redis.from_url(url)
+    if loop_clients is None:
+        _async_clients[loop] = {url: client}
+    else:
+        loop_clients[url] = client
+    return client
+
+
+def close_redis_clients() -> None:
+    """Close and reset cached sync and async clients."""
+    global _sync_client, _sync_client_url
+    if _sync_client is not None:
+        try:
+            _sync_client.close()
+        except Exception:
+            pass
+        _sync_client = None
+        _sync_client_url = None
+    _async_clients.clear()
+
