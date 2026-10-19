@@ -250,7 +250,9 @@ jobs:
       - name: Install Desktop dependencies
         working-directory: desktop
         shell: bash
-        run: npm ci --legacy-peer-deps
+        run: |
+          npm ci --legacy-peer-deps
+          npx electron-builder install-app-deps
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -267,7 +269,10 @@ jobs:
               (cd node && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node.exe ./main.go)
               ;;
             macos-latest)
-              (cd node && CGO_ENABLED=0 go build -ldflags="-s -w" -o ../desktop/bin/otix-node ./main.go)
+              (cd node && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node-arm64 ./main.go)
+              (cd node && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node-amd64 ./main.go)
+              lipo -create -output desktop/bin/otix-node desktop/bin/otix-node-arm64 desktop/bin/otix-node-amd64
+              rm desktop/bin/otix-node-arm64 desktop/bin/otix-node-amd64
               chmod +x desktop/bin/otix-node
               ;;
             ubuntu-latest)
